@@ -390,7 +390,7 @@ The Yrdly Team
 ---
 This email was sent to ${email}
 If you have any questions, please contact our support team at support@yrdly.ng
-© 2024 Yrdly. All rights reserved.
+© ${new Date().getFullYear()} Yrdly. All rights reserved.
     `;
   }
 
@@ -502,7 +502,7 @@ ${resetLink}
 
 If you have any questions, please contact our support team at support@yrdly.ng
 
-© 2024 Yrdly. All rights reserved.
+© ${new Date().getFullYear()} Yrdly. All rights reserved.
     `;
   }
 
@@ -671,7 +671,7 @@ The Yrdly Team
 ---
 This confirmation was sent to ${data.attendeeName}
 If you have any questions about this event, please contact the event organizer or our support team at support@yrdly.ng
-© 2024 Yrdly. All rights reserved.
+© ${new Date().getFullYear()} Yrdly. All rights reserved.
     `;
   }
 
@@ -805,7 +805,7 @@ The Yrdly Team
 ---
 This welcome message was sent to ${data.username}
 If you have any questions, please contact our support team at support@yrdly.ng
-© 2024 Yrdly. All rights reserved.
+© ${new Date().getFullYear()} Yrdly. All rights reserved.
     `;
   }
 }

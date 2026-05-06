@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import Script from "next/script";
+
 import './globals.css';
 import { cn } from '@/lib/utils';
 import { Toaster } from '@/components/ui/toaster';
@@ -22,8 +22,9 @@ export default function RootLayout({
       <head>
         <meta
           name="viewport"
-          content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+          content="width=device-width, initial-scale=1, viewport-fit=cover"
         />
+        <meta name="theme-color" content="#ffffff" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         {/* Root layout: font loads for all pages. Suppress no-page-custom-font (rule targets Pages Router _document). */}
@@ -33,11 +34,6 @@ export default function RootLayout({
           rel="stylesheet"
         />
 
-        <Script
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7576498244677518"
-          strategy="afterInteractive"
-          crossOrigin="anonymous"
-        />
       </head>
 
       <body className={cn('font-body antialiased min-h-screen bg-background')}>

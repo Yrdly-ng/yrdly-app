@@ -5,10 +5,20 @@ import { withSentryConfig } from '@sentry/nextjs';
 const nextConfig = {
   // Optimize images for mobile
   images: {
-    unoptimized: true,
+    unoptimized: false,
     formats: ['image/webp', 'image/avif'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '*.supabase.co',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.supabase.in',
+      }
+    ]
   },
   
   // Experimental features for better mobile performance
@@ -32,24 +42,7 @@ const nextConfig = {
   productionBrowserSourceMaps: false,
 };
 
-// Sentry configuration
-const sentryWebpackPluginOptions = {
-  // Suppresses source map uploading logs during build
-  silent: true,
-  
-  // Disable source map uploading for faster builds
-  widenClientFileUpload: true,
-  
-  // Routes browser requests to Sentry through a Next.js rewrite
-  tunnelRoute: "/monitoring",
-  
-  // Hides source maps from generated client bundles
-  hideSourceMaps: true,
-  
-  // Additional options
-  org: "yrdly-yo",
-  project: "yrdly-web-app",
-};
+
 
 export default withSentryConfig(nextConfig, {
   // For all available options, see:

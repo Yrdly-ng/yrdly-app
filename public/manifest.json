@@ -4,8 +4,9 @@
   "description": "Your local neighborhood social network",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#10b981",
+  "orientation": "portrait",
+  "background_color": "#0d0f11",
+  "theme_color": "#388E3C",
   "icons": [
     {
       "src": "/icon-192x192.png",
@@ -19,3 +20,4 @@
     }
   ]
 }
+

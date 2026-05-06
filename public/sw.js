@@ -12,13 +12,7 @@ const STATIC_FILES = [
   '/favicon.ico'
 ];
 
-// API routes to cache
-const API_ROUTES = [
-  '/api/posts',
-  '/api/users',
-  '/api/events',
-  '/api/businesses'
-];
+
 
 // Install event - cache static files
 self.addEventListener('install', (event) => {
@@ -86,54 +80,15 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Handle different types of requests
-  if (url.pathname.startsWith('/api/')) {
-    // API requests - try network first, fallback to cache
-    event.respondWith(handleApiRequest(request));
-  } else if (url.pathname.startsWith('/_next/') || url.pathname.includes('.')) {
+  if (url.pathname.startsWith('/_next/') || url.pathname.includes('.')) {
     // Static assets - cache first, fallback to network
     event.respondWith(handleStaticRequest(request));
-  } else {
-    // Page requests - network first, fallback to cache
+  } else if (!url.pathname.startsWith('/api/')) {
+    // Page requests (excluding API) - network first, fallback to cache
     event.respondWith(handlePageRequest(request));
   }
 });
 
-// Handle API requests with offline support
-async function handleApiRequest(request) {
-  try {
-    // Try network first
-    const networkResponse = await fetch(request);
-    
-    // Cache successful responses (only http/https)
-    if (networkResponse.ok && (request.url.startsWith('http:') || request.url.startsWith('https:'))) {
-      const cache = await caches.open(DATA_CACHE);
-      cache.put(request, networkResponse.clone());
-    }
-    
-    return networkResponse;
-  } catch (error) {
-    console.log('API request failed, trying cache:', request.url);
-    
-    // Fallback to cache
-    const cachedResponse = await caches.match(request);
-    if (cachedResponse) {
-      return cachedResponse;
-    }
-    
-    // Return offline response
-    return new Response(
-      JSON.stringify({ 
-        error: 'Offline', 
-        message: 'You are offline. Data will sync when you reconnect.' 
-      }),
-      {
-        status: 503,
-        statusText: 'Service Unavailable',
-        headers: { 'Content-Type': 'application/json' }
-      }
-    );
-  }
-}
 
 // Handle static assets
 async function handleStaticRequest(request) {
@@ -180,55 +135,7 @@ async function handlePageRequest(request) {
   }
 }
 
-// Background sync for offline actions
-self.addEventListener('sync', (event) => {
-  console.log('Background sync triggered:', event.tag);
-  
-  if (event.tag === 'background-sync') {
-    event.waitUntil(syncOfflineData());
-  }
-});
 
-// Sync offline data when back online
-async function syncOfflineData() {
-  try {
-    // Get offline actions from IndexedDB
-    const offlineActions = await getOfflineActions();
-    
-    for (const action of offlineActions) {
-      try {
-        await performOfflineAction(action);
-        await removeOfflineAction(action.id);
-      } catch (error) {
-        console.error('Failed to sync action:', action, error);
-      }
-    }
-    
-    console.log('Offline data synced successfully');
-  } catch (error) {
-    console.error('Background sync failed:', error);
-  }
-}
-
-// Get offline actions from IndexedDB
-async function getOfflineActions() {
-  // This would integrate with your app's offline storage
-  // For now, return empty array
-  return [];
-}
-
-// Perform offline action
-async function performOfflineAction(action) {
-  // This would handle different types of offline actions
-  // (create post, send message, etc.)
-  console.log('Performing offline action:', action);
-}
-
-// Remove completed offline action
-async function removeOfflineAction(actionId) {
-  // Remove from offline storage
-  console.log('Removing offline action:', actionId);
-}
 
 // Push notification handling
 self.addEventListener('push', (event) => {

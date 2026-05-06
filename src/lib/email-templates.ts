@@ -107,7 +107,7 @@ The ${appName} Team
 ---
 This email was sent to ${email}
 If you have any questions, please contact our support team.
-© 2024 ${appName}. All rights reserved.
+© 2026 ${appName}. All rights reserved.
     `
   })
 };

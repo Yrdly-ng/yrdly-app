@@ -186,16 +186,9 @@ export class PayoutService {
             `Payout for transaction ${payoutRequestId}`
           );
           transactionReference = `payout-${payoutRequestId}`;
-        } else if (accountType === 'mobile_money') {
-          // Transfer to mobile money
-          // TODO: Implement mobile money transfer
-          console.log('Mobile money transfer not implemented yet');
-          transferSuccess = false;
-        } else if (accountType === 'digital_wallet') {
-          // Transfer to digital wallet
-          // TODO: Implement digital wallet transfer
-          console.log('Digital wallet transfer not implemented yet');
-          transferSuccess = false;
+        } else if (accountType === 'mobile_money' || accountType === 'digital_wallet') {
+          // Transfer to mobile money / digital wallet not supported
+          throw new Error("Mobile money payouts are not yet supported. Please add a bank account in your payout settings to receive funds.");
         }
 
         if (transferSuccess) {

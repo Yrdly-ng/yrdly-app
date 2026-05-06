@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { EscrowStatus } from '@/types/escrow';
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
+import { createClient } from "@/lib/supabase-server";
 
 export async function POST(request: NextRequest) {
   try {
     // ── Authenticate the caller ────────────────────────
-    const supabase = createRouteHandlerClient({ cookies });
+    const supabase = await createClient();
     const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
     if (!authUser || authError) {
       return NextResponse.json(

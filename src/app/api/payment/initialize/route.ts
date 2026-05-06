@@ -3,8 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 import { ItemTrackingService } from "@/lib/item-tracking-service";
 import { DeliveryOption, PaymentMethod, EscrowStatus } from "@/types/escrow";
 import { MARKETPLACE_CONSTANTS } from "@/lib/constants";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
+import { createClient } from "@/lib/supabase-server";
 
 
 /**
@@ -19,7 +18,7 @@ import { cookies } from "next/headers";
 export async function POST(request: NextRequest) {
   try {
     // ── Authenticate the caller ────────────────────────
-    const supabase = createRouteHandlerClient({ cookies });
+    const supabase = await createClient();
     const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
     if (!authUser || authError) {
       return NextResponse.json(

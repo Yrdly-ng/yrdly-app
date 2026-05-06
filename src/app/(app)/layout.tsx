@@ -1,6 +1,8 @@
 
 "use client";
 
+import Script from 'next/script';
+
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-supabase-auth';
@@ -94,6 +96,11 @@ export default function AppLayout({
 }) {
   return (
     <FriendshipProvider>
+      <Script
+        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7576498244677518"
+        strategy="afterInteractive"
+        crossOrigin="anonymous"
+      />
       <LocationProvider>
         <APIProvider apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!} libraries={['places']}>
           <ProtectedLayout>
