@@ -345,7 +345,17 @@ const CreatePostDialogComponent = ({
         <SheetContent
           side="bottom"
           className="p-0"
-          style={{ background: BG, border: `0.2px solid ${BORDER}`, borderTopLeftRadius: "11px", borderTopRightRadius: "11px", minHeight: "260px" }}
+          style={{
+            background: BG,
+            border: `0.2px solid ${BORDER}`,
+            borderTopLeftRadius: "11px",
+            borderTopRightRadius: "11px",
+            minHeight: "300px",
+            maxHeight: "92dvh",
+            overflowY: "auto",
+            display: "flex",
+            flexDirection: "column",
+          }}
         >
           <PostForm {...formProps} />
         </SheetContent>

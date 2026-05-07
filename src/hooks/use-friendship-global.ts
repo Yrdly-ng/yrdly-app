@@ -48,6 +48,7 @@ export function useFriendshipGlobal(targetUserId: string | undefined): UseFriend
       const { error: insertError } = await supabase.from("friend_requests").insert({
         from_user_id: user.id,
         to_user_id: targetUserId,
+        participant_ids: [user.id, targetUserId].sort(),
         status: "pending",
         created_at: new Date().toISOString(),
       });
@@ -102,13 +103,13 @@ export function useFriendshipGlobal(targetUserId: string | undefined): UseFriend
         (id: string) => id !== user.id
       );
 
-      const [updateError1, updateError2] = await Promise.all([
+      const [res1, res2] = await Promise.all([
         supabase.from("users").update({ friends: updatedMyFriends }).eq("id", user.id),
         supabase.from("users").update({ friends: updatedTheirFriends }).eq("id", targetUserId),
       ]);
 
-      if (updateError1 || updateError2) {
-        throw new Error("Failed to remove friend");
+      if (res1.error || res2.error) {
+        throw new Error(res1.error?.message || res2.error?.message || "Failed to remove friend");
       }
 
       // Refresh status
@@ -199,13 +200,13 @@ export function useFriendshipGlobal(targetUserId: string | undefined): UseFriend
         new Set([...(themData?.friends || []), user.id])
       );
 
-      const [updateError1, updateError2] = await Promise.all([
+      const [res3, res4] = await Promise.all([
         supabase.from("users").update({ friends: myFriends }).eq("id", user.id),
         supabase.from("users").update({ friends: theirFriends }).eq("id", targetUserId),
       ]);
 
-      if (updateError1 || updateError2) {
-        throw new Error("Failed to accept request");
+      if (res3.error || res4.error) {
+        throw new Error(res3.error?.message || res4.error?.message || "Failed to accept request");
       }
 
       // Refresh status

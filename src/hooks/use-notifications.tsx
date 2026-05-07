@@ -104,17 +104,14 @@ export const useNotifications = () => {
                     }
                 } else if (payload.eventType === 'UPDATE' && payload.new) {
                     const updatedNotification = payload.new as Notification;
-                    setNotifications(prev => 
-                        prev.map(n => n.id === updatedNotification.id ? updatedNotification : n)
-                    );
-                    
-                    // Update unread count
-                    const wasRead = notifications.find(n => n.id === updatedNotification.id)?.is_read;
-                    const isNowRead = updatedNotification.is_read;
-                    
-                    if (!wasRead && isNowRead) {
-                        setUnreadCount(prev => Math.max(0, prev - 1));
-                    }
+                    // Use functional updater so we read fresh prev state, not stale closure
+                    setNotifications(prev => {
+                        const old = prev.find(n => n.id === updatedNotification.id);
+                        if (old && !old.is_read && updatedNotification.is_read) {
+                            setUnreadCount(c => Math.max(0, c - 1));
+                        }
+                        return prev.map(n => n.id === updatedNotification.id ? updatedNotification : n);
+                    });
                 } else if (payload.eventType === 'DELETE') {
                     const deletedId = payload.old.id;
                     setNotifications(prev => {
@@ -137,7 +134,8 @@ export const useNotifications = () => {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [user, fetchNotifications, toast, notifications]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user?.id, fetchNotifications, toast]);
 
     const markAsRead = useCallback(async (notificationId: string) => {
         if (!user) return;

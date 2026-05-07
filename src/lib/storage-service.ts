@@ -303,10 +303,23 @@ export class StorageService {
       const fileName = `${Date.now()}_${file.name}`;
       const path = `avatars/${userId}/${fileName}`;
 
-      const { data, error } = await this.uploadFile('user-avatars', path, file);
+      const { data, error } = await this.uploadFile('user-avatars', path, file, {
+        cacheControl: '3600',
+        contentType: this.getMimeType(file),
+      });
       
       if (error) {
-        return { url: null, error };
+        // Try with upsert as fallback
+        const { data: d2, error: e2 } = await supabase.storage
+          .from('user-avatars')
+          .upload(path, file, {
+            cacheControl: '3600',
+            upsert: true,
+            contentType: this.getMimeType(file),
+          });
+        if (e2) return { url: null, error: e2 };
+        const publicUrl = this.getPublicUrl('user-avatars', d2?.path || path);
+        return { url: publicUrl, error: null };
       }
 
       const publicUrl = this.getPublicUrl('user-avatars', path);

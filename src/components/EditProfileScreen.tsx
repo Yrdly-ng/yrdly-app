@@ -128,16 +128,12 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
       // Upload new avatar if provided
       if (values.avatar && values.avatar.length > 0) {
         const file = values.avatar[0];
-        const fileName = `avatars/${user.id}/${Date.now()}-${file.name}`;
-        
-        const { data, error } = await StorageService.uploadFile('user-avatars', fileName, file);
+        const { url, error } = await StorageService.uploadUserAvatar(user.id, file);
         if (error) {
           console.error('Error uploading avatar:', error);
-          throw error;
+          throw new Error(error?.message || 'Failed to upload profile picture');
         }
-        
-        // Get the public URL for the uploaded file
-        avatarUrl = StorageService.getPublicUrl('user-avatars', data.path);
+        if (url) avatarUrl = url;
       }
 
       // Update profile using auth hook to ensure local state is updated
@@ -147,20 +143,16 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
         avatar_url: avatarUrl,
         interests: selectedInterests,
         location: (() => {
-          // If user has entered new location data, use it
-          if (values.locationState && values.locationLga) {
+          // Only set new location if the user actually selected a state
+          if (values.locationState && values.locationState.trim()) {
             return {
               state: values.locationState,
-              lga: values.locationLga,
+              lga: values.locationLga || undefined,
               ward: values.locationWard || undefined,
             };
           }
-          // If form fields are empty but user had existing location, preserve it
-          if (profile?.location) {
-            return profile.location;
-          }
-          // If no existing location and no new data, set to undefined
-          return undefined;
+          // No new location entered — preserve whatever they had before
+          return profile?.location ?? undefined;
         })(),
         updated_at: new Date().toISOString(),
       });
