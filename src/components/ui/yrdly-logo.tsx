@@ -13,7 +13,6 @@ export function YrdlyLogo() {
         className="w-10 h-10"
         priority
       />
-      <span className="text-2xl font-bold text-primary">rdly</span>
     </div>
   );
 }

@@ -355,15 +355,15 @@ export default function OnboardingProfilePage() {
                     </div>
                   </div>
                   
-                  <div className="space-y-2 py-1">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#388E3C]/10 border border-[#388E3C]/20">
-                      <Sparkles className="w-3 h-3 text-[#388E3C]" />
-                      <span className="text-[10px] uppercase tracking-[0.2em] font-black text-[#388E3C]">Citizen One</span>
+                  <div className="space-y-2 py-1 flex-1 min-w-0 pr-12">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#388E3C]/10 border border-[#388E3C]/20 shrink-0">
+                      <Sparkles className="w-3 h-3 text-[#388E3C] shrink-0" />
+                      <span className="text-[10px] uppercase tracking-[0.2em] font-black text-[#388E3C] truncate">Citizen One</span>
                     </div>
-                    <div className="text-3xl font-black text-white leading-none tracking-tight">
+                    <div className="text-3xl font-black text-white leading-none tracking-tight truncate">
                       {form.watch('fullName') || 'Identity Name'}
                     </div>
-                    <div className="text-base font-bold text-[#899485]">
+                    <div className="text-base font-bold text-[#899485] truncate">
                       @{form.watch('username') || 'handle'}
                     </div>
                   </div>
