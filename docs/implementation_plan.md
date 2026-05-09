@@ -1,6 +1,15 @@
 # Implementation Plan: Event Ticketing System
 
-This document outlines the end-to-end plan for implementing the Event Ticketing System in Yrdly, following the established marketplace escrow patterns.
+## Goal
+The goal of this implementation plan is to build a full-featured **Event Ticketing System** for Yrdly from the ground up, allowing users to discover, create, and attend local events. 
+
+Key objectives include:
+1. **Event Creation & Ticketing:** Allow organizers to create free or paid events with multiple ticket tiers (e.g., Early Bird, VIP), complete with capacity limits.
+2. **Secure Payments (Escrow):** Integrate Flutterwave to process ticket purchases. Just like the marketplace, funds are held safely in escrow and only released to the organizer 24-48 hours after the event successfully concludes.
+3. **Digital Tickets & Check-in:** Generate unique QR codes for every ticket purchased, send them to attendees via beautifully designed confirmation emails (using Brevo), and provide organizers with a dashboard and scanner to check people in at the door.
+4. **Automated Payouts & Refunds:** Set up a scheduled Vercel Cron Job to automatically trigger Flutterwave payouts to event creators. If an event is cancelled, the system will automatically handle processing full refunds to all ticket buyers.
+
+This document outlines the end-to-end technical blueprint for implementing this system in Yrdly, following the established marketplace escrow patterns.
 
 ## User Review Required
 
