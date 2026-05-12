@@ -295,7 +295,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
               </div>
               <div className="px-3 pb-3 pt-0 border-t border-white/10">
                 <p className="font-raleway text-[9px] text-white/60 mb-2">
-                  {event.attendees?.length || 0} are interested
+                  {event.attendee_count || 0} are interested
                 </p>
                 <Button
                   size="sm"
@@ -303,11 +303,10 @@ export function EventsScreen({ className }: EventsScreenProps) {
                   style={{ background: "#388E3C" }}
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleRSVP(event.id);
+                    router.push(`/events/${event.id}`);
                   }}
-                  disabled={rsvpLoading.has(event.id)}
                 >
-                  I&apos;m Interested
+                  Get Ticket
                 </Button>
               </div>
             </div>
