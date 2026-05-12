@@ -330,7 +330,7 @@ export default function OnboardingProfilePage() {
           <div className="relative group perspective mx-auto w-full max-w-md px-4">
             <div className="absolute inset-0 bg-gradient-to-br from-[#388E3C]/30 to-transparent rounded-[32px] blur-3xl opacity-40 group-hover:opacity-60 transition-opacity duration-1000" />
             <div 
-              className="relative aspect-[1.6/1] w-full rounded-[32px] p-8 border border-white/10 overflow-hidden transition-all duration-700 shadow-2xl backdrop-blur-2xl"
+              className="relative w-full min-h-[240px] rounded-[32px] p-6 sm:p-8 border border-white/10 overflow-hidden transition-all duration-700 shadow-2xl backdrop-blur-2xl"
               style={{ 
                 background: "linear-gradient(135deg, rgba(30, 33, 38, 0.8) 0%, rgba(13, 15, 17, 0.8) 100%)",
                 boxShadow: "inset 0 0 60px rgba(255,255,255,0.03)"
@@ -339,13 +339,13 @@ export default function OnboardingProfilePage() {
               {/* Card Holographic Pattern */}
               <div className="absolute inset-0 opacity-[0.05] pointer-events-none" style={{ backgroundImage: "radial-gradient(circle at 2px 2px, white 1px, transparent 0)", backgroundSize: "32px 32px" }} />
               
-              <div className="absolute top-8 right-8">
+              <div className="absolute top-6 right-6 sm:top-8 sm:right-8">
                 <YrdlyLogo />
               </div>
 
-              <div className="h-full flex flex-col justify-between relative z-10">
-                <div className="flex items-start gap-6">
-                  <div className="relative">
+              <div className="h-full flex flex-col justify-between relative z-10 gap-6">
+                <div className="flex items-start gap-4 sm:gap-6">
+                  <div className="relative shrink-0">
                     <div className="w-24 h-24 rounded-3xl bg-[#0d0f11] border border-white/10 flex items-center justify-center overflow-hidden shadow-2xl relative group/avatar">
                       <div className="absolute inset-0 bg-[#388E3C] opacity-0 group-hover/avatar:opacity-10 transition-opacity" />
                       <User className="w-12 h-12 text-[#388E3C]/40 group-hover/avatar:scale-110 transition-transform duration-500" />
@@ -369,7 +369,7 @@ export default function OnboardingProfilePage() {
                   </div>
                 </div>
 
-                <div className="flex items-end justify-between border-t border-white/5 pt-6">
+                <div className="flex items-end justify-between border-t border-white/5 pt-4 sm:pt-6 mt-auto">
                   <div className="space-y-2">
                     <div className="text-[10px] uppercase tracking-widest font-black text-[#899485] opacity-60 ml-0.5">Primary Sector</div>
                     <div className="flex items-center gap-2.5 text-white font-black">
