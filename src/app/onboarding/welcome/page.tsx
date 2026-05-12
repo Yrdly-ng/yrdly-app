@@ -290,58 +290,7 @@ export default function OnboardingWelcomePage() {
             </div>
           </div>
 
-          {/* Stats Grid */}
-          <div className={`grid grid-cols-2 gap-4 transition-all duration-1000 delay-300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-            <div 
-              className="p-8 rounded-[40px] border border-white/10 space-y-5 relative overflow-hidden group shadow-2xl backdrop-blur-3xl"
-              style={{ 
-                background: "linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)" 
-              }}
-            >
-              <div className="absolute top-0 right-0 p-5 opacity-10 transform group-hover:scale-125 transition-all duration-700">
-                <Users className="w-12 h-12 text-[#388E3C]" />
-              </div>
-              <div className="space-y-2">
-                <div className="text-[11px] uppercase tracking-[0.3em] font-black text-[#899485] opacity-60">Neighbors</div>
-                {statsLoading ? (
-                  <div className="h-10 w-24 bg-white/5 rounded-xl animate-pulse" />
-                ) : (
-                  <div className="text-4xl font-black text-white tracking-tight">
-                    {communityStats.localUsers > 0 ? communityStats.localUsers.toLocaleString() : '127'}
-                  </div>
-                )}
-              </div>
-              <div className="flex items-center gap-2.5">
-                <div className="w-2 h-2 rounded-full bg-[#388E3C] animate-pulse shadow-[0_0_10px_#388E3C]" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-[#388E3C]">Active Nearby</span>
-              </div>
-            </div>
 
-            <div 
-              className="p-8 rounded-[40px] border border-white/10 space-y-5 relative overflow-hidden group shadow-2xl backdrop-blur-3xl"
-              style={{ 
-                background: "linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)" 
-              }}
-            >
-              <div className="absolute top-0 right-0 p-5 opacity-10 transform group-hover:scale-125 transition-all duration-700">
-                <Calendar className="w-12 h-12 text-[#388E3C]" />
-              </div>
-              <div className="space-y-2">
-                <div className="text-[11px] uppercase tracking-[0.3em] font-black text-[#899485] opacity-60">Activities</div>
-                {statsLoading ? (
-                  <div className="h-10 w-24 bg-white/5 rounded-xl animate-pulse" />
-                ) : (
-                  <div className="text-4xl font-black text-white tracking-tight">
-                    {communityStats.activeToday > 0 ? communityStats.activeToday.toLocaleString() : '43'}
-                  </div>
-                )}
-              </div>
-              <div className="flex items-center gap-2.5">
-                <div className="w-2 h-2 rounded-full bg-[#388E3C] animate-pulse shadow-[0_0_10px_#388E3C]" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-[#388E3C]">New Today</span>
-              </div>
-            </div>
-          </div>
 
           {/* Action Card */}
           <div 
