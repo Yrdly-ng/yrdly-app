@@ -69,7 +69,7 @@ export default function MyTicketsPage() {
             <Ticket className="w-14 h-14 text-white/15" />
             <p className="font-raleway font-semibold text-sm text-white/40">No tickets yet</p>
             <p className="font-raleway text-xs text-white/25 text-center max-w-[220px]">
-              Purchase tickets to local events and they'll appear here.
+              Purchase tickets to local events and they&apos;ll appear here.
             </p>
             <Link href="/events">
               <button className="mt-2 px-6 py-2.5 rounded-full bg-[#388E3C] font-raleway text-sm text-white font-medium">
@@ -145,12 +145,13 @@ export default function MyTicketsPage() {
             {selected.qr_data ? (
               <div className="flex flex-col items-center gap-3 py-4">
                 {/* We show a generated QR using an img tag with a QR service fallback */}
-                <img
+                <Image
                   src={`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(selected.qr_data)}&size=220x220&bgcolor=1E2126&color=FFFFFF`}
                   alt="Ticket QR Code"
                   width={220}
                   height={220}
                   className="rounded-xl"
+                  unoptimized
                 />
                 <p className="font-mono text-xs text-white/40">{selected.ticket_code}</p>
               </div>
