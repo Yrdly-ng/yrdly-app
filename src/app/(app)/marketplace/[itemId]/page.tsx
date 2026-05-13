@@ -267,6 +267,8 @@ export default function MarketplaceItemPage() {
                 style={{ background: "#252B35", color: FADED, fontFamily: FONT_RALEWAY }}
               >
                 <MapPin className="w-4 h-4" style={{ color: GREEN }} />
+                <span>Location not specified</span>
+              </div>
             )}
           </div>
         </div>
