@@ -25,6 +25,7 @@ import { sendEventConfirmationEmail } from "@/lib/email-actions";
 import { cn } from "@/lib/utils";
 import { useLocation } from "@/contexts/LocationContext";
 import { LocationChip } from "@/components/LocationChip";
+import { EventCreatorOnboarding } from "@/components/events/EventCreatorOnboarding";
 
 interface EventsScreenProps {
   className?: string;
@@ -64,6 +65,8 @@ export function EventsScreen({ className }: EventsScreenProps) {
   const router = useRouter();
   const { filterState, filterLga } = useLocation();
   const [events, setEvents] = useState<Event[]>([]);
+  const [rsvpLoading, setRsvpLoading] = useState<Set<string>>(new Set());
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState<"date" | "price" | "all">("date");
   const [carouselIndex, setCarouselIndex] = useState(0);
@@ -446,18 +449,23 @@ export function EventsScreen({ className }: EventsScreenProps) {
         )}
       </section>
 
-      {/* Floating Create - mobile friendly */}
+      {/* Floating Create */}
       <div className="fixed bottom-20 right-4 z-40 lg:bottom-6">
-        <Link href="/events/create">
-          <Button
-            size="lg"
-            className="rounded-full h-12 w-12 sm:h-14 sm:w-14 shadow-lg p-0"
-            style={{ background: "#388E3C" }}
-          >
-            <Plus className="h-6 w-6 text-white" />
-          </Button>
-        </Link>
+        <Button
+          size="lg"
+          className="rounded-full h-12 w-12 sm:h-14 sm:w-14 shadow-lg p-0"
+          style={{ background: "#388E3C" }}
+          onClick={() => setOnboardingOpen(true)}
+        >
+          <Plus className="h-6 w-6 text-white" />
+        </Button>
       </div>
+
+      {/* Event Creator Onboarding */}
+      <EventCreatorOnboarding
+        isOpen={onboardingOpen}
+        onClose={() => setOnboardingOpen(false)}
+      />
     </div>
   );
 }

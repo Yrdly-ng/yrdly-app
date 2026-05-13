@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { usePosts } from "@/hooks/use-posts";
@@ -11,6 +12,7 @@ import Link from "next/link";
 import { CreateItemDialog } from "@/components/CreateItemDialog";
 import { PostCard } from "@/components/PostCard";
 import { LocationChip } from "@/components/LocationChip";
+import { EventCreatorOnboarding } from "@/components/events/EventCreatorOnboarding";
 
 /* ─── gradient SVG icons ──────────────────────────────────────── */
 function HandshakeGradient() {
@@ -56,6 +58,7 @@ interface HomeScreenProps {
 export function HomeScreen({ onViewProfile }: HomeScreenProps) {
   const { user, profile } = useAuth();
   const { filterState, filterLga } = useLocation();
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
   const { posts, loading, deletePost, createPost } = usePosts({ filterState, filterLga });
 
   return (
@@ -100,19 +103,24 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
               </button>
             </CreateItemDialog>
 
-            <Link href="/events/create">
-              <button
-                className="flex items-center gap-1.5 rounded-[20.5px] px-3 py-1.5 text-white text-[12px] font-semibold hover:bg-white/10 transition-colors"
-                style={{ fontFamily: FONT_RALEWAY }}
-              >
-                <TicketGradient />
-                Event
-              </button>
-            </Link>
+            <button
+              onClick={() => setOnboardingOpen(true)}
+              className="flex items-center gap-1.5 rounded-[20.5px] px-3 py-1.5 text-white text-[12px] font-semibold hover:bg-white/10 transition-colors"
+              style={{ fontFamily: FONT_RALEWAY }}
+            >
+              <TicketGradient />
+              Event
+            </button>
 
           </div>
         </div>
       </div>
+
+      {/* Event Creator Onboarding */}
+      <EventCreatorOnboarding
+        isOpen={onboardingOpen}
+        onClose={() => setOnboardingOpen(false)}
+      />
 
       {/* ── Feed ── */}
       {loading ? (
