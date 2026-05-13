@@ -12,6 +12,8 @@ import type { Post as PostType } from "@/types";
 import Image from "next/image";
 import { useLocation } from "@/contexts/LocationContext";
 import { LocationChip } from "@/components/LocationChip";
+import { MarketplaceCreatorOnboarding } from "@/components/marketplace/MarketplaceCreatorOnboarding";
+
 
 interface MarketplaceScreenProps {
   onItemClick?: (item: PostType) => void;
@@ -27,7 +29,10 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
   const [searchTerm, setSearchTerm] = useState("");
   const [editingItem, setEditingItem] = useState<PostType | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
   const { toast } = useToast();
+
 
   const handleEditItem = (item: PostType) => {
     setEditingItem(item);
@@ -203,15 +208,27 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
 
       {/* FAB — list an item */}
       <div className="fixed bottom-20 right-4 z-20">
-        <CreateItemDialog>
-          <button
-            className="w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
-            style={{ background: "#388E3C" }}
-          >
-            <Plus className="w-6 h-6 text-white" />
-          </button>
-        </CreateItemDialog>
+        <button
+          onClick={() => setOnboardingOpen(true)}
+          className="w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
+          style={{ background: "#388E3C" }}
+        >
+          <Plus className="w-6 h-6 text-white" />
+        </button>
       </div>
+
+      {/* Marketplace Creator Onboarding */}
+      <MarketplaceCreatorOnboarding
+        isOpen={onboardingOpen}
+        onClose={() => setOnboardingOpen(false)}
+        onContinue={() => setIsCreateDialogOpen(true)}
+      />
+
+      {/* Create item dialog */}
+      <CreateItemDialog
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+      />
 
       {/* Edit dialog */}
       {editingItem && (

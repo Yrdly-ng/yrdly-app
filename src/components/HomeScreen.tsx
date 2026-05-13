@@ -13,6 +13,8 @@ import { CreateItemDialog } from "@/components/CreateItemDialog";
 import { PostCard } from "@/components/PostCard";
 import { LocationChip } from "@/components/LocationChip";
 import { EventCreatorOnboarding } from "@/components/events/EventCreatorOnboarding";
+import { MarketplaceCreatorOnboarding } from "@/components/marketplace/MarketplaceCreatorOnboarding";
+
 
 /* ─── gradient SVG icons ──────────────────────────────────────── */
 function HandshakeGradient() {
@@ -59,7 +61,10 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
   const { user, profile } = useAuth();
   const { filterState, filterLga } = useLocation();
   const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [marketplaceOnboardingOpen, setMarketplaceOnboardingOpen] = useState(false);
+  const [isCreateItemOpen, setIsCreateItemOpen] = useState(false);
   const { posts, loading, deletePost, createPost } = usePosts({ filterState, filterLga });
+
 
   return (
     <div className="w-full pb-4 space-y-3">
@@ -93,15 +98,15 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
 
           {/* Action buttons - horizontally scrollable on small screens */}
           <div className="flex items-center gap-2 overflow-x-auto pb-0.5 scrollbar-hide">
-            <CreateItemDialog>
-              <button
-                className="flex items-center gap-1.5 rounded-[20.5px] px-3 py-1.5 text-white text-[12px] font-semibold hover:bg-white/10 transition-colors"
-                style={{ fontFamily: FONT_RALEWAY }}
-              >
-                <HandshakeGradient />
-                Sell
-              </button>
-            </CreateItemDialog>
+            <button
+              onClick={() => setMarketplaceOnboardingOpen(true)}
+              className="flex items-center gap-1.5 rounded-[20.5px] px-3 py-1.5 text-white text-[12px] font-semibold hover:bg-white/10 transition-colors"
+              style={{ fontFamily: FONT_RALEWAY }}
+            >
+              <HandshakeGradient />
+              Sell
+            </button>
+
 
             <button
               onClick={() => setOnboardingOpen(true)}
@@ -121,6 +126,20 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
         isOpen={onboardingOpen}
         onClose={() => setOnboardingOpen(false)}
       />
+
+      {/* Marketplace Creator Onboarding */}
+      <MarketplaceCreatorOnboarding
+        isOpen={marketplaceOnboardingOpen}
+        onClose={() => setMarketplaceOnboardingOpen(false)}
+        onContinue={() => setIsCreateItemOpen(true)}
+      />
+
+      {/* Create item dialog */}
+      <CreateItemDialog
+        open={isCreateItemOpen}
+        onOpenChange={setIsCreateItemOpen}
+      />
+
 
       {/* ── Feed ── */}
       {loading ? (
