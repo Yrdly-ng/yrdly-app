@@ -231,7 +231,7 @@ export default function TicketPage() {
                 </p>
               </div>
 
-              {isScanned && (
+              {isScanned && ticket.scanned_at && (
                 <div>
                   <p className="text-sm text-slate-600 font-medium mb-1">Scanned</p>
                   <p className="text-slate-700">
