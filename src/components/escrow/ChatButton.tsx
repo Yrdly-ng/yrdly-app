@@ -14,9 +14,10 @@ interface ChatButtonProps {
   itemImageUrl: string;
   sellerId: string;
   sellerName: string;
+  itemPrice?: number;
 }
 
-export function ChatButton({ itemId, itemTitle, itemImageUrl, sellerId, sellerName }: ChatButtonProps) {
+export function ChatButton({ itemId, itemTitle, itemImageUrl, sellerId, sellerName, itemPrice }: ChatButtonProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
@@ -50,7 +51,8 @@ export function ChatButton({ itemId, itemTitle, itemImageUrl, sellerId, sellerNa
         user.id,
         sellerId,
         itemTitle,
-        itemImageUrl
+        itemImageUrl,
+        itemPrice
       );
 
       // Redirect to the specific chat

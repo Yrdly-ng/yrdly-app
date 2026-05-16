@@ -120,58 +120,59 @@ export async function POST(request: NextRequest) {
       console.warn('[AccountSetup] PAYSTACK_SECRET_KEY not set — skipping name match');
     }
 
-    // ── Task 2: Create Flutterwave subaccount ─────────────
+    // ── Task 2: Create Flutterwave subaccount (best-effort) ──
     let subaccountId: string | null = null;
 
-    const flwRes = await fetch('https://api.flutterwave.com/v3/subaccounts', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        account_bank: bankCode,
-        account_number: accountNumber,
-        business_name: accountName,
-        business_email: user.email,
-        business_contact: accountName,
-        business_contact_mobile: user.phone || '',
-        business_mobile: user.phone || '',
-        country: 'NG',
-        split_type: 'percentage',
-        split_value: 0.97, // Seller gets 97%
-      }),
-    });
+    if (process.env.FLUTTERWAVE_SECRET_KEY) {
+      try {
+        const flwRes = await fetch('https://api.flutterwave.com/v3/subaccounts', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            account_bank: bankCode,
+            account_number: accountNumber,
+            business_name: accountName,
+            business_email: user.email,
+            business_contact: accountName,
+            business_contact_mobile: '',
+            business_mobile: '',
+            country: 'NG',
+            split_type: 'percentage',
+            split_value: 0.97, // Seller gets 97%
+          }),
+        });
 
-    const flwData = await flwRes.json();
+        const flwData = await flwRes.json();
 
-    if (flwData.status === 'success') {
-      subaccountId = flwData.data.subaccount_id;
-    } else if (flwData.message?.toLowerCase().includes('already exists')) {
-      const listRes = await fetch('https://api.flutterwave.com/v3/subaccounts', {
-        headers: { Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}` },
-      });
-      const listData = await listRes.json();
+        if (flwData.status === 'success') {
+          subaccountId = flwData.data?.subaccount_id ?? null;
+        } else if (flwData.message?.toLowerCase().includes('already exists')) {
+          // Try to retrieve the existing subaccount
+          const listRes = await fetch('https://api.flutterwave.com/v3/subaccounts', {
+            headers: { Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}` },
+          });
+          const listData = await listRes.json();
 
-      if (listData.status === 'success' && Array.isArray(listData.data)) {
-        const existing = listData.data.find(
-          (s: any) => s.account_number === accountNumber && s.account_bank === bankCode
-        );
-        if (existing) subaccountId = existing.subaccount_id;
-      }
-
-      if (!subaccountId) {
-        return NextResponse.json(
-          { error: 'A subaccount with these details already exists but could not be retrieved. Please contact support.' },
-          { status: 409 }
-        );
+          if (listData.status === 'success' && Array.isArray(listData.data)) {
+            const existing = listData.data.find(
+              (s: any) => s.account_number === accountNumber && s.account_bank === bankCode
+            );
+            if (existing) subaccountId = existing.subaccount_id;
+          }
+          // If still not found, we continue without a subaccount ID — account is stored and can be retried
+        } else {
+          // Non-fatal: log and continue without a subaccount ID so the user account is saved
+          console.warn('[AccountSetup] Flutterwave subaccount creation failed (non-fatal):', flwData.message);
+        }
+      } catch (flwErr) {
+        // Network / timeout error — save account without subaccount ID, retry later
+        console.warn('[AccountSetup] Flutterwave request failed (non-fatal):', flwErr);
       }
     } else {
-      console.error('Flutterwave subaccount error:', flwData);
-      return NextResponse.json(
-        { error: flwData.message || 'Failed to create subaccount' },
-        { status: 502 }
-      );
+      console.warn('[AccountSetup] FLUTTERWAVE_SECRET_KEY not set — skipping subaccount creation');
     }
 
     // ── Deactivate any existing accounts ──────────────────

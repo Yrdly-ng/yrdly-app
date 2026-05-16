@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
@@ -56,6 +56,8 @@ interface ExistingAccount {
 
 export default function PayoutSettingsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnTo = searchParams.get("returnTo");
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -116,9 +118,14 @@ export default function PayoutSettingsPage() {
         return;
       }
 
-      toast({ title: "Account linked! ✅", description: "Your bank account is ready to receive payments." });
+      toast({ title: "Account linked!", description: "Your bank account is ready to receive payments." });
       setExisting({ accountName, accountNumber, bankCode, isVerified: true, createdAt: new Date().toISOString() });
       setShowForm(false);
+
+      // If we came from a creation flow, send the user directly back there
+      if (returnTo) {
+        setTimeout(() => router.push(`/${returnTo}`), 800);
+      }
     } catch {
       toast({ title: "Error", description: "Something went wrong.", variant: "destructive" });
     } finally {
@@ -168,6 +175,22 @@ export default function PayoutSettingsPage() {
       </header>
 
       <main className="pt-[calc(84px+env(safe-area-inset-top))] px-6 max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        {/* Return-to context banner */}
+        {returnTo && (
+          <section
+            className="rounded-[20px] p-4 flex items-center gap-3"
+            style={{ background: "rgba(56,142,60,0.08)", border: "1px solid rgba(56,142,60,0.25)" }}
+          >
+            <div className="w-8 h-8 rounded-xl bg-[#388E3C]/20 flex items-center justify-center flex-shrink-0">
+              <CheckCircle className="w-4 h-4 text-[#388E3C]" />
+            </div>
+            <p className="text-xs font-bold text-[#82DB7E]">
+              Link your bank account and we&apos;ll take you straight back to finish creating your{" "}
+              {returnTo.includes("event") ? "event" : "listing"}.
+            </p>
+          </section>
+        )}
+
         {/* Info banner */}
         <section
           className="rounded-[24px] p-5 flex gap-4 items-start relative overflow-hidden"

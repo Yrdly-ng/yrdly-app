@@ -8,7 +8,8 @@ export class ChatService {
     buyerId: string,
     sellerId: string,
     itemTitle: string,
-    itemImageUrl: string
+    itemImageUrl: string,
+    itemPrice?: number
   ): Promise<string> {
     // Check if chat already exists
     const { data: existingChats, error: fetchError } = await supabase
@@ -26,7 +27,7 @@ export class ChatService {
     }
 
     // Create new chat
-    const chatData = {
+    const chatData: Record<string, unknown> = {
       item_id: itemId,
       buyer_id: buyerId,
       seller_id: sellerId,
@@ -37,6 +38,10 @@ export class ChatService {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
+
+    if (itemPrice !== undefined) {
+      chatData.item_price = itemPrice;
+    }
 
     const { data, error } = await supabase
       .from('item_chats')
@@ -130,6 +135,7 @@ export class ChatService {
 
       chatsWithMessages.push({
         ...chat,
+        itemPrice: chat.item_price ?? undefined,
         lastMessage: lastMessage || undefined
       } as ItemChat);
     }
@@ -165,6 +171,7 @@ export class ChatService {
 
       chatsWithMessages.push({
         ...chat,
+        itemPrice: chat.item_price ?? undefined,
         lastMessage: lastMessage || undefined
       } as ItemChat);
     }

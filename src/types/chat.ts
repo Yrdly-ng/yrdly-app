@@ -24,6 +24,7 @@ export interface ItemChat {
   sellerId: string;
   itemTitle: string;
   itemImageUrl: string;
+  itemPrice?: number;
   lastMessage?: ChatMessage;
   lastActivity: Date;
   isActive: boolean;

@@ -349,29 +349,58 @@ export function MarketplaceChatLayout({
               <div
                 key={chat.id}
                 className={cn(
-                  "flex items-center gap-4 p-4 cursor-pointer hover:bg-muted/50",
+                  "flex flex-col gap-2 p-4 cursor-pointer hover:bg-muted/50 border-b border-border/50 last:border-0",
                   selectedChat?.id === chat.id && "bg-muted/50"
                 )}
                 onClick={() => handleChatSelect(chat)}
               >
-                <div className="relative">
-                  <Avatar>
-                    <AvatarImage src={otherParticipant?.avatar_url} alt={otherParticipant?.name || participantRole} />
-                    <AvatarFallback>
-                      {otherParticipant?.name?.charAt(0) || participantRole.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <AvatarOnlineIndicator 
-                    isOnline={onlineStatuses[otherParticipantId] || false} 
-                  />
+                {/* Listing context pill — always visible */}
+                <div className="flex items-center gap-2">
+                  <div className="relative w-8 h-8 rounded-md overflow-hidden flex-shrink-0 border border-border/60">
+                    <Image
+                      src={chat.itemImageUrl || '/placeholder-item.jpg'}
+                      alt={chat.itemTitle}
+                      fill
+                      className="object-cover"
+                      sizes="32px"
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-muted-foreground truncate">{chat.itemTitle}</p>
+                    {chat.itemPrice ? (
+                      <p className="text-xs font-bold text-primary">
+                        {new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 }).format(chat.itemPrice)}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground/60">Free</p>
+                    )}
+                  </div>
+                  {isUnread && <div className="h-2.5 w-2.5 rounded-full bg-primary flex-shrink-0" />}
                 </div>
-                <div className="flex-1 truncate">
-                  <p className="font-semibold">{otherParticipant?.name || `Unknown ${participantRole}`}</p>
-                  <p className={cn("text-sm truncate", isUnread ? "text-foreground font-medium" : "text-muted-foreground")}>
-                    {chat.lastMessage?.content || "No messages yet"}
-                  </p>
+
+                {/* Participant + last message */}
+                <div className="flex items-center gap-3">
+                  <div className="relative flex-shrink-0">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={otherParticipant?.avatar_url} alt={otherParticipant?.name || participantRole} />
+                      <AvatarFallback className="text-xs">
+                        {otherParticipant?.name?.charAt(0) || participantRole.charAt(0)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <AvatarOnlineIndicator 
+                      isOnline={onlineStatuses[otherParticipantId] || false} 
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold leading-none mb-0.5">
+                      {otherParticipant?.name || `Unknown ${participantRole}`}
+                      <span className="text-xs font-normal text-muted-foreground ml-1.5">· {participantRole}</span>
+                    </p>
+                    <p className={cn("text-xs truncate", isUnread ? "text-foreground font-medium" : "text-muted-foreground")}>
+                      {chat.lastMessage?.content || "No messages yet"}
+                    </p>
+                  </div>
                 </div>
-                {isUnread && <div className="h-3 w-3 rounded-full bg-primary" />}
               </div>
             );
           })
@@ -444,18 +473,26 @@ export function MarketplaceChatLayout({
             </div>
           </div>
           <div className="px-3 pb-3">
-            <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-              <div className="relative w-12 h-12 rounded-lg overflow-hidden">
+            <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg border border-border/40">
+              <div className="relative w-14 h-14 rounded-lg overflow-hidden flex-shrink-0">
                 <Image 
-                  src={selectedChat.itemImageUrl} 
+                  src={selectedChat.itemImageUrl || '/placeholder-item.jpg'} 
                   alt={selectedChat.itemTitle}
                   fill
                   className="object-cover"
+                  sizes="56px"
                 />
               </div>
-              <div className="flex-1">
-                <p className="font-medium text-sm">About this item:</p>
-                <p className="font-semibold text-foreground">{selectedChat.itemTitle}</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-muted-foreground font-medium mb-0.5">About this listing</p>
+                <p className="font-semibold text-foreground text-sm leading-tight truncate">{selectedChat.itemTitle}</p>
+                {selectedChat.itemPrice ? (
+                  <p className="text-sm font-bold text-primary mt-0.5">
+                    {new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 }).format(selectedChat.itemPrice)}
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground mt-0.5">Free item</p>
+                )}
               </div>
             </div>
           </div>

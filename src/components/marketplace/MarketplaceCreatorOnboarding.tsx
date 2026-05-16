@@ -37,11 +37,12 @@ export function MarketplaceCreatorOnboarding({ isOpen, onClose, onContinue }: Ma
       setCheckingPayout(true);
       const { data } = await supabase
         .from("seller_accounts")
-        .select("id, flutterwave_subaccount_id")
+        .select("id, verification_status")
         .eq("user_id", user.id)
         .eq("is_active", true)
-        .single();
-      setHasPayout(!!data?.flutterwave_subaccount_id);
+        .eq("is_primary", true)
+        .maybeSingle();
+      setHasPayout(!!data && data.verification_status === "verified");
       setCheckingPayout(false);
     };
     check();
@@ -66,7 +67,7 @@ export function MarketplaceCreatorOnboarding({ isOpen, onClose, onContinue }: Ma
 
   const handleGoToPayout = () => {
     onClose();
-    router.push("/settings/payout");
+    router.push("/profile/payout-settings?returnTo=marketplace");
   };
 
   const handleCreateItem = () => {
