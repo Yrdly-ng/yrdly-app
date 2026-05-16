@@ -139,9 +139,11 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Task 3: 48-hour cooling-off after account change ──
-    const accountUpdatedAt = sellerAccount.account_updated_at || sellerAccount.updated_at;
-    if (accountUpdatedAt) {
-      const updatedTime = new Date(accountUpdatedAt).getTime();
+    // Only apply the 48-hour hold if account_updated_at is explicitly set
+    // (i.e., for existing accounts that changed their payout details).
+    // New accounts have account_updated_at = null and can sell immediately.
+    if (sellerAccount.account_updated_at) {
+      const updatedTime = new Date(sellerAccount.account_updated_at).getTime();
       const hoursSinceUpdate = (Date.now() - updatedTime) / (1000 * 60 * 60);
       if (hoursSinceUpdate < 48) {
         const hoursLeft = Math.ceil(48 - hoursSinceUpdate);
