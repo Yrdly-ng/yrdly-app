@@ -219,7 +219,7 @@ export class ResendEmailService {
   }
 
   /**
-   * Send ticket sale notification email to organizer
+   * Send ticket sale notification email to organizer with event stats
    */
   static async sendTicketSaleNotificationEmail(
     organizerEmail: string,
@@ -229,14 +229,19 @@ export class ResendEmailService {
     attendeeEmail:  string,
     tierName:       string,
     amount:         number,
-    ticketId:       string
+    ticketId:       string,
+    eventId?:       string,
+    totalSold?:     number,
+    grossRevenue?:  number,
+    netPayout?:     number
   ) {
     if (!this.isConfigured()) {
       throw new Error('RESEND_NOT_CONFIGURED');
     }
 
     const { subject, html } = emailTemplates.ticketSaleNotification(
-      organizerName, eventName, attendeeName, attendeeEmail, tierName, amount, ticketId
+      organizerName, eventName, attendeeName, attendeeEmail, tierName, amount, ticketId,
+      eventId, totalSold, grossRevenue, netPayout
     );
 
     const { error } = await resend.emails.send({

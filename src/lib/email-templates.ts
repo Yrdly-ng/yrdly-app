@@ -454,7 +454,7 @@ export const emailTemplates = {
   },
 
   /**
-   * Organizer Ticket Sale Notification Email
+   * Organizer Ticket Sale Notification Email with Updated Stats
    */
   ticketSaleNotification: (
     organizerName: string,
@@ -463,7 +463,11 @@ export const emailTemplates = {
     attendeeEmail: string,
     tierName: string,
     amount: number,
-    ticketId: string
+    ticketId: string,
+    eventId?: string,
+    totalSold?: number,
+    grossRevenue?: number,
+    netPayout?: number
   ) => {
     const subject = `🎟️ New Ticket Sale: ${eventName}`;
     
@@ -514,8 +518,30 @@ export const emailTemplates = {
               </div>
             </div>
             
+            ${totalSold !== undefined && grossRevenue !== undefined ? `
+            <div style="background: #F0FDF4; border-radius: 12px; padding: 20px; margin: 24px 0; border: 1px solid #D1FAE5;">
+              <h3 style="margin: 0 0 16px 0; color: ${BRAND_DARK}; font-size: 15px; font-weight: 600;">📊 Current Event Stats</h3>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div>
+                  <p style="margin: 0 0 4px 0; font-size: 11px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Total Tickets Sold</p>
+                  <p style="margin: 0; font-size: 18px; color: ${BRAND_GREEN}; font-weight: 700;">${totalSold}</p>
+                </div>
+                <div>
+                  <p style="margin: 0 0 4px 0; font-size: 11px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Gross Revenue</p>
+                  <p style="margin: 0; font-size: 18px; color: ${BRAND_GREEN}; font-weight: 700;">₦${(grossRevenue || 0).toLocaleString('en-NG')}</p>
+                </div>
+                ${netPayout !== undefined ? `
+                <div style="grid-column: 1 / -1;">
+                  <p style="margin: 0 0 4px 0; font-size: 11px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Your Net Payout (after 2% fee)</p>
+                  <p style="margin: 0; font-size: 18px; color: ${BRAND_GREEN}; font-weight: 700;">₦${(netPayout).toLocaleString('en-NG')}</p>
+                </div>
+                ` : ''}
+              </div>
+            </div>
+            ` : ''}
+            
             <div class="button-container">
-              <a href="${process.env.NEXT_PUBLIC_APP_URL}/events/manage" style="display: inline-block; background: linear-gradient(135deg, ${BRAND_GREEN} 0%, ${BRAND_GREEN_LIGHT} 160%); color: white !important; text-decoration: none; padding: 16px 32px; border-radius: 12px; font-weight: 700; font-size: 16px; box-shadow: 0 4px 15px rgba(56, 142, 60, 0.25);">View All Attendees</a>
+              <a href="${process.env.NEXT_PUBLIC_APP_URL}/events/${eventId || 'manage'}" style="display: inline-block; background: linear-gradient(135deg, ${BRAND_GREEN} 0%, ${BRAND_GREEN_LIGHT} 160%); color: white !important; text-decoration: none; padding: 16px 32px; border-radius: 12px; font-weight: 700; font-size: 16px; box-shadow: 0 4px 15px rgba(56, 142, 60, 0.25);">View All Attendees</a>
             </div>
             
             <p class="message" style="text-align: center; font-style: italic; color: #6B7280; font-size: 14px;">

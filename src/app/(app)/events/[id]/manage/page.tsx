@@ -34,6 +34,39 @@ export default function ManageEventPage() {
     });
   }, [id, user, router]);
 
+  // ── Supabase Realtime subscription for live ticket updates ──────────────────
+  useEffect(() => {
+    if (!id) return;
+
+    const channel = supabase
+      .channel(`tickets:${id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to INSERT, UPDATE, DELETE
+          schema: 'public',
+          table: 'tickets',
+          filter: `event_id=eq.${id}`,
+        },
+        (payload) => {
+          console.log('[v0] Realtime ticket update:', payload);
+          // Refetch tickets to keep stats in sync
+          getEventTickets(id).then((updatedTickets) => {
+            if (updatedTickets) {
+              setTickets(updatedTickets);
+            }
+          });
+        }
+      )
+      .subscribe((status) => {
+        console.log('[v0] Realtime subscription status:', status);
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [id]);
+
   const handleCheckIn = async () => {
     if (!ticketCode.trim()) return;
     setCheckInLoading(true); setCheckInResult(null);

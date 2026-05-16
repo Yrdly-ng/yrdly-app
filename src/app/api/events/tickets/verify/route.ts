@@ -158,18 +158,48 @@ export async function GET(request: NextRequest) {
         if (!ResendEmailService.isConfigured()) {
           console.warn('[v0] Resend is not configured. Skipping organizer email.');
         } else {
-          console.log('[v0] Sending organizer notification to:', organizer.email);
-          await ResendEmailService.sendTicketSaleNotificationEmail(
-            organizer.email,
-            organizer.username || 'Event Organizer',
-            event.title,
-            attendee_name,
-            attendee_email,
-            tier.name,
-            amount,
-            ticket.id
-          );
-          console.log('[v0] Organizer notification email sent successfully');
+          // Calculate event stats for email
+          try {
+            const { data: paidTickets } = await supabaseAdmin
+              .from('tickets')
+              .select('amount_paid')
+              .eq('event_id', event_id)
+              .eq('status', 'PAID');
+
+            const totalSold = (paidTickets?.length || 0);
+            const grossRevenue = (paidTickets || []).reduce((sum, t) => sum + (t.amount_paid || 0), 0) + amount;
+            const netPayout = Math.round(grossRevenue * (1 - EVENT_CONSTANTS.COMMISSION_RATE) * 100) / 100;
+
+            console.log('[v0] Sending organizer notification to:', organizer.email);
+            await ResendEmailService.sendTicketSaleNotificationEmail(
+              organizer.email,
+              organizer.username || 'Event Organizer',
+              event.title,
+              attendee_name,
+              attendee_email,
+              tier.name,
+              amount,
+              ticket.id,
+              event_id,
+              totalSold,
+              grossRevenue,
+              netPayout
+            );
+            console.log('[v0] Organizer notification email sent successfully');
+          } catch (statsErr) {
+            console.error('[v0] Error calculating event stats for email:', statsErr);
+            // Fall back to sending without stats
+            await ResendEmailService.sendTicketSaleNotificationEmail(
+              organizer.email,
+              organizer.username || 'Event Organizer',
+              event.title,
+              attendee_name,
+              attendee_email,
+              tier.name,
+              amount,
+              ticket.id
+            );
+          }
         }
       } else {
         console.log('[v0] No organizer email found for event organizer:', event.organizer_id);

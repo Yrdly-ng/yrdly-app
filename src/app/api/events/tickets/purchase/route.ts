@@ -148,18 +148,48 @@ export async function POST(request: NextRequest) {
                 .single();
 
               if (organizer?.email) {
-                console.log('[v0] Sending free ticket organizer notification to:', organizer.email);
-                await ResendEmailService.sendTicketSaleNotificationEmail(
-                  organizer.email,
-                  organizer.username || 'Event Organizer',
-                  fullEvent.title,
-                  attendee_name,
-                  attendee_email,
-                  tier.name,
-                  0,
-                  ticket.id
-                );
-                console.log('[v0] Free ticket organizer notification sent successfully');
+                // Calculate event stats for email
+                try {
+                  const { data: paidTickets } = await supabaseAdmin
+                    .from('tickets')
+                    .select('amount_paid')
+                    .eq('event_id', event_id)
+                    .eq('status', 'PAID');
+
+                  const totalSold = (paidTickets?.length || 0) + 1; // +1 for current free ticket
+                  const grossRevenue = (paidTickets || []).reduce((sum, t) => sum + (t.amount_paid || 0), 0);
+                  const netPayout = Math.round(grossRevenue * (1 - 0.02) * 100) / 100; // 2% commission
+
+                  console.log('[v0] Sending free ticket organizer notification to:', organizer.email);
+                  await ResendEmailService.sendTicketSaleNotificationEmail(
+                    organizer.email,
+                    organizer.username || 'Event Organizer',
+                    fullEvent.title,
+                    attendee_name,
+                    attendee_email,
+                    tier.name,
+                    0,
+                    ticket.id,
+                    event_id,
+                    totalSold,
+                    grossRevenue,
+                    netPayout
+                  );
+                  console.log('[v0] Free ticket organizer notification sent successfully');
+                } catch (statsErr) {
+                  console.error('[v0] Error calculating free ticket event stats:', statsErr);
+                  // Fall back to sending without stats
+                  await ResendEmailService.sendTicketSaleNotificationEmail(
+                    organizer.email,
+                    organizer.username || 'Event Organizer',
+                    fullEvent.title,
+                    attendee_name,
+                    attendee_email,
+                    tier.name,
+                    0,
+                    ticket.id
+                  );
+                }
               } else {
                 console.log('[v0] No organizer email found');
               }
