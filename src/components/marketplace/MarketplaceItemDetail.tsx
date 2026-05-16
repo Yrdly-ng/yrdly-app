@@ -9,7 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { BuyButton } from '@/components/escrow/BuyButton';
 import { ChatButton } from '@/components/escrow/ChatButton';
 import { useAuth } from '@/hooks/use-supabase-auth';
-import { Edit, Trash2, MapPin, User, Calendar, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ImageSwiper } from '@/components/ImageSwiper';
+import { Edit, Trash2, MapPin, User, Calendar, X, ChevronLeft, ChevronRight, Maximize2 } from 'lucide-react';
 import { Post } from '@/types';
 import { timeAgo } from '@/lib/utils';
 
@@ -30,6 +31,7 @@ export function MarketplaceItemDetail({
 }: MarketplaceItemDetailProps) {
   const { user } = useAuth();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -89,24 +91,40 @@ export function MarketplaceItemDetail({
           </DialogHeader>
 
           <div className="space-y-6">
-            {/* Image Gallery */}
-            <div className="relative">
-              <div className="relative aspect-square w-full max-w-md mx-auto rounded-lg overflow-hidden">
-                <Image
-                  src={images?.[currentImageIndex] || ''}
-                  alt={item.title || 'Item image'}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 768px) 100vw, 50vw"
-                />
-                
-                {/* Navigation arrows for multiple images */}
-                {images && images.length > 1 && (
+            {/* Image Carousel */}
+            <div className="space-y-3">
+              {/* Main swipeable frame */}
+              <div className="relative aspect-square w-full max-w-md mx-auto rounded-2xl overflow-hidden bg-muted">
+                {/* Sliding strip */}
+                <div
+                  className="absolute inset-0 flex transition-transform duration-300 ease-out"
+                  style={{ transform: `translateX(-${currentImageIndex * 100}%)` }}
+                >
+                  {images!.map((src, i) => (
+                    <div
+                      key={i}
+                      className="relative w-full h-full flex-shrink-0 cursor-zoom-in"
+                      onClick={() => setLightboxOpen(true)}
+                    >
+                      <Image
+                        src={src}
+                        alt={`${item.title || 'Item'} — image ${i + 1}`}
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 768px) 100vw, 448px"
+                        priority={i === 0}
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                {/* Prev / Next arrows */}
+                {images!.length > 1 && (
                   <>
                     <Button
                       variant="secondary"
                       size="icon"
-                      className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white/90 hover:bg-white"
+                      className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white h-8 w-8"
                       onClick={prevImage}
                     >
                       <ChevronLeft className="h-4 w-4" />
@@ -114,7 +132,7 @@ export function MarketplaceItemDetail({
                     <Button
                       variant="secondary"
                       size="icon"
-                      className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white/90 hover:bg-white"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white h-8 w-8"
                       onClick={nextImage}
                     >
                       <ChevronRight className="h-4 w-4" />
@@ -122,36 +140,62 @@ export function MarketplaceItemDetail({
                   </>
                 )}
 
-                {/* Image counter */}
-                {images && images.length > 1 && (
-                  <div className="absolute bottom-2 right-2 bg-black/50 text-white px-2 py-1 rounded text-sm">
-                    {currentImageIndex + 1} / {images.length}
+                {/* Dot indicators */}
+                {images!.length > 1 && (
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
+                    {images!.map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setCurrentImageIndex(i)}
+                        className={`rounded-full transition-all duration-200 ${
+                          i === currentImageIndex ? "w-4 h-1.5 bg-white" : "w-1.5 h-1.5 bg-white/50"
+                        }`}
+                      />
+                    ))}
                   </div>
                 )}
+
+                {/* Counter + expand button */}
+                <div className="absolute top-2 right-2 flex items-center gap-1.5">
+                  {images!.length > 1 && (
+                    <span className="bg-black/50 text-white text-xs px-2 py-0.5 rounded-full">
+                      {currentImageIndex + 1} / {images!.length}
+                    </span>
+                  )}
+                  <button
+                    onClick={() => setLightboxOpen(true)}
+                    className="w-7 h-7 rounded-full bg-black/50 flex items-center justify-center hover:bg-black/70 transition"
+                  >
+                    <Maximize2 className="w-3.5 h-3.5 text-white" />
+                  </button>
+                </div>
               </div>
 
               {/* Thumbnail strip */}
-              {images && images.length > 1 && (
-                <div className="flex gap-2 mt-4 overflow-x-auto">
-                  {images.map((image, index) => (
+              {images!.length > 1 && (
+                <div className="flex gap-2 overflow-x-auto pb-1 max-w-md mx-auto">
+                  {images!.map((image, index) => (
                     <button
                       key={index}
                       onClick={() => setCurrentImageIndex(index)}
-                      className={`relative w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 ${
-                        index === currentImageIndex ? 'ring-2 ring-primary' : ''
+                      className={`relative w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 transition-all ${
+                        index === currentImageIndex ? 'ring-2 ring-primary ring-offset-1' : 'opacity-60 hover:opacity-100'
                       }`}
                     >
-                      <Image
-                        src={image}
-                        alt={`Thumbnail ${index + 1}`}
-                        fill
-                        className="object-cover"
-                      />
+                      <Image src={image} alt={`Thumbnail ${index + 1}`} fill className="object-cover" sizes="56px" />
                     </button>
                   ))}
                 </div>
               )}
             </div>
+
+            {/* Lightbox */}
+            <ImageSwiper
+              images={images!}
+              isOpen={lightboxOpen}
+              onClose={() => setLightboxOpen(false)}
+              initialIndex={currentImageIndex}
+            />
 
             {/* Item Details */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

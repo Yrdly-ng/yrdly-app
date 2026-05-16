@@ -6,8 +6,9 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   CalendarDays, MapPin, Clock, Users, Ticket, ArrowLeft,
-  Share2, Globe, ChevronRight, Loader2, CheckCircle2, AlertCircle
+  Share2, Globe, ChevronLeft, ChevronRight, Loader2, CheckCircle2, AlertCircle
 } from "lucide-react";
+import { ImageSwiper } from "@/components/ImageSwiper";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -46,6 +47,8 @@ export default function EventDetailPage() {
   const [loading, setLoading] = useState(true);
   const [purchase, setPurchase] = useState<PurchaseState>({ step: "idle", tier: null, errorMsg: "" });
   const [form, setForm] = useState({ name: "", email: "", phone: "" });
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -151,22 +154,84 @@ export default function EventDetailPage() {
   const isCancelled = event.status === "CANCELLED";
   const tiers = event.ticket_tiers || [];
 
+  // Collect all images: image_urls array > cover_image_url fallback
+  const eventImages: string[] = (event as any).image_urls?.length
+    ? (event as any).image_urls
+    : event.cover_image_url
+    ? [event.cover_image_url]
+    : [];
+
+  const hasMultipleImages = eventImages.length > 1;
+
   return (
     <div className="min-h-screen bg-[#15181D] text-white pb-24">
-      {/* Hero Image */}
-      <div className="relative w-full aspect-[16/7] max-h-[420px] bg-[#1E2126]">
-        {event.cover_image_url ? (
-          <Image src={event.cover_image_url} alt={event.title} fill className="object-cover" priority />
+      {/* Hero Carousel */}
+      <div className="relative w-full aspect-[16/7] max-h-[420px] bg-[#1E2126] overflow-hidden">
+        {eventImages.length > 0 ? (
+          <>
+            {/* Images — touch-swipeable strip */}
+            <div
+              className="absolute inset-0 flex transition-transform duration-300 ease-out"
+              style={{ transform: `translateX(-${activeImageIndex * 100}%)` }}
+            >
+              {eventImages.map((src, i) => (
+                <div key={i} className="relative w-full h-full flex-shrink-0 cursor-pointer" onClick={() => setLightboxOpen(true)}>
+                  <Image src={src} alt={`${event.title} — image ${i + 1}`} fill className="object-cover" priority={i === 0} />
+                </div>
+              ))}
+            </div>
+
+            {/* Prev/Next arrows — only when multiple */}
+            {hasMultipleImages && (
+              <>
+                <button
+                  onClick={() => setActiveImageIndex((p) => (p - 1 + eventImages.length) % eventImages.length)}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center z-10"
+                >
+                  <ChevronLeft className="w-4 h-4 text-white" />
+                </button>
+                <button
+                  onClick={() => setActiveImageIndex((p) => (p + 1) % eventImages.length)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center z-10"
+                >
+                  <ChevronRight className="w-4 h-4 text-white" />
+                </button>
+              </>
+            )}
+
+            {/* Dot indicators */}
+            {hasMultipleImages && (
+              <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+                {eventImages.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setActiveImageIndex(i)}
+                    className={`rounded-full transition-all duration-200 ${
+                      i === activeImageIndex ? "w-4 h-1.5 bg-white" : "w-1.5 h-1.5 bg-white/40"
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Counter pill */}
+            {hasMultipleImages && (
+              <div className="absolute bottom-3 right-3 bg-black/50 backdrop-blur-sm text-white text-xs font-raleway px-2 py-1 rounded-full z-10">
+                {activeImageIndex + 1} / {eventImages.length}
+              </div>
+            )}
+          </>
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
             <CalendarDays className="w-24 h-24 text-white/10" />
           </div>
         )}
+
         {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#15181D] via-[#15181D]/30 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#15181D] via-[#15181D]/10 to-transparent pointer-events-none" />
 
         {/* Top nav */}
-        <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
+        <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-10">
           <button
             onClick={() => router.back()}
             className="w-10 h-10 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center"
@@ -192,11 +257,21 @@ export default function EventDetailPage() {
 
         {/* Status badge */}
         {isCancelled && (
-          <div className="absolute top-16 left-4">
+          <div className="absolute top-16 left-4 z-10">
             <Badge className="bg-red-500/90 text-white border-0 font-raleway">Cancelled</Badge>
           </div>
         )}
       </div>
+
+      {/* Lightbox */}
+      {eventImages.length > 0 && (
+        <ImageSwiper
+          images={eventImages}
+          isOpen={lightboxOpen}
+          onClose={() => setLightboxOpen(false)}
+          initialIndex={activeImageIndex}
+        />
+      )}
 
       <div className="max-w-2xl mx-auto px-4 pt-6 space-y-6">
         {/* Title & category */}
@@ -325,69 +400,90 @@ export default function EventDetailPage() {
 
       {/* Purchase drawer overlay */}
       {(purchase.step === "form" || purchase.step === "loading" || purchase.step === "success") && (
-        <div className="fixed inset-0 z-50 flex items-end" onClick={() => purchase.step === "form" && setPurchase({ step: "idle", tier: null, errorMsg: "" })}>
+        <div
+          className="fixed inset-0 z-50 flex items-end"
+          onClick={() => purchase.step === "form" && setPurchase({ step: "idle", tier: null, errorMsg: "" })}
+        >
+          {/* Scrim */}
+          <div className="absolute inset-0 bg-black/60" />
+
           <div
-            className="w-full max-w-lg mx-auto rounded-t-3xl bg-[#1E2126] border border-white/10 p-6 space-y-5 shadow-2xl"
+            className="relative w-full max-w-lg mx-auto rounded-t-3xl bg-[#1E2126] border border-white/10 shadow-2xl flex flex-col overflow-hidden"
+            style={{ maxHeight: "92dvh" }}
             onClick={(e) => e.stopPropagation()}
           >
-            {purchase.step === "success" ? (
-              <div className="flex flex-col items-center gap-3 py-6">
-                <CheckCircle2 className="w-14 h-14 text-[#4CAF50]" />
-                <p className="font-raleway font-bold text-lg text-white">Ticket Confirmed!</p>
-                <p className="font-raleway text-sm text-white/60">Redirecting to your tickets…</p>
-              </div>
-            ) : (
-              <>
-                <div className="flex items-center justify-between">
-                  <h3 className="font-raleway font-bold text-base text-white">
-                    {purchase.tier?.name} — {formatPrice(purchase.tier?.price || 0)}
-                  </h3>
-                  <button onClick={() => setPurchase({ step: "idle", tier: null, errorMsg: "" })} className="text-white/40 hover:text-white">
-                    ✕
-                  </button>
+            {/* Drag handle */}
+            <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
+              <div className="w-10 h-1 rounded-full bg-white/20" />
+            </div>
+
+            {/* Scrollable body */}
+            <div
+              className="overflow-y-auto flex-1 px-6 pt-3 space-y-5"
+              style={{ paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom))" }}
+            >
+              {purchase.step === "success" ? (
+                <div className="flex flex-col items-center gap-3 py-8">
+                  <CheckCircle2 className="w-14 h-14 text-[#4CAF50]" />
+                  <p className="font-raleway font-bold text-lg text-white">Ticket Confirmed!</p>
+                  <p className="font-raleway text-sm text-white/60">Redirecting to your tickets…</p>
                 </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-raleway font-bold text-base text-white">
+                      {purchase.tier?.name} — {formatPrice(purchase.tier?.price || 0)}
+                    </h3>
+                    <button
+                      onClick={() => setPurchase({ step: "idle", tier: null, errorMsg: "" })}
+                      className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/20 transition"
+                    >
+                      <ChevronRight className="w-4 h-4 rotate-90" />
+                    </button>
+                  </div>
 
-                <div className="space-y-3">
-                  <input
-                    className="w-full bg-[#15181D] border border-white/10 rounded-xl px-4 py-3 text-white font-raleway text-sm placeholder:text-white/30 outline-none focus:border-[#388E3C]"
-                    placeholder="Full Name *"
-                    value={form.name}
-                    onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                  />
-                  <input
-                    className="w-full bg-[#15181D] border border-white/10 rounded-xl px-4 py-3 text-white font-raleway text-sm placeholder:text-white/30 outline-none focus:border-[#388E3C]"
-                    placeholder="Email Address *"
-                    type="email"
-                    value={form.email}
-                    onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                  />
-                  <input
-                    className="w-full bg-[#15181D] border border-white/10 rounded-xl px-4 py-3 text-white font-raleway text-sm placeholder:text-white/30 outline-none focus:border-[#388E3C]"
-                    placeholder="Phone (optional)"
-                    type="tel"
-                    value={form.phone}
-                    onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-                  />
-                </div>
+                  <div className="space-y-3">
+                    <input
+                      className="w-full bg-[#15181D] border border-white/10 rounded-xl px-4 py-3 text-white font-raleway text-sm placeholder:text-white/30 outline-none focus:border-[#388E3C]"
+                      placeholder="Full Name *"
+                      value={form.name}
+                      onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                    />
+                    <input
+                      className="w-full bg-[#15181D] border border-white/10 rounded-xl px-4 py-3 text-white font-raleway text-sm placeholder:text-white/30 outline-none focus:border-[#388E3C]"
+                      placeholder="Email Address *"
+                      type="email"
+                      value={form.email}
+                      onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                    />
+                    <input
+                      className="w-full bg-[#15181D] border border-white/10 rounded-xl px-4 py-3 text-white font-raleway text-sm placeholder:text-white/30 outline-none focus:border-[#388E3C]"
+                      placeholder="Phone (optional)"
+                      type="tel"
+                      value={form.phone}
+                      onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+                    />
+                  </div>
 
-                {purchase.errorMsg && (
-                  <p className="font-raleway text-xs text-red-400 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" /> {purchase.errorMsg}
-                  </p>
-                )}
+                  {purchase.errorMsg && (
+                    <p className="font-raleway text-xs text-red-400 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" /> {purchase.errorMsg}
+                    </p>
+                  )}
 
-                <Button
-                  className="w-full rounded-full h-12 font-raleway font-medium text-white text-sm"
-                  style={{ background: "#388E3C" }}
-                  disabled={purchase.step === "loading"}
-                  onClick={handlePurchase}
-                >
-                  {purchase.step === "loading" ? (
-                    <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Processing…</>
-                  ) : purchase.tier?.price === 0 ? "Get Free Ticket" : `Pay ${formatPrice(purchase.tier?.price || 0)}`}
-                </Button>
-              </>
-            )}
+                  <Button
+                    className="w-full rounded-full h-12 font-raleway font-medium text-white text-sm"
+                    style={{ background: "#388E3C" }}
+                    disabled={purchase.step === "loading"}
+                    onClick={handlePurchase}
+                  >
+                    {purchase.step === "loading" ? (
+                      <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Processing…</>
+                    ) : purchase.tier?.price === 0 ? "Get Free Ticket" : `Pay ${formatPrice(purchase.tier?.price || 0)}`}
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}

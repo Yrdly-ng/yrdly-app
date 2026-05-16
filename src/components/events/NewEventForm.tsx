@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Loader2, Plus, Trash2, ArrowLeft, Image as ImageIcon } from "lucide-react";
+import { Loader2, Plus, Trash2, ArrowLeft, Image as ImageIcon, X } from "lucide-react";
+import Image from "next/image";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useToast } from "@/hooks/use-toast";
 import { StorageService } from "@/lib/storage-service";
@@ -33,7 +34,7 @@ export function NewEventForm() {
   const { toast } = useToast();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -57,12 +58,21 @@ export function NewEventForm() {
     setLoading(true);
 
     try {
-      let coverImageUrl = "";
-      if (imageFile) {
-        const { url, error } = await StorageService.uploadPostImage("evt_" + Date.now(), imageFile);
-        if (error) throw error;
-        coverImageUrl = url || "";
+      // Upload all images in parallel; first becomes the cover
+      const uploadedUrls: string[] = [];
+      if (imageFiles.length > 0) {
+        const prefix = "evt_" + Date.now();
+        const uploads = await Promise.all(
+          imageFiles.map((file, i) =>
+            StorageService.uploadPostImage(`${prefix}_${i}`, file)
+          )
+        );
+        for (const { url, error } of uploads) {
+          if (error) throw error;
+          if (url) uploadedUrls.push(url);
+        }
       }
+      const coverImageUrl = uploadedUrls[0] || "";
 
       const eventDateTime = new Date(values.eventDateTime);
 
@@ -81,6 +91,7 @@ export function NewEventForm() {
           description: values.description,
           category: values.category,
           coverImageUrl,
+          imageUrls: uploadedUrls,
           locationAddress: values.location?.address || "",
           lat: values.location?.geopoint?.latitude,
           lng: values.location?.geopoint?.longitude,
@@ -161,14 +172,68 @@ export function NewEventForm() {
             )} />
 
             <FormItem>
-              <FormLabel className="text-white/70">Cover Image</FormLabel>
+              <FormLabel className="text-white/70">Event Images</FormLabel>
               <label className="flex items-center gap-3 w-full bg-[#15181D] border border-white/10 h-12 rounded-xl px-4 cursor-pointer hover:bg-white/5 transition">
                 <ImageIcon className="w-5 h-5 text-white/50" />
-                <span className="text-sm text-white/70">{imageFile ? imageFile.name : "Choose an image..."}</span>
-                <input type="file" accept="image/*" className="hidden" onChange={(e) => {
-                  if (e.target.files?.[0]) setImageFile(e.target.files[0]);
-                }} />
+                <span className="text-sm text-white/70">
+                  {imageFiles.length > 0 ? `${imageFiles.length} image${imageFiles.length > 1 ? "s" : ""} selected` : "Choose images..."}
+                </span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    if (!e.target.files) return;
+                    const incoming = Array.from(e.target.files);
+                    setImageFiles((prev) => {
+                      const combined = [...prev, ...incoming];
+                      // deduplicate by name+size
+                      const seen = new Set<string>();
+                      return combined.filter((f) => {
+                        const key = `${f.name}-${f.size}`;
+                        if (seen.has(key)) return false;
+                        seen.add(key);
+                        return true;
+                      });
+                    });
+                    // reset input so the same file can be re-added after removal
+                    e.target.value = "";
+                  }}
+                />
               </label>
+
+              {/* Image previews */}
+              {imageFiles.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  <p className="text-xs text-white/40">First image is the cover.</p>
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    {imageFiles.map((file, i) => (
+                      <div key={`${file.name}-${i}`} className="relative flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border border-white/10 group">
+                        <Image
+                          src={URL.createObjectURL(file)}
+                          alt={`Preview ${i + 1}`}
+                          fill
+                          className="object-cover"
+                          sizes="80px"
+                        />
+                        {i === 0 && (
+                          <div className="absolute bottom-0 inset-x-0 bg-[#388E3C]/80 text-white text-[9px] font-raleway font-bold text-center py-0.5">
+                            Cover
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setImageFiles((prev) => prev.filter((_, idx) => idx !== i))}
+                          className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="w-3 h-3 text-white" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </FormItem>
           </div>
 
