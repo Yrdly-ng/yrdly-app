@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { FlutterwaveService } from '@/lib/flutterwave-service';
 import { EVENT_CONSTANTS } from '@/lib/constants';
 
 /**
@@ -103,8 +102,12 @@ export async function POST(request: NextRequest) {
       amount: tier.price,
       currency: 'NGN',
       redirect_url: `${appUrl}/api/events/tickets/verify?tx_ref=${txRef}`,
-      payment_options: 'card,banktransfer,mobilemoney',
-      customer: { email: attendee_email, name: attendee_name, phonenumber: attendee_phone || '' },
+      payment_options: 'card,banktransfer,ussd,mobilemoney',
+      customer: { 
+        email: attendee_email, 
+        name: attendee_name, 
+        phone_number: attendee_phone || '' 
+      },
       customizations: {
         title: event.title,
         description: `${tier.name} ticket`,
@@ -130,18 +133,36 @@ export async function POST(request: NextRequest) {
       }];
     }
 
-    const paymentLink = await FlutterwaveService.initializePayment({
-      transactionId: txRef,
-      amount: tier.price,
-      buyerEmail: attendee_email,
-      buyerName: attendee_name,
-      itemTitle: `${tier.name} — ${event.title}`,
-      sellerName: 'Yrdly Events',
+    // Call Flutterwave API directly
+    const flwRes = await fetch('https://api.flutterwave.com/v3/payments', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(flwPayload),
     });
 
-    return NextResponse.json({ success: true, payment_link: paymentLink, tx_ref: txRef });
+    const flwData = await flwRes.json();
+
+    if (flwData.status !== 'success') {
+      console.error('[v0] Flutterwave init error:', flwData);
+      return NextResponse.json({ 
+        error: 'Payment initialization failed',
+        details: flwData.message || 'Flutterwave API error'
+      }, { status: 502 });
+    }
+
+    return NextResponse.json({ success: true, payment_link: flwData.data.link, tx_ref: txRef });
   } catch (error) {
-    console.error('Ticket purchase error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('[v0] Ticket purchase error:', error);
+    if (error instanceof Error) {
+      console.error('[v0] Error message:', error.message);
+      console.error('[v0] Error stack:', error.stack);
+    }
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : String(error)
+    }, { status: 500 });
   }
 }

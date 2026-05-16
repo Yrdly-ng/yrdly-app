@@ -105,7 +105,10 @@ export default function EventDetailPage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || data.error || "Purchase failed");
+      if (!res.ok) {
+        const errorMsg = data.message || data.error || data.details || "Purchase failed";
+        throw new Error(errorMsg);
+      }
 
       if (data.free) {
         // Free ticket — go straight to my-tickets
