@@ -282,6 +282,7 @@ export function MarketplaceItemDetail({
                       itemImageUrl={images?.[0] || ''}
                       sellerId={item.user_id}
                       sellerName={item.author_name || 'Unknown Seller'}
+                      itemPrice={item.price}
                     />
                   </div>
                 )}

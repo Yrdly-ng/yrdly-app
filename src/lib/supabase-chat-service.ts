@@ -8,7 +8,8 @@ export class SupabaseChatService {
     buyerId: string,
     sellerId: string,
     itemTitle: string,
-    itemImageUrl: string
+    itemImageUrl: string,
+    itemPrice?: number
   ): Promise<string> {
     try {
       // Check if chat already exists
@@ -30,17 +31,22 @@ export class SupabaseChatService {
       }
 
       // Create new chat
+      const newChatData: Record<string, unknown> = {
+        item_id: itemId,
+        buyer_id: buyerId,
+        seller_id: sellerId,
+        item_title: itemTitle,
+        item_image_url: itemImageUrl,
+        created_at: new Date().toISOString(),
+        last_message_at: new Date().toISOString(),
+      };
+      if (itemPrice !== undefined) {
+        newChatData.item_price = itemPrice;
+      }
+
       const { data: newChat, error: createError } = await supabase
         .from('item_chats')
-        .insert({
-          item_id: itemId,
-          buyer_id: buyerId,
-          seller_id: sellerId,
-          item_title: itemTitle,
-          item_image_url: itemImageUrl,
-          created_at: new Date().toISOString(),
-          last_message_at: new Date().toISOString(),
-        })
+        .insert(newChatData)
         .select('id')
         .single();
 
@@ -96,6 +102,7 @@ export class SupabaseChatService {
         sellerId: chat.seller_id,
         itemTitle: chat.item_title,
         itemImageUrl: chat.item_image_url,
+        itemPrice: chat.item_price ?? undefined,
         createdAt: new Date(chat.created_at),
         lastActivity: new Date(chat.last_message_at),
         isActive: true,
@@ -138,6 +145,7 @@ export class SupabaseChatService {
         sellerId: chat.seller_id,
         itemTitle: chat.item_title,
         itemImageUrl: chat.item_image_url,
+        itemPrice: chat.item_price ?? undefined,
         createdAt: new Date(chat.created_at),
         lastActivity: new Date(chat.last_message_at),
         isActive: true,
