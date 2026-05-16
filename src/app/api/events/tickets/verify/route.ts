@@ -110,30 +110,39 @@ export async function GET(request: NextRequest) {
 
     // ── Send ticket confirmation email to buyer ────────────────────────────
     try {
-      const startDate = new Date(event.start_time);
-      const { subject, html } = emailTemplates.ticketConfirmation(
-        attendee_name,
-        attendee_email,
-        event.title,
-        tier.name,
-        ticket.id,
-        qrDataUrl,
-        startDate.toLocaleDateString('en-NG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
-        startDate.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' }),
-        event.location_address || event.state || 'See event details',
-        tx_ref
-      );
+      const resendStatus = ResendEmailService.getConfigurationStatus();
+      console.log('[v0] Resend config status:', resendStatus);
+      
+      if (!ResendEmailService.isConfigured()) {
+        console.warn('[v0] Resend is not configured. Skipping buyer email.');
+      } else {
+        const startDate = new Date(event.start_time);
+        const { subject, html } = emailTemplates.ticketConfirmation(
+          attendee_name,
+          attendee_email,
+          event.title,
+          tier.name,
+          ticket.id,
+          qrDataUrl,
+          startDate.toLocaleDateString('en-NG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+          startDate.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' }),
+          event.location_address || event.state || 'See event details',
+          tx_ref
+        );
 
-      await ResendEmailService.sendTicketConfirmationEmail(
-        attendee_name, attendee_email, event.title, tier.name,
-        ticket.id, qrDataUrl,
-        startDate.toLocaleDateString('en-NG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
-        startDate.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' }),
-        event.location_address || event.state || 'See event details',
-        tx_ref
-      );
+        console.log('[v0] Sending ticket confirmation to:', attendee_email);
+        await ResendEmailService.sendTicketConfirmationEmail(
+          attendee_name, attendee_email, event.title, tier.name,
+          ticket.id, qrDataUrl,
+          startDate.toLocaleDateString('en-NG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+          startDate.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' }),
+          event.location_address || event.state || 'See event details',
+          tx_ref
+        );
+        console.log('[v0] Ticket confirmation email sent successfully');
+      }
     } catch (emailErr) {
-      console.error('Ticket email to buyer failed (non-critical):', emailErr);
+      console.error('[v0] Ticket email to buyer failed (non-critical):', emailErr);
     }
 
     // ── Send organizer notification email ────────────────────────────────────
@@ -145,19 +154,28 @@ export async function GET(request: NextRequest) {
         .single();
 
       if (organizer?.email) {
-        await ResendEmailService.sendTicketSaleNotificationEmail(
-          organizer.email,
-          organizer.username || 'Event Organizer',
-          event.title,
-          attendee_name,
-          attendee_email,
-          tier.name,
-          amount,
-          ticket.id
-        );
+        const resendStatus = ResendEmailService.getConfigurationStatus();
+        if (!ResendEmailService.isConfigured()) {
+          console.warn('[v0] Resend is not configured. Skipping organizer email.');
+        } else {
+          console.log('[v0] Sending organizer notification to:', organizer.email);
+          await ResendEmailService.sendTicketSaleNotificationEmail(
+            organizer.email,
+            organizer.username || 'Event Organizer',
+            event.title,
+            attendee_name,
+            attendee_email,
+            tier.name,
+            amount,
+            ticket.id
+          );
+          console.log('[v0] Organizer notification email sent successfully');
+        }
+      } else {
+        console.log('[v0] No organizer email found for event organizer:', event.organizer_id);
       }
     } catch (emailErr) {
-      console.error('Organizer notification email failed (non-critical):', emailErr);
+      console.error('[v0] Organizer notification email failed (non-critical):', emailErr);
     }
 
     // ── In-app notification ──────────────────────────────────────────────────
