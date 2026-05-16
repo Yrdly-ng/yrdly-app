@@ -533,5 +533,182 @@ export const emailTemplates = {
     `;
 
     return { subject, html };
+  },
+
+  /**
+   * Escrow Payment Receipt Email (to buyer)
+   */
+  escrowPaymentReceipt: (buyerName: string, itemTitle: string, amount: number, transactionId: string) => {
+    const subject = `Payment Received - Your funds are held in escrow`;
+    
+    const html = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${subject}</title>
+        <style>${commonStyles}</style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="logo">💳 ${APP_NAME} Marketplace</div>
+            <div class="tagline">Payment Confirmed</div>
+          </div>
+          
+          <div class="content">
+            <h1 class="title">Payment Received, ${buyerName}!</h1>
+            
+            <p class="message">
+              Thank you for your purchase! Your payment has been successfully received and is now held securely in our escrow system.
+            </p>
+            
+            <div style="background: #F0FDF4; border-radius: 12px; border-left: 4px solid ${BRAND_GREEN}; padding: 24px; margin: 32px 0;">
+              <h3 style="margin: 0 0 16px 0; color: ${BRAND_DARK}; font-size: 16px;">Order Summary</h3>
+              
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                <div>
+                  <p style="margin: 0 0 4px 0; font-size: 12px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Item</p>
+                  <p style="margin: 0; font-size: 15px; color: ${BRAND_DARK}; font-weight: 600;">${itemTitle}</p>
+                </div>
+                <div>
+                  <p style="margin: 0 0 4px 0; font-size: 12px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Amount Paid</p>
+                  <p style="margin: 0; font-size: 15px; color: ${BRAND_GREEN}; font-weight: 700;">₦${amount.toLocaleString('en-NG')}</p>
+                </div>
+              </div>
+              
+              <hr style="border: none; border-top: 1px solid #D1FAE5; margin: 16px 0;" />
+              
+              <div>
+                <p style="margin: 0 0 4px 0; font-size: 12px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Transaction ID</p>
+                <p style="margin: 0; font-size: 13px; color: #6B7280; font-family: monospace;">${transactionId}</p>
+              </div>
+            </div>
+            
+            <div class="security-note">
+              <strong>🛡️ How it works:</strong> Your payment is held safely by Yrdly until the seller ships the item and you confirm receipt. This protects both you and the seller.
+            </div>
+            
+            <p class="message" style="margin-top: 32px;">
+              <strong>What&apos;s next?</strong><br>
+              1. Wait for the seller to ship your item<br>
+              2. Receive and inspect your package<br>
+              3. Confirm receipt in the Yrdly app<br>
+              4. Payment will be released to the seller
+            </p>
+            
+            <div class="button-container">
+              <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://yrdly-app.vercel.app'}/transactions/${transactionId}" class="button">View Transaction</a>
+            </div>
+            
+            <p class="message" style="font-size: 14px; color: #6B7280; text-align: center; margin-top: 40px;">
+              Questions? Contact our support team at support@yrdly.ng
+            </p>
+          </div>
+          
+          <div class="footer">
+            <div class="footer-links">
+              <a href="#" class="footer-link">Support</a>
+              <a href="#" class="footer-link">How Escrow Works</a>
+            </div>
+            <p>This receipt was sent to <strong>${buyerName}</strong> on ${APP_NAME}.</p>
+            <p>&copy; ${new Date().getFullYear()} ${APP_NAME}. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return { subject, html };
+  },
+
+  /**
+   * Escrow Order Notification Email (to seller)
+   */
+  escrowOrderNotification: (sellerName: string, buyerName: string, itemTitle: string, amount: number, transactionId: string) => {
+    const subject = `New Order: ${itemTitle}`;
+    
+    const html = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${subject}</title>
+        <style>${commonStyles}</style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="logo">📦 ${APP_NAME} Marketplace</div>
+            <div class="tagline">You have a new order!</div>
+          </div>
+          
+          <div class="content">
+            <h1 class="title">Order Received! 🎉</h1>
+            
+            <p class="message">
+              Hi ${sellerName},<br><br>
+              Congratulations! <strong>${buyerName}</strong> has purchased your item and payment has been received and held in escrow.
+            </p>
+            
+            <div style="background: #F0FDF4; border-radius: 12px; border-left: 4px solid ${BRAND_GREEN}; padding: 24px; margin: 32px 0;">
+              <h3 style="margin: 0 0 16px 0; color: ${BRAND_DARK}; font-size: 16px;">Order Details</h3>
+              
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                <div>
+                  <p style="margin: 0 0 4px 0; font-size: 12px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Item</p>
+                  <p style="margin: 0; font-size: 15px; color: ${BRAND_DARK}; font-weight: 600;">${itemTitle}</p>
+                </div>
+                <div>
+                  <p style="margin: 0 0 4px 0; font-size: 12px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Amount (You Receive)</p>
+                  <p style="margin: 0; font-size: 15px; color: ${BRAND_GREEN}; font-weight: 700;">₦${(amount * 0.97).toLocaleString('en-NG')}</p>
+                </div>
+              </div>
+              
+              <hr style="border: none; border-top: 1px solid #D1FAE5; margin: 16px 0;" />
+              
+              <div style="margin-top: 16px;">
+                <p style="margin: 0 0 4px 0; font-size: 12px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Buyer Name</p>
+                <p style="margin: 0; font-size: 15px; color: ${BRAND_DARK}; font-weight: 500;">${buyerName}</p>
+              </div>
+            </div>
+            
+            <p class="message" style="margin-top: 32px;">
+              <strong>Your next steps:</strong><br>
+              1. <strong>Contact the buyer</strong> to arrange pickup or delivery<br>
+              2. <strong>Prepare your item</strong> for handover<br>
+              3. <strong>Complete the handover</strong> with the buyer<br>
+              4. <strong>Payment released</strong> once buyer confirms receipt
+            </p>
+            
+            <div class="security-note">
+              <strong>💡 Tip:</strong> Reach out to ${buyerName} directly through the Yrdly app to coordinate handover details. Payment will be released to your account once they confirm delivery.
+            </div>
+            
+            <div class="button-container">
+              <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://yrdly-app.vercel.app'}/orders/${transactionId}" class="button">View Order Details</a>
+            </div>
+            
+            <p class="message" style="font-size: 14px; color: #6B7280; text-align: center; margin-top: 40px;">
+              Need help? Contact support at support@yrdly.ng
+            </p>
+          </div>
+          
+          <div class="footer">
+            <div class="footer-links">
+              <a href="#" class="footer-link">Support</a>
+              <a href="#" class="footer-link">How Escrow Works</a>
+            </div>
+            <p>This order notification was sent to <strong>${sellerName}</strong> on ${APP_NAME}.</p>
+            <p>&copy; ${new Date().getFullYear()} ${APP_NAME}. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return { subject, html };
   }
 };

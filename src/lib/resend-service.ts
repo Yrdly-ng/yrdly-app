@@ -20,6 +20,33 @@ export class ResendEmailService {
   }
 
   /**
+   * Generic email sending method
+   */
+  static async sendEmail(
+    to: string,
+    subject: string,
+    html: string,
+    category?: string
+  ) {
+    if (!this.isConfigured()) {
+      throw new Error('RESEND_NOT_CONFIGURED');
+    }
+
+    const { error } = await resend.emails.send({
+      from: `Yrdly <${FROM_EMAIL}>`,
+      to: [to],
+      replyTo: REPLY_TO,
+      subject,
+      html,
+    });
+
+    if (error) {
+      console.error(`[ResendEmailService] Error sending ${category || 'email'} to ${to}:`, error);
+      throw new Error(`Failed to send ${category || 'email'}`);
+    }
+  }
+
+  /**
    * Get configuration status for debugging
    */
   static getConfigurationStatus() {

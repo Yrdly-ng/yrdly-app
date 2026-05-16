@@ -61,6 +61,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'SOLD_OUT', message: 'This ticket tier is sold out' }, { status: 409 });
     }
 
+    // ── Check if user already has a ticket for this event ────────────────────
+    const { data: existingTicket } = await supabaseAdmin
+      .from('tickets')
+      .select('id')
+      .eq('buyer_id', user.id)
+      .eq('event_id', event_id)
+      .eq('status', 'PAID')
+      .maybeSingle();
+
+    if (existingTicket) {
+      return NextResponse.json({ 
+        error: 'ALREADY_PURCHASED',
+        message: 'You have already purchased a ticket for this event' 
+      }, { status: 400 });
+    }
+
     // ── Free ticket — create directly, no payment needed ────────────────────
     if (tier.price === 0) {
       const ticketCode = `${EVENT_CONSTANTS.TICKET_CODE_PREFIX}-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;

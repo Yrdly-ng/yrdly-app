@@ -62,9 +62,11 @@ export default function PaymentVerificationPage() {
         setTransactionId(result.transactionId);
 
         // Redirect immediately to Stitch escrow-confirmation page
-        router.replace(
-          `/payment/escrow-confirmation?txn=${result.transactionId}&amount=${result.amount ?? ''}&ref=${txRef ?? ''}`
-        );
+        setTimeout(() => {
+          router.replace(
+            `/payment/escrow-confirmation?txn=${result.transactionId}&amount=${result.amount ?? ''}&ref=${txRef ?? ''}`
+          );
+        }, 1500); // Give success state time to display before redirect
       } else {
         setVerificationStatus('failed');
         setErrorMessage(result.error || 'Payment verification failed');
@@ -137,9 +139,14 @@ export default function PaymentVerificationPage() {
               <div className="flex justify-center">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
               </div>
-              <p className="text-muted-foreground">
-                Please wait while we verify your payment...
-              </p>
+              <div className="space-y-2">
+                <p className="text-muted-foreground font-medium">
+                  Verifying your payment...
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  This may take a few moments, especially for bank transfers. Please do not close this page.
+                </p>
+              </div>
             </div>
           )}
 
