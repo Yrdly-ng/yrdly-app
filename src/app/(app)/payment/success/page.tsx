@@ -30,7 +30,6 @@ export default function PayoutSuccessPage() {
     `₦${Number(n).toLocaleString("en-NG")}`;
 
   return (
-  return (
     <div className="bg-background text-on-background font-body antialiased min-h-dvh flex flex-col items-center">
       {/* Top App Bar */}
       <header className="fixed top-0 w-full z-50 bg-[#15181D]/80 backdrop-blur-xl flex items-center px-6 h-16 w-full">

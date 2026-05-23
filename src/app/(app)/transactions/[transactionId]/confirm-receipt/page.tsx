@@ -98,7 +98,7 @@ export default function ConfirmReceiptPage() {
             <div className="w-12 h-12 rounded-full bg-error/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
               <AlertTriangle className="text-error w-7 h-7" />
             </div>
-            <h4 className="font-editorial font-bold text-sm text-on-surface mb-1">There's an issue</h4>
+            <h4 className="font-editorial font-bold text-sm text-on-surface mb-1">There&apos;s an issue</h4>
             <p className="font-editorial text-xs text-on-surface-variant mb-6">Not as described / missing items</p>
             <div className="mt-auto w-full py-2.5 px-6 border border-error text-error rounded-full font-editorial text-sm font-bold hover:bg-error/5 transition-colors">
               Raise Dispute

@@ -128,7 +128,7 @@ export function AddAccountDialog({ open, onOpenChange, onSuccess }: AddAccountDi
 
       await SellerAccountService.saveAccount(
         (await supabase.auth.getUser()).data.user?.id || 'current-user-id', 
-        'bank_account',
+        AccountType.BANK_ACCOUNT,
         accountDetails,
         data.isPrimary
       );
