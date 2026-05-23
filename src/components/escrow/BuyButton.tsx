@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState } from "react";
 import { X, Lock, Info, ChevronRight } from "lucide-react";
@@ -115,13 +115,7 @@ export function BuyButton({
       {/* Trigger */}
       <button
         onClick={() => setOpen(true)}
-        className="w-full h-12 rounded-full font-bold transition-all active:scale-95"
-        style={{
-          background: GREEN,
-          color: "#fff",
-          fontFamily: "Inter, sans-serif",
-          boxShadow: "0 8px 24px rgba(56,142,60,0.25)",
-        }}
+        className="w-full h-14 bg-[#388E3C] rounded-full flex items-center justify-center font-editorial font-bold text-[14px] text-white shadow-lg active:scale-95 transition-transform hover:opacity-90"
       >
         Buy Now — ₦{price.toLocaleString()}
       </button>
@@ -129,47 +123,34 @@ export function BuyButton({
       {/* Overlay */}
       {open && (
         <div
-          className="fixed inset-0 z-50 flex items-end md:items-center justify-center"
-          style={{ background: "rgba(0,0,0,0.65)" }}
+          className="fixed inset-0 z-[60] bg-black/60 flex items-end md:items-center justify-center"
           onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}
         >
           {/* Sheet */}
-          <div
-            className="relative w-full max-w-md flex flex-col rounded-t-2xl md:rounded-2xl overflow-hidden shadow-2xl"
-            style={{ background: BG, maxHeight: "92dvh" }}
-          >
-            {/* Handle */}
-            <div
-              className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1 rounded-full md:hidden"
-              style={{ background: "rgba(225,226,233,0.1)" }}
-            />
-
+          <div className="relative w-full max-w-md bg-surface-dim rounded-t-lg md:rounded-lg overflow-hidden shadow-2xl flex flex-col max-h-[92dvh]">
+            
             {/* Header */}
-            <div
-              className="flex items-center px-6 h-16 flex-shrink-0"
-              style={{ background: "rgba(21,24,29,0.85)", backdropFilter: "blur(20px)" }}
-            >
-              <button
-                onClick={() => setOpen(false)}
-                className="flex items-center justify-center w-9 h-9 rounded-full transition-opacity hover:opacity-70 mr-4"
-              >
-                <X className="w-5 h-5" style={{ color: GREEN_L }} />
-              </button>
-              <h1 style={{ fontFamily: "Pacifico, cursive", fontSize: 22, color: "#fff" }}>
-                Order Summary
-              </h1>
-            </div>
+            <header className="bg-[#15181D]/80 backdrop-blur-xl flex items-center px-6 h-16 w-full flex-shrink-0 z-10 border-b border-surface-container-low">
+              <div className="flex items-center gap-4 w-full">
+                <button 
+                  onClick={() => setOpen(false)}
+                  className="hover:opacity-80 transition-opacity active:scale-95 transition-transform flex items-center justify-center p-2 rounded-full"
+                >
+                  <X className="w-5 h-5 text-[#388E3C]" />
+                </button>
+                <h1 className="font-display text-2xl tracking-tight text-on-surface">
+                  Order Summary
+                </h1>
+              </div>
+            </header>
 
             {/* Scrollable content */}
-            <div className="flex-1 overflow-y-auto px-6 pt-6 pb-10">
+            <div className="flex-1 overflow-y-auto px-6 pt-6 pb-10 custom-scrollbar">
 
               {/* Item card */}
-              <section
-                className="rounded-[11px] p-4 flex gap-4 mb-6 transition-all"
-                style={{ background: CARDH }}
-              >
+              <section className="bg-surface-container-high rounded-[11px] p-4 flex gap-4 mb-6 transition-all hover:bg-surface-container">
                 {itemImageUrl && (
-                  <div className="w-14 h-14 flex-shrink-0 rounded-[8px] overflow-hidden">
+                  <div className="w-14 h-14 shrink-0 rounded-[8px] overflow-hidden">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={itemImageUrl}
@@ -178,127 +159,124 @@ export function BuyButton({
                     />
                   </div>
                 )}
-                <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                  <h2
-                    className="font-bold text-[14px] leading-tight text-foreground line-clamp-2"
-                    style={{ fontFamily: "Inter, sans-serif" }}
-                  >
-                    {itemTitle}
-                  </h2>
+                <div className="flex flex-col gap-1.5 flex-1">
+                  <div className="flex justify-between items-start">
+                    <h2 className="font-editorial font-bold text-[14px] text-on-surface leading-tight line-clamp-2">
+                      {itemTitle}
+                    </h2>
+                  </div>
                   <div className="flex items-center gap-3">
-                    <span
-                      className="text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider"
-                      style={{ background: 'var(--c-card)', color: MUTED, fontFamily: "Inter, sans-serif" }}
-                    >
+                    <span className="bg-surface-container text-[10px] font-editorial px-2 py-0.5 rounded-full text-on-surface-variant uppercase tracking-wider">
                       {condition}
                     </span>
-                    <span
-                      className="text-[12px]"
-                      style={{ color: MUTED, fontFamily: "Inter, sans-serif" }}
-                    >
-                      Sold by {sellerName}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-editorial text-[12px] text-on-surface-variant">
+                        Sold by {sellerName}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </section>
 
               {/* Price breakdown */}
-              <section
-                className="rounded-[11px] p-4 mb-6 flex flex-col gap-3"
-                style={{ background: CARD }}
-              >
+              <section className="bg-surface-container rounded-[11px] p-4 mb-6 flex flex-col gap-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-[13px]" style={{ color: MUTED, fontFamily: "Inter, sans-serif" }}>
+                  <span className="font-editorial text-[13px] text-on-surface-variant">
                     Item Price
                   </span>
-                  <span className="text-[14px]" style={{ fontFamily: "Inter, sans-serif" }}>
+                  <span className="font-editorial text-[14px] text-on-surface">
                     ₦{price.toLocaleString()}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[13px]" style={{ color: MUTED, fontFamily: "Inter, sans-serif" }}>
+                    <span className="font-editorial text-[13px] text-on-surface-variant">
                       Platform Fee
                     </span>
-                    <Info className="w-3.5 h-3.5" style={{ color: "rgba(191,202,185,0.5)" }} />
+                    <Info className="w-[14px] h-[14px] text-on-surface-variant/60" />
                   </div>
-                  <span className="text-[14px]" style={{ color: MUTED, fontFamily: "Inter, sans-serif" }}>
+                  <span className="font-editorial text-[14px] text-on-surface-variant">
                     ₦{commission.toLocaleString()}
                   </span>
                 </div>
-                <div className="h-px w-full my-1" style={{ background: "rgba(225,226,233,0.06)" }} />
+                <div className="h-[1px] w-full bg-on-surface/5 my-1" />
                 <div className="flex justify-between items-center py-1">
-                  <span className="font-bold text-[15px] text-foreground" style={{ fontFamily: "Inter, sans-serif" }}>
+                  <span className="font-editorial font-bold text-[15px] text-on-surface">
                     You Pay
                   </span>
-                  <span className="font-bold text-[18px] text-foreground" style={{ fontFamily: "Inter, sans-serif" }}>
+                  <span className="font-editorial font-bold text-[18px] text-on-surface">
                     ₦{totalPay.toLocaleString()}
                   </span>
                 </div>
-                <p className="text-[11px] leading-normal" style={{ color: MUTED, fontFamily: "Inter, sans-serif" }}>
+                <p className="font-editorial text-[11px] text-on-surface-variant mt-1 leading-normal">
                   Funds are held securely until you confirm receipt
                 </p>
               </section>
 
               {/* Escrow explainer */}
-              <section
-                className="rounded-[11px] p-4 mb-8 flex gap-3 border"
-                style={{
-                  background: "rgba(53,166,26,0.07)",
-                  borderColor: "rgba(110,223,81,0.2)",
-                }}
-              >
-                <Lock className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: "#6edf51" }} />
-                <div>
-                  <h3
-                    className="font-bold text-[13px] text-foreground mb-0.5"
-                    style={{ fontFamily: "Inter, sans-serif" }}
-                  >
+              <section className="bg-tertiary-container/10 border border-tertiary/20 rounded-[11px] p-4 mb-8 flex gap-3">
+                <div className="shrink-0 mt-0.5">
+                  <Lock className="w-[20px] h-[20px] text-tertiary" />
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <h3 className="font-editorial font-bold text-[13px] text-on-surface">
                     Your payment is held in escrow
                   </h3>
-                  <p className="text-[11px] leading-relaxed" style={{ color: MUTED, fontFamily: "Inter, sans-serif" }}>
+                  <p className="font-editorial text-[11px] text-on-surface-variant leading-relaxed">
                     Release funds only after you confirm the item is in good condition.
                   </p>
                 </div>
               </section>
+
+              {/* Payment Method */}
+              <div className="mb-10">
+                <label className="block font-editorial font-medium text-[12px] text-on-surface-variant mb-3 px-1">
+                  Pay with
+                </label>
+                <div className="bg-surface-container-high border border-[#388E3C] rounded-[11px] p-4 flex items-center justify-between group cursor-pointer active:scale-[0.98] transition-all">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 flex items-center justify-center bg-white rounded-md p-1.5">
+                      <svg className="w-full h-full" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" fill="#00315f"></path>
+                        <path d="M12 6c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm0 10c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4z" fill="#00315f"></path>
+                      </svg>
+                    </div>
+                    <span className="font-editorial text-[14px] text-on-surface">Debit/Credit Card</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-[#388E3C]" />
+                </div>
+              </div>
 
               {/* CTA */}
               <div className="flex flex-col items-center gap-4">
                 <button
                   onClick={handleBuy}
                   disabled={loading}
-                  className="w-full h-14 rounded-full font-bold text-[14px] flex items-center justify-center gap-2 transition-all active:scale-95"
-                  style={{
-                    background: GREEN,
-                    color: "#fff",
-                    fontFamily: "Inter, sans-serif",
-                    boxShadow: "0 8px 24px rgba(56,142,60,0.3)",
-                    opacity: loading ? 0.75 : 1,
-                  }}
+                  className="w-full h-14 bg-[#388E3C] rounded-full flex items-center justify-center font-editorial font-bold text-[14px] text-white shadow-lg active:scale-95 transition-transform hover:opacity-90 disabled:opacity-75"
                 >
                   {loading ? (
                     <span className="flex items-center gap-2">
-                      <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                      <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <circle cx="12" cy="12" r="10" strokeOpacity=".3" />
                         <path d="M12 2a10 10 0 0 1 10 10" />
                       </svg>
-                      Processing…
+                      Processing...
                     </span>
                   ) : (
-                    <>
-                      <Lock className="w-4 h-4" />
-                      Pay ₦{totalPay.toLocaleString()} Securely
-                    </>
+                    `Pay ₦${totalPay.toLocaleString()} Securely`
                   )}
                 </button>
                 <div className="flex items-center gap-1.5 opacity-60">
-                  <Lock className="w-3.5 h-3.5" style={{ color: DIM }} />
-                  <span className="text-[11px]" style={{ color: DIM, fontFamily: "Inter, sans-serif" }}>
+                  <Lock className="w-[14px] h-[14px] text-on-surface-variant" />
+                  <span className="font-editorial text-[11px] text-on-surface-variant">
                     256-bit SSL secured
                   </span>
                 </div>
               </div>
             </div>
+
+            {/* Handle bar for mobile sheet feel */}
+            <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1 bg-on-surface/10 rounded-full md:hidden"></div>
           </div>
         </div>
       )}

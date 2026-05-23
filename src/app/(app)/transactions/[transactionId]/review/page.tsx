@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useCallback, useEffect } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
@@ -82,110 +82,80 @@ export default function ReviewPage() {
   const display = hover || rating;
 
   return (
-    <div
-      className="min-h-dvh"
-      style={{ background: BG, color: "var(--c-text)", fontFamily: "Inter, sans-serif" }}
-    >
-      {/* Ambient glows */}
+    <div className="bg-background text-on-background font-body selection:bg-primary/30 min-h-dvh">
+      {/* Visual Background Element */}
       <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
-        <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full" style={{ background: "rgba(130,219,126,0.05)", filter: "blur(120px)" }} />
-        <div className="absolute bottom-[-5%] left-[-10%] w-[40%] h-[40%] rounded-full" style={{ background: "rgba(165,200,255,0.05)", filter: "blur(100px)" }} />
+        <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-primary/5 rounded-full blur-[120px]"></div>
+        <div className="absolute bottom-[-5%] left-[-10%] w-[40%] h-[40%] bg-secondary/5 rounded-full blur-[100px]"></div>
       </div>
 
-      {/* Header */}
-      <header
-        className="fixed top-0 w-full z-50 flex items-center gap-4 px-6 h-16"
-        style={{ background: "rgba(21,24,29,0.85)", backdropFilter: "blur(20px)" }}
-      >
-        <button onClick={() => router.back()} className="hover:opacity-70 transition-opacity">
-          <ArrowLeft className="w-5 h-5" style={{ color: Green }} />
-        </button>
-        <h1 style={{ fontFamily: "Pacifico, cursive", fontSize: 22, color: "#fff" }}>
-          Leave a Review
-        </h1>
+      {/* Top App Bar */}
+      <header className="fixed top-0 w-full z-50 bg-[#15181D]/80 backdrop-blur-xl flex items-center px-6 h-16 w-full">
+        <div className="flex items-center gap-4 w-full">
+          <button onClick={() => router.back()} className="active:scale-95 transition-transform hover:opacity-80 transition-opacity">
+            <ArrowLeft className="text-[#388E3C] w-6 h-6" />
+          </button>
+          <h1 className="font-pacifico text-2xl tracking-tight text-on-surface" style={{ fontFamily: "Pacifico, cursive" }}>Leave a Review</h1>
+        </div>
       </header>
 
       <main className="pt-24 pb-12 px-6 max-w-2xl mx-auto flex flex-col gap-10">
-
-        {/* Seller card */}
-        <section className="flex items-center gap-5 p-4 rounded-lg" style={{ background: CARD }}>
-          <div
-            className="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold flex-shrink-0"
-            style={{ background: CARDH, color: GreenL, fontFamily: "Inter, sans-serif" }}
-          >
+        {/* User Card */}
+        <section className="flex items-center gap-5 p-4 bg-surface-container-low rounded-lg">
+          <div className="relative flex-shrink-0 w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold border-2 border-primary/20" style={{ background: "var(--c-card2)", color: "#82DB7E" }}>
             {sellerName.charAt(0).toUpperCase()}
           </div>
           <div className="flex flex-col gap-1">
-            <h2 className="font-bold text-lg leading-tight">{sellerName}</h2>
-            <span
-              className="text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full self-start"
-              style={{ background: "#006ec9", color: "#eaf0ff" }}
-            >
-              Seller
-            </span>
+            <h2 className="font-editorial font-bold text-lg leading-tight" style={{ fontFamily: "Raleway, sans-serif" }}>{sellerName}</h2>
+            <div className="flex">
+              <span className="text-[10px] uppercase tracking-widest font-bold px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container">Seller</span>
+            </div>
           </div>
         </section>
 
-        {/* Star rating */}
+        {/* Star Rating Section */}
         <section className="flex flex-col items-center gap-4 py-4">
           <div className="flex gap-2">
             {[1, 2, 3, 4, 5].map((s) => (
-              <button
+              <svg 
                 key={s}
                 onClick={() => setRating(s)}
                 onMouseEnter={() => setHover(s)}
                 onMouseLeave={() => setHover(0)}
-                className="transition-transform hover:scale-110"
+                viewBox="0 0 24 24" 
+                className={`w-12 h-12 cursor-pointer transition-transform hover:scale-110 ${s <= display ? 'text-[#FFD700] fill-[#FFD700]' : 'text-outline fill-transparent'}`} 
+                stroke="currentColor" 
+                strokeWidth="1.5"
               >
-                <svg viewBox="0 0 24 24" className="w-12 h-12" fill={s <= display ? "#FFD700" : "none"} stroke={s <= display ? "#FFD700" : DIM} strokeWidth="1.5">
-                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                </svg>
-              </button>
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+              </svg>
             ))}
           </div>
-          <p
-            className="text-lg font-semibold"
-            style={{ color: GreenL, fontFamily: "Inter, sans-serif" }}
-          >
+          <p className="font-editorial text-primary-fixed-dim text-lg font-semibold" style={{ fontFamily: "Raleway, sans-serif" }}>
             {STAR_LABELS[display]}
           </p>
         </section>
 
-        {/* Text area */}
-        <section>
+        {/* Review Text Area */}
+        <section className="flex flex-col gap-3">
           <div className="relative">
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value.slice(0, 120))}
+              className="w-full bg-surface-container-high border-0 focus:ring-2 focus:ring-[#388E3C] rounded-[11px] p-4 font-editorial italic font-light text-on-surface-variant placeholder:text-on-surface-variant/40 resize-none transition-all"
+              style={{ fontFamily: "Raleway, sans-serif" }}
               placeholder="Share your experience... (optional)"
               rows={5}
-              className="w-full rounded-[11px] p-4 text-sm resize-none focus:outline-none transition-all font-light italic"
-              style={{
-                background: CARDH,
-                color: "var(--c-text)",
-                fontFamily: "Inter, sans-serif",
-                border: "1px solid rgba(64,73,61,0.2)",
-              }}
-              onFocus={(e) => (e.target.style.borderColor = Green)}
-              onBlur={(e) => (e.target.style.borderColor = "rgba(64,73,61,0.2)")}
-            />
-            <div
-              className="absolute bottom-3 right-4 text-[11px]"
-              style={{ color: DIM }}
-            >
+            ></textarea>
+            <div className="absolute bottom-3 right-4 text-[11px] font-label text-outline">
               {text.length} / 120
             </div>
           </div>
         </section>
 
-        {/* Quick feedback tags */}
+        {/* Tags Row */}
         <section className="flex flex-col gap-4">
-          <h3
-            className="text-xs uppercase tracking-[0.2em] font-bold"
-            style={{ color: DIM }}
-          >
-            Quick Feedback
-          </h3>
+          <h3 className="text-xs uppercase tracking-[0.2em] font-bold text-outline">Quick Feedback</h3>
           <div className="flex flex-wrap gap-3">
             {QUICK_TAGS.map((t) => {
               const active = tags.includes(t);
@@ -193,13 +163,12 @@ export default function ReviewPage() {
                 <button
                   key={t}
                   onClick={() => toggleTag(t)}
-                  className="px-4 py-2 rounded-full text-sm font-semibold transition-all"
-                  style={{
-                    fontFamily: "Inter, sans-serif",
-                    background: active ? "rgba(6,23,27,1)" : CARD,
-                    border: `1px solid ${active ? Green : "rgba(255,255,255,0.08)"}`,
-                    color: active ? "#BBF7D0" : MUTED,
-                  }}
+                  className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-editorial font-semibold transition-all ${
+                    active 
+                      ? "bg-[#06171B] border border-[#388E3C] text-[#BBF7D0]" 
+                      : "bg-surface-container border border-white/10 text-on-surface-variant hover:border-white/20"
+                  }`}
+                  style={{ fontFamily: "Raleway, sans-serif" }}
                 >
                   {t}
                 </button>
@@ -209,23 +178,19 @@ export default function ReviewPage() {
         </section>
 
         {/* Actions */}
-        <section className="flex flex-col items-center gap-6 mt-2">
-          <button
+        <section className="flex flex-col items-center gap-6 mt-4">
+          <button 
             onClick={handleSubmit}
             disabled={!rating || loading}
-            className="w-full py-4 rounded-full font-bold text-lg transition-all active:scale-95"
-            style={{
-              background: Green,
-              color: "#fff",
-              fontFamily: "Inter, sans-serif",
-            }}
+            className="w-full py-4 bg-[#388E3C] text-on-primary font-editorial font-bold text-lg rounded-full shadow-lg active:scale-95 transition-all disabled:opacity-50 disabled:active:scale-100"
+            style={{ fontFamily: "Raleway, sans-serif" }}
           >
-            {loading ? "Submitting…" : "Submit Review"}
+            {loading ? "Submitting..." : "Submit Review"}
           </button>
-          <button
+          <button 
             onClick={() => router.back()}
-            className="text-sm py-2 px-6 hover:text-foreground transition-colors"
-            style={{ color: DIM, fontFamily: "Inter, sans-serif" }}
+            className="text-outline font-editorial text-sm font-semibold hover:text-on-surface transition-colors"
+            style={{ fontFamily: "Raleway, sans-serif" }}
           >
             Skip for now
           </button>

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -60,73 +60,43 @@ export default function DisputePage() {
   }, [user, transactionId, toast, router, selected, detail]);
 
   return (
-    <div
-      className="min-h-dvh"
-      style={{ background: BG, color: "var(--c-text)", fontFamily: "Inter, sans-serif" }}
-    >
-      {/* Header */}
-      <header
-        className="fixed top-0 w-full z-50 flex items-center gap-4 px-6 h-16"
-        style={{ background: "rgba(21,24,29,0.85)", backdropFilter: "blur(20px)" }}
-      >
-        <button onClick={() => router.back()} className="hover:opacity-70 transition-opacity">
-          <ArrowLeft className="w-5 h-5" style={{ color: GREEN }} />
-        </button>
-        <div className="flex items-center gap-2">
-          <h1 style={{ fontFamily: "Pacifico, cursive", fontSize: 22, color: "#fff" }}>
-            Raise a Dispute
-          </h1>
-          <span
-            className="w-2 h-2 rounded-full"
-            style={{
-              background: RED,
-              boxShadow: `0 0 0 4px rgba(229,57,53,0.2)`,
-              animation: "pulse 1.5s ease-in-out infinite",
-            }}
-          />
+    <div className="bg-background text-on-surface font-body min-h-dvh pb-10">
+      {/* Top Navigation Anchor */}
+      <header className="fixed top-0 w-full z-50 bg-[#15181D]/80 backdrop-blur-xl flex items-center px-6 h-16 w-full">
+        <div className="flex items-center gap-4 w-full">
+          <button onClick={() => router.back()} className="active:scale-95 transition-transform hover:opacity-80 transition-opacity">
+            <ArrowLeft className="text-[#388E3C] w-6 h-6" />
+          </button>
+          <div className="flex items-center gap-2">
+            <h1 className="font-pacifico text-2xl tracking-tight text-on-surface" style={{ fontFamily: "Pacifico, cursive" }}>Raise a Dispute</h1>
+            <span className="bg-[#E53935] w-2 h-2 rounded-full ring-4 ring-[#E53935]/20 animate-pulse"></span>
+          </div>
         </div>
       </header>
 
       <main className="pt-20 pb-10 px-6 max-w-2xl mx-auto space-y-8">
-
-        {/* Warning banner */}
-        <section
-          className="rounded-[11px] p-4 flex gap-3 items-start border"
-          style={{ background: "rgba(229,57,53,0.1)", borderColor: RED }}
-        >
-          <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: RED }} />
-          <p className="text-sm leading-snug" style={{ fontFamily: "Inter, sans-serif" }}>
-            Your funds will remain on hold while our team reviews this.
-          </p>
+        {/* Warning Banner */}
+        <section className="bg-[#E53935]/10 border border-[#E53935] rounded-[11px] p-4 flex gap-3 items-start">
+          <AlertTriangle className="text-[#E53935] mt-0.5 w-5 h-5 flex-shrink-0" />
+          <p className="text-sm font-raleway text-on-surface leading-snug" style={{ fontFamily: "Raleway, sans-serif" }}>Your funds will remain on hold while our team reviews this.</p>
         </section>
 
-        {/* Reason selection */}
+        {/* Reason Selection */}
         <section className="space-y-4">
-          <h2
-            className="text-[12px] uppercase tracking-widest font-bold px-1"
-            style={{ color: MUTED, fontFamily: "Inter, sans-serif" }}
-          >
-            Select a Reason
-          </h2>
+          <h2 className="text-on-surface-variant font-raleway text-xs uppercase tracking-widest font-bold px-1" style={{ fontFamily: "Raleway, sans-serif" }}>Select a Reason</h2>
           <div className="space-y-2">
             {REASONS.map((r, i) => {
               const active = i === selected;
               return (
                 <label
                   key={i}
-                  className="flex items-center justify-between p-4 rounded-[11px] border-l-4 cursor-pointer transition-all"
-                  style={{
-                    background: active ? CARD : CARDLO,
-                    borderLeftColor: active ? GREEN : "transparent",
-                    boxShadow: active
-                      ? `0 0 0 1px ${GREEN}`
-                      : "none",
-                  }}
+                  className={`flex items-center justify-between p-4 rounded-[11px] border-l-4 cursor-pointer group transition-all ${
+                    active 
+                      ? "bg-surface-container border-[#388E3C] ring-1 ring-[#388E3C]" 
+                      : "bg-surface-container-low hover:bg-surface-container border-transparent"
+                  }`}
                 >
-                  <span
-                    className="text-sm"
-                    style={{ color: active ? "#fff" : MUTED, fontFamily: "Inter, sans-serif" }}
-                  >
+                  <span className={`font-raleway text-sm ${active ? 'text-on-surface' : 'text-on-surface-variant group-hover:text-on-surface'}`} style={{ fontFamily: "Raleway, sans-serif" }}>
                     {r}
                   </span>
                   <input
@@ -134,8 +104,11 @@ export default function DisputePage() {
                     name="dispute_reason"
                     checked={active}
                     onChange={() => setSelected(i)}
-                    className="w-5 h-5 cursor-pointer"
-                    style={{ accentColor: GREEN }}
+                    className={`w-5 h-5 border-2 bg-transparent focus:ring-0 ${
+                      active 
+                        ? "border-[#388E3C] text-[#388E3C] checked:bg-[#388E3C]" 
+                        : "border-outline-variant text-[#388E3C]"
+                    }`}
                   />
                 </label>
               );
@@ -143,68 +116,45 @@ export default function DisputePage() {
           </div>
         </section>
 
-        {/* Details */}
+        {/* Details Textarea */}
         <section className="space-y-2">
           <div className="flex justify-between items-center px-1">
-            <label
-              className="text-[12px] uppercase tracking-widest font-bold"
-              style={{ color: MUTED, fontFamily: "Inter, sans-serif" }}
-            >
-              Details
-            </label>
-            <span className="text-[10px]" style={{ color: "var(--c-text-muted)" }}>
-              {detail.length} / 150
-            </span>
+            <label className="text-on-surface-variant font-raleway text-xs uppercase tracking-widest font-bold" style={{ fontFamily: "Raleway, sans-serif" }}>Details</label>
+            <span className="text-[10px] text-outline">{detail.length} / 150</span>
           </div>
           <textarea
             value={detail}
             onChange={(e) => setDetail(e.target.value.slice(0, 150))}
+            className="w-full h-32 bg-[#1B2B3A] border-none focus:ring-1 focus:ring-[#388E3C] rounded-[11px] p-4 font-raleway text-sm text-on-surface placeholder:italic placeholder:font-light placeholder:text-outline/50 transition-all resize-none"
+            style={{ fontFamily: "Raleway, sans-serif" }}
             placeholder="Tell us what happened..."
-            rows={5}
-            className="w-full rounded-[11px] p-4 text-sm resize-none focus:outline-none transition-all"
-            style={{
-              background: "var(--c-card2)",
-              color: "var(--c-text)",
-              fontFamily: "Inter, sans-serif",
-              border: "1px solid transparent",
-            }}
-            onFocus={(e) => (e.target.style.borderColor = GREEN)}
-            onBlur={(e) => (e.target.style.borderColor = "transparent")}
-          />
+          ></textarea>
         </section>
 
-        {/* Evidence */}
+        {/* Evidence Upload */}
         <section className="space-y-4">
-          <label
-            className="text-[12px] uppercase tracking-widest font-bold px-1"
-            style={{ color: MUTED, fontFamily: "Inter, sans-serif" }}
-          >
-            Evidence
-          </label>
-          <button
+          <label className="text-on-surface-variant font-raleway text-xs uppercase tracking-widest font-bold px-1" style={{ fontFamily: "Raleway, sans-serif" }}>Evidence</label>
+          <button 
             onClick={() => fileRef.current?.click()}
-            className="w-full rounded-[11px] flex flex-col items-center justify-center gap-2 border-2 border-dashed transition-colors"
-            style={{ background: 'var(--c-card)', borderColor: "rgba(56,142,60,0.5)", aspectRatio: "4/1" }}
+            className="w-full aspect-[4/1] bg-surface-container border-2 border-dashed border-[#388E3C] rounded-[11px] flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-surface-container-high transition-colors"
           >
-            <Camera className="w-5 h-5" style={{ color: GREEN }} />
-            <p className="text-[12px]" style={{ color: MUTED, fontFamily: "Inter, sans-serif" }}>
-              Upload photos or screenshots
-            </p>
+            <Camera className="text-[#388E3C] w-6 h-6" />
+            <p className="font-raleway text-[12px] text-[#bfcab9]" style={{ fontFamily: "Raleway, sans-serif" }}>Upload photos or screenshots</p>
           </button>
           <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImageAdd} />
 
+          {/* Thumbnail Grid */}
           {images.length > 0 && (
             <div className="grid grid-cols-3 gap-3">
               {images.map((src, i) => (
-                <div key={i} className="relative rounded-[11px] overflow-hidden" style={{ aspectRatio: "1" }}>
+                <div key={i} className="relative aspect-square rounded-[11px] overflow-hidden group">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={src} alt="Evidence" className="w-full h-full object-cover" />
-                  <button
+                  <button 
                     onClick={() => setImages((prev) => prev.filter((_, idx) => idx !== i))}
-                    className="absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center"
-                    style={{ background: "rgba(0,0,0,0.6)" }}
+                    className="absolute top-1 right-1 w-6 h-6 bg-black/60 backdrop-blur-md rounded-full flex items-center justify-center text-white"
                   >
-                    <X className="w-3 h-3 text-foreground" />
+                    <X className="w-3 h-3" />
                   </button>
                 </div>
               ))}
@@ -212,33 +162,25 @@ export default function DisputePage() {
           )}
         </section>
 
-        {/* CTA */}
-        <footer className="pt-2 space-y-4">
-          <button
+        {/* CTA Section */}
+        <footer className="pt-6 space-y-4">
+          <button 
             onClick={handleSubmit}
             disabled={loading}
-            className="w-full py-4 rounded-full font-bold text-foreground transition-all active:scale-95"
-            style={{
-              background: RED,
-              fontFamily: "Inter, sans-serif",
-              boxShadow: "0 8px 24px rgba(229,57,53,0.2)",
-            }}
+            className="w-full py-4 bg-[#E53935] text-white font-raleway font-bold rounded-full shadow-lg shadow-[#E53935]/20 active:scale-95 transition-all"
+            style={{ fontFamily: "Raleway, sans-serif" }}
           >
-            {loading ? "Submitting…" : "Submit Dispute"}
+            {loading ? "Submitting..." : "Submit Dispute"}
           </button>
           <div className="flex items-center justify-center gap-2">
-            <svg viewBox="0 0 24 24" fill="none" className="w-3.5 h-3.5 flex-shrink-0" style={{ color: MUTED }}>
+            <svg viewBox="0 0 24 24" fill="none" className="w-3.5 h-3.5 flex-shrink-0 text-on-surface-variant">
               <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={1.5} />
               <path d="M12 7v5l3 3" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
             </svg>
-            <p className="text-[11px] text-center" style={{ color: MUTED, fontFamily: "Inter, sans-serif" }}>
-              Our team reviews disputes within 24–48 hours
-            </p>
+            <p className="font-raleway text-[11px] text-[#bfcab9] text-center" style={{ fontFamily: "Raleway, sans-serif" }}>Our team reviews disputes within 24-48 hours</p>
           </div>
         </footer>
       </main>
-
-      <div className="h-10" />
     </div>
   );
 }

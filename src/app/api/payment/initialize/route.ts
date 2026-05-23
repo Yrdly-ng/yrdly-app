@@ -140,18 +140,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ── Task 3: 48-hour cooling-off after account change ──
-    // Only apply the 48-hour hold if account_updated_at is explicitly set
+    // ── Task 3: 24-hour cooling-off after account change ──
+    // Only apply the 24-hour hold if account_updated_at is explicitly set
     // (i.e., for existing accounts that changed their payout details).
     // New accounts have account_updated_at = null and can sell immediately.
     if (sellerAccount.account_updated_at) {
       const updatedTime = new Date(sellerAccount.account_updated_at).getTime();
       const hoursSinceUpdate = (Date.now() - updatedTime) / (1000 * 60 * 60);
-      if (hoursSinceUpdate < 48) {
-        const hoursLeft = Math.ceil(48 - hoursSinceUpdate);
+      if (hoursSinceUpdate < 24) {
+        const hoursLeft = Math.ceil(24 - hoursSinceUpdate);
         return NextResponse.json(
           {
-            error: `The seller recently updated their payout account. For security, payouts are held for 48 hours after an account change. Please try again in ${hoursLeft} hour(s).`,
+            error: `The seller recently updated their payout account. For security, payouts are held for 24 hours after an account change. Please try again in ${hoursLeft} hour(s).`,
             code: "COOLING_OFF_PERIOD",
           },
           { status: 402 }

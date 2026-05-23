@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -52,115 +52,79 @@ export default function MarkAsSentPage() {
   }, [user, allChecked, transactionId, toast, router]);
 
   return (
-    <div
-      className="min-h-dvh pb-10"
-      style={{ background: BG, color: "var(--c-text)", fontFamily: "Inter, sans-serif" }}
-    >
-      {/* Header */}
-      <header
-        className="fixed top-0 w-full z-50 flex items-center gap-4 px-6 h-16"
-        style={{ background: "rgba(21,24,29,0.85)", backdropFilter: "blur(20px)" }}
-      >
-        <button
-          onClick={() => router.back()}
-          className="flex items-center justify-center w-9 h-9 rounded-full hover:opacity-70 transition-opacity"
-        >
-          <ArrowLeft className="w-5 h-5" style={{ color: "var(--c-text)" }} />
-        </button>
-        <h1 style={{ fontFamily: "Pacifico, cursive", fontSize: 22, color: "#fff" }}>
-          Ready to Hand Over?
-        </h1>
+    <div className="bg-background text-on-background font-body antialiased min-h-dvh pb-10">
+      {/* TopAppBar Component */}
+      <header className="fixed top-0 w-full z-50 bg-[#15181D]/80 backdrop-blur-xl flex items-center px-6 h-16 w-full">
+        <div className="flex items-center gap-4 w-full">
+          <button onClick={() => router.back()} className="active:scale-95 transition-transform">
+            <ArrowLeft className="w-6 h-6 text-on-surface" />
+          </button>
+          <h1 className="text-on-background font-cursive text-[22px] leading-none" style={{ fontFamily: "Pacifico, cursive" }}>Ready to Hand Over?</h1>
+        </div>
       </header>
 
       <main className="pt-24 px-6 max-w-lg mx-auto space-y-8">
-
-        {/* Payout info */}
-        <section className="rounded-[11px] overflow-hidden" style={{ background: CARD }}>
-          <div className="p-5 border-b " style={{ borderColor: "rgba(64,73,61,0.15)" }}>
-            <p className="text-[11px] uppercase tracking-widest font-bold mb-1" style={{ color: DIM }}>
-              Escrow Held
-            </p>
-            <p className="font-bold text-2xl" style={{ color: GREEN_L, fontFamily: "Inter, sans-serif" }}>
-              Funds will be released to you
-            </p>
-          </div>
-          <div className="px-5 py-4 text-center">
-            <p className="text-[11px] leading-normal" style={{ color: MUTED, fontFamily: "Inter, sans-serif" }}>
-              After buyer confirms receipt (or 48h auto-release)
-            </p>
+        {/* Payout Info */}
+        <section className="bg-surface-container rounded-[11px] overflow-hidden">
+          <div className="px-4 py-6 text-center border-b border-outline-variant/10">
+            <p className="text-primary text-2xl font-display font-bold tracking-tight mb-1" style={{ fontFamily: "Raleway, sans-serif" }}>Funds <span className="text-sm font-medium">will be released to you</span></p>
+            <p className="text-[#bfcab9] font-display text-[11px] leading-normal opacity-80" style={{ fontFamily: "Raleway, sans-serif" }}>After buyer confirms receipt (or 48h auto-release)</p>
           </div>
         </section>
 
-        {/* Checklist */}
-        <section className="rounded-[11px] p-6 space-y-5" style={{ background: CARD }}>
+        {/* Checklist Card */}
+        <section className="bg-surface-container rounded-[11px] p-6 space-y-5">
           {CHECKLIST.map((label, i) => {
             const done = checked[i];
             return (
-              <button
-                key={i}
+              <div 
+                key={i} 
                 onClick={() => toggle(i)}
-                className="flex items-center gap-4 w-full text-left group"
+                className="flex items-center gap-4 group cursor-pointer"
               >
-                <div
-                  className="w-7 h-7 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all"
-                  style={{
-                    borderColor: done ? GREEN : "#40493d",
-                    background: done ? "rgba(56,142,60,0.15)" : "transparent",
-                  }}
-                >
-                  {done && (
-                    <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4">
-                      <path d="M5 13l4 4L19 7" stroke={GREEN_L} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
+                <div className={`w-7 h-7 rounded-full border-2 ${done ? 'border-primary' : 'border-outline-variant'} flex items-center justify-center shrink-0`}>
+                  {done ? (
+                    <ShieldCheck className="w-4 h-4 text-primary" />
+                  ) : (
+                    <div className="w-4 h-4 rounded-full border border-outline-variant opacity-0 group-hover:opacity-40 transition-opacity"></div>
                   )}
                 </div>
-                <p className="text-[15px] font-medium" style={{ color: done ? "#fff" : MUTED, fontFamily: "Inter, sans-serif" }}>
-                  {label}
-                </p>
-              </button>
+                <p className="text-on-surface font-display text-[15px] font-medium" style={{ fontFamily: "Raleway, sans-serif" }}>{label}</p>
+              </div>
             );
           })}
         </section>
 
-        {/* CTA */}
-        <section className="space-y-4">
+        {/* CTA Section */}
+        <section className="space-y-4 pt-4">
           <button
             onClick={handleConfirm}
             disabled={!allChecked || loading}
-            className="w-full py-5 rounded-full font-bold text-base transition-all active:scale-95"
-            style={{
-              background: allChecked && !loading ? GREEN : CARDHIGH,
-              color: allChecked && !loading ? "#fff" : DIM,
-              fontFamily: "Inter, sans-serif",
-              boxShadow: allChecked && !loading ? "0 0 24px rgba(56,142,60,0.35)" : "none",
-              cursor: allChecked && !loading ? "pointer" : "not-allowed",
-            }}
+            className={`w-full py-5 px-8 rounded-full font-display font-bold text-base transition-all ${
+              allChecked && !loading
+                ? "bg-[#388E3C] text-white shadow-[0_0_20px_rgba(56,142,60,0.4)] active:scale-95"
+                : "bg-surface-container-high text-outline cursor-not-allowed opacity-80"
+            }`}
+            style={{ fontFamily: "Raleway, sans-serif" }}
           >
-            {loading ? "Confirming…" : "Confirm Item Sent / Ready"}
+            {loading ? "Confirming..." : "Confirm Item Sent / Ready"}
           </button>
-          <p className="text-center text-[12px] leading-relaxed px-8" style={{ color: MUTED, fontFamily: "Inter, sans-serif" }}>
+          <p className="text-center text-on-surface-variant text-[12px] leading-relaxed px-8">
             Once confirmed, the 48h buyer confirmation window begins.
           </p>
         </section>
 
-        {/* Info grid */}
-        <div className="grid grid-cols-2 gap-4 mt-4">
-          <div
-            className="p-4 rounded-xl border-l-2"
-            style={{ background: "var(--c-bg)", borderColor: "#6edf51" }}
-          >
-            <ShieldCheck className="w-5 h-5 mb-2" style={{ color: "#6edf51" }} />
-            <h3 className="text-sm font-bold text-foreground">Escrow Secure</h3>
-            <p className="text-[11px] mt-1" style={{ color: DIM }}>
-              Funds are held safely by the platform until handover.
-            </p>
+        {/* Contextual Information */}
+        <div className="grid grid-cols-2 gap-4 mt-12">
+          <div className="bg-surface-container-low p-4 rounded-xl border-l-2 border-tertiary">
+            <ShieldCheck className="text-tertiary mb-2 w-6 h-6" />
+            <h3 className="text-on-surface font-bold text-sm">Escrow Secure</h3>
+            <p className="text-on-surface-variant text-[11px] mt-1">Funds are held safely by the platform until handover.</p>
           </div>
-          <div className="p-4 rounded-xl" style={{ background: "var(--c-bg)" }}>
-            <HeadphonesIcon className="w-5 h-5 mb-2" style={{ color: "#a5c8ff" }} />
-            <h3 className="text-sm font-bold text-foreground">Need Help?</h3>
-            <p className="text-[11px] mt-1" style={{ color: DIM }}>
-              Contact support if the buyer is a no-show.
-            </p>
+          <div className="bg-surface-container-low p-4 rounded-xl border-l-2 border-secondary">
+            <HeadphonesIcon className="text-secondary mb-2 w-6 h-6" />
+            <h3 className="text-on-surface font-bold text-sm">Need Help?</h3>
+            <p className="text-on-surface-variant text-[11px] mt-1">Contact support if the buyer is a no-show.</p>
           </div>
         </div>
       </main>

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
@@ -21,88 +21,61 @@ export default function PaymentRedirectPage() {
   }, [link]);
 
   return (
-    <div
-      className="min-h-dvh flex flex-col"
-      style={{ background: BG, color: "var(--c-text)", fontFamily: "Inter, sans-serif" }}
-    >
-      {/* Header */}
-      <header
-        className="fixed top-0 w-full z-50 flex items-center justify-center px-6 h-16"
-        style={{ background: "rgba(21,24,29,0.85)", backdropFilter: "blur(20px)" }}
-      >
-        <span
-          style={{
-            fontFamily: "Jersey 25, cursive",
-            color: "#259907",
-            fontSize: 28,
-          }}
-        >
-          Yrdly
-        </span>
+    <div className="bg-surface-container-low text-on-surface font-body min-h-dvh selection:bg-primary selection:text-on-primary">
+      {/* Top AppBar */}
+      <header className="fixed top-0 w-full z-50 bg-[#15181D]/80 backdrop-blur-xl flex items-center px-6 h-16">
+        <div className="flex items-center gap-4 w-full max-w-lg mx-auto justify-center">
+          <span className="text-[#259907] font-brand text-[28px]">Yrdly</span>
+        </div>
       </header>
 
-      {/* Center content */}
-      <main className="flex-1 flex flex-col items-center justify-center p-6">
-        <div className="flex flex-col items-center text-center gap-8 max-w-xs">
-
-          {/* Spinner */}
+      {/* Main Canvas */}
+      <main className="min-h-dvh flex flex-col items-center justify-center p-6 bg-surface-container-low">
+        {/* Center Content Block */}
+        <div className="flex flex-col items-center text-center space-y-8 max-w-sm mt-16">
+          
+          {/* Animated Spinner Container */}
           <div className="relative flex items-center justify-center">
-            <div
-              className="w-14 h-14 rounded-full border-4"
-              style={{ borderColor: "var(--c-card2)" }}
-            />
-            <div
-              className="absolute w-14 h-14 rounded-full border-4 border-t-transparent animate-spin"
-              style={{ borderColor: `${GREEN} transparent transparent transparent` }}
-            />
+            <div className="w-12 h-12 border-4 border-surface-variant rounded-full"></div>
+            <div className="absolute w-12 h-12 border-4 border-[#388E3C] border-t-transparent rounded-full animate-[spin_1s_linear_infinite]"></div>
           </div>
-
-          {/* Text */}
-          <div className="space-y-2">
-            <h1
-              style={{ fontFamily: "Pacifico, cursive", fontSize: 22, color: "#fff" }}
-            >
+          
+          {/* Loading Messaging */}
+          <div className="space-y-3">
+            <h1 className="font-pacifico text-[22px] text-on-surface tracking-wide">
               Connecting to Flutterwave...
             </h1>
-            <p className="text-sm" style={{ color: DIM, fontFamily: "Inter, sans-serif" }}>
+            <p className="font-editorial text-[13px] text-on-surface-variant leading-relaxed">
               Please do not close this screen
             </p>
           </div>
-
-          {/* Progress bar */}
-          <div className="w-48 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--c-card2)" }}>
-            <div
-              className="h-full rounded-full"
-              style={{
-                background: GREEN,
-                width: "40%",
-                animation: "progress 2.5s ease-in-out infinite",
-              }}
-            />
+          
+          {/* Progress Bar */}
+          <div className="w-48 h-1.5 bg-surface-variant rounded-full overflow-hidden">
+            <div className="h-full bg-tertiary-container rounded-full animate-[progress_3s_ease-in-out_infinite]" style={{ width: "30%" }}></div>
           </div>
         </div>
 
-        {/* Footer lock */}
+        {/* Footer Lock / Security */}
         <footer className="absolute bottom-10 flex flex-col items-center gap-2">
-          <div className="flex items-center gap-1.5" style={{ color: "var(--c-text-muted)" }}>
-            <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
+          <div className="flex items-center gap-1.5 text-outline">
+            <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
               <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
             </svg>
-            <span
-              className="text-[11px] uppercase tracking-widest"
-              style={{ fontFamily: "Inter, sans-serif" }}
-            >
+            <span className="font-editorial text-[11px] uppercase tracking-widest">
               Secured payment
             </span>
           </div>
+          {/* Subtle atmospheric glow backdrop behind the footer */}
+          <div className="absolute -z-10 w-64 h-64 bg-primary/5 blur-[100px] rounded-full -bottom-20"></div>
         </footer>
       </main>
 
       <style>{`
         @keyframes progress {
-          0%   { width: 10%; }
-          50%  { width: 70%; }
-          100% { width: 95%; }
+          0% { width: 0%; }
+          50% { width: 70%; }
+          100% { width: 100%; }
         }
       `}</style>
     </div>

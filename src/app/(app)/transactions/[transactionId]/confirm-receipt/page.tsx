@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -40,135 +40,80 @@ export default function ConfirmReceiptPage() {
   }, [user, transactionId, toast, router]);
 
   return (
-    <div
-      className="min-h-dvh"
-      style={{ background: BG, color: "var(--c-text)", fontFamily: "Inter, sans-serif" }}
-    >
-      {/* Ambient glows */}
-      <div className="fixed -bottom-24 -left-24 w-96 h-96 rounded-full pointer-events-none" style={{ background: "rgba(130,219,126,0.05)", filter: "blur(120px)" }} />
-      <div className="fixed -top-24 -right-24 w-96 h-96 rounded-full pointer-events-none" style={{ background: "rgba(165,200,255,0.05)", filter: "blur(120px)" }} />
+    <div className="bg-background text-on-background font-body selection:bg-primary selection:text-on-primary min-h-dvh">
+      {/* Visual Polish: Background Ambient Glow */}
+      <div className="fixed -bottom-24 -left-24 w-96 h-96 bg-primary/5 rounded-full blur-[120px] pointer-events-none"></div>
+      <div className="fixed -top-24 -right-24 w-96 h-96 bg-secondary/5 rounded-full blur-[120px] pointer-events-none"></div>
 
-      {/* Header */}
-      <header
-        className="fixed top-0 w-full z-50 flex items-center gap-4 px-6 h-16 max-w-2xl mx-auto left-0 right-0"
-        style={{ background: "rgba(21,24,29,0.85)", backdropFilter: "blur(20px)" }}
-      >
-        <button onClick={() => router.back()} className="hover:opacity-70 transition-opacity">
-          <ArrowLeft className="w-5 h-5" style={{ color: GREEN_L }} />
-        </button>
-        <h1 style={{ fontFamily: "Pacifico, cursive", fontSize: 22, color: "#fff" }}>
-          Did You Receive It?
-        </h1>
+      {/* Top Navigation Anchor */}
+      <header className="fixed top-0 w-full z-50 bg-[#15181D]/80 backdrop-blur-xl flex items-center px-6 h-16 w-full">
+        <div className="flex items-center gap-4 w-full max-w-2xl mx-auto">
+          <button onClick={() => router.back()} className="active:scale-95 transition-transform hover:opacity-80 flex items-center justify-center">
+            <ArrowLeft className="w-6 h-6 text-primary" />
+          </button>
+          <h1 className="font-pacifico text-2xl tracking-tight text-on-background">Did You Receive It?</h1>
+        </div>
       </header>
 
       <main className="pt-24 pb-12 px-6 max-w-2xl mx-auto flex flex-col items-center">
-
-        {/* SVG countdown ring (static visual) */}
+        {/* Countdown Section */}
         <div className="relative flex flex-col items-center mb-10">
-          <div className="relative w-44 h-44 flex items-center justify-center">
-            <svg className="w-full h-full" style={{ transform: "rotate(-90deg)" }}>
-              <circle cx="88" cy="88" r="82" fill="none" stroke="var(--c-card)" strokeWidth="6" />
-              <circle
-                cx="88" cy="88" r="82" fill="none"
-                stroke={GREEN_L} strokeWidth="6" strokeLinecap="round"
-                strokeDasharray="515" strokeDashoffset="120"
-              />
+          <div className="relative w-48 h-48 flex items-center justify-center">
+            <svg className="w-full h-full" style={{ transform: 'rotate(-90deg)' }}>
+              <circle cx="96" cy="96" r="90" fill="none" className="stroke-[#1d2025] stroke-[6px]"></circle>
+              <circle cx="96" cy="96" r="90" fill="none" className="stroke-[#82db7e] stroke-[6px]" strokeLinecap="round" strokeDasharray="565.48" strokeDashoffset="140"></circle>
             </svg>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span style={{ fontFamily: "Jersey 25, cursive", fontSize: 36, color: GREEN_L, lineHeight: 1 }}>
-                48:00:00
-              </span>
+            <div className="absolute inset-0 flex flex-col items-center justify-center pt-2">
+              <span className="font-brand text-[40px] text-primary leading-none" style={{ fontFamily: "Jersey 25, cursive" }}>48:00:00</span>
             </div>
           </div>
-          <p
-            className="text-[11px] mt-4 uppercase tracking-widest text-center"
-            style={{ color: MUTED, fontFamily: "Inter, sans-serif" }}
-          >
+          <p className="font-editorial text-[11px] text-on-surface-variant mt-4 uppercase tracking-widest text-center">
             Remaining to confirm or auto-release
           </p>
         </div>
 
-        {/* Action cards */}
+        {/* Action Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full mb-12">
-          {/* All good */}
-          <button
+          {/* All Good Card */}
+          <button 
             onClick={handleConfirm}
             disabled={loading}
-            className="flex flex-col items-center p-6 rounded-lg border-2 transition-all text-center active:scale-[0.98] group"
-            style={{
-              background: 'var(--c-card)',
-              borderColor: "transparent",
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#35a61a")}
-            onMouseLeave={(e) => (e.currentTarget.style.borderColor = "transparent")}
+            className="group flex flex-col items-center p-6 bg-surface-container rounded-lg border-2 border-transparent hover:border-tertiary-container transition-all text-center h-full active:scale-[0.98]"
           >
-            <div
-              className="w-12 h-12 rounded-full flex items-center justify-center mb-4"
-              style={{ background: "rgba(110,223,81,0.1)" }}
-            >
-              <CheckCircle className="w-7 h-7" style={{ color: "#6edf51", fill: "#6edf51", fillOpacity: 0.2 }} />
+            <div className="w-12 h-12 rounded-full bg-tertiary/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+              <CheckCircle className="text-tertiary w-7 h-7" />
             </div>
-            <h4 className="font-bold text-sm text-foreground mb-1" style={{ fontFamily: "Inter, sans-serif" }}>
-              All Good!
-            </h4>
-            <p className="text-xs mb-6" style={{ color: MUTED, fontFamily: "Inter, sans-serif" }}>
-              Item received in good condition
-            </p>
-            <div
-              className="mt-auto w-full py-2.5 px-6 rounded-full font-bold text-sm"
-              style={{
-                background: "#35a61a",
-                color: "#fff",
-                fontFamily: "Inter, sans-serif",
-                boxShadow: "0 8px 20px rgba(53,166,26,0.2)",
-              }}
-            >
-              {loading ? "Confirming…" : "Confirm Receipt"}
+            <h4 className="font-editorial font-bold text-sm text-on-surface mb-1">All Good!</h4>
+            <p className="font-editorial text-xs text-on-surface-variant mb-6">Item received in good condition</p>
+            <div className="mt-auto w-full py-2.5 px-6 bg-tertiary-container text-white rounded-full font-editorial text-sm font-bold shadow-lg shadow-tertiary-container/20">
+              {loading ? "Confirming..." : "Confirm Receipt"}
             </div>
           </button>
 
-          {/* Problem */}
-          <button
+          {/* Problem Card */}
+          <button 
             onClick={() => router.push(`/transactions/${transactionId}/dispute`)}
-            className="flex flex-col items-center p-6 rounded-lg border-2 transition-all text-center active:scale-[0.98]"
-            style={{ background: 'var(--c-card)', borderColor: "transparent" }}
-            onMouseEnter={(e) => (e.currentTarget.style.borderColor = RED)}
-            onMouseLeave={(e) => (e.currentTarget.style.borderColor = "transparent")}
+            className="group flex flex-col items-center p-6 bg-surface-container rounded-lg border-2 border-transparent hover:border-error transition-all text-center h-full active:scale-[0.98]"
           >
-            <div
-              className="w-12 h-12 rounded-full flex items-center justify-center mb-4"
-              style={{ background: "rgba(255,180,171,0.1)" }}
-            >
-              <AlertTriangle className="w-7 h-7" style={{ color: "#ffb4ab" }} />
+            <div className="w-12 h-12 rounded-full bg-error/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+              <AlertTriangle className="text-error w-7 h-7" />
             </div>
-            <h4 className="font-bold text-sm text-foreground mb-1" style={{ fontFamily: "Inter, sans-serif" }}>
-              There&apos;s an issue
-            </h4>
-            <p className="text-xs mb-6" style={{ color: MUTED, fontFamily: "Inter, sans-serif" }}>
-              Not as described / missing items
-            </p>
-            <div
-              className="mt-auto w-full py-2.5 px-6 rounded-full font-bold text-sm"
-              style={{
-                border: `1px solid ${RED}`,
-                color: RED,
-                fontFamily: "Inter, sans-serif",
-              }}
-            >
+            <h4 className="font-editorial font-bold text-sm text-on-surface mb-1">There's an issue</h4>
+            <p className="font-editorial text-xs text-on-surface-variant mb-6">Not as described / missing items</p>
+            <div className="mt-auto w-full py-2.5 px-6 border border-error text-error rounded-full font-editorial text-sm font-bold hover:bg-error/5 transition-colors">
               Raise Dispute
             </div>
           </button>
         </div>
 
-        {/* Fine print */}
-        <div
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-full border"
-          style={{ background: "rgba(39,42,47,0.3)", borderColor: "rgba(64,73,61,0.15)" }}
-        >
-          <Info className="w-3.5 h-3.5 flex-shrink-0" style={{ color: MUTED }} />
-          <p className="text-[10px] uppercase tracking-wider" style={{ color: MUTED, fontFamily: "Inter, sans-serif" }}>
-            If you take no action in 48h, funds will be auto-released to the seller.
-          </p>
+        {/* Fine Print */}
+        <div className="mt-12 w-full text-center">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-surface-container-high/30 rounded-full border border-outline-variant/10">
+            <Info className="w-4 h-4 text-on-surface-variant" />
+            <p className="font-editorial text-[10px] text-on-surface-variant uppercase tracking-wider">
+              If you take no action in 48h, funds will be auto-released to the seller.
+            </p>
+          </div>
         </div>
       </main>
     </div>

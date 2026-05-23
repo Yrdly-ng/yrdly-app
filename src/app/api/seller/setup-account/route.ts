@@ -222,7 +222,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       subaccountId,
-      message: 'Bank account linked and verified successfully. Payouts will be available after 48 hours.',
+      message: 'Bank account linked and verified successfully.',
     });
   } catch (error) {
     console.error('Seller account setup error:', error);
@@ -268,9 +268,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ account: null });
     }
 
-    const accountUpdatedAt = data.account_updated_at || data.updated_at;
+    const accountUpdatedAt = data.account_updated_at;
     const coolingOffEnds = accountUpdatedAt
-      ? new Date(new Date(accountUpdatedAt).getTime() + 48 * 60 * 60 * 1000).toISOString()
+      ? new Date(new Date(accountUpdatedAt).getTime() + 24 * 60 * 60 * 1000).toISOString()
       : null;
     const inCoolingOff = coolingOffEnds ? new Date() < new Date(coolingOffEnds) : false;
 

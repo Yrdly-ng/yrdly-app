@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -61,6 +61,7 @@ interface AddAccountDialogProps {
 export function AddAccountDialog({ open, onOpenChange, onSuccess }: AddAccountDialogProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [verifiedName, setVerifiedName] = useState("");
   
   const form = useForm<AccountFormValues>({
     resolver: zodResolver(accountFormSchema),
@@ -70,48 +71,29 @@ export function AddAccountDialog({ open, onOpenChange, onSuccess }: AddAccountDi
     },
   });
 
-  const watchedAccountType = form.watch('accountType');
-
   const onSubmit = async (data: AccountFormValues) => {
     try {
       setLoading(true);
       
-      let accountDetails: BankAccountDetails | MobileMoneyDetails;
-      
-      switch (data.accountType) {
-        case 'bank_account':
-          const selectedBank = nigerianBanks.find(bank => bank.code === data.bankCode);
-          accountDetails = {
-            accountNumber: data.accountNumber!,
-            accountName: data.accountName!,
-            bankCode: data.bankCode!,
-            bankName: selectedBank?.name || '',
-            accountType: data.accountTypeBank!
-          } as BankAccountDetails;
-          break;
-          
-        case 'mobile_money':
-          accountDetails = {
-            provider: data.provider!,
-            phoneNumber: data.phoneNumber!,
-            accountName: data.accountName || ''
-          } as MobileMoneyDetails;
-          break;
-          
-        default:
-          throw new Error('Invalid account type');
-      }
+      const selectedBank = nigerianBanks.find(bank => bank.code === data.bankCode);
+      const accountDetails: BankAccountDetails = {
+        accountNumber: data.accountNumber!,
+        accountName: data.accountName || verifiedName || "Verified User",
+        bankCode: data.bankCode!,
+        bankName: selectedBank?.name || '',
+        accountType: data.accountTypeBank || 'savings'
+      };
 
       await SellerAccountService.saveAccount(
         'current-user-id', // This should come from auth context
-        data.accountType as AccountType,
+        'bank_account',
         accountDetails,
         data.isPrimary
       );
 
       toast({
         title: "Success",
-        description: "Account added successfully. Please complete verification to receive payouts."
+        description: "Account added successfully."
       });
 
       onSuccess();
@@ -129,190 +111,79 @@ export function AddAccountDialog({ open, onOpenChange, onSuccess }: AddAccountDi
     }
   };
 
-  const getAccountTypeIcon = (type: string) => {
-    switch (type) {
-      case 'bank_account':
-        return <Building2 className="h-5 w-5" />;
-      case 'mobile_money':
-        return <Smartphone className="h-5 w-5" />;
-      default:
-        return <Building2 className="h-5 w-5" />;
-    }
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
-        className="max-w-lg w-[95vw] p-0 border-none bg-transparent shadow-2xl overflow-hidden"
-        style={{ fontFamily: "Inter, sans-serif" }}
+        className="max-w-lg w-[95vw] p-0 border-none bg-surface shadow-2xl overflow-hidden rounded-[24px]"
       >
-        <div 
-          className="relative w-full max-h-[90vh] overflow-y-auto rounded-[32px] p-8 space-y-8 animate-in zoom-in-95 duration-300"
-          style={{ 
-            background: "var(--card)",
-            border: "1px solid rgba(255,255,255,0.05)"
-          }}
-        >
-          {/* Decorative Header Gradient */}
-          <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-[#388E3C]/10 to-transparent pointer-events-none" />
-
-          <div className="relative z-10">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-2xl font-black text-foreground tracking-tight">Add Payout Account</h2>
-              <div className="w-10 h-10 rounded-2xl bg-[#388E3C]/20 flex items-center justify-center">
-                <Building2 className="w-5 h-5 text-[#388E3C]" />
-              </div>
-            </div>
-            <p className="text-sm text-muted-foreground font-medium leading-relaxed">
-              Choose your preferred method to receive payments from your neighborhood sales.
-            </p>
+        <div className="relative w-full max-h-[90vh] overflow-y-auto px-6 py-8">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="font-pacifico text-2xl tracking-tight text-on-surface" style={{ fontFamily: "Pacifico, cursive" }}>Add Payout Account</h1>
           </div>
 
-          <form onSubmit={form.handleSubmit(onSubmit)} className="relative z-10 space-y-8">
-            {/* Account Type Selection */}
-            <div className="space-y-4">
-              <label className="text-[10px] uppercase tracking-[0.2em] font-black text-muted-foreground ml-1">
-                Preferred Method
-              </label>
-              <div className="grid grid-cols-1 gap-3">
-                {[
-                  { id: 'bank_account', label: 'Bank Account', icon: Building2, desc: '97% Payout • Direct to local bank' },
-                  { id: 'mobile_money', label: 'Mobile Money', icon: Smartphone, desc: 'Fast processing • Carrier wallets' }
-                ].map((type) => (
-                  <button
-                    key={type.id}
-                    type="button"
-                    onClick={() => form.setValue('accountType', type.id as any)}
-                    className={`flex items-center gap-4 p-4 rounded-2xl border transition-all text-left group ${
-                      watchedAccountType === type.id 
-                        ? 'bg-[#388E3C]/10 border-[#388E3C]/50 ring-1 ring-[#388E3C]/50' 
-                        : 'bg-white/5 border-border hover:bg-white/[0.08]'
-                    }`}
-                  >
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${
-                      watchedAccountType === type.id ? 'bg-[#388E3C] text-white' : 'bg-white/10 text-muted-foreground group-hover:text-foreground'
-                    }`}>
-                      <type.icon className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <p className={`font-black text-sm ${watchedAccountType === type.id ? 'text-foreground' : 'text-muted-foreground'}`}>
-                        {type.label}
-                      </p>
-                      <p className="text-[10px] font-medium opacity-60">{type.desc}</p>
-                    </div>
-                  </button>
-                ))}
+          <section className="mb-8">
+            <p className="font-editorial text-[12px] text-on-surface-variant mb-4" style={{ fontFamily: "Raleway, sans-serif" }}>Required to receive your marketplace earnings</p>
+            <div className="flex items-center gap-2 bg-primary-container/10 p-3 rounded-lg">
+              <Building2 className="text-primary w-5 h-5 flex-shrink-0" />
+              <p className="font-editorial text-[11px] text-primary" style={{ fontFamily: "Raleway, sans-serif" }}>Your account details are encrypted at rest</p>
+            </div>
+          </section>
+
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <div className="space-y-2">
+              <label className="font-editorial text-[13px] font-medium ml-4 text-on-surface-variant" style={{ fontFamily: "Raleway, sans-serif" }}>Select Bank</label>
+              <div className="relative">
+                <select 
+                  className="w-full h-14 bg-surface-container-high border-[0.5px] border-outline-variant/20 rounded-full px-6 text-on-surface focus:border-primary-container focus:ring-0 transition-all font-body appearance-none"
+                  {...form.register('bankCode')}
+                >
+                  <option value="">Select...</option>
+                  {nigerianBanks.map((bank) => (
+                    <option key={bank.code} value={bank.code}>{bank.name}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
-            {/* Dynamic Fields Section */}
-            <div className="space-y-6 pt-4 border-t border-border">
-              {watchedAccountType === 'bank_account' && (
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-[10px] uppercase tracking-[0.15em] font-black text-muted-foreground ml-1">Bank</label>
-                      <div className="relative">
-                        <select 
-                          className="w-full h-12 rounded-xl bg-white/5 border border-border px-4 text-base text-foreground focus:border-[#388E3C]/50 focus:outline-none appearance-none"
-                          onChange={(e) => form.setValue('bankCode', e.target.value)}
-                        >
-                          <option value="" className="bg-card">Select...</option>
-                          {nigerianBanks.map((bank) => (
-                            <option key={bank.code} value={bank.code} className="bg-card">{bank.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] uppercase tracking-[0.15em] font-black text-muted-foreground ml-1">Type</label>
-                      <select 
-                        className="w-full h-12 rounded-xl bg-white/5 border border-border px-4 text-base text-foreground focus:border-[#388E3C]/50 focus:outline-none appearance-none"
-                        onChange={(e) => form.setValue('accountTypeBank', e.target.value as any)}
-                      >
-                        <option value="savings" className="bg-card">Savings</option>
-                        <option value="current" className="bg-card">Current</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] uppercase tracking-[0.15em] font-black text-muted-foreground ml-1">Account Number</label>
-                    <input
-                      className="w-full h-12 rounded-xl bg-white/5 border border-border px-4 text-base text-foreground focus:border-[#388E3C]/50 focus:outline-none placeholder:text-muted-foreground"
-                      placeholder="0123456789"
-                      {...form.register('accountNumber')}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {watchedAccountType === 'mobile_money' && (
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-[10px] uppercase tracking-[0.15em] font-black text-muted-foreground ml-1">Provider</label>
-                      <select 
-                        className="w-full h-12 rounded-xl bg-white/5 border border-border px-4 text-base text-foreground focus:border-[#388E3C]/50 focus:outline-none appearance-none"
-                        onChange={(e) => form.setValue('provider', e.target.value as any)}
-                      >
-                        <option value="mtn" className="bg-card">MTN</option>
-                        <option value="airtel" className="bg-card">Airtel</option>
-                        <option value="opay" className="bg-card">Opay</option>
-                        <option value="palmpay" className="bg-card">PalmPay</option>
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] uppercase tracking-[0.15em] font-black text-muted-foreground ml-1">Phone</label>
-                      <input
-                        className="w-full h-12 rounded-xl bg-white/5 border border-border px-4 text-base text-foreground focus:border-[#388E3C]/50 focus:outline-none placeholder:text-muted-foreground"
-                        placeholder="08012345678"
-                        {...form.register('phoneNumber')}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <label className="text-[10px] uppercase tracking-[0.15em] font-black text-muted-foreground ml-1">Account Holder Name</label>
-                <input
-                  className="w-full h-12 rounded-xl bg-white/5 border border-border px-4 text-base text-foreground focus:border-[#388E3C]/50 focus:outline-none placeholder:text-muted-foreground"
-                  placeholder="e.g. John Doe"
-                  {...form.register('accountName')}
-                />
-              </div>
-
-              {/* Primary Checkbox */}
-              <label className="flex items-center gap-3 cursor-pointer group">
-                <div className="relative">
-                  <input
-                    type="checkbox"
-                    className="sr-only peer"
-                    {...form.register('isPrimary')}
-                  />
-                  <div className="w-5 h-5 rounded border border-border bg-white/5 peer-checked:bg-[#388E3C] peer-checked:border-[#388E3C] transition-all" />
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 peer-checked:opacity-100 transition-opacity">
-                    <div className="w-2 h-2 rounded-full bg-white" />
-                  </div>
-                </div>
-                <span className="text-xs font-bold text-muted-foreground group-hover:text-foreground transition-colors">Set as primary payout method</span>
-              </label>
+            <div className="space-y-2">
+              <label className="font-editorial text-[13px] font-medium ml-4 text-on-surface-variant" style={{ fontFamily: "Raleway, sans-serif" }}>Account Number</label>
+              <input 
+                className="w-full h-14 bg-surface-container-high border-[0.5px] border-outline-variant/20 rounded-full px-6 text-on-surface focus:border-primary-container focus:ring-0 transition-all font-body"
+                placeholder="10-digit account number"
+                type="number"
+                {...form.register('accountNumber')}
+              />
             </div>
 
-            {/* Actions */}
-            <div className="flex flex-col gap-3 pt-4">
-              <button
+            <div className="space-y-2">
+              <label className="font-editorial text-[13px] font-medium ml-4 text-on-surface-variant" style={{ fontFamily: "Raleway, sans-serif" }}>Account Name</label>
+              <input 
+                className="w-full h-14 bg-surface-container-high border-[0.5px] border-outline-variant/20 rounded-full px-6 text-on-surface focus:border-primary-container focus:ring-0 transition-all font-body"
+                placeholder="Name on account"
+                {...form.register('accountName')}
+              />
+            </div>
+
+            <div className="flex items-start gap-3 px-4 py-2">
+              <p className="font-editorial text-[11px] text-on-surface-variant leading-relaxed" style={{ fontFamily: "Raleway, sans-serif" }}>
+                We verify your account to ensure accurate payouts. Your data is protected by industry-standard protocols.
+              </p>
+            </div>
+
+            <div className="mt-8 space-y-4">
+              <button 
                 type="submit"
                 disabled={loading}
-                className="w-full h-14 rounded-2xl bg-[#388E3C] text-white font-black text-sm transition-all active:scale-95 disabled:opacity-50 disabled:grayscale"
-                style={{ boxShadow: "0 10px 20px -5px rgba(56,142,60,0.3)" }}
+                className="w-full h-14 rounded-full bg-primary-container text-on-primary-container font-bold text-lg shadow-lg shadow-primary-container/20 active:scale-[0.98] transition-all disabled:opacity-50"
+                style={{ fontFamily: "Raleway, sans-serif" }}
               >
-                {loading ? 'Adding Account...' : 'Link Account'}
+                {loading ? "Saving..." : "Save Account Details"}
               </button>
-              <button
+              <button 
                 type="button"
                 onClick={() => onOpenChange(false)}
-                className="w-full h-12 rounded-2xl bg-white/5 text-muted-foreground font-black text-xs uppercase tracking-widest hover:text-foreground transition-all"
+                className="w-full py-2 text-on-surface-variant font-editorial text-sm hover:text-on-surface transition-colors"
+                style={{ fontFamily: "Raleway, sans-serif" }}
               >
                 Cancel
               </button>
