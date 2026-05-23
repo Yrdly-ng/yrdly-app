@@ -71,21 +71,24 @@ export async function POST(request: NextRequest) {
 
     const profileName = profile?.name || '';
 
-    // ── Task 1: Paystack account resolution & name match ─
-    if (process.env.PAYSTACK_SECRET_KEY) {
-      const paystackRes = await fetch(
-        `https://api.paystack.co/bank/resolve?account_number=${accountNumber}&bank_code=${bankCode}`,
-        {
-          headers: {
-            Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-          },
-        }
-      );
+    // ── Task 1: Flutterwave account resolution & name match ─
+    if (process.env.FLUTTERWAVE_SECRET_KEY) {
+      const flwResolveRes = await fetch('https://api.flutterwave.com/v3/accounts/resolve', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          account_number: accountNumber,
+          account_bank: bankCode,
+        }),
+      });
 
-      const paystackData = await paystackRes.json();
+      const flwResolveData = await flwResolveRes.json();
 
-      if (paystackData.status === true && paystackData.data?.account_name) {
-        const resolvedName: string = paystackData.data.account_name;
+      if (flwResolveData.status === 'success' && flwResolveData.data?.account_name) {
+        const resolvedName: string = flwResolveData.data.account_name;
 
         // Compare resolved bank name vs user-entered name
         if (!namesMatch(resolvedName, accountName)) {
@@ -109,15 +112,15 @@ export async function POST(request: NextRequest) {
           );
         }
       } else {
-        // Paystack could not resolve — reject rather than skip the check
-        console.warn('[AccountSetup] Paystack resolve failed:', paystackData);
+        // Flutterwave could not resolve — reject rather than skip the check
+        console.warn('[AccountSetup] Flutterwave resolve failed:', flwResolveData);
         return NextResponse.json(
           { error: 'Could not verify account details. Please check your account number and bank, then try again.' },
           { status: 422 }
         );
       }
     } else {
-      console.warn('[AccountSetup] PAYSTACK_SECRET_KEY not set — skipping name match');
+      console.warn('[AccountSetup] FLUTTERWAVE_SECRET_KEY not set — skipping name match');
     }
 
     // ── Task 2: Create Flutterwave subaccount (best-effort) ──

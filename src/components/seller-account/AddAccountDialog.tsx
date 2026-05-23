@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
+import { supabase } from '@/lib/supabase';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { 
@@ -20,7 +21,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { SellerAccountService } from '@/lib/seller-account-service';
 import { AccountType, BankAccountDetails, MobileMoneyDetails } from '@/types/seller-account';
 import { useToast } from '@/hooks/use-toast';
-import { Building2, Smartphone } from 'lucide-react';
+import { Building2, Smartphone, Loader2, CheckCircle2 } from 'lucide-react';
 import nigerianBanks from '@/data/nigerian-banks.json';
 
 const accountFormSchema = z.object({
@@ -62,6 +63,7 @@ export function AddAccountDialog({ open, onOpenChange, onSuccess }: AddAccountDi
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [verifiedName, setVerifiedName] = useState("");
+  const [isResolving, setIsResolving] = useState(false);
   
   const form = useForm<AccountFormValues>({
     resolver: zodResolver(accountFormSchema),
@@ -70,6 +72,46 @@ export function AddAccountDialog({ open, onOpenChange, onSuccess }: AddAccountDi
       isPrimary: false,
     },
   });
+
+  const watchBankCode = form.watch('bankCode');
+  const watchAccountNumber = form.watch('accountNumber');
+
+  useEffect(() => {
+    const resolveAccount = async () => {
+      if (watchAccountNumber?.length === 10 && watchBankCode) {
+        setIsResolving(true);
+        setVerifiedName("");
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          const res = await fetch('/api/seller/resolve-account', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session?.access_token}`
+            },
+            body: JSON.stringify({ bankCode: watchBankCode, accountNumber: watchAccountNumber })
+          });
+          const data = await res.json();
+          if (res.ok && data.success) {
+            setVerifiedName(data.accountName);
+            form.setValue('accountName', data.accountName, { shouldValidate: true });
+          } else {
+            toast({ variant: "destructive", title: "Resolution Failed", description: data.error || "Could not verify account." });
+            form.setValue('accountName', '');
+          }
+        } catch (e) {
+          toast({ variant: "destructive", title: "Resolution Failed", description: "Network error." });
+        } finally {
+          setIsResolving(false);
+        }
+      } else {
+        setVerifiedName("");
+        form.setValue('accountName', '');
+      }
+    };
+
+    resolveAccount();
+  }, [watchBankCode, watchAccountNumber, form, toast]);
 
   const onSubmit = async (data: AccountFormValues) => {
     try {
@@ -85,7 +127,7 @@ export function AddAccountDialog({ open, onOpenChange, onSuccess }: AddAccountDi
       };
 
       await SellerAccountService.saveAccount(
-        'current-user-id', // This should come from auth context
+        (await supabase.auth.getUser()).data.user?.id || 'current-user-id', 
         'bank_account',
         accountDetails,
         data.isPrimary
@@ -157,11 +199,22 @@ export function AddAccountDialog({ open, onOpenChange, onSuccess }: AddAccountDi
 
             <div className="space-y-2">
               <label className="font-editorial text-[13px] font-medium ml-4 text-on-surface-variant" style={{ fontFamily: "Raleway, sans-serif" }}>Account Name</label>
-              <input 
-                className="w-full h-14 bg-surface-container-high border-[0.5px] border-outline-variant/20 rounded-full px-6 text-on-surface focus:border-primary-container focus:ring-0 transition-all font-body"
-                placeholder="Name on account"
-                {...form.register('accountName')}
-              />
+              <div className="relative">
+                <input 
+                  className={`w-full h-14 bg-surface-container-high border-[0.5px] border-outline-variant/20 rounded-full px-6 text-on-surface focus:border-primary-container focus:ring-0 transition-all font-body ${
+                    isResolving || verifiedName ? 'opacity-70 cursor-not-allowed' : ''
+                  }`}
+                  placeholder={isResolving ? "Resolving account..." : "Name on account"}
+                  readOnly={isResolving || !!verifiedName}
+                  {...form.register('accountName')}
+                />
+                {isResolving && (
+                  <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 animate-spin text-primary" />
+                )}
+                {verifiedName && !isResolving && (
+                  <CheckCircle2 className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-green-500" />
+                )}
+              </div>
             </div>
 
             <div className="flex items-start gap-3 px-4 py-2">
