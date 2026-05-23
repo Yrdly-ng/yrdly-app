@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Premium Email Templates for Yrdly
  * Modern, responsive, and brand-aligned designs.
  */
@@ -9,6 +9,7 @@ const BRAND_GREEN_LIGHT = '#82DB7E';
 const BRAND_DARK = 'var(--c-bg)';
 const BRAND_WHITE = '#FFFFFF';
 const BG_COLOR = '#F9FAFB';
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://yrdly-app.vercel.app';
 
 // Common CSS for all templates
 const commonStyles = `
@@ -19,22 +20,27 @@ const commonStyles = `
     line-height: 1.6;
   }
   .container { 
-    max-width: 600px; margin: 20px auto; background-color: ${BRAND_WHITE}; 
-    border-radius: 16px; overflow: hidden; 
-    box-shadow: 0 10px 30px rgba(16, 20, 24, 0.05); 
+    max-width: 600px; margin: 40px auto; background-color: ${BRAND_WHITE}; 
+    border-radius: 24px; overflow: hidden; 
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08); 
+    border: 1px solid #F3F4F6;
   }
   .header { 
-    background: linear-gradient(135deg, ${BRAND_GREEN} 0%, #2E7D32 100%); 
-    padding: 60px 40px; text-align: center; 
+    background-color: ${BRAND_WHITE}; 
+    padding: 48px 40px 24px; text-align: center; 
+    border-bottom: 1px solid #F3F4F6;
   }
   .logo { 
-    color: white; font-size: 32px; font-weight: 800; margin-bottom: 8px; 
-    letter-spacing: -0.5px;
+    margin-bottom: 12px; 
+  }
+  .logo img {
+    height: 48px;
+    width: auto;
   }
   .tagline { 
-    color: rgba(255,255,255,0.9); font-size: 16px; font-weight: 400; 
+    color: #6B7280; font-size: 15px; font-weight: 500; letter-spacing: 0.5px;
   }
-  .content { padding: 50px 40px; }
+  .content { padding: 48px 40px; }
   .title { 
     font-size: 28px; font-weight: 800; color: ${BRAND_DARK}; margin-bottom: 24px; 
     text-align: center; letter-spacing: -0.5px;
@@ -99,7 +105,7 @@ export const emailTemplates = {
       <body>
         <div class="container">
           <div class="header">
-            <div class="logo">🌿 ${APP_NAME}</div>
+            <div class="logo"><img src="${APP_URL}/yrdly-logo.png" alt="${APP_NAME} Logo" /></div>
             <div class="tagline">Your Local Community Network</div>
           </div>
           
@@ -179,7 +185,7 @@ export const emailTemplates = {
       <body>
         <div class="container">
           <div class="header">
-            <div class="logo">🔒 ${APP_NAME} Security</div>
+            <div class="logo"><img src="${APP_URL}/yrdly-logo.png" alt="${APP_NAME} Logo" /></div>
             <div class="tagline">Protecting Your Neighborhood Profile</div>
           </div>
           
@@ -269,7 +275,7 @@ export const emailTemplates = {
       <body>
         <div class="container">
           <div class="header">
-            <div class="logo">🎉 ${APP_NAME}</div>
+            <div class="logo"><img src="${APP_URL}/yrdly-logo.png" alt="${APP_NAME} Logo" /></div>
             <div class="tagline">Neighborhood Network Confirmed</div>
           </div>
           
@@ -391,7 +397,7 @@ export const emailTemplates = {
       <body>
         <div class="container">
           <div class="header">
-            <div class="logo">🎟️ ${APP_NAME} Events</div>
+            <div class="logo"><img src="${APP_URL}/yrdly-logo.png" alt="${APP_NAME} Logo" /></div>
             <div class="tagline">Your digital ticket is ready!</div>
           </div>
           
@@ -483,7 +489,7 @@ export const emailTemplates = {
       <body>
         <div class="container">
           <div class="header">
-            <div class="logo">🎉 ${APP_NAME} Events</div>
+            <div class="logo"><img src="${APP_URL}/yrdly-logo.png" alt="${APP_NAME} Logo" /></div>
             <div class="tagline">You have a new ticket sale!</div>
           </div>
           
@@ -579,7 +585,7 @@ export const emailTemplates = {
       <body>
         <div class="container">
           <div class="header">
-            <div class="logo">💳 ${APP_NAME} Marketplace</div>
+            <div class="logo"><img src="${APP_URL}/yrdly-logo.png" alt="${APP_NAME} Logo" /></div>
             <div class="tagline">Payment Confirmed</div>
           </div>
           
@@ -667,7 +673,7 @@ export const emailTemplates = {
       <body>
         <div class="container">
           <div class="header">
-            <div class="logo">📦 ${APP_NAME} Marketplace</div>
+            <div class="logo"><img src="${APP_URL}/yrdly-logo.png" alt="${APP_NAME} Logo" /></div>
             <div class="tagline">You have a new order!</div>
           </div>
           

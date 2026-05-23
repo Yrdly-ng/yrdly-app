@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
 
     // ── Handle charge.completed ───────────────────────────
     if (event === 'charge.completed' && data?.status === 'successful') {
-      const txRef = data.tx_ref;       // Our escrow transaction ID
+      const txRef = data.tx_ref;       // Our transaction ID
       const flwRef = data.flw_ref;     // Flutterwave's reference
       const amount = parseFloat(data.amount);
 
@@ -53,7 +53,22 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ status: 'ok' }); // Ack to prevent retries
       }
 
-      // ── Check current transaction state (idempotent) ────
+      // ── Handle Event Tickets Webhook ─────────────────────
+      if (txRef.startsWith('evt-')) {
+        console.log(`[Webhook] Processing event ticket transaction ${txRef}`);
+        try {
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://yrdly-app.vercel.app';
+          const verifyUrl = `${appUrl}/api/events/tickets/verify?tx_ref=${txRef}`;
+          // Calling the verify endpoint natively handles idempotency, capacity checks, and email sending
+          await fetch(verifyUrl, { method: 'GET' });
+          console.log(`[Webhook] Event ticket verify triggered successfully for ${txRef}`);
+        } catch (e) {
+          console.error('[Webhook] Failed to trigger verify route for event ticket', e);
+        }
+        return NextResponse.json({ status: 'ok' });
+      }
+
+      // ── Check current transaction state (idempotent) for Escrow ────
       const { data: txRow, error: fetchError } = await supabaseAdmin
         .from('escrow_transactions')
         .select('id, status, item_id, buyer_id, seller_id, total_amount')

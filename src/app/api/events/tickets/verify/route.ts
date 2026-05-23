@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${appUrl}/events?error=payment_failed`);
     }
 
-    const { tx_ref, flw_ref, amount, meta } = flwData.data;
+    const { tx_ref, flw_ref, amount, meta, id: flwId } = flwData.data;
     const { event_id, tier_id, buyer_id, attendee_name, attendee_email, attendee_phone } = meta;
 
     // ── Idempotency check — don't create duplicate tickets ───────────────────
@@ -66,6 +66,24 @@ export async function GET(request: NextRequest) {
 
     if (!tier || !event) {
       return NextResponse.redirect(`${appUrl}/events?error=event_not_found`);
+    }
+
+    // ── Check Capacity ───────────────────────────────────────────────────────
+    if (tier.capacity !== null && (tier.sold || 0) >= tier.capacity) {
+      console.warn(`[Verify] Tier ${tier_id} is sold out. Refunding transaction ${flwId}`);
+      try {
+        await fetch(`https://api.flutterwave.com/v3/transactions/${flwId}/refund`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ amount: amount })
+        });
+      } catch (e) {
+        console.error('[Verify] Failed to refund oversold ticket', e);
+      }
+      return NextResponse.redirect(`${appUrl}/events/${event_id}?error=sold_out_refunded`);
     }
 
     // ── Generate ticket code & QR ────────────────────────────────────────────

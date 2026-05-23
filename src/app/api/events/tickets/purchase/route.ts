@@ -209,7 +209,7 @@ export async function POST(request: NextRequest) {
     const txRef = `evt-${event_id.substring(0, 8)}-${Date.now()}`;
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://yrdly-app.vercel.app';
 
-    // Build payload — include split if organizer has a subaccount
+    // Build payload
     const flwPayload: any = {
       tx_ref: txRef,
       amount: tier.price,
@@ -236,15 +236,6 @@ export async function POST(request: NextRequest) {
         attendee_phone: attendee_phone || '',
       },
     };
-
-    // Add split payment if organizer has a subaccount
-    if (event.flutterwave_subaccount_id) {
-      const commissionPercent = Math.round(EVENT_CONSTANTS.COMMISSION_RATE * 100);
-      flwPayload.subaccounts = [{
-        id: event.flutterwave_subaccount_id,
-        transaction_split_ratio: 100 - commissionPercent,
-      }];
-    }
 
     // Call Flutterwave API directly
     const flwRes = await fetch('https://api.flutterwave.com/v3/payments', {

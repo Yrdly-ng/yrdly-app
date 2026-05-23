@@ -176,9 +176,6 @@ export class EventEscrowService {
     }
   }
 
-  /**
-   * Process bulk refunds when an event is cancelled
-   */
   static async processCancellationRefunds(eventId: string): Promise<{
     refunded: number;
     failed: number;
@@ -196,13 +193,40 @@ export class EventEscrowService {
 
     for (const ticket of tickets) {
       try {
-        // Mark as refunded in DB (actual Flutterwave refund would be via their refund API)
+        if (ticket.amount_paid > 0 && ticket.flutterwave_tx_ref) {
+          // 1. Get the transaction ID from Flutterwave using tx_ref
+          const verifyRes = await fetch(
+            `https://api.flutterwave.com/v3/transactions/verify_by_reference?tx_ref=${ticket.flutterwave_tx_ref}`,
+            { headers: { Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}` } }
+          );
+          const verifyData = await verifyRes.json();
+          
+          if (verifyData.status === 'success' && verifyData.data?.id) {
+            // 2. Issue the refund
+            const refundRes = await fetch(`https://api.flutterwave.com/v3/transactions/${verifyData.data.id}/refund`, {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ amount: ticket.amount_paid })
+            });
+            const refundData = await refundRes.json();
+            
+            if (refundData.status !== 'success') {
+              throw new Error(`Refund failed: ${refundData.message}`);
+            }
+          }
+        }
+
+        // Mark as refunded in DB
         await adminSupabase
           .from('tickets')
           .update({ status: 'REFUNDED' })
           .eq('id', ticket.id);
         refunded++;
-      } catch {
+      } catch (err) {
+        console.error(`[Escrow] Failed to refund ticket ${ticket.id}`, err);
         failed++;
       }
     }
