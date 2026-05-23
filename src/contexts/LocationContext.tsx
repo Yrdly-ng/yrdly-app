@@ -105,23 +105,28 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
   let filterState: string | null = null;
   let filterLga: string | null = null;
 
-  switch (scope) {
-    case "lga":
-      filterState = hasLocation ? userState : null;
-      filterLga = hasLocation ? userLga : null;
-      break;
-    case "state":
-      filterState = hasLocation ? userState : null;
-      filterLga = null;
-      break;
-    case "other_state":
-      filterState = browseState;
-      filterLga = null;
-      break;
-    case "all":
-      filterState = null;
-      filterLga = null;
-      break;
+  if (!hasLocation) {
+    filterState = null;
+    filterLga = null;
+  } else {
+    switch (scope) {
+      case "lga":
+        filterState = userState;
+        filterLga = userLga;
+        break;
+      case "state":
+        filterState = userState;
+        filterLga = null;
+        break;
+      case "other_state":
+        filterState = browseState;
+        filterLga = null;
+        break;
+      case "all":
+        filterState = null;
+        filterLga = null;
+        break;
+    }
   }
 
   return (

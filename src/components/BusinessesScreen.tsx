@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useMemo } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,6 +12,8 @@ import { CreateBusinessDialog } from "@/components/CreateBusinessDialog";
 import { useRouter } from "next/navigation";
 import { usePosts } from "@/hooks/use-posts";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "@/contexts/LocationContext";
+import { LocationChip } from "@/components/LocationChip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -232,14 +234,24 @@ export function BusinessesScreen({ className }: BusinessesScreenProps) {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const { filterState, filterLga } = useLocation();
 
   useEffect(() => {
     const fetchBusinesses = async () => {
       try {
-        const { data, error } = await supabase
+        let query = supabase
           .from("businesses")
           .select("*")
           .order("created_at", { ascending: false });
+          
+        if (filterState) {
+          query = query.eq('state', filterState);
+        }
+        if (filterLga) {
+          query = query.eq('lga', filterLga);
+        }
+        
+        const { data, error } = await query;
         if (error) { console.error(error); return; }
         setBusinesses((data as Business[]) || []);
         setLoading(false);
@@ -250,10 +262,22 @@ export function BusinessesScreen({ className }: BusinessesScreenProps) {
     };
     fetchBusinesses();
 
+    let filterString: string | undefined = undefined;
+    if (filterLga) {
+      filterString = `lga=eq.${filterLga}`;
+    } else if (filterState) {
+      filterString = `state=eq.${filterState}`;
+    }
+
     const ch = supabase
       .channel("businesses-all")
-      .on("postgres_changes", { event: "*", schema: "public", table: "businesses" }, (payload) => {
-        if (payload.eventType === "INSERT") setBusinesses((p) => [payload.new as Business, ...p]);
+      .on("postgres_changes", { event: "*", schema: "public", table: "businesses", filter: filterString }, (payload) => {
+        if (payload.eventType === "INSERT") {
+          const newBusiness = payload.new as Business;
+          if (filterState && newBusiness.state && newBusiness.state !== filterState) return;
+          if (filterLga && newBusiness.lga && newBusiness.lga !== filterLga) return;
+          setBusinesses((p) => [newBusiness, ...p]);
+        }
         else if (payload.eventType === "UPDATE") {
           const u = payload.new as Business;
           setBusinesses((p) => p.map((b) => (b.id === u.id ? u : b)));
@@ -263,7 +287,7 @@ export function BusinessesScreen({ className }: BusinessesScreenProps) {
       })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, []);
+  }, [filterState, filterLga]);
 
   // Derive categories from real data
   const categoryStats = useMemo(() => {
@@ -307,6 +331,11 @@ export function BusinessesScreen({ className }: BusinessesScreenProps) {
             />
             <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xl" style={{ color: GREEN }}>⚙</span>
           </div>
+        </div>
+
+        {/* Location Filter */}
+        <div className="flex justify-start">
+          <LocationChip />
         </div>
 
         {/* Featured Hero Card */}
