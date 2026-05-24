@@ -141,7 +141,6 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
   const { user, profile, signOut, updateProfile } = useAuth();
 
   const [privacy, setPrivacy] = useState({
-    privateAccount: profile?.shareLocation ?? false,
     locationVisible: profile?.shareLocation ?? false,
     onlineStatus: true,
   });
@@ -281,18 +280,7 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
           />
         </div>
 
-        {/* ── Privacy & Security ── */}
-        <div className="space-y-3">
-          <SectionLabel>Privacy &amp; Security</SectionLabel>
-          <ToggleRow
-            icon={Lock}
-            label="Private Account"
-            checked={privacy.privateAccount}
-            onChange={(v) =>
-              setPrivacy((prev) => ({ ...prev, privateAccount: v }))
-            }
-          />
-        </div>
+
 
         {/* ── Appearance ── */}
         <div className="space-y-3">
@@ -311,11 +299,6 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
           <NavRow
             icon={Bell}
             label="Push Notifications"
-            onClick={() => router.push("/settings/notifications")}
-          />
-          <NavRow
-            icon={Mail}
-            label="Email Preferences"
             onClick={() => router.push("/settings/notifications")}
           />
         </div>
