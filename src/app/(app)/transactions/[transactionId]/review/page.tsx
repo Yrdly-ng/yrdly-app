@@ -90,7 +90,7 @@ export default function ReviewPage() {
       </div>
 
       {/* Top App Bar */}
-      <header className="fixed top-0 w-full z-50 bg-[#15181D]/80 backdrop-blur-xl flex items-center px-6 h-16 w-full">
+      <header className="fixed top-0 w-full z-50 bg-[var(--c-bg)]/80 backdrop-blur-xl flex items-center px-6 h-16 w-full">
         <div className="flex items-center gap-4 w-full">
           <button onClick={() => router.back()} className="active:scale-95 transition-transform hover:opacity-80 transition-opacity">
             <ArrowLeft className="text-[#388E3C] w-6 h-6" />

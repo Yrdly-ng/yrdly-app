@@ -14,7 +14,7 @@ import { ErrorMessageFormatter } from '@/lib/error-messages';
 
 // Design tokens from Figma
 const colors = {
-  background: '#F2F2F2',
+  background: 'var(--c-bg)',
   blob: '#A154F2',
   overlay: 'rgba(255, 255, 255, 0.05)',
   border: '#388E3C',

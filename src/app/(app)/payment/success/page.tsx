@@ -32,7 +32,7 @@ export default function PayoutSuccessPage() {
   return (
     <div className="bg-background text-on-background font-body antialiased min-h-dvh flex flex-col items-center">
       {/* Top App Bar */}
-      <header className="fixed top-0 w-full z-50 bg-[#15181D]/80 backdrop-blur-xl flex items-center px-6 h-16 w-full">
+      <header className="fixed top-0 w-full z-50 bg-[var(--c-bg)]/80 backdrop-blur-xl flex items-center px-6 h-16 w-full">
         <div className="flex items-center gap-4">
           <button onClick={() => router.push("/marketplace")} className="active:scale-95 transition-transform hover:opacity-80">
             <ArrowLeft className="w-6 h-6 text-[#388E3C]" />

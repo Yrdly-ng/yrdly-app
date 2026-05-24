@@ -345,7 +345,7 @@ export default function OnboardingProfilePage() {
                       <div className="absolute inset-0 bg-[#388E3C] opacity-0 group-hover/avatar:opacity-10 transition-opacity" />
                       <User className="w-12 h-12 text-[#388E3C]/40 group-hover/avatar:scale-110 transition-transform duration-500" />
                     </div>
-                    <div className="absolute -bottom-2 -right-2 w-9 h-9 rounded-full bg-[#388E3C] border-[4px] border-[#1e2126] flex items-center justify-center shadow-lg animate-pulse">
+                    <div className="absolute -bottom-2 -right-2 w-9 h-9 rounded-full bg-[#388E3C] border-[4px] border-[var(--c-card)] flex items-center justify-center shadow-lg animate-pulse">
                       <CheckCircle2 className="w-4 h-4 text-white" />
                     </div>
                   </div>

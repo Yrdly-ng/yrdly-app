@@ -247,7 +247,7 @@ export default function EventDetailPage() {
         )}
 
         {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#15181D] via-[#15181D]/10 to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[var(--c-bg)] via-[var(--c-bg)]/10 to-transparent pointer-events-none" />
 
         {/* Top nav */}
         <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-10">

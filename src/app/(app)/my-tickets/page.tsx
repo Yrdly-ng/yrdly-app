@@ -122,7 +122,7 @@ export default function MyTicketsPage() {
                 {event?.cover_image_url && (
                   <div className="relative w-full h-32 bg-background">
                     <Image src={event.cover_image_url} alt={event.title || ""} fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#1E2126]/80 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[var(--c-card)]/80 to-transparent" />
                   </div>
                 )}
                 <div className="p-4 flex items-start justify-between gap-3">

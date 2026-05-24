@@ -62,7 +62,7 @@ export default function DisputePage() {
   return (
     <div className="bg-background text-on-surface font-body min-h-dvh pb-10">
       {/* Top Navigation Anchor */}
-      <header className="fixed top-0 w-full z-50 bg-[#15181D]/80 backdrop-blur-xl flex items-center px-6 h-16 w-full">
+      <header className="fixed top-0 w-full z-50 bg-[var(--c-bg)]/80 backdrop-blur-xl flex items-center px-6 h-16 w-full">
         <div className="flex items-center gap-4 w-full">
           <button onClick={() => router.back()} className="active:scale-95 transition-transform hover:opacity-80 transition-opacity">
             <ArrowLeft className="text-[#388E3C] w-6 h-6" />

@@ -259,7 +259,7 @@ function NotificationCard({
           {(notification.from_user_avatar || notification.from_user_name) && (
             <div
               className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full flex items-center justify-center"
-              style={{ background: "var(--c-card)", border: "1px solid #15181D" }}
+              style={{ background: "var(--c-card)", border: "1px solid var(--c-bg)" }}
             >
               <NotificationIcon type={notification.type} />
             </div>

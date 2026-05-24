@@ -46,7 +46,7 @@ export default function ConfirmReceiptPage() {
       <div className="fixed -top-24 -right-24 w-96 h-96 bg-secondary/5 rounded-full blur-[120px] pointer-events-none"></div>
 
       {/* Top Navigation Anchor */}
-      <header className="fixed top-0 w-full z-50 bg-[#15181D]/80 backdrop-blur-xl flex items-center px-6 h-16 w-full">
+      <header className="fixed top-0 w-full z-50 bg-[var(--c-bg)]/80 backdrop-blur-xl flex items-center px-6 h-16 w-full">
         <div className="flex items-center gap-4 w-full max-w-2xl mx-auto">
           <button onClick={() => router.back()} className="active:scale-95 transition-transform hover:opacity-80 flex items-center justify-center">
             <ArrowLeft className="w-6 h-6 text-primary" />

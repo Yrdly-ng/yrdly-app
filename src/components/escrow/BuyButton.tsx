@@ -130,7 +130,7 @@ export function BuyButton({
           <div className="relative w-full max-w-md bg-surface-dim rounded-t-lg md:rounded-lg overflow-hidden shadow-2xl flex flex-col max-h-[92dvh]">
             
             {/* Header */}
-            <header className="bg-[#15181D]/80 backdrop-blur-xl flex items-center px-6 h-16 w-full flex-shrink-0 z-10 border-b border-surface-container-low">
+            <header className="bg-[var(--c-bg)]/80 backdrop-blur-xl flex items-center px-6 h-16 w-full flex-shrink-0 z-10 border-b border-surface-container-low">
               <div className="flex items-center gap-4 w-full">
                 <button 
                   onClick={() => setOpen(false)}

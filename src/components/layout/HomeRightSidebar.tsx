@@ -36,7 +36,7 @@ function InterestedBubbles({ count, colors }: { count: number; colors: string[] 
     <div className="flex items-center gap-1.5">
       <div className="flex -space-x-1">
         {colors.slice(0, 4).map((c, i) => (
-          <div key={i} className="w-4 h-4 rounded-full border border-[#1E2126]" style={{ background: c }} />
+          <div key={i} className="w-4 h-4 rounded-full border border-[var(--c-card)]" style={{ background: c }} />
         ))}
       </div>
       {count > 0 && (
@@ -191,8 +191,8 @@ export function HomeRightSidebar() {
               </p>
             )}
           </div>
-          <div className="border-t border-[#F2F2F2]">
-            <Link href="/map" className="flex items-center justify-between px-4 py-2.5 hover:bg-[#F2F2F2] transition-colors">
+          <div className="border-t border-[var(--c-bg)]">
+            <Link href="/map" className="flex items-center justify-between px-4 py-2.5 hover:bg-[var(--c-bg)] transition-colors">
               <span className="text-[0.6875rem] font-semibold text-[#388E3C]" style={{ fontFamily: 'Inter, sans-serif' }}>
                 See map
               </span>

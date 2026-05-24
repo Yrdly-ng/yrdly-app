@@ -151,7 +151,7 @@ export function MainLayout({ children }: MainLayoutProps) {
 
   return (
     <>
-      <div className="min-h-[100dvh] bg-[#F2F2F2]" role="application">
+      <div className="min-h-[100dvh] bg-[var(--c-bg)]" role="application">
         {/* ── Top Header ── */}
         {!isChatPage && !isSubPage && (
           <Suspense fallback={null}>
@@ -173,7 +173,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                   <button
                     type="button"
                     onClick={() => setShowSearch(true)}
-                    className="w-full max-w-md h-10 rounded-full bg-[#F2F2F2] border border-[#E0E0E0] flex items-center gap-3 px-4 text-left hover:border-[#388E3C] transition-colors"
+                    className="w-full max-w-md h-10 rounded-full bg-[var(--c-bg)] border border-[#E0E0E0] flex items-center gap-3 px-4 text-left hover:border-[#388E3C] transition-colors"
                   >
                     <Search className="h-5 w-5 flex-shrink-0 text-[#767676]" />
                     <span
@@ -189,19 +189,19 @@ export function MainLayout({ children }: MainLayoutProps) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="md:hidden text-[#555555] hover:bg-[#F2F2F2] rounded-full"
+                    className="md:hidden text-[#555555] hover:bg-[var(--c-bg)] rounded-full"
                     onClick={() => setShowSearch(true)}
                   >
                     <Search className="w-5 h-5" />
                   </Button>
 
                   <Link href="/map">
-                    <Button variant="ghost" size="icon" className="text-[#555555] hover:bg-[#F2F2F2] rounded-full">
+                    <Button variant="ghost" size="icon" className="text-[#555555] hover:bg-[var(--c-bg)] rounded-full">
                       <MapPin className="w-5 h-5" />
                     </Button>
                   </Link>
                   <Link href="/messages">
-                    <Button variant="ghost" size="icon" className="relative text-[#555555] hover:bg-[#F2F2F2] rounded-full">
+                    <Button variant="ghost" size="icon" className="relative text-[#555555] hover:bg-[var(--c-bg)] rounded-full">
                       <MessageCircle className="w-5 h-5" />
                       {unreadMessagesCount > 0 && (
                         <span
@@ -216,7 +216,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="relative text-[#555555] hover:bg-[#F2F2F2] rounded-full transition-colors"
+                    className="relative text-[#555555] hover:bg-[var(--c-bg)] rounded-full transition-colors"
                     onClick={() => setShowNotifications(!showNotifications)}
                   >
                     <Bell className="w-5 h-5" />
@@ -269,7 +269,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                     <div
                       className={cn(
                         "flex items-center gap-3 px-3 py-2 rounded-xl transition-colors",
-                        isActive ? "bg-[#EBF5EB]" : "hover:bg-[#F2F2F2]"
+                        isActive ? "bg-[#EBF5EB]" : "hover:bg-[var(--c-bg)]"
                       )}
                     >
                       <Icon

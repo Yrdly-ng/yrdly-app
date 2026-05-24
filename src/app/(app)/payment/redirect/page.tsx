@@ -23,7 +23,7 @@ export default function PaymentRedirectPage() {
   return (
     <div className="bg-surface-container-low text-on-surface font-body min-h-dvh selection:bg-primary selection:text-on-primary">
       {/* Top AppBar */}
-      <header className="fixed top-0 w-full z-50 bg-[#15181D]/80 backdrop-blur-xl flex items-center px-6 h-16">
+      <header className="fixed top-0 w-full z-50 bg-[var(--c-bg)]/80 backdrop-blur-xl flex items-center px-6 h-16">
         <div className="flex items-center gap-4 w-full max-w-lg mx-auto justify-center">
           <span className="text-[#259907] font-brand text-[1.75rem]">Yrdly</span>
         </div>

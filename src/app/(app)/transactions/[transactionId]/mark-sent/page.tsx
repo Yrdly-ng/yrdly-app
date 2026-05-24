@@ -54,7 +54,7 @@ export default function MarkAsSentPage() {
   return (
     <div className="bg-background text-on-background font-body antialiased min-h-dvh pb-10">
       {/* TopAppBar Component */}
-      <header className="fixed top-0 w-full z-50 bg-[#15181D]/80 backdrop-blur-xl flex items-center px-6 h-16 w-full">
+      <header className="fixed top-0 w-full z-50 bg-[var(--c-bg)]/80 backdrop-blur-xl flex items-center px-6 h-16 w-full">
         <div className="flex items-center gap-4 w-full">
           <button onClick={() => router.back()} className="active:scale-95 transition-transform">
             <ArrowLeft className="w-6 h-6 text-on-surface" />
