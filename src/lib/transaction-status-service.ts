@@ -345,10 +345,13 @@ export class TransactionStatusService {
    */
   static async getTransactionDetails(transactionId: string) {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
       const response = await fetch(`/api/transactions/${transactionId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
         },
       });
 
