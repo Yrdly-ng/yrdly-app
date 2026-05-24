@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
@@ -8,11 +8,16 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/use-supabase-auth';
 
-type FilterTab = 'all' | 'events' | 'businesses' | 'friends';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter } from '@/components/ui/drawer';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import Supercluster from 'supercluster';
+
+type FilterTab = 'all' | 'events' | 'businesses' | 'marketplace' | 'friends';
 
 type MarkerData = {
   id: string;
-  type: 'event' | 'business' | 'friend';
+  type: 'event' | 'business' | 'friend' | 'marketplace';
   position: { lat: number; lng: number };
   title: string;
   address: string;
@@ -25,6 +30,14 @@ type MarkerData = {
   image?: string;
   category?: string;
   distance?: string;
+  price?: number;
+};
+
+// Helper for privacy jitter
+const applyJitter = (lat: number, lng: number, offset = 0.002) => {
+  const jitterLat = lat + (Math.random() - 0.5) * offset;
+  const jitterLng = lng + (Math.random() - 0.5) * offset;
+  return { lat: jitterLat, lng: jitterLng };
 };
 
 const DARK_MAP_STYLES = [
@@ -76,11 +89,13 @@ export function MapScreen({ className }: MapScreenProps) {
   const [markers, setMarkers]           = useState<MarkerData[]>([]);
   const [loading, setLoading]           = useState(true);
   const [selected, setSelected]         = useState<MarkerData | null>(null);
+  const [drawerOpen, setDrawerOpen]     = useState(false);
   const [search, setSearch]             = useState('');
   const [activeTab, setActiveTab]       = useState<FilterTab>('all');
   const [nearbyEvents, setNearbyEvents] = useState(0);
   const [nearbyBiz, setNearbyBiz]       = useState(0);
   const [nearbyFriends, setNearbyFriends] = useState(0);
+  const [nearbyMarket, setNearbyMarket]   = useState(0);
   const [userCoords, setUserCoords]     = useState<{ lat: number; lng: number } | null>(null);
 
   // Get device location on mount
@@ -108,14 +123,16 @@ export function MapScreen({ className }: MapScreenProps) {
 
       const userState = profile?.location?.state;
 
-      let evtsQuery = supabase.from('posts').select('*').eq('category', 'Event').not('event_location', 'is', null);
-      if (userState) evtsQuery = evtsQuery.eq('state', userState);
+      // 1. Fetch Events
+      let evtsQuery = supabase.from('events').select('*').not('location', 'is', null);
+      // Assuming events table doesn't have 'state' or we filter by proximity later. For now fetch all.
       const { data: evts } = await evtsQuery;
-      (evts || []).forEach(p => {
-        const loc = extract(typeof p.event_location === 'string' ? null : p.event_location);
-        if (loc) found.push({ id: p.id, type: 'event', position: loc, title: p.title || p.text, address: loc.address || 'Location TBD', description: p.text, date: p.event_date, time: p.event_time, attendees: p.attendees?.length || 0, image: p.image_urls?.[0] });
+      (evts || []).forEach(e => {
+        const loc = extract(e.location);
+        if (loc) found.push({ id: e.id, type: 'event', position: loc, title: e.title, address: loc.address || 'Location TBD', description: e.description, date: e.start_time, attendees: e.attendee_count || 0, image: e.image_url });
       });
 
+      // 2. Fetch Businesses
       let bizsQuery = supabase.from('businesses').select('*').not('location', 'is', null);
       if (userState) bizsQuery = bizsQuery.eq('state', userState);
       const { data: bizs } = await bizsQuery;
@@ -124,18 +141,29 @@ export function MapScreen({ className }: MapScreenProps) {
         if (loc) found.push({ id: b.id, type: 'business', position: loc, title: b.name, address: loc.address || 'Lagos, Nigeria', description: b.description, category: b.category, image: b.image_urls?.[0] });
       });
 
+      // 3. Fetch Friends
       if (user?.id) {
         const { data: frds } = await supabase.rpc('get_friends_locations', { user_id: user.id });
         (frds || []).forEach((f: any) => {
           const loc = extract(f.location);
-          if (loc) found.push({ id: f.friend_id, type: 'friend', position: loc, title: f.friend_name, address: loc.address || 'Nearby', avatar_url: f.friend_avatar_url, last_seen: f.last_seen });
+          if (loc) found.push({ id: f.friend_id, type: 'friend', position: applyJitter(loc.lat, loc.lng), title: f.friend_name, address: loc.address || 'Nearby', avatar_url: f.friend_avatar_url, last_seen: f.last_seen });
         });
       }
+
+      // 4. Fetch Marketplace Items
+      let postsQuery = supabase.from('posts').select('*').in('category', ['For Sale', 'General']).eq('is_sold', false).not('event_location', 'is', null);
+      if (userState) postsQuery = postsQuery.eq('state', userState);
+      const { data: items } = await postsQuery;
+      (items || []).forEach(p => {
+        const loc = extract(typeof p.event_location === 'string' ? null : p.event_location);
+        if (loc) found.push({ id: p.id, type: 'marketplace', position: applyJitter(loc.lat, loc.lng), title: p.title || p.text, address: loc.address || 'Nearby', description: p.text, price: p.price, image: p.image_urls?.[0] });
+      });
 
       setMarkers(found);
       setNearbyEvents(found.filter(m => m.type === 'event').length);
       setNearbyBiz(found.filter(m => m.type === 'business').length);
       setNearbyFriends(found.filter(m => m.type === 'friend').length);
+      setNearbyMarket(found.filter(m => m.type === 'marketplace').length);
       setLoading(false);
     };
     load();
@@ -148,10 +176,10 @@ export function MapScreen({ className }: MapScreenProps) {
   });
 
   const TABS: { key: FilterTab; label: string }[] = [
-    { key: 'all', label: 'All' }, { key: 'events', label: 'Events' }, { key: 'businesses', label: 'Businesses' }, { key: 'friends', label: 'Friends' },
+    { key: 'all', label: 'All' }, { key: 'events', label: 'Events' }, { key: 'businesses', label: 'Businesses' }, { key: 'marketplace', label: 'Market' }, { key: 'friends', label: 'Friends' },
   ];
 
-  const pinColor = (t: MarkerData['type']) => t === 'business' ? '#006ec9' : t === 'event' ? '#93000a' : '#4da24e';
+  const pinColor = (t: MarkerData['type']) => t === 'business' ? '#006ec9' : t === 'event' ? '#93000a' : t === 'marketplace' ? '#E6A100' : '#4da24e';
 
   return (
     <div className={`relative w-full overflow-hidden ${className ?? ''}`} style={{ height: '100dvh', background: 'var(--c-bg)' }}>
@@ -169,7 +197,7 @@ export function MapScreen({ className }: MapScreenProps) {
           styles={DARK_MAP_STYLES}
         >
           {filtered.map(m => (
-            <AdvancedMarker key={m.id} position={m.position} onClick={() => setSelected(m)}>
+            <AdvancedMarker key={m.id} position={m.position} onClick={() => { setSelected(m); setDrawerOpen(true); }}>
               <div className="flex flex-col items-center cursor-pointer">
                 <div
                   className="w-10 h-10 rounded-full flex items-center justify-center shadow-lg border-2"
@@ -177,6 +205,11 @@ export function MapScreen({ className }: MapScreenProps) {
                 >
                   {m.type === 'event'    && <Calendar className="w-5 h-5 text-foreground" />}
                   {m.type === 'business' && <Briefcase className="w-5 h-5 text-foreground" />}
+                  {m.type === 'marketplace' && (
+                    <span className="text-foreground font-bold text-[0.6rem] px-1">
+                      {m.price === 0 ? 'Free' : `₦${(m.price || 0) / 1000}k`}
+                    </span>
+                  )}
                   {m.type === 'friend'   && (
                     m.avatar_url
                       ? <div className="relative w-full h-full rounded-full overflow-hidden"><Image src={m.avatar_url} alt="" fill className="object-cover" sizes="40px" /></div>
@@ -189,33 +222,80 @@ export function MapScreen({ className }: MapScreenProps) {
               </div>
             </AdvancedMarker>
           ))}
-
-          {selected && (
-            <InfoWindow position={selected.position} onCloseClick={() => setSelected(null)}>
-              <div className="rounded-[11px] p-3 max-w-[220px]" style={{ background: 'var(--c-card)', border: '0.5px solid rgba(56,142,60,0.3)' }}>
-                <span className="text-[0.5625rem] font-bold uppercase tracking-widest" style={{ color: selected.type === 'event' ? '#ffb4ab' : selected.type === 'business' ? '#a5c8ff' : '#82db7e' }}>
-                  {selected.type === 'event' ? 'Live Event' : selected.type === 'business' ? 'Business' : 'Friend'}
-                </span>
-                <p className="text-sm font-bold mt-1 text-foreground" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>{selected.title}</p>
-                <p className="text-[0.6875rem] mt-1" style={{ color: 'var(--c-text-muted)' }}>{selected.address}</p>
-                {selected.attendees !== undefined && selected.type === 'event' && (
-                  <p className="text-[0.6875rem]" style={{ color: 'var(--c-text-muted)' }}>{selected.attendees} attending</p>
-                )}
-                {selected.last_seen && (
-                  <p className="text-[0.6875rem]" style={{ color: 'var(--c-text-muted)' }}>Last seen: {new Date(selected.last_seen).toLocaleTimeString()}</p>
-                )}
-                <button
-                  onClick={() => { setSelected(null); selected.type === 'event' ? router.push(`/posts/${selected.id}`) : selected.type === 'business' ? router.push(`/businesses/${selected.id}`) : router.push(`/profile/${selected.id}`); }}
-                  className="mt-3 w-full h-8 rounded-full text-xs font-bold text-foreground flex items-center justify-center gap-1"
-                  style={{ background: '#388E3C' }}
-                >
-                  <Navigation className="w-3 h-3" /> View Details
-                </button>
-              </div>
-            </InfoWindow>
-          )}
         </Map>
       </APIProvider>
+
+      {/* ── Rich Map Pin Drawer ── */}
+      <Drawer open={drawerOpen} onOpenChange={(open) => { setDrawerOpen(open); if (!open) setTimeout(() => setSelected(null), 300); }}>
+        <DrawerContent>
+          <div className="px-6 py-4 pb-8 space-y-4">
+            {selected && (
+              <>
+                <div className="flex items-start gap-4">
+                  {selected.image ? (
+                    <div className="w-20 h-20 rounded-[11px] overflow-hidden flex-shrink-0 relative">
+                      <Image src={selected.image} alt="" fill className="object-cover" />
+                    </div>
+                  ) : selected.avatar_url ? (
+                    <div className="w-20 h-20 rounded-full overflow-hidden flex-shrink-0 relative border-2 border-primary">
+                      <Image src={selected.avatar_url} alt="" fill className="object-cover" />
+                    </div>
+                  ) : null}
+                  
+                  <div className="flex-1">
+                    <span className="text-[0.625rem] font-bold uppercase tracking-widest" style={{ color: selected.type === 'event' ? '#ffb4ab' : selected.type === 'business' ? '#a5c8ff' : selected.type === 'marketplace' ? '#E6A100' : '#82db7e' }}>
+                      {selected.type === 'event' ? 'Live Event' : selected.type === 'business' ? 'Local Business' : selected.type === 'marketplace' ? 'Marketplace' : 'Friend'}
+                    </span>
+                    <DrawerTitle className="text-xl font-bold mt-1 text-foreground" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
+                      {selected.title}
+                    </DrawerTitle>
+                    <DrawerDescription className="mt-1 flex items-center gap-1.5 text-sm">
+                      {selected.address}
+                    </DrawerDescription>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  {selected.price !== undefined && (
+                    <p className="text-xl font-bold text-[#82db7e]">
+                      {selected.price === 0 ? 'Free' : `₦${(selected.price / 1000).toLocaleString()}k`}
+                    </p>
+                  )}
+                  {selected.description && (
+                    <p className="text-sm text-muted-foreground line-clamp-2">
+                      {selected.description}
+                    </p>
+                  )}
+                  {selected.attendees !== undefined && selected.type === 'event' && (
+                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                      <Users className="w-4 h-4" /> {selected.attendees} attending
+                    </div>
+                  )}
+                  {selected.date && (
+                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                      <Calendar className="w-4 h-4" /> {new Date(selected.date).toLocaleDateString()}
+                    </div>
+                  )}
+                </div>
+
+                <Button 
+                  className="w-full h-12 rounded-full font-bold text-base mt-2" 
+                  style={{ background: '#388E3C', color: 'white' }}
+                  onClick={() => { 
+                    setDrawerOpen(false); 
+                    selected.type === 'event' ? router.push(`/events/${selected.id}`) : 
+                    selected.type === 'business' ? router.push(`/businesses/${selected.id}`) : 
+                    selected.type === 'marketplace' ? router.push(`/marketplace/${selected.id}`) : 
+                    router.push(`/profile/${selected.id}`); 
+                  }}
+                >
+                  View Details
+                </Button>
+              </>
+            )}
+          </div>
+        </DrawerContent>
+      </Drawer>
 
       {/* ── Header blur bar ── */}
       <header
