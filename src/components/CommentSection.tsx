@@ -71,7 +71,7 @@ function GifIcon() {
             className="w-6 h-6 flex items-center justify-center rounded-sm"
             style={{ border: `1.3px solid ${GREEN}` }}
         >
-            <span className="text-[10px] font-bold leading-none" style={{ color: GREEN, fontFamily: 'Rajdhani, sans-serif' }}>
+            <span className="text-[0.625rem] font-bold leading-none" style={{ color: GREEN, fontFamily: 'Rajdhani, sans-serif' }}>
                 GIF
             </span>
         </div>
@@ -305,7 +305,7 @@ export function CommentSection({
                 <div className="flex-1 min-w-0 pb-3">
                     {/* Comment bubble */}
                     <div className="rounded-[8px] px-3 py-2.5 mb-1" style={{ background: BG }}>
-                        <p className="text-[12px] font-semibold text-foreground leading-tight mb-0.5" style={{ fontFamily: FONT_RALEWAY }}>
+                        <p className="text-[0.75rem] font-semibold text-foreground leading-tight mb-0.5" style={{ fontFamily: FONT_RALEWAY }}>
                             {comment.authorName}
                         </p>
                         {editingComment === comment.id ? (
@@ -315,11 +315,11 @@ export function CommentSection({
                                 try { await supabase.from('comments').update({ text: editText.trim() }).eq('id', comment.id); setEditingComment(null); } catch { }
                             }} className="flex gap-2 mt-1">
                                 <input value={editText} onChange={e => setEditText(e.target.value)} className="flex-1 bg-transparent text-foreground text-base outline-none border-b border-white/30" style={{ fontFamily: FONT_RALEWAY }} />
-                                <button type="submit" className="text-[10px] text-[#388E3C]">Save</button>
-                                <button type="button" onClick={() => setEditingComment(null)} className="text-[10px] text-muted-foreground">Cancel</button>
+                                <button type="submit" className="text-[0.625rem] text-[#388E3C]">Save</button>
+                                <button type="button" onClick={() => setEditingComment(null)} className="text-[0.625rem] text-muted-foreground">Cancel</button>
                             </form>
                         ) : (
-                            <p className="text-[12px] font-normal text-foreground leading-[14px]" style={{ fontFamily: FONT_RALEWAY }}>{comment.text}</p>
+                            <p className="text-[0.75rem] font-normal text-foreground leading-[14px]" style={{ fontFamily: FONT_RALEWAY }}>{comment.text}</p>
                         )}
                     </div>
 
@@ -335,7 +335,7 @@ export function CommentSection({
                                 <Heart className="w-[14px] h-[14px]" style={{ fill: isLiked ? '#ED1111' : 'transparent', stroke: isLiked ? '#FFFFFF' : '#888' }} />
                             </button>
                             {likeCount > 0 && (
-                                <span className="text-[12px] italic font-light text-muted-foreground" style={{ fontFamily: FONT_RALEWAY }}>{fmt(likeCount)}</span>
+                                <span className="text-[0.75rem] italic font-light text-muted-foreground" style={{ fontFamily: FONT_RALEWAY }}>{fmt(likeCount)}</span>
                             )}
                         </div>
 
@@ -352,7 +352,7 @@ export function CommentSection({
                                 <MessageCircle className="w-[14px] h-[14px]" style={{ fill: 'transparent', stroke: '#888' }} />
                             </button>
                             {replyCount > 0 && (
-                                <span className="text-[12px] font-light text-muted-foreground" style={{ fontFamily: FONT_RALEWAY }}>{replyCount}</span>
+                                <span className="text-[0.75rem] font-light text-muted-foreground" style={{ fontFamily: FONT_RALEWAY }}>{replyCount}</span>
                             )}
                         </div>
 
@@ -397,7 +397,7 @@ export function CommentSection({
                             className="flex items-center gap-1.5 mt-1 ml-1"
                         >
                             <Pointer className="w-4 h-4" />
-                            <span className="text-[12px] italic font-light text-muted-foreground" style={{ fontFamily: FONT_RALEWAY }}>
+                            <span className="text-[0.75rem] italic font-light text-muted-foreground" style={{ fontFamily: FONT_RALEWAY }}>
                                 {showReplies ? 'Hide' : 'View'} Replies
                             </span>
                         </button>
@@ -470,9 +470,9 @@ export function CommentSection({
                             </div>
                             {/* Post content */}
                             <div className="flex-1 min-w-0">
-                                <p className="text-[14px] font-bold text-foreground" style={{ fontFamily: FONT_RALEWAY }}>{author.name}</p>
-                                <p className="text-[11px] text-foreground mb-2" style={{ fontFamily: FONT_RALEWAY }}>{timeAgoStr(post.timestamp)}</p>
-                                <p className="text-[13px] font-light text-foreground leading-[15px]" style={{ fontFamily: FONT_RALEWAY }}>{post.text}</p>
+                                <p className="text-[0.875rem] font-bold text-foreground" style={{ fontFamily: FONT_RALEWAY }}>{author.name}</p>
+                                <p className="text-[0.6875rem] text-foreground mb-2" style={{ fontFamily: FONT_RALEWAY }}>{timeAgoStr(post.timestamp)}</p>
+                                <p className="text-[0.8125rem] font-light text-foreground leading-[15px]" style={{ fontFamily: FONT_RALEWAY }}>{post.text}</p>
                             </div>
                             {/* Close is handled by Sheet component */}
                         </div>
@@ -500,7 +500,7 @@ export function CommentSection({
                         type="button"
                         onClick={e => handlePostComment(e as any)}
                         disabled={!newComment.trim()}
-                        className="h-[36px] px-4 sm:px-8 rounded-full text-white text-[13px] sm:text-[14px] font-medium disabled:opacity-50 transition-opacity hover:opacity-90 whitespace-nowrap"
+                        className="h-[36px] px-4 sm:px-8 rounded-full text-white text-[0.8125rem] sm:text-[0.875rem] font-medium disabled:opacity-50 transition-opacity hover:opacity-90 whitespace-nowrap"
                         style={{ background: GREEN, fontFamily: FONT_RALEWAY }}
                     >
                         Post
@@ -511,7 +511,7 @@ export function CommentSection({
                 <div className="px-4 pb-4 space-y-3 overflow-y-auto" style={{ maxHeight: 'min(40vh, 300px)' }}>
                     {parentComments.length === 0 ? (
                         <div className="py-8 text-center">
-                            <p className="text-[13px] text-muted-foreground" style={{ fontFamily: FONT_RALEWAY }}>No comments yet. Be the first!</p>
+                            <p className="text-[0.8125rem] text-muted-foreground" style={{ fontFamily: FONT_RALEWAY }}>No comments yet. Be the first!</p>
                         </div>
                     ) : (
                         parentComments.map(c => renderComment(c))
@@ -530,8 +530,8 @@ export function CommentSection({
                 {parentComments.length === 0 ? (
                     <div className="py-8 text-center flex flex-col items-center gap-2">
                         <MessageCircle className="w-10 h-10 text-muted-foreground" />
-                        <p className="text-[13px] text-muted-foreground" style={{ fontFamily: FONT_RALEWAY }}>No comments yet.</p>
-                        <p className="text-[12px] text-muted-foreground" style={{ fontFamily: FONT_RALEWAY }}>Be the first to comment!</p>
+                        <p className="text-[0.8125rem] text-muted-foreground" style={{ fontFamily: FONT_RALEWAY }}>No comments yet.</p>
+                        <p className="text-[0.75rem] text-muted-foreground" style={{ fontFamily: FONT_RALEWAY }}>Be the first to comment!</p>
                     </div>
                 ) : (
                     parentComments.map(c => renderComment(c))

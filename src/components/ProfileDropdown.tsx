@@ -76,13 +76,13 @@ export function ProfileDropdown({ onClose }: ProfileDropdownProps) {
           </Avatar>
           <div className="min-w-0">
             <p
-              className="truncate text-foreground text-[14px] leading-[18px]"
+              className="truncate text-foreground text-[0.875rem] leading-[18px]"
               style={{ fontFamily: FONT, fontWeight: 700 }}
             >
               {displayName}
             </p>
             <p
-              className="truncate text-[12px] leading-[16px]"
+              className="truncate text-[0.75rem] leading-[16px]"
               style={{ fontFamily: FONT, fontWeight: 300, color: "var(--c-text-muted)" }}
             >
               {email}
@@ -112,7 +112,7 @@ export function ProfileDropdown({ onClose }: ProfileDropdownProps) {
                 style={{ color: "var(--c-text-muted)" }}
               />
               <span
-                className="text-[14px] text-foreground"
+                className="text-[0.875rem] text-foreground"
                 style={{ fontFamily: FONT, fontWeight: 400 }}
               >
                 {label}
@@ -142,7 +142,7 @@ export function ProfileDropdown({ onClose }: ProfileDropdownProps) {
               style={{ color: "#E53935" }}
             />
             <span
-              className="text-[14px]"
+              className="text-[0.875rem]"
               style={{ fontFamily: FONT, fontWeight: 400, color: "#E53935" }}
             >
               Logout

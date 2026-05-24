@@ -86,7 +86,7 @@ export default function ManageEventPage() {
     setCheckInLoading(false);
   };
 
-  if (loading) return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="w-8 h-8 text-[#388E3C] animate-spin" /></div>;
+  if (loading) return <div className="min-h-[100dvh] bg-background flex items-center justify-center"><Loader2 className="w-8 h-8 text-[#388E3C] animate-spin" /></div>;
   if (!event) return null;
 
   const gross = tickets.filter(t => t.status !== "REFUNDED" && t.status !== "CANCELLED").reduce((s, t) => s + Number(t.amount_paid), 0);
@@ -108,7 +108,7 @@ export default function ManageEventPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground pb-16">
+    <div className="min-h-[100dvh] bg-background text-foreground pb-16">
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border px-4 py-4 flex items-center gap-3">
         <button onClick={() => router.back()} className="text-muted-foreground hover:text-foreground"><ArrowLeft className="w-5 h-5" /></button>
         <div className="flex-1 min-w-0">

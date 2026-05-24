@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Wifi, WifiOff, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react';
 import { useOffline } from '@/hooks/use-offline';
 
@@ -14,6 +14,19 @@ export function OfflineStatus() {
   } = useOffline();
 
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [isSlow, setIsSlow] = useState(false);
+
+  useEffect(() => {
+    if (typeof navigator !== "undefined" && "connection" in navigator) {
+      const connection = (navigator as any).connection;
+      const updateConnectionStatus = () => {
+        setIsSlow(connection && (connection.effectiveType === "2g" || connection.saveData === true));
+      };
+      updateConnectionStatus();
+      connection.addEventListener("change", updateConnectionStatus);
+      return () => connection.removeEventListener("change", updateConnectionStatus);
+    }
+  }, []);
 
   // Auto-dismiss success message after 4 seconds
   useEffect(() => {
@@ -33,12 +46,12 @@ export function OfflineStatus() {
     }
   }, [isOnline, hasOfflineActions, isConnecting]);
 
-  if (isOnline && !hasOfflineActions && !showSuccessMessage) {
-    return null; // Don't show anything when online and no pending actions
+  if (isOnline && !hasOfflineActions && !showSuccessMessage && !isSlow) {
+    return null; // Don't show anything when online, fast, and no pending actions
   }
 
   return (
-    <div className="fixed bottom-20 left-4 z-50">
+    <div className="fixed bottom-20 left-4 z-50 pb-[env(safe-area-inset-bottom)]">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-4 max-w-sm">
         {/* Status Header */}
         <div className="flex items-center justify-between mb-3">
@@ -156,6 +169,14 @@ export function OfflineStatus() {
             <span>Changes will sync when online</span>
           </div>
         )}
+
+        {/* Slow Connection Warning */}
+        {isOnline && isSlow && (
+          <div className="mt-3 flex items-center space-x-2 text-xs text-amber-600 dark:text-amber-500 bg-amber-50 dark:bg-amber-950/30 p-2 rounded-md">
+            <Wifi className="w-3 h-3 animate-pulse" />
+            <span>Slow connection — some content may load slowly</span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -183,7 +204,7 @@ export function OfflineStatusCompact() {
   }
 
   return (
-    <div className="fixed bottom-20 left-4 z-50">
+    <div className="fixed bottom-20 left-4 z-50 pb-[env(safe-area-inset-bottom)]">
       <div className="bg-white dark:bg-gray-800 rounded-full shadow-lg border border-gray-200 dark:border-gray-700 p-2">
         <div className="flex items-center space-x-2">
           {isOnline ? (

@@ -64,7 +64,7 @@ export default function TicketPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
+      <div className="min-h-[100dvh] bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
         <div className="text-center">
           <div className="w-12 h-12 rounded-full border-4 border-slate-200 border-t-green-600 animate-spin mx-auto mb-4"></div>
           <p className="text-slate-600">Loading your ticket...</p>
@@ -75,7 +75,7 @@ export default function TicketPage() {
 
   if (error || !ticket) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
+      <div className="min-h-[100dvh] bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
           <div className="text-6xl mb-4">🎟️</div>
           <h1 className="text-2xl font-bold text-slate-900 mb-2">Ticket Not Found</h1>
@@ -104,7 +104,7 @@ export default function TicketPage() {
   const isEventPast = eventEndDate < new Date();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <div className="min-h-[100dvh] bg-gradient-to-br from-slate-50 to-slate-100">
       {/* Header */}
       <div className="bg-white border-b border-slate-200">
         <div className="max-w-3xl mx-auto px-4 py-4 sm:py-6">

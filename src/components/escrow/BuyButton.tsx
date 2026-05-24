@@ -115,7 +115,7 @@ export function BuyButton({
       {/* Trigger */}
       <button
         onClick={() => setOpen(true)}
-        className="w-full h-14 bg-[#388E3C] rounded-full flex items-center justify-center font-editorial font-bold text-[14px] text-white shadow-lg active:scale-95 transition-transform hover:opacity-90"
+        className="w-full h-14 bg-[#388E3C] rounded-full flex items-center justify-center font-editorial font-bold text-[0.875rem] text-white shadow-lg active:scale-95 transition-transform hover:opacity-90"
       >
         Buy Now — ₦{price.toLocaleString()}
       </button>
@@ -161,16 +161,16 @@ export function BuyButton({
                 )}
                 <div className="flex flex-col gap-1.5 flex-1">
                   <div className="flex justify-between items-start">
-                    <h2 className="font-editorial font-bold text-[14px] text-on-surface leading-tight line-clamp-2">
+                    <h2 className="font-editorial font-bold text-[0.875rem] text-on-surface leading-tight line-clamp-2">
                       {itemTitle}
                     </h2>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="bg-surface-container text-[10px] font-editorial px-2 py-0.5 rounded-full text-on-surface-variant uppercase tracking-wider">
+                    <span className="bg-surface-container text-[0.625rem] font-editorial px-2 py-0.5 rounded-full text-on-surface-variant uppercase tracking-wider">
                       {condition}
                     </span>
                     <div className="flex items-center gap-1.5">
-                      <span className="font-editorial text-[12px] text-on-surface-variant">
+                      <span className="font-editorial text-[0.75rem] text-on-surface-variant">
                         Sold by {sellerName}
                       </span>
                     </div>
@@ -181,34 +181,34 @@ export function BuyButton({
               {/* Price breakdown */}
               <section className="bg-surface-container rounded-[11px] p-4 mb-6 flex flex-col gap-3">
                 <div className="flex justify-between items-center">
-                  <span className="font-editorial text-[13px] text-on-surface-variant">
+                  <span className="font-editorial text-[0.8125rem] text-on-surface-variant">
                     Item Price
                   </span>
-                  <span className="font-editorial text-[14px] text-on-surface">
+                  <span className="font-editorial text-[0.875rem] text-on-surface">
                     ₦{price.toLocaleString()}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-1.5">
-                    <span className="font-editorial text-[13px] text-on-surface-variant">
+                    <span className="font-editorial text-[0.8125rem] text-on-surface-variant">
                       Platform Fee
                     </span>
                     <Info className="w-[14px] h-[14px] text-on-surface-variant/60" />
                   </div>
-                  <span className="font-editorial text-[14px] text-on-surface-variant">
+                  <span className="font-editorial text-[0.875rem] text-on-surface-variant">
                     ₦{commission.toLocaleString()}
                   </span>
                 </div>
                 <div className="h-[1px] w-full bg-on-surface/5 my-1" />
                 <div className="flex justify-between items-center py-1">
-                  <span className="font-editorial font-bold text-[15px] text-on-surface">
+                  <span className="font-editorial font-bold text-[0.9375rem] text-on-surface">
                     You Pay
                   </span>
-                  <span className="font-editorial font-bold text-[18px] text-on-surface">
+                  <span className="font-editorial font-bold text-[1.125rem] text-on-surface">
                     ₦{totalPay.toLocaleString()}
                   </span>
                 </div>
-                <p className="font-editorial text-[11px] text-on-surface-variant mt-1 leading-normal">
+                <p className="font-editorial text-[0.6875rem] text-on-surface-variant mt-1 leading-normal">
                   Funds are held securely until you confirm receipt
                 </p>
               </section>
@@ -219,10 +219,10 @@ export function BuyButton({
                   <Lock className="w-[20px] h-[20px] text-tertiary" />
                 </div>
                 <div className="flex flex-col gap-0.5">
-                  <h3 className="font-editorial font-bold text-[13px] text-on-surface">
+                  <h3 className="font-editorial font-bold text-[0.8125rem] text-on-surface">
                     Your payment is held in escrow
                   </h3>
-                  <p className="font-editorial text-[11px] text-on-surface-variant leading-relaxed">
+                  <p className="font-editorial text-[0.6875rem] text-on-surface-variant leading-relaxed">
                     Release funds only after you confirm the item is in good condition.
                   </p>
                 </div>
@@ -230,7 +230,7 @@ export function BuyButton({
 
               {/* Payment Method */}
               <div className="mb-10">
-                <label className="block font-editorial font-medium text-[12px] text-on-surface-variant mb-3 px-1">
+                <label className="block font-editorial font-medium text-[0.75rem] text-on-surface-variant mb-3 px-1">
                   Pay with
                 </label>
                 <div className="bg-surface-container-high border border-[#388E3C] rounded-[11px] p-4 flex items-center justify-between group cursor-pointer active:scale-[0.98] transition-all">
@@ -241,7 +241,7 @@ export function BuyButton({
                         <path d="M12 6c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm0 10c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4z" fill="#00315f"></path>
                       </svg>
                     </div>
-                    <span className="font-editorial text-[14px] text-on-surface">Debit/Credit Card</span>
+                    <span className="font-editorial text-[0.875rem] text-on-surface">Debit/Credit Card</span>
                   </div>
                   <ChevronRight className="w-4 h-4 text-[#388E3C]" />
                 </div>
@@ -252,7 +252,7 @@ export function BuyButton({
                 <button
                   onClick={handleBuy}
                   disabled={loading}
-                  className="w-full h-14 bg-[#388E3C] rounded-full flex items-center justify-center font-editorial font-bold text-[14px] text-white shadow-lg active:scale-95 transition-transform hover:opacity-90 disabled:opacity-75"
+                  className="w-full h-14 bg-[#388E3C] rounded-full flex items-center justify-center font-editorial font-bold text-[0.875rem] text-white shadow-lg active:scale-95 transition-transform hover:opacity-90 disabled:opacity-75"
                 >
                   {loading ? (
                     <span className="flex items-center gap-2">
@@ -268,7 +268,7 @@ export function BuyButton({
                 </button>
                 <div className="flex items-center gap-1.5 opacity-60">
                   <Lock className="w-[14px] h-[14px] text-on-surface-variant" />
-                  <span className="font-editorial text-[11px] text-on-surface-variant">
+                  <span className="font-editorial text-[0.6875rem] text-on-surface-variant">
                     256-bit SSL secured
                   </span>
                 </div>

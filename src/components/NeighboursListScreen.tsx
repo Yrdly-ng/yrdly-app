@@ -217,7 +217,7 @@ export function NeighboursListScreen() {
 
   return (
     <div
-      className="min-h-screen p-4"
+      className="min-h-[100dvh] p-4"
       style={{ backgroundColor: DARK_BG, fontFamily: FONT }}
     >
       <div className="max-w-2xl mx-auto">

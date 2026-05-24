@@ -227,7 +227,7 @@ export default function OnboardingWelcomePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-[100dvh] bg-background">
         <OnboardingProgress />
         <div className="flex items-center justify-center p-4 pt-8">
           <LoadingState 
@@ -240,7 +240,7 @@ export default function OnboardingWelcomePage() {
   }
 
   return (
-    <div className="min-h-screen pb-20 overflow-x-hidden relative" style={{ background: "var(--background)", color: "var(--foreground)", fontFamily: "Inter, sans-serif" }}>
+    <div className="min-h-[100dvh] pb-20 overflow-x-hidden relative" style={{ background: "var(--background)", color: "var(--foreground)", fontFamily: "Inter, sans-serif" }}>
       <OnboardingProgress />
       
       {/* Background Glows */}
@@ -329,7 +329,7 @@ export default function OnboardingWelcomePage() {
                 
                 <button 
                   onClick={handleSkipTourClick}
-                  className="w-full h-16 rounded-[28px] flex items-center justify-center font-black text-muted-foreground hover:text-white transition-all border border-border hover:border-[#388E3C]/30 hover:bg-[#388E3C]/5 active:scale-[0.98] uppercase tracking-[0.2em] text-[11px]"
+                  className="w-full h-16 rounded-[28px] flex items-center justify-center font-black text-muted-foreground hover:text-white transition-all border border-border hover:border-[#388E3C]/30 hover:bg-[#388E3C]/5 active:scale-[0.98] uppercase tracking-[0.2em] text-[0.6875rem]"
                 >
                   Jump Right In
                 </button>
@@ -339,7 +339,7 @@ export default function OnboardingWelcomePage() {
                 <div className="w-8 h-8 rounded-lg bg-[#388E3C]/10 flex items-center justify-center">
                   <CheckCircle className="w-5 h-5 text-[#388E3C]" />
                 </div>
-                <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
+                <span className="text-[0.6875rem] font-black uppercase tracking-widest text-muted-foreground">
                   Welcome guide sent to {profile?.email}
                 </span>
               </div>
@@ -347,7 +347,7 @@ export default function OnboardingWelcomePage() {
           </div>
 
           <div className="text-center">
-            <p className="text-[10px] uppercase tracking-[0.2em] font-black text-muted-foreground/20">
+            <p className="text-[0.625rem] uppercase tracking-[0.2em] font-black text-muted-foreground/20">
               Yrdly Neighborhood Network • v2.0
             </p>
           </div>

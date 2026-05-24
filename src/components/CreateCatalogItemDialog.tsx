@@ -407,7 +407,7 @@ const CreateCatalogItemDialogComponent = ({
             </Button>
           )}
         </SheetTrigger>
-        <SheetContent side="bottom" className="p-0 flex flex-col h-[90vh] max-h-screen">
+        <SheetContent side="bottom" className="p-0 flex flex-col h-[90vh] max-h-[100dvh]">
           <SheetHeader className="p-4 border-b flex-shrink-0">
             <SheetTitle>{finalTitle}</SheetTitle>
             <DialogDescription>{finalDescription}</DialogDescription>

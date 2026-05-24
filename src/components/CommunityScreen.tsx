@@ -42,7 +42,7 @@ function UserActionButton({
       return (
         <button
           onClick={() => onFriendAction(userId, "add", () => friendshipHook.addFriend())}
-          className="rounded-full px-3 py-1 text-[11px] text-foreground font-bold uppercase disabled:opacity-50"
+          className="rounded-full px-3 py-1 text-[0.6875rem] text-foreground font-bold uppercase disabled:opacity-50"
           style={{ background: GREEN, fontFamily: FONT }}
           disabled={isLoading}
         >
@@ -52,7 +52,7 @@ function UserActionButton({
     case "request_sent":
       return (
         <button
-          className="rounded-full px-3 py-1 text-[11px] text-[#BBBBBB] font-bold uppercase"
+          className="rounded-full px-3 py-1 text-[0.6875rem] text-[#BBBBBB] font-bold uppercase"
           style={{ border: "0.5px solid #388E3C", fontFamily: FONT }}
           disabled
         >
@@ -63,7 +63,7 @@ function UserActionButton({
       return (
         <button
           onClick={() => onFriendAction(userId, "remove", () => friendshipHook.removeFriend())}
-          className="rounded-full px-3 py-1 text-[11px] font-bold uppercase disabled:opacity-50"
+          className="rounded-full px-3 py-1 text-[0.6875rem] font-bold uppercase disabled:opacity-50"
           style={{ border: "0.5px solid rgba(229,57,53,0.4)", color: "#E53935", fontFamily: FONT }}
           disabled={isLoading}
         >
@@ -75,7 +75,7 @@ function UserActionButton({
         <>
           <button
             onClick={() => onFriendAction(userId, "accept", () => friendshipHook.acceptRequest())}
-            className="rounded-full px-3 py-1 text-[11px] text-foreground font-bold uppercase disabled:opacity-50"
+            className="rounded-full px-3 py-1 text-[0.6875rem] text-foreground font-bold uppercase disabled:opacity-50"
             style={{ background: GREEN, fontFamily: FONT }}
             disabled={isLoading}
           >
@@ -83,7 +83,7 @@ function UserActionButton({
           </button>
           <button
             onClick={() => onFriendAction(userId, "decline", () => friendshipHook.declineRequest())}
-            className="rounded-full px-3 py-1 text-[11px] font-bold uppercase disabled:opacity-50"
+            className="rounded-full px-3 py-1 text-[0.6875rem] font-bold uppercase disabled:opacity-50"
             style={{ border: "0.5px solid rgba(229,57,53,0.4)", color: "#E53935", fontFamily: FONT }}
             disabled={isLoading}
           >
@@ -129,7 +129,7 @@ function StatCard({
           {value}
         </div>
         <div
-          className="text-[10px] uppercase tracking-wider"
+          className="text-[0.625rem] uppercase tracking-wider"
           style={{ color: "var(--c-text-muted)", fontFamily: FONT }}
         >
           {label}
@@ -300,18 +300,18 @@ export function CommunityScreen({ className }: CommunityScreenProps) {
   }, [posts, searchQuery, showUserSearch]);
 
   return (
-    <div className="min-h-screen pb-32" style={{ background: "var(--c-bg)" }}>
+    <div className="min-h-[100dvh] pb-32" style={{ background: "var(--c-bg)" }}>
       <div className="max-w-2xl mx-auto px-4 pt-6 space-y-8">
 
         {/* ── Header ── */}
         <header className="space-y-1">
           <div className="flex items-center justify-between">
-            <h1 className="text-[20px] text-foreground" style={{ fontFamily: PACIFICO }}>
+            <h1 className="text-[1.25rem] text-foreground" style={{ fontFamily: PACIFICO }}>
               Community
             </h1>
             <LocationChip />
           </div>
-          <p className="text-[12px]" style={{ fontFamily: FONT, fontStyle: "italic", fontWeight: 300, color: "var(--c-text-muted)" }}>
+          <p className="text-[0.75rem]" style={{ fontFamily: FONT, fontStyle: "italic", fontWeight: 300, color: "var(--c-text-muted)" }}>
             Connecting neighbors, one story at a time.
           </p>
         </header>
@@ -361,7 +361,7 @@ export function CommunityScreen({ className }: CommunityScreenProps) {
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <p className="text-foreground text-[13px] truncate" style={{ fontFamily: FONT, fontWeight: 600 }}>
+                      <p className="text-foreground text-[0.8125rem] truncate" style={{ fontFamily: FONT, fontWeight: 600 }}>
                         {u.name}
                       </p>
                     </div>
@@ -393,7 +393,7 @@ export function CommunityScreen({ className }: CommunityScreenProps) {
               <h2 className="text-foreground font-semibold text-lg" style={{ fontFamily: "Inter, sans-serif" }}>
                 Friend Requests
               </h2>
-              <button className="text-[11px] font-bold uppercase tracking-widest" style={{ color: GREEN, fontFamily: FONT }}>
+              <button className="text-[0.6875rem] font-bold uppercase tracking-widest" style={{ color: GREEN, fontFamily: FONT }}>
                 View All
               </button>
             </div>
@@ -436,7 +436,7 @@ export function CommunityScreen({ className }: CommunityScreenProps) {
                             {sender.name}
                           </p>
                           {loc && (
-                            <p className="text-[10px]" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
+                            <p className="text-[0.625rem]" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
                               {loc}
                             </p>
                           )}
@@ -474,7 +474,7 @@ export function CommunityScreen({ className }: CommunityScreenProps) {
               <h3 className="text-foreground text-lg mb-2" style={{ fontFamily: PACIFICO }}>
                 No posts yet
               </h3>
-              <p className="text-[13px]" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
+              <p className="text-[0.8125rem]" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
                 Be the first to share something with your neighbors!
               </p>
             </div>

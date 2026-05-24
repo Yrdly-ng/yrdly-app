@@ -59,7 +59,7 @@ export default function MarkAsSentPage() {
           <button onClick={() => router.back()} className="active:scale-95 transition-transform">
             <ArrowLeft className="w-6 h-6 text-on-surface" />
           </button>
-          <h1 className="text-on-background font-cursive text-[22px] leading-none" style={{ fontFamily: "Pacifico, cursive" }}>Ready to Hand Over?</h1>
+          <h1 className="text-on-background font-cursive text-[1.375rem] leading-none" style={{ fontFamily: "Pacifico, cursive" }}>Ready to Hand Over?</h1>
         </div>
       </header>
 
@@ -68,7 +68,7 @@ export default function MarkAsSentPage() {
         <section className="bg-surface-container rounded-[11px] overflow-hidden">
           <div className="px-4 py-6 text-center border-b border-outline-variant/10">
             <p className="text-primary text-2xl font-display font-bold tracking-tight mb-1" style={{ fontFamily: "Raleway, sans-serif" }}>Funds <span className="text-sm font-medium">will be released to you</span></p>
-            <p className="text-[#bfcab9] font-display text-[11px] leading-normal opacity-80" style={{ fontFamily: "Raleway, sans-serif" }}>After buyer confirms receipt (or 48h auto-release)</p>
+            <p className="text-[#bfcab9] font-display text-[0.6875rem] leading-normal opacity-80" style={{ fontFamily: "Raleway, sans-serif" }}>After buyer confirms receipt (or 48h auto-release)</p>
           </div>
         </section>
 
@@ -89,7 +89,7 @@ export default function MarkAsSentPage() {
                     <div className="w-4 h-4 rounded-full border border-outline-variant opacity-0 group-hover:opacity-40 transition-opacity"></div>
                   )}
                 </div>
-                <p className="text-on-surface font-display text-[15px] font-medium" style={{ fontFamily: "Raleway, sans-serif" }}>{label}</p>
+                <p className="text-on-surface font-display text-[0.9375rem] font-medium" style={{ fontFamily: "Raleway, sans-serif" }}>{label}</p>
               </div>
             );
           })}
@@ -109,7 +109,7 @@ export default function MarkAsSentPage() {
           >
             {loading ? "Confirming..." : "Confirm Item Sent / Ready"}
           </button>
-          <p className="text-center text-on-surface-variant text-[12px] leading-relaxed px-8">
+          <p className="text-center text-on-surface-variant text-[0.75rem] leading-relaxed px-8">
             Once confirmed, the 48h buyer confirmation window begins.
           </p>
         </section>
@@ -119,12 +119,12 @@ export default function MarkAsSentPage() {
           <div className="bg-surface-container-low p-4 rounded-xl border-l-2 border-tertiary">
             <ShieldCheck className="text-tertiary mb-2 w-6 h-6" />
             <h3 className="text-on-surface font-bold text-sm">Escrow Secure</h3>
-            <p className="text-on-surface-variant text-[11px] mt-1">Funds are held safely by the platform until handover.</p>
+            <p className="text-on-surface-variant text-[0.6875rem] mt-1">Funds are held safely by the platform until handover.</p>
           </div>
           <div className="bg-surface-container-low p-4 rounded-xl border-l-2 border-secondary">
             <HeadphonesIcon className="text-secondary mb-2 w-6 h-6" />
             <h3 className="text-on-surface font-bold text-sm">Need Help?</h3>
-            <p className="text-on-surface-variant text-[11px] mt-1">Contact support if the buyer is a no-show.</p>
+            <p className="text-on-surface-variant text-[0.6875rem] mt-1">Contact support if the buyer is a no-show.</p>
           </div>
         </div>
       </main>

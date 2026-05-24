@@ -31,6 +31,19 @@ const GREEN    = "#388E3C";
 const FONT_RL  = "Inter, sans-serif";
 
 // ── Schema ─────────────────────────────────────────────────────
+const BlobImage = memo(({ file, className, alt }: { file: File, className?: string, alt?: string }) => {
+  const [url, setUrl] = useState<string>('');
+  useEffect(() => {
+    const objectUrl = URL.createObjectURL(file);
+    setUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file]);
+  if (!url) return null;
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={url} alt={alt || ""} className={className} />;
+});
+BlobImage.displayName = "BlobImage";
+
 const getFormSchema = (_isEditMode: boolean) =>
   z.object({
     text:       z.string().min(1, "Text can't be empty.").max(500),
@@ -162,7 +175,7 @@ function PostForm({
           rows={4}
           className={cn(
             "w-full bg-transparent resize-none outline-none border-none flex-shrink-0",
-            "text-foreground placeholder:text-foreground text-[16px] leading-[18px]",
+            "text-foreground placeholder:text-foreground text-[1rem] leading-[18px]",
           )}
           style={{ fontFamily: FONT_RL, fontWeight: 400 }}
           autoFocus
@@ -178,12 +191,10 @@ function PostForm({
           <div className="flex gap-2 flex-wrap py-2 mt-2">
             {Array.from(form.watch("imageFiles") as FileList).map((file, i) => (
               <div key={i} className="relative w-20 h-20 flex-shrink-0 rounded-md overflow-hidden">
-                <Image 
-                  src={URL.createObjectURL(file)} 
+                <BlobImage 
+                  file={file} 
                   alt="Preview" 
-                  fill
-                  className="object-cover" 
-                  sizes="80px"
+                  className="object-cover w-full h-full" 
                 />
                 <button
                   type="button"
@@ -264,7 +275,7 @@ function PostForm({
         <button
           type="submit"
           disabled={loading || !text?.trim()}
-          className="h-[37px] px-8 rounded-full text-foreground text-[14px] font-medium transition-opacity disabled:opacity-50 hover:opacity-90"
+          className="h-[37px] px-8 rounded-full text-foreground text-[0.875rem] font-medium transition-opacity disabled:opacity-50 hover:opacity-90"
           style={{ background: GREEN, fontFamily: FONT_RL }}
         >
           {loading

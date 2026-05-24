@@ -112,7 +112,7 @@ export default function AuthCallback() {
   }, [router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="min-h-[100dvh] flex items-center justify-center bg-gray-50">
       <div className="text-center max-w-md mx-auto p-6">
         <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
         <p className="text-gray-600 mb-2">{status}</p>

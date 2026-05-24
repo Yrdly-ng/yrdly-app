@@ -183,7 +183,7 @@ export function MapScreen({ className }: MapScreenProps) {
                       : <Users className="w-5 h-5 text-foreground" />
                   )}
                 </div>
-                <div className="mt-1 px-2 py-0.5 rounded-full text-[9px] font-bold text-foreground" style={{ background: 'rgba(21,24,29,0.85)' }}>
+                <div className="mt-1 px-2 py-0.5 rounded-full text-[0.5625rem] font-bold text-foreground" style={{ background: 'rgba(21,24,29,0.85)' }}>
                   {m.title.length > 14 ? m.title.slice(0, 12) + '…' : m.title}
                 </div>
               </div>
@@ -193,16 +193,16 @@ export function MapScreen({ className }: MapScreenProps) {
           {selected && (
             <InfoWindow position={selected.position} onCloseClick={() => setSelected(null)}>
               <div className="rounded-[11px] p-3 max-w-[220px]" style={{ background: 'var(--c-card)', border: '0.5px solid rgba(56,142,60,0.3)' }}>
-                <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: selected.type === 'event' ? '#ffb4ab' : selected.type === 'business' ? '#a5c8ff' : '#82db7e' }}>
+                <span className="text-[0.5625rem] font-bold uppercase tracking-widest" style={{ color: selected.type === 'event' ? '#ffb4ab' : selected.type === 'business' ? '#a5c8ff' : '#82db7e' }}>
                   {selected.type === 'event' ? 'Live Event' : selected.type === 'business' ? 'Business' : 'Friend'}
                 </span>
                 <p className="text-sm font-bold mt-1 text-foreground" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>{selected.title}</p>
-                <p className="text-[11px] mt-1" style={{ color: 'var(--c-text-muted)' }}>{selected.address}</p>
+                <p className="text-[0.6875rem] mt-1" style={{ color: 'var(--c-text-muted)' }}>{selected.address}</p>
                 {selected.attendees !== undefined && selected.type === 'event' && (
-                  <p className="text-[11px]" style={{ color: 'var(--c-text-muted)' }}>{selected.attendees} attending</p>
+                  <p className="text-[0.6875rem]" style={{ color: 'var(--c-text-muted)' }}>{selected.attendees} attending</p>
                 )}
                 {selected.last_seen && (
-                  <p className="text-[11px]" style={{ color: 'var(--c-text-muted)' }}>Last seen: {new Date(selected.last_seen).toLocaleTimeString()}</p>
+                  <p className="text-[0.6875rem]" style={{ color: 'var(--c-text-muted)' }}>Last seen: {new Date(selected.last_seen).toLocaleTimeString()}</p>
                 )}
                 <button
                   onClick={() => { setSelected(null); selected.type === 'event' ? router.push(`/posts/${selected.id}`) : selected.type === 'business' ? router.push(`/businesses/${selected.id}`) : router.push(`/profile/${selected.id}`); }}
@@ -320,7 +320,7 @@ export function MapScreen({ className }: MapScreenProps) {
                   }
                 </div>
                 <div className="flex flex-col justify-center min-w-0">
-                  <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: m.type === 'business' ? '#a5c8ff' : m.type === 'event' ? '#6edf51' : '#82DB7E' }}>
+                  <p className="text-[0.625rem] font-bold uppercase tracking-wider" style={{ color: m.type === 'business' ? '#a5c8ff' : m.type === 'event' ? '#6edf51' : '#82DB7E' }}>
                     {m.type}
                   </p>
                   <p className="text-sm font-bold text-foreground truncate">{m.title}</p>

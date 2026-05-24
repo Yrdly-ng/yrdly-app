@@ -224,7 +224,7 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
   /* ─── Render ─── */
   if (loading) {
     return (
-      <div className="flex flex-col h-screen" style={{ background: BG }}>
+      <div className="flex flex-col h-[100dvh]" style={{ background: BG }}>
         <div className="h-16 animate-pulse" style={{ background: CARD }} />
         <div className="flex-1 flex items-center justify-center">
           <div className="w-8 h-8 rounded-full border-2 border-[#388E3C] border-t-transparent animate-spin" />
@@ -235,7 +235,7 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
 
   if (!conversation || !otherParticipant) {
     return (
-      <div className="flex flex-col h-screen items-center justify-center" style={{ background: BG }}>
+      <div className="flex flex-col h-[100dvh] items-center justify-center" style={{ background: BG }}>
         <MessageCircle className="w-12 h-12 mb-4" style={{ color: GREEN, opacity: 0.4 }} />
         <p className="text-foreground mb-4" style={{ fontFamily: FONT }}>Conversation not found</p>
         <button onClick={() => router.push("/messages")} className="rounded-full px-6 py-2 text-foreground text-sm" style={{ background: GREEN, fontFamily: FONT }}>
@@ -248,7 +248,7 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
   const activityStatus = getActivityStatus((otherParticipant as any).last_seen);
 
   return (
-    <div className="flex flex-col h-screen" style={{ background: BG }}>
+    <div className="flex flex-col h-[100dvh]" style={{ background: BG }}>
       {/* ── Header ── */}
       <header className="flex items-center px-4 py-3 flex-shrink-0"
         style={{ background: 'var(--c-card)', boxShadow: "0 2px 8px rgba(0,0,0,0.3)" }}>
@@ -269,10 +269,10 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
             style={{ background: GREEN, borderColor: CARD }} />
         </div>
         <div className="ml-3 flex-1 min-w-0">
-          <h1 className="text-[16px] font-bold text-foreground truncate" style={{ fontFamily: "Inter, sans-serif" }}>
+          <h1 className="text-[1rem] font-bold text-foreground truncate" style={{ fontFamily: "Inter, sans-serif" }}>
             {otherParticipant.name}
           </h1>
-          <p className="text-[12px]" style={{ fontFamily: FONT, color: "var(--c-text-muted)" }}>
+          <p className="text-[0.75rem]" style={{ fontFamily: FONT, color: "var(--c-text-muted)" }}>
             {activityStatus}
           </p>
         </div>
@@ -282,7 +282,7 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
       <main className="flex-1 overflow-y-auto px-4 py-6 space-y-4" style={{ background: BG }}>
         {/* Date marker */}
         <div className="flex justify-center">
-          <span className="text-[10px] font-bold uppercase tracking-widest rounded-full px-3 py-1"
+          <span className="text-[0.625rem] font-bold uppercase tracking-widest rounded-full px-3 py-1"
             style={{ color: "var(--c-text-muted)", background: "var(--c-card)", fontFamily: FONT }}>Today</span>
         </div>
 
@@ -313,7 +313,7 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
                   )}
                   {(msg.text || msg.content) && (
                     <div
-                      className="px-4 py-3 text-foreground text-[13px] leading-relaxed"
+                      className="px-4 py-3 text-foreground text-[0.8125rem] leading-relaxed"
                       style={{
                         background: isOwn ? GREEN : CARD,
                         borderRadius: isOwn ? "20px 20px 4px 20px" : "20px 20px 20px 4px",
@@ -323,7 +323,7 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
                       {msg.text || msg.content}
                     </div>
                   )}
-                  <span className={`text-[10px] ${isOwn ? "text-right mr-1" : "ml-1"}`} style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
+                  <span className={`text-[0.625rem] ${isOwn ? "text-right mr-1" : "ml-1"}`} style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
                     {formatTime(msg.created_at)}
                   </span>
                 </div>
@@ -342,7 +342,7 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
                     style={{ background: GREEN, animationDelay: `-${delay}ms` }} />
                 ))}
               </div>
-              <span className="text-[12px]" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
+              <span className="text-[0.75rem]" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
                 {otherTypingUsers[0]?.user_name} is typing...
               </span>
             </div>
@@ -380,7 +380,7 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
               onChange={(e) => { setNewMessage(e.target.value); handleTyping(); }}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSend(e as any); } }}
               disabled={sending}
-              className="w-full rounded-full px-5 py-3 text-[14px] text-foreground outline-none focus:ring-1 focus:ring-[#388E3C]"
+              className="w-full rounded-full px-5 py-3 text-[0.875rem] text-foreground outline-none focus:ring-1 focus:ring-[#388E3C]"
               style={{ background: "var(--c-card2)", fontFamily: FONT, caretColor: GREEN }}
             />
             <button type="button" onClick={() => fileInputRef.current?.click()}

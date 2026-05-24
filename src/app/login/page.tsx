@@ -66,7 +66,7 @@ export default function LoginPage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: colors.background }}>
+      <div className="min-h-[100dvh] flex items-center justify-center" style={{ background: colors.background }}>
         <div className="text-center font-sans">
           <div className="w-10 h-10 rounded-md mb-4 mx-auto animate-pulse" style={{ background: colors.logoGreen }} />
           <p className="text-sm" style={{ color: colors.textFaded }}>Loading...</p>
@@ -137,7 +137,7 @@ export default function LoginPage() {
 
   return (
     <div
-      className="min-h-screen min-h-[100dvh] relative overflow-x-hidden overflow-y-auto flex flex-col items-center justify-center px-4 py-6 xs:py-8 sm:px-6 sm:py-10 md:px-8 md:py-12"
+      className="min-h-[100dvh] min-h-[100dvh] relative overflow-x-hidden overflow-y-auto flex flex-col items-center justify-center px-4 py-6 xs:py-8 sm:px-6 sm:py-10 md:px-8 md:py-12"
       style={{ background: colors.background }}
     >
       {/* Decorative blobs - scale down on small screens */}

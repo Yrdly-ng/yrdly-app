@@ -10,6 +10,11 @@
     --font-jersey25: "Jersey 25", sans-serif;
     --font-raleway: "Raleway", sans-serif;
 
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+
     /* Yrdly — Nextdoor-style light theme */
     --background: 0 0% 95%;          /* #F2F2F2 - light gray app bg */
     --foreground: 0 0% 11%;          /* #1C1C1C - neutral near-black (no blue tint) */
@@ -106,19 +111,20 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+  }
+  *:focus-visible {
+    outline: 2px solid #82DB7E;
+    outline-offset: 2px;
+    border-radius: 4px;
   }
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-sans);
-    /* Added mobile optimization to prevent content shifting */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
-    /* Prevent iOS/Android bounce overscroll that extends content below bottom nav */
-    overscroll-behavior-y: none;
-  }
-  html {
-    overscroll-behavior-y: none;
   }
 }
 
@@ -215,6 +221,20 @@
         from { opacity: 0; transform: translateY(10px); }
         to { opacity: 1; transform: translateY(0); }
     }
+    
+    .scroll-container {
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-y: contain;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Safe Area Handling for Mobile Devices */
@@ -265,17 +285,6 @@
   }
 
   /*
-   * CRITICAL — iOS auto-zoom fix:
-   * iOS Safari zooms into the page whenever a focused input has font-size < 16px.
-   * Force 16px on all form controls to prevent this.
-   */
-  input,
-  textarea,
-  select {
-    font-size: 16px !important;
-  }
-
-  /*
    * touch-action: manipulation — removes the 300ms tap delay and disables
    * double-tap-to-zoom on interactive elements. This prevents accidental zooming
    * when tapping buttons quickly.
@@ -287,12 +296,6 @@
   select,
   [role="button"] {
     touch-action: manipulation;
-  }
-
-  /* Ensure touch targets are at least 44x44px */
-  button,
-  a {
-    min-height: 44px;
   }
 
   /* Optimize text rendering on mobile */

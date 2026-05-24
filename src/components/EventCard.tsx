@@ -190,8 +190,7 @@ export function EventCard({ event }: EventCardProps) {
         <div className="relative w-full overflow-hidden rounded-t-lg" style={{ aspectRatio: '16/9' }}>
           <Image
             src={event.image_url || event.image_urls?.[0] || '/placeholder-event.svg'}
-            alt={event.title || event.text}
-            fill
+            alt={event.title || event.text} fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             className="object-cover"
             data-ai-hint="event image"
           />

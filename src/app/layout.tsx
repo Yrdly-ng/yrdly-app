@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 
 import './globals.css';
 import { cn } from '@/lib/utils';
@@ -12,6 +12,16 @@ export const metadata: Metadata = {
   description: 'Connect with your neighbors, share updates, and build a stronger community with Yrdly.',
 };
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#15181D' }
+  ]
+};
+
 export default function RootLayout({
   children,
 }: {
@@ -20,11 +30,6 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <meta
-          name="viewport"
-          content="width=device-width, initial-scale=1, viewport-fit=cover"
-        />
-        <meta name="theme-color" content="#ffffff" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}
@@ -34,7 +39,7 @@ export default function RootLayout({
         />
       </head>
 
-      <body className={cn('font-body antialiased min-h-screen bg-background')}>
+      <body className={cn('font-body antialiased min-h-[100dvh] bg-background')}>
         <ThemeProvider
           attribute="class"
           defaultTheme="light"

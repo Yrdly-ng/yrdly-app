@@ -177,7 +177,7 @@ export function EditAccountDialog({ open, onOpenChange, account, onSuccess }: Ed
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="text-[10px] uppercase tracking-[0.15em] font-black text-muted-foreground ml-1">Bank</label>
+                      <label className="text-[0.625rem] uppercase tracking-[0.15em] font-black text-muted-foreground ml-1">Bank</label>
                       <select 
                         className="w-full h-12 rounded-xl bg-white/5 border border-border px-4 text-base text-foreground focus:border-[#388E3C]/50 focus:outline-none appearance-none"
                         value={form.watch('bankCode')}
@@ -190,7 +190,7 @@ export function EditAccountDialog({ open, onOpenChange, account, onSuccess }: Ed
                       </select>
                     </div>
                     <div className="space-y-2">
-                      <label className="text-[10px] uppercase tracking-[0.15em] font-black text-muted-foreground ml-1">Type</label>
+                      <label className="text-[0.625rem] uppercase tracking-[0.15em] font-black text-muted-foreground ml-1">Type</label>
                       <select 
                         className="w-full h-12 rounded-xl bg-white/5 border border-border px-4 text-base text-foreground focus:border-[#388E3C]/50 focus:outline-none appearance-none"
                         value={form.watch('accountTypeBank')}
@@ -202,7 +202,7 @@ export function EditAccountDialog({ open, onOpenChange, account, onSuccess }: Ed
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] uppercase tracking-[0.15em] font-black text-muted-foreground ml-1">Account Number</label>
+                    <label className="text-[0.625rem] uppercase tracking-[0.15em] font-black text-muted-foreground ml-1">Account Number</label>
                     <input
                       className="w-full h-12 rounded-xl bg-white/5 border border-border px-4 text-base text-foreground focus:border-[#388E3C]/50 focus:outline-none placeholder:text-muted-foreground"
                       placeholder="0123456789"
@@ -216,7 +216,7 @@ export function EditAccountDialog({ open, onOpenChange, account, onSuccess }: Ed
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="text-[10px] uppercase tracking-[0.15em] font-black text-muted-foreground ml-1">Provider</label>
+                      <label className="text-[0.625rem] uppercase tracking-[0.15em] font-black text-muted-foreground ml-1">Provider</label>
                       <select 
                         className="w-full h-12 rounded-xl bg-white/5 border border-border px-4 text-base text-foreground focus:border-[#388E3C]/50 focus:outline-none appearance-none"
                         value={form.watch('provider')}
@@ -229,7 +229,7 @@ export function EditAccountDialog({ open, onOpenChange, account, onSuccess }: Ed
                       </select>
                     </div>
                     <div className="space-y-2">
-                      <label className="text-[10px] uppercase tracking-[0.15em] font-black text-muted-foreground ml-1">Phone</label>
+                      <label className="text-[0.625rem] uppercase tracking-[0.15em] font-black text-muted-foreground ml-1">Phone</label>
                       <input
                         className="w-full h-12 rounded-xl bg-white/5 border border-border px-4 text-base text-foreground focus:border-[#388E3C]/50 focus:outline-none placeholder:text-muted-foreground"
                         placeholder="08012345678"
@@ -241,7 +241,7 @@ export function EditAccountDialog({ open, onOpenChange, account, onSuccess }: Ed
               )}
 
               <div className="space-y-2">
-                <label className="text-[10px] uppercase tracking-[0.15em] font-black text-muted-foreground ml-1">Account Holder Name</label>
+                <label className="text-[0.625rem] uppercase tracking-[0.15em] font-black text-muted-foreground ml-1">Account Holder Name</label>
                 <input
                   className="w-full h-12 rounded-xl bg-white/5 border border-border px-4 text-base text-foreground focus:border-[#388E3C]/50 focus:outline-none placeholder:text-muted-foreground"
                   placeholder="e.g. John Doe"

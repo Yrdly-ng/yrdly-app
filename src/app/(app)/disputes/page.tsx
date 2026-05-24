@@ -95,7 +95,7 @@ export default function DisputeManagementPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background p-4">
+      <div className="min-h-[100dvh] bg-background p-4">
         <div className="max-w-4xl mx-auto space-y-6">
           <div>
             <h1 className="text-2xl font-bold">My Disputes</h1>
@@ -124,7 +124,7 @@ export default function DisputeManagementPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4">
+    <div className="min-h-[100dvh] bg-background p-4">
       <div className="max-w-4xl mx-auto space-y-6">
         <div>
           <h1 className="text-2xl font-bold">My Disputes</h1>
@@ -152,8 +152,7 @@ export default function DisputeManagementPage() {
                     <div className="w-16 h-16 relative rounded-lg overflow-hidden flex-shrink-0">
                       <Image
                         src={dispute.transaction?.item?.image_urls?.[0] || "/placeholder.svg"}
-                        alt={dispute.transaction?.item?.title || dispute.transaction?.item?.text || "Item"}
-                        fill
+                        alt={dispute.transaction?.item?.title || dispute.transaction?.item?.text || "Item"} fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                         className="object-cover"
                       />
                     </div>

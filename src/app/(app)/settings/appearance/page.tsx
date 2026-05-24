@@ -84,7 +84,7 @@ export default function AppearancePage() {
                   {label}
                 </p>
                 <p
-                  className="text-[11px] mt-0.5 text-muted-foreground"
+                  className="text-[0.6875rem] mt-0.5 text-muted-foreground"
                   style={{ fontFamily: "Inter, sans-serif" }}
                 >
                   {description}
@@ -92,7 +92,7 @@ export default function AppearancePage() {
               </div>
               {isActive && (
                 <span
-                  className="ml-auto text-[10px] font-bold px-2.5 py-1 rounded-full flex-shrink-0"
+                  className="ml-auto text-[0.625rem] font-bold px-2.5 py-1 rounded-full flex-shrink-0"
                   style={{ background: "#388E3C", color: "#fff", fontFamily: "Inter, sans-serif" }}
                 >
                   Active

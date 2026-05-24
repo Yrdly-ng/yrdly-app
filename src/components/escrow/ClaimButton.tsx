@@ -82,7 +82,7 @@ export function ClaimButton({
     <button
       onClick={handleClaim}
       disabled={loading}
-      className="w-full h-14 bg-[#388E3C] rounded-full flex items-center justify-center font-editorial font-bold text-[14px] text-white shadow-lg active:scale-95 transition-transform hover:opacity-90 disabled:opacity-75"
+      className="w-full h-14 bg-[#388E3C] rounded-full flex items-center justify-center font-editorial font-bold text-[0.875rem] text-white shadow-lg active:scale-95 transition-transform hover:opacity-90 disabled:opacity-75"
     >
       {loading ? (
         <span className="flex items-center gap-2">

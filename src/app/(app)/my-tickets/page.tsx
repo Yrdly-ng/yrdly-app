@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -6,6 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Ticket, CalendarDays, MapPin, QrCode, ChevronRight, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { getMyTickets } from "@/lib/event-service";
 import type { Ticket as TicketType } from "@/types/events";
@@ -38,14 +39,35 @@ export default function MyTicketsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-[#388E3C] animate-spin" />
+      <div className="min-h-[100dvh] bg-background text-foreground pb-24">
+        <div className="sticky top-0 z-10 bg-background/95 border-b border-border px-4 py-4 space-y-2">
+          <Skeleton className="h-6 w-32 bg-muted" />
+          <Skeleton className="h-3 w-16 bg-muted" />
+        </div>
+        <div className="max-w-2xl mx-auto px-4 pt-4 space-y-3">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="w-full rounded-2xl bg-card border border-border overflow-hidden">
+              <Skeleton className="h-32 w-full bg-muted" />
+              <div className="p-4 flex items-start justify-between gap-3">
+                <div className="flex-1 space-y-3">
+                  <Skeleton className="h-5 w-3/4 bg-muted" />
+                  <Skeleton className="h-4 w-1/2 bg-muted" />
+                  <div className="flex gap-2 mt-2">
+                    <Skeleton className="h-6 w-16 bg-muted rounded-full" />
+                    <Skeleton className="h-6 w-16 bg-muted rounded-full" />
+                  </div>
+                </div>
+                <Skeleton className="h-8 w-8 bg-muted rounded-full" />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground pb-24">
+    <div className="min-h-[100dvh] bg-background text-foreground pb-24">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border px-4 py-4">
         <h1 className="font-sans font-bold text-xl text-foreground">My Tickets</h1>
@@ -91,7 +113,7 @@ export default function MyTicketsPage() {
                 {/* Event image strip */}
                 {event?.cover_image_url && (
                   <div className="relative w-full h-32 bg-background">
-                    <Image src={event.cover_image_url} alt={event.title || ""} fill className="object-cover" />
+                    <Image src={event.cover_image_url} alt={event.title || ""} fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover" />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#1E2126]/80 to-transparent" />
                   </div>
                 )}

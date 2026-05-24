@@ -121,8 +121,7 @@ function BusinessCard({ business }: { business: Business }) {
         {coverImg ? (
           <Image
             src={coverImg}
-            alt={business.name}
-            fill
+            alt={business.name} fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             className="object-cover transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
@@ -142,7 +141,7 @@ function BusinessCard({ business }: { business: Business }) {
         </div>
         {/* Owner badge */}
         {isOwner && (
-          <div className="absolute top-3 left-3 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase text-foreground"
+          <div className="absolute top-3 left-3 rounded-full px-2 py-0.5 text-[0.625rem] font-bold uppercase text-foreground"
             style={{ background: GREEN, fontFamily: FONT }}>
             Your Business
           </div>
@@ -153,10 +152,10 @@ function BusinessCard({ business }: { business: Business }) {
       <div className="p-5">
         <div className="flex justify-between items-start mb-2">
           <div className="flex-1 min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: GREEN, fontFamily: FONT }}>
+            <p className="text-[0.625rem] font-bold uppercase tracking-wider mb-1" style={{ color: GREEN, fontFamily: FONT }}>
               {business.category}
             </p>
-            <h4 className="text-[17px] font-bold text-foreground truncate" style={{ fontFamily: JAKARTA }}>
+            <h4 className="text-[1.0625rem] font-bold text-foreground truncate" style={{ fontFamily: JAKARTA }}>
               {business.name}
             </h4>
           </div>
@@ -210,7 +209,7 @@ function BusinessCard({ business }: { business: Business }) {
         </div>
 
         {business.location?.address && (
-          <div className="flex items-center gap-1.5 mb-5 text-[13px]" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
+          <div className="flex items-center gap-1.5 mb-5 text-[0.8125rem]" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
             <MapPin className="w-4 h-4 flex-shrink-0" />
             <span className="truncate">{shortenAddress(business.location.address, 40)}</span>
           </div>
@@ -312,12 +311,12 @@ export function BusinessesScreen({ className }: BusinessesScreenProps) {
   const rest = filteredBusinesses.slice(1);
 
   return (
-    <div className={`min-h-screen pb-28 ${className}`} style={{ background: "var(--c-bg)" }}>
+    <div className={`min-h-[100dvh] pb-28 ${className}`} style={{ background: "var(--c-bg)" }}>
       <div className="max-w-7xl mx-auto px-4 pt-6 space-y-10">
 
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <h1 className="text-[20px]" style={{ fontFamily: PACIFICO, color: GREEN }}>
+          <h1 className="text-[1.25rem]" style={{ fontFamily: PACIFICO, color: GREEN }}>
             Local Businesses
           </h1>
           <div className="relative w-full md:w-80">
@@ -350,7 +349,7 @@ export function BusinessesScreen({ className }: BusinessesScreenProps) {
             {/* Background image */}
             <div className="absolute inset-0">
               {featured.image_urls?.[0] ? (
-                <Image src={featured.image_urls[0]} alt={featured.name} fill className="object-cover transition-transform duration-700 hover:scale-105" />
+                <Image src={featured.image_urls[0]} alt={featured.name} fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover transition-transform duration-700 hover:scale-105" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center" style={{ background: "var(--c-card2)" }}>
                   <Briefcase className="w-16 h-16" style={{ color: GREEN, opacity: 0.3 }} />
@@ -362,7 +361,7 @@ export function BusinessesScreen({ className }: BusinessesScreenProps) {
 
             {/* Featured badge */}
             <div className="absolute top-5 left-5">
-              <span className="rounded-full px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest border"
+              <span className="rounded-full px-4 py-1.5 text-[0.625rem] font-bold uppercase tracking-widest border"
                 style={{ background: "var(--c-bg)", color: GREEN, borderColor: "rgba(56,142,60,0.2)", fontFamily: FONT }}>
                 Featured
               </span>
@@ -380,7 +379,7 @@ export function BusinessesScreen({ className }: BusinessesScreenProps) {
                       <span className="text-sm" style={{ color: "var(--c-text-muted)" }}>({featured.review_count || 0} reviews)</span>
                     </div>
                   )}
-                  <h2 className="text-[22px] font-extrabold text-foreground leading-tight" style={{ fontFamily: JAKARTA }}>
+                  <h2 className="text-[1.375rem] font-extrabold text-foreground leading-tight" style={{ fontFamily: JAKARTA }}>
                     {featured.name}
                   </h2>
                   <p className="text-sm max-w-md mt-1" style={{ color: "var(--c-text-muted)" }}>{featured.description}</p>
@@ -400,7 +399,7 @@ export function BusinessesScreen({ className }: BusinessesScreenProps) {
         {/* Category Chips */}
         {categoryStats.length > 0 && (
           <section className="space-y-5">
-            <h3 className="text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
+            <h3 className="text-[0.6875rem] font-bold uppercase tracking-[0.2em]" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
               Explore Categories
             </h3>
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
@@ -426,7 +425,7 @@ export function BusinessesScreen({ className }: BusinessesScreenProps) {
         {/* Business Grid */}
         <section className="space-y-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
+            <h3 className="text-[0.6875rem] font-bold uppercase tracking-[0.2em]" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
               {selectedCategory ? selectedCategory : "Nearby Professionals"}
             </h3>
             {selectedCategory && (

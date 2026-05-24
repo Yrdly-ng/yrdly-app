@@ -274,7 +274,7 @@ export function BusinessChatScreen({ business, item, onBack }: BusinessChatScree
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center h-[100dvh]">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground">Loading messages...</p>
@@ -284,7 +284,7 @@ export function BusinessChatScreen({ business, item, onBack }: BusinessChatScree
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background">
+    <div className="flex flex-col h-[100dvh] bg-background">
       {/* Header */}
       <div className="flex items-center gap-3 p-4 border-b border-border bg-card flex-shrink-0">
         <Button variant="ghost" size="icon" onClick={onBack}>

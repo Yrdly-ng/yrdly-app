@@ -152,8 +152,7 @@ export default function AdminDisputeReviewPage() {
                   <div key={index} className="relative aspect-square rounded-lg overflow-hidden">
                     <Image
                       src={photo}
-                      alt={`Evidence ${index + 1}`}
-                      fill
+                      alt={`Evidence ${index + 1}`} fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                       className="object-cover"
                     />
                   </div>
@@ -248,7 +247,7 @@ export default function AdminDisputeReviewPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-[100dvh] bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground">Loading dispute details...</p>
@@ -259,7 +258,7 @@ export default function AdminDisputeReviewPage() {
 
   if (!dispute) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-[100dvh] bg-background flex items-center justify-center">
         <Card className="w-full max-w-md">
           <CardContent className="text-center p-6">
             <AlertTriangle className="h-12 w-12 text-orange-500 mx-auto mb-4" />
@@ -281,7 +280,7 @@ export default function AdminDisputeReviewPage() {
 
   if (!transaction) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-[100dvh] bg-background flex items-center justify-center">
         <Card className="w-full max-w-md">
           <CardContent className="text-center p-6">
             <AlertTriangle className="h-12 w-12 text-orange-500 mx-auto mb-4" />
@@ -299,7 +298,7 @@ export default function AdminDisputeReviewPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4">
+    <div className="min-h-[100dvh] bg-background p-4">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -326,8 +325,7 @@ export default function AdminDisputeReviewPage() {
                   <div className="w-20 h-20 relative rounded-lg overflow-hidden">
                     <Image
                       src={transaction.item?.image_urls?.[0] || "/placeholder.svg"}
-                      alt={transaction.item?.title || transaction.item?.text || "Item"}
-                      fill
+                      alt={transaction.item?.title || transaction.item?.text || "Item"} fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                       className="object-cover"
                     />
                   </div>

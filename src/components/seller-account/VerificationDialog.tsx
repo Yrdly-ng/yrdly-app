@@ -164,10 +164,10 @@ export function VerificationDialog({ open, onOpenChange, account, onSuccess }: V
                 </div>
                 <div>
                   <p className="text-xs font-black text-foreground tracking-wide">{getAccountDisplayName(account)}</p>
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{account.accountType.replace('_', ' ')}</p>
+                  <p className="text-[0.625rem] font-bold text-muted-foreground uppercase tracking-wider">{account.accountType.replace('_', ' ')}</p>
                 </div>
                 <div className="ml-auto">
-                  <Badge variant="secondary" className="bg-[#388E3C]/20 text-[#388E3C] border-none font-bold text-[10px] px-3">
+                  <Badge variant="secondary" className="bg-[#388E3C]/20 text-[#388E3C] border-none font-bold text-[0.625rem] px-3">
                     PENDING
                   </Badge>
                 </div>
@@ -179,7 +179,7 @@ export function VerificationDialog({ open, onOpenChange, account, onSuccess }: V
               <div className="space-y-6">
                 <div className="space-y-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-6 h-6 rounded-lg bg-[#388E3C] flex items-center justify-center text-foreground text-[10px] font-black">1</div>
+                    <div className="w-6 h-6 rounded-lg bg-[#388E3C] flex items-center justify-center text-foreground text-[0.625rem] font-black">1</div>
                     <h3 className="text-sm font-black text-foreground">Micro-deposit Verification</h3>
                   </div>
                   
@@ -207,7 +207,7 @@ export function VerificationDialog({ open, onOpenChange, account, onSuccess }: V
                       </div>
                       
                       <div className="space-y-2">
-                        <label className="text-[10px] uppercase tracking-[0.15em] font-black text-muted-foreground ml-1">Enter Amount (₦)</label>
+                        <label className="text-[0.625rem] uppercase tracking-[0.15em] font-black text-muted-foreground ml-1">Enter Amount (₦)</label>
                         <input
                           type="number"
                           className="w-full h-12 rounded-xl bg-white/5 border border-border px-4 text-base text-foreground focus:border-[#388E3C]/50 focus:outline-none placeholder:text-muted-foreground"
@@ -238,10 +238,10 @@ export function VerificationDialog({ open, onOpenChange, account, onSuccess }: V
 
                 <div className="pt-6 border-t border-border space-y-4 opacity-50">
                   <div className="flex items-center gap-3">
-                    <div className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center text-muted-foreground text-[10px] font-black">2</div>
+                    <div className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center text-muted-foreground text-[0.625rem] font-black">2</div>
                     <h3 className="text-sm font-black text-foreground">Identity Verification</h3>
                   </div>
-                  <p className="text-[10px] text-muted-foreground pl-9">
+                  <p className="text-[0.625rem] text-muted-foreground pl-9">
                     Upload government ID or utility bill to increase your transaction limits. (Coming soon)
                   </p>
                 </div>
@@ -252,7 +252,7 @@ export function VerificationDialog({ open, onOpenChange, account, onSuccess }: V
                   <Clock className="w-5 h-5 text-[#388E3C] shrink-0" />
                   <div>
                     <p className="text-xs font-black text-foreground mb-1 uppercase tracking-widest">Manual Review Required</p>
-                    <p className="text-[10px] text-muted-foreground leading-relaxed font-medium">
+                    <p className="text-[0.625rem] text-muted-foreground leading-relaxed font-medium">
                       Mobile money accounts are reviewed manually by our team. Verification typically completes within 24-48 hours.
                     </p>
                   </div>

@@ -64,10 +64,10 @@ export default function ConfirmReceiptPage() {
               <circle cx="96" cy="96" r="90" fill="none" className="stroke-[#82db7e] stroke-[6px]" strokeLinecap="round" strokeDasharray="565.48" strokeDashoffset="140"></circle>
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center pt-2">
-              <span className="font-brand text-[40px] text-primary leading-none" style={{ fontFamily: "Jersey 25, cursive" }}>48:00:00</span>
+              <span className="font-brand text-[2.5rem] text-primary leading-none" style={{ fontFamily: "Jersey 25, cursive" }}>48:00:00</span>
             </div>
           </div>
-          <p className="font-editorial text-[11px] text-on-surface-variant mt-4 uppercase tracking-widest text-center">
+          <p className="font-editorial text-[0.6875rem] text-on-surface-variant mt-4 uppercase tracking-widest text-center">
             Remaining to confirm or auto-release
           </p>
         </div>
@@ -110,7 +110,7 @@ export default function ConfirmReceiptPage() {
         <div className="mt-12 w-full text-center">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-surface-container-high/30 rounded-full border border-outline-variant/10">
             <Info className="w-4 h-4 text-on-surface-variant" />
-            <p className="font-editorial text-[10px] text-on-surface-variant uppercase tracking-wider">
+            <p className="font-editorial text-[0.625rem] text-on-surface-variant uppercase tracking-wider">
               If you take no action in 48h, funds will be auto-released to the seller.
             </p>
           </div>

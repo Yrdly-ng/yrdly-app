@@ -87,7 +87,7 @@ export default function EditProfilePage() {
   };
 
   return (
-    <div className="min-h-screen pb-36" style={{ background: "var(--c-bg)", fontFamily: "Inter, sans-serif", color: "var(--c-text)" }}>
+    <div className="min-h-[100dvh] pb-36" style={{ background: "var(--c-bg)", fontFamily: "Inter, sans-serif", color: "var(--c-text)" }}>
 
       {/* Sticky Header */}
       <header
@@ -151,7 +151,7 @@ export default function EditProfilePage() {
                   onFocus={e => e.target.style.boxShadow = `0 0 0 1px #82DB7E`}
                   onBlur={e => e.target.style.boxShadow = "none"}
                 />
-                <span className="absolute bottom-3 right-4 text-[10px]" style={{ color: "var(--c-text-muted)" }}>{bio.length}/150</span>
+                <span className="absolute bottom-3 right-4 text-[0.625rem]" style={{ color: "var(--c-text-muted)" }}>{bio.length}/150</span>
               </div>
             </Field>
           </div>

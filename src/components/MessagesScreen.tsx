@@ -210,14 +210,14 @@ export function MessagesScreen() {
   ];
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--c-bg)" }}>
+    <div className="min-h-[100dvh]" style={{ background: "var(--c-bg)" }}>
       {/* Sticky Header */}
       <div
         className="sticky top-0 z-40 px-4 pt-5 pb-4 space-y-4"
         style={{ background: 'var(--c-card)', borderRadius: "0 0 11px 11px", boxShadow: "0 8px 32px rgba(0,0,0,0.3)" }}
       >
         <div className="flex justify-between items-center">
-          <h1 className="text-[18px] text-foreground" style={{ fontFamily: PACIFICO }}>Messages</h1>
+          <h1 className="text-[1.125rem] text-foreground" style={{ fontFamily: PACIFICO }}>Messages</h1>
           <Edit className="w-5 h-5" style={{ color: GREEN }} />
         </div>
 
@@ -333,22 +333,22 @@ export function MessagesScreen() {
                   {/* Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-start mb-0.5">
-                      <span className="text-foreground text-[14px] truncate" style={{ fontFamily: FONT, fontWeight: 700 }}>
+                      <span className="text-foreground text-[0.875rem] truncate" style={{ fontFamily: FONT, fontWeight: 700 }}>
                         {conv.participantName}
                       </span>
                       <span
-                        className="text-[10px] flex-shrink-0 ml-2"
+                        className="text-[0.625rem] flex-shrink-0 ml-2"
                         style={{ color: unread ? GREEN : "var(--c-text-muted)", fontFamily: FONT, fontWeight: unread ? 700 : 400 }}
                       >
                         {conv.timestamp}
                       </span>
                     </div>
                     {conv.context?.itemPrice && (
-                      <div className="text-[12px] font-bold mb-0.5" style={{ color: "#6edf51", fontFamily: FONT }}>
+                      <div className="text-[0.75rem] font-bold mb-0.5" style={{ color: "#6edf51", fontFamily: FONT }}>
                         ₦{conv.context.itemPrice.toLocaleString()}
                       </div>
                     )}
-                    <p className="text-[12px] truncate" style={{ color: unread ? "var(--c-text)" : "var(--c-text-muted)", fontFamily: FONT, fontWeight: unread ? 500 : 400 }}>
+                    <p className="text-[0.75rem] truncate" style={{ color: unread ? "var(--c-text)" : "var(--c-text-muted)", fontFamily: FONT, fontWeight: unread ? 500 : 400 }}>
                       {conv.lastMessage}
                     </p>
                   </div>

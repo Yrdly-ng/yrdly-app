@@ -113,7 +113,7 @@ function MiniCard({ title, sub, img, badge, onClick }: { title: string; sub?: st
     >
       <div className="w-14 h-14 rounded-[10px] overflow-hidden flex-shrink-0 relative" style={{ background: CARD }}>
         {img ? (
-          <Image src={img} alt={title} fill className="object-cover" />
+          <Image src={img} alt={title} fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <Briefcase className="w-6 h-6" style={{ color: GREEN, opacity: 0.4 }} />
@@ -121,7 +121,7 @@ function MiniCard({ title, sub, img, badge, onClick }: { title: string; sub?: st
         )}
         {badge && (
           <span
-            className="absolute top-0.5 right-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full text-foreground"
+            className="absolute top-0.5 right-0.5 text-[0.5625rem] font-bold px-1.5 py-0.5 rounded-full text-foreground"
             style={{ background: GREEN }}
           >{badge}</span>
         )}
@@ -360,13 +360,13 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
             {name}
           </h1>
           {bio && (
-            <p className="mt-2 text-[13px] font-light italic max-w-sm" style={{ fontFamily: RALEWAY, color: "var(--c-text-muted)" }}>
+            <p className="mt-2 text-[0.8125rem] font-light italic max-w-sm" style={{ fontFamily: RALEWAY, color: "var(--c-text-muted)" }}>
               {bio}
             </p>
           )}
 
           {/* Location + Join date */}
-          <div className="mt-5 flex items-center justify-center gap-5 flex-wrap text-[11px] font-bold uppercase tracking-widest" style={{ color: "var(--c-text-muted)" }}>
+          <div className="mt-5 flex items-center justify-center gap-5 flex-wrap text-[0.6875rem] font-bold uppercase tracking-widest" style={{ color: "var(--c-text-muted)" }}>
             {locationStr && (
               <div className="flex items-center gap-1.5">
                 <MapPin className="w-3.5 h-3.5" /> {locationStr}
@@ -487,7 +487,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
           </div>
           <div>
             <p className="text-2xl font-bold text-foreground">{stats.friends.toLocaleString()}</p>
-            <p className="text-[10px] font-bold uppercase tracking-tighter" style={{ color: "var(--c-text-muted)" }}>Connections</p>
+            <p className="text-[0.625rem] font-bold uppercase tracking-tighter" style={{ color: "var(--c-text-muted)" }}>Connections</p>
           </div>
         </button>
         <div
@@ -500,7 +500,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
           </div>
           <div>
             <p className="text-2xl font-bold text-foreground">{stats.events}</p>
-            <p className="text-[10px] font-bold uppercase tracking-tighter" style={{ color: "var(--c-text-muted)" }}>Events</p>
+            <p className="text-[0.625rem] font-bold uppercase tracking-tighter" style={{ color: "var(--c-text-muted)" }}>Events</p>
           </div>
         </div>
       </div>
@@ -590,10 +590,10 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
                   >
                     {userPosts[0].image_url && (
                       <div className="relative overflow-hidden" style={{ aspectRatio: '4/3' }}>
-                        <Image src={userPosts[0].image_url} alt={userPosts[0].text || "Post"} fill className="object-cover transition-transform duration-500 group-hover:scale-105" />
+                        <Image src={userPosts[0].image_url} alt={userPosts[0].text || "Post"} fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover transition-transform duration-500 group-hover:scale-105" />
                         <div className="absolute inset-0" style={{ background: "linear-gradient(to top, var(--c-bg) 0%, transparent 60%)" }} />
                         <div className="absolute bottom-4 left-4 right-4">
-                          <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded"
+                          <span className="text-[0.625rem] font-bold uppercase tracking-widest px-2 py-0.5 rounded"
                             style={{ background: "rgba(110,223,81,0.1)", color: "#6edf51" }}>Article</span>
                           <h4 className="text-foreground font-bold mt-1 text-lg leading-tight">{userPosts[0].text}</h4>
                         </div>
@@ -620,7 +620,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
                       onClick={() => router.push(`/posts/${post.id}`)}
                     >
                       <p className="text-foreground text-xs line-clamp-3" style={{ fontFamily: FONT }}>{post.text || post.title}</p>
-                      <div className="flex items-center gap-2 mt-2 text-[10px]" style={{ color: "var(--c-text-muted)" }}>
+                      <div className="flex items-center gap-2 mt-2 text-[0.625rem]" style={{ color: "var(--c-text-muted)" }}>
                         <Heart className="w-3 h-3" />{post.liked_by?.length || 0}
                       </div>
                     </div>
@@ -688,7 +688,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
                   >
                     <div className="flex items-center gap-2 mb-2">
                       <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#6edf51" }} />
-                      <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>Event</span>
+                      <span className="text-[0.625rem] font-bold uppercase tracking-widest" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>Event</span>
                     </div>
                     <h4 className="text-foreground font-bold text-sm" style={{ fontFamily: RALEWAY }}>
                       {event.text || event.title || "Untitled Event"}

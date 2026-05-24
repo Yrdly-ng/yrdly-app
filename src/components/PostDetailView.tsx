@@ -216,7 +216,7 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
           )}
           <div className="min-w-0">
             <p className="font-sans font-bold text-sm text-foreground truncate">{author?.name || "Anonymous"}</p>
-            <p className="font-sans font-normal text-[11px] text-muted-foreground">
+            <p className="font-sans font-normal text-[0.6875rem] text-muted-foreground">
               {timeAgo(post.timestamp ? new Date(post.timestamp) : null)}
             </p>
           </div>
@@ -231,7 +231,7 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
 
       {/* Post body text */}
       <div className="px-4 pb-3">
-        <p className="font-sans font-normal text-[13px] leading-[15px] text-foreground whitespace-pre-wrap">
+        <p className="font-sans font-normal text-[0.8125rem] leading-[15px] text-foreground whitespace-pre-wrap">
           {post.text || ""}
         </p>
       </div>
@@ -278,7 +278,7 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
           <div className="flex items-center gap-1.5">
             <button
               onClick={handleLike}
-              className="flex items-center justify-center w-6 h-6 rounded-lg bg-[#D9D9D9]/20 hover:bg-accent"
+              className="flex items-center justify-center w-11 h-11 p-2.5 rounded-lg bg-[#D9D9D9]/20 hover:bg-accent"
             >
               <Heart className={cn("w-5 h-5", isLiked && "fill-[#ED1111] text-[#ED1111]")} />
             </button>

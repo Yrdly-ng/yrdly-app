@@ -185,8 +185,8 @@ export default function PayoutSettingsPage() {
         style={{ 
           background: "rgba(13,15,17,0.85)", 
           backdropFilter: "blur(20px)",
-          height: "calc(64px + env(safe-area-inset-top))",
-          paddingTop: "env(safe-area-inset-top)"
+          height: "calc(64px + max(env(safe-area-inset-top), 0px))",
+          paddingTop: "max(env(safe-area-inset-top), 0px)"
         }}
       >
         <div className="w-full max-w-2xl mx-auto px-6 flex items-center justify-between">
@@ -265,7 +265,7 @@ export default function PayoutSettingsPage() {
                   <p className="text-xs font-bold text-[#388E3C] uppercase tracking-widest">Verified Account</p>
                 </div>
               </div>
-              <div className="text-[10px] font-black text-muted-foreground uppercase tracking-tighter opacity-40">
+              <div className="text-[0.625rem] font-black text-muted-foreground uppercase tracking-tighter opacity-40">
                 Primary
               </div>
             </div>
@@ -318,7 +318,7 @@ export default function PayoutSettingsPage() {
             <div className="space-y-6">
               {/* Bank selection */}
               <div className="space-y-3">
-                <label className="text-[10px] uppercase tracking-[0.2em] font-black text-muted-foreground ml-1">
+                <label className="text-[0.625rem] uppercase tracking-[0.2em] font-black text-muted-foreground ml-1">
                   Select Bank
                 </label>
                 <div className="relative">
@@ -342,11 +342,14 @@ export default function PayoutSettingsPage() {
 
               {/* Account number */}
               <div className="space-y-3">
-                <label className="text-[10px] uppercase tracking-[0.2em] font-black text-muted-foreground ml-1">
+                <label className="text-[0.625rem] uppercase tracking-[0.2em] font-black text-muted-foreground ml-1">
                   Account Number
                 </label>
                 <input
                   type="text"
+                  inputMode="numeric"
+                  enterKeyHint="next"
+                  autoComplete="off"
                   value={accountNumber}
                   onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, "").slice(0, 10))}
                   placeholder="0123456789"
@@ -357,11 +360,14 @@ export default function PayoutSettingsPage() {
 
               {/* Account name */}
               <div className="space-y-3">
-                <label className="text-[10px] uppercase tracking-[0.2em] font-black text-muted-foreground ml-1">
+                <label className="text-[0.625rem] uppercase tracking-[0.2em] font-black text-muted-foreground ml-1">
                   Account Holder Name
                 </label>
                 <input
                   type="text"
+                  inputMode="text"
+                  enterKeyHint="done"
+                  autoComplete="name"
                   value={accountName}
                   onChange={(e) => setAccountName(e.target.value)}
                   placeholder="e.g. John Doe"
@@ -407,7 +413,7 @@ export default function PayoutSettingsPage() {
         {/* Security Note */}
         <div className="flex items-center justify-center gap-3 px-6 py-4 rounded-3xl bg-white/[0.02] border border-border">
           <AlertCircle className="w-4 h-4 text-muted-foreground" />
-          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+          <p className="text-[0.625rem] font-black uppercase tracking-widest text-muted-foreground">
             Encrypted & PCI-DSS Compliant Storage
           </p>
         </div>

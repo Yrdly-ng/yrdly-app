@@ -56,15 +56,15 @@ export default function PayoutSuccessPage() {
 
         {/* Success Message */}
         <div className="text-center space-y-2 mb-10 z-10">
-          <h2 className="font-pacifico text-[28px] text-white leading-tight">
+          <h2 className="font-pacifico text-[1.75rem] text-white leading-tight">
             {amount !== "0" ? `${fmt(amount)} Sent!` : "Payout Sent!"}
           </h2>
-          <p className="font-raleway text-[13px] text-on-surface-variant max-w-[280px] mx-auto">
+          <p className="font-raleway text-[0.8125rem] text-on-surface-variant max-w-[280px] mx-auto">
             Transferred to your account {account}
           </p>
           <div className="inline-flex items-center px-3 py-1 bg-tertiary/10 border border-tertiary/20 rounded-full mt-4">
             <Clock className="text-tertiary w-3.5 h-3.5 mr-1.5" />
-            <span className="font-raleway font-semibold text-[11px] text-tertiary uppercase tracking-wider">
+            <span className="font-raleway font-semibold text-[0.6875rem] text-tertiary uppercase tracking-wider">
               Arrives within 24 hours
             </span>
           </div>
@@ -74,12 +74,12 @@ export default function PayoutSuccessPage() {
         <div className="w-full bg-surface-container rounded-xl p-5 mb-10 border border-outline-variant/10 shadow-lg z-10">
           <div className="flex flex-col gap-2">
             <div className="flex justify-between items-center">
-              <span className="font-raleway text-[11px] text-on-surface-variant uppercase tracking-tight">Ref Number</span>
-              <span className="font-body text-[12px] text-on-surface">#{transactionId ? transactionId.slice(0, 10).toUpperCase() : "TXN-XXXXX"}</span>
+              <span className="font-raleway text-[0.6875rem] text-on-surface-variant uppercase tracking-tight">Ref Number</span>
+              <span className="font-body text-[0.75rem] text-on-surface">#{transactionId ? transactionId.slice(0, 10).toUpperCase() : "TXN-XXXXX"}</span>
             </div>
             <div className="flex justify-between items-center mt-2">
-              <span className="font-raleway text-[11px] text-on-surface-variant uppercase tracking-tight">Date</span>
-              <span className="font-body text-[12px] text-on-surface">
+              <span className="font-raleway text-[0.6875rem] text-on-surface-variant uppercase tracking-tight">Date</span>
+              <span className="font-body text-[0.75rem] text-on-surface">
                 {new Date().toLocaleDateString("en-NG", { day: "2-digit", month: "short", year: "numeric" })}
               </span>
             </div>

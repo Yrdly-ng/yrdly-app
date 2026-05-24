@@ -96,7 +96,7 @@ type CreateBusinessDialogProps = {
 function StyledInput({ label, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
   return (
     <div className="space-y-2">
-      <label className="block text-[13px] font-medium ml-4" style={{ fontFamily: FONT, color: "var(--c-text-muted)" }}>
+      <label className="block text-[0.8125rem] font-medium ml-4" style={{ fontFamily: FONT, color: "var(--c-text-muted)" }}>
         {label}
       </label>
       <input
@@ -117,7 +117,7 @@ function StyledInput({ label, ...props }: React.InputHTMLAttributes<HTMLInputEle
 function StyledTextarea({ label, ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { label: string }) {
   return (
     <div className="space-y-2">
-      <label className="block text-[13px] font-medium ml-4" style={{ fontFamily: FONT, color: "var(--c-text-muted)" }}>
+      <label className="block text-[0.8125rem] font-medium ml-4" style={{ fontFamily: FONT, color: "var(--c-text-muted)" }}>
         {label}
       </label>
       <textarea
@@ -188,7 +188,7 @@ function BusinessFormBody({
           >
             <X className="w-5 h-5" />
           </button>
-          <h1 className="text-[18px] font-bold text-foreground" style={{ fontFamily: FONT }}>
+          <h1 className="text-[1.125rem] font-bold text-foreground" style={{ fontFamily: FONT }}>
             {isEditMode ? "Edit Business" : "Add a Business"}
           </h1>
         </div>
@@ -221,7 +221,7 @@ function BusinessFormBody({
               render={({ field }) => (
                 <FormItem>
                   <div className="space-y-2">
-                    <label className="block text-[13px] font-medium ml-4" style={{ fontFamily: FONT, color: "var(--c-text-muted)" }}>
+                    <label className="block text-[0.8125rem] font-medium ml-4" style={{ fontFamily: FONT, color: "var(--c-text-muted)" }}>
                       Category
                     </label>
                     <div className="relative">
@@ -284,7 +284,7 @@ function BusinessFormBody({
           render={({ field: { onChange } }) => (
             <FormItem>
               <div className="space-y-2">
-                <label className="block text-[13px] font-medium ml-4" style={{ fontFamily: FONT, color: "var(--c-text-muted)" }}>
+                <label className="block text-[0.8125rem] font-medium ml-4" style={{ fontFamily: FONT, color: "var(--c-text-muted)" }}>
                   Business Photos
                 </label>
                 <div
@@ -316,7 +316,7 @@ function BusinessFormBody({
                   <div className="grid grid-cols-3 gap-2 mt-2">
                     {previewFiles.map((src, i) => (
                       <div key={i} className="relative rounded-[10px] overflow-hidden h-20">
-                        <Image src={src} alt={`Preview ${i + 1}`} fill className="object-cover" />
+                        <Image src={src} alt={`Preview ${i + 1}`} fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover" />
                       </div>
                     ))}
                   </div>
@@ -328,7 +328,7 @@ function BusinessFormBody({
                       const removed = removedImageIndexes.includes(idx);
                       return (
                         <div key={idx} className={`relative rounded-[10px] overflow-hidden h-20 group ${removed ? "opacity-50" : ""}`}>
-                          <Image src={url} alt={`Image ${idx + 1}`} fill className="object-cover" />
+                          <Image src={url} alt={`Image ${idx + 1}`} fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover" />
                           {!removed && (
                             <button
                               type="button"
@@ -360,7 +360,7 @@ function BusinessFormBody({
           render={({ field }) => (
             <FormItem>
               <div className="space-y-2">
-                <label className="block text-[13px] font-medium ml-4" style={{ fontFamily: FONT, color: "var(--c-text-muted)" }}>
+                <label className="block text-[0.8125rem] font-medium ml-4" style={{ fontFamily: FONT, color: "var(--c-text-muted)" }}>
                   Location
                 </label>
                 <FormControl>
@@ -385,7 +385,7 @@ function BusinessFormBody({
               render={({ field }) => (
                 <FormItem>
                   <div className="space-y-2">
-                    <label className="block text-[13px] font-medium ml-4" style={{ fontFamily: FONT, color: "var(--c-text-muted)" }}>
+                    <label className="block text-[0.8125rem] font-medium ml-4" style={{ fontFamily: FONT, color: "var(--c-text-muted)" }}>
                       Phone (+234)
                     </label>
                     <div
@@ -447,7 +447,7 @@ function BusinessFormBody({
         >
           {loading ? (isEditMode ? "Saving..." : "Adding Business...") : (isEditMode ? "Save Changes" : "Add Business")}
         </button>
-        <p className="text-center text-[11px] mt-3" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
+        <p className="text-center text-[0.6875rem] mt-3" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
           By listing your business, you agree to Yrdly&apos;s{" "}
           <span className="underline cursor-pointer" style={{ color: GREEN }}>Terms of Service</span>.
         </p>

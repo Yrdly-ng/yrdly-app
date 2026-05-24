@@ -108,7 +108,7 @@ export default function ReviewPage() {
           <div className="flex flex-col gap-1">
             <h2 className="font-editorial font-bold text-lg leading-tight" style={{ fontFamily: "Raleway, sans-serif" }}>{sellerName}</h2>
             <div className="flex">
-              <span className="text-[10px] uppercase tracking-widest font-bold px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container">Seller</span>
+              <span className="text-[0.625rem] uppercase tracking-widest font-bold px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container">Seller</span>
             </div>
           </div>
         </section>
@@ -147,7 +147,7 @@ export default function ReviewPage() {
               placeholder="Share your experience... (optional)"
               rows={5}
             ></textarea>
-            <div className="absolute bottom-3 right-4 text-[11px] font-label text-outline">
+            <div className="absolute bottom-3 right-4 text-[0.6875rem] font-label text-outline">
               {text.length} / 120
             </div>
           </div>

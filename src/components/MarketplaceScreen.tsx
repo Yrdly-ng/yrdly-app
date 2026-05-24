@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useMemo } from "react";
 import { Search, Plus, Edit, Trash2, MessageCircle, ShoppingBag } from "lucide-react";
@@ -120,7 +120,7 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
     price === 0 ? "FREE" : `₦${price.toLocaleString()}`;
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--c-bg)" }}>
+    <div className="min-h-[100dvh]" style={{ background: "var(--c-bg)" }}>
       {/* Location filter */}
       <div className="px-4 pt-4 pb-1">
         <LocationChip />
@@ -207,7 +207,7 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
       )}
 
       {/* FAB — list an item */}
-      <div className="fixed bottom-20 right-4 z-20">
+      <div className="fixed bottom-20 right-4 z-20 pb-[env(safe-area-inset-bottom)]">
         <button
           onClick={() => setOnboardingOpen(true)}
           className="w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
@@ -284,8 +284,7 @@ function MarketplaceCard({
         {imageUrl ? (
           <Image
             src={imageUrl}
-            alt={item.title || item.text || "Item"}
-            fill
+            alt={item.title || item.text || "Item"} fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             className="object-cover"
             onError={() => setImgError(true)}
           />
@@ -303,7 +302,7 @@ function MarketplaceCard({
       <div className="p-2.5 flex flex-col gap-1 flex-1">
         {/* Item name */}
         <p
-          className="text-foreground text-[13px] leading-[15px] line-clamp-2"
+          className="text-foreground text-[0.8125rem] leading-[15px] line-clamp-2"
           style={{ fontFamily: "Inter, sans-serif", fontWeight: 500 }}
           onClick={() => onItemClick?.(item)}
         >
@@ -312,7 +311,7 @@ function MarketplaceCard({
 
         {/* Price */}
         <p
-          className="text-[22px] leading-[28px] font-bold"
+          className="text-[1.375rem] leading-[28px] font-bold"
           style={{ fontFamily: "Inter, sans-serif", color: "#388E3C" }}
         >
           {formatPrice(item.price || 0)}
@@ -373,7 +372,7 @@ function MarketplaceCard({
           }}
         >
           <div
-            className="w-4 h-4 rounded-full flex-shrink-0 flex items-center justify-center text-[9px] font-bold text-foreground overflow-hidden"
+            className="w-4 h-4 rounded-full flex-shrink-0 flex items-center justify-center text-[0.5625rem] font-bold text-foreground overflow-hidden"
             style={{ background: "#388E3C" }}
           >
             {item.user?.avatar_url ? (
@@ -389,13 +388,13 @@ function MarketplaceCard({
             )}
           </div>
           <span
-            className="text-[11px] truncate"
+            className="text-[0.6875rem] truncate"
             style={{ color: "var(--c-text-muted)", fontFamily: "Inter, sans-serif" }}
           >
             {item.user?.name || "Unknown Seller"}
           </span>
           <span
-            className="text-[10px] ml-auto flex-shrink-0"
+            className="text-[0.625rem] ml-auto flex-shrink-0"
             style={{ color: "#555", fontFamily: "Inter, sans-serif" }}
           >
             {new Date(item.timestamp).toLocaleDateString("en-NG", {

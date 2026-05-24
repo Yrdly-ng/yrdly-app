@@ -151,7 +151,7 @@ export default function EventDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-[100dvh] bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-[#388E3C] animate-spin" />
       </div>
     );
@@ -159,7 +159,7 @@ export default function EventDetailPage() {
 
   if (!event) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 text-foreground p-6">
+      <div className="min-h-[100dvh] bg-background flex flex-col items-center justify-center gap-4 text-foreground p-6">
         <AlertCircle className="w-12 h-12 text-red-400" />
         <p className="font-sans text-lg">Event not found</p>
         <Button onClick={() => router.push("/events")} variant="outline" className="border-border text-foreground">
@@ -183,7 +183,7 @@ export default function EventDetailPage() {
   const hasMultipleImages = eventImages.length > 1;
 
   return (
-    <div className="min-h-screen bg-background text-foreground pb-24">
+    <div className="min-h-[100dvh] bg-background text-foreground pb-24">
       {/* Hero Carousel */}
       <div className="relative w-full aspect-[16/7] max-h-[420px] bg-card overflow-hidden">
         {eventImages.length > 0 ? (
@@ -195,7 +195,7 @@ export default function EventDetailPage() {
             >
               {eventImages.map((src, i) => (
                 <div key={i} className="relative w-full h-full flex-shrink-0 cursor-pointer" onClick={() => setLightboxOpen(true)}>
-                  <Image src={src} alt={`${event.title} — image ${i + 1}`} fill className="object-cover" priority={i === 0} />
+                  <Image src={src} alt={`${event.title} — image ${i + 1}`} fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover" priority={i === 0} />
                 </div>
               ))}
             </div>
@@ -267,7 +267,7 @@ export default function EventDetailPage() {
             )}
             <button
               onClick={handleShare}
-              className="w-10 h-10 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center"
+              className="w-11 h-11 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center"
             >
               <Share2 className="w-4 h-4 text-foreground" />
             </button>

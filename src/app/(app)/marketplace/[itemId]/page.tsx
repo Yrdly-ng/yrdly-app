@@ -139,7 +139,7 @@ export default function MarketplaceItemPage() {
   /* ─────────────────────────────────────────── LOADING ── */
   if (loading) {
     return (
-      <div className="min-h-screen p-4" style={{ background: BG }}>
+      <div className="min-h-[100dvh] p-4" style={{ background: BG }}>
         <div className="flex flex-col lg:flex-row gap-4 mt-4">
           <Skeleton className="flex-1 h-[400px] lg:h-[670px] rounded-xl" style={{ background: CARD_BG }} />
           <Skeleton className="w-full lg:w-[320px] h-[200px] lg:h-[313px] rounded-xl" style={{ background: CARD_BG }} />
@@ -152,7 +152,7 @@ export default function MarketplaceItemPage() {
 
   /* ─────────────────────────────────────────── RENDER ── */
   return (
-    <div className="min-h-screen" style={{ background: BG }}>
+    <div className="min-h-[100dvh]" style={{ background: BG }}>
 
       {/* ── Back button row ── */}
       <div className="px-4 pt-4 pb-2">
@@ -196,8 +196,7 @@ export default function MarketplaceItemPage() {
               {images.length > 0 ? (
                 <Image
                   src={images[currentImageIndex]}
-                  alt={item.title || "Item image"}
-                  fill
+                  alt={item.title || "Item image"} fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                   className="object-cover"
                 />
               ) : (
@@ -231,13 +230,13 @@ export default function MarketplaceItemPage() {
           {/* Details section */}
           <div className="px-6 pb-4">
             <p
-              className="font-bold text-[13px] text-foreground mb-2"
+              className="font-bold text-[0.8125rem] text-foreground mb-2"
               style={{ fontFamily: FONT_RALEWAY }}
             >
               Details
             </p>
             <p
-              className="text-[13px] text-foreground leading-[18px]"
+              className="text-[0.8125rem] text-foreground leading-[18px]"
               style={{ fontFamily: FONT_RALEWAY, fontWeight: 400 }}
             >
               {item.description || item.text || "No description provided."}
@@ -250,7 +249,7 @@ export default function MarketplaceItemPage() {
           {/* Directions / location */}
           <div className="px-6 pb-6">
             <p
-              className="font-bold text-[13px] text-foreground mb-3"
+              className="font-bold text-[0.8125rem] text-foreground mb-3"
               style={{ fontFamily: FONT_RALEWAY }}
             >
               Directions
@@ -280,7 +279,7 @@ export default function MarketplaceItemPage() {
 
           {/* Price */}
           <p
-            className="text-[24px] font-bold leading-[28px]"
+            className="text-[1.5rem] font-bold leading-[28px]"
             style={{ fontFamily: FONT_RALEWAY, color: GREEN }}
           >
             {formatPrice(item.price)}
@@ -315,7 +314,7 @@ export default function MarketplaceItemPage() {
           {/* Seller Information */}
           <div>
             <p
-              className="font-bold text-[13px] text-foreground mb-3"
+              className="font-bold text-[0.8125rem] text-foreground mb-3"
               style={{ fontFamily: FONT_RALEWAY }}
             >
               Seller Information
@@ -340,13 +339,13 @@ export default function MarketplaceItemPage() {
               </div>
               <div>
                 <p
-                  className="text-[13px] font-normal text-muted-foreground"
+                  className="text-[0.8125rem] font-normal text-muted-foreground"
                   style={{ fontFamily: FONT_RALEWAY }}
                 >
                   {item.author_name || "Unknown Seller"}
                 </p>
                 <p
-                  className="text-[10px] italic font-extralight text-muted-foreground"
+                  className="text-[0.625rem] italic font-extralight text-muted-foreground"
                   style={{ fontFamily: FONT_RALEWAY }}
                 >
                   Joined Yrdly in {new Date(item.user?.created_at || item.timestamp).getFullYear()}
@@ -394,7 +393,7 @@ export default function MarketplaceItemPage() {
                     onChange={(e) => setMessage(e.target.value)}
                     placeholder="Hi, Is this available?"
                     rows={3}
-                    className="w-full bg-transparent text-foreground text-[13px] font-light p-3 pr-10 resize-none outline-none placeholder:text-[#BBBBBB]"
+                    className="w-full bg-transparent text-foreground text-[0.8125rem] font-light p-3 pr-10 resize-none outline-none placeholder:text-[#BBBBBB]"
                     style={{ fontFamily: FONT_RALEWAY }}
                   />
                   <button
@@ -406,7 +405,7 @@ export default function MarketplaceItemPage() {
                   </button>
                 </div>
                 <p
-                  className="text-[10px] italic font-extralight text-foreground pl-1"
+                  className="text-[0.625rem] italic font-extralight text-foreground pl-1"
                   style={{ fontFamily: FONT_RALEWAY }}
                 >
                   Send seller a message
@@ -479,8 +478,7 @@ function RelatedCard({
         {imageUrl ? (
           <Image
             src={imageUrl}
-            alt={item.title || item.text || "Item"}
-            fill
+            alt={item.title || item.text || "Item"} fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             className="object-cover"
             onError={() => setImgError(true)}
           />
@@ -497,13 +495,13 @@ function RelatedCard({
       {/* Info */}
       <div className="p-2.5">
         <p
-          className="text-[13px] text-foreground line-clamp-1 mb-1"
+          className="text-[0.8125rem] text-foreground line-clamp-1 mb-1"
           style={{ fontFamily: FONT_RALEWAY, fontWeight: 500 }}
         >
           {item.title || item.text || "Untitled"}
         </p>
         <p
-          className="text-[22px] font-bold"
+          className="text-[1.375rem] font-bold"
           style={{ fontFamily: FONT_RALEWAY, color: GREEN }}
         >
           {formatPrice(item.price)}

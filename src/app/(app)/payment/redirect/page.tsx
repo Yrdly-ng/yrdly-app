@@ -25,7 +25,7 @@ export default function PaymentRedirectPage() {
       {/* Top AppBar */}
       <header className="fixed top-0 w-full z-50 bg-[#15181D]/80 backdrop-blur-xl flex items-center px-6 h-16">
         <div className="flex items-center gap-4 w-full max-w-lg mx-auto justify-center">
-          <span className="text-[#259907] font-brand text-[28px]">Yrdly</span>
+          <span className="text-[#259907] font-brand text-[1.75rem]">Yrdly</span>
         </div>
       </header>
 
@@ -42,10 +42,10 @@ export default function PaymentRedirectPage() {
           
           {/* Loading Messaging */}
           <div className="space-y-3">
-            <h1 className="font-pacifico text-[22px] text-on-surface tracking-wide">
+            <h1 className="font-pacifico text-[1.375rem] text-on-surface tracking-wide">
               Connecting to Flutterwave...
             </h1>
-            <p className="font-editorial text-[13px] text-on-surface-variant leading-relaxed">
+            <p className="font-editorial text-[0.8125rem] text-on-surface-variant leading-relaxed">
               Please do not close this screen
             </p>
           </div>
@@ -62,7 +62,7 @@ export default function PaymentRedirectPage() {
             <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
               <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
             </svg>
-            <span className="font-editorial text-[11px] uppercase tracking-widest">
+            <span className="font-editorial text-[0.6875rem] uppercase tracking-widest">
               Secured payment
             </span>
           </div>

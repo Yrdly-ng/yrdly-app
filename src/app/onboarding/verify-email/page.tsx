@@ -296,7 +296,7 @@ function VerifyEmailContent() {
   // Show loading while checking authentication
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-[100dvh] bg-background">
         <OnboardingProgress />
         <div className="flex items-center justify-center p-4 pt-8">
           <LoadingState 
@@ -311,7 +311,7 @@ function VerifyEmailContent() {
   // Show waiting state if no user (but not loading)
   if (!loading && !user) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-[100dvh] bg-background">
         <OnboardingProgress />
         <div className="flex items-center justify-center p-4 pt-8">
           <LoadingState 
@@ -324,7 +324,7 @@ function VerifyEmailContent() {
   }
 
   return (
-    <div className="min-h-screen pb-20 overflow-x-hidden" style={{ background: "var(--c-bg)", color: "var(--c-text)", fontFamily: "Inter, sans-serif" }}>
+    <div className="min-h-[100dvh] pb-20 overflow-x-hidden" style={{ background: "var(--c-bg)", color: "var(--c-text)", fontFamily: "Inter, sans-serif" }}>
       <OnboardingProgress />
       
       {/* Animated Background Elements */}
@@ -378,7 +378,7 @@ function VerifyEmailContent() {
                       {email}
                     </span>
                     {lastSentTime && timeSinceSent > 0 && (
-                      <span className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/60 mt-1">
+                      <span className="text-[0.625rem] uppercase tracking-widest font-black text-muted-foreground/60 mt-1">
                         Dispatched {formatTimeSinceSent(timeSinceSent)}
                       </span>
                     )}
@@ -405,7 +405,7 @@ function VerifyEmailContent() {
                 <div className="relative overflow-hidden rounded-[24px] bg-background/40 border border-border p-5">
                    <div className="absolute top-0 left-0 w-1 h-full bg-[#388E3C]" />
                    <div className="space-y-2">
-                      <div className="text-[10px] uppercase tracking-[0.2em] font-black text-[#388E3C]">Pro Tip</div>
+                      <div className="text-[0.625rem] uppercase tracking-[0.2em] font-black text-[#388E3C]">Pro Tip</div>
                       <div className="text-sm font-bold text-white/90 leading-relaxed animate-in fade-in slide-in-from-right-2 duration-500" key={currentTip}>
                         {tips[currentTip]}
                       </div>
@@ -477,7 +477,7 @@ function VerifyEmailContent() {
 
           {/* Support Section */}
           <div className="flex flex-col items-center gap-4 py-4">
-            <p className="text-[10px] text-muted-foreground/40 font-black uppercase tracking-[0.3em]">
+            <p className="text-[0.625rem] text-muted-foreground/40 font-black uppercase tracking-[0.3em]">
               Encrypted • Community Verified
             </p>
             <button 

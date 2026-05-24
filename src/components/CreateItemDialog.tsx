@@ -41,6 +41,19 @@ const FONT_RALEWAY = "Inter, sans-serif";
 const FONT_PACIFICO = "Pacifico, cursive";
 
 /* ─── schema ────────────────────────────────────────────────────── */
+const BlobImage = memo(({ file, className, alt }: { file: File, className?: string, alt?: string }) => {
+  const [url, setUrl] = useState<string>('');
+  useEffect(() => {
+    const objectUrl = URL.createObjectURL(file);
+    setUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file]);
+  if (!url) return null;
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={url} alt={alt || ""} className={className} />;
+});
+BlobImage.displayName = "BlobImage";
+
 const getFormSchema = (isEditMode: boolean) =>
   z.object({
     text: z.string().min(1, "Item title can't be empty.").max(100),
@@ -103,7 +116,7 @@ function FormBody({
         <h1 className="text-2xl font-black font-sans">
             {isEditMode ? "Edit Item" : "Create Item for Sale"}
         </h1>
-        <button type="button" onClick={onClose} className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition">
+        <button type="button" onClick={onClose} className="w-11 h-11 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition">
           <X className="w-5 h-5" />
         </button>
       </div>
@@ -162,7 +175,7 @@ function FormBody({
                 <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
                   {Array.from(form.watch("image") as FileList).filter(f => f instanceof File).map((file, i) => (
                     <div key={i} className="relative w-16 h-16 flex-shrink-0 rounded-md overflow-hidden">
-                      <Image src={URL.createObjectURL(file as File)} alt="Preview" fill className="object-cover" sizes="64px" />
+                      <BlobImage file={file as File} alt="Preview" className="w-full h-full object-cover" />
                     </div>
                   ))}
                 </div>

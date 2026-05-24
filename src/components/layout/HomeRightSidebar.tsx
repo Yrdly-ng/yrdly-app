@@ -40,7 +40,7 @@ function InterestedBubbles({ count, colors }: { count: number; colors: string[] 
         ))}
       </div>
       {count > 0 && (
-        <span className="font-sans font-light text-[7px] text-foreground" style={{ fontFamily: FONT_RALEWAY }}>
+        <span className="font-sans font-light text-[0.4375rem] text-foreground" style={{ fontFamily: FONT_RALEWAY }}>
           {count} are interested
         </span>
       )}
@@ -56,7 +56,7 @@ function EventCard({ event }: { event: EventPost }) {
   return (
     <Link href={`/posts/${event.id}`} className="block p-3 hover:bg-accent transition-colors">
       {/* Top label */}
-      <p className="font-pacifico text-[15px] leading-[26px] text-foreground mb-1" style={{ fontFamily: FONT_PACIFICO }}>
+      <p className="font-pacifico text-[0.9375rem] leading-[26px] text-foreground mb-1" style={{ fontFamily: FONT_PACIFICO }}>
         In your area
       </p>
 
@@ -75,10 +75,10 @@ function EventCard({ event }: { event: EventPost }) {
           </div>
           {/* title + date */}
           <div className="min-w-0 flex-1">
-            <p className="font-sans italic font-medium text-[11px] text-foreground truncate" style={{ fontFamily: FONT_RALEWAY }}>
+            <p className="font-sans italic font-medium text-[0.6875rem] text-foreground truncate" style={{ fontFamily: FONT_RALEWAY }}>
               {event.title || event.text?.split('\n')[0] || 'Event'}
             </p>
-            <p className="font-sans font-normal text-[6px] text-muted-foreground" style={{ fontFamily: FONT_RALEWAY }}>
+            <p className="font-sans font-normal text-[0.375rem] text-muted-foreground" style={{ fontFamily: FONT_RALEWAY }}>
               {formatDate(event.event_date ?? null)}
             </p>
           </div>
@@ -88,7 +88,7 @@ function EventCard({ event }: { event: EventPost }) {
 
         {/* description (location) */}
         {(getLocation(event.event_location) || event.text) && (
-          <p className="font-sans font-light text-[9px] text-foreground px-2 pb-2 leading-[11px]" style={{ fontFamily: FONT_RALEWAY }}>
+          <p className="font-sans font-light text-[0.5625rem] text-foreground px-2 pb-2 leading-[11px]" style={{ fontFamily: FONT_RALEWAY }}>
             {getLocation(event.event_location) || event.text?.slice(0, 80)}
           </p>
         )}
@@ -100,7 +100,7 @@ function EventCard({ event }: { event: EventPost }) {
         <div className="flex items-center justify-between px-2 py-2">
           <InterestedBubbles count={attendeeCount} colors={colors} />
           <button
-            className="px-2 py-1 text-foreground font-sans font-light text-[9px] rounded-[11.5px]"
+            className="px-2 py-1 text-foreground font-sans font-light text-[0.5625rem] rounded-[11.5px]"
             style={{ background: GREEN, fontFamily: FONT_RALEWAY }}
             onClick={(e) => e.preventDefault()}
           >
@@ -125,10 +125,10 @@ function QuickSaleCard({ item }: { item: SalePost }) {
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="font-sans font-semibold text-[12px] text-foreground truncate" style={{ fontFamily: FONT_RALEWAY }}>
+        <p className="font-sans font-semibold text-[0.75rem] text-foreground truncate" style={{ fontFamily: FONT_RALEWAY }}>
           {item.title || item.text?.split('\n')[0] || 'Item'}
         </p>
-        <p className="font-sans font-bold text-[14px]" style={{ color: GREEN, fontFamily: FONT_RALEWAY }}>{price}</p>
+        <p className="font-sans font-bold text-[0.875rem]" style={{ color: GREEN, fontFamily: FONT_RALEWAY }}>{price}</p>
       </div>
     </Link>
   );
@@ -182,18 +182,18 @@ export function HomeRightSidebar() {
               </div>
               <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[#388E3C] border-2 border-white" />
             </div>
-            <p className="text-[13px] font-bold text-foreground leading-snug" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <p className="text-[0.8125rem] font-bold text-foreground leading-snug" style={{ fontFamily: 'Inter, sans-serif' }}>
               {lga || state || 'My Area'}
             </p>
             {state && lga && (
-              <p className="text-[11px] text-muted-foreground leading-snug mt-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <p className="text-[0.6875rem] text-muted-foreground leading-snug mt-1" style={{ fontFamily: 'Inter, sans-serif' }}>
                 {state}
               </p>
             )}
           </div>
           <div className="border-t border-[#F2F2F2]">
             <Link href="/map" className="flex items-center justify-between px-4 py-2.5 hover:bg-[#F2F2F2] transition-colors">
-              <span className="text-[11px] font-semibold text-[#388E3C]" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <span className="text-[0.6875rem] font-semibold text-[#388E3C]" style={{ fontFamily: 'Inter, sans-serif' }}>
                 See map
               </span>
               <ChevronRight className="w-3.5 h-3.5 text-[#388E3C]" />
@@ -205,10 +205,10 @@ export function HomeRightSidebar() {
         <div className="flex-1 flex flex-col gap-4 min-w-0">
           <div>
             <div className="flex items-center justify-between mb-2 px-1">
-              <h2 className="text-[18px] leading-8 text-foreground" style={{ fontFamily: FONT_PACIFICO }}>
+              <h2 className="text-[1.125rem] leading-8 text-foreground" style={{ fontFamily: FONT_PACIFICO }}>
                 Latest Events
               </h2>
-              <Link href="/events" className="font-sans font-medium text-[12px] text-[#1976D2] hover:underline" style={{ fontFamily: FONT_RALEWAY }}>
+              <Link href="/events" className="font-sans font-medium text-[0.75rem] text-[#1976D2] hover:underline" style={{ fontFamily: FONT_RALEWAY }}>
                 See all
               </Link>
             </div>
@@ -226,7 +226,7 @@ export function HomeRightSidebar() {
           </div>
 
           <div>
-            <h2 className="text-[18px] leading-8 text-foreground mb-2 px-1" style={{ fontFamily: FONT_PACIFICO }}>
+            <h2 className="text-[1.125rem] leading-8 text-foreground mb-2 px-1" style={{ fontFamily: FONT_PACIFICO }}>
               Quick Sales
             </h2>
             <div className="rounded-[5px] overflow-hidden" style={{ background: CARD_BG }}>

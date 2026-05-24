@@ -151,12 +151,12 @@ export function MainLayout({ children }: MainLayoutProps) {
 
   return (
     <>
-      <div className="min-h-screen bg-[#F2F2F2]" role="application">
+      <div className="min-h-[100dvh] bg-[#F2F2F2]" role="application">
         {/* ── Top Header ── */}
         {!isChatPage && !isSubPage && (
           <Suspense fallback={null}>
             <header
-              className="fixed top-0 left-0 right-0 z-50 h-16 md:h-[84px] flex items-center px-4 md:px-6 bg-white border-b border-[#E0E0E0] shadow-sm"
+              className="fixed top-0 left-0 right-0 z-50 flex items-center px-4 md:px-6 bg-white border-b border-[#E0E0E0] shadow-sm pt-[max(env(safe-area-inset-top),0px)] h-[calc(4rem+env(safe-area-inset-top))] md:h-[calc(84px+env(safe-area-inset-top))]"
             >
               <div className="w-full max-w-7xl mx-auto flex items-center gap-4">
                 <Link href="/home" className="flex items-center gap-1.5 flex-shrink-0">
@@ -205,7 +205,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                       <MessageCircle className="w-5 h-5" />
                       {unreadMessagesCount > 0 && (
                         <span
-                          className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 rounded-full flex items-center justify-center text-[9px] font-bold px-1"
+                          className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 rounded-full flex items-center justify-center text-[0.5625rem] font-bold px-1"
                           style={{ background: "#388E3C", color: "#fff", border: "1.5px solid #fff" }}
                         >
                           {unreadMessagesCount > 9 ? "9+" : unreadMessagesCount}
@@ -222,7 +222,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                     <Bell className="w-5 h-5" />
                     {unreadCount > 0 && (
                       <span
-                        className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 rounded-full flex items-center justify-center text-[9px] font-bold px-1"
+                        className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 rounded-full flex items-center justify-center text-[0.5625rem] font-bold px-1"
                         style={{ background: "#388E3C", color: "#fff", border: "1.5px solid #fff" }}
                       >
                         {unreadCount > 9 ? "9+" : unreadCount}
@@ -252,7 +252,7 @@ export function MainLayout({ children }: MainLayoutProps) {
 
         <div
           className={cn(
-            "flex flex-col lg:flex-row min-h-screen",
+            "flex flex-col lg:flex-row min-h-[100dvh]",
             (!isChatPage && !isSubPage) && "pt-16 md:pt-[84px]",
             !isChatPage && "pb-[calc(64px+env(safe-area-inset-bottom)+2rem)] lg:pb-0"
           )}
@@ -282,7 +282,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                       />
                       <span
                         className={cn(
-                          "text-[14px] leading-snug",
+                          "text-[0.875rem] leading-snug",
                           isActive ? "text-[#388E3C] font-semibold" : "text-[#252629] font-normal"
                         )}
                         style={{ fontFamily: "Inter, sans-serif" }}
@@ -302,7 +302,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                 onOpenChange={setPostDialogOpen}
               >
                 <Button
-                  className="w-full h-10 rounded-full text-white font-semibold text-[14px]"
+                  className="w-full h-10 rounded-full text-white font-semibold text-[0.875rem]"
                   style={{ background: "#388E3C", fontFamily: "Inter, sans-serif" }}
                   onClick={() => setPostDialogOpen(true)}
                 >
@@ -342,8 +342,8 @@ export function MainLayout({ children }: MainLayoutProps) {
           <nav
             className="lg:hidden fixed bottom-0 left-0 right-0 z-[100] flex items-center justify-around px-2 bg-white border-t border-[#E0E0E0] shadow-[0_-2px_8px_rgba(0,0,0,0.08)]"
             style={{
-              height: "64px",
-              paddingBottom: "env(safe-area-inset-bottom)",
+              height: "calc(64px + max(env(safe-area-inset-bottom), 0px))",
+              paddingBottom: "max(env(safe-area-inset-bottom), 0px)",
             }}
           >
             {navItems.map(({ href, label, icon: Icon }) => {
@@ -368,7 +368,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                   </div>
                   <span
                     className={cn(
-                      "text-[9px] font-bold tracking-tight mt-1 transition-colors",
+                      "text-[0.5625rem] font-bold tracking-tight mt-1 transition-colors",
                       isActive ? "text-[#388E3C]" : "text-[#767676]"
                     )}
                     style={{ fontFamily: '"Inter", sans-serif' }}

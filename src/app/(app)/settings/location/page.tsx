@@ -98,7 +98,7 @@ export default function LocationSettingsPage() {
   };
 
   return (
-    <div className="min-h-screen pb-32" style={{ background: BG }}>
+    <div className="min-h-[100dvh] pb-32" style={{ background: BG }}>
       <div className="max-w-lg mx-auto px-4 pt-6 space-y-6">
         {/* Header */}
         <div className="flex items-center gap-3">
@@ -110,7 +110,7 @@ export default function LocationSettingsPage() {
             <ArrowLeft className="w-5 h-5 text-foreground" />
           </button>
           <h1
-            className="text-foreground text-[20px]"
+            className="text-foreground text-[1.25rem]"
             style={{ fontFamily: PACIFICO }}
           >
             Location
@@ -130,13 +130,13 @@ export default function LocationSettingsPage() {
           </div>
           <div className="flex-1">
             <p
-              className="text-[11px] uppercase tracking-wider"
+              className="text-[0.6875rem] uppercase tracking-wider"
               style={{ fontFamily: FONT, color: "var(--c-text-muted)" }}
             >
               Current Location
             </p>
             <p
-              className="text-foreground text-[14px] font-semibold"
+              className="text-foreground text-[0.875rem] font-semibold"
               style={{ fontFamily: FONT }}
             >
               {displayLabel}
@@ -146,7 +146,7 @@ export default function LocationSettingsPage() {
 
         {/* Info */}
         <p
-          className="text-[12px] px-1"
+          className="text-[0.75rem] px-1"
           style={{ fontFamily: FONT, color: "var(--c-text-muted)", lineHeight: 1.6 }}
         >
           Your location determines which posts, events, marketplace items, and
@@ -156,7 +156,7 @@ export default function LocationSettingsPage() {
         {/* State selector */}
         <div className="space-y-2">
           <label
-            className="text-[12px] uppercase tracking-wider px-1"
+            className="text-[0.75rem] uppercase tracking-wider px-1"
             style={{ fontFamily: FONT, color: "var(--c-text-muted)" }}
           >
             State *
@@ -165,7 +165,7 @@ export default function LocationSettingsPage() {
             value={selectedState}
             onChange={(e) => handleStateChange(e.target.value)}
             disabled={locationLoading}
-            className="w-full p-4 rounded-[11px] text-foreground text-[14px] appearance-none outline-none"
+            className="w-full p-4 rounded-[11px] text-foreground text-[0.875rem] appearance-none outline-none"
             style={{
               background: 'var(--c-card)',
               fontFamily: FONT,
@@ -186,7 +186,7 @@ export default function LocationSettingsPage() {
         {/* LGA selector */}
         <div className="space-y-2">
           <label
-            className="text-[12px] uppercase tracking-wider px-1"
+            className="text-[0.75rem] uppercase tracking-wider px-1"
             style={{ fontFamily: FONT, color: "var(--c-text-muted)" }}
           >
             Local Government Area *
@@ -195,7 +195,7 @@ export default function LocationSettingsPage() {
             value={selectedLga}
             onChange={(e) => handleLgaChange(e.target.value)}
             disabled={!selectedState || locationLoading}
-            className="w-full p-4 rounded-[11px] text-foreground text-[14px] appearance-none outline-none"
+            className="w-full p-4 rounded-[11px] text-foreground text-[0.875rem] appearance-none outline-none"
             style={{
               background: 'var(--c-card)',
               fontFamily: FONT,
@@ -219,7 +219,7 @@ export default function LocationSettingsPage() {
         {/* Ward selector */}
         <div className="space-y-2">
           <label
-            className="text-[12px] uppercase tracking-wider px-1"
+            className="text-[0.75rem] uppercase tracking-wider px-1"
             style={{ fontFamily: FONT, color: "var(--c-text-muted)" }}
           >
             Ward (Optional)
@@ -228,7 +228,7 @@ export default function LocationSettingsPage() {
             value={selectedWard}
             onChange={(e) => handleWardChange(e.target.value)}
             disabled={!selectedLga || locationLoading}
-            className="w-full p-4 rounded-[11px] text-foreground text-[14px] appearance-none outline-none"
+            className="w-full p-4 rounded-[11px] text-foreground text-[0.875rem] appearance-none outline-none"
             style={{
               background: 'var(--c-card)',
               fontFamily: FONT,
@@ -253,7 +253,7 @@ export default function LocationSettingsPage() {
         <button
           onClick={handleSave}
           disabled={!canSave || saving}
-          className="w-full py-4 rounded-full text-[14px] font-bold transition-all active:scale-[0.98]"
+          className="w-full py-4 rounded-full text-[0.875rem] font-bold transition-all active:scale-[0.98]"
           style={{
             fontFamily: FONT,
             background: canSave ? GREEN : "#333",

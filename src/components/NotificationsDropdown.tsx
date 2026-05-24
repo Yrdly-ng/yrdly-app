@@ -287,7 +287,7 @@ function NotificationItem({ notification, onMarkAsRead, onDelete, onClose }: {
       {/* Content */}
       <div className="flex-1 min-w-0">
         <div className="flex justify-between items-start mb-1">
-          <span className="text-[10px]" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
+          <span className="text-[0.625rem]" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
             from{" "}
             <span className="font-semibold text-foreground">
               {notification.from_user_name || "Someone"}
@@ -295,7 +295,7 @@ function NotificationItem({ notification, onMarkAsRead, onDelete, onClose }: {
           </span>
           <div className="flex items-center gap-2">
             {!notification.is_read && (
-              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase" style={{ background: "var(--c-bg)", color: GREEN_LIGHT, fontFamily: FONT }}>
+              <span className="text-[0.5625rem] font-bold px-1.5 py-0.5 rounded uppercase" style={{ background: "var(--c-bg)", color: GREEN_LIGHT, fontFamily: FONT }}>
                 New
               </span>
             )}
@@ -337,7 +337,7 @@ function NotificationItem({ notification, onMarkAsRead, onDelete, onClose }: {
           {notification.message}
         </p>
 
-        <span className="text-[9px] mt-2 block" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
+        <span className="text-[0.5625rem] mt-2 block" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
           {formatDistanceToNowStrict(new Date(notification.created_at), { addSuffix: true })}
         </span>
       </div>
@@ -437,9 +437,9 @@ export function NotificationsDropdown({ isOpen, onClose, onNotificationCountChan
         {/* Header */}
         <div className="flex justify-between items-center px-4 py-4 border-b" style={{ borderColor: "rgba(64,73,61,0.1)" }}>
           <div className="flex items-center gap-2">
-            <h2 className="font-bold text-[15px] text-foreground" style={{ fontFamily: RALEWAY }}>Notifications</h2>
+            <h2 className="font-bold text-[0.9375rem] text-foreground" style={{ fontFamily: RALEWAY }}>Notifications</h2>
             {unreadCount > 0 && (
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: "#4da24e", color: "#003207", fontFamily: FONT }}>
+              <span className="text-[0.625rem] font-bold px-1.5 py-0.5 rounded" style={{ background: "#4da24e", color: "#003207", fontFamily: FONT }}>
                 {unreadCount}
               </span>
             )}
@@ -447,7 +447,7 @@ export function NotificationsDropdown({ isOpen, onClose, onNotificationCountChan
           {unreadCount > 0 && (
             <button 
               onClick={handleMarkAllRead}
-              className="text-[10px] font-bold uppercase tracking-tight px-3 py-1 rounded-full transition-colors"
+              className="text-[0.625rem] font-bold uppercase tracking-tight px-3 py-1 rounded-full transition-colors"
               style={{ color: GREEN_LIGHT, border: `1px solid rgba(130,219,126,0.3)`, fontFamily: FONT }}
               onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(130,219,126,0.05)")}
               onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
@@ -480,7 +480,7 @@ export function NotificationsDropdown({ isOpen, onClose, onNotificationCountChan
                 <Bell className="h-6 w-6" style={{ color: GREEN_LIGHT, opacity: 0.7 }} />
               </div>
               <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: RALEWAY }}>No notifications</h3>
-              <p className="text-[11px] mt-1" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>You&apos;re all caught up.</p>
+              <p className="text-[0.6875rem] mt-1" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>You&apos;re all caught up.</p>
             </div>
           )}
         </div>

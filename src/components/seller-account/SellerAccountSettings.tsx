@@ -215,12 +215,12 @@ export function SellerAccountSettings() {
                               {getAccountDisplayName(account)}
                             </h4>
                             {account.isPrimary && (
-                              <div className="px-2 py-0.5 rounded-full bg-[#388E3C]/20 border border-[#388E3C]/30 text-[10px] font-black text-[#388E3C] uppercase tracking-widest">
+                              <div className="px-2 py-0.5 rounded-full bg-[#388E3C]/20 border border-[#388E3C]/30 text-[0.625rem] font-black text-[#388E3C] uppercase tracking-widest">
                                 Primary
                               </div>
                             )}
                           </div>
-                          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mt-0.5">
+                          <p className="text-[0.625rem] font-black text-muted-foreground uppercase tracking-[0.2em] mt-0.5">
                             {account.accountType.replace('_', ' ')}
                           </p>
                         </div>
@@ -244,11 +244,11 @@ export function SellerAccountSettings() {
                     <div className="space-y-4 pt-6 border-t border-border">
                       <div className="flex items-center justify-between">
                         <div className="space-y-1">
-                          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest opacity-60">Status</p>
+                          <p className="text-[0.625rem] font-black text-muted-foreground uppercase tracking-widest opacity-60">Status</p>
                           {getVerificationBadge(account.verificationStatus)}
                         </div>
                         <div className="text-right space-y-1">
-                          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest opacity-60">Added</p>
+                          <p className="text-[0.625rem] font-black text-muted-foreground uppercase tracking-widest opacity-60">Added</p>
                           <p className="text-sm font-bold text-foreground">{account.createdAt.toLocaleDateString()}</p>
                         </div>
                       </div>

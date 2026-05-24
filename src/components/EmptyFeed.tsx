@@ -39,7 +39,7 @@ export function EmptyFeed({ createPost }: EmptyFeedProps) {
       </h2>
       
       <p 
-        className="mb-8 max-w-sm mx-auto text-[15px] leading-relaxed"
+        className="mb-8 max-w-sm mx-auto text-[0.9375rem] leading-relaxed"
         style={{ 
           fontFamily: "Inter, sans-serif", 
           color: "var(--c-text-muted)" 

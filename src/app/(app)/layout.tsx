@@ -58,7 +58,7 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
 
   if (loading || !user || !profile) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-background">
+      <div className="flex h-[100dvh] w-screen items-center justify-center bg-background">
         <Image 
             src="/yrdly-logo.png" 
             alt="Yrdly Logo" 

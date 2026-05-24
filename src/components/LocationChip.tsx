@@ -58,7 +58,7 @@ export function LocationChip() {
     return (
       <button
         onClick={() => router.push("/onboarding/profile")}
-        className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold transition-all active:scale-95"
+        className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[0.6875rem] font-semibold transition-all active:scale-95"
         style={{
           background: "rgba(56,142,60,0.15)",
           color: GREEN,
@@ -114,7 +114,7 @@ export function LocationChip() {
           setShowStatePicker(false);
           setStateSearch("");
         }}
-        className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold transition-all active:scale-95"
+        className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[0.6875rem] font-semibold transition-all active:scale-95"
         style={{
           background: `${chipColor}18`,
           color: chipColor,
@@ -172,12 +172,12 @@ export function LocationChip() {
                 />
                 <div className="flex-1 min-w-0">
                   <p
-                    className="text-[12px] font-semibold truncate"
+                    className="text-[0.75rem] font-semibold truncate"
                     style={{ color: scope === "lga" ? GREEN : "var(--c-text)", fontFamily: FONT }}
                   >
                     {userLga || "My LGA"}
                   </p>
-                  <p className="text-[10px]" style={{ color: "var(--c-text-muted)" }}>
+                  <p className="text-[0.625rem]" style={{ color: "var(--c-text-muted)" }}>
                     Neighborhood
                   </p>
                 </div>
@@ -211,12 +211,12 @@ export function LocationChip() {
                 />
                 <div className="flex-1 min-w-0">
                   <p
-                    className="text-[12px] font-semibold truncate"
+                    className="text-[0.75rem] font-semibold truncate"
                     style={{ color: scope === "state" ? "#2E7D32" : "var(--c-text)", fontFamily: FONT }}
                   >
                     {userState} State
                   </p>
-                  <p className="text-[10px]" style={{ color: "var(--c-text-muted)" }}>
+                  <p className="text-[0.625rem]" style={{ color: "var(--c-text-muted)" }}>
                     Entire state
                   </p>
                 </div>
@@ -253,14 +253,14 @@ export function LocationChip() {
                 />
                 <div className="flex-1 min-w-0">
                   <p
-                    className="text-[12px] font-semibold truncate"
+                    className="text-[0.75rem] font-semibold truncate"
                     style={{ color: scope === "other_state" ? "#E65100" : "var(--c-text)", fontFamily: FONT }}
                   >
                     {scope === "other_state" && browseState
                       ? `${browseState} State`
                       : "Browse Other State"}
                   </p>
-                  <p className="text-[10px]" style={{ color: "var(--c-text-muted)" }}>
+                  <p className="text-[0.625rem]" style={{ color: "var(--c-text-muted)" }}>
                     Explore another area
                   </p>
                 </div>
@@ -292,12 +292,12 @@ export function LocationChip() {
                 />
                 <div className="flex-1 min-w-0">
                   <p
-                    className="text-[12px] font-semibold"
+                    className="text-[0.75rem] font-semibold"
                     style={{ color: scope === "all" ? "#1565C0" : "var(--c-text)", fontFamily: FONT }}
                   >
                     All Nigeria
                   </p>
-                  <p className="text-[10px]" style={{ color: "var(--c-text-muted)" }}>
+                  <p className="text-[0.625rem]" style={{ color: "var(--c-text-muted)" }}>
                     Everything, everywhere
                   </p>
                 </div>
@@ -332,7 +332,7 @@ export function LocationChip() {
                   value={stateSearch}
                   onChange={(e) => setStateSearch(e.target.value)}
                   placeholder="Search states..."
-                  className="flex-1 bg-transparent text-foreground text-[12px] outline-none placeholder-gray-500"
+                  className="flex-1 bg-transparent text-foreground text-[0.75rem] outline-none placeholder-gray-500"
                   style={{ fontFamily: FONT }}
                 />
               </div>
@@ -361,7 +361,7 @@ export function LocationChip() {
                     }
                   >
                     <span
-                      className="text-[12px]"
+                      className="text-[0.75rem]"
                       style={{
                         fontFamily: FONT,
                         color:
@@ -375,7 +375,7 @@ export function LocationChip() {
                       {state}
                     </span>
                     {state === userState && (
-                      <span className="text-[9px] ml-auto" style={{ color: "var(--c-text-muted)" }}>
+                      <span className="text-[0.5625rem] ml-auto" style={{ color: "var(--c-text-muted)" }}>
                         Home
                       </span>
                     )}
@@ -383,7 +383,7 @@ export function LocationChip() {
                 ))}
                 {filteredStates.length === 0 && (
                   <p
-                    className="text-center py-4 text-[12px]"
+                    className="text-center py-4 text-[0.75rem]"
                     style={{ color: "var(--c-text-muted)", fontFamily: FONT }}
                   >
                     No states found

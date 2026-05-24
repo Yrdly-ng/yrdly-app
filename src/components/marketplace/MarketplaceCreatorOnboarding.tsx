@@ -104,7 +104,7 @@ export function MarketplaceCreatorOnboarding({ isOpen, onClose, onContinue }: Ma
           {/* Close */}
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full z-10"
+            className="absolute top-4 right-4 min-w-[44px] min-h-[44px] p-2 flex items-center justify-center rounded-full z-10"
             style={{ background: "rgba(255,255,255,0.08)" }}
           >
             <X className="w-4 h-4 text-muted-foreground" />
@@ -139,10 +139,10 @@ export function MarketplaceCreatorOnboarding({ isOpen, onClose, onContinue }: Ma
                         <ShoppingBag className="w-5 h-5" style={{ color: GREEN }} />
                       </div>
                       <div>
-                        <p className="font-bold text-foreground font-sans text-[15px]">Free Item</p>
+                        <p className="font-bold text-foreground font-sans text-[0.9375rem]">Free Item</p>
                         <p className="text-xs text-muted-foreground font-sans mt-0.5">Give away items you no longer need. No payment setup needed.</p>
                         <div className="flex items-center gap-1 mt-2">
-                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(56,142,60,0.2)", color: GREEN }}>
+                          <span className="text-[0.6875rem] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(56,142,60,0.2)", color: GREEN }}>
                             ✓ Start immediately
                           </span>
                         </div>
@@ -162,13 +162,13 @@ export function MarketplaceCreatorOnboarding({ isOpen, onClose, onContinue }: Ma
                         <Banknote className="w-5 h-5" style={{ color: GREEN }} />
                       </div>
                       <div>
-                        <p className="font-bold text-foreground font-sans text-[15px]">Paid Item</p>
+                        <p className="font-bold text-foreground font-sans text-[0.9375rem]">Paid Item</p>
                         <p className="text-xs text-muted-foreground font-sans mt-0.5">Sell your items securely through Yrdly Escrow.</p>
                         <div className="flex items-center gap-2 mt-2 flex-wrap">
-                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(56,142,60,0.2)", color: GREEN }}>
+                          <span className="text-[0.6875rem] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(56,142,60,0.2)", color: GREEN }}>
                             You keep 95%
                           </span>
-                          <span className="text-[11px] text-muted-foreground font-sans">Yrdly takes 5%</span>
+                          <span className="text-[0.6875rem] text-muted-foreground font-sans">Yrdly takes 5%</span>
                         </div>
                       </div>
                       <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-muted-foreground ml-auto flex-shrink-0 mt-3 transition-colors" />
@@ -258,7 +258,7 @@ export function MarketplaceCreatorOnboarding({ isOpen, onClose, onContinue }: Ma
                   ].map((item, i) => (
                     <div key={i} className="flex items-center gap-2">
                       <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "rgba(56,142,60,0.2)" }}>
-                        <span className="text-[10px] font-bold" style={{ color: GREEN }}>{i + 1}</span>
+                        <span className="text-[0.625rem] font-bold" style={{ color: GREEN }}>{i + 1}</span>
                       </div>
                       <span className="text-sm text-muted-foreground font-sans">{item}</span>
                     </div>

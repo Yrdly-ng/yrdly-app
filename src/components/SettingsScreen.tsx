@@ -82,7 +82,7 @@ function NavRow({
       <div className="flex items-center gap-3">
         <Icon className="w-5 h-5 flex-shrink-0" style={{ color: GREEN }} />
         <span
-          className="text-foreground text-[14px]"
+          className="text-foreground text-[0.875rem]"
           style={{ fontFamily: FONT }}
         >
           {label}
@@ -112,7 +112,7 @@ function ToggleRow({
       <div className="flex items-center gap-3">
         <Icon className="w-5 h-5 flex-shrink-0" style={{ color: GREEN }} />
         <span
-          className="text-foreground text-[14px]"
+          className="text-foreground text-[0.875rem]"
           style={{ fontFamily: FONT }}
         >
           {label}
@@ -126,7 +126,7 @@ function ToggleRow({
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <h2
-      className="text-foreground text-[16px] px-1"
+      className="text-foreground text-[1rem] px-1"
       style={{ fontFamily: PACIFICO, fontWeight: 400 }}
     >
       {children}
@@ -188,7 +188,7 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
 
   return (
     <div
-      className="min-h-screen pb-32"
+      className="min-h-[100dvh] pb-32"
       style={{ background: "var(--c-bg)" }}
     >
       <div className="max-w-2xl mx-auto px-4 pt-8 space-y-8">
@@ -214,13 +214,13 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
           </Avatar>
           <div className="flex-1 min-w-0">
             <h1
-              className="text-foreground text-[14px] truncate"
+              className="text-foreground text-[0.875rem] truncate"
               style={{ fontFamily: FONT, fontWeight: 700 }}
             >
               {displayName}
             </h1>
             <p
-              className="text-[12px] truncate"
+              className="text-[0.75rem] truncate"
               style={{ fontFamily: FONT, color: "var(--c-text-muted)" }}
             >
               {email}

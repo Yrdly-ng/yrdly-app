@@ -118,9 +118,9 @@ export function LoadingState({ type, message, progress }: LoadingStateProps) {
             <div className="flex justify-between items-center px-2">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-[#388E3C] animate-pulse" />
-                <span className="text-[11px] uppercase tracking-[0.25em] font-black text-[#388E3C]">Optimizing</span>
+                <span className="text-[0.6875rem] uppercase tracking-[0.25em] font-black text-[#388E3C]">Optimizing</span>
               </div>
-              <span className="text-[11px] uppercase tracking-[0.25em] font-black text-foreground">{Math.round(progress)}%</span>
+              <span className="text-[0.6875rem] uppercase tracking-[0.25em] font-black text-foreground">{Math.round(progress)}%</span>
             </div>
           </div>
         )}
@@ -129,7 +129,7 @@ export function LoadingState({ type, message, progress }: LoadingStateProps) {
       {/* Security/Encouragement Badge */}
       <div className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-white/[0.03] border border-border backdrop-blur-xl shadow-xl animate-in slide-in-from-bottom-4 duration-1000 delay-500">
         <CheckCircle className="w-5 h-5 text-[#388E3C]" />
-        <span className="text-[11px] uppercase tracking-[0.3em] font-black text-muted-foreground">Secure Handshake Active</span>
+        <span className="text-[0.6875rem] uppercase tracking-[0.3em] font-black text-muted-foreground">Secure Handshake Active</span>
       </div>
     </div>
   );

@@ -218,7 +218,7 @@ export function NewEventForm() {
                           sizes="80px"
                         />
                         {i === 0 && (
-                          <div className="absolute bottom-0 inset-x-0 bg-[#388E3C]/80 text-foreground text-[9px] font-sans font-bold text-center py-0.5">
+                          <div className="absolute bottom-0 inset-x-0 bg-[#388E3C]/80 text-foreground text-[0.5625rem] font-sans font-bold text-center py-0.5">
                             Cover
                           </div>
                         )}

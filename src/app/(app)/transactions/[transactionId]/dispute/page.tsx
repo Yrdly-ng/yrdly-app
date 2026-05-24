@@ -120,7 +120,7 @@ export default function DisputePage() {
         <section className="space-y-2">
           <div className="flex justify-between items-center px-1">
             <label className="text-on-surface-variant font-raleway text-xs uppercase tracking-widest font-bold" style={{ fontFamily: "Raleway, sans-serif" }}>Details</label>
-            <span className="text-[10px] text-outline">{detail.length} / 150</span>
+            <span className="text-[0.625rem] text-outline">{detail.length} / 150</span>
           </div>
           <textarea
             value={detail}
@@ -139,7 +139,7 @@ export default function DisputePage() {
             className="w-full aspect-[4/1] bg-surface-container border-2 border-dashed border-[#388E3C] rounded-[11px] flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-surface-container-high transition-colors"
           >
             <Camera className="text-[#388E3C] w-6 h-6" />
-            <p className="font-raleway text-[12px] text-[#bfcab9]" style={{ fontFamily: "Raleway, sans-serif" }}>Upload photos or screenshots</p>
+            <p className="font-raleway text-[0.75rem] text-[#bfcab9]" style={{ fontFamily: "Raleway, sans-serif" }}>Upload photos or screenshots</p>
           </button>
           <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImageAdd} />
 
@@ -177,7 +177,7 @@ export default function DisputePage() {
               <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={1.5} />
               <path d="M12 7v5l3 3" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
             </svg>
-            <p className="font-raleway text-[11px] text-[#bfcab9] text-center" style={{ fontFamily: "Raleway, sans-serif" }}>Our team reviews disputes within 24-48 hours</p>
+            <p className="font-raleway text-[0.6875rem] text-[#bfcab9] text-center" style={{ fontFamily: "Raleway, sans-serif" }}>Our team reviews disputes within 24-48 hours</p>
           </div>
         </footer>
       </main>

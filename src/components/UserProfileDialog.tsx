@@ -11,7 +11,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
 import { MapPin, MessageSquare, UserPlus, Check, X, Clock, MoreHorizontal, ShieldBan, UserMinus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useMediaQuery } from '@/hooks/use-media-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from '@/components/ui/drawer';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -42,6 +44,7 @@ export function UserProfileDialog({ user: profileUser, open, onOpenChange }: Use
     const { user: currentUser, profile: userDetails } = useAuth();
     const { toast } = useToast();
     const router = useRouter();
+    const isDesktop = useMediaQuery("(min-width: 768px)");
 
     const [friendshipStatus, setFriendshipStatus] = useState<FriendshipStatus>('none');
     const [friendRequest, setFriendRequest] = useState<FriendRequest | null>(null);
@@ -454,97 +457,117 @@ export function UserProfileDialog({ user: profileUser, open, onOpenChange }: Use
         }
     };
 
-    return (
-        <Dialog open={open} onOpenChange={() => onOpenChange(false)}>
-            <DialogContent className="sm:max-w-md p-0">
-                {!profileUser ? (
-                    <div className="text-center py-10">User not found.</div>
-                ) : (
-                    <Card className="border-none shadow-none">
-                        <DialogHeader>
-                            <DialogTitle className="sr-only">{`Profile of ${profileUser.name}`}</DialogTitle>
-                            <DialogDescription className="sr-only">
-                                View {profileUser.name}&apos;s profile information, bio, interests, and available actions
-                            </DialogDescription>
-                        </DialogHeader>
-                        <CardHeader className="flex flex-col items-center text-center p-6 bg-muted/50 relative">
-                            {profileUser.id !== currentUser?.id && (
-                                <div className="absolute top-2 right-2">
-                                     <AlertDialog>
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon"><MoreHorizontal className="h-5 w-5" /></Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                {friendshipStatus === 'friends' && (
-                                                     <AlertDialogTrigger asChild>
-                                                        <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
-                                                            <UserMinus className="mr-2 h-4 w-4" /> Unfriend
-                                                        </DropdownMenuItem>
-                                                    </AlertDialogTrigger>
-                                                )}
-                                                <AlertDialogTrigger asChild>
+    const ProfileContent = () => (
+        <>
+            {!profileUser ? (
+                <div className="text-center py-10">User not found.</div>
+            ) : (
+                <Card className="border-none shadow-none bg-transparent">
+                    <CardHeader className="flex flex-col items-center text-center p-6 bg-muted/50 relative rounded-t-xl">
+                        {profileUser.id !== currentUser?.id && (
+                            <div className="absolute top-2 right-2">
+                                 <AlertDialog>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon"><MoreHorizontal className="h-5 w-5" /></Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            {friendshipStatus === 'friends' && (
+                                                 <AlertDialogTrigger asChild>
                                                     <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
-                                                        <ShieldBan className="mr-2 h-4 w-4" /> {isBlocked ? "Unblock" : "Block"} User
+                                                        <UserMinus className="mr-2 h-4 w-4" /> Unfriend
                                                     </DropdownMenuItem>
                                                 </AlertDialogTrigger>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
+                                            )}
+                                            <AlertDialogTrigger asChild>
+                                                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
+                                                    <ShieldBan className="mr-2 h-4 w-4" /> {isBlocked ? "Unblock" : "Block"} User
+                                                </DropdownMenuItem>
+                                            </AlertDialogTrigger>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
 
-                                        <AlertDialogContent>
-                                            <AlertDialogHeaderComponent>
-                                                <AlertDialogTitleComponent>Are you sure?</AlertDialogTitleComponent>
-                                                <AlertDialogDescription>
-                                                    {isBlocked 
-                                                        ? `This will unblock ${profileUser.name}.` 
-                                                        : friendshipStatus === 'friends'
-                                                        ? `This will remove ${profileUser.name} from your friends list.`
-                                                        : `This will block ${profileUser.name}. You won't see their content or be able to interact with them.`
-                                                    }
-                                                </AlertDialogDescription>
-                                            </AlertDialogHeaderComponent>
-                                            <AlertDialogFooter>
-                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                <AlertDialogAction onClick={isBlocked ? handleUnblockUser : (friendshipStatus === 'friends' ? handleUnfriend : handleBlockUser)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                                                    {isBlocked ? "Unblock" : (friendshipStatus === 'friends' ? "Unfriend" : "Block")}
-                                                </AlertDialogAction>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                    </AlertDialog>
-                                </div>
-                            )}
-                            <Avatar className="h-24 w-24 mb-4 border-2 border-background"><AvatarImage src={profileUser.avatar_url} alt={profileUser.name} /><AvatarFallback>{profileUser.name.charAt(0)}</AvatarFallback></Avatar>
-                            <h1 className="text-2xl font-bold">{profileUser.name}</h1>
-                            {profileUser.location && (<div className="flex items-center text-sm text-muted-foreground mt-1"><MapPin className="h-4 w-4 mr-1" /><span>{displayLocation(profileUser.location)}</span></div>)}
-                        </CardHeader>
-                        <CardContent className="p-6 space-y-6">
-                            <div>
-                                <h2 className="font-semibold text-lg mb-2">Bio</h2>
-                                <p className="text-muted-foreground">{profileUser.bio || "This user hasn't written a bio yet."}</p>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeaderComponent>
+                                            <AlertDialogTitleComponent>Are you sure?</AlertDialogTitleComponent>
+                                            <AlertDialogDescription>
+                                                {isBlocked 
+                                                    ? `This will unblock ${profileUser.name}.` 
+                                                    : friendshipStatus === 'friends'
+                                                    ? `This will remove ${profileUser.name} from your friends list.`
+                                                    : `This will block ${profileUser.name}. You won't see their content or be able to interact with them.`
+                                                }
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeaderComponent>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction onClick={isBlocked ? handleUnblockUser : (friendshipStatus === 'friends' ? handleUnfriend : handleBlockUser)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                                {isBlocked ? "Unblock" : (friendshipStatus === 'friends' ? "Unfriend" : "Block")}
+                                            </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
                             </div>
-                            
-                            {profileUser.interests && profileUser.interests.length > 0 && (
-                                <div>
-                                    <h2 className="font-semibold text-lg mb-3">Interests</h2>
-                                    <div className="flex flex-wrap gap-2">
-                                        {profileUser.interests.map((interest, index) => (
-                                            <span 
-                                                key={index}
-                                                className="px-3 py-1 bg-primary/10 text-primary text-sm rounded-full border border-primary/20"
-                                            >
-                                                {interest}
-                                            </span>
-                                        ))}
-                                    </div>
+                        )}
+                        <Avatar className="h-24 w-24 mb-4 border-2 border-background"><AvatarImage src={profileUser.avatar_url} alt={profileUser.name} /><AvatarFallback>{profileUser.name.charAt(0)}</AvatarFallback></Avatar>
+                        <h1 className="text-2xl font-bold">{profileUser.name}</h1>
+                        {profileUser.location && (<div className="flex items-center text-sm text-muted-foreground mt-1"><MapPin className="h-4 w-4 mr-1" /><span>{displayLocation(profileUser.location)}</span></div>)}
+                    </CardHeader>
+                    <CardContent className="p-6 space-y-6">
+                        <div>
+                            <h2 className="font-semibold text-lg mb-2">Bio</h2>
+                            <p className="text-muted-foreground">{profileUser.bio || "This user hasn't written a bio yet."}</p>
+                        </div>
+                        
+                        {profileUser.interests && profileUser.interests.length > 0 && (
+                            <div>
+                                <h2 className="font-semibold text-lg mb-3">Interests</h2>
+                                <div className="flex flex-wrap gap-2">
+                                    {profileUser.interests.map((interest, index) => (
+                                        <span 
+                                            key={index}
+                                            className="px-3 py-1 bg-primary/10 text-primary text-sm rounded-full border border-primary/20"
+                                        >
+                                            {interest}
+                                        </span>
+                                    ))}
                                 </div>
-                            )}
-                        </CardContent>
-                        <CardFooter className="p-6 justify-center">
-                            {renderActionButtons()}
-                        </CardFooter>
-                    </Card>
-                )}
-            </DialogContent>
-        </Dialog>
+                            </div>
+                        )}
+                    </CardContent>
+                    <CardFooter className="p-6 justify-center">
+                        {renderActionButtons()}
+                    </CardFooter>
+                </Card>
+            )}
+        </>
+    );
+
+    if (isDesktop) {
+        return (
+            <Dialog open={open} onOpenChange={() => onOpenChange(false)}>
+                <DialogContent className="sm:max-w-md p-0">
+                    <DialogHeader className="sr-only">
+                        <DialogTitle>{profileUser?.name ? `Profile of ${profileUser.name}` : "User Profile"}</DialogTitle>
+                        <DialogDescription>View user profile details.</DialogDescription>
+                    </DialogHeader>
+                    <ProfileContent />
+                </DialogContent>
+            </Dialog>
+        );
+    }
+
+    return (
+        <Drawer open={open} onOpenChange={() => onOpenChange(false)}>
+            <DrawerContent className="p-0 border-none">
+                <DrawerHeader className="sr-only">
+                    <DrawerTitle>{profileUser?.name ? `Profile of ${profileUser.name}` : "User Profile"}</DrawerTitle>
+                    <DrawerDescription>View user profile details.</DrawerDescription>
+                </DrawerHeader>
+                <div className="overflow-y-auto max-h-[85vh] pb-8">
+                    <ProfileContent />
+                </div>
+            </DrawerContent>
+        </Drawer>
     )
 }

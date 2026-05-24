@@ -269,7 +269,7 @@ function NotificationCard({
         {/* Content */}
         <div className="flex-1 min-w-0">
           <p
-            className="text-[13px] text-foreground leading-snug"
+            className="text-[0.8125rem] text-foreground leading-snug"
             style={{ fontFamily: FONT, fontWeight: isUnread ? 600 : 400 }}
           >
             <span style={{ fontWeight: 700 }}>
@@ -278,11 +278,11 @@ function NotificationCard({
             {notification.from_user_name ? notification.message : ""}
           </p>
           {!notification.from_user_name && (
-            <p className="text-[12px] mt-0.5" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
+            <p className="text-[0.75rem] mt-0.5" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
               {notification.message}
             </p>
           )}
-          <p className="text-[11px] mt-1" style={{ color: "#566052", fontFamily: FONT }}>
+          <p className="text-[0.6875rem] mt-1" style={{ color: "#566052", fontFamily: FONT }}>
             {formatDistanceToNowStrict(new Date(notification.created_at), { addSuffix: true })}
           </p>
 
@@ -482,16 +482,16 @@ export function NotificationsScreen({ className }: NotificationsScreenProps) {
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   return (
-    <div className="min-h-screen pb-32" style={{ background: BG }}>
+    <div className="min-h-[100dvh] pb-32" style={{ background: BG }}>
       <div className="max-w-2xl mx-auto px-4 pt-6 space-y-6">
         {/* Header */}
         <header className="flex items-center justify-between">
           <div>
-            <h1 className="text-[20px] text-foreground" style={{ fontFamily: PACIFICO }}>
+            <h1 className="text-[1.25rem] text-foreground" style={{ fontFamily: PACIFICO }}>
               Notifications
             </h1>
             <p
-              className="text-[12px] mt-0.5"
+              className="text-[0.75rem] mt-0.5"
               style={{ color: "var(--c-text-muted)", fontFamily: FONT, fontStyle: "italic", fontWeight: 300 }}
             >
               {unreadCount > 0 ? `${unreadCount} unread` : "All caught up!"}
@@ -537,7 +537,7 @@ export function NotificationsScreen({ className }: NotificationsScreenProps) {
                 {tab}
                 {tab === "Unread" && unreadCount > 0 && (
                   <span
-                    className="ml-1.5 inline-flex items-center justify-center rounded-full min-w-[16px] h-4 px-1 text-[9px] font-bold"
+                    className="ml-1.5 inline-flex items-center justify-center rounded-full min-w-[16px] h-4 px-1 text-[0.5625rem] font-bold"
                     style={{ background: GREEN_LIGHT, color: "#003207" }}
                   >
                     {unreadCount > 9 ? "9+" : unreadCount}
@@ -572,7 +572,7 @@ export function NotificationsScreen({ className }: NotificationsScreenProps) {
             <h2 className="text-foreground text-lg mb-2" style={{ fontFamily: PACIFICO }}>
               {activeFilter === "All" ? "No notifications yet" : `No ${activeFilter.toLowerCase()}`}
             </h2>
-            <p className="text-[13px] text-center max-w-xs" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
+            <p className="text-[0.8125rem] text-center max-w-xs" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
               {activeFilter === "All"
                 ? "You'll see your notifications here."
                 : `You have no ${activeFilter.toLowerCase()} notifications.`}

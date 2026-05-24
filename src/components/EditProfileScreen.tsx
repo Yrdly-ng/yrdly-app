@@ -262,7 +262,7 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
                   <FormItem>
                     <FormLabel>Full Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter your full name" {...field} />
+                      <Input placeholder="Enter your full name" autoComplete="name" enterKeyHint="next" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -404,6 +404,8 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="w-full"
+                      enterKeyHint="search"
+                      inputMode="search"
                     />
                     
                     {/* Selected Interests */}

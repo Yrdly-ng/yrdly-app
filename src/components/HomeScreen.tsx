@@ -85,7 +85,7 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
             </Avatar>
             <CreatePostDialog createPost={createPost}>
               <button
-                className="flex-1 h-10 rounded-full text-left px-4 font-sans font-light text-[12px] text-muted-foreground hover:text-foreground transition-colors"
+                className="flex-1 h-10 rounded-full text-left px-4 font-sans font-light text-[0.75rem] text-muted-foreground hover:text-foreground transition-colors"
                 style={{ background: "var(--c-bg)", border: `0.5px solid ${GREEN}`, fontFamily: FONT_RALEWAY }}
               >
                 What&apos;s going on?
@@ -100,7 +100,7 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
           <div className="flex items-center gap-2 overflow-x-auto pb-0.5 scrollbar-hide">
             <button
               onClick={() => setMarketplaceOnboardingOpen(true)}
-              className="flex items-center gap-1.5 rounded-[20.5px] px-3 py-1.5 text-foreground text-[12px] font-semibold hover:bg-accent transition-colors"
+              className="flex items-center gap-1.5 rounded-[20.5px] px-3 py-1.5 text-foreground text-[0.75rem] font-semibold hover:bg-accent transition-colors"
               style={{ fontFamily: FONT_RALEWAY }}
             >
               <HandshakeGradient />
@@ -110,7 +110,7 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
 
             <button
               onClick={() => setOnboardingOpen(true)}
-              className="flex items-center gap-1.5 rounded-[20.5px] px-3 py-1.5 text-foreground text-[12px] font-semibold hover:bg-accent transition-colors"
+              className="flex items-center gap-1.5 rounded-[20.5px] px-3 py-1.5 text-foreground text-[0.75rem] font-semibold hover:bg-accent transition-colors"
               style={{ fontFamily: FONT_RALEWAY }}
             >
               <TicketGradient />

@@ -58,7 +58,7 @@ export default function ForgotPasswordPage() {
 
   return (
     <div
-      className="min-h-screen relative flex flex-col items-center justify-center px-4 py-6"
+      className="min-h-[100dvh] relative flex flex-col items-center justify-center px-4 py-6"
       style={{ background: colors.background }}
     >
       <div className="absolute inset-0 pointer-events-none overflow-hidden">

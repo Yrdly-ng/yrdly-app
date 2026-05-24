@@ -248,7 +248,7 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
             {/* People */}
             {!loading && users.length > 0 && (
               <section>
-                <h3 className="mb-4 px-1 text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: 'var(--c-text-muted)', fontFamily: 'Inter, sans-serif' }}>
+                <h3 className="mb-4 px-1 text-[0.6875rem] font-bold uppercase tracking-[0.2em]" style={{ color: 'var(--c-text-muted)', fontFamily: 'Inter, sans-serif' }}>
                   Suggested People
                 </h3>
                 <div className="space-y-2">
@@ -287,7 +287,7 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
             {/* Posts */}
             {!loading && posts.length > 0 && (
               <section>
-                <h3 className="mb-4 px-1 text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: 'var(--c-text-muted)', fontFamily: 'Inter, sans-serif' }}>
+                <h3 className="mb-4 px-1 text-[0.6875rem] font-bold uppercase tracking-[0.2em]" style={{ color: 'var(--c-text-muted)', fontFamily: 'Inter, sans-serif' }}>
                   Top Posts
                 </h3>
                 <div className="space-y-2">
@@ -305,7 +305,7 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
                               <AvatarImage src={p.author_image} />
                               <AvatarFallback style={{ background: GREEN, fontSize: 8 }}>{p.author_name?.charAt(0)}</AvatarFallback>
                             </Avatar>
-                            <span className="text-[10px] font-bold uppercase tracking-tight" style={{ color: 'var(--c-text-muted)' }}>@{p.author_name?.replace(/\s+/g, '_').toLowerCase()}</span>
+                            <span className="text-[0.625rem] font-bold uppercase tracking-tight" style={{ color: 'var(--c-text-muted)' }}>@{p.author_name?.replace(/\s+/g, '_').toLowerCase()}</span>
                           </div>
                           <p className="text-sm leading-relaxed line-clamp-2" style={{ color: 'rgba(225,226,233,0.9)' }}>{p.text}</p>
                         </div>
@@ -324,7 +324,7 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
             {/* Events */}
             {!loading && events.length > 0 && (
               <section>
-                <h3 className="mb-4 px-1 text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: 'var(--c-text-muted)', fontFamily: 'Inter, sans-serif' }}>
+                <h3 className="mb-4 px-1 text-[0.6875rem] font-bold uppercase tracking-[0.2em]" style={{ color: 'var(--c-text-muted)', fontFamily: 'Inter, sans-serif' }}>
                   Upcoming Events
                 </h3>
                 <div className="space-y-2">
@@ -337,7 +337,7 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
                     >
                       <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-[11px] flex flex-col items-center justify-center flex-shrink-0" style={{ background: '#35a61a', color: '#053200' }}>
-                          <span className="text-[10px] font-bold uppercase">{ev.event_date ? new Date(ev.event_date).toLocaleString('en', { month: 'short' }) : 'EVT'}</span>
+                          <span className="text-[0.625rem] font-bold uppercase">{ev.event_date ? new Date(ev.event_date).toLocaleString('en', { month: 'short' }) : 'EVT'}</span>
                           <span className="text-lg font-extrabold leading-none">{ev.event_date ? new Date(ev.event_date).getDate() : '?'}</span>
                         </div>
                         <div>
@@ -357,7 +357,7 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
             {/* Businesses */}
             {!loading && businesses.length > 0 && (
               <section>
-                <h3 className="mb-4 px-1 text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: 'var(--c-text-muted)', fontFamily: 'Inter, sans-serif' }}>
+                <h3 className="mb-4 px-1 text-[0.6875rem] font-bold uppercase tracking-[0.2em]" style={{ color: 'var(--c-text-muted)', fontFamily: 'Inter, sans-serif' }}>
                   Local Businesses
                 </h3>
                 <div className="space-y-2">
@@ -378,12 +378,12 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
                         {b.rating && b.rating > 0 && (
                           <div className="flex items-center gap-1 mt-1">
                             <Star className="w-3 h-3 fill-yellow-500 text-yellow-500" />
-                            <span className="text-[10px] font-bold" style={{ color: 'var(--c-text-muted)' }}>{b.rating.toFixed(1)} ({b.review_count ?? 0} reviews)</span>
+                            <span className="text-[0.625rem] font-bold" style={{ color: 'var(--c-text-muted)' }}>{b.rating.toFixed(1)} ({b.review_count ?? 0} reviews)</span>
                           </div>
                         )}
                       </div>
                       <button
-                        className="flex-shrink-0 rounded-full px-4 py-2 text-[10px] font-extrabold uppercase tracking-widest"
+                        className="flex-shrink-0 rounded-full px-4 py-2 text-[0.625rem] font-extrabold uppercase tracking-widest"
                         style={{ background: '#006ec9', color: '#eaf0ff' }}
                       >
                         Visit
@@ -397,7 +397,7 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
             {/* Marketplace items */}
             {!loading && items.length > 0 && (
               <section>
-                <h3 className="mb-4 px-1 text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: 'var(--c-text-muted)', fontFamily: 'Inter, sans-serif' }}>
+                <h3 className="mb-4 px-1 text-[0.6875rem] font-bold uppercase tracking-[0.2em]" style={{ color: 'var(--c-text-muted)', fontFamily: 'Inter, sans-serif' }}>
                   Marketplace
                 </h3>
                 <div className="grid grid-cols-2 gap-3">
@@ -413,7 +413,7 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
                           ? <Image src={item.image_urls[0]} alt={item.title || ''} fill className="object-cover group-hover:scale-110 transition-transform duration-500" sizes="200px" />
                           : <div className="w-full h-full flex items-center justify-center text-3xl" style={{ background: 'var(--c-card2)' }}>🛒</div>
                         }
-                        <div className="absolute top-2 right-2 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-tight" style={{ background: '#a5c8ff', color: '#00315f' }}>Market</div>
+                        <div className="absolute top-2 right-2 rounded-full px-2 py-0.5 text-[0.5625rem] font-bold uppercase tracking-tight" style={{ background: '#a5c8ff', color: '#00315f' }}>Market</div>
                       </div>
                       <div className="p-3">
                         <p className="text-xs font-bold truncate" style={{ color: 'var(--c-text)' }}>{item.title || item.text}</p>

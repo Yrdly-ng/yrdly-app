@@ -83,7 +83,7 @@ export default function PurchaseHistoryPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background p-4">
+      <div className="min-h-[100dvh] bg-background p-4">
         <div className="max-w-4xl mx-auto space-y-6">
           <div>
             <h1 className="text-2xl font-bold">Purchase History</h1>
@@ -108,7 +108,7 @@ export default function PurchaseHistoryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4">
+    <div className="min-h-[100dvh] bg-background p-4">
       <div className="max-w-4xl mx-auto space-y-6">
         <div>
           <h1 className="text-2xl font-bold">Purchase History</h1>

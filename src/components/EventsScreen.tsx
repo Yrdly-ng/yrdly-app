@@ -153,7 +153,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
       {/* Picked for You */}
       <section className="space-y-3 sm:space-y-4">
         <h2
-          className="text-lg sm:text-[18px] leading-8 text-foreground"
+          className="text-lg sm:text-[1.125rem] leading-8 text-foreground"
           style={{ fontFamily: '"Pacifico", cursive' }}
         >
           Picked for You
@@ -199,10 +199,10 @@ export function EventsScreen({ className }: EventsScreenProps) {
                         }}
                       />
                       <div className="absolute inset-0 flex flex-col justify-end p-4 sm:p-6 md:p-8">
-                        <h3 className="font-sans font-extrabold text-lg sm:text-[23px] text-foreground mb-2">
+                        <h3 className="font-sans font-extrabold text-lg sm:text-[1.4375rem] text-foreground mb-2">
                           {event.title || "Event"}
                         </h3>
-                        <div className="flex flex-wrap items-center gap-3 text-foreground text-xs sm:text-[13px] font-sans">
+                        <div className="flex flex-wrap items-center gap-3 text-foreground text-xs sm:text-[0.8125rem] font-sans">
                           <span className="flex items-center gap-1">
                             <CalendarDays className="w-4 h-4" />
                             {formatEventDateTime(event.start_time)}
@@ -251,7 +251,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
       <section className="space-y-3 sm:space-y-4">
         <div className="flex items-center justify-between">
           <h2
-            className="text-lg sm:text-[18px] leading-8 text-foreground"
+            className="text-lg sm:text-[1.125rem] leading-8 text-foreground"
             style={{ fontFamily: '"Pacifico", cursive' }}
           >
             Events in your Area
@@ -282,27 +282,27 @@ export function EventsScreen({ className }: EventsScreenProps) {
                   />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="font-sans font-medium italic text-xs sm:text-[13px] text-foreground truncate">
+                  <p className="font-sans font-medium italic text-xs sm:text-[0.8125rem] text-foreground truncate">
                     {event.title || "Event"}
                   </p>
-                  <p className="font-sans text-[9px] sm:text-[9px] text-foreground mt-0.5">
+                  <p className="font-sans text-[0.5625rem] sm:text-[0.5625rem] text-foreground mt-0.5">
                     {formatEventDate(event.start_time)}
                   </p>
                   <div className="flex items-center gap-1 mt-1 text-muted-foreground">
                     <MapPin className="w-3 h-3 flex-shrink-0" />
-                    <span className="font-sans text-[9px] sm:text-[11px] truncate">
+                    <span className="font-sans text-[0.5625rem] sm:text-[0.6875rem] truncate">
                       {event.location_address || event.description?.slice(0, 30) || "—"}
                     </span>
                   </div>
                 </div>
               </div>
               <div className="px-3 pb-3 pt-0 border-t border-border">
-                <p className="font-sans text-[9px] text-muted-foreground mb-2">
+                <p className="font-sans text-[0.5625rem] text-muted-foreground mb-2">
                   {event.attendee_count || 0} are interested
                 </p>
                 <Button
                   size="sm"
-                  className="w-full rounded-[15px] font-sans text-[11px] text-foreground"
+                  className="w-full rounded-[15px] font-sans text-[0.6875rem] text-foreground"
                   style={{ background: "#388E3C" }}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -322,7 +322,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
         <button
           onClick={() => setSortBy("all")}
           className={cn(
-            "flex items-center gap-1.5 px-3 py-2 rounded-md font-sans text-[10px] sm:text-xs flex-shrink-0",
+            "flex items-center gap-1.5 px-3 py-2 rounded-md font-sans text-[0.625rem] sm:text-xs flex-shrink-0",
             sortBy === "all" ? "bg-white text-black" : "border border-border0 text-foreground"
           )}
         >
@@ -332,7 +332,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
         <button
           onClick={() => setSortBy("price")}
           className={cn(
-            "flex items-center gap-1.5 px-3 py-2 rounded-md font-sans text-[10px] sm:text-xs flex-shrink-0",
+            "flex items-center gap-1.5 px-3 py-2 rounded-md font-sans text-[0.625rem] sm:text-xs flex-shrink-0",
             sortBy === "price" ? "bg-white text-black" : "border border-border0 text-foreground"
           )}
         >
@@ -342,7 +342,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
         <button
           onClick={() => setSortBy("date")}
           className={cn(
-            "flex items-center gap-1.5 px-3 py-2 rounded-md font-sans text-[10px] sm:text-xs flex-shrink-0",
+            "flex items-center gap-1.5 px-3 py-2 rounded-md font-sans text-[0.625rem] sm:text-xs flex-shrink-0",
             sortBy === "date" ? "bg-white text-black" : "border border-border0 text-foreground"
           )}
         >
@@ -354,7 +354,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
       {/* Mainstream Events */}
       <section className="space-y-4">
         <h2
-          className="text-lg sm:text-[18px] leading-8 text-foreground"
+          className="text-lg sm:text-[1.125rem] leading-8 text-foreground"
           style={{ fontFamily: '"Pacifico", cursive' }}
         >
           Mainstream Events
@@ -390,7 +390,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
                         <p className="font-sans font-bold text-sm text-foreground">
                           {(event.organizer as any)?.name}
                         </p>
-                        <p className="font-sans text-[11px] text-muted-foreground">
+                        <p className="font-sans text-[0.6875rem] text-muted-foreground">
                           {timeAgo(event.created_at ? new Date(event.created_at) : null)}
                         </p>
                       </div>
@@ -408,7 +408,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
                       sizes="(max-width: 768px) 100vw, 50vw"
                     />
                   </div>
-                  <div className="space-y-2 text-foreground font-sans text-[13px]">
+                  <div className="space-y-2 text-foreground font-sans text-[0.8125rem]">
                     <div className="flex items-center gap-2">
                       <CalendarDays className="w-4 h-4 flex-shrink-0" />
                       {formatEventDateTime(event.start_time)}

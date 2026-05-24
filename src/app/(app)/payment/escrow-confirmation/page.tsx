@@ -52,18 +52,18 @@ export default function EscrowConfirmationPage() {
               <Check className="w-8 h-8 text-[#388E3C]" strokeWidth={3} />
             </div>
           </div>
-          <h2 className="font-pacifico text-[26px] text-white leading-tight mb-2">Payment Secured!</h2>
-          <p className="font-raleway text-[14px] text-on-surface-variant font-medium">{fmt(amount)} is held safely in escrow</p>
+          <h2 className="font-pacifico text-[1.625rem] text-white leading-tight mb-2">Payment Secured!</h2>
+          <p className="font-raleway text-[0.875rem] text-on-surface-variant font-medium">{fmt(amount)} is held safely in escrow</p>
         </section>
 
         {/* Item Recap Card */}
         <article className="bg-surface-container rounded-[11px] p-4 flex items-center gap-4 mb-10 transition-transform hover:scale-[1.01]">
           <div className="flex-grow min-w-0">
             <h3 className="text-white font-bold truncate">{itemTitle}</h3>
-            <p className="font-raleway text-[11px] font-mono text-on-surface-variant">Ref: #{ref}</p>
+            <p className="font-raleway text-[0.6875rem] font-mono text-on-surface-variant">Ref: #{ref}</p>
           </div>
           <div className="flex-shrink-0">
-            <span className="px-3 py-1 rounded-full text-[10px] font-bold tracking-wider bg-[#388E3C]/15 text-[#82DB7E] border border-[#388E3C] flex items-center gap-1">
+            <span className="px-3 py-1 rounded-full text-[0.625rem] font-bold tracking-wider bg-[#388E3C]/15 text-[#82DB7E] border border-[#388E3C] flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-[#82DB7E] animate-pulse"></span>
               IN ESCROW
             </span>
@@ -72,7 +72,7 @@ export default function EscrowConfirmationPage() {
 
         {/* What Happens Next Section */}
         <section className="space-y-6">
-          <h4 className="text-on-surface-variant text-[12px] font-bold uppercase tracking-widest mb-4">What Happens Next</h4>
+          <h4 className="text-on-surface-variant text-[0.75rem] font-bold uppercase tracking-widest mb-4">What Happens Next</h4>
           <div className="relative">
             {/* Connecting Line */}
             <div className="absolute left-4 top-4 bottom-4 w-[1px] bg-outline-variant/30"></div>

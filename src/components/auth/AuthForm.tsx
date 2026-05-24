@@ -64,7 +64,7 @@ export function AuthForm({ mode, onToggleMode, onSuccess }: AuthFormProps) {
   // Show loading while checking authentication
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-[100dvh] flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="h-16 w-16 mx-auto mb-4 animate-pulse">
             <YrdlyLogo />
@@ -154,7 +154,7 @@ export function AuthForm({ mode, onToggleMode, onSuccess }: AuthFormProps) {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-[100dvh] bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md border-0 shadow-lg">
         <CardHeader className="space-y-6 text-center pb-8">
           <div className="flex justify-center">

@@ -164,16 +164,16 @@ export function AddAccountDialog({ open, onOpenChange, onSuccess }: AddAccountDi
           </div>
 
           <section className="mb-8">
-            <p className="font-editorial text-[12px] text-on-surface-variant mb-4" style={{ fontFamily: "Raleway, sans-serif" }}>Required to receive your marketplace earnings</p>
+            <p className="font-editorial text-[0.75rem] text-on-surface-variant mb-4" style={{ fontFamily: "Raleway, sans-serif" }}>Required to receive your marketplace earnings</p>
             <div className="flex items-center gap-2 bg-primary-container/10 p-3 rounded-lg">
               <Building2 className="text-primary w-5 h-5 flex-shrink-0" />
-              <p className="font-editorial text-[11px] text-primary" style={{ fontFamily: "Raleway, sans-serif" }}>Your account details are encrypted at rest</p>
+              <p className="font-editorial text-[0.6875rem] text-primary" style={{ fontFamily: "Raleway, sans-serif" }}>Your account details are encrypted at rest</p>
             </div>
           </section>
 
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <div className="space-y-2">
-              <label className="font-editorial text-[13px] font-medium ml-4 text-on-surface-variant" style={{ fontFamily: "Raleway, sans-serif" }}>Select Bank</label>
+              <label className="font-editorial text-[0.8125rem] font-medium ml-4 text-on-surface-variant" style={{ fontFamily: "Raleway, sans-serif" }}>Select Bank</label>
               <div className="relative">
                 <select 
                   className="w-full h-14 bg-surface-container-high border-[0.5px] border-outline-variant/20 rounded-full px-6 text-on-surface focus:border-primary-container focus:ring-0 transition-all font-body appearance-none"
@@ -188,7 +188,7 @@ export function AddAccountDialog({ open, onOpenChange, onSuccess }: AddAccountDi
             </div>
 
             <div className="space-y-2">
-              <label className="font-editorial text-[13px] font-medium ml-4 text-on-surface-variant" style={{ fontFamily: "Raleway, sans-serif" }}>Account Number</label>
+              <label className="font-editorial text-[0.8125rem] font-medium ml-4 text-on-surface-variant" style={{ fontFamily: "Raleway, sans-serif" }}>Account Number</label>
               <input 
                 className="w-full h-14 bg-surface-container-high border-[0.5px] border-outline-variant/20 rounded-full px-6 text-on-surface focus:border-primary-container focus:ring-0 transition-all font-body"
                 placeholder="10-digit account number"
@@ -198,7 +198,7 @@ export function AddAccountDialog({ open, onOpenChange, onSuccess }: AddAccountDi
             </div>
 
             <div className="space-y-2">
-              <label className="font-editorial text-[13px] font-medium ml-4 text-on-surface-variant" style={{ fontFamily: "Raleway, sans-serif" }}>Account Name</label>
+              <label className="font-editorial text-[0.8125rem] font-medium ml-4 text-on-surface-variant" style={{ fontFamily: "Raleway, sans-serif" }}>Account Name</label>
               <div className="relative">
                 <input 
                   className={`w-full h-14 bg-surface-container-high border-[0.5px] border-outline-variant/20 rounded-full px-6 text-on-surface focus:border-primary-container focus:ring-0 transition-all font-body ${
@@ -218,7 +218,7 @@ export function AddAccountDialog({ open, onOpenChange, onSuccess }: AddAccountDi
             </div>
 
             <div className="flex items-start gap-3 px-4 py-2">
-              <p className="font-editorial text-[11px] text-on-surface-variant leading-relaxed" style={{ fontFamily: "Raleway, sans-serif" }}>
+              <p className="font-editorial text-[0.6875rem] text-on-surface-variant leading-relaxed" style={{ fontFamily: "Raleway, sans-serif" }}>
                 We verify your account to ensure accurate payouts. Your data is protected by industry-standard protocols.
               </p>
             </div>

@@ -82,7 +82,7 @@ export default function AddPayoutAccountPage() {
 
         {/* Intro */}
         <section className="mb-8">
-          <p className="text-[12px] mb-4" style={{ color: MUTED, fontFamily: "Inter, sans-serif" }}>
+          <p className="text-[0.75rem] mb-4" style={{ color: MUTED, fontFamily: "Inter, sans-serif" }}>
             Required to receive your marketplace earnings
           </p>
           <div
@@ -90,7 +90,7 @@ export default function AddPayoutAccountPage() {
             style={{ background: "rgba(130,219,126,0.08)" }}
           >
             <Lock className="w-4 h-4 flex-shrink-0" style={{ color: GreenL }} />
-            <p className="text-[11px]" style={{ color: GreenL, fontFamily: "Inter, sans-serif" }}>
+            <p className="text-[0.6875rem]" style={{ color: GreenL, fontFamily: "Inter, sans-serif" }}>
               Your account details are encrypted at rest
             </p>
           </div>
@@ -100,7 +100,7 @@ export default function AddPayoutAccountPage() {
 
           {/* Bank selector */}
           <div className="space-y-2 relative">
-            <label className="text-[13px] font-medium ml-4" style={{ color: MUTED, fontFamily: "Inter, sans-serif" }}>
+            <label className="text-[0.8125rem] font-medium ml-4" style={{ color: MUTED, fontFamily: "Inter, sans-serif" }}>
               Select Bank
             </label>
             <div className="relative">
@@ -143,7 +143,7 @@ export default function AddPayoutAccountPage() {
 
           {/* Account number */}
           <div className="space-y-2">
-            <label className="text-[13px] font-medium ml-4" style={{ color: MUTED, fontFamily: "Inter, sans-serif" }}>
+            <label className="text-[0.8125rem] font-medium ml-4" style={{ color: MUTED, fontFamily: "Inter, sans-serif" }}>
               Account Number
             </label>
             <input
@@ -190,7 +190,7 @@ export default function AddPayoutAccountPage() {
             {verifiedName && (
               <div className="flex items-center gap-3 px-4 py-2 rounded-xl" style={{ background: "rgba(130,219,126,0.07)" }}>
                 <Check className="w-5 h-5 flex-shrink-0" style={{ color: GreenL }} />
-                <p className="text-[13px]" style={{ color: GreenL, fontFamily: "Inter, sans-serif" }}>
+                <p className="text-[0.8125rem]" style={{ color: GreenL, fontFamily: "Inter, sans-serif" }}>
                   Account Name: <span className="font-bold">{verifiedName}</span>
                 </p>
               </div>
@@ -199,7 +199,7 @@ export default function AddPayoutAccountPage() {
 
           {/* Verified name (read-only) */}
           <div className="space-y-2" style={{ opacity: verifiedName ? 1 : 0.4 }}>
-            <label className="text-[13px] font-medium ml-4" style={{ color: MUTED, fontFamily: "Inter, sans-serif" }}>
+            <label className="text-[0.8125rem] font-medium ml-4" style={{ color: MUTED, fontFamily: "Inter, sans-serif" }}>
               Verified Account Name
             </label>
             <input
@@ -215,7 +215,7 @@ export default function AddPayoutAccountPage() {
           {/* Info note */}
           <div className="flex items-start gap-3 px-4 py-2">
             <Info className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: MUTED }} />
-            <p className="text-[11px] leading-relaxed" style={{ color: MUTED, fontFamily: "Inter, sans-serif" }}>
+            <p className="text-[0.6875rem] leading-relaxed" style={{ color: MUTED, fontFamily: "Inter, sans-serif" }}>
               We verify your account via Flutterwave to ensure accurate payouts. Your data is protected by industry-standard protocols.
             </p>
           </div>

@@ -285,7 +285,7 @@ export default function OnboardingProfilePage() {
   // Show loading state while location data is being loaded
   if (locationLoading && states.length === 0) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-[100dvh] bg-background">
         <OnboardingProgress />
         <div className="flex items-center justify-center p-4 pt-8">
           <LoadingState 
@@ -298,7 +298,7 @@ export default function OnboardingProfilePage() {
   }
 
   return (
-    <div className="min-h-screen pb-20 overflow-x-hidden" style={{ background: "var(--c-bg)", color: "var(--c-text)", fontFamily: "Inter, sans-serif" }}>
+    <div className="min-h-[100dvh] pb-20 overflow-x-hidden" style={{ background: "var(--c-bg)", color: "var(--c-text)", fontFamily: "Inter, sans-serif" }}>
       <OnboardingProgress />
       
       {/* Animated Background Elements */}
@@ -353,7 +353,7 @@ export default function OnboardingProfilePage() {
                   <div className="space-y-2 py-1 flex-1 min-w-0 pr-12">
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#388E3C]/10 border border-[#388E3C]/20 shrink-0">
                       <Sparkles className="w-3 h-3 text-[#388E3C] shrink-0" />
-                      <span className="text-[10px] uppercase tracking-[0.2em] font-black text-[#388E3C] truncate">Citizen One</span>
+                      <span className="text-[0.625rem] uppercase tracking-[0.2em] font-black text-[#388E3C] truncate">Citizen One</span>
                     </div>
                     <div className="text-3xl font-black text-white leading-none tracking-tight truncate">
                       {form.watch('fullName') || 'Identity Name'}
@@ -366,7 +366,7 @@ export default function OnboardingProfilePage() {
 
                 <div className="flex items-end justify-between border-t border-border pt-4 sm:pt-6 mt-auto">
                   <div className="space-y-2">
-                    <div className="text-[10px] uppercase tracking-widest font-black text-muted-foreground opacity-60 ml-0.5">Primary Sector</div>
+                    <div className="text-[0.625rem] uppercase tracking-widest font-black text-muted-foreground opacity-60 ml-0.5">Primary Sector</div>
                     <div className="flex items-center gap-2.5 text-white font-black">
                       <div className="w-8 h-8 rounded-lg bg-[#388E3C]/10 flex items-center justify-center">
                         <MapPin className="w-4 h-4 text-[#388E3C]" />
@@ -375,8 +375,8 @@ export default function OnboardingProfilePage() {
                     </div>
                   </div>
                   <div className="text-right flex flex-col items-end gap-1">
-                    <div className="text-[10px] uppercase tracking-widest font-black text-muted-foreground opacity-60">Verification</div>
-                    <div className="px-3 py-1 rounded-lg bg-[#388E3C]/10 text-[#388E3C] text-[11px] font-black border border-[#388E3C]/20">
+                    <div className="text-[0.625rem] uppercase tracking-widest font-black text-muted-foreground opacity-60">Verification</div>
+                    <div className="px-3 py-1 rounded-lg bg-[#388E3C]/10 text-[#388E3C] text-[0.6875rem] font-black border border-[#388E3C]/20">
                       ACTIVE RESIDENT
                     </div>
                   </div>
@@ -400,7 +400,7 @@ export default function OnboardingProfilePage() {
                   {/* Name Input */}
                   <div className="space-y-4">
                     <div className="flex items-center justify-between px-1">
-                      <Label className="text-[11px] uppercase tracking-[0.25em] font-black text-muted-foreground">Full Legal Name</Label>
+                      <Label className="text-[0.6875rem] uppercase tracking-[0.25em] font-black text-muted-foreground">Full Legal Name</Label>
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -431,7 +431,7 @@ export default function OnboardingProfilePage() {
                   {/* Username Input */}
                   <div className="space-y-4">
                     <div className="flex items-center justify-between px-1">
-                      <Label className="text-[11px] uppercase tracking-[0.25em] font-black text-muted-foreground">Neighborhood Handle</Label>
+                      <Label className="text-[0.6875rem] uppercase tracking-[0.25em] font-black text-muted-foreground">Neighborhood Handle</Label>
                     </div>
                     
                     <div className="relative group">
@@ -466,7 +466,7 @@ export default function OnboardingProfilePage() {
 
                     {showSuggestions && usernameSuggestions.length > 0 && (
                       <div className="bg-background/80 rounded-[32px] p-6 space-y-5 border border-border animate-in fade-in zoom-in-95 duration-500 backdrop-blur-3xl shadow-[0_30px_60px_-12px_rgba(0,0,0,0.8)]">
-                        <div className="flex items-center gap-3 text-[11px] uppercase tracking-[0.25em] font-black text-[#388E3C]">
+                        <div className="flex items-center gap-3 text-[0.6875rem] uppercase tracking-[0.25em] font-black text-[#388E3C]">
                           <div className="w-10 h-10 rounded-xl bg-[#388E3C]/10 flex items-center justify-center border border-[#388E3C]/20">
                             <Lightbulb className="w-5 h-5" />
                           </div>
@@ -500,7 +500,7 @@ export default function OnboardingProfilePage() {
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <div className="px-3 py-1 rounded-full bg-white/5 border border-border text-[10px] font-black text-muted-foreground cursor-default">
+                            <div className="px-3 py-1 rounded-full bg-white/5 border border-border text-[0.625rem] font-black text-muted-foreground cursor-default">
                               REQUIRED
                             </div>
                           </TooltipTrigger>
@@ -513,7 +513,7 @@ export default function OnboardingProfilePage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-3">
-                        <Label className="text-[11px] uppercase tracking-widest font-black text-muted-foreground ml-1">State / Region</Label>
+                        <Label className="text-[0.6875rem] uppercase tracking-widest font-black text-muted-foreground ml-1">State / Region</Label>
                         <Select value={form.watch('location.state')} onValueChange={handleStateChange}>
                           <SelectTrigger className="h-16 rounded-[22px] bg-background/60 border-border text-lg font-bold px-6 focus:ring-[#388E3C]/30">
                             <SelectValue placeholder="Select State" />
@@ -527,7 +527,7 @@ export default function OnboardingProfilePage() {
                       </div>
 
                       <div className="space-y-3">
-                        <Label className="text-[11px] uppercase tracking-widest font-black text-muted-foreground ml-1">Local Gov Area</Label>
+                        <Label className="text-[0.6875rem] uppercase tracking-widest font-black text-muted-foreground ml-1">Local Gov Area</Label>
                         <Select 
                           value={form.watch('location.lga')} 
                           onValueChange={handleLgaChange}
@@ -578,11 +578,11 @@ export default function OnboardingProfilePage() {
           </div>
 
           <div className="flex flex-col items-center gap-6 py-8">
-             <div className="flex items-center gap-3 text-[11px] font-black text-[#388E3C] uppercase tracking-[0.3em]">
+             <div className="flex items-center gap-3 text-[0.6875rem] font-black text-[#388E3C] uppercase tracking-[0.3em]">
                <CheckCircle2 className="w-4 h-4" />
                Identity Encryption Active
              </div>
-             <p className="text-center text-[10px] text-muted-foreground/40 font-black uppercase tracking-[0.4em] max-w-xs leading-loose">
+             <p className="text-center text-[0.625rem] text-muted-foreground/40 font-black uppercase tracking-[0.4em] max-w-xs leading-loose">
                Securely connecting 10k+ verified neighbors across Nigeria
              </p>
           </div>

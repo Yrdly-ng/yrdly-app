@@ -15,7 +15,7 @@ export default function BusinessesPage() {
 
   return (
     <div
-      className="min-h-screen flex flex-col items-center justify-center px-6 py-16 text-center relative overflow-hidden"
+      className="min-h-[100dvh] flex flex-col items-center justify-center px-6 py-16 text-center relative overflow-hidden"
       style={{ background: "var(--c-bg)" }}
     >
       {/* Ambient glow */}

@@ -1,4 +1,4 @@
-﻿
+
 "use client";
 
 import { useForm, UseFormReturn } from "react-hook-form";
@@ -47,6 +47,21 @@ import { cn } from "@/lib/utils";
 const inputBase = "bg-background border border-[#388E3C] text-foreground placeholder:text-muted-foreground placeholder:italic font-sans text-xs focus-visible:ring-[#388E3C] focus-visible:ring-offset-0";
 const labelClass = "font-sans font-semibold text-xs text-foreground";
 const pointerClass = "w-2 h-2 border-b border-l border-[#388E3C] rounded-bl-md flex-shrink-0 mt-1.5";
+
+const BlobImage = memo(({ file, className }: { file: File, className?: string }) => {
+  const [url, setUrl] = useState<string>('');
+  
+  useEffect(() => {
+    const objectUrl = URL.createObjectURL(file);
+    setUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file]);
+
+  if (!url) return null;
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={url} alt="" className={className} />;
+});
+BlobImage.displayName = "BlobImage";
 
 const getFormSchema = (isEditMode: boolean, postToEdit?: Post) => z.object({
   title: z.string().min(1, "Event title can't be empty.").max(100),
@@ -373,8 +388,7 @@ const CreateEventDialogComponent = memo(function CreateEventDialog({ children, o
                       })}
                       {value && Array.from(value).map((file, index) => (
                         <div key={`file-${index}`} className="relative w-14 h-14 rounded overflow-hidden bg-background flex-shrink-0">
-                          {/* eslint-disable-next-line @next/next/no-img-element -- blob URL from file input */}
-                          <img src={URL.createObjectURL(file as File)} alt="" className="w-full h-full object-cover" />
+                          <BlobImage file={file as File} className="w-full h-full object-cover" />
                           <button
                             type="button"
                             className="absolute top-0 right-0 w-5 h-5 rounded-full flex items-center justify-center bg-[#FF383C] border border-white"

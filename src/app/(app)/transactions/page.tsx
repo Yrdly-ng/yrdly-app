@@ -8,6 +8,7 @@ import { EscrowStatusDisplay } from '@/components/escrow/EscrowStatusDisplay';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Package, 
@@ -146,9 +147,44 @@ export default function TransactionsPage() {
 
         <TabsContent value={activeTab} className="space-y-4">
           {isLoading ? (
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="mt-4 text-gray-600 dark:text-gray-400">Loading transactions...</p>
+            <div className="grid gap-6">
+              {[1, 2, 3].map(i => (
+                <Card key={i}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3 w-1/2">
+                        <Skeleton className="w-5 h-5 rounded-full bg-muted" />
+                        <div className="w-full space-y-2">
+                          <Skeleton className="h-6 w-3/4 bg-muted" />
+                          <div className="flex items-center space-x-2">
+                            <Skeleton className="h-5 w-16 bg-muted" />
+                            <Skeleton className="h-5 w-20 bg-muted" />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right w-1/4 space-y-1">
+                        <Skeleton className="h-8 w-24 ml-auto bg-muted" />
+                        <Skeleton className="h-4 w-32 ml-auto bg-muted" />
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Skeleton className="h-5 w-32 bg-muted mb-3" />
+                        <Skeleton className="h-4 w-full bg-muted" />
+                        <Skeleton className="h-4 w-full bg-muted" />
+                        <Skeleton className="h-4 w-full bg-muted" />
+                      </div>
+                      <div className="space-y-2">
+                        <Skeleton className="h-5 w-32 bg-muted mb-3" />
+                        <Skeleton className="h-4 w-full bg-muted" />
+                        <Skeleton className="h-4 w-full bg-muted" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           ) : getFilteredTransactions().length === 0 ? (
             <div className="text-center py-8">

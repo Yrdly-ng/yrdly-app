@@ -98,7 +98,7 @@ export default function OnboardingTourPage() {
   const Icon = slide.icon;
 
   return (
-    <div className="min-h-screen relative flex flex-col items-center justify-between overflow-hidden px-6 py-12" style={{ background: "var(--c-bg)", fontFamily: "Inter, sans-serif" }}>
+    <div className="min-h-[100dvh] relative flex flex-col items-center justify-between overflow-hidden px-6 py-12" style={{ background: "var(--c-bg)", fontFamily: "Inter, sans-serif" }}>
       
       {/* Background Animated Blobs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -206,7 +206,7 @@ export default function OnboardingTourPage() {
           </span>
         </button>
         
-        <p className="text-center mt-6 text-[10px] uppercase tracking-[0.3em] font-black text-muted-foreground/40">
+        <p className="text-center mt-6 text-[0.625rem] uppercase tracking-[0.3em] font-black text-muted-foreground/40">
           Step {step + 1} of {SLIDES.length} • Yrdly Resident Portal
         </p>
       </div>
