@@ -160,12 +160,10 @@ export default function PayoutSettingsPage() {
             toast({ title: "Resolution Failed", description: data.error || "Could not resolve account.", variant: "destructive" });
           }
         } catch (err) {
-          setAccountName("");
+          toast({ title: "Resolution Failed", description: "Network error occurred.", variant: "destructive" });
         } finally {
           setLoading(false);
         }
-      } else {
-        setAccountName("");
       }
     }
     resolveAccount();

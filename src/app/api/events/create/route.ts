@@ -119,6 +119,42 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // ── Create linked post in community feed ──────────────
+    if (publish) {
+      try {
+        const { data: userProfile } = await supabaseAdmin
+          .from('users')
+          .select('name, avatar_url')
+          .eq('id', user.id)
+          .single();
+
+        await supabaseAdmin.from('posts').insert({
+          user_id: user.id,
+          author_name: userProfile?.name || 'Anonymous',
+          author_image: userProfile?.avatar_url || '',
+          category: 'Event',
+          title: title,
+          text: description,
+          event_location: { address: locationAddress || state || '' },
+          event_date: startTime.split('T')[0],
+          event_time: new Date(startTime).toTimeString().split(' ')[0].substring(0, 5),
+          event_link: `${process.env.NEXT_PUBLIC_APP_URL || 'https://yrdly.ng'}/events/${event.id}`,
+          image_urls: coverImageUrl ? [coverImageUrl] : [],
+          timestamp: now,
+          state: state || null,
+          lga: lga || null,
+          ward: ward || null,
+          author_location: null,
+          comment_count: 0,
+          liked_by: [],
+          attendees: [],
+        });
+      } catch (postError) {
+        console.error('Failed to create linked post:', postError);
+        // Non-critical, continue
+      }
+    }
+
     return NextResponse.json({ success: true, eventId: event.id, status });
   } catch (error) {
     console.error('Create event error:', error);
