@@ -17,9 +17,9 @@ import { getAuthenticatedUser } from "@/lib/supabase-server";
 export async function POST(request: NextRequest) {
   try {
     // ── Authenticate the caller ───────────────────────────────────────────────
-    const { data: { user: authUser }, error: authError } = await getAuthenticatedUser(request);
+    const { data: { user }, error: authError } = await getAuthenticatedUser(request);
 
-    if (!authUser || authError) {
+    if (!user || authError) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Ensure the authenticated user matches the buyerId
-    if (authUser.id !== buyerId) {
+    if (user.id !== buyerId) {
       return NextResponse.json(
         { error: "Buyer ID does not match authenticated user" },
         { status: 403 }
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Check if user is buying their own item (using selected user_id)
-    if (itemData.user_id === authUser.id) {
+    if (itemData.user_id === user.id) {
       return NextResponse.json(
         { error: "You cannot buy your own item." },
         { status: 400 }

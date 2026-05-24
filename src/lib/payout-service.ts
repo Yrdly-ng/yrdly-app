@@ -177,12 +177,12 @@ export class PayoutService {
       let transactionReference = '';
 
       try {
-        if (accountType === 'bank_account') {
+        if (accountType === 'bank_account' || accountType === 'mobile_money' || accountType === 'digital_wallet') {
           const bankCode = accountDetails?.bank_code || accountDetails?.bankCode;
           const accountNumber = accountDetails?.account_number || accountDetails?.accountNumber;
 
           if (!bankCode || !accountNumber) {
-            throw new Error('Missing bank details for payout. Seller must re-add their bank account.');
+            throw new Error('Missing bank details for payout. Seller must re-add their account.');
           }
 
           transferSuccess = await FlutterwaveService.transferToSeller({
@@ -193,8 +193,6 @@ export class PayoutService {
             narration: `Yrdly payout for transaction ${payoutRequestId}`,
           });
           transactionReference = `payout-${payoutRequestId}`;
-        } else if (accountType === 'mobile_money' || accountType === 'digital_wallet') {
-          throw new Error("Mobile money payouts are not yet supported. Please add a bank account in your payout settings to receive funds.");
         }
 
         if (transferSuccess) {

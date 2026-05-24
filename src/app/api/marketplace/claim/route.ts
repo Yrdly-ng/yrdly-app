@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     // ── Authenticate the caller ───────────────────────────────────────────────
     const { data: { user }, error: authError } = await getAuthenticatedUser(request);
 
-    if (!authUser || authError) {
+    if (!user || authError) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Ensure the authenticated user matches the buyerId
-    if (authUser.id !== buyerId) {
+    if (user.id !== buyerId) {
       return NextResponse.json(
         { error: "Buyer ID does not match authenticated user" },
         { status: 403 }

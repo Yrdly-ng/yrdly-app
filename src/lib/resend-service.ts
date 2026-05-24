@@ -2,8 +2,8 @@ import { Resend } from 'resend';
 import { emailTemplates } from './email-templates';
 
 // Ensure RESEND_API_KEY is present
-if (!process.env.RESEND_API_KEY) {
-  console.warn('[Yrdly] Missing RESEND_API_KEY — emails will not be sent.');
+if (!process.env.RESEND_API_KEY && process.env.NODE_ENV === 'production') {
+  console.error('CRITICAL: Missing RESEND_API_KEY in production');
 }
 
 // Initialize Resend client

@@ -7,11 +7,8 @@ import { createClient } from "@supabase/supabase-js";
  * Add SUPABASE_SERVICE_ROLE_KEY to your .env.local — get it from:
  * Supabase Dashboard → Project Settings → API → service_role (secret)
  */
-if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-  console.warn('[Yrdly] Missing NEXT_PUBLIC_SUPABASE_URL — server cannot start.');
-}
-if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  console.warn('[Yrdly] Missing SUPABASE_SERVICE_ROLE_KEY — server cannot start.');
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  console.error('CRITICAL: Missing Supabase environment variables');
 }
 
 export const supabaseAdmin = createClient(

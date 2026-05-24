@@ -17,9 +17,9 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Authenticate the caller ──────────────────────────────────────────────
-    const { data: { user: authUser }, error: authError } = await getAuthenticatedUser(request);
+    const { data: { user }, error: authError } = await getAuthenticatedUser(request);
 
-    if (!authUser || authError) {
+    if (!user || authError) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
         .eq('id', bodyTxRef)
         .single();
 
-      if (authUser && existing?.buyer_id !== authUser.id) {
+      if (user && existing?.buyer_id !== user.id) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
       }
 
@@ -99,8 +99,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (authUser && txRow.buyer_id !== authUser.id) {
-      console.warn(`[PaymentVerify] User ${authUser.id} tried to verify transaction for buyer ${txRow.buyer_id}`);
+    if (user && txRow.buyer_id !== user.id) {
+      console.warn(`[PaymentVerify] User ${user.id} tried to verify transaction for buyer ${txRow.buyer_id}`);
       return NextResponse.json(
         { error: 'Unauthorized: you cannot verify this transaction' },
         { status: 403 }
