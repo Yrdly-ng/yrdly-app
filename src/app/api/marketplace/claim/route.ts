@@ -91,23 +91,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ── Mark as Sold & Create Transaction ────────────────
-    
-    // 1. Mark item as sold
-    const { error: updateError } = await supabaseAdmin
-      .from("posts")
-      .update({ is_sold: true })
-      .eq("id", itemId);
+    // ── Create Transaction & Mark as Sold ────────────────
 
-    if (updateError) {
-      console.error("[ClaimInit] Failed to mark item as sold:", updateError);
-      return NextResponse.json(
-        { error: "Failed to update item status." },
-        { status: 500 }
-      );
-    }
-
-    // 2. Create the escrow transaction directly in PAID status
+    // 1. Create the escrow transaction directly in PAID status
     // since it's free, it skips PENDING
     const { data: txData, error: txError } = await supabaseAdmin
       .from("escrow_transactions")
@@ -131,9 +117,28 @@ export async function POST(request: NextRequest) {
 
     if (txError) {
       console.error("Escrow transaction error:", txError);
-      // We should theoretically rollback the post update, but this is a rare failure edge case
       return NextResponse.json(
         { error: "Failed to create transaction" },
+        { status: 500 }
+      );
+    }
+
+    // 2. Mark item as sold with all necessary fields
+    const { error: updateError } = await supabaseAdmin
+      .from("posts")
+      .update({ 
+        is_sold: true,
+        sold_to_user_id: buyerId,
+        sold_at: new Date().toISOString(),
+        transaction_id: txData.id,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", itemId);
+
+    if (updateError) {
+      console.error("[ClaimInit] Failed to mark item as sold:", updateError);
+      return NextResponse.json(
+        { error: "Failed to update item status." },
         { status: 500 }
       );
     }

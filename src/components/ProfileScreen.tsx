@@ -176,8 +176,8 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
         supabase.from("posts").select("*").eq("user_id", targetUser.id).eq("category", "General").order("timestamp", { ascending: false }).limit(10),
         supabase.from("posts").select("*").eq("user_id", targetUser.id).eq("category", "For Sale").order("timestamp", { ascending: false }).limit(10),
         supabase.from("businesses").select("*").eq("owner_id", targetUser.id).order("created_at", { ascending: false }).limit(10),
-        supabase.from("posts").select("*").eq("user_id", targetUser.id).eq("category", "Event").order("timestamp", { ascending: false }).limit(10),
-        supabase.from("posts").select("id").eq("user_id", targetUser.id).eq("category", "Event"),
+        supabase.from("events").select("*").eq("organizer_id", targetUser.id).order("created_at", { ascending: false }).limit(10),
+        supabase.from("events").select("id").eq("organizer_id", targetUser.id),
       ]);
 
       setUserPosts(postsRes.data || []);
@@ -684,25 +684,26 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
                     key={event.id}
                     className="p-4 rounded-[11px] cursor-pointer"
                     style={{ background: SURFACE }}
-                    onClick={() => router.push(`/posts/${event.id}`)}
+                    onClick={() => router.push(`/events/${event.id}`)}
                   >
                     <div className="flex items-center gap-2 mb-2">
                       <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#6edf51" }} />
                       <span className="text-[0.625rem] font-bold uppercase tracking-widest" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>Event</span>
                     </div>
                     <h4 className="text-foreground font-bold text-sm" style={{ fontFamily: RALEWAY }}>
-                      {event.text || event.title || "Untitled Event"}
+                      {event.title || "Untitled Event"}
                     </h4>
-                    {event.event_date && (
+                    {event.start_time && (
                       <div className="flex items-center gap-1.5 mt-2 text-xs" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
                         <Calendar className="w-3 h-3" />
-                        {new Date(event.event_date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
-                        {event.event_time && <><Clock className="w-3 h-3 ml-2" /> {event.event_time}</>}
+                        {new Date(event.start_time).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+                        <Clock className="w-3 h-3 ml-2" /> 
+                        {new Date(event.start_time).toLocaleTimeString("en-US", { hour: 'numeric', minute: '2-digit' })}
                       </div>
                     )}
-                    {event.attendees?.length > 0 && (
+                    {event.attendee_count > 0 && (
                       <p className="text-xs mt-1 italic" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
-                        {event.attendees.length} participants joined
+                        {event.attendee_count} participant{event.attendee_count !== 1 ? 's' : ''} joined
                       </p>
                     )}
                   </div>
