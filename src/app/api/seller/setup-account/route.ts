@@ -102,7 +102,9 @@ export async function POST(request: NextRequest) {
         }
 
         // Also compare resolved bank name vs profile name (fraud guard)
-        if (profileName && !namesMatch(resolvedName, profileName)) {
+        // Bypass this check in Test Mode since test accounts return dummy names
+        const isTestMode = process.env.FLUTTERWAVE_SECRET_KEY?.startsWith('FLWSECK_TEST');
+        if (!isTestMode && profileName && !namesMatch(resolvedName, profileName)) {
           return NextResponse.json(
             {
               error: `This bank account does not appear to belong to you. Please add an account registered in your own name.`,
