@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState } from 'react';
 import Image from 'next/image';
@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { BuyButton } from '@/components/escrow/BuyButton';
+import { ClaimButton } from '@/components/escrow/ClaimButton';
 import { ChatButton } from '@/components/escrow/ChatButton';
 import { useAuth } from '@/hooks/use-supabase-auth';
 import { ImageSwiper } from '@/components/ImageSwiper';
@@ -310,13 +311,19 @@ export function MarketplaceItemDetail({
                 {/* Action Buttons */}
                 {!isOwner && (
                   <div className="space-y-3">
-                    {item.price && (
+                    {item.price ? (
                       <BuyButton
                         itemId={item.id}
                         itemTitle={item.title || item.text || 'Unknown Item'}
                         price={item.price}
                         sellerId={item.user_id}
                         sellerName={item.author_name || 'Unknown Seller'}
+                      />
+                    ) : (
+                      <ClaimButton
+                        itemId={item.id}
+                        itemTitle={item.title || item.text || 'Unknown Item'}
+                        sellerId={item.user_id}
                       />
                     )}
 

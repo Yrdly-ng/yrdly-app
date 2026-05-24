@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState } from 'react';
 import Image from 'next/image';
@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { BuyButton } from '@/components/escrow/BuyButton';
+import { ClaimButton } from '@/components/escrow/ClaimButton';
 import { ChatButton } from '@/components/escrow/ChatButton';
 import { useAuth } from '@/hooks/use-supabase-auth';
 import { Edit, Trash2, MapPin, User, Calendar, Eye } from 'lucide-react';
@@ -170,15 +171,23 @@ export function EnhancedItemCard({ item, onEditItem, onDeleteItem }: EnhancedIte
               View Details
             </Button>
 
-            {/* Buy Button - Only show if not owner */}
-            {!isOwner && item.price && (
-              <BuyButton
-                itemId={item.id}
-                itemTitle={item.title || item.text || 'Unknown Item'}
-                price={item.price}
-                sellerId={item.user_id}
-                sellerName={item.author_name || 'Unknown Seller'}
-              />
+            {/* Action Buttons - Only show if not owner */}
+            {!isOwner && (
+              item.price ? (
+                <BuyButton
+                  itemId={item.id}
+                  itemTitle={item.title || item.text || 'Unknown Item'}
+                  price={item.price}
+                  sellerId={item.user_id}
+                  sellerName={item.author_name || 'Unknown Seller'}
+                />
+              ) : (
+                <ClaimButton
+                  itemId={item.id}
+                  itemTitle={item.title || item.text || 'Unknown Item'}
+                  sellerId={item.user_id}
+                />
+              )
             )}
 
             {/* Chat Button - Only show if not owner */}
@@ -189,6 +198,7 @@ export function EnhancedItemCard({ item, onEditItem, onDeleteItem }: EnhancedIte
                 itemImageUrl={firstImage}
                 sellerId={item.user_id}
                 sellerName={item.author_name || 'Unknown Seller'}
+                itemPrice={item.price}
               />
             )}
 
