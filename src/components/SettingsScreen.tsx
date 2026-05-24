@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -16,6 +16,7 @@ import {
   ChevronRight,
   Pencil,
   Wallet,
+  ArrowLeft,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useTheme } from "@/components/ThemeProvider";
@@ -191,6 +192,19 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
       className="min-h-[100dvh] pb-32"
       style={{ background: "var(--c-bg)" }}
     >
+      {/* Sticky Header */}
+      <header
+        className="sticky top-0 z-50 flex items-center justify-between px-6 py-4 border-b border-[rgba(255,255,255,0.05)]"
+        style={{ background: "rgba(30,33,38,0.85)", backdropFilter: "blur(20px)" }}
+      >
+        <div className="flex items-center gap-4">
+          <button onClick={() => router.back()} className="w-10 h-10 flex items-center justify-center rounded-full transition-colors hover:bg-accent">
+            <ArrowLeft className="w-5 h-5 text-foreground" />
+          </button>
+          <h1 style={{ fontFamily: "Inter, sans-serif", fontSize: 18, fontWeight: 700, color: "#fff" }}>Settings</h1>
+        </div>
+      </header>
+
       <div className="max-w-2xl mx-auto px-4 pt-8 space-y-8">
 
         {/* ── Profile Card ── */}

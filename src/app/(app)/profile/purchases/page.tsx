@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/use-supabase-auth';
@@ -14,7 +14,8 @@ import {
   User, 
   CreditCard,
   MessageCircle,
-  ExternalLink
+  ExternalLink,
+  ArrowLeft
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
@@ -83,12 +84,17 @@ export default function PurchaseHistoryPage() {
 
   if (loading) {
     return (
-      <div className="min-h-[100dvh] bg-background p-4">
-        <div className="max-w-4xl mx-auto space-y-6">
+      <div className="min-h-[100dvh] bg-background">
+        <div className="sticky top-0 z-50 flex items-center gap-3 px-4 py-4 bg-background/95 backdrop-blur-sm border-b border-border">
+          <button onClick={() => router.back()} className="p-2 -ml-2 rounded-full hover:bg-muted transition-colors">
+            <ArrowLeft className="w-5 h-5 text-foreground" />
+          </button>
           <div>
-            <h1 className="text-2xl font-bold">Purchase History</h1>
-            <p className="text-muted-foreground">Items you&apos;ve purchased</p>
+            <h1 className="font-sans font-bold text-xl text-foreground">Purchase History</h1>
+            <p className="font-sans text-xs text-muted-foreground mt-0.5">Items you&apos;ve purchased</p>
           </div>
+        </div>
+        <div className="max-w-4xl mx-auto space-y-6 p-4">
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {[...Array(6)].map((_, i) => (
@@ -108,12 +114,17 @@ export default function PurchaseHistoryPage() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-background p-4">
-      <div className="max-w-4xl mx-auto space-y-6">
+    <div className="min-h-[100dvh] bg-background">
+      <div className="sticky top-0 z-50 flex items-center gap-3 px-4 py-4 bg-background/95 backdrop-blur-sm border-b border-border">
+        <button onClick={() => router.back()} className="p-2 -ml-2 rounded-full hover:bg-muted transition-colors">
+          <ArrowLeft className="w-5 h-5 text-foreground" />
+        </button>
         <div>
-          <h1 className="text-2xl font-bold">Purchase History</h1>
-          <p className="text-muted-foreground">Items you&apos;ve purchased</p>
+          <h1 className="font-sans font-bold text-xl text-foreground">Purchase History</h1>
+          <p className="font-sans text-xs text-muted-foreground mt-0.5">Items you&apos;ve purchased</p>
         </div>
+      </div>
+      <div className="max-w-4xl mx-auto space-y-6 p-4">
 
         {purchases.length === 0 ? (
           <Card>

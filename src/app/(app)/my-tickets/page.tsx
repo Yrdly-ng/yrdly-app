@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { Ticket, CalendarDays, MapPin, QrCode, ChevronRight, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Ticket, CalendarDays, MapPin, QrCode, ChevronRight, Loader2, CheckCircle2, AlertCircle, ArrowLeft } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-supabase-auth";
@@ -40,9 +40,12 @@ export default function MyTicketsPage() {
   if (loading) {
     return (
       <div className="min-h-[100dvh] bg-background text-foreground pb-24">
-        <div className="sticky top-0 z-10 bg-background/95 border-b border-border px-4 py-4 space-y-2">
-          <Skeleton className="h-6 w-32 bg-muted" />
-          <Skeleton className="h-3 w-16 bg-muted" />
+        <div className="sticky top-0 z-50 bg-background/95 border-b border-border px-4 py-4 flex items-center gap-3">
+          <Skeleton className="h-9 w-9 bg-muted rounded-full" />
+          <div className="space-y-2">
+            <Skeleton className="h-6 w-32 bg-muted" />
+            <Skeleton className="h-3 w-16 bg-muted" />
+          </div>
         </div>
         <div className="max-w-2xl mx-auto px-4 pt-4 space-y-3">
           {[1, 2, 3].map(i => (
@@ -69,9 +72,14 @@ export default function MyTicketsPage() {
   return (
     <div className="min-h-[100dvh] bg-background text-foreground pb-24">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border px-4 py-4">
-        <h1 className="font-sans font-bold text-xl text-foreground">My Tickets</h1>
-        <p className="font-sans text-xs text-muted-foreground mt-0.5">{tickets.length} ticket{tickets.length !== 1 ? "s" : ""}</p>
+      <div className="sticky top-0 z-50 flex items-center gap-3 px-4 py-4 bg-background/95 backdrop-blur-sm border-b border-border">
+        <button onClick={() => router.back()} className="p-2 -ml-2 rounded-full hover:bg-muted transition-colors">
+          <ArrowLeft className="w-5 h-5 text-foreground" />
+        </button>
+        <div>
+          <h1 className="font-sans font-bold text-xl text-foreground">My Tickets</h1>
+          <p className="font-sans text-xs text-muted-foreground mt-0.5">{tickets.length} ticket{tickets.length !== 1 ? "s" : ""}</p>
+        </div>
       </div>
 
       {/* Success banner */}
