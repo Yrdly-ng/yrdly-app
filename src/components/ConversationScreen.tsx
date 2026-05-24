@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@/hooks/use-supabase-auth";
@@ -383,11 +383,6 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
               className="w-full rounded-full px-5 py-3 text-[0.875rem] text-foreground outline-none focus:ring-1 focus:ring-[#388E3C]"
               style={{ background: "var(--c-card2)", fontFamily: FONT, caretColor: GREEN }}
             />
-            <button type="button" onClick={() => fileInputRef.current?.click()}
-              className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
-              style={{ color: "var(--c-text-muted)" }}>
-              <ImagePlus className="w-5 h-5" />
-            </button>
           </div>
           <button
             type="submit"
