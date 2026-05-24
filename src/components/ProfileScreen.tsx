@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   ArrowLeft, MapPin, Calendar, Users, MessageCircle, ShoppingBag,
   Briefcase, CalendarDays, Clock, Heart, MoreHorizontal, UserMinus,
-  Ticket, Package, ChevronRight,
+  Ticket, Package, ChevronRight, TrendingUp
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { supabase } from "@/lib/supabase";
@@ -520,6 +520,12 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
               label: "My Purchases",
               sub: "Track marketplace orders",
               href: "/profile/purchases",
+            },
+            {
+              icon: <TrendingUp className="w-5 h-5" style={{ color: GREEN_LIGHT }} />,
+              label: "My Sales",
+              sub: "Track items you have sold",
+              href: "/profile/sold-items",
             },
           ].map(({ icon, label, sub, href }, i, arr) => (
             <button
