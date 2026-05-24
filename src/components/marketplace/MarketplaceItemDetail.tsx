@@ -230,11 +230,18 @@ export function MarketplaceItemDetail({
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {/* Price */}
-                    {item.price && (
+                    {item.is_sold ? (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Status:</span>
+                        <Badge className="bg-red-600 text-white px-3 py-1 text-lg font-bold uppercase tracking-wider">
+                          Sold
+                        </Badge>
+                      </div>
+                    ) : item.price !== undefined && item.price !== null && (
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-muted-foreground">Price:</span>
                         <Badge className="bg-green-600 text-white px-3 py-1 text-lg font-bold">
-                          {formatPrice(item.price)}
+                          {item.price === 0 ? "Free" : formatPrice(item.price)}
                         </Badge>
                       </div>
                     )}
@@ -309,7 +316,7 @@ export function MarketplaceItemDetail({
               {/* Right Column - Actions */}
               <div className="space-y-4">
                 {/* Action Buttons */}
-                {!isOwner && (
+                {!isOwner && !item.is_sold && (
                   <div className="space-y-3">
                     {item.price ? (
                       <BuyButton

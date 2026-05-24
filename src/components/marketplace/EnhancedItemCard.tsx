@@ -80,10 +80,16 @@ export function EnhancedItemCard({ item, onEditItem, onDeleteItem }: EnhancedIte
           />
           
           {/* Price Badge */}
-          {item.price && (
+          {item.is_sold ? (
+            <div className="absolute top-3 right-3">
+              <Badge className="bg-red-600 text-white px-3 py-1 text-sm font-semibold uppercase tracking-wider">
+                Sold
+              </Badge>
+            </div>
+          ) : item.price !== undefined && item.price !== null && (
             <div className="absolute top-3 right-3">
               <Badge className="bg-green-600 text-white px-3 py-1 text-sm font-semibold">
-                {formatPrice(item.price)}
+                {item.price === 0 ? "Free" : formatPrice(item.price)}
               </Badge>
             </div>
           )}
@@ -171,8 +177,8 @@ export function EnhancedItemCard({ item, onEditItem, onDeleteItem }: EnhancedIte
               View Details
             </Button>
 
-            {/* Action Buttons - Only show if not owner */}
-            {!isOwner && (
+            {/* Action Buttons - Only show if not owner and not sold */}
+            {!isOwner && !item.is_sold && (
               item.price ? (
                 <BuyButton
                   itemId={item.id}
@@ -190,8 +196,8 @@ export function EnhancedItemCard({ item, onEditItem, onDeleteItem }: EnhancedIte
               )
             )}
 
-            {/* Chat Button - Only show if not owner */}
-            {!isOwner && (
+            {/* Chat Button - Only show if not owner and not sold */}
+            {!isOwner && !item.is_sold && (
               <ChatButton
                 itemId={item.id}
                 itemTitle={item.title || item.text || 'Unknown Item'}

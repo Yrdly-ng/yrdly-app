@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { createClient } from '@/lib/supabase-server';
+import { getAuthenticatedUser } from '@/lib/supabase-server';
 
 /**
  * GET /api/tickets/[token]
@@ -9,8 +9,7 @@ import { createClient } from '@/lib/supabase-server';
  */
 export async function GET(request: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   // Require authentication
-  const supabase = await createClient();
-  const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+  const { data: { user }, error: authError } = await getAuthenticatedUser(request);
   if (!authUser || authError) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

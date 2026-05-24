@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { DeliveryOption, PaymentMethod, EscrowStatus } from "@/types/escrow";
-import { createClient } from "@/lib/supabase-server";
+import { getAuthenticatedUser } from "@/lib/supabase-server";
 
 /**
  * POST /api/marketplace/claim
@@ -12,8 +12,7 @@ import { createClient } from "@/lib/supabase-server";
 export async function POST(request: NextRequest) {
   try {
     // ── Authenticate the caller ───────────────────────────────────────────────
-    const supabase = await createClient();
-    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+    const { data: { user }, error: authError } = await getAuthenticatedUser(request);
 
     if (!authUser || authError) {
       return NextResponse.json(
