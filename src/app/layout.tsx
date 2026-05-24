@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider } from '@/hooks/use-supabase-auth';
 import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 import { ThemeProvider } from "@/components/ThemeProvider";
 
 export const metadata: Metadata = {
@@ -53,6 +54,7 @@ export default function RootLayout({
           </AuthProvider>
           <Toaster />
           <Analytics />
+          <SpeedInsights />
         </ThemeProvider>
       </body>
     </html>
