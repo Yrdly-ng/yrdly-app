@@ -318,7 +318,7 @@ export function MarketplaceItemDetail({
                 {/* Action Buttons */}
                 {!isOwner && !item.is_sold && (
                   <div className="space-y-3">
-                    {item.price ? (
+                    {Number(item.price) > 0 ? (
                       <BuyButton
                         itemId={item.id}
                         itemTitle={item.title || item.text || 'Unknown Item'}

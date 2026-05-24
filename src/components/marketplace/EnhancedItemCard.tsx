@@ -179,7 +179,7 @@ export function EnhancedItemCard({ item, onEditItem, onDeleteItem }: EnhancedIte
 
             {/* Action Buttons - Only show if not owner and not sold */}
             {!isOwner && !item.is_sold && (
-              item.price ? (
+              Number(item.price) > 0 ? (
                 <BuyButton
                   itemId={item.id}
                   itemTitle={item.title || item.text || 'Unknown Item'}
