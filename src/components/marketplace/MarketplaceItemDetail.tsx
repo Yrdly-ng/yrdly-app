@@ -322,7 +322,7 @@ export function MarketplaceItemDetail({
                       <BuyButton
                         itemId={item.id}
                         itemTitle={item.title || item.text || 'Unknown Item'}
-                        price={item.price}
+                        price={item.price || 0}
                         sellerId={item.user_id}
                         sellerName={item.author_name || 'Unknown Seller'}
                       />
