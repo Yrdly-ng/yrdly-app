@@ -720,7 +720,7 @@ export const emailTemplates = {
             </div>
             
             <div class="button-container">
-              <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://yrdly-app.vercel.app'}/orders/${transactionId}" class="button">View Order Details</a>
+              <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://yrdly-app.vercel.app'}/transactions/${transactionId}" class="button">View Order Details</a>
             </div>
             
             <p class="message" style="font-size: 14px; color: #6B7280; text-align: center; margin-top: 40px;">

@@ -1,7 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { ArrowLeft, Check, MessageCircle, Receipt } from "lucide-react";
+import { ArrowLeft, Check, MessageCircle, Receipt, Loader2 } from "lucide-react";
+import { useAuth } from "@/hooks/use-supabase-auth";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabase";
 
 /* ── Design tokens ─────────────────────────────────── */
 const BG     = "var(--c-bg)";
@@ -26,8 +30,76 @@ export default function EscrowConfirmationPage() {
   const itemTitle     = params.get("item") ?? "Your item";
   const ref           = params.get("ref") ?? `YRD${Date.now().toString().slice(-5)}`;
 
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [isMessaging, setIsMessaging] = useState(false);
+
   const fmt = (n: string) =>
     `₦${Number(n).toLocaleString("en-NG")}`;
+
+  const handleMessageSeller = async () => {
+    if (!transactionId || !user) {
+      toast({ variant: "destructive", title: "Error", description: "You must be logged in to message the seller." });
+      return;
+    }
+    setIsMessaging(true);
+    try {
+      const { data: txData, error: txError } = await supabase
+        .from('escrow_transactions')
+        .select('item_id, seller_id')
+        .eq('id', transactionId)
+        .single();
+
+      if (txError || !txData) throw new Error('Transaction not found');
+
+      const { data: itemData, error: itemError } = await supabase
+        .from('posts')
+        .select('id, title, text, image_urls, price')
+        .eq('id', txData.item_id)
+        .single();
+
+      if (itemError || !itemData) throw new Error('Item not found');
+
+      const { data: existing } = await supabase
+        .from("conversations")
+        .select("id")
+        .contains("participant_ids", [user.id])
+        .eq("type", "marketplace")
+        .eq("item_id", itemData.id)
+        .limit(1);
+
+      let conversationId: string;
+
+      if (!existing || existing.length === 0) {
+        const { data: newConv, error: convError } = await supabase
+          .from("conversations")
+          .insert({
+            participant_ids: [user.id, txData.seller_id].sort(),
+            type: "marketplace",
+            item_id: itemData.id,
+            item_title: itemData.title || itemData.text || "Item",
+            item_image: itemData.image_urls?.[0] || "",
+            item_price: itemData.price || 0,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .select("id")
+          .single();
+          
+        if (convError) throw convError;
+        conversationId = newConv.id;
+      } else {
+        conversationId = existing[0].id;
+      }
+
+      router.push(`/messages/${conversationId}`);
+    } catch (error) {
+      console.error(error);
+      toast({ variant: "destructive", title: "Error", description: "Could not initiate chat." });
+    } finally {
+      setIsMessaging(false);
+    }
+  };
 
   return (
     <div className="bg-background text-on-surface font-body antialiased min-h-dvh flex flex-col">
@@ -107,10 +179,11 @@ export default function EscrowConfirmationPage() {
       <footer className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-background via-background to-transparent pointer-events-none">
         <div className="max-w-lg mx-auto flex flex-col gap-3 pointer-events-auto">
           <button 
-            onClick={() => router.push(`/messages/marketplace/${transactionId || "new"}`)}
-            className="w-full h-14 rounded-full bg-[#388E3C] text-white font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform shadow-lg shadow-[#388E3C]/20"
+            onClick={handleMessageSeller}
+            disabled={isMessaging}
+            className="w-full h-14 rounded-full bg-[#388E3C] text-white font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform shadow-lg shadow-[#388E3C]/20 disabled:opacity-70 disabled:active:scale-100"
           >
-            <MessageCircle className="w-5 h-5" />
+            {isMessaging ? <Loader2 className="w-5 h-5 animate-spin" /> : <MessageCircle className="w-5 h-5" />}
             Message Seller
           </button>
           <button 

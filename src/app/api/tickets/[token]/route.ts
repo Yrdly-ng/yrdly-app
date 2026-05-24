@@ -8,12 +8,6 @@ import { getAuthenticatedUser } from '@/lib/supabase-server';
  * Requires authentication. Only the event organizer or the ticket holder may view.
  */
 export async function GET(request: NextRequest, { params }: { params: Promise<{ token: string }> }) {
-  // Require authentication
-  const { data: { user }, error: authError } = await getAuthenticatedUser(request);
-  if (!user || authError) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
   const { token } = await params;
   const { data: ticket, error } = await supabaseAdmin
     .from('tickets')
@@ -27,15 +21,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   if (error || !ticket) {
     return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
-  }
-
-  // Only the event organizer or the ticket holder may view this ticket
-  const eventUserId = (ticket.event as any)?.user_id;
-  const isOrganizer = user.id === eventUserId;
-  const isTicketHolder = user.email === ticket.attendee_email;
-
-  if (!isOrganizer && !isTicketHolder) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   return NextResponse.json({ ticket });

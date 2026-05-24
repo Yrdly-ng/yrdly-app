@@ -130,7 +130,13 @@ export async function POST(request: NextRequest) {
       if (txRow.item_id) {
         const { error: saleError } = await supabaseAdmin
           .from('posts')
-          .update({ is_sold: true, updated_at: new Date().toISOString() })
+          .update({ 
+            is_sold: true, 
+            sold_to_user_id: txRow.buyer_id,
+            sold_at: new Date().toISOString(),
+            transaction_id: txRef,
+            updated_at: new Date().toISOString() 
+          })
           .eq('id', txRow.item_id);
         
         if (saleError) {
