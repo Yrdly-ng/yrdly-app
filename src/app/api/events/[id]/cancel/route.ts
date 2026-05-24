@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { createClient } from '@supabase/supabase-js';
 
-const COMMISSION = 0.05;
-
 /**
  * POST /api/events/[id]/cancel
  * Cancels the event, triggers Flutterwave refunds for all PAID tickets,

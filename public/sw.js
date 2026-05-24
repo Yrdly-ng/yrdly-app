@@ -1,5 +1,5 @@
 // local-1774541683066 is replaced at build time so each deploy gets a fresh cache
-const CACHE_VERSION = 'local-1774541683066';
+const CACHE_VERSION = 'local-1779585048989';
 const CACHE_NAME = 'yrdly-' + CACHE_VERSION;
 const STATIC_CACHE = 'yrdly-static-' + CACHE_VERSION;
 const DATA_CACHE = 'yrdly-data-' + CACHE_VERSION;
@@ -194,7 +194,11 @@ self.addEventListener('push', (event) => {
 
 // Handle messages from the main thread
 self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
+  console.log('Service Worker received message:', event.data);
+
+  if (!event.data) return;
+
+  if (event.data.type === 'SHOW_NOTIFICATION') {
     const { payload } = event.data;
     
     const options = {
@@ -218,8 +222,11 @@ self.addEventListener('message', (event) => {
     };
 
     self.registration.showNotification(payload.title, options);
+  } else if (event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
   }
 });
+
 
 // Notification click handling
 self.addEventListener('notificationclick', (event) => {
@@ -233,13 +240,3 @@ self.addEventListener('notificationclick', (event) => {
     );
   }
 });
-
-// Message handling for communication with main thread
-self.addEventListener('message', (event) => {
-  console.log('Service Worker received message:', event.data);
-  
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
-});
-

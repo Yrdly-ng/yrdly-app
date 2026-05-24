@@ -1,4 +1,4 @@
-﻿
+
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -162,7 +162,7 @@ function FormBody({
                 <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
                   {Array.from(form.watch("image") as FileList).filter(f => f instanceof File).map((file, i) => (
                     <div key={i} className="relative w-16 h-16 flex-shrink-0 rounded-md overflow-hidden">
-                      <img src={URL.createObjectURL(file as File)} alt="Preview" className="w-full h-full object-cover" />
+                      <Image src={URL.createObjectURL(file as File)} alt="Preview" fill className="object-cover" sizes="64px" />
                     </div>
                   ))}
                 </div>

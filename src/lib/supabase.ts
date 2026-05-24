@@ -1,13 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
 
 // Supabase configuration
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.warn('[Yrdly] Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY');
+}
 
 // Create Supabase client for client-side operations
-// Use empty strings during build if env vars are not available
-export const supabase = createClient(supabaseUrl || 'https://placeholder.supabase.co', supabaseAnonKey || 'placeholder-key', {
+export const supabase = createClient(supabaseUrl || "https://dummy.supabase.co", supabaseAnonKey || "dummy-key", {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
@@ -19,17 +21,6 @@ export const supabase = createClient(supabaseUrl || 'https://placeholder.supabas
     }
   }
 });
-
-// Create Supabase client for server-side operations (with service role key)
-// Only create if service key is available
-export const supabaseAdmin = supabaseServiceKey && supabaseUrl
-  ? createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
-    })
-  : null;
 
 // Database types (we'll generate these later)
 export type Database = {

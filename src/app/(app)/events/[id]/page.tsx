@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -49,6 +49,7 @@ export default function EventDetailPage() {
   const [form, setForm] = useState({ name: "", email: "", phone: "" });
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [hasTicket, setHasTicket] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -57,6 +58,21 @@ export default function EventDetailPage() {
       setLoading(false);
     });
   }, [id]);
+
+  useEffect(() => {
+    if (user && id) {
+      supabase
+        .from('tickets')
+        .select('id')
+        .eq('buyer_id', user.id)
+        .eq('event_id', id)
+        .eq('status', 'PAID')
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) setHasTicket(true);
+        });
+    }
+  }, [user, id]);
 
   // Pre-fill form with auth user data
   useEffect(() => {
@@ -385,12 +401,12 @@ export default function EventDetailPage() {
                       </span>
                       <Button
                         size="sm"
-                        disabled={soldOut || isOrganizer}
+                        disabled={soldOut || isOrganizer || hasTicket}
                         onClick={() => handleSelectTier(tier)}
                         className="rounded-full font-sans text-xs text-foreground px-4"
-                        style={{ background: soldOut ? "#374151" : "#388E3C" }}
+                        style={{ background: soldOut ? "#374151" : hasTicket ? "#388E3C" : "#388E3C" }}
                       >
-                        {soldOut ? "Sold Out" : isOrganizer ? "Yours" : "Get"}
+                        {soldOut ? "Sold Out" : isOrganizer ? "Yours" : hasTicket ? "Purchased" : "Get"}
                       </Button>
                     </div>
                   </div>

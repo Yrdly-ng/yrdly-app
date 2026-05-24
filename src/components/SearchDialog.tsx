@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
@@ -90,7 +90,7 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
       } finally { setLoading(false); }
     }, 300);
     return () => clearTimeout(t);
-  }, [searchTerm, currentUser?.id]);
+  }, [searchTerm, currentUser?.id, profile?.location?.state, profile?.location?.lga]);
 
   const filteredResults = results.filter(r => {
     if (activeTab === 'all') return true;

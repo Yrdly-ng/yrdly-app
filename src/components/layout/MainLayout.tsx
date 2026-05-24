@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import type React from "react";
 import { useState, useEffect } from "react";
@@ -37,7 +37,7 @@ interface MainLayoutProps {
 
 const navItems = [
   { href: "/home", label: "Home", icon: Home },
-  { href: "/neighbors", label: "Community", icon: Users },
+  { href: "/community", label: "Community", icon: Users },
   { href: "/marketplace", label: "Market", icon: ShoppingBag },
   { href: "/events", label: "Events", icon: Globe },
   { href: "/businesses", label: "Business", icon: Briefcase },

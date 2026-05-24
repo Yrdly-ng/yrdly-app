@@ -108,6 +108,14 @@ export async function POST(request: NextRequest) {
         .update({ sold: tier.sold + 1 })
         .eq('id', tier_id);
 
+      // Increment event attendee_count
+      try {
+        const { data: eData } = await supabaseAdmin.from('events').select('attendee_count').eq('id', event_id).single();
+        if (eData) {
+          await supabaseAdmin.from('events').update({ attendee_count: (eData.attendee_count || 0) + 1 }).eq('id', event_id);
+        }
+      } catch (e) {}
+
       // ── Send confirmation email to buyer ────────────────────────────────
       try {
         const resendStatus = ResendEmailService.getConfigurationStatus();

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useMemo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -186,7 +186,7 @@ function NotificationCard({
       case "friend_request_accepted":
       case "friend_request_declined": {
         const uid = notification.from_user_id || notification.related_id;
-        router.push(uid ? `/profile/${uid}` : "/neighbors");
+        router.push(uid ? `/profile/${uid}` : "/community");
         break;
       }
       case "message":

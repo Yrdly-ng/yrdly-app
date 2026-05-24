@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -131,10 +131,45 @@ export default function PayoutSettingsPage() {
     } finally {
       setLoading(false);
     }
-  }, [bankCode, accountNumber, accountName, toast]);
+  }, [bankCode, accountNumber, accountName, toast, returnTo, router]);
 
   const getBankName = (code: string) =>
     NIGERIAN_BANKS.find((b) => b.code === code)?.name || code;
+
+  // Auto-resolve account name
+  useEffect(() => {
+    async function resolveAccount() {
+      if (bankCode && accountNumber.length === 10) {
+        setLoading(true);
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          const res = await fetch("/api/seller/resolve-account", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session?.access_token}`,
+            },
+            body: JSON.stringify({ bankCode, accountNumber }),
+          });
+          const data = await res.json();
+          if (res.ok && data.accountName) {
+            setAccountName(data.accountName);
+            toast({ title: "Account Resolved", description: `Found account for ${data.accountName}` });
+          } else {
+            setAccountName("");
+            toast({ title: "Resolution Failed", description: data.error || "Could not resolve account.", variant: "destructive" });
+          }
+        } catch (err) {
+          setAccountName("");
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        setAccountName("");
+      }
+    }
+    resolveAccount();
+  }, [bankCode, accountNumber, toast]);
 
   if (fetching) {
     return (

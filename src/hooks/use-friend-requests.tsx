@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/use-supabase-auth';
@@ -24,13 +25,13 @@ export function useFriendRequests() {
           .eq('status', 'pending');
 
         if (error) {
-          console.error('Error fetching friend requests:', error);
+          Sentry.captureException(error);
           setPendingCount(0);
         } else {
           setPendingCount(data?.length || 0);
         }
       } catch (error) {
-        console.error('Error fetching friend requests:', error);
+        Sentry.captureException(error);
         setPendingCount(0);
       } finally {
         setLoading(false);

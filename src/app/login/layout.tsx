@@ -1,4 +1,4 @@
-﻿import { AuthProvider } from '@/hooks/use-supabase-auth';
+import { AuthProvider } from '@/hooks/use-supabase-auth';
 import { Pacifico, Inter } from 'next/font/google';
 
 const pacifico = Pacifico({ weight: '400', subsets: ['latin'], variable: '--font-pacifico' });
@@ -10,10 +10,8 @@ export default function LoginLayout({
   children: React.ReactNode;
 }) {
   return (
-    <AuthProvider>
-      <div className={`${pacifico.variable} ${inter.variable} font-sans`}>
-        {children}
-      </div>
-    </AuthProvider>
+    <div className={`${pacifico.variable} ${inter.variable} font-sans`}>
+      {children}
+    </div>
   );
 }

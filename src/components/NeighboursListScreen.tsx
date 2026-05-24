@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -100,41 +100,42 @@ export function NeighboursListScreen() {
 
   useEffect(() => {
     if (!currentUser) return;
+
+    const fetchNeighbors = async () => {
+      try {
+        setLoading(true);
+
+        // Fetch all users except current user
+        const { data: allUsers, error: usersError } = await supabase
+          .from("users")
+          .select("id, name, email, avatar_url, created_at, friends")
+          .neq("id", currentUser?.id)
+          .order("created_at", { ascending: false });
+
+        if (usersError) throw usersError;
+
+        // Map users
+        const mappedUsers = (allUsers || []).map((user) => ({
+          ...user,
+          uid: user.id,
+          timestamp: user.created_at,
+        })) as Neighbor[];
+
+        setNeighbors(mappedUsers);
+      } catch (error) {
+        console.error("Error fetching neighbors:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load neighbors",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchNeighbors();
   }, [currentUser, toast]);
-
-  const fetchNeighbors = async () => {
-    try {
-      setLoading(true);
-
-      // Fetch all users except current user
-      const { data: allUsers, error: usersError } = await supabase
-        .from("users")
-        .select("id, name, email, avatar_url, created_at, friends")
-        .neq("id", currentUser?.id)
-        .order("created_at", { ascending: false });
-
-      if (usersError) throw usersError;
-
-      // Map users
-      const mappedUsers = (allUsers || []).map((user) => ({
-        ...user,
-        uid: user.id,
-        timestamp: user.created_at,
-      })) as Neighbor[];
-
-      setNeighbors(mappedUsers);
-    } catch (error) {
-      console.error("Error fetching neighbors:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load neighbors",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleNeighborAction = async (
     neighborId: string,

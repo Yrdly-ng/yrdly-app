@@ -1,8 +1,13 @@
 import { Resend } from 'resend';
 import { emailTemplates } from './email-templates';
 
-// Initialize Resend client with a fallback to prevent build-time crashes
-const resend = new Resend(process.env.RESEND_API_KEY || 're_dummy_key_for_build');
+// Ensure RESEND_API_KEY is present
+if (!process.env.RESEND_API_KEY) {
+  console.warn('[Yrdly] Missing RESEND_API_KEY — emails will not be sent.');
+}
+
+// Initialize Resend client
+const resend = new Resend(process.env.RESEND_API_KEY || 'dummy-key');
 
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'noreply@yrdly.ng';
 const REPLY_TO  = 'support@yrdly.ng';
@@ -14,7 +19,6 @@ export class ResendEmailService {
   static isConfigured(): boolean {
     return !!(
       process.env.RESEND_API_KEY &&
-      process.env.RESEND_API_KEY !== 'your_resend_api_key_here' &&
       process.env.RESEND_FROM_EMAIL
     );
   }

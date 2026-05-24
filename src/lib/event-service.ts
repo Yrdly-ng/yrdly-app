@@ -5,8 +5,9 @@
 
 import { supabase } from './supabase';
 import type { Event, TicketTier, Ticket, EventPayout } from '@/types/events';
+import { EVENT_CONSTANTS } from '@/lib/constants';
 
-const EVENT_COMMISSION = 0.05; // 5%
+const EVENT_COMMISSION = EVENT_CONSTANTS.COMMISSION_RATE;
 
 // ── PUBLIC QUERIES ────────────────────────────────────────────────────────────
 

@@ -16,9 +16,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ── Authenticate the caller (optional — FLW has already verified payment) ──
+    // ── Authenticate the caller ──────────────────────────────────────────────
     const supabase = await createClient();
-    const { data: { user: authUser } } = await supabase.auth.getUser();
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+
+    if (!authUser || authError) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
 
     // ── Check DB first — webhook may have already marked it PAID ──
     if (bodyTxRef) {

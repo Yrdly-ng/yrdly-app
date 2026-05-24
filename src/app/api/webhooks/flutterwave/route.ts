@@ -3,7 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { EscrowStatus } from '@/types/escrow';
 import { ResendEmailService } from '@/lib/resend-service';
 import { emailTemplates } from '@/lib/email-templates';
-import crypto from 'crypto';
+import { FlutterwaveService } from '@/lib/flutterwave-service';
 
 /**
  * POST /api/webhooks/flutterwave
@@ -29,11 +29,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (signature !== secretHash) {
+    if (!signature || signature !== secretHash) {
       console.error('[Webhook] Invalid signature. Expected:', secretHash.substring(0, 10) + '***', 'Received:', signature?.substring(0, 10) + '***');
       return NextResponse.json(
-        { error: 'Invalid signature' },
-        { status: 400 }
+        { error: 'Unauthorized' },
+        { status: 401 }
       );
     }
 
@@ -44,13 +44,28 @@ export async function POST(request: NextRequest) {
 
     // ── Handle charge.completed ───────────────────────────
     if (event === 'charge.completed' && data?.status === 'successful') {
-      const txRef = data.tx_ref;       // Our transaction ID
-      const flwRef = data.flw_ref;     // Flutterwave's reference
-      const amount = parseFloat(data.amount);
+      const flwTxId = data.id;         // Flutterwave's numeric transaction_id
+
+      if (!flwTxId) {
+        console.error('[Webhook] Missing transaction id in payload');
+        return NextResponse.json({ status: 'ok' }); // Ack to prevent retries
+      }
+
+      // ── Server-side Verification ───────────────────────────
+      // Double check with Flutterwave that this transaction is actually successful
+      const verification = await FlutterwaveService.verifyPayment(flwTxId);
+      
+      if (!verification.success || verification.status !== 'successful') {
+        console.error(`[Webhook] Transaction ${flwTxId} failed server-side verification:`, verification.error);
+        return NextResponse.json({ status: 'ok' }); // Ack to prevent retries
+      }
+
+      const txRef = verification.transactionReference; // Our transaction ID from verification
+      const amount = verification.amount ?? 0;
 
       if (!txRef) {
-        console.error('Webhook missing tx_ref');
-        return NextResponse.json({ status: 'ok' }); // Ack to prevent retries
+        console.error('[Webhook] Missing tx_ref after verification');
+        return NextResponse.json({ status: 'ok' });
       }
 
       // ── Handle Event Tickets Webhook ─────────────────────
@@ -99,7 +114,7 @@ export async function POST(request: NextRequest) {
         .from('escrow_transactions')
         .update({
           status: EscrowStatus.PAID,
-          payment_reference: flwRef,
+          payment_reference: String(flwTxId),
           paid_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })

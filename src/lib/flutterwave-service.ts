@@ -5,15 +5,20 @@ let flw: any = null;
 
 // Initialize Flutterwave only on server side
 if (typeof window === 'undefined') {
+  if (!process.env.FLUTTERWAVE_PUBLIC_KEY || !process.env.FLUTTERWAVE_SECRET_KEY) {
+    console.warn('[Yrdly] Missing FLUTTERWAVE_PUBLIC_KEY or FLUTTERWAVE_SECRET_KEY — Flutterwave features will not work.');
+  } else {
+
   try {
     // eslint-disable-next-line
     const Flutterwave = require('flutterwave-node-v3');
     flw = new Flutterwave(
-      process.env.FLUTTERWAVE_PUBLIC_KEY!,
-      process.env.FLUTTERWAVE_SECRET_KEY!
+      process.env.FLUTTERWAVE_PUBLIC_KEY,
+      process.env.FLUTTERWAVE_SECRET_KEY
     );
   } catch (error) {
     console.warn('Flutterwave not available:', error);
+  }
   }
 }
 

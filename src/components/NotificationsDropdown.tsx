@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -85,7 +85,7 @@ function NotificationItem({ notification, onMarkAsRead, onDelete, onClose }: {
       case 'friend_request_accepted':
       case 'friend_request_declined': {
         const targetId = notification.from_user_id || notification.related_id || notification.data?.fromUserId;
-        router.push(targetId ? `/profile/${targetId}` : '/neighbors');
+        router.push(targetId ? `/profile/${targetId}` : '/community');
         break;
       }
       case 'message':

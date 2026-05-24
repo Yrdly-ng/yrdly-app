@@ -198,7 +198,7 @@ export const usePosts = (opts?: { filterState?: string | null; filterLga?: strin
     };
 
     refreshUserPosts();
-  }, [user?.id, profile?.name, profile?.avatar_url]);
+  }, [user, profile]);
 
   const uploadImages = useCallback(async (
     files: FileList,
@@ -378,7 +378,7 @@ export const usePosts = (opts?: { filterState?: string | null; filterLga?: strin
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to save business.' });
       }
     },
-    [user, toast, uploadImages]
+    [user, profile, toast, uploadImages]
   );
 
   const deletePost = useCallback(

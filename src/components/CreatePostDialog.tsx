@@ -1,4 +1,4 @@
-﻿
+
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -22,6 +22,7 @@ import type { Post } from "@/types";
 import { X, Paperclip, MapPin, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import Image from "next/image";
 
 // ── Design tokens ──────────────────────────────────────────────
 const BG       = "var(--c-bg)";
@@ -177,10 +178,12 @@ function PostForm({
           <div className="flex gap-2 flex-wrap py-2 mt-2">
             {Array.from(form.watch("imageFiles") as FileList).map((file, i) => (
               <div key={i} className="relative w-20 h-20 flex-shrink-0 rounded-md overflow-hidden">
-                <img 
+                <Image 
                   src={URL.createObjectURL(file)} 
                   alt="Preview" 
-                  className="w-full h-full object-cover" 
+                  fill
+                  className="object-cover" 
+                  sizes="80px"
                 />
                 <button
                   type="button"

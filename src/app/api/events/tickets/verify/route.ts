@@ -121,10 +121,11 @@ export async function GET(request: NextRequest) {
 
     // Increment event attendee_count
     try {
-      await supabaseAdmin.rpc('increment_attendee_count', { event_id_param: event_id });
-    } catch (e) {
-      // Non-critical — ignore if RPC doesn't exist
-    }
+      const { data: eData } = await supabaseAdmin.from('events').select('attendee_count').eq('id', event_id).single();
+      if (eData) {
+        await supabaseAdmin.from('events').update({ attendee_count: (eData.attendee_count || 0) + 1 }).eq('id', event_id);
+      }
+    } catch (e) {}
 
     // ── Send ticket confirmation email to buyer ────────────────────────────
     try {

@@ -779,7 +779,7 @@ function getNotificationUrl(type: NotificationType, relatedId?: string | null): 
     case 'friend_request':
     case 'friend_request_accepted':
     case 'friend_request_declined':
-      return '/neighbors';
+      return '/community';
     case 'message':
     case 'message_reaction':
       return relatedId ? `/messages/${relatedId}` : '/messages';

@@ -2,17 +2,9 @@
 > yrdly-app@0.1.0 lint
 > next lint
 
-`next lint` is deprecated and will be removed in Next.js 16.
-For new projects, use create-next-app to choose your preferred linter.
-For existing projects, migrate to the ESLint CLI:
-npx @next/codemod@canary next-lint-to-eslint-cli .
-
 
 ./src/app/(app)/profile/payout-settings/page.tsx
 134:6  Warning: React Hook useCallback has missing dependencies: 'returnTo' and 'router'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
-
-./src/app/(app)/transactions/[transactionId]/confirm-receipt/page.tsx
-101:88  Error: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`.  react/no-unescaped-entities
 
 ./src/app/onboarding/profile/page.tsx
 201:6  Warning: React Hook useEffect has a missing dependency: 'checkUsernameAvailability'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps

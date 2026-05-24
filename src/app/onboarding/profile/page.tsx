@@ -1,6 +1,6 @@
-﻿"use client";
+"use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -142,7 +142,7 @@ export default function OnboardingProfilePage() {
   };
 
   // Check username availability with better error handling
-  const checkUsernameAvailability = async (username: string) => {
+  const checkUsernameAvailability = useCallback(async (username: string) => {
     if (username.length < 3) {
       setUsernameAvailable(null);
       setUsernameError(null);
@@ -187,10 +187,9 @@ export default function OnboardingProfilePage() {
     } finally {
       setCheckingUsername(false);
     }
-  };
+  }, [user?.id]);
 
   // Debounced username checking effect
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (debouncedUsername && debouncedUsername.length >= 3) {
       checkUsernameAvailability(debouncedUsername);
@@ -198,7 +197,7 @@ export default function OnboardingProfilePage() {
       setUsernameAvailable(null);
       setUsernameError(null);
     }
-  }, [debouncedUsername]);
+  }, [debouncedUsername, checkUsernameAvailability]);
 
   // Generate username suggestions when full name changes
   useEffect(() => {

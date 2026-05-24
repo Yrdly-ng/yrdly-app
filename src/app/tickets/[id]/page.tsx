@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, MapPin, Calendar, Clock, Download } from 'lucide-react';
+import Image from 'next/image';
 
 interface Ticket {
   id: string;
@@ -135,10 +136,12 @@ export default function TicketPage() {
           {/* Event Cover Image */}
           {ticket.event.cover_image_url && (
             <div className="relative h-48 sm:h-64 bg-gradient-to-br from-slate-200 to-slate-300">
-              <img
+              <Image
                 src={ticket.event.cover_image_url}
                 alt={ticket.event.title}
-                className="w-full h-full object-cover"
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, 768px"
               />
             </div>
           )}
