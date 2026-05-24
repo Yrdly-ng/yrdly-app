@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -10,6 +10,7 @@ import type { Post as PostType } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import Image from "next/image";
 import { BuyButton } from "@/components/escrow/BuyButton";
+import { ClaimButton } from "@/components/escrow/ClaimButton";
 
 /* ─── colour tokens matching the Figma ─────────────────────────── */
 const BG = "var(--c-bg)";
@@ -285,17 +286,27 @@ export default function MarketplaceItemPage() {
             {formatPrice(item.price)}
           </p>
 
-          {/* Buy Now button — shown only to non-owners with a priced item */}
-          {!isOwn && item.price && item.price > 0 && (
-            <BuyButton
-              itemId={item.id}
-              itemTitle={item.title || item.text || "Item"}
-              itemImageUrl={images[0]}
-              price={item.price}
-              condition="Used"
-              sellerId={item.user_id}
-              sellerName={item.author_name || "Seller"}
-            />
+          {/* Action Buttons — shown only to non-owners */}
+          {!isOwn && !item.is_sold && (
+            <>
+              {Number(item.price) > 0 ? (
+                <BuyButton
+                  itemId={item.id}
+                  itemTitle={item.title || item.text || "Item"}
+                  itemImageUrl={images[0]}
+                  price={item.price || 0}
+                  condition="Used"
+                  sellerId={item.user_id}
+                  sellerName={item.author_name || "Seller"}
+                />
+              ) : (
+                <ClaimButton
+                  itemId={item.id}
+                  itemTitle={item.title || item.text || "Item"}
+                  sellerId={item.user_id}
+                />
+              )}
+            </>
           )}
 
           {/* Horizontal divider */}
