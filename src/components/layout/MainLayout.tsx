@@ -7,17 +7,17 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import {
-  Home,
+  House,
   Users,
-  ShoppingBag,
-  Globe,
+  Storefront,
+  GlobeHemisphereWest,
   Briefcase,
   MapPin,
-  MessageCircle,
+  ChatCircle,
   Bell,
-  Search,
+  MagnifyingGlass,
   Plus,
-} from "lucide-react";
+} from "@phosphor-icons/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Suspense } from "react";
 import { useAuth } from "@/hooks/use-supabase-auth";
@@ -36,10 +36,10 @@ interface MainLayoutProps {
 }
 
 const navItems = [
-  { href: "/home", label: "Home", icon: Home },
+  { href: "/home", label: "Home", icon: House },
   { href: "/community", label: "Community", icon: Users },
-  { href: "/marketplace", label: "Market", icon: ShoppingBag },
-  { href: "/events", label: "Events", icon: Globe },
+  { href: "/marketplace", label: "Market", icon: Storefront },
+  { href: "/events", label: "Events", icon: GlobeHemisphereWest },
   { href: "/businesses", label: "Business", icon: Briefcase },
 ];
 
@@ -175,7 +175,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                     onClick={() => setShowSearch(true)}
                     className="w-full max-w-md h-10 rounded-full bg-[var(--c-bg)] border border-[#E0E0E0] flex items-center gap-3 px-4 text-left hover:border-[#388E3C] transition-colors"
                   >
-                    <Search className="h-5 w-5 flex-shrink-0 text-[#767676]" />
+                    <MagnifyingGlass weight="bold" className="h-5 w-5 flex-shrink-0 text-[#767676]" />
                     <span
                       className="font-light italic text-xs text-[#767676] truncate"
                       style={{ fontFamily: '"Inter", sans-serif' }}
@@ -192,17 +192,17 @@ export function MainLayout({ children }: MainLayoutProps) {
                     className="md:hidden text-[#555555] hover:bg-[var(--c-bg)] rounded-full"
                     onClick={() => setShowSearch(true)}
                   >
-                    <Search className="w-5 h-5" />
+                    <MagnifyingGlass weight="bold" className="w-5 h-5" />
                   </Button>
 
                   <Link href="/map">
                     <Button variant="ghost" size="icon" className="text-[#555555] hover:bg-[var(--c-bg)] rounded-full">
-                      <MapPin className="w-5 h-5" />
+                      <MapPin weight="bold" className="w-5 h-5" />
                     </Button>
                   </Link>
                   <Link href="/messages">
                     <Button variant="ghost" size="icon" className="relative text-[#555555] hover:bg-[var(--c-bg)] rounded-full">
-                      <MessageCircle className="w-5 h-5" />
+                      <ChatCircle weight="fill" className="w-5 h-5" />
                       {unreadMessagesCount > 0 && (
                         <span
                           className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 rounded-full flex items-center justify-center text-[0.5625rem] font-bold px-1"
@@ -219,7 +219,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                     className="relative text-[#555555] hover:bg-[var(--c-bg)] rounded-full transition-colors"
                     onClick={() => setShowNotifications(!showNotifications)}
                   >
-                    <Bell className="w-5 h-5" />
+                    <Bell weight="fill" className="w-5 h-5" />
                     {unreadCount > 0 && (
                       <span
                         className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 rounded-full flex items-center justify-center text-[0.5625rem] font-bold px-1"
@@ -277,8 +277,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                           "w-5 h-5 flex-shrink-0",
                           isActive ? "text-[#388E3C]" : "text-[#555555]"
                         )}
-                        strokeWidth={2}
-                        fill={isActive ? "#388E3C" : "none"}
+                        weight={isActive ? "fill" : "bold"}
                       />
                       <span
                         className={cn(
@@ -306,7 +305,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                   style={{ background: "#388E3C", fontFamily: "Inter, sans-serif" }}
                   onClick={() => setPostDialogOpen(true)}
                 >
-                  <Plus className="w-4 h-4 mr-1.5" />
+                  <Plus weight="bold" className="w-4 h-4 mr-1.5" />
                   Post
                 </Button>
               </CreatePostDialog>
@@ -361,9 +360,9 @@ export function MainLayout({ children }: MainLayoutProps) {
                     <Icon
                       className={cn(
                         "w-5 h-5",
-                        isActive ? "text-[#388E3C] fill-[#388E3C]" : "text-[#767676] fill-none"
+                        isActive ? "text-[#388E3C]" : "text-[#767676]"
                       )}
-                      strokeWidth={2.5}
+                      weight={isActive ? "fill" : "bold"}
                     />
                   </div>
                   <span

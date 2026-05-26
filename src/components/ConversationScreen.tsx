@@ -265,8 +265,9 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
               {otherParticipant.name?.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          <div className="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2"
-            style={{ background: GREEN, borderColor: CARD }} />
+          <div className="absolute -bottom-0.5 -right-0.5">
+            <ActivityIndicator userId={otherParticipant.id} size="sm" />
+          </div>
         </div>
         <div className="ml-3 flex-1 min-w-0">
           <h1 className="text-[1rem] font-bold text-foreground truncate" style={{ fontFamily: "Inter, sans-serif" }}>

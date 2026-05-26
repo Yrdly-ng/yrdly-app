@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Bell, UserPlus, MessageCircle, Heart, Calendar, Check, X, MoreHorizontal, MessageSquare } from "lucide-react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { supabase } from "@/lib/supabase";
+import { useFriendshipContext } from "@/contexts/FriendshipContext";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNowStrict } from 'date-fns';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -69,6 +70,7 @@ function NotificationItem({ notification, onMarkAsRead, onDelete, onClose }: {
   const { user: currentUser } = useAuth();
   const badgeConfig = getNotificationBadge(notification.type);
   const Icon = badgeConfig.icon;
+  const { refreshUserStatus } = useFriendshipContext();
 
   // Navigate to the source of the notification, close dropdown, mark as read
   const handleNavigate = () => {
@@ -211,6 +213,9 @@ function NotificationItem({ notification, onMarkAsRead, onDelete, onClose }: {
               if (senderId) await NotificationTriggers.onFriendRequestAccepted(senderId, toUserId);
             } catch (error) { console.error(error); }
 
+            // Sync global friendship state so all profile buttons update
+            if (senderId) await refreshUserStatus(senderId);
+
             await onMarkAsRead(notification.id);
             toast({ title: "Friend request accepted!" });
           }
@@ -242,6 +247,8 @@ function NotificationItem({ notification, onMarkAsRead, onDelete, onClose }: {
 
             const { error } = await supabase.from('friend_requests').delete().eq('from_user_id', senderId).eq('to_user_id', toUserId).eq('status', 'pending');
             if (error) throw error;
+            // Sync global friendship state so all profile buttons update
+            if (senderId) await refreshUserStatus(senderId);
             await onMarkAsRead(notification.id);
             toast({ title: "Friend request declined." });
           }

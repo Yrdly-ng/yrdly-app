@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { shortenAddress } from "@/lib/utils";
 import { ActivityIndicator } from "@/components/ActivityIndicator";
 import Image from "next/image";
+import { useFriendshipGlobal } from "@/hooks/use-friendship-global";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -149,14 +150,18 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
   const [activeTab, setActiveTab] = useState("posts");
   const [showFriendsList, setShowFriendsList] = useState(false);
   const [showRemoveFriendDialog, setShowRemoveFriendDialog] = useState(false);
-  const [isFriend, setIsFriend] = useState(false);
-  const [isFriendRequestSent, setIsFriendRequestSent] = useState(false);
   const [stats, setStats] = useState({ friends: 0, events: 0 });
 
   const targetUser = externalTargetUser || user || currentUser;
   const targetProfile = externalTargetUser ? null : (user ? null : currentProfile);
   const isExternalProfile = !!targetUserId && targetUserId !== currentUser?.id;
   const actualIsOwnProfile = isOwnProfile !== undefined ? isOwnProfile : !isExternalProfile;
+
+  // ── Shared friendship hook (only active when viewing another user's profile) ──
+  const friendship = useFriendshipGlobal(
+    !actualIsOwnProfile && targetUser?.id !== currentUser?.id ? targetUser?.id : undefined
+  );
+  const friendshipStatus = friendship.status;
 
   const refreshProfileData = useCallback(async () => {
     if (!targetUser) return;
@@ -214,58 +219,9 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
     return () => window.removeEventListener("focus", h);
   }, [targetUser, loading]);
 
-  // Friendship check
-  useEffect(() => {
-    if (!currentUser || !targetUser || actualIsOwnProfile) return;
-    const check = async () => {
-      const { data: cu } = await supabase.from("users").select("friends").eq("id", currentUser.id).single();
-      setIsFriend(cu?.friends?.includes(targetUser.id) || false);
-      const { data: req } = await supabase.from("friend_requests").select("id, status")
-        .or(`and(from_user_id.eq.${currentUser.id},to_user_id.eq.${targetUser.id}),and(from_user_id.eq.${targetUser.id},to_user_id.eq.${currentUser.id})`)
-        .single();
-      setIsFriendRequestSent(!!req && req.status === "pending");
-    };
-    check();
-    window.addEventListener("refresh-profile", check);
-    return () => window.removeEventListener("refresh-profile", check);
-  }, [currentUser, targetUser, actualIsOwnProfile]);
+  // (Friendship state is now managed by useFriendshipGlobal above)
 
-  const handleAddFriend = async () => {
-    if (!currentUser || !targetUser) return;
-    if (currentUser.id === targetUser.id) {
-      toast({ title: "Action Failed", description: "You cannot add yourself as a friend.", variant: "destructive" });
-      return;
-    }
-    try {
-      if (isFriend) {
-        const { error } = await supabase.rpc('remove_friend', { target_user_id: targetUser.id });
-        if (error) throw error;
-        setIsFriend(false);
-        await refreshProfileData();
-        toast({ title: "Friend Removed" });
-      } else if (isFriendRequestSent) {
-        const { error } = await supabase.from("friend_requests").delete().eq("from_user_id", currentUser.id).eq("to_user_id", targetUser.id);
-        if (error) throw error;
-        setIsFriendRequestSent(false);
-        toast({ title: "Request Cancelled" });
-      } else {
-        const { error } = await supabase.from("friend_requests").insert({
-          from_user_id: currentUser.id, to_user_id: targetUser.id,
-          participant_ids: [currentUser.id, targetUser.id].sort(),
-          status: "pending", created_at: new Date().toISOString(),
-        });
-        if (error) throw error;
-        setIsFriendRequestSent(true);
-        toast({ title: "Friend Request Sent" });
-        try {
-          const { NotificationTriggers } = await import("@/lib/notification-triggers");
-          await NotificationTriggers.onFriendRequestSent(currentUser.id, targetUser.id);
-        } catch { }
-      }
-    } catch {
-      toast({ variant: "destructive", title: "Error", description: "Failed. Please try again." });
-    }
-  };
+  // Friend actions are now delegated to the shared useFriendshipGlobal hook.
 
   const handleMessageUser = async () => {
     if (!currentUser || !targetUser) return;
@@ -380,68 +336,87 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
           {/* Action buttons for external profile */}
           {!actualIsOwnProfile && currentUser?.id !== targetUser?.id && (
             <div className="flex flex-row items-center justify-center gap-3 mt-8 w-full max-w-[400px] mx-auto px-4">
-              {isFriend ? (
+              {friendshipStatus === 'friends' ? (
                 // Friends: show Message button + ⋯ overflow with Remove
                 <>
                   <button
                     onClick={handleMessageUser}
                     className="flex-1 flex items-center justify-center gap-2 rounded-full h-14 text-sm font-bold text-foreground transition-all active:scale-95 shadow-lg"
-                    style={{
-                      background: GREEN,
-                      fontFamily: FONT,
-                      boxShadow: "0 8px 20px rgba(56,142,60,0.25)"
-                    }}
+                    style={{ background: GREEN, fontFamily: FONT, boxShadow: "0 8px 20px rgba(56,142,60,0.25)" }}
                   >
                     <MessageCircle className="w-5 h-5" />
                     Message
                   </button>
-                  <AlertDialog>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button
-                          className="w-12 h-12 rounded-full flex items-center justify-center border transition-colors"
-                          style={{ background: "var(--c-card)", borderColor: "rgba(130,219,126,0.2)", color: "var(--c-text-muted)" }}
-                        >
-                          <MoreHorizontal className="w-5 h-5" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" style={{ background: "var(--c-card)", border: "1px solid rgba(130,219,126,0.2)" }}>
-                        <DropdownMenuItem
-                          className="text-red-400 focus:text-red-400 focus:bg-red-500/10 cursor-pointer"
-                          onClick={() => {
-                            // open AlertDialog by programmatic state
-                            setShowRemoveFriendDialog(true);
-                          }}
-                        >
-                          <UserMinus className="w-4 h-4 mr-2" /> Remove Friend
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </AlertDialog>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        className="w-12 h-12 rounded-full flex items-center justify-center border transition-colors"
+                        style={{ background: "var(--c-card)", borderColor: "rgba(130,219,126,0.2)", color: "var(--c-text-muted)" }}
+                      >
+                        <MoreHorizontal className="w-5 h-5" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" style={{ background: "var(--c-card)", border: "1px solid rgba(130,219,126,0.2)" }}>
+                      <DropdownMenuItem
+                        className="text-red-400 focus:text-red-400 focus:bg-red-500/10 cursor-pointer"
+                        onClick={() => setShowRemoveFriendDialog(true)}
+                      >
+                        <UserMinus className="w-4 h-4 mr-2" /> Remove Friend
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </>
-              ) : isFriendRequestSent ? (
-                // Request pending
-                <button
-                  disabled
-                  className="flex-1 flex items-center justify-center gap-2 rounded-full h-14 text-sm font-bold text-muted-foreground border transition-all"
-                  style={{ background: "transparent", borderColor: "rgba(255,255,255,0.1)", fontFamily: FONT }}
-                >
-                  <Users className="w-5 h-5" />
-                  Request Sent
-                </button>
+              ) : friendshipStatus === 'request_sent' ? (
+                // Request pending: show "Sent" + Cancel button
+                <>
+                  <button
+                    disabled
+                    className="flex-1 flex items-center justify-center gap-2 rounded-full h-14 text-sm font-bold text-muted-foreground border transition-all"
+                    style={{ background: "transparent", borderColor: "rgba(255,255,255,0.1)", fontFamily: FONT }}
+                  >
+                    <Users className="w-5 h-5" />
+                    Request Sent
+                  </button>
+                  <button
+                    onClick={() => friendship.cancelRequest()}
+                    disabled={friendship.isLoading}
+                    className="px-5 h-14 rounded-full text-sm font-bold border transition-all active:scale-95"
+                    style={{ borderColor: "rgba(229,57,53,0.4)", color: "#E53935", fontFamily: FONT }}
+                  >
+                    {friendship.isLoading ? "..." : "Cancel"}
+                  </button>
+                </>
+              ) : friendshipStatus === 'request_received' ? (
+                // Incoming request: Accept + Decline
+                <>
+                  <button
+                    onClick={() => friendship.acceptRequest()}
+                    disabled={friendship.isLoading}
+                    className="flex-1 flex items-center justify-center gap-2 rounded-full h-14 text-sm font-bold text-foreground transition-all active:scale-95 shadow-lg"
+                    style={{ background: GREEN, fontFamily: FONT, boxShadow: "0 8px 20px rgba(56,142,60,0.2)" }}
+                  >
+                    <Users className="w-5 h-5" />
+                    {friendship.isLoading ? "..." : "Accept"}
+                  </button>
+                  <button
+                    onClick={() => friendship.declineRequest()}
+                    disabled={friendship.isLoading}
+                    className="px-5 h-14 rounded-full text-sm font-bold border transition-all active:scale-95"
+                    style={{ borderColor: "rgba(229,57,53,0.4)", color: "#E53935", fontFamily: FONT }}
+                  >
+                    {friendship.isLoading ? "..." : "Decline"}
+                  </button>
+                </>
               ) : (
                 // No relationship: Add Friend
                 <button
-                  onClick={handleAddFriend}
+                  onClick={() => friendship.addFriend()}
+                  disabled={friendship.isLoading}
                   className="flex-1 flex items-center justify-center gap-2 rounded-full h-14 text-sm font-bold text-foreground transition-all active:scale-95 shadow-lg"
-                  style={{
-                    background: GREEN,
-                    fontFamily: FONT,
-                    boxShadow: "0 8px 20px rgba(56,142,60,0.2)"
-                  }}
+                  style={{ background: GREEN, fontFamily: FONT, boxShadow: "0 8px 20px rgba(56,142,60,0.2)" }}
                 >
                   <Users className="w-5 h-5" />
-                  Add Friend
+                  {friendship.isLoading ? "..." : "Add Friend"}
                 </button>
               )}
             </div>
@@ -461,7 +436,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
                   <AlertDialogCancel style={{ background: "rgba(255,255,255,0.1)", color: "#fff", border: 0 }}>Cancel</AlertDialogCancel>
                   <AlertDialogAction
                     style={{ background: "#E53935" }}
-                    onClick={handleAddFriend}
+                    onClick={() => { friendship.removeFriend(); setShowRemoveFriendDialog(false); }}
                   >
                     Remove
                   </AlertDialogAction>

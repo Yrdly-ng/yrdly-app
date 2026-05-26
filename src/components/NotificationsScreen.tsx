@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { supabase } from "@/lib/supabase";
+import { useFriendshipContext } from "@/contexts/FriendshipContext";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNowStrict } from "date-fns";
 import { useRouter } from "next/navigation";
@@ -95,6 +96,7 @@ function NotificationCard({
   const { toast } = useToast();
   const router = useRouter();
   const { user: currentUser } = useAuth();
+  const { refreshUserStatus } = useFriendshipContext();
 
   const handleAcceptFriend = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -133,7 +135,7 @@ function NotificationCard({
           .eq("from_user_id", fromUserId)
           .eq("to_user_id", toUserId)
           .eq("status", "pending")
-          .single();
+          .maybeSingle();
 
         if (req) {
           await supabase
@@ -155,6 +157,8 @@ function NotificationCard({
         }
       }
 
+      // Refresh global friendship context so profile buttons update everywhere
+      if (fromUserId) await refreshUserStatus(fromUserId);
       onMarkAsRead(notification.id);
       toast({ title: "Friend request accepted", description: "You are now friends! 🎉" });
     } catch {
@@ -172,6 +176,8 @@ function NotificationCard({
         .eq("from_user_id", notification.from_user_id)
         .eq("to_user_id", currentUser.id)
         .eq("status", "pending");
+      // Refresh global friendship context so profile buttons update everywhere
+      await refreshUserStatus(notification.from_user_id);
       onMarkAsRead(notification.id);
       toast({ title: "Request declined" });
     } catch {

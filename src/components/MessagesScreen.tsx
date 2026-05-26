@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useMemo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -149,11 +149,11 @@ export function MessagesScreen() {
         const deduped = deduplicateConversations(transformed);
         setConversations(deduped);
 
-        // Resolve participant names/avatars
+        // Resolve participant names/avatars for all non-business conversations (friend + marketplace)
         const friendIds = transformed
           .filter((c) => c.type !== "business")
           .map((c) => c.participantId)
-          .filter((id) => id !== user.id);
+          .filter((id) => id && id !== user.id);
         if (friendIds.length > 0) {
           const { data: usersData } = await supabase
             .from("users").select("id, name, avatar_url").in("id", friendIds);

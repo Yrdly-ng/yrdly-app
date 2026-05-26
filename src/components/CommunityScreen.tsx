@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, Zap, FileText, Search, Plus, Check, X } from "lucide-react";
+import { Users, Zap, FileText, Search, Plus } from "lucide-react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -393,7 +393,11 @@ export function CommunityScreen({ className }: CommunityScreenProps) {
               <h2 className="text-foreground font-semibold text-lg" style={{ fontFamily: "Inter, sans-serif" }}>
                 Friend Requests
               </h2>
-              <button className="text-[0.6875rem] font-bold uppercase tracking-widest" style={{ color: GREEN, fontFamily: FONT }}>
+              <button
+                className="text-[0.6875rem] font-bold uppercase tracking-widest"
+                style={{ color: GREEN, fontFamily: FONT }}
+                onClick={() => router.push('/notifications')}
+              >
                 View All
               </button>
             </div>
