@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   ArrowLeft, MapPin, Calendar, Users, MessageCircle, ShoppingBag,
   Briefcase, CalendarDays, Clock, Heart, MoreHorizontal, UserMinus,
-  Ticket, Package, ChevronRight, TrendingUp
+  Ticket, Package, ChevronRight, TrendingUp, Shield
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { supabase } from "@/lib/supabase";
@@ -419,6 +419,20 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
                   {friendship.isLoading ? "..." : "Add Friend"}
                 </button>
               )}
+            </div>
+          )}
+
+          {/* Action buttons for own profile (Admin) */}
+          {actualIsOwnProfile && profileData?.is_admin && (
+            <div className="flex flex-row items-center justify-center gap-3 mt-8 w-full max-w-[400px] mx-auto px-4">
+              <button
+                onClick={() => router.push("/admin/disputes")}
+                className="flex-1 flex items-center justify-center gap-2 rounded-full h-14 text-sm font-bold text-foreground transition-all active:scale-95 shadow-lg"
+                style={{ background: "#F59E0B", fontFamily: FONT, boxShadow: "0 8px 20px rgba(245,158,11,0.25)" }}
+              >
+                <Shield className="w-5 h-5" />
+                Admin Dashboard
+              </button>
             </div>
           )}
 
