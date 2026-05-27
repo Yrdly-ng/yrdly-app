@@ -68,7 +68,7 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
         const userLga   = profile?.location?.lga;
 
         // People — scoped to same LGA, fallback to state
-        let usersQuery = supabase.from('users').select('id, uid, name, avatar_url, bio, location, interests, created_at').or(`name.ilike.%${q}%,bio.ilike.%${q}%`).neq('id', currentUser?.id ?? '');
+        let usersQuery = supabase.from('users').select('id, name, avatar_url, bio, location, interests, created_at').or(`name.ilike.%${q}%,bio.ilike.%${q}%`).neq('id', currentUser?.id ?? '');
         if (userLga)   usersQuery = usersQuery.eq('location->>lga', userLga);
         else if (userState) usersQuery = usersQuery.eq('location->>state', userState);
         const { data: users } = await usersQuery.limit(5);

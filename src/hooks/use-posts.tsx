@@ -244,6 +244,17 @@ export const usePosts = (opts?: { filterState?: string | null; filterLga?: strin
       }
 
       try {
+        if (postIdToUpdate) {
+            const { data: existingPost } = await supabase.from('posts').select('created_at, timestamp').eq('id', postIdToUpdate).single();
+            if (existingPost) {
+                const postTime = new Date(existingPost.created_at || existingPost.timestamp || Date.now()).getTime();
+                if ((Date.now() - postTime) > 15 * 60 * 1000) {
+                    toast({ variant: 'destructive', title: 'Edit expired', description: 'Posts can only be edited within 15 minutes of creation.' });
+                    return;
+                }
+            }
+        }
+
         let imageUrls: string[] = [];
         
         // For editing: preserve existing images

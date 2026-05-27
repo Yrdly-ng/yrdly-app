@@ -351,7 +351,8 @@ export function CommunityScreen({ className }: CommunityScreenProps) {
                 users.map((u) => (
                   <div
                     key={u.id}
-                    className="flex items-center gap-3 px-4 py-3"
+                    onClick={() => router.push(`/profile/${u.id}`)}
+                    className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-accent/50 transition-colors"
                     style={{ borderBottom: "0.5px solid rgba(255,255,255,0.05)" }}
                   >
                     <Avatar className="w-10 h-10 flex-shrink-0">
@@ -365,7 +366,7 @@ export function CommunityScreen({ className }: CommunityScreenProps) {
                         {u.name}
                       </p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                       <UserActionButton userId={u.id} onFriendAction={handleFriendAction} />
                     </div>
                   </div>

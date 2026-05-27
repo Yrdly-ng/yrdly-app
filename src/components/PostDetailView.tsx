@@ -302,33 +302,38 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-card border-border">
-                {post.category === "Event" ? (
-                  <CreateEventDialog
-                    postToEdit={post}
-                    open={isEventEditDialogOpen}
-                    onOpenChange={setIsEventEditDialogOpen}
-                  >
-                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-foreground focus:bg-accent">
-                      <Edit className="mr-2 h-4 w-4" />
-                      Edit
-                    </DropdownMenuItem>
-                  </CreateEventDialog>
-                ) : (
-                  <CreatePostDialog
-                    postToEdit={post}
-                    createPost={createPost}
-                    open={isPostEditDialogOpen}
-                    onOpenChange={setIsPostEditDialogOpen}
-                  >
-                    <DropdownMenuItem
-                      onSelect={() => setIsPostEditDialogOpen(true)}
-                      className="text-foreground focus:bg-accent"
+                {(() => {
+                  const canEdit = (Date.now() - new Date(post.created_at || post.timestamp || Date.now()).getTime()) <= 15 * 60 * 1000;
+                  if (!canEdit) return null;
+                  
+                  return post.category === "Event" ? (
+                    <CreateEventDialog
+                      postToEdit={post}
+                      open={isEventEditDialogOpen}
+                      onOpenChange={setIsEventEditDialogOpen}
                     >
-                      <Edit className="mr-2 h-4 w-4" />
-                      Edit
-                    </DropdownMenuItem>
-                  </CreatePostDialog>
-                )}
+                      <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-foreground focus:bg-accent">
+                        <Edit className="mr-2 h-4 w-4" />
+                        Edit
+                      </DropdownMenuItem>
+                    </CreateEventDialog>
+                  ) : (
+                    <CreatePostDialog
+                      postToEdit={post}
+                      createPost={createPost}
+                      open={isPostEditDialogOpen}
+                      onOpenChange={setIsPostEditDialogOpen}
+                    >
+                      <DropdownMenuItem
+                        onSelect={() => setIsPostEditDialogOpen(true)}
+                        className="text-foreground focus:bg-accent"
+                      >
+                        <Edit className="mr-2 h-4 w-4" />
+                        Edit
+                      </DropdownMenuItem>
+                    </CreatePostDialog>
+                  );
+                })()}
                 <AlertDialogTrigger asChild>
                   <DropdownMenuItem className="text-red-400 focus:bg-red-500/10 focus:text-red-400">
                     <Trash2 className="mr-2 h-4 w-4" />

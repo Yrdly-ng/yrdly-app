@@ -468,19 +468,24 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-card border-border">
-                {post.category === "Event" ? (
-                  <CreateEventDialog postToEdit={post} open={isEventEditDialogOpen} onOpenChange={setIsEventEditDialogOpen}>
-                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="focus:bg-accent">
-                      <Edit className="mr-2 h-4 w-4" /> Edit
-                    </DropdownMenuItem>
-                  </CreateEventDialog>
-                ) : onCreatePost ? (
-                  <CreatePostDialog postToEdit={post} createPost={onCreatePost}>
-                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="focus:bg-accent">
-                      <Edit className="mr-2 h-4 w-4" /> Edit
-                    </DropdownMenuItem>
-                  </CreatePostDialog>
-                ) : null}
+                {(() => {
+                  const canEdit = (Date.now() - new Date(post.created_at || post.timestamp || Date.now()).getTime()) <= 15 * 60 * 1000;
+                  if (!canEdit) return null;
+                  
+                  return post.category === "Event" ? (
+                    <CreateEventDialog postToEdit={post} open={isEventEditDialogOpen} onOpenChange={setIsEventEditDialogOpen}>
+                      <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="focus:bg-accent">
+                        <Edit className="mr-2 h-4 w-4" /> Edit
+                      </DropdownMenuItem>
+                    </CreateEventDialog>
+                  ) : onCreatePost ? (
+                    <CreatePostDialog postToEdit={post} createPost={onCreatePost}>
+                      <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="focus:bg-accent">
+                        <Edit className="mr-2 h-4 w-4" /> Edit
+                      </DropdownMenuItem>
+                    </CreatePostDialog>
+                  ) : null;
+                })()}
                 <AlertDialogTrigger asChild>
                   <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-400 focus:text-red-400 focus:bg-red-500/10">
                     <Trash2 className="mr-2 h-4 w-4" /> Delete
