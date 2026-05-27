@@ -45,7 +45,7 @@ export function useFriendshipGlobal(targetUserId: string | undefined): UseFriend
       setIsLoading(true);
       setError(null);
 
-      // Guard: check if a pending request already exists in either direction
+      // Guard: check if a request already exists in either direction
       const { data: existing } = await supabase
         .from("friend_requests")
         .select("id, from_user_id, status")
@@ -53,18 +53,24 @@ export function useFriendshipGlobal(targetUserId: string | undefined): UseFriend
           `and(from_user_id.eq.${user.id},to_user_id.eq.${targetUserId}),` +
           `and(from_user_id.eq.${targetUserId},to_user_id.eq.${user.id})`
         )
-        .eq("status", "pending")
         .limit(1);
 
       if (existing && existing.length > 0) {
-        const isIncoming = existing[0].from_user_id === targetUserId;
-        toast({
-          title: isIncoming ? "They already sent you a request" : "Request already sent",
-          description: isIncoming
-            ? "Accept their request from your notifications."
-            : "Your request is pending their response.",
-        });
-        return;
+        const req = existing[0];
+        if (req.status === "pending") {
+          const isIncoming = req.from_user_id === targetUserId;
+          toast({
+            title: isIncoming ? "They already sent you a request" : "Request already sent",
+            description: isIncoming
+              ? "Accept their request from your notifications."
+              : "Your request is pending their response.",
+          });
+          return;
+        } else {
+          // Stale row (e.g. accepted but friend array was out of sync due to old RLS bug)
+          // Clean it up so we can send a fresh request
+          await supabase.from("friend_requests").delete().eq("id", req.id);
+        }
       }
 
       const { error: insertError } = await supabase.from("friend_requests").insert({
