@@ -166,6 +166,21 @@ export class DisputeService {
         // Don't throw error - dispute is still created
       }
 
+      // Sync to Zoho in the background (fire and forget so it doesn't block UI)
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        fetch('/api/disputes/sync-zoho', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {})
+          },
+          body: JSON.stringify({ disputeId: data.id })
+        }).catch(err => console.error('Background Zoho sync failed:', err));
+      } catch (e) {
+        // Ignore auth fetch errors for Zoho sync
+      }
+
       return data.id;
     } catch (error) {
       console.error('Failed to open dispute:', error);
