@@ -331,7 +331,7 @@ const CreateItemDialogComponent = ({
         <SheetContent
           side="bottom"
           className="p-0 border-0 rounded-t-2xl overflow-y-auto max-h-[92dvh]"
-          style={{ background: BG_DARK, zIndex: 100, paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom))" }}
+          style={{ background: BG_DARK, zIndex: 110, paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom))" }}
           hideClose
         >
           <FormBody {...formBodyProps} />
@@ -348,7 +348,7 @@ const CreateItemDialogComponent = ({
       )}
       <DialogContent
         className="p-0 border-0 shadow-2xl sm:max-w-[672px] max-h-[90dvh] overflow-y-auto"
-        style={{ background: BG_DARK, zIndex: 100 }}
+        style={{ background: BG_DARK, zIndex: 110 }}
         hideClose
       >
         <FormBody {...formBodyProps} />
