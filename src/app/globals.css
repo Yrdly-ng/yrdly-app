@@ -321,8 +321,13 @@ a,
 #zohohc-asap-web-launcher, 
 #zohohc-asap-web-launcher-container,
 .zohohc-asap-web-launcher,
-#zohodesk-asap-launcher {
+#zohodesk-asap-launcher,
+#zohohc-asap-web-button,
+div[id^="zohohc-asap-web-button"],
+div[id*="launcher"] {
   display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  z-index: -9999 !important;
 }
-
-#zohohc-asap-web-button { display: none !important; }
