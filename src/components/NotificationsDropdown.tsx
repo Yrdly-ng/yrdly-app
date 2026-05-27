@@ -292,31 +292,26 @@ function NotificationItem({ notification, onMarkAsRead, onDelete, onClose }: {
       </div>
 
       {/* Content */}
-      <div className="flex-1 min-w-0">
-        <div className="flex justify-between items-start mb-1">
-          <span className="text-[0.625rem]" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
-            from{" "}
-            <span className="font-semibold text-foreground">
-              {notification.from_user_name || "Someone"}
-            </span>
-          </span>
-          <div className="flex items-center gap-2">
+      <div className="flex-1 min-w-0 flex flex-col justify-center">
+        <div className="flex justify-between items-start gap-2">
+          <p className="text-[0.85rem] text-foreground line-clamp-2 leading-snug" style={{ fontFamily: FONT }}>
+            {notification.message}
+          </p>
+          <div className="flex items-center gap-2 flex-shrink-0 mt-0.5">
             {!notification.is_read && (
-              <span className="text-[0.5625rem] font-bold px-1.5 py-0.5 rounded uppercase" style={{ background: "var(--c-bg)", color: GREEN_LIGHT, fontFamily: FONT }}>
-                New
-              </span>
+              <div className="w-2 h-2 rounded-full bg-[#388E3C]"></div>
             )}
             {/* Actions Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
-                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  className="text-muted-foreground hover:text-foreground transition-colors p-1"
                   onClick={(e) => e.stopPropagation()} // don't trigger row navigation
                 >
-                  <MoreHorizontal className="w-3 h-3" />
+                  <MoreHorizontal className="w-3.5 h-3.5" />
                 </button>
               </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" style={{ background: SURFACE, border: "1px solid rgba(130,219,126,0.2)", fontFamily: FONT }}>
+              <DropdownMenuContent align="end" style={{ background: SURFACE, border: "1px solid rgba(130,219,126,0.2)", fontFamily: FONT, zIndex: 10000 }}>
                 {!notification.is_read && (
                   <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onMarkAsRead(notification.id); }} className="text-foreground hover:bg-card cursor-pointer">
                     <Check className="w-4 h-4 mr-2" style={{ color: GREEN_LIGHT }} /> Mark as Read
@@ -340,11 +335,7 @@ function NotificationItem({ notification, onMarkAsRead, onDelete, onClose }: {
           </div>
         </div>
 
-        <p className="text-sm text-foreground line-clamp-2 leading-tight" style={{ fontFamily: FONT }}>
-          {notification.message}
-        </p>
-
-        <span className="text-[0.5625rem] mt-2 block" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
+        <span className="text-[0.65rem] mt-1 block" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
           {formatDistanceToNowStrict(new Date(notification.created_at), { addSuffix: true })}
         </span>
       </div>
