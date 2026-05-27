@@ -3,7 +3,13 @@ const path = require('path');
 
 const swPath = path.join(__dirname, '..', 'public', 'sw.js');
 
-// Use Vercel's commit SHA (short) so each deploy gets a new cache; fallback to timestamp for local
+// Exit gracefully if sw.js doesn't exist (e.g. fresh clone without the file committed)
+if (!fs.existsSync(swPath)) {
+  console.warn('inject-sw-version: sw.js not found at', swPath, '– skipping version injection');
+  process.exit(0);
+}
+
+// Use Vercel's commit SHA (short) so each deploy busts the cache; fallback to timestamp for local
 const version =
   process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ||
   process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ||
@@ -11,7 +17,7 @@ const version =
 
 let content = fs.readFileSync(swPath, 'utf8');
 
-// Match const CACHE_VERSION = 'anything';
+// Match: const CACHE_VERSION = 'anything';
 const regex = /const CACHE_VERSION = '.*';/;
 
 if (!regex.test(content)) {
