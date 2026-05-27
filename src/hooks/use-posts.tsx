@@ -285,23 +285,36 @@ export const usePosts = (opts?: { filterState?: string | null; filterLga?: strin
         };
 
         if (postIdToUpdate) {
-            const { error } = await supabase
+            const { data: updatedPost, error } = await supabase
               .from('posts')
               .update(finalPostData)
-              .eq('id', postIdToUpdate);
+              .eq('id', postIdToUpdate)
+              .select(`*, user:users!posts_user_id_fkey(id, name, avatar_url, created_at)`)
+              .single();
             
             if (error) throw error;
+            if (updatedPost) {
+              setPosts(prev => prev.map(p => p.id === updatedPost.id ? (updatedPost as Post) : p));
+            }
             toast({ title: 'Success', description: 'Post updated successfully.' });
         } else {
-            const { error } = await supabase
+            const { data: newPost, error } = await supabase
               .from('posts')
               .insert({
                 ...finalPostData,
                 comment_count: 0,
                 liked_by: [],
-              });
+              })
+              .select(`*, user:users!posts_user_id_fkey(id, name, avatar_url, created_at)`)
+              .single();
             
             if (error) throw error;
+            if (newPost) {
+              setPosts(prev => {
+                if (prev.some(p => p.id === newPost.id)) return prev;
+                return [newPost as Post, ...prev];
+              });
+            }
             toast({ title: 'Success', description: 'Post created successfully.' });
         }
         
