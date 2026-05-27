@@ -316,3 +316,11 @@ a,
 .pac-container {
     z-index: 9999 !important;
 }
+
+/* Force hide the Zoho Desk ASAP launcher icon globally */
+#zohohc-asap-web-launcher, 
+#zohohc-asap-web-launcher-container,
+.zohohc-asap-web-launcher,
+#zohodesk-asap-launcher {
+  display: none !important;
+}
