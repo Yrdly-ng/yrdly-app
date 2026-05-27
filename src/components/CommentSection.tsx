@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, useCallback, useRef, FormEvent } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -288,124 +288,109 @@ export function CommentSection({
         const replyCount = replies.length;
 
         return (
-            <div key={comment.id} className={cn('flex gap-2.5', isReply && 'ml-9')}>
+            <div key={comment.id} className={cn('flex gap-3 pt-2', isReply && 'ml-11')}>
                 {/* Avatar */}
                 <div className="flex flex-col items-center gap-0 flex-shrink-0">
-                    <Avatar className="h-8 w-8 ring-1 ring-white/10">
+                    <Avatar className="h-8 w-8">
                         <AvatarImage src={comment.authorImage} />
                         <AvatarFallback className="text-xs bg-[#388E3C] text-white">{comment.authorName?.charAt(0)}</AvatarFallback>
                     </Avatar>
                     {/* vertical connector to replies */}
                     {hasReplies && showReplies && (
-                        <div className="w-px flex-1 mt-1" style={{ background: GREEN, minHeight: '24px' }} />
+                        <div className="w-[1.5px] flex-1 mt-2 rounded-full" style={{ background: 'var(--c-border)', minHeight: '24px' }} />
                     )}
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 min-w-0 pb-3">
-                    {/* Comment bubble */}
-                    <div className="rounded-[8px] px-3 py-2.5 mb-1" style={{ background: BG }}>
-                        <p className="text-[0.75rem] font-semibold text-foreground leading-tight mb-0.5" style={{ fontFamily: FONT_RALEWAY }}>
-                            {comment.authorName}
-                        </p>
+                <div className="flex-1 min-w-0 pb-1">
+                    {/* Header + Text */}
+                    <div className="mb-0.5">
+                        <div className="flex items-center gap-2">
+                            <span className="text-[0.875rem] font-bold text-foreground leading-tight truncate">
+                                {comment.authorName}
+                            </span>
+                            <span className="text-[0.75rem] text-muted-foreground font-light leading-tight whitespace-nowrap">
+                                {timeAgoStr(comment.timestamp)}
+                            </span>
+                        </div>
                         {editingComment === comment.id ? (
                             <form onSubmit={async (e) => {
                                 e.preventDefault();
                                 if (!currentUser || !editText.trim()) return;
                                 try { await supabase.from('comments').update({ text: editText.trim() }).eq('id', comment.id); setEditingComment(null); } catch { }
                             }} className="flex gap-2 mt-1">
-                                <input value={editText} onChange={e => setEditText(e.target.value)} className="flex-1 bg-transparent text-foreground text-base outline-none border-b border-white/30" style={{ fontFamily: FONT_RALEWAY }} />
-                                <button type="submit" className="text-[0.625rem] text-[#388E3C]">Save</button>
-                                <button type="button" onClick={() => setEditingComment(null)} className="text-[0.625rem] text-muted-foreground">Cancel</button>
+                                <input value={editText} onChange={e => setEditText(e.target.value)} className="flex-1 bg-transparent text-foreground text-sm outline-none border-b border-border" />
+                                <button type="submit" className="text-xs text-[#388E3C] font-semibold">Save</button>
+                                <button type="button" onClick={() => setEditingComment(null)} className="text-xs text-muted-foreground">Cancel</button>
                             </form>
                         ) : (
-                            <p className="text-[0.75rem] font-normal text-foreground leading-[14px]" style={{ fontFamily: FONT_RALEWAY }}>{comment.text}</p>
+                            <p className="text-[0.875rem] font-normal text-foreground leading-[1.3] mt-0.5 break-words whitespace-pre-wrap">
+                                {comment.text}
+                            </p>
                         )}
                     </div>
 
-                    {/* Reactions row */}
-                    <div className="flex items-center gap-3 px-1">
-                        {/* Likes */}
-                        <div className="flex items-center gap-1.5">
-                            <button
-                                onClick={() => handleLikeComment(comment.id)}
-                                className="w-[26px] h-5 rounded-[10px] flex items-center justify-center flex-shrink-0"
-                                style={{ background: '#D9D9D9' }}
-                            >
-                                <Heart className="w-[14px] h-[14px]" style={{ fill: isLiked ? '#ED1111' : 'transparent', stroke: isLiked ? '#FFFFFF' : '#888' }} />
-                            </button>
-                            {likeCount > 0 && (
-                                <span className="text-[0.75rem] italic font-light text-muted-foreground" style={{ fontFamily: FONT_RALEWAY }}>{fmt(likeCount)}</span>
-                            )}
-                        </div>
-
-                        {/* Separator dot */}
-                        <div className="w-[2px] h-[2px] rounded-full bg-white" />
-
-                        {/* Reply count */}
-                        <div className="flex items-center gap-1.5">
-                            <button
-                                className="w-[26px] h-5 rounded-[10px] flex items-center justify-center flex-shrink-0"
-                                style={{ background: '#D9D9D9' }}
-                                onClick={() => setReplyingTo(comment.id)}
-                            >
-                                <MessageCircle className="w-[14px] h-[14px]" style={{ fill: 'transparent', stroke: '#888' }} />
-                            </button>
-                            {replyCount > 0 && (
-                                <span className="text-[0.75rem] font-light text-muted-foreground" style={{ fontFamily: FONT_RALEWAY }}>{replyCount}</span>
-                            )}
-                        </div>
-
+                    {/* Reactions & Actions Row */}
+                    <div className="flex items-center gap-4 mt-1">
+                        <button onClick={() => handleLikeComment(comment.id)} className="flex items-center gap-1.5 group">
+                            <Heart className={cn("w-3.5 h-3.5 transition-colors", isLiked ? "fill-[#ED1111] text-[#ED1111]" : "text-muted-foreground group-hover:text-foreground")} />
+                            {likeCount > 0 && <span className={cn("text-xs font-medium transition-colors", isLiked ? "text-[#ED1111]" : "text-muted-foreground")}>{fmt(likeCount)}</span>}
+                        </button>
+                        
+                        <button onClick={() => setReplyingTo(comment.id)} className="text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors">
+                            Reply
+                        </button>
+                        
                         {/* Own comment menu */}
                         {currentUser?.id === comment.userId && (
                             <AlertDialog>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                        <button className="text-muted-foreground hover:text-foreground ml-1">
-                                            <MoreHorizontal className="h-3.5 w-3.5" />
+                                        <button className="text-muted-foreground hover:text-foreground">
+                                            <MoreHorizontal className="h-4 w-4" />
                                         </button>
                                     </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" className="bg-card border-border">
-                                        <DropdownMenuItem onClick={() => { setEditingComment(comment.id); setEditText(comment.text); }} className="text-foreground focus:bg-accent">
-                                            <Edit2 className="mr-2 h-3.5 w-3.5" /> Edit
+                                    <DropdownMenuContent align="end" className="bg-card border-border rounded-2xl shadow-xl min-w-[150px] p-1.5">
+                                        <DropdownMenuItem onClick={() => { setEditingComment(comment.id); setEditText(comment.text); }} className="text-foreground focus:bg-accent rounded-xl cursor-pointer py-2 px-3 text-sm font-medium">
+                                            <Edit2 className="mr-2 h-4 w-4" /> Edit
                                         </DropdownMenuItem>
                                         <AlertDialogTrigger asChild>
-                                            <DropdownMenuItem className="text-red-400 focus:text-red-400 focus:bg-red-500/10">
-                                                <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
+                                            <DropdownMenuItem className="text-red-400 focus:text-red-400 focus:bg-red-500/10 rounded-xl cursor-pointer py-2 px-3 text-sm font-medium">
+                                                <Trash2 className="mr-2 h-4 w-4" /> Delete
                                             </DropdownMenuItem>
                                         </AlertDialogTrigger>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
-                                <AlertDialogContent className="bg-card border-border text-foreground">
-                                    <AlertDialogHeader>
+                                <AlertDialogContent className="bg-card border-border text-foreground rounded-[24px] max-w-[400px]">
+                                    <AlertDialogHeader className="text-center">
                                         <AlertDialogTitle>Delete comment?</AlertDialogTitle>
-                                        <AlertDialogDescription>This cannot be undone.</AlertDialogDescription>
+                                        <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
                                     </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel className="bg-white/10 text-foreground border-0">Cancel</AlertDialogCancel>
-                                        <AlertDialogAction onClick={() => handleDeleteComment(comment.id)} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
+                                    <AlertDialogFooter className="flex-col sm:flex-col gap-2 mt-4">
+                                        <AlertDialogAction onClick={() => handleDeleteComment(comment.id)} className="w-full bg-red-600 hover:bg-red-700 text-white rounded-[14px] h-12 font-semibold">Delete</AlertDialogAction>
+                                        <AlertDialogCancel className="w-full mt-0 bg-transparent hover:bg-accent text-foreground border border-border rounded-[14px] h-12 font-semibold">Cancel</AlertDialogCancel>
                                     </AlertDialogFooter>
                                 </AlertDialogContent>
                             </AlertDialog>
                         )}
                     </div>
 
-                    {/* View Replies — L-bracket style */}
+                    {/* View Replies */}
                     {hasReplies && !isReply && (
                         <button
                             onClick={() => toggleReplies(comment.id)}
-                            className="flex items-center gap-1.5 mt-1 ml-1"
+                            className="flex items-center gap-2 mt-2"
                         >
-                            <Pointer className="w-4 h-4" />
-                            <span className="text-[0.75rem] italic font-light text-muted-foreground" style={{ fontFamily: FONT_RALEWAY }}>
-                                {showReplies ? 'Hide' : 'View'} Replies
+                            <div className="w-6 h-[1px] bg-border" />
+                            <span className="text-[0.8125rem] font-semibold text-muted-foreground hover:text-foreground transition-colors">
+                                {showReplies ? 'Hide' : 'View'} replies ({replyCount})
                             </span>
                         </button>
                     )}
 
                     {/* Replies list */}
                     {showReplies && hasReplies && (
-                        <div className="mt-2 space-y-3">
+                        <div className="mt-2 flex flex-col gap-1">
                             {replies.map(reply => renderComment(reply, true))}
                         </div>
                     )}
@@ -424,9 +409,9 @@ export function CommentSection({
     const inputBox = (
         <div className={cn('flex-shrink-0', isInline ? 'px-4 py-3' : 'px-4 py-3 border-t border-border')}>
             {replyingTo && (
-                <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground" style={{ fontFamily: FONT_RALEWAY }}>
+                <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground font-medium px-1">
                     <span>Replying to {comments.find(c => c.id === replyingTo)?.authorName}</span>
-                    <button onClick={() => setReplyingTo(null)} className="hover:text-foreground">Cancel</button>
+                    <button onClick={() => setReplyingTo(null)} className="hover:text-foreground font-semibold">Cancel</button>
                 </div>
             )}
             <form onSubmit={handlePostComment} className="flex items-center gap-3">
@@ -434,15 +419,21 @@ export function CommentSection({
                     <AvatarImage src={userDetails?.avatar_url} />
                     <AvatarFallback className="text-xs bg-[#388E3C] text-white">{userDetails?.name?.charAt(0) || 'U'}</AvatarFallback>
                 </Avatar>
-                <div className="flex-1 relative flex items-center rounded-full overflow-hidden" style={{ background: BG, border: `0.5px solid ${GREEN}` }}>
+                <div className="flex-1 relative flex items-center rounded-full bg-accent/50 border border-transparent focus-within:border-[#388E3C]/50 focus-within:bg-transparent transition-all overflow-hidden">
                     <input
                         ref={inputRef}
                         value={newComment}
                         onChange={e => setNewComment(e.target.value)}
-                        placeholder={replyingTo ? 'Add a reply…' : 'Leave a comment'}
-                        className="flex-1 h-[39px] bg-transparent px-4 text-base font-light text-foreground outline-none placeholder:text-muted-foreground"
-                        style={{ fontFamily: FONT_RALEWAY }}
+                        placeholder={replyingTo ? 'Add a reply…' : 'Add a comment...'}
+                        className="flex-1 h-[40px] bg-transparent px-4 text-[0.875rem] text-foreground outline-none placeholder:text-muted-foreground"
                     />
+                    <button 
+                        type="submit" 
+                        disabled={!newComment.trim()}
+                        className="mr-3 text-sm font-bold text-[#388E3C] disabled:opacity-0 transition-opacity"
+                    >
+                        Post
+                    </button>
                 </div>
             </form>
         </div>
@@ -486,25 +477,16 @@ export function CommentSection({
                 <div className="mx-4" style={{ borderTop: '0.2px solid #FFFFFF' }} />
 
                 {/* Toolbar */}
-                <div className="flex items-center justify-between px-4 py-2.5">
+                <div className="flex items-center justify-start px-4 py-2.5">
                     <div className="flex items-center gap-3">
-                        <button className="text-muted-foreground hover:text-foreground">
-                            <Paperclip className="w-6 h-6" style={{ color: GREEN }} />
+                        <button className="text-muted-foreground hover:text-foreground transition-colors">
+                            <Paperclip className="w-5 h-5" style={{ color: GREEN }} />
                         </button>
                         <GifIcon />
-                        <button className="text-muted-foreground hover:text-foreground">
-                            <MapPin className="w-6 h-6" style={{ color: GREEN }} />
+                        <button className="text-muted-foreground hover:text-foreground transition-colors">
+                            <MapPin className="w-5 h-5" style={{ color: GREEN }} />
                         </button>
                     </div>
-                    <button
-                        type="button"
-                        onClick={e => handlePostComment(e as any)}
-                        disabled={!newComment.trim()}
-                        className="h-[36px] px-4 sm:px-8 rounded-full text-white text-[0.8125rem] sm:text-[0.875rem] font-medium disabled:opacity-50 transition-opacity hover:opacity-90 whitespace-nowrap"
-                        style={{ background: GREEN, fontFamily: FONT_RALEWAY }}
-                    >
-                        Post
-                    </button>
                 </div>
 
                 {/* Comments */}
