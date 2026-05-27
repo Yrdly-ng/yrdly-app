@@ -28,7 +28,7 @@ export async function POST(request: Request) {
           seller_id,
           item:posts(title, text)
         ),
-        user:users!opened_by(email, full_name, display_name)
+        user:users!opened_by(email, name)
       `)
       .eq('id', disputeId)
       .single();
@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     const transaction = Array.isArray(dispute.transaction) ? dispute.transaction[0] : dispute.transaction;
     const item = Array.isArray(transaction.item) ? transaction.item[0] : transaction.item;
     const itemTitle = item?.title || item?.text || 'Unknown Item';
-    const contactName = dispute.user?.full_name || dispute.user?.display_name || 'Yrdly User';
+    const contactName = dispute.user?.name || 'Yrdly User';
     
     // Create Zoho Ticket
     let ticketId = '';
