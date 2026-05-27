@@ -1,26 +1,48 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase-server";
+"use client";
 
-export default async function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
-  if (!user) {
-    redirect("/login");
-  }
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const [checking, setChecking] = useState(true);
 
-  const { data: profile } = await supabase
-    .from("users")
-    .select("is_admin")
-    .eq("id", user.id)
-    .single();
+  useEffect(() => {
+    const check = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
 
-  if (!profile || profile.is_admin !== true) {
-    redirect("/home");
+      if (!user) {
+        router.replace("/login");
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from("users")
+        .select("is_admin")
+        .eq("id", user.id)
+        .single();
+
+      if (!profile || profile.is_admin !== true) {
+        router.replace("/home");
+        return;
+      }
+
+      setChecking(false);
+    };
+
+    check();
+  }, [router]);
+
+  if (checking) {
+    return (
+      <div className="min-h-[100dvh] flex items-center justify-center" style={{ background: "var(--c-bg)" }}>
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#388E3C", borderTopColor: "transparent" }} />
+          <p className="text-sm text-muted-foreground">Verifying access...</p>
+        </div>
+      </div>
+    );
   }
 
   return <>{children}</>;
