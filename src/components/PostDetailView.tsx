@@ -218,7 +218,7 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
             <p className="font-sans font-bold text-sm text-foreground truncate">{author?.name || "Anonymous"}</p>
             <p className="font-sans font-normal text-[0.6875rem] text-muted-foreground">
               {timeAgo(post.timestamp ? new Date(post.timestamp) : null)}
-              {post.updated_at && post.updated_at !== post.timestamp && " (edited)"}
+              {post.updated_at && (new Date(post.updated_at).getTime() - new Date(post.timestamp).getTime() > 2000) && " (edited)"}
             </p>
           </div>
         </div>
