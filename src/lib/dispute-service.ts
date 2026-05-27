@@ -117,14 +117,19 @@ export class DisputeService {
       }
 
       // Update escrow transaction status to disputed
-      await supabase
+      const { error: updateError } = await supabase
         .from('escrow_transactions')
         .update({
           status: 'disputed',
           dispute_reason: reason,
-          updated_at: new Date().toISOString(),
         })
         .eq('id', transactionId);
+
+      if (updateError) {
+        console.error('Error updating escrow status:', updateError);
+        throw updateError;
+      }
+
 
       // Send notifications to both parties
       try {
