@@ -240,117 +240,35 @@ export class DisputeService {
    */
   static async resolveDispute(
     disputeId: string,
-    adminId: string,
+    adminId: string, // Kept for backwards compatibility with function signature, but auth is handled by cookies now
     resolution: string,
     refundAmount: number,
     sellerAmount: number
   ): Promise<void> {
     try {
-      // Update dispute
-      const { error: disputeError } = await supabase
-        .from('disputes')
-        .update({
+      // Get the current session to pass the access token
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await fetch(`/api/admin/disputes/${disputeId}/resolve`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {})
+        },
+        body: JSON.stringify({
           resolution,
-          refund_amount: refundAmount,
-          seller_amount: sellerAmount,
-          status: 'resolved',
-          resolved_by: adminId,
-          resolved_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+          refundAmount,
+          sellerAmount
         })
-        .eq('id', disputeId);
+      });
 
-      if (disputeError) {
-        console.error('Error resolving dispute:', disputeError);
-        throw disputeError;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to resolve dispute securely');
       }
-
-      // Get transaction details
-      const { data: dispute } = await supabase
-        .from('disputes')
-        .select('transaction_id')
-        .eq('id', disputeId)
-        .single();
-
-      if (!dispute) {
-        throw new Error('Dispute not found');
-      }
-
-      // Update escrow transaction status
-      const newStatus = refundAmount > 0 ? 'cancelled' : 'completed';
-      const { error: transactionError } = await supabase
-        .from('escrow_transactions')
-        .update({
-          status: newStatus,
-          dispute_resolved_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', dispute.transaction_id);
-
-      if (transactionError) {
-        console.error('Error updating transaction status:', transactionError);
-        throw transactionError;
-      }
-
-      // If refunding, mark item as available again
-      if (refundAmount > 0) {
-        const { data: transaction } = await supabase
-          .from('escrow_transactions')
-          .select('item_id')
-          .eq('id', dispute.transaction_id)
-          .single();
-
-        if (transaction) {
-          const { ItemTrackingService } = await import('./item-tracking-service');
-          await ItemTrackingService.markItemAsAvailable(transaction.item_id);
-        }
-      }
-
-      // Send notifications to both parties
-      try {
-        const { data: disputeDetails } = await supabase
-          .from('disputes')
-          .select(`
-            transaction_id,
-            transaction:escrow_transactions(
-              buyer_id,
-              seller_id,
-              item:posts(title, text)
-            )
-          `)
-          .eq('id', disputeId)
-          .single();
-
-        if (disputeDetails?.transaction) {
-          const transaction = Array.isArray(disputeDetails.transaction) ? disputeDetails.transaction[0] : disputeDetails.transaction;
-          const itemTitle = transaction?.item?.[0]?.title || transaction?.item?.[0]?.text || 'Item';
-
-          // Notify both buyer and seller
-          await Promise.all([
-            NotificationService.createDisputeResolvedNotification(
-              transaction.buyer_id,
-              itemTitle,
-              resolution,
-              disputeId,
-              disputeDetails.transaction_id
-            ),
-            NotificationService.createDisputeResolvedNotification(
-              transaction.seller_id,
-              itemTitle,
-              resolution,
-              disputeId,
-              disputeDetails.transaction_id
-            )
-          ]);
-        }
-      } catch (notificationError) {
-        console.error('Failed to send dispute resolution notification:', notificationError);
-        // Don't throw error - dispute is still resolved
-      }
-
     } catch (error) {
       console.error('Failed to resolve dispute:', error);
-      throw new Error('Failed to resolve dispute');
+      throw error;
     }
   }
 

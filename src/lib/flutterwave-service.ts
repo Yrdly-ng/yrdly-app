@@ -119,6 +119,30 @@ export class FlutterwaveService {
   }
 
   /**
+   * Refund a transaction
+   * @param flwTransactionId The numeric transaction ID from Flutterwave (payment_reference)
+   * @param amount The amount to refund (optional, if omitted refunds full amount)
+   */
+  static async refundTransaction(flwTransactionId: string, amount?: number): Promise<boolean> {
+    if (!flw) {
+      throw new Error('Flutterwave service not available');
+    }
+
+    try {
+      const payload: any = { id: flwTransactionId };
+      if (amount) {
+        payload.amount = amount;
+      }
+      
+      const response = await flw.Transaction.refund(payload);
+      return response.status === 'success';
+    } catch (error) {
+      console.error('Flutterwave refund error:', error);
+      return false;
+    }
+  }
+
+  /**
    * Create seller subaccount for direct payouts (optional)
    */
   static async createSubaccount(sellerData: {
