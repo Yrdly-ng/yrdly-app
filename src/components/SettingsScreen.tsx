@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useTheme } from "@/components/ThemeProvider";
+import { supabase } from "@/lib/supabase";
 
 const FONT = "Inter, sans-serif";
 const PACIFICO = "Pacifico, cursive";
@@ -146,6 +147,7 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
   });
 
   const [isDark, setIsDark] = useState(theme === "dark");
+  const [emailReminders, setEmailReminders] = useState(true);
 
   useEffect(() => {
     if (profile) {
@@ -155,6 +157,21 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
       }));
     }
   }, [profile]);
+
+  // Load email reminder preference from DB
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("users")
+      .select("email_reminders_enabled")
+      .eq("id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data && data.email_reminders_enabled !== null) {
+          setEmailReminders(data.email_reminders_enabled);
+        }
+      });
+  }, [user]);
 
   const handleLogout = async () => {
     try {
@@ -180,6 +197,16 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
   const handleDarkModeToggle = (checked: boolean) => {
     setIsDark(checked);
     setTheme(checked ? "dark" : "light");
+  };
+
+  const handleEmailRemindersToggle = async (checked: boolean) => {
+    setEmailReminders(checked);
+    if (user) {
+      await supabase
+        .from("users")
+        .update({ email_reminders_enabled: checked })
+        .eq("id", user.id);
+    }
   };
 
   const displayName = profile?.name || user?.user_metadata?.name || "User";
@@ -301,6 +328,18 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
             label="Push Notifications"
             onClick={() => router.push("/settings/notifications")}
           />
+          <ToggleRow
+            icon={Mail}
+            label="Email Reminders"
+            checked={emailReminders}
+            onChange={handleEmailRemindersToggle}
+          />
+          <div
+            className="px-4 pb-2"
+            style={{ color: "var(--c-text-muted)", fontFamily: FONT, fontSize: 12, lineHeight: 1.5 }}
+          >
+            Get an email when you have unread messages or notifications after 30 minutes away.
+          </div>
         </div>
 
         {/* ── Support ── */}

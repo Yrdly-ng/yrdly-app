@@ -742,5 +742,86 @@ export const emailTemplates = {
     `;
 
     return { subject, html };
-  }
+  },
+
+  /**
+   * Digest reminder email — sent when user has unread messages/notifications
+   */
+  digestReminder(
+    userName: string,
+    unreadMessages: number,
+    unreadNotifications: number,
+  ): { subject: string; html: string } {
+    const firstName = userName.split(' ')[0] || 'there';
+    const totalUnread = unreadMessages + unreadNotifications;
+
+    const subject =
+      unreadMessages > 0 && unreadNotifications > 0
+        ? `You have ${totalUnread} unread items on Yrdly`
+        : unreadMessages > 0
+        ? `You have ${unreadMessages} unread message${unreadMessages > 1 ? 's' : ''} on Yrdly`
+        : `You have ${unreadNotifications} unread notification${unreadNotifications > 1 ? 's' : ''} on Yrdly`;
+
+    const messagesBlock = unreadMessages > 0 ? `
+      <div style="display:flex;align-items:center;gap:16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:16px 20px;margin-bottom:12px;">
+        <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#388E3C,#82DB7E);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;">💬</div>
+        <div>
+          <p style="margin:0;font-weight:700;font-size:15px;color:#111827;">${unreadMessages} Unread Message${unreadMessages > 1 ? 's' : ''}</p>
+          <p style="margin:4px 0 0;font-size:13px;color:#6b7280;">Friends are waiting to hear back from you</p>
+        </div>
+      </div>` : '';
+
+    const notifBlock = unreadNotifications > 0 ? `
+      <div style="display:flex;align-items:center;gap:16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:16px 20px;margin-bottom:12px;">
+        <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#388E3C,#82DB7E);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;">🔔</div>
+        <div>
+          <p style="margin:0;font-weight:700;font-size:15px;color:#111827;">${unreadNotifications} Unread Notification${unreadNotifications > 1 ? 's' : ''}</p>
+          <p style="margin:4px 0 0;font-size:13px;color:#6b7280;">Friend requests, likes & more waiting for you</p>
+        </div>
+      </div>` : '';
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${subject}</title>
+  <style>${commonStyles}</style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">
+        <div style="display:inline-block;background:linear-gradient(135deg,${BRAND_GREEN},${BRAND_GREEN_LIGHT});border-radius:12px;padding:8px 18px;">
+          <span style="font-size:22px;font-weight:900;color:#fff;letter-spacing:-0.5px;">Yrdly</span>
+        </div>
+      </div>
+      <p class="tagline">Your neighbourhood, online</p>
+    </div>
+    <div class="content">
+      <h2 class="title">Hey ${firstName} 👋</h2>
+      <p class="message" style="text-align:center;">You have some things waiting for you on Yrdly.</p>
+      ${messagesBlock}
+      ${notifBlock}
+      <div class="button-container">
+        <a href="${APP_URL}" class="button">Open Yrdly</a>
+      </div>
+      <p style="font-size:12px;color:#9CA3AF;text-align:center;margin-top:24px;">
+        You'll only receive this reminder once every 24 hours.
+      </p>
+    </div>
+    <div style="padding:24px 40px;background:#F9FAFB;border-top:1px solid #F3F4F6;text-align:center;">
+      <p style="margin:0 0 8px;font-size:12px;color:#9CA3AF;">Yrdly · Your neighbourhood social platform</p>
+      <p style="margin:0;font-size:12px;">
+        <a href="${APP_URL}/settings" style="color:${BRAND_GREEN};text-decoration:none;">Manage email preferences</a>
+        &nbsp;·&nbsp;
+        <a href="${APP_URL}/legal/privacy" style="color:${BRAND_GREEN};text-decoration:none;">Privacy Policy</a>
+      </p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+    return { subject, html };
+  },
 };
