@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { User, Settings, LogOut } from "lucide-react";
@@ -50,7 +50,7 @@ export function ProfileDropdown({ onClose }: ProfileDropdownProps) {
 
   return (
     /* full-screen backdrop to close on outside click */
-    <div className="fixed inset-0 z-50" onClick={onClose}>
+    <div className="fixed inset-0 z-[110]" onClick={onClose}>
       <div
         className="absolute top-[68px] right-3 w-[220px] overflow-hidden"
         style={{

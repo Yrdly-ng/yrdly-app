@@ -441,9 +441,9 @@ export function NotificationsDropdown({ isOpen, onClose, onNotificationCountChan
 
   return (
     <>
-      <div className="fixed inset-0 z-[55]" onClick={onClose} />
+      <div className="fixed inset-0 z-[110]" onClick={onClose} />
       <div 
-        className="fixed top-20 right-4 w-[320px] shadow-[0_20px_40px_rgba(0,0,0,0.6)] z-[60] overflow-hidden rounded-[11px]"
+        className="fixed top-20 right-4 w-[320px] shadow-[0_20px_40px_rgba(0,0,0,0.6)] z-[110] overflow-hidden rounded-[11px]"
         style={{ background: 'var(--c-card)', border: "1px solid rgba(64,73,61,0.2)" }}
         onClick={(e) => e.stopPropagation()}
       >

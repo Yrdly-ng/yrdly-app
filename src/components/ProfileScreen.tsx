@@ -713,7 +713,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
       {/* ── Friends List Modal ── */}
       {showFriendsList && (
         <div
-          className="fixed inset-0 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 flex items-center justify-center z-[110] p-4"
           style={{ background: "rgba(0,0,0,0.7)" }}
           onClick={() => setShowFriendsList(false)}
         >

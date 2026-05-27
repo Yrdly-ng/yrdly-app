@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import Image from 'next/image';
@@ -78,7 +78,7 @@ export function ImageSwiper({ images, isOpen, onClose, initialIndex = 0 }: Image
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center">
+    <div className="fixed inset-0 z-[110] bg-black/90 flex items-center justify-center">
       {/* Close button */}
       <Button
         variant="ghost"

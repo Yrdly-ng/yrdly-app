@@ -135,7 +135,7 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
 
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-[100] flex flex-col items-center"
+        className="fixed inset-0 z-[110] flex flex-col items-center"
         style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }}
         onClick={e => e.target === e.currentTarget && onOpenChange(false)}
       >

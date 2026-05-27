@@ -123,7 +123,7 @@ export function BuyButton({
       {/* Overlay */}
       {open && (
         <div
-          className="fixed inset-0 z-[60] bg-black/60 flex items-end md:items-center justify-center"
+          className="fixed inset-0 z-[110] bg-black/60 flex items-end md:items-center justify-center"
           onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}
         >
           {/* Sheet */}

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -79,7 +79,7 @@ export function MarketplaceCreatorOnboarding({ isOpen, onClose, onContinue }: Ma
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center"
+        className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center"
         style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}
         onClick={onClose}
       >
