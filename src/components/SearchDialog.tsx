@@ -72,7 +72,7 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
         if (userLga)   usersQuery = usersQuery.eq('location->>lga', userLga);
         else if (userState) usersQuery = usersQuery.eq('location->>state', userState);
         const { data: users } = await usersQuery.limit(5);
-        (users || []).forEach(u => found.push({ type: 'user', data: u as User }));
+        (users || []).forEach(u => found.push({ type: 'user', data: u as unknown as User }));
 
         // Posts — scoped to user's state
         let postsQuery = supabase.from('posts').select('*').or(`text.ilike.%${q}%,title.ilike.%${q}%,description.ilike.%${q}%`);
