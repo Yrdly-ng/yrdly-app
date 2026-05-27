@@ -1,4 +1,4 @@
-﻿
+
 "use client";
 
 import type { User, Post } from "@/types";
@@ -180,10 +180,9 @@ function EngagementRow({
         <div className="flex items-center gap-1.5">
           <button onClick={onLike} className="flex items-center">
             <Heart
-              className="w-5 h-5"
+              className={`w-5 h-5 ${isLiked ? "text-[#ED1111]" : "text-muted-foreground"}`}
               style={{
                 fill: isLiked ? "#ED1111" : "transparent",
-                stroke: isLiked ? "#ED1111" : "#FFFFFF",
               }}
             />
           </button>
