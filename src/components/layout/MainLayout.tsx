@@ -156,7 +156,7 @@ export function MainLayout({ children }: MainLayoutProps) {
         {!isChatPage && !isSubPage && (
           <Suspense fallback={null}>
             <header
-              className="fixed top-0 left-0 right-0 z-50 flex items-center px-4 md:px-6 bg-white border-b border-[#E0E0E0] shadow-sm pt-[max(env(safe-area-inset-top),0px)] h-[calc(4rem+env(safe-area-inset-top))] md:h-[calc(84px+env(safe-area-inset-top))]"
+              className="fixed top-0 left-0 right-0 z-50 flex items-center px-4 md:px-6 bg-card border-b border-border shadow-sm pt-[max(env(safe-area-inset-top),0px)] h-[calc(4rem+env(safe-area-inset-top))] md:h-[calc(84px+env(safe-area-inset-top))]"
             >
               <div className="w-full max-w-7xl mx-auto flex items-center gap-4">
                 <Link href="/home" className="flex items-center gap-1.5 flex-shrink-0">
@@ -173,7 +173,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                   <button
                     type="button"
                     onClick={() => setShowSearch(true)}
-                    className="w-full max-w-md h-10 rounded-full bg-[var(--c-bg)] border border-[#E0E0E0] flex items-center gap-3 px-4 text-left hover:border-[#388E3C] transition-colors"
+                    className="w-full max-w-md h-10 rounded-full bg-background border border-border flex items-center gap-3 px-4 text-left hover:border-primary transition-colors"
                   >
                     <MagnifyingGlass weight="bold" className="h-5 w-5 flex-shrink-0 text-[#767676]" />
                     <span
@@ -259,7 +259,7 @@ export function MainLayout({ children }: MainLayoutProps) {
         >
           {/* ── Desktop Left Nav ── */}
           <nav
-            className="hidden lg:flex lg:flex-col lg:w-[200px] lg:flex-shrink-0 lg:fixed lg:left-0 lg:top-[84px] lg:bottom-0 lg:pt-3 lg:px-3 lg:pb-6 bg-white border-r border-[#E0E0E0]"
+            className="hidden lg:flex lg:flex-col lg:w-[200px] lg:flex-shrink-0 lg:fixed lg:left-0 lg:top-[84px] lg:bottom-0 lg:pt-3 lg:px-3 lg:pb-6 bg-card border-r border-border"
           >
             <div className="flex flex-col gap-0">
               {navItems.map(({ href, label, icon: Icon }) => {
@@ -339,7 +339,7 @@ export function MainLayout({ children }: MainLayoutProps) {
       {!isChatPage && (
         <Suspense fallback={null}>
           <nav
-            className="lg:hidden fixed bottom-0 left-0 right-0 z-[100] flex items-center justify-around px-2 bg-white border-t border-[#E0E0E0] shadow-[0_-2px_8px_rgba(0,0,0,0.08)]"
+            className="lg:hidden fixed bottom-0 left-0 right-0 z-[100] flex items-center justify-around px-2 bg-card border-t border-border shadow-[0_-2px_8px_rgba(0,0,0,0.08)]"
             style={{
               height: "calc(64px + max(env(safe-area-inset-bottom), 0px))",
               paddingBottom: "max(env(safe-area-inset-bottom), 0px)",

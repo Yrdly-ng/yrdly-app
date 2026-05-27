@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -174,7 +174,7 @@ export function HomeRightSidebar() {
       <div className="flex gap-3 items-start">
 
         {/* ── Neighborhood widget ── */}
-        <div className="w-[140px] flex-shrink-0 rounded-[10px] overflow-hidden border border-[#E0E0E0] flex flex-col" style={{ background: CARD_BG }}>
+        <div className="w-[140px] flex-shrink-0 rounded-[10px] overflow-hidden border border-border flex flex-col" style={{ background: CARD_BG }}>
           <div className="px-4 pt-4 pb-3 flex-1">
             <div className="relative mb-3 w-fit">
               <div className="w-9 h-9 rounded-full bg-[#EBF5EB] flex items-center justify-center">
