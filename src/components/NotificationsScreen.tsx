@@ -388,19 +388,32 @@ export function NotificationsScreen({ className }: NotificationsScreenProps) {
 
         if (error) return;
 
-        const formatted = (data || []).map((notif) => ({
-          id: notif.id,
-          type: notif.type,
-          title: notif.title,
-          message: notif.message,
-          data: notif.data,
-          is_read: notif.is_read,
-          created_at: notif.created_at,
-          from_user_id: notif.sender_id || notif.data?.from_user_id,
-          from_user_name: notif.data?.fromUserName || notif.data?.from_user_name,
-          from_user_avatar: notif.data?.from_user_avatar,
-          related_id: notif.related_id,
-        })) as Notification[];
+        const rawData = data || [];
+        const senderIds = Array.from(new Set(rawData.map(n => n.sender_id || n.data?.from_user_id).filter(Boolean)));
+        let senderMap = new Map();
+        if (senderIds.length > 0) {
+          const { data: senders } = await supabase.from('users').select('id, name, avatar_url').in('id', senderIds);
+          if (senders) senderMap = new Map(senders.map(s => [s.id, s]));
+        }
+
+        const formatted = rawData.map((notif) => {
+          const sId = notif.sender_id || notif.data?.from_user_id;
+          const sender = sId ? senderMap.get(sId) : null;
+          
+          return {
+            id: notif.id,
+            type: notif.type,
+            title: notif.title,
+            message: notif.message,
+            data: notif.data,
+            is_read: notif.is_read,
+            created_at: notif.created_at,
+            from_user_id: sId,
+            from_user_name: sender?.name || notif.data?.fromUserName || notif.data?.from_user_name,
+            from_user_avatar: sender?.avatar_url || notif.data?.from_user_avatar,
+            related_id: notif.related_id,
+          };
+        }) as Notification[];
 
         setNotifications(formatted);
         setLoading(false);
