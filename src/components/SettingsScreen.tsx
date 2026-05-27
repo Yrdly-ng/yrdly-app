@@ -21,6 +21,7 @@ import {
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useTheme } from "@/components/ThemeProvider";
 import { supabase } from "@/lib/supabase";
+import { useToast } from "@/hooks/use-toast";
 
 const FONT = "Inter, sans-serif";
 const PACIFICO = "Pacifico, cursive";
@@ -140,6 +141,7 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
   const { user, profile, signOut, updateProfile } = useAuth();
+  const { toast } = useToast();
 
   const [privacy, setPrivacy] = useState({
     locationVisible: profile?.shareLocation ?? false,
@@ -345,6 +347,27 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
         {/* ── Support ── */}
         <div className="space-y-3">
           <SectionLabel>Support</SectionLabel>
+          <NavRow
+            icon={HelpCircle}
+            label="Help & Support"
+            onClick={() => {
+              // Try to open Zoho Desk ASAP widget if it exists
+              if (typeof window !== "undefined" && (window as any).ZohoDeskAsap) {
+                // The API to open the widget programmatically (depends on Zoho's specific version)
+                // We'll dispatch a custom event or let the floating button handle it.
+                // Usually, Zoho ASAP is just always visible as a floating icon.
+                toast({
+                  title: "Support Widget",
+                  description: "Please tap the floating support icon in the corner of your screen.",
+                });
+              } else {
+                toast({
+                  title: "Support",
+                  description: "Support widget is still loading. Please try again in a moment.",
+                });
+              }
+            }}
+          />
           <NavRow
             icon={FileText}
             label="Privacy Policy"
