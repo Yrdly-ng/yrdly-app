@@ -3,12 +3,15 @@
 import { useState, useEffect, useMemo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, MessageCircle, Edit } from "lucide-react";
+import { Search, MessageCircle, Edit, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { supabase } from "@/lib/supabase";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { useToast } from "@/hooks/use-toast";
 import { ActivityIndicator } from "@/components/ActivityIndicator";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 const GREEN = "#388E3C";
 const CARD = "var(--c-card)";
@@ -67,10 +70,17 @@ type Tab = "all" | "friends" | "marketplace" | "businesses";
 
 export function MessagesScreen() {
   const { user } = useAuth();
+  const router = useRouter();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<Tab>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Friends state for New Message dialog
+  const [friends, setFriends] = useState<{ id: string; name: string; avatar_url: string }[]>([]);
+  const [friendsLoading, setFriendsLoading] = useState(false);
+  const [isNewMessageOpen, setIsNewMessageOpen] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -209,6 +219,66 @@ export function MessagesScreen() {
     { key: "businesses", label: "Business" },
   ];
 
+  // Fetch friends when user opens the dialog
+  useEffect(() => {
+    if (!user || !isNewMessageOpen) return;
+    const loadFriends = async () => {
+      setFriendsLoading(true);
+      try {
+        const { data: userData } = await supabase.from('users').select('friends').eq('id', user.id).single();
+        const friendIds = userData?.friends || [];
+        if (friendIds.length > 0) {
+          const { data: friendsData } = await supabase.from('users').select('id, name, avatar_url').in('id', friendIds);
+          setFriends(friendsData || []);
+        } else {
+          setFriends([]);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setFriendsLoading(false);
+      }
+    };
+    loadFriends();
+  }, [user, isNewMessageOpen]);
+
+  const handleStartChat = async (friendId: string) => {
+    if (!user) return;
+    try {
+      // Check if conv exists
+      const sortedIds = [user.id, friendId].sort();
+      const { data: existingConvs } = await supabase
+        .from('conversations')
+        .select('id, type')
+        .contains('participant_ids', sortedIds);
+      
+      const existing = existingConvs?.find(c => c.type === 'friend');
+      let cid: string;
+
+      if (!existing) {
+        const { data: newConv, error } = await supabase
+          .from('conversations')
+          .insert({
+            participant_ids: sortedIds,
+            type: 'friend',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .select('id')
+          .single();
+        if (error) throw error;
+        cid = newConv.id;
+      } else {
+        cid = existing.id;
+      }
+
+      setIsNewMessageOpen(false);
+      router.push(`/messages/${cid}`);
+    } catch (e) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to start chat." });
+    }
+  };
+
   return (
     <div className="min-h-[100dvh]" style={{ background: "var(--c-bg)" }}>
       {/* Sticky Header */}
@@ -218,7 +288,43 @@ export function MessagesScreen() {
       >
         <div className="flex justify-between items-center">
           <h1 className="text-[1.125rem] text-foreground" style={{ fontFamily: PACIFICO }}>Messages</h1>
-          <Edit className="w-5 h-5" style={{ color: GREEN }} />
+          <Dialog open={isNewMessageOpen} onOpenChange={setIsNewMessageOpen}>
+            <DialogTrigger asChild>
+              <button aria-label="New Message">
+                <Edit className="w-5 h-5" style={{ color: GREEN }} />
+              </button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md bg-white w-[90%] rounded-xl mx-auto p-0 gap-0 overflow-hidden" style={{ background: "var(--c-bg)" }}>
+              <DialogHeader className="p-4 border-b border-border/20">
+                <DialogTitle style={{ fontFamily: FONT, color: "var(--c-text)" }}>New Message</DialogTitle>
+              </DialogHeader>
+              <div className="max-h-[60vh] overflow-y-auto p-2">
+                {friendsLoading ? (
+                  <div className="flex justify-center p-8"><Loader2 className="w-6 h-6 animate-spin text-green-600" /></div>
+                ) : friends.length === 0 ? (
+                  <div className="p-8 text-center" style={{ color: "var(--c-text-muted)" }}>
+                    You have no friends to message yet.
+                  </div>
+                ) : (
+                  friends.map(friend => (
+                    <button
+                      key={friend.id}
+                      onClick={() => handleStartChat(friend.id)}
+                      className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-left"
+                    >
+                      <Avatar className="w-10 h-10 border border-border/10">
+                        <AvatarImage src={friend.avatar_url || "/placeholder.svg"} />
+                        <AvatarFallback>{friend.name?.charAt(0) || "?"}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 overflow-hidden">
+                        <p className="font-semibold text-sm truncate text-foreground">{friend.name}</p>
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* Search */}
