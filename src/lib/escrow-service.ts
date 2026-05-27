@@ -42,8 +42,6 @@ export class EscrowService {
       completed_at: null,
       dispute_reason: null,
       dispute_resolved_at: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
     };
 
     const { data, error } = await supabase
@@ -64,7 +62,6 @@ export class EscrowService {
   ): Promise<void> {
     const updateData: any = {
       status,
-      updated_at: new Date().toISOString()
     };
 
     // Add timestamp based on status
@@ -141,7 +138,6 @@ export class EscrowService {
       .from('escrow_transactions')
       .update({
         delivery_details: deliveryDetails,
-        updated_at: new Date().toISOString()
       })
       .eq('id', transactionId);
 
@@ -153,9 +149,15 @@ export class EscrowService {
     transactionId: string,
     reason: string
   ): Promise<void> {
-    await this.updateStatus(transactionId, EscrowStatus.DISPUTED, {
-      disputeReason: reason
-    });
+    const { error } = await supabase
+      .from('escrow_transactions')
+      .update({
+        status: EscrowStatus.DISPUTED,
+        dispute_reason: reason,
+      })
+      .eq('id', transactionId);
+
+    if (error) throw error;
   }
 
   // Resolve a dispute
@@ -168,7 +170,6 @@ export class EscrowService {
       .update({
         dispute_reason: resolution,
         dispute_resolved_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
       })
       .eq('id', transactionId);
 
