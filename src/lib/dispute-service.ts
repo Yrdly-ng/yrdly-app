@@ -85,7 +85,7 @@ export class DisputeService {
         .from('disputes')
         .select('id')
         .eq('transaction_id', transactionId)
-        .single();
+        .maybeSingle();
 
       if (existingDispute) {
         throw new Error('A dispute already exists for this transaction');

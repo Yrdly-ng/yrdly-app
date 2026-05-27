@@ -5,7 +5,7 @@ import { ZohoService } from '@/lib/zoho-service';
 
 export async function POST(request: Request) {
   try {
-    const { data: { user }, error: authError } = await getAuthenticatedUser();
+    const { data: { user }, error: authError } = await getAuthenticatedUser(request as any);
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
