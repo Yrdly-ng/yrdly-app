@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -538,7 +538,7 @@ export default function TransactionDetailsPage() {
           )}
           
           {/* Dispute Button */}
-          {transaction.status !== 'completed' && transaction.status !== 'cancelled' && (
+          {transaction.status !== 'completed' && transaction.status !== 'cancelled' && transaction.status !== 'disputed' && (
             <div className="flex justify-center">
               <Button
                 variant="outline"
