@@ -122,39 +122,25 @@ function NotificationCard({
         return;
       }
 
-      const { error: rpcError } = await supabase.rpc("accept_friend_request_by_users", {
-        p_from_user_id: fromUserId,
-        p_to_user_id: toUserId,
+      const { data: req } = await supabase
+        .from("friend_requests")
+        .select("id")
+        .eq("from_user_id", fromUserId)
+        .eq("to_user_id", toUserId)
+        .eq("status", "pending")
+        .maybeSingle();
+
+      if (!req) {
+        toast({ title: "Request not found", variant: "destructive" });
+        return;
+      }
+
+      const { error: rpcError } = await supabase.rpc("accept_friend_request", {
+        req_id: req.id,
       });
 
-      // Fallback: direct update if RPC doesn't exist
       if (rpcError) {
-        const { data: req } = await supabase
-          .from("friend_requests")
-          .select("id")
-          .eq("from_user_id", fromUserId)
-          .eq("to_user_id", toUserId)
-          .eq("status", "pending")
-          .maybeSingle();
-
-        if (req) {
-          await supabase
-            .from("friend_requests")
-            .update({ status: "accepted" })
-            .eq("id", req.id);
-
-          // Update both users' friends arrays
-          const [{ data: meData }, { data: themData }] = await Promise.all([
-            supabase.from("users").select("friends").eq("id", toUserId).single(),
-            supabase.from("users").select("friends").eq("id", fromUserId).single(),
-          ]);
-          const myFriends = Array.from(new Set([...(meData?.friends || []), fromUserId]));
-          const theirFriends = Array.from(new Set([...(themData?.friends || []), toUserId]));
-          await Promise.all([
-            supabase.from("users").update({ friends: myFriends }).eq("id", toUserId),
-            supabase.from("users").update({ friends: theirFriends }).eq("id", fromUserId),
-          ]);
-        }
+        throw rpcError;
       }
 
       // Refresh global friendship context so profile buttons update everywhere

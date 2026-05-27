@@ -558,16 +558,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
             </button>
           </div>
         )}
-        {/* I'm Interested */}
-        <div className="flex items-center justify-end px-4 pb-4">
-          <button
-            onClick={handleLike}
-            className="px-5 py-2 rounded-full text-foreground text-[0.8125rem] font-light transition-opacity hover:opacity-90"
-            style={{ background: GREEN, fontFamily: FONT_RALEWAY }}
-          >
-            {isLiked ? "Interested ✓" : "I'm Interested"}
-          </button>
-        </div>
+
       </>
     );
   } else if (post.category === "For Sale") {
@@ -616,13 +607,6 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
           <div className="flex items-center gap-2">
             <button onClick={handleShare} className="text-muted-foreground hover:text-foreground">
               <Share2 className="w-5 h-5" />
-            </button>
-            <button
-              onClick={handleLike}
-              className="px-4 py-2 rounded-full text-foreground text-[0.8125rem] font-light transition-opacity hover:opacity-90"
-              style={{ background: GREEN, fontFamily: FONT_RALEWAY }}
-            >
-              {isLiked ? "Saved ✓" : "I'm interested"}
             </button>
           </div>
         </div>

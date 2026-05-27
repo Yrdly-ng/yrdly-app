@@ -449,9 +449,9 @@ export function MessagesScreen() {
                         {conv.timestamp}
                       </span>
                     </div>
-                    {conv.context?.itemPrice && (
+                    {typeof conv.context?.itemPrice === "number" && (
                       <div className="text-[0.75rem] font-bold mb-0.5" style={{ color: "#6edf51", fontFamily: FONT }}>
-                        ₦{conv.context.itemPrice.toLocaleString()}
+                        {conv.context.itemPrice === 0 ? "Free" : `₦${conv.context.itemPrice.toLocaleString()}`}
                       </div>
                     )}
                     <p className="text-[0.75rem] truncate" style={{ color: unread ? "var(--c-text)" : "var(--c-text-muted)", fontFamily: FONT, fontWeight: unread ? 500 : 400 }}>
