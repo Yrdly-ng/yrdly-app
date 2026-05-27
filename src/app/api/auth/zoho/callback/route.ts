@@ -17,7 +17,7 @@ export async function GET(request: Request) {
   const clientSecret = process.env.ZOHO_CLIENT_SECRET;
   const redirectUri = process.env.NODE_ENV === 'production' 
     ? 'https://app.yrdly.ng/api/auth/zoho/callback' 
-    : 'http://localhost:3000/api/auth/zoho/callback';
+    : 'http://localhost:9002/api/auth/zoho/callback';
 
   try {
     const tokenUrl = `https://accounts.zoho.com/oauth/v2/token?grant_type=authorization_code&client_id=${clientId}&client_secret=${clientSecret}&redirect_uri=${redirectUri}&code=${code}`;

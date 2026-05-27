@@ -4,7 +4,7 @@ export async function GET() {
   const clientId = process.env.ZOHO_CLIENT_ID;
   const redirectUri = process.env.NODE_ENV === 'production' 
     ? 'https://app.yrdly.ng/api/auth/zoho/callback' 
-    : 'http://localhost:3000/api/auth/zoho/callback';
+    : 'http://localhost:9002/api/auth/zoho/callback';
   
   // Scopes needed for Desk
   const scopes = 'Desk.tickets.CREATE,Desk.tickets.READ,Desk.tickets.UPDATE,Desk.contacts.READ,Desk.contacts.CREATE';
