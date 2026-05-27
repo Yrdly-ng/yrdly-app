@@ -450,7 +450,10 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
             <button onClick={openProfile}>
               <p className="font-sans font-bold text-[0.875rem] text-foreground truncate hover:underline">{author?.name || "Anonymous"}</p>
             </button>
-            <p className="font-sans font-normal text-[0.6875rem] text-muted-foreground">{timeAgo(post.timestamp ? new Date(post.timestamp) : null)}</p>
+            <p className="font-sans font-normal text-[0.6875rem] text-muted-foreground">
+              {timeAgo(post.timestamp ? new Date(post.timestamp) : null)}
+              {post.updated_at && post.updated_at !== post.timestamp && " (edited)"}
+            </p>
           </div>
         )}
       </div>

@@ -276,7 +276,7 @@ export const usePosts = (opts?: { filterState?: string | null; filterLga?: strin
           timestamp: postIdToUpdate ? postData.timestamp : new Date().toISOString(),
           category: postData.category || 'General',
           // Location stamping — only set on new posts, preserve on edits
-          ...(postIdToUpdate ? {} : {
+          ...(postIdToUpdate ? { updated_at: new Date().toISOString() } : {
             state: userLocation?.state || null,
             lga: userLocation?.lga || null,
             ward: userLocation?.ward || null,
