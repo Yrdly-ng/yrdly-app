@@ -60,6 +60,11 @@ export default function RootLayout({
           <Script id="zohodeskasap" strategy="lazyOnload">
             {`
               window.ZohoDeskAsapReady=function(s){var e=window.ZohoDeskAsap__asyncalls=window.ZohoDeskAsap__asyncalls||[];window.ZohoDeskAsapReadyStatus?(s&&e.push(s),e.forEach(s=>s&&s()),window.ZohoDeskAsap__asyncalls=null):s&&e.push(s)};
+              window.ZohoDeskAsapReady(function() {
+                if (window.ZohoDeskAsap) {
+                  window.ZohoDeskAsap.invoke('hide', 'launcher');
+                }
+              });
             `}
           </Script>
           <Script 

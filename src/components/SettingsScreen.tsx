@@ -353,13 +353,7 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
             onClick={() => {
               // Try to open Zoho Desk ASAP widget if it exists
               if (typeof window !== "undefined" && (window as any).ZohoDeskAsap) {
-                // The API to open the widget programmatically (depends on Zoho's specific version)
-                // We'll dispatch a custom event or let the floating button handle it.
-                // Usually, Zoho ASAP is just always visible as a floating icon.
-                toast({
-                  title: "Support Widget",
-                  description: "Please tap the floating support icon in the corner of your screen.",
-                });
+                (window as any).ZohoDeskAsap.invoke('open');
               } else {
                 toast({
                   title: "Support",
