@@ -423,7 +423,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
           )}
 
           {/* Action buttons for own profile (Admin) */}
-          {actualIsOwnProfile && profileData?.is_admin && (
+          {actualIsOwnProfile && (profileData as any)?.is_admin && (
             <div className="flex flex-row items-center justify-center gap-3 mt-8 w-full max-w-[400px] mx-auto px-4">
               <button
                 onClick={() => router.push("/admin/disputes")}
