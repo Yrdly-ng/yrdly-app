@@ -23,5 +23,5 @@
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules", "functions", "android", "ios", "out", "docs/yrdly-v3"]
+  "exclude": ["node_modules", "functions", "android", "ios", "out", "docs/yrdly-v3", "capacitor.config.ts"]
 }
