@@ -59,11 +59,11 @@ interface HomeScreenProps {
 
 export function HomeScreen({ onViewProfile }: HomeScreenProps) {
   const { user, profile } = useAuth();
-  const { filterState, filterLga } = useLocation();
+  const { activeFilter } = useLocation();
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [marketplaceOnboardingOpen, setMarketplaceOnboardingOpen] = useState(false);
   const [isCreateItemOpen, setIsCreateItemOpen] = useState(false);
-  const { posts, loading, deletePost, createPost } = usePosts({ filterState, filterLga });
+  const { posts, loading, deletePost, createPost } = usePosts(activeFilter);
 
 
   return (

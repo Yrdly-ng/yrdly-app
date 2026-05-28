@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/use-supabase-auth";
 import { useLocationData } from "@/hooks/use-location-data";
 import { useLocation } from "@/contexts/LocationContext";
 import { ArrowLeft, MapPin, Check } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 const FONT = "Inter, sans-serif";
 const PACIFICO = "Pacifico, cursive";
@@ -39,6 +40,8 @@ export default function LocationSettingsPage() {
   );
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [showMigrationPrompt, setShowMigrationPrompt] = useState(false);
+  const [activeListingsCount, setActiveListingsCount] = useState(0);
 
   // Load LGAs when state is set on mount
   useEffect(() => {
@@ -77,8 +80,34 @@ export default function LocationSettingsPage() {
 
   const canSave = selectedState && selectedLga && hasChanges;
 
-  const handleSave = async () => {
+  const handleSaveClick = async () => {
     if (!canSave) return;
+    setSaving(true);
+    
+    // Check for active marketplace listings
+    try {
+      const { count, error } = await supabase
+        .from('posts')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', profile?.id || '')
+        .eq('category', 'For Sale')
+        .eq('is_sold', false);
+        
+      if (!error && count && count > 0) {
+        setActiveListingsCount(count);
+        setShowMigrationPrompt(true);
+        setSaving(false);
+        return;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    
+    // Proceed with save if no listings
+    await finalizeSave(false);
+  };
+
+  const finalizeSave = async (migrateListings: boolean) => {
     setSaving(true);
     try {
       await updateProfile({
@@ -88,7 +117,22 @@ export default function LocationSettingsPage() {
           ward: selectedWard || undefined,
         },
       });
+
+      if (migrateListings && profile?.id) {
+         await supabase
+          .from('posts')
+          .update({
+            state: selectedState,
+            lga: selectedLga,
+            ward: selectedWard || null
+          })
+          .eq('user_id', profile.id)
+          .eq('category', 'For Sale')
+          .eq('is_sold', false);
+      }
+
       setSaved(true);
+      setShowMigrationPrompt(false);
       setTimeout(() => setSaved(false), 2000);
     } catch (error) {
       console.error("Error updating location:", error);
@@ -251,7 +295,7 @@ export default function LocationSettingsPage() {
 
         {/* Save button */}
         <button
-          onClick={handleSave}
+          onClick={handleSaveClick}
           disabled={!canSave || saving}
           className="w-full py-4 rounded-full text-[0.875rem] font-bold transition-all active:scale-[0.98]"
           style={{
@@ -272,6 +316,44 @@ export default function LocationSettingsPage() {
             "Save Location"
           )}
         </button>
+
+        {/* Migration Prompt */}
+        {showMigrationPrompt && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div className="w-full max-w-sm p-6 rounded-[16px] space-y-4 shadow-xl" style={{ background: CARD }}>
+              <h3 className="text-lg font-bold text-foreground">Update Active Listings?</h3>
+              <p className="text-sm" style={{ color: "var(--c-text-muted)" }}>
+                You have {activeListingsCount} active marketplace {activeListingsCount === 1 ? 'listing' : 'listings'}. Would you like to update their location to your new home area so local buyers can find them?
+              </p>
+              <div className="flex flex-col gap-2 pt-2">
+                <button
+                  onClick={() => finalizeSave(true)}
+                  disabled={saving}
+                  className="w-full py-3 rounded-full font-semibold transition-all active:scale-95"
+                  style={{ background: GREEN, color: '#fff' }}
+                >
+                  Yes, Update Listings
+                </button>
+                <button
+                  onClick={() => finalizeSave(false)}
+                  disabled={saving}
+                  className="w-full py-3 rounded-full font-semibold transition-all active:scale-95"
+                  style={{ background: 'transparent', color: '#fff', border: '1px solid #333' }}
+                >
+                  No, Keep Old Location
+                </button>
+                <button
+                  onClick={() => { setShowMigrationPrompt(false); setSaving(false); }}
+                  disabled={saving}
+                  className="w-full py-2 text-sm transition-all active:scale-95"
+                  style={{ color: "var(--c-text-muted)" }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

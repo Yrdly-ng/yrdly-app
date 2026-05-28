@@ -22,7 +22,10 @@ interface MarketplaceScreenProps {
 
 export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceScreenProps) {
   const { user } = useAuth();
-  const { filterState, filterLga } = useLocation();
+  const { activeFilter } = useLocation();
+  const filterState = activeFilter?.state;
+  const filterLga = activeFilter?.lga;
+  const filterWard = activeFilter?.ward;
   const router = useRouter();
   const [items, setItems] = useState<PostType[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,6 +78,9 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
         if (filterLga) {
           query = query.eq('lga', filterLga);
         }
+        if (filterWard) {
+          query = query.eq('ward', filterWard);
+        }
 
         const { data, error } = await query.order("timestamp", { ascending: false });
 
@@ -103,7 +109,7 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [filterState, filterLga]);
+  }, [filterState, filterLga, filterWard]);
 
   const filteredItems = useMemo(() => {
     if (!searchTerm) return items;

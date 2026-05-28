@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
@@ -63,7 +63,10 @@ export function EventsScreen({ className }: EventsScreenProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
-  const { filterState, filterLga } = useLocation();
+  const { activeFilter } = useLocation();
+  const filterState = activeFilter?.state;
+  const filterLga = activeFilter?.lga;
+  const filterWard = activeFilter?.ward;
   const [events, setEvents] = useState<Event[]>([]);
   const [rsvpLoading, setRsvpLoading] = useState<Set<string>>(new Set());
   const [onboardingOpen, setOnboardingOpen] = useState(false);
@@ -91,6 +94,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
         const data = await getPublishedEvents({
           state: filterState || undefined,
           lga: filterLga || undefined,
+          ward: filterWard || undefined,
         });
         setEvents(data);
       } catch (err) {
@@ -100,7 +104,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
       }
     };
     fetchEvents();
-  }, [filterState, filterLga]);
+  }, [filterState, filterLga, filterWard]);
 
   const filteredAndSorted = useMemo(() => {
     let list = [...events];

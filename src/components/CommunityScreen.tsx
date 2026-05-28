@@ -143,8 +143,11 @@ export function CommunityScreen({ className }: CommunityScreenProps) {
   const { user: currentUser, profile } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
-  const { filterState, filterLga } = useLocation();
-  const { posts, loading: postsLoading, createPost, deletePost } = usePosts({ filterState, filterLga });
+  const { activeFilter } = useLocation();
+  const filterState = activeFilter?.state;
+  const filterLga = activeFilter?.lga;
+  const filterWard = activeFilter?.ward;
+  const { posts, loading: postsLoading, createPost, deletePost } = usePosts(activeFilter);
   const [searchQuery, setSearchQuery] = useState("");
   const [showUserSearch, setShowUserSearch] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
@@ -168,6 +171,9 @@ export function CommunityScreen({ className }: CommunityScreenProps) {
       }
       if (filterLga) {
         usersQuery = usersQuery.contains('location', { lga: filterLga });
+      }
+      if (filterWard) {
+        usersQuery = usersQuery.contains('location', { ward: filterWard });
       }
       const { count: totalUsers } = await usersQuery;
       const yesterday = new Date();
@@ -194,6 +200,9 @@ export function CommunityScreen({ className }: CommunityScreenProps) {
       if (filterLga) {
         postsQuery = postsQuery.eq('lga', filterLga);
       }
+      if (filterWard) {
+        postsQuery = postsQuery.eq('ward', filterWard);
+      }
       const { count: newPosts24h } = await postsQuery;
       setStats({
         totalUsers: totalUsers || 0,
@@ -202,7 +211,7 @@ export function CommunityScreen({ className }: CommunityScreenProps) {
       });
     };
     fetchStats();
-  }, [currentUser, filterState, filterLga]);
+  }, [currentUser, filterState, filterLga, filterWard]);
 
   /* ── Pending Friend Requests ── */
   useEffect(() => {

@@ -10,15 +10,17 @@ import { Post, Business } from '@/types';
 import { useToast } from './use-toast';
 
 
+import { LocationFilter } from '@/contexts/LocationContext';
 
-export const usePosts = (opts?: { filterState?: string | null; filterLga?: string | null }) => {
+export const usePosts = (filter?: LocationFilter | null) => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const filterState = opts?.filterState;
-  const filterLga = opts?.filterLga;
+  const filterState = filter?.state;
+  const filterLga = filter?.lga;
+  const filterWard = filter?.ward;
 
   useEffect(() => {
     const fetchPosts = async () => {
@@ -42,6 +44,9 @@ export const usePosts = (opts?: { filterState?: string | null; filterLga?: strin
         if (filterLga) {
           query = query.eq('lga', filterLga);
         }
+        if (filterWard) {
+          query = query.eq('ward', filterWard);
+        }
 
         const { data, error } = await query.order('timestamp', { ascending: false });
 
@@ -60,7 +65,9 @@ export const usePosts = (opts?: { filterState?: string | null; filterLga?: strin
 
     // Set up real-time subscription for all posts
     let filterString: string | undefined = undefined;
-    if (filterLga) {
+    if (filterWard) {
+      filterString = `ward=eq.${filterWard}`;
+    } else if (filterLga) {
       filterString = `lga=eq.${filterLga}`;
     } else if (filterState) {
       filterString = `state=eq.${filterState}`;
@@ -80,6 +87,7 @@ export const usePosts = (opts?: { filterState?: string | null; filterLga?: strin
           // Double check filter client-side just in case
           if (filterState && newPost.state && newPost.state !== filterState) return;
           if (filterLga && newPost.lga && newPost.lga !== filterLga) return;
+          if (filterWard && newPost.ward && newPost.ward !== filterWard) return;
           
           // Check if post already exists in state
           setPosts(currentPosts => {
@@ -165,7 +173,7 @@ export const usePosts = (opts?: { filterState?: string | null; filterLga?: strin
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [filterState, filterLga]);
+  }, [filterState, filterLga, filterWard]);
 
   // Listen for profile changes to refresh posts with updated user data
   useEffect(() => {

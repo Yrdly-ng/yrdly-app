@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useRef, useEffect } from "react";
 import { MapPin, ChevronDown, Globe, Navigation, Map, X } from "lucide-react";
@@ -18,15 +18,27 @@ const BG = "var(--c-bg)";
 export function LocationChip() {
   const {
     displayLabel,
-    scope,
-    setScope,
+    userProfileLocation,
+    activeFilter,
+    setGlobalFilter,
     hasLocation,
-    userState,
-    userLga,
-    setBrowseState,
-    browseState,
   } = useLocation();
   const router = useRouter();
+
+  const userState = userProfileLocation?.state || "";
+  const userLga = userProfileLocation?.lga || "";
+  const browseState = activeFilter?.state && activeFilter.state !== userState ? activeFilter.state : "";
+
+  let scope: "lga" | "state" | "other_state" | "all" = "all";
+  if (!activeFilter) {
+    scope = "all";
+  } else if (activeFilter.state !== userState) {
+    scope = "other_state";
+  } else if (activeFilter.lga === userLga) {
+    scope = "lga";
+  } else {
+    scope = "state";
+  }
 
   const [open, setOpen] = useState(false);
   const [showStatePicker, setShowStatePicker] = useState(false);
@@ -83,14 +95,20 @@ export function LocationChip() {
     : allStates;
 
   const handleSelectScope = (newScope: "lga" | "state" | "all") => {
-    setScope(newScope);
+    if (newScope === "lga") {
+      setGlobalFilter({ state: userState, lga: userLga });
+    } else if (newScope === "state") {
+      setGlobalFilter({ state: userState });
+    } else {
+      setGlobalFilter(null); // all
+    }
     setOpen(false);
     setShowStatePicker(false);
     setStateSearch("");
   };
 
   const handleSelectOtherState = (state: string) => {
-    setBrowseState(state);
+    setGlobalFilter({ state });
     setOpen(false);
     setShowStatePicker(false);
     setStateSearch("");
