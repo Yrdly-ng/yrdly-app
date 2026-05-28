@@ -5,10 +5,11 @@ import { PayoutService } from '@/lib/payout-service';
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const transactionId = params.id;
+    const resolvedParams = await params;
+    const transactionId = resolvedParams.id;
 
     if (!transactionId) {
       return NextResponse.json(

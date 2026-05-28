@@ -61,7 +61,7 @@ export default function DisputePage() {
     } finally {
       setLoading(false);
     }
-  }, [user, transactionId, toast, router, selected, detail]);
+  }, [user, transactionId, toast, router, selected, detail, images]);
 
   return (
     <div className="bg-background text-on-surface font-body min-h-dvh pb-10">
