@@ -75,35 +75,7 @@ export async function POST(
       // Don't throw — transaction is still completed even if payout initiation fails
     }
 
-    // 4. Send notification to seller about funds release
-    try {
-      const { data: txWithItem } = await supabaseAdmin
-        .from('escrow_transactions')
-        .select(`
-          seller_id,
-          seller_amount,
-          item:posts(title, text)
-        `)
-        .eq('id', transactionId)
-        .single();
 
-      if (txWithItem) {
-        const itemTitle = Array.isArray(txWithItem.item) 
-          ? (txWithItem.item[0]?.title || txWithItem.item[0]?.text || 'Item')
-          : ((txWithItem.item as any)?.title || (txWithItem.item as any)?.text || 'Item');
-
-        // We can create notification via admin client too by inserting directly
-        await supabaseAdmin.from('notifications').insert({
-          user_id: txWithItem.seller_id,
-          type: 'payout_processed',
-          title: 'Funds Released',
-          message: `Your payment of ₦${txWithItem.seller_amount.toLocaleString()} for "${itemTitle}" has been released and is on the way to your bank.`,
-          data: { amount: txWithItem.seller_amount, itemTitle, transactionId }
-        });
-      }
-    } catch (notificationError) {
-      console.error('Failed to send funds release notification:', notificationError);
-    }
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
