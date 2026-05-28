@@ -44,11 +44,22 @@ const BlobImage = memo(({ file, className, alt }: { file: File, className?: stri
 });
 BlobImage.displayName = "BlobImage";
 
-const getFormSchema = (_isEditMode: boolean) =>
+const getFormSchema = (hasExistingImages: boolean) =>
   z.object({
     text:       z.string().min(1, "Text can't be empty.").max(500),
     imageFiles: z.any().optional(),
     category:   z.enum(["General", "Event", "For Sale", "Business"]).default("General"),
+  }).superRefine((data, ctx) => {
+    const isSpecialCategory = data.category === "Event" || data.category === "For Sale";
+    const hasNewImages = data.imageFiles && data.imageFiles.length > 0;
+    
+    if (isSpecialCategory && !hasNewImages && !hasExistingImages) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["imageFiles"],
+        message: `An image is required for ${data.category} posts.`,
+      });
+    }
   });
 
 // ── GIF icon (SVG) ─────────────────────────────────────────────
@@ -185,6 +196,11 @@ function PostForm({
             {form.formState.errors.text.message as string}
           </p>
         )}
+        {form.formState.errors.imageFiles && (
+          <p className="text-red-400 text-xs mt-1">
+            {form.formState.errors.imageFiles.message as string}
+          </p>
+        )}
         
         {/* ── Image Previews ── */}
         {form.watch("imageFiles")?.length > 0 && (
@@ -304,7 +320,8 @@ const CreatePostDialogComponent = ({
 
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
 
-  const formSchema = useMemo(() => getFormSchema(isEditMode), [isEditMode]);
+  const hasExistingImages = !!postToEdit?.image_urls?.length;
+  const formSchema = useMemo(() => getFormSchema(hasExistingImages), [hasExistingImages]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
