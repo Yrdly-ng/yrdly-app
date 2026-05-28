@@ -336,7 +336,7 @@ export function CommunityScreen({ className }: CommunityScreenProps) {
           {showUserSearch && users.length > 0 && (
             <div
               className="absolute top-full mt-2 w-full z-20 overflow-hidden"
-              style={{ background: 'var(--c-card)', borderRadius: 11, border: "0.5px solid rgba(255,255,255,0.08)" }}
+              style={{ background: 'var(--c-card)', borderRadius: 11, border: "0.5px solid var(--c-border)" }}
             >
               {userSearchLoading ? (
                 <div className="p-4 space-y-3">
@@ -353,7 +353,7 @@ export function CommunityScreen({ className }: CommunityScreenProps) {
                     key={u.id}
                     onClick={() => router.push(`/profile/${u.id}`)}
                     className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-accent/50 transition-colors"
-                    style={{ borderBottom: "0.5px solid rgba(255,255,255,0.05)" }}
+                    style={{ borderBottom: "0.5px solid var(--c-border)" }}
                   >
                     <Avatar className="w-10 h-10 flex-shrink-0">
                       <AvatarImage src={u.avatar_url} />

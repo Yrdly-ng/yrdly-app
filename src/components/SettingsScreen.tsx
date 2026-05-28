@@ -222,14 +222,14 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
     >
       {/* Sticky Header */}
       <header
-        className="sticky top-0 z-50 flex items-center justify-between px-6 py-4 border-b border-[rgba(255,255,255,0.05)]"
-        style={{ background: "rgba(30,33,38,0.85)", backdropFilter: "blur(20px)" }}
+        className="sticky top-0 z-50 flex items-center justify-between px-6 py-4 border-b border-[var(--c-border)]"
+        style={{ background: "var(--c-bg)" }}
       >
         <div className="flex items-center gap-4">
           <button onClick={() => router.back()} className="w-10 h-10 flex items-center justify-center rounded-full transition-colors hover:bg-accent">
-            <ArrowLeft className="w-5 h-5 text-foreground" />
+            <ArrowLeft className="w-5 h-5 text-foreground" style={{ color: "var(--c-text)" }} />
           </button>
-          <h1 style={{ fontFamily: "Inter, sans-serif", fontSize: 18, fontWeight: 700, color: "#fff" }}>Settings</h1>
+          <h1 style={{ fontFamily: "Inter, sans-serif", fontSize: 18, fontWeight: 700, color: "var(--c-text)" }}>Settings</h1>
         </div>
       </header>
 
@@ -274,7 +274,7 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
             style={{ background: "var(--c-card2)" }}
             onMouseEnter={(e) =>
               ((e.currentTarget as HTMLElement).style.background =
-                "rgba(255,255,255,0.05)")
+                "transparent")
             }
             onMouseLeave={(e) =>
               ((e.currentTarget as HTMLElement).style.background = "var(--c-card2)")

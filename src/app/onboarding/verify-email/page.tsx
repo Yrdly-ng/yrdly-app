@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -342,7 +342,7 @@ function VerifyEmailContent() {
               <YrdlyLogo />
             </div>
             <div className="space-y-3">
-              <h2 className="text-4xl md:text-5xl font-black tracking-tight text-white leading-tight">
+              <h2 className="text-4xl md:text-5xl font-black tracking-tight text-[var(--c-text)] leading-tight">
                 Secure Your <span style={{ color: "#388E3C" }}>Account</span>
               </h2>
               <p className="text-muted-foreground text-lg font-medium">
@@ -355,7 +355,7 @@ function VerifyEmailContent() {
             className={`transition-all duration-700 rounded-[40px] overflow-hidden backdrop-blur-xl ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}
             style={{
               background: "rgba(30, 33, 38, 0.7)",
-              border: "1px solid rgba(255,255,255,0.08)",
+              border: "1px solid var(--c-border)",
               boxShadow: "0 40px 100px -20px rgba(0,0,0,0.6)"
             }}
           >

@@ -56,7 +56,7 @@ export function ProfileDropdown({ onClose }: ProfileDropdownProps) {
         style={{
           background: "var(--c-card)",
           borderRadius: 11,
-          border: "0.5px solid rgba(255,255,255,0.08)",
+          border: "0.5px solid var(--c-border)",
           boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
         }}
         onClick={(e) => e.stopPropagation()}
@@ -64,7 +64,7 @@ export function ProfileDropdown({ onClose }: ProfileDropdownProps) {
         {/* ── User info ── */}
         <div
           className="flex items-center gap-3 px-4 py-4"
-          style={{ borderBottom: "0.5px solid rgba(255,255,255,0.1)" }}
+          style={{ borderBottom: "0.5px solid var(--c-border)" }}
         >
           <Avatar className="w-10 h-10 flex-shrink-0">
             <AvatarImage src={avatarUrl} alt={displayName} />
@@ -100,7 +100,7 @@ export function ProfileDropdown({ onClose }: ProfileDropdownProps) {
               style={{ fontFamily: FONT, background: "transparent" }}
               onMouseEnter={(e) =>
                 ((e.currentTarget as HTMLButtonElement).style.background =
-                  "rgba(255,255,255,0.05)")
+                  "transparent")
               }
               onMouseLeave={(e) =>
                 ((e.currentTarget as HTMLButtonElement).style.background =
@@ -121,7 +121,7 @@ export function ProfileDropdown({ onClose }: ProfileDropdownProps) {
           ))}
 
           {/* divider */}
-          <div style={{ borderTop: "0.5px solid rgba(255,255,255,0.1)", margin: "2px 0" }} />
+          <div style={{ borderTop: "0.5px solid var(--c-border)", margin: "2px 0" }} />
 
           {/* Logout */}
           <button

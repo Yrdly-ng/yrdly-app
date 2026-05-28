@@ -27,7 +27,7 @@ export function OnboardingProgress({ className = '' }: OnboardingProgressProps) 
       className={`sticky top-0 z-50 ${className}`}
       style={{ 
         background: "var(--c-bg)", 
-        borderBottom: "1px solid rgba(255,255,255,0.08)",
+        borderBottom: "1px solid var(--c-border)",
         backdropFilter: "blur(20px)",
         fontFamily: "Inter, sans-serif"
       }}

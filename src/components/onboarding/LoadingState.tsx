@@ -62,7 +62,7 @@ export function LoadingState({ type, message, progress }: LoadingStateProps) {
             className="absolute inset-0 rounded-[48px] flex items-center justify-center backdrop-blur-3xl overflow-hidden group shadow-[0_0_50px_-12px_rgba(56,142,60,0.5)]"
             style={{ 
               background: "linear-gradient(135deg, rgba(30, 33, 38, 0.8) 0%, rgba(13, 15, 17, 0.9) 100%)",
-              border: "1px solid rgba(255,255,255,0.12)",
+              border: "1px solid var(--c-border)",
             }}
           >
             {/* Animated Gradient Shine */}

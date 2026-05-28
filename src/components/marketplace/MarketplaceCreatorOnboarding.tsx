@@ -94,7 +94,7 @@ export function MarketplaceCreatorOnboarding({ isOpen, onClose, onContinue }: Ma
           onClick={(e) => e.stopPropagation()}
         >
           {/* Progress bar */}
-          <div className="h-1 w-full flex-shrink-0" style={{ background: "rgba(255,255,255,0.05)" }}>
+          <div className="h-1 w-full flex-shrink-0" style={{ background: "var(--c-border)" }}>
             <div
               className="h-full transition-all duration-500"
               style={{ background: GREEN, width: step === 1 ? "33%" : step === 2 ? "66%" : "100%" }}
@@ -105,7 +105,7 @@ export function MarketplaceCreatorOnboarding({ isOpen, onClose, onContinue }: Ma
           <button
             onClick={onClose}
             className="absolute top-4 right-4 min-w-[44px] min-h-[44px] p-2 flex items-center justify-center rounded-full z-10"
-            style={{ background: "rgba(255,255,255,0.08)" }}
+            style={{ background: "var(--c-border)" }}
           >
             <X className="w-4 h-4 text-muted-foreground" />
           </button>
@@ -198,7 +198,7 @@ export function MarketplaceCreatorOnboarding({ isOpen, onClose, onContinue }: Ma
                     { icon: Banknote, label: "Escrow Protection", desc: "Funds are held securely until the buyer confirms delivery" },
                     { icon: CheckCircle2, label: "You keep 95%", desc: "Yrdly takes a 5% platform fee only on paid items" },
                   ].map(({ icon: Icon, label, desc }) => (
-                    <div key={label} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.03)" }}>
+                    <div key={label} className="flex items-center gap-3 p-3 rounded-xl" style={{ border: "1px solid var(--c-border)" }}>
                       <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(56,142,60,0.15)" }}>
                         <Icon className="w-4 h-4" style={{ color: GREEN }} />
                       </div>

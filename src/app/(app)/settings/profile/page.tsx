@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -92,13 +92,13 @@ export default function EditProfilePage() {
       {/* Sticky Header */}
       <header
         className="sticky top-0 z-50 flex items-center justify-between px-6 py-4"
-        style={{ background: "rgba(30,33,38,0.85)", backdropFilter: "blur(20px)" }}
+        style={{ background: "var(--c-bg)" }}
       >
         <div className="flex items-center gap-4">
           <button onClick={() => router.back()} className="w-10 h-10 flex items-center justify-center rounded-full transition-colors hover:bg-accent">
-            <ArrowLeft className="w-5 h-5 text-foreground" />
+            <ArrowLeft className="w-5 h-5" style={{ color: "var(--c-text)" }} />
           </button>
-          <h1 style={{ fontFamily: "Pacifico, cursive", fontSize: 18, color: "#fff" }}>Edit Profile</h1>
+          <h1 style={{ fontFamily: "Pacifico, cursive", fontSize: 18, color: "var(--c-text)" }}>Edit Profile</h1>
         </div>
         <span style={{ fontFamily: "Jersey 25, sans-serif", fontSize: 20, color: "#259907" }}>Yrdly</span>
       </header>

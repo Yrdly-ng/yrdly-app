@@ -215,7 +215,7 @@ function NotificationCard({
         background: isUnread ? "var(--c-card)" : CARD,
         border: isUnread
           ? "0.5px solid rgba(130,219,126,0.3)"
-          : "0.5px solid rgba(255,255,255,0.06)",
+          : "0.5px solid var(--c-border)",
       }}
       onClick={handleCardClick}
     >
@@ -322,7 +322,7 @@ function NotificationCard({
               </button>
             </AlertDialogTrigger>
             <AlertDialogContent
-              style={{ background: 'var(--c-card)', border: "0.5px solid rgba(255,255,255,0.1)" }}
+              style={{ background: 'var(--c-card)', border: "0.5px solid var(--c-border)" }}
             >
               <AlertDialogHeader>
                 <AlertDialogTitle className="text-foreground">Delete notification?</AlertDialogTitle>
@@ -332,7 +332,7 @@ function NotificationCard({
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel
-                  style={{ background: "rgba(255,255,255,0.1)", color: "#fff", border: 0 }}
+                  style={{ background: "var(--c-card)", border: "1px solid var(--c-border)", color: "var(--c-text)" }}
                 >
                   Cancel
                 </AlertDialogCancel>
@@ -534,7 +534,7 @@ export function NotificationsScreen({ className }: NotificationsScreenProps) {
                     : {
                         background: 'var(--c-card)',
                         color: "var(--c-text-muted)",
-                        border: "0.5px solid rgba(255,255,255,0.08)",
+                        border: "0.5px solid var(--c-border)",
                         fontFamily: FONT,
                       }
                 }

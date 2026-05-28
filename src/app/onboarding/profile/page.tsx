@@ -316,7 +316,7 @@ export default function OnboardingProfilePage() {
               <YrdlyLogo />
             </div>
             <div className="space-y-3">
-              <h2 className="text-4xl md:text-5xl font-black tracking-tight text-white leading-tight">
+              <h2 className="text-4xl md:text-5xl font-black tracking-tight text-[var(--c-text)] leading-tight">
                 Refine Your <span style={{ color: "#388E3C" }}>Presence</span>
               </h2>
               <p className="text-muted-foreground text-lg font-medium">
@@ -332,7 +332,7 @@ export default function OnboardingProfilePage() {
               className="relative w-full min-h-[240px] rounded-[32px] p-6 sm:p-8 border border-border overflow-hidden transition-all duration-700 shadow-2xl backdrop-blur-2xl"
               style={{ 
                 background: "linear-gradient(135deg, rgba(30, 33, 38, 0.8) 0%, rgba(13, 15, 17, 0.8) 100%)",
-                boxShadow: "inset 0 0 60px rgba(255,255,255,0.03)"
+                boxShadow: "inset 0 0 60px var(--c-border)"
               }}
             >
               {/* Card Holographic Pattern */}
@@ -389,7 +389,7 @@ export default function OnboardingProfilePage() {
             className="rounded-[48px] overflow-hidden backdrop-blur-2xl"
             style={{
               background: "rgba(30, 33, 38, 0.75)",
-              border: "1px solid rgba(255,255,255,0.08)",
+              border: "1px solid var(--c-border)",
               boxShadow: "0 60px 120px -30px rgba(0,0,0,0.7)"
             }}
           >

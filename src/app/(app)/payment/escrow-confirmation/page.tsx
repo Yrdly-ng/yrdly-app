@@ -124,14 +124,14 @@ export default function EscrowConfirmationPage() {
               <Check className="w-8 h-8 text-[#388E3C]" strokeWidth={3} />
             </div>
           </div>
-          <h2 className="font-pacifico text-[1.625rem] text-white leading-tight mb-2">Payment Secured!</h2>
+          <h2 className="font-pacifico text-[1.625rem] text-[var(--c-text)] leading-tight mb-2">Payment Secured!</h2>
           <p className="font-raleway text-[0.875rem] text-on-surface-variant font-medium">{fmt(amount)} is held safely in escrow</p>
         </section>
 
         {/* Item Recap Card */}
         <article className="bg-surface-container rounded-[11px] p-4 flex items-center gap-4 mb-10 transition-transform hover:scale-[1.01]">
           <div className="flex-grow min-w-0">
-            <h3 className="text-white font-bold truncate">{itemTitle}</h3>
+            <h3 className="text-[var(--c-text)] font-bold truncate">{itemTitle}</h3>
             <p className="font-raleway text-[0.6875rem] font-mono text-on-surface-variant">Ref: #{ref}</p>
           </div>
           <div className="flex-shrink-0">
@@ -162,7 +162,7 @@ export default function EscrowConfirmationPage() {
                       </div>
                     </div>
                     <div className="pt-1">
-                      <p className={`${active ? 'text-white font-semibold' : 'text-on-surface font-medium'}`}>{step.label}</p>
+                      <p className={`${active ? 'text-[var(--c-text)] font-semibold' : 'text-on-surface font-medium'}`}>{step.label}</p>
                       {step.sub && (
                         <p className="text-xs text-on-surface-variant/70 mt-0.5">{step.sub}</p>
                       )}

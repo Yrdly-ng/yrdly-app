@@ -155,7 +155,7 @@ export default function MarketplaceItemPage() {
     <div className="min-h-[100dvh]" style={{ background: BG }}>
 
       {/* ── Back button row ── */}
-      <div className="sticky top-0 z-50 px-4 py-4 bg-background/95 backdrop-blur-sm border-b border-[rgba(255,255,255,0.05)]">
+      <div className="sticky top-0 z-50 px-4 py-4 bg-background/95 backdrop-blur-sm border-b" style={{ borderColor: 'var(--c-border)' }}>
         <button
           onClick={() => router.back()}
           className="flex items-center gap-2 text-sm transition-opacity hover:opacity-70"
@@ -179,7 +179,7 @@ export default function MarketplaceItemPage() {
             className="px-6 py-4"
             style={{
               background: "rgba(185,185,185,0.05)",
-              borderBottom: "0.2px solid rgba(255,255,255,0.1)",
+              borderBottom: "0.2px solid var(--c-border)",
             }}
           >
             <h1
@@ -217,7 +217,7 @@ export default function MarketplaceItemPage() {
                     key={i}
                     onClick={() => setCurrentImageIndex(i)}
                     className="w-[6px] h-[6px] rounded-full transition-colors"
-                    style={{ background: i === currentImageIndex ? "#FFFFFF" : FADED }}
+                    style={{ background: i === currentImageIndex ? "var(--c-text)" : FADED }}
                   />
                 ))}
               </div>
@@ -225,7 +225,7 @@ export default function MarketplaceItemPage() {
           </div>
 
           {/* Divider */}
-          <div className="mx-6 my-4" style={{ borderTop: "0.2px solid rgba(255,255,255,0.2)" }} />
+          <div className="mx-6 my-4" style={{ borderTop: "0.2px solid var(--c-border)" }} />
 
           {/* Details section */}
           <div className="px-6 pb-4">
@@ -244,7 +244,7 @@ export default function MarketplaceItemPage() {
           </div>
 
           {/* Divider */}
-          <div className="mx-6 my-4" style={{ borderTop: "0.2px solid rgba(255,255,255,0.2)" }} />
+          <div className="mx-6 my-4" style={{ borderTop: "0.2px solid var(--c-border)" }} />
 
           {/* Directions / location */}
           <div className="px-6 pb-6">
@@ -309,7 +309,7 @@ export default function MarketplaceItemPage() {
           )}
 
           {/* Horizontal divider */}
-          <div style={{ borderTop: "0.2px solid rgba(255,255,255,0.2)" }} />
+          <div style={{ borderTop: "0.2px solid var(--c-border)" }} />
 
           {/* Seller Information */}
           <div>
@@ -355,7 +355,7 @@ export default function MarketplaceItemPage() {
           </div>
 
           {/* Horizontal divider */}
-          <div style={{ borderTop: "0.2px solid rgba(255,255,255,0.2)" }} />
+          <div style={{ borderTop: "0.2px solid var(--c-border)" }} />
 
           {/* Message box (only for non-owners) */}
           {!isOwn && (
@@ -432,7 +432,7 @@ export default function MarketplaceItemPage() {
           {/* Section title */}
           <h2
             className="text-lg mb-4"
-            style={{ fontFamily: FONT_PACIFICO, color: "#FFFFFF", fontWeight: 400 }}
+            style={{ fontFamily: FONT_PACIFICO, color: "var(--c-text)", fontWeight: 400 }}
           >
             Other Items You May Like
           </h2>

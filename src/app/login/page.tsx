@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -20,8 +20,8 @@ const colors = {
   border: '#388E3C',
   inputBg: '#FFFFFF',
   primary: '#388E3C',
-  text: '#1C1C1C',
-  textFaded: '#616161',
+  text: 'var(--c-text)',
+  textFaded: 'var(--c-text-muted)',
   link: '#1976D2',
   logoGreen: '#259907',
 };
@@ -165,7 +165,7 @@ export default function LoginPage() {
         className="absolute inset-0 pointer-events-none"
         style={{
           background: colors.overlay,
-          border: '1px solid rgba(255,255,255,0.01)',
+          border: '1px solid var(--c-border)',
           backdropFilter: 'blur(1.8px)',
         }}
       />

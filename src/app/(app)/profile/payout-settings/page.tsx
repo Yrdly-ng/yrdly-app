@@ -251,7 +251,7 @@ export default function PayoutSettingsPage() {
             className="rounded-[32px] p-8 space-y-6 relative overflow-hidden group" 
             style={{ 
               background: "var(--card)",
-              border: "1px solid rgba(255,255,255,0.05)",
+              border: "1px solid var(--c-border)",
               boxShadow: "0 20px 40px -12px rgba(0,0,0,0.5)"
             }}
           >
@@ -302,7 +302,7 @@ export default function PayoutSettingsPage() {
             className="rounded-[32px] p-8 space-y-8 animate-in zoom-in-95 duration-300" 
             style={{ 
               background: "var(--card)",
-              border: "1px solid rgba(255,255,255,0.05)",
+              border: "1px solid var(--c-border)",
               boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5)"
             }}
           >

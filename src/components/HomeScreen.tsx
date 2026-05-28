@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -94,7 +94,7 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
           </div>
 
           {/* Divider */}
-          <div className="my-3" style={{ borderTop: "0.2px solid rgba(255,255,255,0.2)" }} />
+          <div className="my-3" style={{ borderTop: "0.2px solid var(--c-border)" }} />
 
           {/* Action buttons - horizontally scrollable on small screens */}
           <div className="flex items-center gap-2 overflow-x-auto pb-0.5 scrollbar-hide">

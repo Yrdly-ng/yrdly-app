@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -68,12 +68,12 @@ export default function AddPayoutAccountPage() {
       {/* Header */}
       <header
         className="fixed top-0 w-full z-50 flex items-center gap-4 px-6 h-16"
-        style={{ background: "rgba(21,24,29,0.85)", backdropFilter: "blur(20px)" }}
+        style={{ background: "var(--c-bg)", backdropFilter: "blur(20px)" }}
       >
         <button onClick={() => router.back()} className="hover:opacity-70 transition-opacity">
           <ArrowLeft className="w-5 h-5" style={{ color: Green }} />
         </button>
-        <h1 style={{ fontFamily: "Pacifico, cursive", fontSize: 22, color: "#fff" }}>
+        <h1 style={{ fontFamily: "Pacifico, cursive", fontSize: 22, color: "var(--c-text)" }}>
           Add Payout Account
         </h1>
       </header>

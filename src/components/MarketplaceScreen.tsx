@@ -151,7 +151,7 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
       <div className="px-4 pt-4 pb-3">
         <h2
           className="text-lg"
-          style={{ fontFamily: "Pacifico, cursive", color: "#FFFFFF", fontWeight: 400 }}
+          style={{ fontFamily: "Pacifico, cursive", color: "var(--c-text)", fontWeight: 400 }}
         >
           Closest to you
         </h2>
@@ -194,7 +194,7 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
           </div>
           <h3
             className="text-xl mb-2"
-            style={{ fontFamily: "Pacifico, cursive", color: "#FFFFFF" }}
+            style={{ fontFamily: "Pacifico, cursive", color: "var(--c-text)" }}
           >
             {searchTerm ? `No results for "${searchTerm}"` : "Marketplace is empty"}
           </h3>

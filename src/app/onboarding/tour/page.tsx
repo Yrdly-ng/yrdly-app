@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -116,7 +116,7 @@ export default function OnboardingTourPage() {
       <div className="w-full max-w-lg flex items-center justify-between relative z-20">
         <button 
           onClick={handleBack}
-          className={cn("w-10 h-10 rounded-full flex items-center justify-center bg-white/5 border border-border text-white transition-all active:scale-90", step === 0 && "opacity-0 pointer-events-none")}
+          className={cn("w-10 h-10 rounded-full flex items-center justify-center bg-[var(--c-card)] border border-[var(--c-border)] text-[var(--c-text)] transition-all active:scale-90", step === 0 && "opacity-0 pointer-events-none")}
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
@@ -128,7 +128,7 @@ export default function OnboardingTourPage() {
               className="h-1.5 rounded-full transition-all duration-500"
               style={{ 
                 width: i === step ? "24px" : "8px",
-                background: i === step ? "#388E3C" : "rgba(255,255,255,0.1)",
+                background: i === step ? "#388E3C" : "rgba(128,128,128,0.2)",
                 boxShadow: i === step ? "0 0 10px rgba(56,142,60,0.5)" : "none"
               }}
             />
@@ -137,7 +137,7 @@ export default function OnboardingTourPage() {
 
         <button 
           onClick={handleSkip}
-          className="text-xs font-black uppercase tracking-widest text-muted-foreground hover:text-white transition-colors"
+          className="text-xs font-black uppercase tracking-widest text-[var(--c-text-muted)] hover:text-[var(--c-text)] transition-colors"
         >
           Skip
         </button>
@@ -157,18 +157,18 @@ export default function OnboardingTourPage() {
           <div className="relative mb-12">
             <div 
               className="w-48 h-48 mx-auto rounded-[56px] flex items-center justify-center relative group"
-              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}
+              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid var(--c-border)" }}
             >
               <div className="absolute inset-0 bg-[#388E3C] blur-3xl opacity-10 group-hover:opacity-20 transition-opacity rounded-full" />
               <div 
                 className="w-32 h-32 rounded-[40px] flex items-center justify-center relative overflow-hidden"
                 style={{ background: `linear-gradient(135deg, ${slide.accent}22, ${slide.accent}00)` }}
               >
-                <Icon className="w-16 h-16 text-white relative z-10 drop-shadow-2xl" strokeWidth={1.5} />
+                <Icon className="w-16 h-16 text-[var(--c-text)] relative z-10 drop-shadow-2xl" strokeWidth={1.5} />
               </div>
               
               {/* Decorative elements */}
-              <div className="absolute -top-4 -right-4 w-12 h-12 rounded-2xl bg-white/5 backdrop-blur-md border border-border flex items-center justify-center animate-bounce" style={{ animationDuration: '3s' }}>
+              <div className="absolute -top-4 -right-4 w-12 h-12 rounded-2xl bg-[var(--c-card)] backdrop-blur-md border border-[var(--c-border)] flex items-center justify-center animate-bounce" style={{ animationDuration: '3s' }}>
                 <Sparkles className="w-5 h-5 text-[#388E3C]" />
               </div>
               <div className="absolute -bottom-2 -left-6 w-10 h-10 rounded-xl bg-[#388E3C]/10 backdrop-blur-md border border-[#388E3C]/20 flex items-center justify-center animate-pulse">
@@ -178,12 +178,12 @@ export default function OnboardingTourPage() {
           </div>
 
           <h1 
-            className="text-4xl md:text-5xl font-black text-white mb-6 leading-tight"
+            className="text-4xl md:text-5xl font-black text-[var(--c-text)] mb-6 leading-tight"
             style={{ letterSpacing: "-0.03em" }}
           >
             {slide.title}
           </h1>
-          <p className="text-lg text-muted-foreground font-medium leading-relaxed max-w-sm mx-auto">
+          <p className="text-lg text-[var(--c-text-muted)] font-medium leading-relaxed max-w-sm mx-auto">
             {slide.body}
           </p>
         </div>

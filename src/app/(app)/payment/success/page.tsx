@@ -56,7 +56,7 @@ export default function PayoutSuccessPage() {
 
         {/* Success Message */}
         <div className="text-center space-y-2 mb-10 z-10">
-          <h2 className="font-pacifico text-[1.75rem] text-white leading-tight">
+          <h2 className="font-pacifico text-[1.75rem] text-[var(--c-text)] leading-tight">
             {amount !== "0" ? `${fmt(amount)} Sent!` : "Payout Sent!"}
           </h2>
           <p className="font-raleway text-[0.8125rem] text-on-surface-variant max-w-[280px] mx-auto">
@@ -89,7 +89,7 @@ export default function PayoutSuccessPage() {
         {/* Review Prompt Section */}
         {!submitted ? (
           <section className="w-full flex flex-col items-center z-10">
-            <h3 className="font-raleway font-bold text-sm text-white mb-6">How was your experience?</h3>
+            <h3 className="font-raleway font-bold text-sm text-[var(--c-text)] mb-6">How was your experience?</h3>
             
             {/* Rating Row */}
             <div className="flex gap-3 mb-8">
@@ -129,7 +129,7 @@ export default function PayoutSuccessPage() {
               </button>
               <button
                 onClick={() => router.push("/profile")}
-                className="font-raleway text-sm text-on-surface-variant hover:text-white transition-colors py-2 px-6"
+                className="font-raleway text-sm text-on-surface-variant hover:text-[var(--c-text)] transition-colors py-2 px-6"
               >
                 Skip
               </button>
@@ -138,7 +138,7 @@ export default function PayoutSuccessPage() {
         ) : (
           <div className="w-full text-center space-y-4 z-10 mt-4">
             <CheckCircle className="w-10 h-10 mx-auto text-primary" />
-            <p className="font-raleway font-bold text-white">
+            <p className="font-raleway font-bold text-[var(--c-text)]">
               Thanks for your review!
             </p>
             <button

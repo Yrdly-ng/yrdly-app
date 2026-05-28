@@ -270,9 +270,9 @@ function NotificationItem({ notification, onMarkAsRead, onDelete, onClose }: {
     >
       {/* Avatar + Badge */}
       <div className="relative flex-shrink-0">
-        <Avatar className="w-10 h-10 ring-1 ring-white/10">
+        <Avatar className="w-10 h-10 ring-1 ring-[var(--c-border)]">
           <AvatarImage src={notification.from_user_avatar || "/placeholder.svg"} className="object-cover" />
-          <AvatarFallback style={{ background: "var(--c-card2)", color: "#fff", fontSize: 14 }}>
+          <AvatarFallback style={{ background: "var(--c-card2)", color: "var(--c-text)", fontSize: 14 }}>
             {notification.from_user_name?.charAt(0) || "U"}
           </AvatarFallback>
         </Avatar>

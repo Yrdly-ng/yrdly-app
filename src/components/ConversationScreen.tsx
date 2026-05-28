@@ -254,7 +254,7 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
         style={{ background: 'var(--c-card)', boxShadow: "0 2px 8px rgba(0,0,0,0.3)" }}>
         <button onClick={() => router.push("/messages")} className="mr-3 p-2 rounded-full transition-colors"
           style={{ color: "var(--c-text)" }}
-          onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.1)")}
+          onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.opacity = "0.8")}
           onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}>
           <ArrowLeft className="w-5 h-5" />
         </button>
@@ -308,7 +308,7 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
                 )}
                 <div className="flex flex-col gap-1">
                   {msg.image_url && (
-                    <div className="rounded-[10px] overflow-hidden border" style={{ borderColor: "rgba(255,255,255,0.05)", maxWidth: 192 }}>
+                    <div className="rounded-[10px] overflow-hidden border" style={{ borderColor: "var(--c-border)", maxWidth: 192 }}>
                       <Image src={msg.image_url} alt="Message image" width={192} height={192} className="w-full h-auto object-cover" />
                     </div>
                   )}
@@ -354,7 +354,7 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
       </main>
 
       {/* ── Input ── */}
-      <footer className="flex-shrink-0 p-4 pb-8" style={{ background: 'var(--c-card)', borderTop: "0.5px solid rgba(255,255,255,0.08)" }}>
+      <footer className="flex-shrink-0 p-4 pb-8" style={{ background: 'var(--c-card)', borderTop: "0.5px solid var(--c-border)" }}>
         {/* Image preview */}
         {imagePreview && (
           <div className="relative mb-3 inline-block">
@@ -369,7 +369,7 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
           <button type="button" onClick={() => fileInputRef.current?.click()}
             className="p-2 rounded-full flex-shrink-0 transition-colors"
             style={{ color: GREEN }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)")}
+            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.opacity = "0.8")}
             onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}>
             <ImagePlus className="w-6 h-6" />
           </button>

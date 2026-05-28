@@ -474,7 +474,7 @@ export function CommentSection({
                 {inputBox}
 
                 {/* Divider */}
-                <div className="mx-4" style={{ borderTop: '0.2px solid #FFFFFF' }} />
+                <div className="mx-4" style={{ borderTop: '0.2px solid var(--c-border)' }} />
 
                 {/* Toolbar */}
                 <div className="flex items-center justify-start px-4 py-2.5">

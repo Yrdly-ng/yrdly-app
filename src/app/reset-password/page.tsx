@@ -15,8 +15,8 @@ const colors = {
   overlay: 'rgba(255, 255, 255, 0.05)',
   border: '#388E3C',
   primary: '#388E3C',
-  text: '#FFFFFF',
-  textFaded: '#BBBBBB',
+  text: 'var(--c-text)',
+  textFaded: 'var(--c-text-muted)',
 };
 
 export default function ResetPasswordPage() {
@@ -78,7 +78,7 @@ export default function ResetPasswordPage() {
   };
 
   const inputClass =
-    'w-full h-12 sm:h-14 pl-4 pr-11 sm:pl-5 sm:pr-12 rounded-full font-sans font-light text-sm text-white placeholder:text-[#BBBBBB] bg-transparent border-0 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 transition';
+    'w-full h-12 sm:h-14 pl-4 pr-11 sm:pl-5 sm:pr-12 rounded-full font-sans font-light text-sm text-[var(--c-text)] placeholder:text-[var(--c-text-muted)] bg-transparent border-0 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 transition';
   const borderStyle = { border: '0.5px solid #388E3C' };
   const pillRound = 'rounded-full';
 
@@ -102,7 +102,7 @@ export default function ResetPasswordPage() {
         className="absolute inset-0 pointer-events-none"
         style={{
           background: colors.overlay,
-          border: '1px solid rgba(255,255,255,0.01)',
+          border: '1px solid var(--c-border)',
           backdropFilter: 'blur(1.8px)',
         }}
       />
@@ -110,12 +110,12 @@ export default function ResetPasswordPage() {
       <div className="relative z-10 w-full max-w-[471px] flex flex-col items-center">
         <div className="text-center mb-8 w-full">
           <h1
-            className="text-2xl text-white leading-tight px-1"
+            className="text-2xl text-[var(--c-text)] leading-tight px-1"
             style={{ fontFamily: '"Pacifico", cursive' }}
           >
             Set New Password
           </h1>
-          <p className="font-sans font-light text-sm text-[#BBBBBB] mt-2">
+          <p className="font-sans font-light text-sm text-[var(--c-text-muted)] mt-2">
             Please enter your new password
           </p>
         </div>
@@ -141,7 +141,7 @@ export default function ResetPasswordPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="flex items-center justify-center w-full h-full text-[#BBBBBB] hover:text-white"
+                    className="flex items-center justify-center w-full h-full text-[var(--c-text-muted)] hover:text-[var(--c-text)]"
                   >
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>

@@ -372,7 +372,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
                   <button
                     disabled
                     className="flex-1 flex items-center justify-center gap-2 rounded-full h-14 text-sm font-bold text-muted-foreground border transition-all"
-                    style={{ background: "transparent", borderColor: "rgba(255,255,255,0.1)", fontFamily: FONT }}
+                    style={{ background: "transparent", borderColor: "var(--c-border)", fontFamily: FONT }}
                   >
                     <Users className="w-5 h-5" />
                     Request Sent
@@ -447,7 +447,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel style={{ background: "rgba(255,255,255,0.1)", color: "#fff", border: 0 }}>Cancel</AlertDialogCancel>
+                  <AlertDialogCancel style={{ background: "var(--c-card)", border: "1px solid var(--c-border)", color: "var(--c-text)" }}>Cancel</AlertDialogCancel>
                   <AlertDialogAction
                     style={{ background: "#E53935" }}
                     onClick={() => { friendship.removeFriend(); setShowRemoveFriendDialog(false); }}
@@ -522,7 +522,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
               onClick={() => router.push(href)}
               className="w-full flex items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-white/5 active:bg-white/10"
               style={{
-                borderBottom: i < arr.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none",
+                borderBottom: i < arr.length - 1 ? "1px solid var(--c-border)" : "none",
               }}
             >
               <div
@@ -532,7 +532,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
                 {icon}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-white" style={{ fontFamily: RALEWAY }}>{label}</p>
+                <p className="text-sm font-bold text-[var(--c-text)]" style={{ fontFamily: RALEWAY }}>{label}</p>
                 <p className="text-xs mt-0.5" style={{ color: "#899485", fontFamily: FONT }}>{sub}</p>
               </div>
               <ChevronRight className="w-4 h-4 flex-shrink-0" style={{ color: "#899485" }} />

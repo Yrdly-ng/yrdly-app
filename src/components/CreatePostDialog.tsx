@@ -222,7 +222,7 @@ function PostForm({
       </div>
 
       {/* ── Divider ── */}
-      <div className="mx-5 flex-shrink-0" style={{ borderTop: "0.2px solid #FFFFFF" }} />
+      <div className="mx-5 flex-shrink-0" style={{ borderTop: "0.2px solid var(--c-border)" }} />
 
       {/* ── Bottom toolbar — always visible, pinned ── */}
       <div className="flex items-center justify-between px-5 py-3 flex-shrink-0">

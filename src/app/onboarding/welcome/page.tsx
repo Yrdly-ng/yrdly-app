@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -281,11 +281,11 @@ export default function OnboardingWelcomePage() {
                 <Sparkles className="w-4 h-4 text-[#388E3C]" />
                 <span className="text-xs font-black uppercase tracking-widest text-[#388E3C]">Profile Verified</span>
               </div>
-              <h2 className="text-4xl md:text-5xl font-black tracking-tight text-white leading-tight">
+              <h2 className="text-4xl md:text-5xl font-black tracking-tight text-[var(--c-text)] leading-tight">
                 Welcome home,<br/>{profile?.name?.split(' ')[0]}!
               </h2>
               <p className="text-muted-foreground text-lg max-w-[300px] mx-auto leading-relaxed">
-                Your journey in <span className="text-white font-bold">{profile?.location?.state || 'your neighborhood'}</span> starts now.
+                Your journey in <span className="text-[var(--c-text)] font-bold">{profile?.location?.state || 'your neighborhood'}</span> starts now.
               </p>
             </div>
           </div>
@@ -297,7 +297,7 @@ export default function OnboardingWelcomePage() {
             className={`rounded-[48px] overflow-hidden transition-all duration-1000 delay-500 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.8)] backdrop-blur-3xl`}
             style={{ 
               background: "linear-gradient(135deg, rgba(30, 33, 38, 0.9) 0%, rgba(13, 15, 17, 0.95) 100%)",
-              border: "1px solid rgba(255,255,255,0.1)"
+              border: "1px solid var(--c-border)"
             }}
           >
             <div className="p-10 space-y-10 relative">
