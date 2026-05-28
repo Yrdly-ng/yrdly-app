@@ -5,8 +5,8 @@ const config: CapacitorConfig = {
   appName: 'Yrdly',
   webDir: 'out',
   server: {
-    // Point this to your live production URL or local dev server IP
-    url: 'https://yrdly-app.vercel.app',
+    // Point this to your live production URL
+    url: 'https://app.yrdly.ng',
     cleartext: true
   }
 };
