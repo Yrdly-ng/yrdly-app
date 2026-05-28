@@ -24,7 +24,7 @@ export function PostPageClient({ postId }: { postId: string }) {
         "postgres_changes",
         { event: "*", schema: "public", table: "posts", filter: `id=eq.${postId}` },
         (payload) => {
-          if (payload.new) setPost(payload.new as PostType);
+          if (payload.new) setPost((prev) => prev ? { ...prev, ...payload.new } as PostType : payload.new as PostType);
           else if (payload.eventType === "DELETE") router.push("/home");
           setLoading(false);
         }

@@ -369,9 +369,9 @@ export default function PayoutSettingsPage() {
                   enterKeyHint="done"
                   autoComplete="name"
                   value={accountName}
-                  onChange={(e) => setAccountName(e.target.value)}
-                  placeholder="e.g. John Doe"
-                  className="w-full h-14 rounded-2xl p-4 text-base bg-white/5 border border-border focus:border-[#388E3C]/50 focus:outline-none transition-all text-foreground font-medium placeholder:text-muted-foreground"
+                  readOnly
+                  placeholder="Auto-resolving name..."
+                  className="w-full h-14 rounded-2xl p-4 text-base bg-white/5 border border-border focus:outline-none transition-all text-foreground/70 font-medium placeholder:text-muted-foreground cursor-not-allowed"
                 />
               </div>
             </div>

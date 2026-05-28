@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { TransactionStatusService } from "@/lib/transaction-status-service";
@@ -20,7 +21,58 @@ export default function ConfirmReceiptPage() {
   const router    = useRouter();
   const { user }  = useAuth();
   const { toast } = useToast();
+
   const [loading, setLoading] = useState(false);
+  const [shippedAt, setShippedAt] = useState<string | null>(null);
+  const [timeLeft, setTimeLeft] = useState({ hours: 48, minutes: 0, seconds: 0 });
+  const [strokeOffset, setStrokeOffset] = useState(140);
+
+  useEffect(() => {
+    async function fetchTx() {
+      const { data } = await supabase.from('escrow_transactions').select('shipped_at').eq('id', transactionId).single();
+      if (data?.shipped_at) setShippedAt(data.shipped_at);
+    }
+    fetchTx();
+  }, [transactionId]);
+
+  useEffect(() => {
+    if (!shippedAt) return;
+    
+    const interval = setInterval(() => {
+      const shippedTime = new Date(shippedAt).getTime();
+      const deadline = shippedTime + 48 * 60 * 60 * 1000;
+      const now = Date.now();
+      const diff = deadline - now;
+      
+      if (diff <= 0) {
+        setTimeLeft({ hours: 0, minutes: 0, seconds: 0 });
+        setStrokeOffset(565.48); // Full circle stroke hidden
+        clearInterval(interval);
+        return;
+      }
+      
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+      
+      setTimeLeft({ hours, minutes, seconds });
+      
+      // Update SVG stroke (0 = full circle, 565.48 = empty)
+      // Percentage of time elapsed: 0 to 1
+      const totalTime = 48 * 60 * 60 * 1000;
+      const elapsed = totalTime - diff;
+      const percentage = elapsed / totalTime;
+      // dasharray is 565.48. dashoffset goes from 0 (full) to 565.48 (empty).
+      // At start (0% elapsed), it's full (0 offset). At end (100% elapsed), it's empty (565.48).
+      setStrokeOffset(percentage * 565.48);
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, [shippedAt]);
+
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  const timerDisplay = `${pad(timeLeft.hours)}:${pad(timeLeft.minutes)}:${pad(timeLeft.seconds)}`;
+
 
   const handleConfirm = useCallback(async () => {
     if (!user) return;
@@ -61,10 +113,10 @@ export default function ConfirmReceiptPage() {
           <div className="relative w-48 h-48 flex items-center justify-center">
             <svg className="w-full h-full" style={{ transform: 'rotate(-90deg)' }}>
               <circle cx="96" cy="96" r="90" fill="none" className="stroke-[#1d2025] stroke-[6px]"></circle>
-              <circle cx="96" cy="96" r="90" fill="none" className="stroke-[#82db7e] stroke-[6px]" strokeLinecap="round" strokeDasharray="565.48" strokeDashoffset="140"></circle>
+              <circle cx="96" cy="96" r="90" fill="none" className="stroke-[#82db7e] stroke-[6px]" strokeLinecap="round" strokeDasharray="565.48" strokeDashoffset={strokeOffset}></circle>
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center pt-2">
-              <span className="font-brand text-[2.5rem] text-primary leading-none" style={{ fontFamily: "Jersey 25, cursive" }}>48:00:00</span>
+              <span className="font-brand text-[2.5rem] text-primary leading-none" style={{ fontFamily: "Jersey 25, cursive" }}>{timerDisplay}</span>
             </div>
           </div>
           <p className="font-editorial text-[0.6875rem] text-on-surface-variant mt-4 uppercase tracking-widest text-center">

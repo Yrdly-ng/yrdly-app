@@ -412,6 +412,7 @@ export function NotificationsDropdown({ isOpen, onClose, onNotificationCountChan
     try {
       await supabase.from('notifications').update({ is_read: true }).eq('id', id);
       setNotifications(prev => prev.map(notif => notif.id === id ? { ...notif, is_read: true } : notif));
+      window.dispatchEvent(new Event("notifications_read"));
     } catch { toast({ title: "Error", description: "Failed to mark read.", variant: "destructive" }); }
   };
 
@@ -421,6 +422,7 @@ export function NotificationsDropdown({ isOpen, onClose, onNotificationCountChan
     const promises = unreadIds.map(id => supabase.from('notifications').update({ is_read: true }).eq('id', id));
     await Promise.all(promises);
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    window.dispatchEvent(new Event("notifications_read"));
   };
 
   const handleDelete = async (id: string) => {

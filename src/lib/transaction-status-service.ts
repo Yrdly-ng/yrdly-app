@@ -223,82 +223,28 @@ export class TransactionStatusService {
    */
   static async completeTransaction(transactionId: string): Promise<void> {
     try {
-      const { data: transaction, error: fetchError } = await supabase
-        .from('escrow_transactions')
-        .select('status, seller_amount, seller_id')
-        .eq('id', transactionId)
-        .single();
-
-      if (fetchError) {
-        throw new Error('Transaction not found');
-      }
-
-      if (transaction.status !== EscrowStatus.DELIVERED) {
-        throw new Error('Transaction must be delivered before completion');
-      }
-
-      // Update transaction status
-      const { error: updateError } = await supabase
-        .from('escrow_transactions')
-        .update({
-          status: EscrowStatus.COMPLETED,
-          completed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', transactionId);
-
-      if (updateError) {
-        console.error('Error completing transaction:', updateError);
-        throw updateError;
-      }
-
-      // Initiate payout to seller now that buyer has confirmed receipt
-      try {
-        await PayoutService.initiateAutoPayout(transactionId);
-      } catch (payoutError) {
-        console.error('Payout initiation failed after buyer confirmation:', payoutError);
-        // Don't throw — transaction is still completed even if payout initiation fails
-      }
+      const sessionResponse = await supabase.auth.getSession();
+      const token = sessionResponse.data.session?.access_token;
       
-      // Send notification to seller about funds release
-      try {
-        const { data: transaction } = await supabase
-          .from('escrow_transactions')
-          .select(`
-            seller_id,
-            seller_amount,
-            item:posts(title, text)
-          `)
-          .eq('id', transactionId)
-          .single();
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
 
-        if (transaction) {
-          const itemTitle = transaction.item?.[0]?.title || transaction.item?.[0]?.text || 'Item';
-
-          await NotificationService.createFundsReleasedNotification(
-            transaction.seller_id,
-            transaction.seller_amount,
-            itemTitle,
-            transactionId
-          );
+      const res = await fetch(`/api/transactions/${transactionId}/complete`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
         }
-      } catch (notificationError) {
-        console.error('Failed to send funds released notification:', notificationError);
-        // Don't throw error - transaction is still completed
-      }
+      });
 
-      // Initiate automatic payout to seller
-      try {
-        const { PayoutService } = await import('./payout-service');
-        await PayoutService.initiateAutoPayout(transactionId);
-      } catch (payoutError) {
-        console.error('Failed to initiate payout:', payoutError);
-        // Don't throw error here - transaction is still completed
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to complete transaction');
       }
-
     } catch (error) {
       console.error('Failed to complete transaction:', error);
-      throw new Error('Failed to complete transaction');
+      throw error;
     }
   }
 

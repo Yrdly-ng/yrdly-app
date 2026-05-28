@@ -89,8 +89,12 @@ export function MainLayout({ children }: MainLayoutProps) {
         fetchUnreadCount
       )
       .subscribe();
+      
+    window.addEventListener("notifications_read", fetchUnreadCount);
+
     return () => {
       supabase.removeChannel(ch);
+      window.removeEventListener("notifications_read", fetchUnreadCount);
     };
   }, [user]);
 

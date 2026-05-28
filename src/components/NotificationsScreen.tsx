@@ -452,6 +452,7 @@ export function NotificationsScreen({ className }: NotificationsScreenProps) {
   const handleMarkAsRead = async (id: string) => {
     await supabase.from("notifications").update({ is_read: true }).eq("id", id);
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
+    window.dispatchEvent(new Event("notifications_read"));
   };
 
   const handleMarkAllRead = async () => {
@@ -460,6 +461,7 @@ export function NotificationsScreen({ className }: NotificationsScreenProps) {
     await supabase.from("notifications").update({ is_read: true }).in("id", unreadIds);
     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
     toast({ title: "All marked as read" });
+    window.dispatchEvent(new Event("notifications_read"));
   };
 
   const handleDelete = async (id: string) => {
