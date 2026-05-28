@@ -200,6 +200,36 @@ export function MarketplaceChatLayout({
     }
   }, [selectedChatId, chats]);
 
+  // Mark messages as read when a chat is selected
+  useEffect(() => {
+    if (selectedChat?.id && user?.id) {
+      SupabaseChatService.markMessagesAsRead(selectedChat.id, user.id)
+        .catch(console.error);
+
+      // We must ALSO update conversations for UI responsiveness
+      const markConv = async () => {
+        const { data: conv } = await supabase.from("conversations").select("context, last_message_timestamp").eq("id", selectedChat.id).single();
+        if (conv) {
+          const lastMsgDate = conv.last_message_timestamp ? new Date(conv.last_message_timestamp).getTime() : 0;
+          const readReceiptStr = conv.context?.read_receipts?.[user.id];
+          const readReceiptDate = readReceiptStr ? new Date(readReceiptStr).getTime() : 0;
+          
+          if (readReceiptDate >= lastMsgDate && lastMsgDate > 0) return;
+
+          const newContext = {
+            ...(conv.context || {}),
+            read_receipts: {
+              ...(conv.context?.read_receipts || {}),
+              [user.id]: new Date().toISOString()
+            }
+          };
+          await supabase.from("conversations").update({ context: newContext, updated_at: new Date().toISOString() }).eq("id", selectedChat.id);
+        }
+      };
+      markConv();
+    }
+  }, [selectedChat?.id, user?.id]);
+
   const handleChatSelect = useCallback((chat: ItemChat) => {
     router.push(`/messages/marketplace/${chat.id}`);
   }, [router]);

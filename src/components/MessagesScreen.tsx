@@ -96,6 +96,11 @@ export function MessagesScreen() {
 
         const withCounts = await Promise.all(
           (data || []).map(async (conv) => {
+            const readReceiptStr = conv.context?.read_receipts?.[user.id];
+            const readReceiptDate = readReceiptStr ? new Date(readReceiptStr).getTime() : 0;
+            const lastMsgDate = conv.last_message_timestamp ? new Date(conv.last_message_timestamp).getTime() : 0;
+            const isReadByReceipt = readReceiptDate >= lastMsgDate && lastMsgDate > 0;
+
             if (conv.type === "marketplace") {
               const { data: chatMsgs } = await supabase
                 .from("chat_messages")
@@ -103,15 +108,15 @@ export function MessagesScreen() {
                 .eq("chat_id", conv.id)
                 .order("created_at", { ascending: true });
               const last = chatMsgs?.[chatMsgs.length - 1];
-              if (!last || last.sender_id === user.id) return { ...conv, unread_count: 0 };
-              return { ...conv, unread_count: (chatMsgs || []).filter((m: any) => m.sender_id !== user.id && !m.metadata?.isRead).length };
+              if (!last || last.sender_id === user.id || isReadByReceipt) return { ...conv, unread_count: 0 };
+              return { ...conv, unread_count: (chatMsgs || []).filter((m: any) => m.sender_id !== user.id && !m.metadata?.isRead).length || 1 };
             }
             const last = conv.messages?.[conv.messages.length - 1];
-            if (!last || last.sender_id === user.id) return { ...conv, unread_count: 0 };
+            if (!last || last.sender_id === user.id || isReadByReceipt) return { ...conv, unread_count: 0 };
             const unread = (conv.messages || []).filter(
               (m: any) => m.sender_id !== user.id && (!m.is_read || !m.read_by?.includes(user.id))
             ).length;
-            return { ...conv, unread_count: unread };
+            return { ...conv, unread_count: unread || 1 };
           })
         );
 

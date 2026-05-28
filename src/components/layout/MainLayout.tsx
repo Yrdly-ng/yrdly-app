@@ -104,11 +104,18 @@ export function MainLayout({ children }: MainLayoutProps) {
       try {
         const { data, error } = await supabase
           .from("conversations")
-          .select("id, type, participant_ids")
+          .select("id, type, participant_ids, context, last_message_timestamp")
           .contains("participant_ids", [user.id]);
         if (error) return;
         let unreadChatsCount = 0;
         for (const conv of data || []) {
+          const readReceiptStr = conv.context?.read_receipts?.[user.id];
+          const readReceiptDate = readReceiptStr ? new Date(readReceiptStr).getTime() : 0;
+          const lastMsgDate = conv.last_message_timestamp ? new Date(conv.last_message_timestamp).getTime() : 0;
+          const isReadByReceipt = readReceiptDate >= lastMsgDate && lastMsgDate > 0;
+
+          if (isReadByReceipt) continue;
+
           if (conv.type === "marketplace") {
             const { data: msgs } = await supabase
               .from("chat_messages")

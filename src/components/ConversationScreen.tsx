@@ -25,6 +25,7 @@ interface ConversationRow {
   last_message_sender_id: string | null;
   created_at: string;
   updated_at: string;
+  context?: any;
 }
 
 interface ChatMessage {
@@ -136,15 +137,32 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
         .neq("sender_id", user.id);
       
       const toUpdate = (unread || []).filter(msg => !msg.read_by?.includes(user.id));
-      if (toUpdate.length === 0) return;
-
-      for (const msg of toUpdate) {
-        await supabase.from("messages")
-          .update({ is_read: true, read_by: [...(msg.read_by || []), user.id] })
-          .eq("id", msg.id);
+      if (toUpdate.length > 0) {
+        for (const msg of toUpdate) {
+          await supabase.from("messages")
+            .update({ is_read: true, read_by: [...(msg.read_by || []), user.id] })
+            .eq("id", msg.id);
+        }
       }
+
+      const lastMsgDate = conversation.last_message_timestamp ? new Date(conversation.last_message_timestamp).getTime() : 0;
+      const readReceiptStr = conversation.context?.read_receipts?.[user.id];
+      const readReceiptDate = readReceiptStr ? new Date(readReceiptStr).getTime() : 0;
+      
+      if (readReceiptDate >= lastMsgDate && toUpdate.length === 0) {
+        return;
+      }
+      
+      const newContext = {
+        ...(conversation.context || {}),
+        read_receipts: {
+          ...(conversation.context?.read_receipts || {}),
+          [user.id]: new Date().toISOString()
+        }
+      };
+
       await supabase.from("conversations")
-        .update({ unread_count: 0, updated_at: new Date().toISOString() })
+        .update({ context: newContext, unread_count: 0, updated_at: new Date().toISOString() })
         .eq("id", conversation.id);
     };
     mark();
