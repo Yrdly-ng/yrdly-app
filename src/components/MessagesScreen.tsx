@@ -99,12 +99,12 @@ export function MessagesScreen() {
             if (conv.type === "marketplace") {
               const { data: chatMsgs } = await supabase
                 .from("chat_messages")
-                .select("sender_id, created_at")
+                .select("sender_id, created_at, metadata")
                 .eq("chat_id", conv.id)
                 .order("created_at", { ascending: true });
               const last = chatMsgs?.[chatMsgs.length - 1];
               if (!last || last.sender_id === user.id) return { ...conv, unread_count: 0 };
-              return { ...conv, unread_count: (chatMsgs || []).filter((m: any) => m.sender_id !== user.id).length };
+              return { ...conv, unread_count: (chatMsgs || []).filter((m: any) => m.sender_id !== user.id && !m.metadata?.isRead).length };
             }
             const last = conv.messages?.[conv.messages.length - 1];
             if (!last || last.sender_id === user.id) return { ...conv, unread_count: 0 };

@@ -133,9 +133,12 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
       const { data: unread } = await supabase
         .from("messages").select("id, read_by")
         .eq("conversation_id", conversation.id)
-        .neq("sender_id", user.id).eq("is_read", false);
-      if (!unread || unread.length === 0) return;
-      for (const msg of unread) {
+        .neq("sender_id", user.id);
+      
+      const toUpdate = (unread || []).filter(msg => !msg.read_by?.includes(user.id));
+      if (toUpdate.length === 0) return;
+
+      for (const msg of toUpdate) {
         await supabase.from("messages")
           .update({ is_read: true, read_by: [...(msg.read_by || []), user.id] })
           .eq("id", msg.id);

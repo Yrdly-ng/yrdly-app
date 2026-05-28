@@ -112,12 +112,12 @@ export function MainLayout({ children }: MainLayoutProps) {
           if (conv.type === "marketplace") {
             const { data: msgs } = await supabase
               .from("chat_messages")
-              .select("sender_id")
+              .select("sender_id, metadata")
               .eq("chat_id", conv.id)
               .order("created_at", { ascending: false })
               .limit(1)
               .maybeSingle();
-            if (msgs && msgs.sender_id !== user.id) unreadChatsCount++;
+            if (msgs && msgs.sender_id !== user.id && !msgs.metadata?.isRead) unreadChatsCount++;
           } else {
             const { data: msgs } = await supabase
               .from("messages")
