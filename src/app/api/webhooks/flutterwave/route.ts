@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
       }
 
       // ── Update to PAID ──────────────────────────────────
-      const { error: updateError } = await supabaseAdmin
+      const { data: updateData, error: updateError } = await supabaseAdmin
         .from('escrow_transactions')
         .update({
           status: EscrowStatus.PAID,
@@ -118,10 +118,16 @@ export async function POST(request: NextRequest) {
           paid_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
-        .eq('id', txRef);
+        .eq('id', txRef)
+        .eq('status', EscrowStatus.PENDING)
+        .select();
 
       if (updateError) {
         console.error(`[Webhook] Failed to update escrow transaction ${txRef}:`, updateError);
+        return NextResponse.json({ status: 'ok' });
+      } else if (!updateData || updateData.length === 0) {
+        console.log(`[Webhook] Transaction ${txRef} already processed (race condition avoided)`);
+        return NextResponse.json({ status: 'ok' });
       } else {
         console.log(`[Webhook] Successfully updated transaction ${txRef} to PAID status`);
       }

@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Update escrow transaction status (admin bypasses RLS) ──
-    const { error: updateError } = await supabaseAdmin
+    const { data: updateData, error: updateError } = await supabaseAdmin
       .from('escrow_transactions')
       .update({
         status: EscrowStatus.PAID,
@@ -129,11 +129,21 @@ export async function POST(request: NextRequest) {
         paid_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
-      .eq('id', txRef);
+      .eq('id', txRef)
+      .eq('status', EscrowStatus.PENDING)
+      .select();
 
     if (updateError) {
       console.error(`[PaymentVerify] Failed to update escrow transaction ${txRef}:`, updateError);
       // Don't fail — payment was real, log and continue
+    } else if (!updateData || updateData.length === 0) {
+      console.log(`[PaymentVerify] Transaction ${txRef} already processed (race condition avoided)`);
+      return NextResponse.json({
+        success: true,
+        message: 'Payment verified successfully',
+        transactionId: txRef,
+        amount,
+      });
     } else {
       console.log(`[PaymentVerify] Successfully updated transaction ${txRef} to PAID`);
     }
