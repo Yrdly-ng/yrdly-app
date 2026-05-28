@@ -188,8 +188,8 @@ export class SupabaseChatService {
         senderName: message.sender_name,
         content: message.content,
         timestamp: new Date(message.created_at || message.timestamp),
-        // Note: isRead is computed - chat_messages table doesn't have is_read column
-        isRead: false,
+        // Parse isRead from metadata
+        isRead: message.metadata?.isRead || false,
         messageType: (message.message_type || 'text') as 'text' | 'image' | 'system',
         metadata: message.metadata || (message.message_type === 'image' ? { imageUrl: message.content } : undefined),
       }));
@@ -295,16 +295,33 @@ export class SupabaseChatService {
     };
   }
 
-  // Mark messages as read
-  // Note: chat_messages table doesn't have is_read column
-  // This functionality would need to be implemented differently (e.g., using a separate read_receipts table)
-  // For now, this is a no-op to maintain API compatibility
+  // Mark messages as read using the metadata column
   static async markMessagesAsRead(chatId: string, userId: string): Promise<void> {
     try {
-      // TODO: Implement read receipts if needed
-      // The chat_messages table doesn't have an is_read column
-      // Consider using a separate read_receipts table or storing in metadata
-      console.warn('markMessagesAsRead called but chat_messages table does not have is_read column');
+      // Fetch messages sent by the OTHER person
+      const { data: messages, error: fetchError } = await supabase
+        .from('chat_messages')
+        .select('id, metadata')
+        .eq('chat_id', chatId)
+        .neq('sender_id', userId);
+
+      if (fetchError) throw fetchError;
+      if (!messages || messages.length === 0) return;
+
+      // Filter for unread messages
+      const unreadMessages = messages.filter(m => !m.metadata || !m.metadata.isRead);
+      if (unreadMessages.length === 0) return;
+
+      // Update their metadata
+      const updatePromises = unreadMessages.map(msg => {
+        const newMetadata = { ...(msg.metadata || {}), isRead: true };
+        return supabase
+          .from('chat_messages')
+          .update({ metadata: newMetadata })
+          .eq('id', msg.id);
+      });
+
+      await Promise.all(updatePromises);
     } catch (error) {
       console.error('Error in markMessagesAsRead:', error);
       throw error;

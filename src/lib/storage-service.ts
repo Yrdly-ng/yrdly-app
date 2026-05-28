@@ -329,4 +329,27 @@ export class StorageService {
       return { url: null, error };
     }
   }
+
+  // Upload dispute evidence
+  static async uploadDisputeEvidence(
+    transactionId: string,
+    file: File
+  ): Promise<{ url: string | null; error: any }> {
+    try {
+      const fileName = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+      const path = `${transactionId}/${fileName}`;
+
+      const { data, error } = await this.uploadFile('dispute-evidence', path, file);
+      
+      if (error) {
+        return { url: null, error };
+      }
+
+      const publicUrl = this.getPublicUrl('dispute-evidence', path);
+      return { url: publicUrl, error: null };
+    } catch (error) {
+      console.error('Upload dispute evidence error:', error);
+      return { url: null, error };
+    }
+  }
 }

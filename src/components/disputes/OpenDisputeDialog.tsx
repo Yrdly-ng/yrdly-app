@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle, Upload, X, Loader2 } from 'lucide-react';
 import { DisputeService, DisputeEvidence } from '@/lib/dispute-service';
+import { StorageService } from '@/lib/storage-service';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-supabase-auth';
 
@@ -56,11 +57,31 @@ export function OpenDisputeDialog({ transactionId, children }: OpenDisputeDialog
     }
 
     setUploadedFiles(prev => [...prev, ...validFiles]);
+    setIsLoading(true);
 
-    // TODO: Upload files to Supabase storage and get URLs
-    // For now, we'll just use placeholder URLs
-    const newUrls = validFiles.map(() => `placeholder-url-${Date.now()}`);
-    setFileUrls(prev => [...prev, ...newUrls]);
+    try {
+      const uploadPromises = validFiles.map(async (file) => {
+        const { url, error } = await StorageService.uploadDisputeEvidence(transactionId, file);
+        if (error || !url) {
+          throw new Error('Failed to upload file');
+        }
+        return url;
+      });
+
+      const newUrls = await Promise.all(uploadPromises);
+      setFileUrls(prev => [...prev, ...newUrls]);
+    } catch (error) {
+      console.error('File upload error:', error);
+      toast({
+        title: "Upload Failed",
+        description: "Failed to upload some files. Please try again.",
+        variant: "destructive",
+      });
+      // Revert uploaded files since upload failed
+      setUploadedFiles(prev => prev.slice(0, prev.length - validFiles.length));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const removeFile = (index: number) => {
