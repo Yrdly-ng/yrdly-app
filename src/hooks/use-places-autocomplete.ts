@@ -34,9 +34,33 @@ export const usePlaces = () => {
   const getPlaceDetails = async (placeId: string) => {
     const results = await getGeocode({ placeId });
     const { lat, lng } = await getLatLng(results[0]);
+
+    let state = "";
+    let lga = "";
+    let ward = "";
+
+    if (results[0].address_components) {
+      results[0].address_components.forEach((component) => {
+        if (component.types.includes("administrative_area_level_1")) {
+          state = component.long_name.replace(" State", "");
+        }
+        if (component.types.includes("administrative_area_level_2")) {
+          lga = component.long_name.replace(" Local Government Area", "").replace(" LGA", "");
+        } else if (!lga && component.types.includes("locality")) {
+          lga = component.long_name;
+        }
+        if (component.types.includes("sublocality") || component.types.includes("neighborhood")) {
+          ward = component.long_name;
+        }
+      });
+    }
+
     return {
       address: results[0].formatted_address,
       geopoint: { latitude: lat, longitude: lng },
+      state,
+      lga,
+      ward,
     };
   };
 

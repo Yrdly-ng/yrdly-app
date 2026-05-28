@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -97,6 +97,7 @@ export function NewEventForm() {
           lng: values.location?.geopoint?.longitude,
           state: values.location?.state,
           lga: values.location?.lga,
+          ward: values.location?.ward,
           startTime: eventDateTime.toISOString(),
           publish: true,
           ticketTiers: values.ticketTiers,
