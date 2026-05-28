@@ -157,107 +157,109 @@ export function MainLayout({ children }: MainLayoutProps) {
     <>
       <div className="min-h-[100dvh] bg-[var(--c-bg)]" role="application">
         {/* ── Top Header ── */}
-        {!isChatPage && !isSubPage && (
-          <Suspense fallback={null}>
-            <header
-              className="fixed top-0 left-0 right-0 z-50 flex items-center px-4 md:px-6 bg-card border-b border-border shadow-sm pt-[max(env(safe-area-inset-top),0px)] h-[calc(4rem+env(safe-area-inset-top))] md:h-[calc(84px+env(safe-area-inset-top))]"
-            >
-              <div className="w-full max-w-7xl mx-auto flex items-center gap-4">
-                <Link href="/home" className="flex items-center gap-1.5 flex-shrink-0">
-                  <Image
-                    src="/yrdly-logo.png"
-                    alt="Yrdly"
-                    width={39}
-                    height={37}
-                    className="h-8 w-8 object-contain md:h-[37px] md:w-[39px]"
-                  />
-                </Link>
+        {/* ── Top Header ── */}
+        <Suspense fallback={null}>
+          <header
+            className={cn(
+              "fixed top-0 left-0 right-0 z-50 flex items-center px-4 md:px-6 bg-card border-b border-border shadow-sm pt-[max(env(safe-area-inset-top),0px)] h-[calc(4rem+env(safe-area-inset-top))] md:h-[calc(84px+env(safe-area-inset-top))]",
+              (isChatPage || isSubPage) ? "hidden lg:flex" : "flex"
+            )}
+          >
+            <div className="w-full max-w-7xl mx-auto flex items-center gap-4">
+              <Link href="/home" className="flex items-center gap-1.5 flex-shrink-0">
+                <Image
+                  src="/yrdly-logo.png"
+                  alt="Yrdly"
+                  width={39}
+                  height={37}
+                  className="h-8 w-8 object-contain md:h-[37px] md:w-[39px]"
+                />
+              </Link>
 
-                <div className="hidden md:flex flex-1 justify-center max-w-xl">
-                  <button
-                    type="button"
-                    onClick={() => setShowSearch(true)}
-                    className="w-full max-w-md h-10 rounded-full bg-background border border-border flex items-center gap-3 px-4 text-left hover:border-primary transition-colors"
+              <div className="hidden md:flex flex-1 justify-center max-w-xl">
+                <button
+                  type="button"
+                  onClick={() => setShowSearch(true)}
+                  className="w-full max-w-md h-10 rounded-full bg-background border border-border flex items-center gap-3 px-4 text-left hover:border-primary transition-colors"
+                >
+                  <MagnifyingGlass weight="bold" className="h-5 w-5 flex-shrink-0 text-[#767676]" />
+                  <span
+                    className="font-light italic text-xs text-[#767676] truncate"
+                    style={{ fontFamily: '"Inter", sans-serif' }}
                   >
-                    <MagnifyingGlass weight="bold" className="h-5 w-5 flex-shrink-0 text-[#767676]" />
-                    <span
-                      className="font-light italic text-xs text-[#767676] truncate"
-                      style={{ fontFamily: '"Inter", sans-serif' }}
-                    >
-                      Search for events, items
-                    </span>
-                  </button>
-                </div>
+                    Search for events, items
+                  </span>
+                </button>
+              </div>
 
-                <div className="flex items-center gap-1 ml-auto md:gap-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="md:hidden text-[#555555] hover:bg-[var(--c-bg)] rounded-full"
-                    onClick={() => setShowSearch(true)}
-                  >
-                    <MagnifyingGlass weight="bold" className="w-5 h-5" />
+              <div className="flex items-center gap-1 ml-auto md:gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="md:hidden text-[#555555] hover:bg-[var(--c-bg)] rounded-full"
+                  onClick={() => setShowSearch(true)}
+                >
+                  <MagnifyingGlass weight="bold" className="w-5 h-5" />
+                </Button>
+
+                <Link href="/map">
+                  <Button variant="ghost" size="icon" className="text-[#555555] hover:bg-[var(--c-bg)] rounded-full">
+                    <MapPin weight="bold" className="w-5 h-5" />
                   </Button>
-
-                  <Link href="/map">
-                    <Button variant="ghost" size="icon" className="text-[#555555] hover:bg-[var(--c-bg)] rounded-full">
-                      <MapPin weight="bold" className="w-5 h-5" />
-                    </Button>
-                  </Link>
-                  <Link href="/messages">
-                    <Button variant="ghost" size="icon" className="relative text-[#555555] hover:bg-[var(--c-bg)] rounded-full">
-                      <ChatCircle weight="fill" className="w-5 h-5" />
-                      {unreadMessagesCount > 0 && (
-                        <span
-                          className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 rounded-full flex items-center justify-center text-[0.5625rem] font-bold px-1"
-                          style={{ background: "#388E3C", color: "#fff", border: "1.5px solid #fff" }}
-                        >
-                          {unreadMessagesCount > 9 ? "9+" : unreadMessagesCount}
-                        </span>
-                      )}
-                    </Button>
-                  </Link>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="relative text-[#555555] hover:bg-[var(--c-bg)] rounded-full transition-colors"
-                    onClick={() => setShowNotifications(!showNotifications)}
-                  >
-                    <Bell weight="fill" className="w-5 h-5" />
-                    {unreadCount > 0 && (
+                </Link>
+                <Link href="/messages">
+                  <Button variant="ghost" size="icon" className="relative text-[#555555] hover:bg-[var(--c-bg)] rounded-full">
+                    <ChatCircle weight="fill" className="w-5 h-5" />
+                    {unreadMessagesCount > 0 && (
                       <span
                         className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 rounded-full flex items-center justify-center text-[0.5625rem] font-bold px-1"
                         style={{ background: "#388E3C", color: "#fff", border: "1.5px solid #fff" }}
                       >
-                        {unreadCount > 9 ? "9+" : unreadCount}
+                        {unreadMessagesCount > 9 ? "9+" : unreadMessagesCount}
                       </span>
                     )}
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="rounded-full overflow-hidden p-0.5"
-                    onClick={() => setShowProfile(!showProfile)}
-                  >
-                    <Avatar className="w-8 h-8 md:w-9 md:h-9 rounded-full">
-                      <AvatarImage src={profile?.avatar_url || "/diverse-user-avatars.png"} />
-                      <AvatarFallback
-                        style={{ background: "#388E3C", color: "#fff", fontFamily: "Inter, sans-serif", fontWeight: 700 }}
-                      >
-                        {profile?.name?.charAt(0).toUpperCase() || "U"}
-                      </AvatarFallback>
-                    </Avatar>
-                  </Button>
-                </div>
+                </Link>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="relative text-[#555555] hover:bg-[var(--c-bg)] rounded-full transition-colors"
+                  onClick={() => setShowNotifications(!showNotifications)}
+                >
+                  <Bell weight="fill" className="w-5 h-5" />
+                  {unreadCount > 0 && (
+                    <span
+                      className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 rounded-full flex items-center justify-center text-[0.5625rem] font-bold px-1"
+                      style={{ background: "#388E3C", color: "#fff", border: "1.5px solid #fff" }}
+                    >
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </span>
+                  )}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="rounded-full overflow-hidden p-0.5"
+                  onClick={() => setShowProfile(!showProfile)}
+                >
+                  <Avatar className="w-8 h-8 md:w-9 md:h-9 rounded-full">
+                    <AvatarImage src={profile?.avatar_url || "/diverse-user-avatars.png"} />
+                    <AvatarFallback
+                      style={{ background: "#388E3C", color: "#fff", fontFamily: "Inter, sans-serif", fontWeight: 700 }}
+                    >
+                      {profile?.name?.charAt(0).toUpperCase() || "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
               </div>
-            </header>
-          </Suspense>
-        )}
+            </div>
+          </header>
+        </Suspense>
 
         <div
           className={cn(
             "flex flex-col lg:flex-row min-h-[100dvh]",
-            (!isChatPage && !isSubPage) && "pt-16 md:pt-[84px]",
+            (isChatPage || isSubPage) ? "lg:pt-[84px]" : "pt-16 md:pt-[84px]",
             !isChatPage && "pb-[calc(64px+env(safe-area-inset-bottom)+2rem)] lg:pb-0"
           )}
         >
@@ -319,14 +321,13 @@ export function MainLayout({ children }: MainLayoutProps) {
           {/* ── Main Content ── */}
           <main
             className={cn(
-              "flex-1 w-full min-w-0",
-              !isChatPage && "px-3 sm:px-4 md:px-6 py-4",
-              !isChatPage && "lg:pl-[216px]"
+              "flex-1 w-full min-w-0 lg:pl-[216px]",
+              (isChatPage || isSubPage) ? "lg:px-6 lg:py-4 h-[100dvh] lg:h-auto" : "px-3 sm:px-4 md:px-6 py-4"
             )}
           >
             <ErrorBoundary>
               {isChatPage ? (
-                <div className="w-full h-full">{children}</div>
+                <div className="w-full h-full lg:h-[calc(100vh-120px)]">{children}</div>
               ) : (
                 <div className="w-full max-w-[680px] mx-auto lg:max-w-[660px]">
                   {children}
