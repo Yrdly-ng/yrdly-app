@@ -69,7 +69,7 @@ export function GpsLocationStep({ onLocationFound, onFallbackToManual }: GpsLoca
         <div className="w-full rounded-[24px] bg-[#388E3C]/10 border border-[#388E3C]/30 p-6 flex flex-col items-center justify-center space-y-3 text-center">
           <Map className="w-8 h-8 text-[#388E3C]" />
           <p className="text-[#388E3C] font-bold text-sm">
-            It looks like you're currently outside Nigeria. Please select your home community below.
+            It looks like you&apos;re currently outside Nigeria. Please select your home community below.
           </p>
         </div>
         <button
