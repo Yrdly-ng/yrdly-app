@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { Search, Navigation, Calendar, Briefcase, Users } from 'lucide-react';
-import { APIProvider, Map, AdvancedMarker, InfoWindow, useMap } from '@vis.gl/react-google-maps';
+import { Map, AdvancedMarker, InfoWindow, useMap } from '@vis.gl/react-google-maps';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/use-supabase-auth';
@@ -185,45 +185,43 @@ export function MapScreen({ className }: MapScreenProps) {
     <div className={`relative w-full overflow-hidden ${className ?? ''}`} style={{ height: '100dvh', background: 'var(--c-bg)' }}>
 
       {/* ── MAP ── */}
-      <APIProvider apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!} libraries={['places']}>
-        <Map
-          defaultCenter={userCoords ?? NIGERIA_CENTER}
-          defaultZoom={userCoords ? 14 : 6}
-          gestureHandling="greedy"
-          disableDefaultUI
-          mapId="7bdaf6c131a6958be5380043f"
-          className="w-full h-full"
-          /* @ts-ignore */
-          styles={DARK_MAP_STYLES}
-        >
-          {filtered.map(m => (
-            <AdvancedMarker key={m.id} position={m.position} onClick={() => { setSelected(m); setDrawerOpen(true); }}>
-              <div className="flex flex-col items-center cursor-pointer">
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center shadow-lg border-2"
-                  style={{ background: pinColor(m.type), borderColor: 'var(--c-bg)' }}
-                >
-                  {m.type === 'event'    && <Calendar className="w-5 h-5 text-foreground" />}
-                  {m.type === 'business' && <Briefcase className="w-5 h-5 text-foreground" />}
-                  {m.type === 'marketplace' && (
-                    <span className="text-foreground font-bold text-[0.6rem] px-1">
-                      {m.price === 0 ? 'Free' : `₦${(m.price || 0) / 1000}k`}
-                    </span>
-                  )}
-                  {m.type === 'friend'   && (
-                    m.avatar_url
-                      ? <div className="relative w-full h-full rounded-full overflow-hidden"><Image src={m.avatar_url} alt="" fill className="object-cover" sizes="40px" /></div>
-                      : <Users className="w-5 h-5 text-foreground" />
-                  )}
-                </div>
-                <div className="mt-1 px-2 py-0.5 rounded-full text-[0.5625rem] font-bold text-foreground" style={{ background: 'rgba(21,24,29,0.85)' }}>
-                  {m.title.length > 14 ? m.title.slice(0, 12) + '…' : m.title}
-                </div>
+      <Map
+        defaultCenter={userCoords ?? NIGERIA_CENTER}
+        defaultZoom={userCoords ? 14 : 6}
+        gestureHandling="greedy"
+        disableDefaultUI
+        mapId="7bdaf6c131a6958be5380043f"
+        className="w-full h-full"
+        /* @ts-ignore */
+        styles={DARK_MAP_STYLES}
+      >
+        {filtered.map(m => (
+          <AdvancedMarker key={m.id} position={m.position} onClick={() => { setSelected(m); setDrawerOpen(true); }}>
+            <div className="flex flex-col items-center cursor-pointer">
+              <div
+                className="w-10 h-10 rounded-full flex items-center justify-center shadow-lg border-2"
+                style={{ background: pinColor(m.type), borderColor: 'var(--c-bg)' }}
+              >
+                {m.type === 'event'    && <Calendar className="w-5 h-5 text-foreground" />}
+                {m.type === 'business' && <Briefcase className="w-5 h-5 text-foreground" />}
+                {m.type === 'marketplace' && (
+                  <span className="text-foreground font-bold text-[0.6rem] px-1">
+                    {m.price === 0 ? 'Free' : `₦${(m.price || 0) / 1000}k`}
+                  </span>
+                )}
+                {m.type === 'friend'   && (
+                  m.avatar_url
+                    ? <div className="relative w-full h-full rounded-full overflow-hidden"><Image src={m.avatar_url} alt="" fill className="object-cover" sizes="40px" /></div>
+                    : <Users className="w-5 h-5 text-foreground" />
+                )}
               </div>
-            </AdvancedMarker>
-          ))}
-        </Map>
-      </APIProvider>
+              <div className="mt-1 px-2 py-0.5 rounded-full text-[0.5625rem] font-bold text-foreground" style={{ background: 'rgba(21,24,29,0.85)' }}>
+                {m.title.length > 14 ? m.title.slice(0, 12) + '…' : m.title}
+              </div>
+            </div>
+          </AdvancedMarker>
+        ))}
+      </Map>
 
       {/* ── Rich Map Pin Drawer ── */}
       <Drawer open={drawerOpen} onOpenChange={(open) => { setDrawerOpen(open); if (!open) setTimeout(() => setSelected(null), 300); }}>

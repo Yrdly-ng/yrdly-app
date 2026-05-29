@@ -25,6 +25,12 @@ interface LocationContextType {
 const LocationContext = createContext<LocationContextType | undefined>(undefined);
 
 const GLOBAL_FILTER_STORAGE_KEY = "yrdly_global_filter";
+const EXPIRATION_TIME_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+interface PersistedFilter {
+  filter: LocationFilter;
+  timestamp: number;
+}
 
 export function LocationProvider({ children }: { children: React.ReactNode }) {
   const { profile } = useAuth();
@@ -45,9 +51,25 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
   // Restore persisted filter on mount, or fallback to user profile location
   useEffect(() => {
     try {
-      const savedFilter = localStorage.getItem(GLOBAL_FILTER_STORAGE_KEY);
-      if (savedFilter) {
-        setActiveFilterRaw(JSON.parse(savedFilter));
+      const savedData = localStorage.getItem(GLOBAL_FILTER_STORAGE_KEY);
+      if (savedData) {
+        const parsed = JSON.parse(savedData);
+        
+        // Handle migration from old format where the filter itself was saved directly
+        // and new format where it is { filter, timestamp }
+        if (parsed.timestamp && parsed.filter) {
+          const isExpired = Date.now() - parsed.timestamp > EXPIRATION_TIME_MS;
+          if (isExpired) {
+            localStorage.removeItem(GLOBAL_FILTER_STORAGE_KEY);
+            if (hasLocation) setActiveFilterRaw({ state: userState, lga: userLga });
+          } else {
+            setActiveFilterRaw(parsed.filter);
+          }
+        } else {
+          // Old format detected - clear it to enforce home reset
+          localStorage.removeItem(GLOBAL_FILTER_STORAGE_KEY);
+          if (hasLocation) setActiveFilterRaw({ state: userState, lga: userLga });
+        }
       } else if (hasLocation) {
         // Default to user's LGA if no filter is set
         setActiveFilterRaw({ state: userState, lga: userLga });
@@ -64,7 +86,8 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
     setActiveFilterRaw(newFilter);
     try {
       if (newFilter) {
-        localStorage.setItem(GLOBAL_FILTER_STORAGE_KEY, JSON.stringify(newFilter));
+        const payload: PersistedFilter = { filter: newFilter, timestamp: Date.now() };
+        localStorage.setItem(GLOBAL_FILTER_STORAGE_KEY, JSON.stringify(payload));
       } else {
         localStorage.removeItem(GLOBAL_FILTER_STORAGE_KEY);
       }

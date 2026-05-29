@@ -23,6 +23,7 @@ import { onboardingAnalytics } from '@/lib/onboarding-analytics';
 import { supabase } from '@/lib/supabase';
 import { OnboardingProgress } from '@/components/onboarding/OnboardingProgress';
 import { LoadingState } from '@/components/onboarding/LoadingState';
+import { GpsLocationStep } from '@/components/onboarding/GpsLocationStep';
 
 const profileFormSchema = z.object({
   username: z.string()
@@ -54,6 +55,8 @@ export default function OnboardingProfilePage() {
   const [usernameError, setUsernameError] = useState<string | null>(null);
   const [usernameSuggestions, setUsernameSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showManualLocation, setShowManualLocation] = useState(false);
+  const [gpsLocation, setGpsLocation] = useState<{ lat?: number; lng?: number } | null>(null);
 
   // Use lazy loading hook for location data
   const { states, lgas, wards, isLoading: locationLoading, error: locationError, loadLgas, loadWards } = useLocationData();
@@ -225,11 +228,17 @@ export default function OnboardingProfilePage() {
       onboardingAnalytics.trackProfileSetupStarted(!!data.location.state);
 
       // Update user profile
-      await updateProfile({
+      const updates: any = {
         name: data.fullName,
         username: data.username,
         location: data.location,
-      });
+      };
+      
+      if (gpsLocation) {
+        updates.current_location = gpsLocation;
+      }
+
+      await updateProfile(updates);
 
       // Complete profile setup
       await completeProfile();
@@ -511,39 +520,65 @@ export default function OnboardingProfilePage() {
                       </TooltipProvider>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-3">
-                        <Label className="text-[0.6875rem] uppercase tracking-widest font-black text-muted-foreground ml-1">State / Region</Label>
-                        <Select value={form.watch('location.state')} onValueChange={handleStateChange}>
-                          <SelectTrigger className="h-16 rounded-[22px] bg-background/60 border-border text-lg font-bold px-6 focus:ring-[#388E3C]/30">
-                            <SelectValue placeholder="Select State" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-card border-border max-h-[300px] rounded-2xl shadow-2xl backdrop-blur-3xl">
-                            {states.filter(s => s).map(state => (
-                              <SelectItem key={state} value={state} className="focus:bg-[#388E3C] focus:text-white font-bold py-3 px-6 rounded-xl cursor-pointer transition-colors">{state}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                    {!showManualLocation ? (
+                      <GpsLocationStep
+                        onLocationFound={(loc) => {
+                          form.setValue('location.state', loc.state);
+                          form.setValue('location.lga', loc.lga);
+                          form.setValue('location.ward', loc.ward);
+                          if (loc.lat && loc.lng) {
+                            setGpsLocation({ lat: loc.lat, lng: loc.lng });
+                          }
+                          setShowManualLocation(true);
+                        }}
+                        onFallbackToManual={() => setShowManualLocation(true)}
+                      />
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-4 duration-500">
+                        <div className="space-y-3">
+                          <Label className="text-[0.6875rem] uppercase tracking-widest font-black text-muted-foreground ml-1">State / Region</Label>
+                          <Select value={form.watch('location.state')} onValueChange={handleStateChange}>
+                            <SelectTrigger className="h-16 rounded-[22px] bg-background/60 border-border text-lg font-bold px-6 focus:ring-[#388E3C]/30">
+                              <SelectValue placeholder="Select State" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-card border-border max-h-[300px] rounded-2xl shadow-2xl backdrop-blur-3xl">
+                              {states.filter(s => s).map(state => (
+                                <SelectItem key={state} value={state} className="focus:bg-[#388E3C] focus:text-white font-bold py-3 px-6 rounded-xl cursor-pointer transition-colors">{state}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
 
-                      <div className="space-y-3">
-                        <Label className="text-[0.6875rem] uppercase tracking-widest font-black text-muted-foreground ml-1">Local Gov Area</Label>
-                        <Select 
-                          value={form.watch('location.lga')} 
-                          onValueChange={handleLgaChange}
-                          disabled={!form.watch('location.state')}
-                        >
-                          <SelectTrigger className="h-16 rounded-[22px] bg-background/60 border-border text-lg font-bold px-6 focus:ring-[#388E3C]/30 disabled:opacity-30">
-                            <SelectValue placeholder="Select LGA" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-card border-border max-h-[300px] rounded-2xl shadow-2xl backdrop-blur-3xl">
-                            {lgas.filter(l => l).map(lga => (
-                              <SelectItem key={lga} value={lga} className="focus:bg-[#388E3C] focus:text-white font-bold py-3 px-6 rounded-xl cursor-pointer transition-colors">{lga}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <div className="space-y-3">
+                          <Label className="text-[0.6875rem] uppercase tracking-widest font-black text-muted-foreground ml-1">Local Gov Area</Label>
+                          <Select 
+                            value={form.watch('location.lga')} 
+                            onValueChange={handleLgaChange}
+                            disabled={!form.watch('location.state')}
+                          >
+                            <SelectTrigger className="h-16 rounded-[22px] bg-background/60 border-border text-lg font-bold px-6 focus:ring-[#388E3C]/30 disabled:opacity-30">
+                              <SelectValue placeholder="Select LGA" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-card border-border max-h-[300px] rounded-2xl shadow-2xl backdrop-blur-3xl">
+                              {lgas.filter(l => l).map(lga => (
+                                <SelectItem key={lga} value={lga} className="focus:bg-[#388E3C] focus:text-white font-bold py-3 px-6 rounded-xl cursor-pointer transition-colors">{lga}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        {/* Option to try GPS again */}
+                        <div className="col-span-full flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => setShowManualLocation(false)}
+                            className="text-sm font-bold text-[#388E3C] hover:text-[#2E7D32] transition-colors"
+                          >
+                            Use Auto-Detect instead
+                          </button>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
 

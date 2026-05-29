@@ -7,6 +7,7 @@ import { useLocationData } from "@/hooks/use-location-data";
 import { useLocation } from "@/contexts/LocationContext";
 import { ArrowLeft, MapPin, Check } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { GpsLocationStep } from "@/components/onboarding/GpsLocationStep";
 
 const FONT = "Inter, sans-serif";
 const PACIFICO = "Pacifico, cursive";
@@ -42,6 +43,7 @@ export default function LocationSettingsPage() {
   const [saved, setSaved] = useState(false);
   const [showMigrationPrompt, setShowMigrationPrompt] = useState(false);
   const [activeListingsCount, setActiveListingsCount] = useState(0);
+  const [showManualLocation, setShowManualLocation] = useState(!profileLocation?.state);
 
   // Load LGAs when state is set on mount
   useEffect(() => {
@@ -197,107 +199,135 @@ export default function LocationSettingsPage() {
           neighbors you see. Change it if you&apos;ve moved to a new area.
         </p>
 
-        {/* State selector */}
-        <div className="space-y-2">
-          <label
-            className="text-[0.75rem] uppercase tracking-wider px-1"
-            style={{ fontFamily: FONT, color: "var(--c-text-muted)" }}
-          >
-            State *
-          </label>
-          <select
-            value={selectedState}
-            onChange={(e) => handleStateChange(e.target.value)}
-            disabled={locationLoading}
-            className="w-full p-4 rounded-[11px] text-foreground text-[0.875rem] appearance-none outline-none"
-            style={{
-              background: 'var(--c-card)',
-              fontFamily: FONT,
-              border: selectedState ? `1px solid ${GREEN}` : "1px solid #333",
+        {!showManualLocation ? (
+          <GpsLocationStep
+            onLocationFound={(loc) => {
+              setSelectedState(loc.state);
+              setSelectedLga(loc.lga);
+              setSelectedWard(loc.ward);
+              loadLgas(loc.state);
+              if (loc.lga) loadWards(loc.state, loc.lga);
+              setSaved(false);
+              setShowManualLocation(true);
             }}
-          >
-            <option value="">Select your state</option>
-            {states
-              .filter((s) => s != null && s !== "")
-              .map((state) => (
-                <option key={state} value={state}>
-                  {state}
-                </option>
-              ))}
-          </select>
-        </div>
+            onFallbackToManual={() => setShowManualLocation(true)}
+          />
+        ) : (
+          <div className="space-y-6">
+            {/* State selector */}
+            <div className="space-y-2">
+              <label
+                className="text-[0.75rem] uppercase tracking-wider px-1"
+                style={{ fontFamily: FONT, color: "var(--c-text-muted)" }}
+              >
+                State *
+              </label>
+              <select
+                value={selectedState}
+                onChange={(e) => handleStateChange(e.target.value)}
+                disabled={locationLoading}
+                className="w-full p-4 rounded-[11px] text-foreground text-[0.875rem] appearance-none outline-none"
+                style={{
+                  background: 'var(--c-card)',
+                  fontFamily: FONT,
+                  border: selectedState ? `1px solid ${GREEN}` : "1px solid #333",
+                }}
+              >
+                <option value="">Select your state</option>
+                {states
+                  .filter((s) => s != null && s !== "")
+                  .map((state) => (
+                    <option key={state} value={state}>
+                      {state}
+                    </option>
+                  ))}
+              </select>
+            </div>
 
-        {/* LGA selector */}
-        <div className="space-y-2">
-          <label
-            className="text-[0.75rem] uppercase tracking-wider px-1"
-            style={{ fontFamily: FONT, color: "var(--c-text-muted)" }}
-          >
-            Local Government Area *
-          </label>
-          <select
-            value={selectedLga}
-            onChange={(e) => handleLgaChange(e.target.value)}
-            disabled={!selectedState || locationLoading}
-            className="w-full p-4 rounded-[11px] text-foreground text-[0.875rem] appearance-none outline-none"
-            style={{
-              background: 'var(--c-card)',
-              fontFamily: FONT,
-              border: selectedLga ? `1px solid ${GREEN}` : "1px solid #333",
-              opacity: !selectedState ? 0.5 : 1,
-            }}
-          >
-            <option value="">
-              {!selectedState ? "Select state first" : "Select your LGA"}
-            </option>
-            {lgas
-              .filter((l) => l != null && l !== "")
-              .map((lga) => (
-                <option key={lga} value={lga}>
-                  {lga}
+            {/* LGA selector */}
+            <div className="space-y-2">
+              <label
+                className="text-[0.75rem] uppercase tracking-wider px-1"
+                style={{ fontFamily: FONT, color: "var(--c-text-muted)" }}
+              >
+                Local Government Area *
+              </label>
+              <select
+                value={selectedLga}
+                onChange={(e) => handleLgaChange(e.target.value)}
+                disabled={!selectedState || locationLoading}
+                className="w-full p-4 rounded-[11px] text-foreground text-[0.875rem] appearance-none outline-none"
+                style={{
+                  background: 'var(--c-card)',
+                  fontFamily: FONT,
+                  border: selectedLga ? `1px solid ${GREEN}` : "1px solid #333",
+                  opacity: !selectedState ? 0.5 : 1,
+                }}
+              >
+                <option value="">
+                  {!selectedState ? "Select state first" : "Select your LGA"}
                 </option>
-              ))}
-          </select>
-        </div>
+                {lgas
+                  .filter((l) => l != null && l !== "")
+                  .map((lga) => (
+                    <option key={lga} value={lga}>
+                      {lga}
+                    </option>
+                  ))}
+              </select>
+            </div>
 
-        {/* Ward selector */}
-        <div className="space-y-2">
-          <label
-            className="text-[0.75rem] uppercase tracking-wider px-1"
-            style={{ fontFamily: FONT, color: "var(--c-text-muted)" }}
-          >
-            Ward (Optional)
-          </label>
-          <select
-            value={selectedWard}
-            onChange={(e) => handleWardChange(e.target.value)}
-            disabled={!selectedLga || locationLoading}
-            className="w-full p-4 rounded-[11px] text-foreground text-[0.875rem] appearance-none outline-none"
-            style={{
-              background: 'var(--c-card)',
-              fontFamily: FONT,
-              border: selectedWard ? `1px solid ${GREEN}` : "1px solid #333",
-              opacity: !selectedLga ? 0.5 : 1,
-            }}
-          >
-            <option value="">
-              {!selectedLga ? "Select LGA first" : "Select your ward"}
-            </option>
-            {wards
-              .filter((w) => w != null && w !== "")
-              .map((ward) => (
-                <option key={ward} value={ward}>
-                  {ward}
+            {/* Ward selector */}
+            <div className="space-y-2">
+              <label
+                className="text-[0.75rem] uppercase tracking-wider px-1"
+                style={{ fontFamily: FONT, color: "var(--c-text-muted)" }}
+              >
+                Ward (Optional)
+              </label>
+              <select
+                value={selectedWard}
+                onChange={(e) => handleWardChange(e.target.value)}
+                disabled={!selectedLga || locationLoading}
+                className="w-full p-4 rounded-[11px] text-foreground text-[0.875rem] appearance-none outline-none"
+                style={{
+                  background: 'var(--c-card)',
+                  fontFamily: FONT,
+                  border: selectedWard ? `1px solid ${GREEN}` : "1px solid #333",
+                  opacity: !selectedLga ? 0.5 : 1,
+                }}
+              >
+                <option value="">
+                  {!selectedLga ? "Select LGA first" : "Select your ward"}
                 </option>
-              ))}
-          </select>
-        </div>
+                {wards
+                  .filter((w) => w != null && w !== "")
+                  .map((ward) => (
+                    <option key={ward} value={ward}>
+                      {ward}
+                    </option>
+                  ))}
+              </select>
+            </div>
+            
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowManualLocation(false)}
+                className="text-sm font-bold transition-colors"
+                style={{ color: GREEN }}
+              >
+                Use Auto-Detect instead
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Save button */}
         <button
           onClick={handleSaveClick}
           disabled={!canSave || saving}
-          className="w-full py-4 rounded-full text-[0.875rem] font-bold transition-all active:scale-[0.98]"
+          className="w-full py-4 rounded-full text-[0.875rem] font-bold transition-all active:scale-[0.98] mt-6"
           style={{
             fontFamily: FONT,
             background: canSave ? GREEN : "#333",
