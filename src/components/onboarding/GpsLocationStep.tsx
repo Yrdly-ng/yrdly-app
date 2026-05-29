@@ -2,10 +2,11 @@
 
 import { useGpsLocation } from "@/hooks/use-gps-location";
 import { MapPin, Navigation, Map, AlertCircle, Loader2, CheckCircle2 } from "lucide-react";
+import { OUTSIDE_NIGERIA } from "@/lib/geocoding-service";
 
 interface GpsLocationStepProps {
   onLocationFound: (location: { state: string; lga: string; ward: string; lat?: number; lng?: number }) => void;
-  onFallbackToManual: () => void;
+  onFallbackToManual: (reason?: string) => void;
 }
 
 export function GpsLocationStep({ onLocationFound, onFallbackToManual }: GpsLocationStepProps) {
@@ -62,6 +63,26 @@ export function GpsLocationStep({ onLocationFound, onFallbackToManual }: GpsLoca
     );
   }
 
+  if (status === OUTSIDE_NIGERIA) {
+    return (
+      <div className="w-full space-y-4 animate-in fade-in zoom-in-95 duration-300">
+        <div className="w-full rounded-[24px] bg-[#388E3C]/10 border border-[#388E3C]/30 p-6 flex flex-col items-center justify-center space-y-3 text-center">
+          <Map className="w-8 h-8 text-[#388E3C]" />
+          <p className="text-[#388E3C] font-bold text-sm">
+            It looks like you're currently outside Nigeria. Please select your home community below.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => onFallbackToManual(OUTSIDE_NIGERIA)}
+          className="w-full py-4 rounded-xl text-white font-bold bg-[#388E3C] hover:bg-[#2E7D32] transition-colors shadow-lg"
+        >
+          Select State & LGA Manually
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full space-y-4">
       <button
@@ -99,7 +120,7 @@ export function GpsLocationStep({ onLocationFound, onFallbackToManual }: GpsLoca
 
       <button
         type="button"
-        onClick={onFallbackToManual}
+        onClick={() => onFallbackToManual()}
         className="w-full py-4 rounded-xl text-muted-foreground font-bold hover:text-white hover:bg-white/5 transition-colors border border-transparent hover:border-border"
       >
         Select State & LGA Manually

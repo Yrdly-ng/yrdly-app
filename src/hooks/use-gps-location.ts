@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import { reverseGeocode, ResolvedLocation } from "@/lib/geocoding-service";
+import { reverseGeocode, ResolvedLocation, OUTSIDE_NIGERIA } from "@/lib/geocoding-service";
 
 // ── Types ───────────────────────────────────────────────────────
 
@@ -13,7 +13,8 @@ export type GpsStatus =
   | "denied"
   | "unavailable"
   | "timeout"
-  | "error";
+  | "error"
+  | typeof OUTSIDE_NIGERIA;
 
 export interface GpsLocationResult extends ResolvedLocation {
   status: "success";
@@ -71,9 +72,18 @@ export function useGpsLocation() {
 
       const resolved = await reverseGeocode(latitude, longitude);
 
+      if ("status" in resolved && resolved.status === OUTSIDE_NIGERIA) {
+        setState({
+          status: OUTSIDE_NIGERIA,
+          location: null,
+          error: null,
+        });
+        return;
+      }
+
       setState({
         status: "success",
-        location: resolved,
+        location: resolved as ResolvedLocation,
         error: null,
       });
     } catch (err: any) {

@@ -55,6 +55,17 @@ export async function POST(request: NextRequest) {
       .eq('is_active', true)
       .single();
 
+    // Get user profile for location fallback and post creation
+    const { data: userProfile } = await supabaseAdmin
+      .from('users')
+      .select('name, avatar_url, location')
+      .eq('id', user.id)
+      .single();
+
+    const finalState = state || userProfile?.location?.state || null;
+    const finalLga = lga || userProfile?.location?.lga || null;
+    const finalWard = ward || userProfile?.location?.ward || null;
+
     const now = new Date().toISOString();
     const status = publish ? 'PUBLISHED' : 'DRAFT';
 
@@ -70,7 +81,7 @@ export async function POST(request: NextRequest) {
         location_address: locationAddress,
         location_online: locationOnline || false,
         online_link: onlineLink,
-        lat, lng, ward, lga, state,
+        lat, lng, ward: finalWard, lga: finalLga, state: finalState,
         start_time: startTime,
         end_time: endTime,
         timezone: timezone || 'Africa/Lagos',
@@ -113,12 +124,6 @@ export async function POST(request: NextRequest) {
     // ── Create linked post in community feed ──────────────
     if (publish) {
       try {
-        const { data: userProfile } = await supabaseAdmin
-          .from('users')
-          .select('name, avatar_url')
-          .eq('id', user.id)
-          .single();
-
         await supabaseAdmin.from('posts').insert({
           user_id: user.id,
           author_name: userProfile?.name || 'Anonymous',
@@ -126,16 +131,16 @@ export async function POST(request: NextRequest) {
           category: 'Event',
           title: title,
           text: description,
-          event_location: { address: locationAddress || state || '' },
+          event_location: { address: locationAddress || finalState || '' },
           event_date: startTime.split('T')[0],
           event_time: new Date(startTime).toTimeString().split(' ')[0].substring(0, 5),
           event_link: `${process.env.NEXT_PUBLIC_APP_URL || 'https://yrdly.ng'}/events/${event.id}`,
           image_urls: coverImageUrl ? [coverImageUrl] : [],
           timestamp: now,
-          state: state || null,
-          lga: lga || null,
-          ward: ward || null,
-          author_location: null,
+          state: finalState,
+          lga: finalLga,
+          ward: finalWard,
+          author_location: userProfile?.location || null,
           comment_count: 0,
           liked_by: [],
           attendees: [],

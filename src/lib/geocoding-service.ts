@@ -48,6 +48,8 @@ function haversine(
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+export const OUTSIDE_NIGERIA = "outside_nigeria";
+
 // ── Normalisation helper ────────────────────────────────────────
 // Google might return "Eti-Osa Local Government Area" while our dataset has
 // "Eti-Osa". Strip suffixes and normalise whitespace/hyphens for matching.
@@ -156,7 +158,7 @@ async function matchState(googleState: string): Promise<string> {
 export async function reverseGeocode(
   lat: number,
   lng: number,
-): Promise<ResolvedLocation> {
+): Promise<ResolvedLocation | { status: typeof OUTSIDE_NIGERIA }> {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
   let googleState = "";
@@ -173,9 +175,14 @@ export async function reverseGeocode(
 
       if (data.status === "OK" && data.results?.length > 0) {
         displayAddress = data.results[0].formatted_address || displayAddress;
+        
+        let country = "";
 
         for (const result of data.results) {
           for (const comp of result.address_components || []) {
+            if (comp.types.includes("country") && !country) {
+              country = comp.long_name;
+            }
             if (
               comp.types.includes("administrative_area_level_1") &&
               !googleState
@@ -194,6 +201,10 @@ export async function reverseGeocode(
                 .trim();
             }
           }
+        }
+        
+        if (!country || country !== "Nigeria") {
+          return { status: OUTSIDE_NIGERIA };
         }
       }
     } catch {

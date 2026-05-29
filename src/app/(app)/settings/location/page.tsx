@@ -8,6 +8,7 @@ import { useLocation } from "@/contexts/LocationContext";
 import { ArrowLeft, MapPin, Check } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { GpsLocationStep } from "@/components/onboarding/GpsLocationStep";
+import { OUTSIDE_NIGERIA } from "@/lib/geocoding-service";
 
 const FONT = "Inter, sans-serif";
 const PACIFICO = "Pacifico, cursive";
@@ -44,6 +45,7 @@ export default function LocationSettingsPage() {
   const [showMigrationPrompt, setShowMigrationPrompt] = useState(false);
   const [activeListingsCount, setActiveListingsCount] = useState(0);
   const [showManualLocation, setShowManualLocation] = useState(!profileLocation?.state);
+  const [manualReason, setManualReason] = useState<string>("");
 
   // Load LGAs when state is set on mount
   useEffect(() => {
@@ -210,10 +212,22 @@ export default function LocationSettingsPage() {
               setSaved(false);
               setShowManualLocation(true);
             }}
-            onFallbackToManual={() => setShowManualLocation(true)}
+            onFallbackToManual={(reason) => {
+              if (reason) setManualReason(reason);
+              setShowManualLocation(true);
+            }}
           />
         ) : (
           <div className="space-y-6">
+            {manualReason === OUTSIDE_NIGERIA && (
+              <div className="w-full rounded-[24px] bg-[#388E3C]/10 border border-[#388E3C]/30 p-4 flex flex-col items-center justify-center space-y-2 text-center animate-in fade-in slide-in-from-top-2 duration-300">
+                <MapPin className="w-6 h-6 text-[#388E3C]" />
+                <p className="text-[#388E3C] font-bold text-sm">
+                  It looks like you're currently outside Nigeria. Please select your home community below.
+                </p>
+              </div>
+            )}
+            
             {/* State selector */}
             <div className="space-y-2">
               <label
