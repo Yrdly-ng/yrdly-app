@@ -4,7 +4,7 @@ import { PayoutService } from '@/lib/payout-service';
 
 export async function POST(
   request: Request,
-  { params }: { params: { payoutId: string } }
+  { params }: { params: Promise<{ payoutId: string }> }
 ) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -21,7 +21,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const payoutId = params.payoutId;
+    const { payoutId } = await params;
 
     // Verify ownership and status
     const { data: payout, error: fetchError } = await supabaseAdmin
