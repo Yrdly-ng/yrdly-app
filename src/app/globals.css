@@ -49,6 +49,15 @@
     --sidebar-accent-foreground: 142 45% 25%;
     --sidebar-border: 0 0% 88%;
     --sidebar-ring: 142 45% 39%;
+
+    --surface-dim: #F5F5F5;
+    --surface-container-lowest: #FFFFFF;
+    --surface-container-low: #F2F2F2;
+    --surface-container: #FFFFFF;
+    --surface-container-high: #EAEAEA;
+    --surface-container-highest: #E0E0E0;
+    --on-surface: #1C1C1C;
+    --on-surface-variant: #616161;
   }
 
   /* ── Inline-style color tokens (used via var(--c-*) in JSX style props) ── */
@@ -104,6 +113,15 @@
     --sidebar-accent-foreground: 142 45% 39%;
     --sidebar-border: 220 12% 12%;
     --sidebar-ring: 142 45% 39%;
+
+    --surface-dim: #101418;
+    --surface-container-lowest: #0b0e13;
+    --surface-container-low: #191c21;
+    --surface-container: #1d2025;
+    --surface-container-high: #272a2f;
+    --surface-container-highest: #32353a;
+    --on-surface: #e1e2e9;
+    --on-surface-variant: #bfcab9;
   }
 }
 

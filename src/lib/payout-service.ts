@@ -174,6 +174,7 @@ export class PayoutService {
       const accountType = payoutRequest.seller_account.account_type;
 
       let transferSuccess = false;
+      let transferErrorMsg = 'Transfer failed';
       let transactionReference = '';
 
       try {
@@ -185,13 +186,18 @@ export class PayoutService {
             throw new Error('Missing bank details for payout. Seller must re-add their account.');
           }
 
-          transferSuccess = await FlutterwaveService.transferToSeller({
+          const transferResult = await FlutterwaveService.transferToSeller({
             bankCode,
             accountNumber,
             amount: payoutRequest.amount,
             reference: `payout-${payoutRequestId}`,
             narration: `Yrdly payout for transaction ${payoutRequestId}`,
           });
+          
+          transferSuccess = transferResult.success;
+          if (!transferSuccess && transferResult.error) {
+            transferErrorMsg = transferResult.error;
+          }
           transactionReference = `payout-${payoutRequestId}`;
         }
 
@@ -223,7 +229,7 @@ export class PayoutService {
             .from('payout_requests')
             .update({
               status: 'failed',
-              failure_reason: 'Transfer failed',
+              failure_reason: transferErrorMsg,
               processed_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
             })
@@ -234,7 +240,7 @@ export class PayoutService {
             await NotificationService.createPayoutFailedNotification(
               payoutRequest.seller_id,
               payoutRequest.amount,
-              'Transfer failed',
+              transferErrorMsg,
               payoutRequestId
             );
           } catch (notificationError) {

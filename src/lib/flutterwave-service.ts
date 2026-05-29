@@ -209,7 +209,7 @@ export class FlutterwaveService {
     amount: number;
     reference: string;
     narration: string;
-  }): Promise<boolean> {
+  }): Promise<{ success: boolean; error?: string }> {
     if (!flw) {
       throw new Error('Flutterwave service not available — call server-side only');
     }
@@ -226,10 +226,18 @@ export class FlutterwaveService {
       };
 
       const response = await flw.Transfer.initiate(payload);
-      return response.status === 'success';
-    } catch (error) {
+      
+      if (response.status === 'success') {
+        return { success: true };
+      } else {
+        return { success: false, error: response.message || 'Transfer failed' };
+      }
+    } catch (error: any) {
       console.error('Transfer to seller error:', error);
-      return false;
+      return { 
+        success: false, 
+        error: error?.message || error?.response?.data?.message || 'Unknown transfer error' 
+      };
     }
   }
 }

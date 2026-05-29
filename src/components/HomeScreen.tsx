@@ -78,7 +78,7 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
           {/* Input row */}
           <div className="flex items-center gap-3">
             <Avatar className="w-9 h-9 flex-shrink-0">
-              <AvatarImage src={profile?.avatar_url || "/diverse-user-avatars.png"} />
+              <AvatarImage src={profile?.avatar_url || ""} />
               <AvatarFallback className="text-sm text-foreground" style={{ background: GREEN }}>
                 {profile?.name?.charAt(0) || "U"}
               </AvatarFallback>

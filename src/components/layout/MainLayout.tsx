@@ -250,7 +250,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                   onClick={() => setShowProfile(!showProfile)}
                 >
                   <Avatar className="w-8 h-8 md:w-9 md:h-9 rounded-full">
-                    <AvatarImage src={profile?.avatar_url || "/diverse-user-avatars.png"} />
+                    <AvatarImage src={profile?.avatar_url || ""} />
                     <AvatarFallback
                       style={{ background: "#388E3C", color: "#fff", fontFamily: "Inter, sans-serif", fontWeight: 700 }}
                     >

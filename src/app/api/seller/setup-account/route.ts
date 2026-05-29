@@ -252,6 +252,13 @@ export async function GET(request: NextRequest) {
       : null;
     const inCoolingOff = coolingOffEnds ? new Date() < new Date(coolingOffEnds) : false;
 
+    const { data: failedPayoutsData } = await supabaseAdmin
+      .from('payout_requests')
+      .select('id, amount, failure_reason, requested_at')
+      .eq('seller_id', user.id)
+      .eq('status', 'failed')
+      .order('requested_at', { ascending: false });
+
     return NextResponse.json({
       account: {
         accountName: data.account_details?.account_name || '',
@@ -262,6 +269,7 @@ export async function GET(request: NextRequest) {
         coolingOffEnds,
         createdAt: data.created_at,
       },
+      failedPayouts: failedPayoutsData || [],
     });
   } catch (error) {
     console.error('Get seller account error:', error);

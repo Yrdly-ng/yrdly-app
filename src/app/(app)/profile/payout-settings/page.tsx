@@ -58,6 +58,14 @@ export default function PayoutSettingsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnTo = searchParams.get("returnTo");
+
+interface FailedPayout {
+  id: string;
+  amount: number;
+  failure_reason: string;
+  requested_at: string;
+}
+
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -68,6 +76,8 @@ export default function PayoutSettingsPage() {
   const [fetching, setFetching]         = useState(true);
   const [existing, setExisting]         = useState<ExistingAccount | null>(null);
   const [showForm, setShowForm]         = useState(false);
+  const [failedPayouts, setFailedPayouts] = useState<FailedPayout[]>([]);
+  const [retryingId, setRetryingId]     = useState<string | null>(null);
 
   // Fetch existing account on mount
   useEffect(() => {
@@ -83,6 +93,9 @@ export default function PayoutSettingsPage() {
           setExisting(data.account);
         } else {
           setShowForm(true);
+        }
+        if (data.failedPayouts) {
+          setFailedPayouts(data.failedPayouts);
         }
       } catch (err) {
         console.error("Failed to fetch account:", err);
@@ -132,6 +145,30 @@ export default function PayoutSettingsPage() {
       setLoading(false);
     }
   }, [bankCode, accountNumber, accountName, toast, returnTo, router]);
+
+  const handleRetryPayout = async (payoutId: string) => {
+    setRetryingId(payoutId);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`/api/seller/payouts/${payoutId}/retry`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast({ title: "Retry Failed", description: data.error || "Failed to retry payout.", variant: "destructive" });
+        return;
+      }
+      toast({ title: "Transfer Retried", description: "Your payout is processing. Please check your bank." });
+      setFailedPayouts(prev => prev.filter(p => p.id !== payoutId));
+    } catch (err) {
+      toast({ title: "Error", description: "Network error occurred.", variant: "destructive" });
+    } finally {
+      setRetryingId(null);
+    }
+  };
 
   const getBankName = (code: string) =>
     NIGERIAN_BANKS.find((b) => b.code === code)?.name || code;
@@ -244,6 +281,48 @@ export default function PayoutSettingsPage() {
             </p>
           </div>
         </section>
+
+        {/* Failed Payouts Section */}
+        {failedPayouts.length > 0 && !showForm && (
+          <section className="space-y-4">
+            <h3 className="text-sm font-black text-red-500 uppercase tracking-widest flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" />
+              Failed Transfers
+            </h3>
+            <div className="space-y-3">
+              {failedPayouts.map((payout) => (
+                <div 
+                  key={payout.id}
+                  className="rounded-[24px] p-5 flex items-center justify-between"
+                  style={{ background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.2)" }}
+                >
+                  <div>
+                    <p className="text-lg font-black text-foreground">₦{payout.amount.toLocaleString()}</p>
+                    <p className="text-xs text-red-500 font-bold max-w-[200px] truncate" title={payout.failure_reason}>
+                      Error: {payout.failure_reason || "Transfer failed"}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      {new Date(payout.requested_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleRetryPayout(payout.id)}
+                    disabled={retryingId === payout.id || !existing}
+                    className="h-10 px-6 rounded-full text-xs font-black uppercase tracking-widest text-white transition-all active:scale-95 disabled:opacity-50"
+                    style={{ background: "#EF4444" }}
+                  >
+                    {retryingId === payout.id ? "Retrying..." : "Retry"}
+                  </button>
+                </div>
+              ))}
+            </div>
+            {!existing && (
+              <p className="text-xs text-red-500 font-medium">
+                You must update your bank details below before you can retry failed transfers.
+              </p>
+            )}
+          </section>
+        )}
 
         {/* Existing account display */}
         {existing && !showForm && (
