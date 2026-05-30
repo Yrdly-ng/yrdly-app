@@ -654,7 +654,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
                 playsInline
                 preload="metadata"
                 poster={post.video_thumbnail_url ?? undefined}
-                className="w-full max-h-[360px] object-contain"
+                className="w-full max-h-[360px] object-cover"
                 style={{ borderRadius: 12 }}
               />
             </div>

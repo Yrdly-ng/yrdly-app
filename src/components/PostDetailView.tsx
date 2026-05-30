@@ -283,7 +283,7 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
               playsInline
               preload="metadata"
               poster={post.video_thumbnail_url ?? undefined}
-              className="w-full object-contain"
+              className="w-full object-cover"
               style={{ borderRadius: 12, maxHeight: 400 }}
             />
           </div>

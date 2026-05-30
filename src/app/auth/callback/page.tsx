@@ -112,20 +112,46 @@ export default function AuthCallback() {
   }, [router]);
 
   return (
-    <div className="min-h-[100dvh] flex items-center justify-center bg-gray-50">
-      <div className="text-center max-w-md mx-auto p-6">
-        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-        <p className="text-gray-600 mb-2">{status}</p>
+    <div
+      className="min-h-[100dvh] flex flex-col items-center justify-center px-4 py-10 overflow-x-hidden"
+      style={{ background: "var(--c-bg)", color: "var(--c-text)", fontFamily: "Inter, sans-serif" }}
+    >
+      {/* Ambient glow */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div
+          className="absolute top-[-15%] right-[-15%] w-[55%] h-[55%] rounded-full blur-[160px] opacity-15"
+          style={{ background: "radial-gradient(circle, #388E3C 0%, transparent 70%)" }}
+        />
+        <div
+          className="absolute bottom-[-15%] left-[-15%] w-[55%] h-[55%] rounded-full blur-[160px] opacity-10"
+          style={{ background: "radial-gradient(circle, #388E3C 0%, transparent 70%)" }}
+        />
+      </div>
+
+      <div className="relative z-10 w-full max-w-[420px] flex flex-col items-center gap-8">
+        <div className="text-center font-sans flex flex-col items-center gap-4">
+          <img
+            src="/yrdly-logo.png"
+            alt="Yrdly"
+            width={72}
+            height={72}
+            className="animate-pulse rounded-[16px] shadow-2xl"
+          />
+          <h1 className="text-xl font-bold tracking-tight mt-2" style={{ color: "var(--c-text)" }}>
+            {status}
+          </h1>
+        </div>
+        
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-md p-3 mb-4">
-            <p className="text-red-600 text-sm">{error}</p>
+          <div className="w-full rounded-[16px] p-4 text-center" style={{ background: "rgba(239, 68, 68, 0.1)", border: "1px solid rgba(239, 68, 68, 0.2)" }}>
+            <p className="text-sm font-medium" style={{ color: "#ef4444" }}>{error}</p>
           </div>
         )}
-        <p className="text-sm text-gray-500 mt-2">
-          If this takes too long, <a href="/home" className="text-blue-600 underline">click here</a>
+        
+        <p className="text-sm font-medium" style={{ color: "var(--c-text-muted)" }}>
+          If this takes too long, <a href="/home" className="underline transition-opacity hover:opacity-80" style={{ color: "#388E3C" }}>click here</a>
         </p>
       </div>
     </div>
   );
 }
-
