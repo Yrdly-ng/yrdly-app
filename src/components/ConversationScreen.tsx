@@ -272,7 +272,7 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
   /* ─── Render ─── */
   if (loading) {
     return (
-      <div className="flex flex-col h-[100dvh]" style={{ background: BG }}>
+      <div className="flex flex-col h-full" style={{ background: BG }}>
         <div className="h-16 animate-pulse" style={{ background: CARD }} />
         <div className="flex-1 flex items-center justify-center">
           <div className="w-8 h-8 rounded-full border-2 border-[#388E3C] border-t-transparent animate-spin" />
@@ -283,7 +283,7 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
 
   if (!conversation || !otherParticipant) {
     return (
-      <div className="flex flex-col h-[100dvh] items-center justify-center" style={{ background: BG }}>
+      <div className="flex flex-col h-full items-center justify-center" style={{ background: BG }}>
         <MessageCircle className="w-12 h-12 mb-4" style={{ color: GREEN, opacity: 0.4 }} />
         <p className="text-foreground mb-4" style={{ fontFamily: FONT }}>Conversation not found</p>
         <button onClick={() => router.push("/messages")} className="rounded-full px-6 py-2 text-foreground text-sm" style={{ background: GREEN, fontFamily: FONT }}>
@@ -296,7 +296,7 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
   const activityStatus = getActivityStatus((otherParticipant as any).last_seen);
 
   return (
-    <div className="flex flex-col h-[100dvh]" style={{ background: BG }}>
+    <div className="flex flex-col h-full" style={{ background: BG }}>
       {/* ── Header ── */}
       <header className="flex items-center px-4 py-3 flex-shrink-0"
         style={{ background: 'var(--c-card)', boxShadow: "0 2px 8px rgba(0,0,0,0.3)" }}>

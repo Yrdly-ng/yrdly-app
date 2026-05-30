@@ -329,7 +329,7 @@ export function MainLayout({ children }: MainLayoutProps) {
           <main
             className={cn(
               "flex-1 w-full min-w-0 lg:pl-[216px]",
-              (isChatPage || isSubPage) ? "lg:px-6 lg:py-4 h-[100dvh] lg:h-auto" : "px-3 sm:px-4 md:px-6 py-4"
+              (isChatPage || isSubPage) ? "lg:pr-6 lg:py-4 h-[100dvh] lg:h-auto" : "px-3 sm:px-4 md:px-6 py-4"
             )}
           >
             <ErrorBoundary>
