@@ -62,20 +62,6 @@ const getFormSchema = (hasExistingImages: boolean) =>
     }
   });
 
-// ── GIF icon (SVG) ─────────────────────────────────────────────
-const GifIcon = () => (
-  <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect x="1" y="1" width="20" height="20" rx="3" stroke={GREEN} strokeWidth="1.3" />
-    <text
-      x="11" y="15"
-      textAnchor="middle"
-      fontFamily="Rajdhani, sans-serif"
-      fontWeight="600"
-      fontSize="10"
-      fill={GREEN}
-    >GIF</text>
-  </svg>
-);
 
 // ── Location pin icon (SVG matching Figma) ─────────────────────
 const LocationIcon = () => (
@@ -162,12 +148,6 @@ function PostForm({
     if (videoInputRef.current) videoInputRef.current.value = '';
   };
 
-  const handleGif = () => {
-    toast({
-      title: "GIFs coming soon! 🎉",
-      description: "GIF picker will be available in the next update.",
-    });
-  };
 
   const handleLocation = async () => {
     if (!navigator.geolocation) {
@@ -353,15 +333,6 @@ function PostForm({
             onChange={handleVideoSelect}
           />
 
-          {/* GIF */}
-          <button
-            type="button"
-            onClick={handleGif}
-            className="hover:opacity-70 transition-opacity"
-            aria-label="Add GIF"
-          >
-            <GifIcon />
-          </button>
 
           {/* Location */}
           <button

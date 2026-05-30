@@ -244,17 +244,7 @@ class OnboardingAnalytics {
     }
 
     // Custom analytics endpoint
-    if (process.env.NODE_ENV === 'production') {
-      fetch('/api/analytics/onboarding', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(event),
-      }).catch(error => {
-        console.error('Failed to send analytics event:', error);
-      });
-    }
+    // To be implemented when custom analytics backend is ready
   }
 
   /**

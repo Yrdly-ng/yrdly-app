@@ -64,19 +64,6 @@ interface CommentSectionProps {
     hidePostPreview?: boolean;
 }
 
-/* ─── GIF badge icon ──────────────────────────────────────────── */
-function GifIcon() {
-    return (
-        <div
-            className="w-6 h-6 flex items-center justify-center rounded-sm"
-            style={{ border: `1.3px solid ${GREEN}` }}
-        >
-            <span className="text-[0.625rem] font-bold leading-none" style={{ color: GREEN, fontFamily: 'Rajdhani, sans-serif' }}>
-                GIF
-            </span>
-        </div>
-    );
-}
 
 /* ─── L-bracket pointer for "View Replies" ──────────────────────── */
 function Pointer({ className }: { className?: string }) {
@@ -482,7 +469,7 @@ export function CommentSection({
                         <button className="text-muted-foreground hover:text-foreground transition-colors">
                             <Paperclip className="w-5 h-5" style={{ color: GREEN }} />
                         </button>
-                        <GifIcon />
+
                         <button className="text-muted-foreground hover:text-foreground transition-colors">
                             <MapPin className="w-5 h-5" style={{ color: GREEN }} />
                         </button>

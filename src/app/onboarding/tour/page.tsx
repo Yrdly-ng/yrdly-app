@@ -98,7 +98,7 @@ export default function OnboardingTourPage() {
   const Icon = slide.icon;
 
   return (
-    <div className="min-h-[100dvh] relative flex flex-col items-center justify-between overflow-hidden px-6 py-12" style={{ background: "var(--c-bg)", fontFamily: "Inter, sans-serif" }}>
+    <div className="min-h-[100dvh] relative flex flex-col items-center justify-between overflow-hidden px-6 py-12 bg-background" style={{ fontFamily: "Inter, sans-serif" }}>
       
       {/* Background Animated Blobs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -116,7 +116,7 @@ export default function OnboardingTourPage() {
       <div className="w-full max-w-lg flex items-center justify-between relative z-20">
         <button 
           onClick={handleBack}
-          className={cn("w-10 h-10 rounded-full flex items-center justify-center bg-[var(--c-card)] border border-[var(--c-border)] text-[var(--c-text)] transition-all active:scale-90", step === 0 && "opacity-0 pointer-events-none")}
+          className={cn("w-10 h-10 rounded-full flex items-center justify-center bg-card border border-border text-foreground transition-all active:scale-90", step === 0 && "opacity-0 pointer-events-none")}
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
@@ -137,7 +137,7 @@ export default function OnboardingTourPage() {
 
         <button 
           onClick={handleSkip}
-          className="text-xs font-black uppercase tracking-widest text-[var(--c-text-muted)] hover:text-[var(--c-text)] transition-colors"
+          className="text-xs font-black uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
         >
           Skip
         </button>
@@ -164,7 +164,7 @@ export default function OnboardingTourPage() {
                 className="w-32 h-32 rounded-[40px] flex items-center justify-center relative overflow-hidden"
                 style={{ background: `linear-gradient(135deg, ${slide.accent}22, ${slide.accent}00)` }}
               >
-                <Icon className="w-16 h-16 text-[var(--c-text)] relative z-10 drop-shadow-2xl" strokeWidth={1.5} />
+                <Icon className="w-16 h-16 text-foreground relative z-10 drop-shadow-2xl" strokeWidth={1.5} />
               </div>
               
               {/* Decorative elements */}
@@ -178,7 +178,7 @@ export default function OnboardingTourPage() {
           </div>
 
           <h1 
-            className="text-4xl md:text-5xl font-black text-[var(--c-text)] mb-6 leading-tight"
+            className="text-4xl md:text-5xl font-black text-foreground mb-6 leading-tight"
             style={{ letterSpacing: "-0.03em" }}
           >
             {slide.title}

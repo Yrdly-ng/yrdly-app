@@ -294,7 +294,7 @@ export default function OnboardingProfilePage() {
   // Show loading state while location data is being loaded
   if (locationLoading && states.length === 0) {
     return (
-      <div className="min-h-[100dvh] bg-background dark" style={{ background: "var(--c-bg)", color: "var(--c-text)" }}>
+      <div className="min-h-[100dvh] bg-background text-foreground" style={{ fontFamily: "Inter, sans-serif" }}>
         <OnboardingProgress />
         <div className="flex items-center justify-center p-4 pt-8">
           <LoadingState 
@@ -307,7 +307,7 @@ export default function OnboardingProfilePage() {
   }
 
   return (
-    <div className="min-h-[100dvh] pb-20 overflow-x-hidden dark" style={{ background: "var(--c-bg)", color: "var(--c-text)", fontFamily: "Inter, sans-serif" }}>
+    <div className="min-h-[100dvh] pb-20 overflow-x-hidden bg-background text-foreground" style={{ fontFamily: "Inter, sans-serif" }}>
       <OnboardingProgress />
       
       {/* Animated Background Elements */}
@@ -325,7 +325,7 @@ export default function OnboardingProfilePage() {
               <YrdlyLogo />
             </div>
             <div className="space-y-3">
-              <h2 className="text-4xl md:text-5xl font-black tracking-tight text-[var(--c-text)] leading-tight">
+              <h2 className="text-4xl md:text-5xl font-black tracking-tight text-foreground leading-tight">
                 Refine Your <span style={{ color: "#388E3C" }}>Presence</span>
               </h2>
               <p className="text-muted-foreground text-lg font-medium">
@@ -333,14 +333,8 @@ export default function OnboardingProfilePage() {
               </p>
             </div>
           </div>
-
           <div 
-            className="rounded-[48px] overflow-hidden backdrop-blur-2xl"
-            style={{
-              background: "rgba(30, 33, 38, 0.75)",
-              border: "1px solid var(--c-border)",
-              boxShadow: "0 60px 120px -30px rgba(0,0,0,0.7)"
-            }}
+            className="rounded-[48px] overflow-hidden backdrop-blur-2xl bg-card/80 border-border border shadow-2xl"
           >
             <div className="p-10 md:p-12 space-y-12">
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-12">
@@ -365,7 +359,7 @@ export default function OnboardingProfilePage() {
                       <div className="absolute inset-0 bg-[#388E3C] rounded-[24px] opacity-0 group-focus-within:opacity-5 blur-xl transition-opacity" />
                       <Input
                         placeholder="e.g. Tolu Oyelowo"
-                        className="h-16 rounded-[24px] bg-background/60 border-border focus:border-[#388E3C]/50 transition-all text-xl font-bold px-8"
+                        className="h-16 rounded-[24px] bg-muted/50 border-border focus:border-[#388E3C]/50 transition-all text-xl font-bold px-8"
                         autoComplete="name"
                         {...form.register('fullName')}
                       />
@@ -388,7 +382,7 @@ export default function OnboardingProfilePage() {
                       <div className="absolute left-8 top-1/2 -translate-y-1/2 text-[#388E3C] font-black text-2xl pointer-events-none">@</div>
                       <Input
                         placeholder="username"
-                        className="h-16 pl-16 pr-16 rounded-[24px] bg-background/60 border-border focus:border-[#388E3C]/50 transition-all text-xl font-bold"
+                        className="h-16 pl-16 pr-16 rounded-[24px] bg-muted/50 border-border focus:border-[#388E3C]/50 transition-all text-xl font-bold"
                         {...form.register('username')}
                         onFocus={() => setShowSuggestions(usernameSuggestions.length > 0)}
                         onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
@@ -440,7 +434,7 @@ export default function OnboardingProfilePage() {
                   {/* Location Grid */}
                   <div className="space-y-8 pt-8 border-t border-border">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-2xl font-black text-[var(--c-text)] tracking-tight">Geographic Sector</h3>
+                      <h3 className="text-2xl font-black text-foreground tracking-tight">Geographic Sector</h3>
                     </div>
 
                     {!showManualLocation ? (
@@ -460,7 +454,7 @@ export default function OnboardingProfilePage() {
                         <div className="space-y-3">
                           <Label className="text-[0.6875rem] uppercase tracking-widest font-black text-muted-foreground ml-1">State / Region</Label>
                           <Select value={form.watch('location.state')} onValueChange={handleStateChange}>
-                            <SelectTrigger className="h-16 rounded-[22px] bg-background/60 border-border text-lg font-bold px-6 focus:ring-[#388E3C]/30">
+                            <SelectTrigger className="h-16 rounded-[22px] bg-muted/50 border-border text-lg font-bold px-6 focus:ring-[#388E3C]/30">
                               <SelectValue placeholder="Select State" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border max-h-[300px] rounded-2xl shadow-2xl backdrop-blur-3xl">
@@ -478,7 +472,7 @@ export default function OnboardingProfilePage() {
                             onValueChange={handleLgaChange}
                             disabled={!form.watch('location.state')}
                           >
-                            <SelectTrigger className="h-16 rounded-[22px] bg-background/60 border-border text-lg font-bold px-6 focus:ring-[#388E3C]/30 disabled:opacity-30">
+                            <SelectTrigger className="h-16 rounded-[22px] bg-muted/50 border-border text-lg font-bold px-6 focus:ring-[#388E3C]/30 disabled:opacity-30">
                               <SelectValue placeholder="Select LGA" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border max-h-[300px] rounded-2xl shadow-2xl backdrop-blur-3xl">
@@ -539,7 +533,7 @@ export default function OnboardingProfilePage() {
                <CheckCircle2 className="w-4 h-4" />
                Identity Encryption Active
              </div>
-             <p className="text-center text-[0.625rem] text-muted-foreground/40 font-black uppercase tracking-[0.4em] max-w-xs leading-loose">
+             <p className="text-center text-[0.625rem] text-muted-foreground/70 font-black uppercase tracking-[0.4em] max-w-xs leading-loose">
                Securely connecting 10k+ verified neighbors across Nigeria
              </p>
           </div>

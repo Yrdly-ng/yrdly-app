@@ -29,9 +29,7 @@ export default function EditProfilePage() {
   const [avatarUrl, setAvatarUrl]   = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState("");
-  const [state, setState]           = useState("");
-  const [lga, setLga]               = useState("");
-  const [ward, setWard]             = useState("");
+
   const [saving, setSaving]         = useState(false);
 
   useEffect(() => {
@@ -40,9 +38,7 @@ export default function EditProfilePage() {
     setName(p.name || "");
     setBio(p.bio || "");
     setAvatarUrl(p.avatar_url || "");
-    setState(p.location?.state || "");
-    setLga(p.location?.lga || "");
-    setWard(p.location?.ward || "");
+
   }, [authProfile]);
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -72,7 +68,7 @@ export default function EditProfilePage() {
         name,
         bio,
         avatar_url: finalAvatarUrl,
-        location: { state, lga, ward } as any,
+
         updated_at: new Date().toISOString(),
       });
 
@@ -157,36 +153,7 @@ export default function EditProfilePage() {
           </div>
         </section>
 
-        {/* ── Block 2: Location ── */}
-        <section className="space-y-6">
-          <SectionHeader color="#a5c8ff" label="Location" />
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Field label="State">
-              <select
-                value={state} onChange={e => setState(e.target.value)}
-                className="w-full rounded-full px-6 py-4 text-sm outline-none appearance-none"
-                style={{ background: "var(--c-card2)", color: "var(--c-text)", border: "none" }}
-              >
-                <option value="">Select state</option>
-                {NIGERIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </Field>
-            <Field label="LGA">
-              <input
-                type="text" value={lga} onChange={e => setLga(e.target.value)} placeholder="Your LGA"
-                className="w-full rounded-full px-6 py-4 text-sm outline-none"
-                style={{ background: "var(--c-card2)", color: "var(--c-text)", border: "none" }}
-              />
-            </Field>
-            <Field label="Ward">
-              <input
-                type="text" value={ward} onChange={e => setWard(e.target.value)} placeholder="Ward"
-                className="w-full rounded-full px-6 py-4 text-sm outline-none"
-                style={{ background: "var(--c-card2)", color: "var(--c-text)", border: "none" }}
-              />
-            </Field>
-          </div>
-        </section>
+
 
         {/* ── Save bar ── */}
         <div className="pt-8">

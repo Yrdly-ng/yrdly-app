@@ -180,7 +180,7 @@ function VerifyEmailContent() {
 
   if (loading) {
     return (
-      <div className="min-h-[100dvh] flex items-center justify-center dark" style={{ background: "var(--c-bg)" }}>
+      <div className="min-h-[100dvh] flex items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin" style={{ color: "#388E3C" }} />
       </div>
     );
@@ -188,8 +188,8 @@ function VerifyEmailContent() {
 
   return (
     <div
-      className="min-h-[100dvh] flex flex-col items-center justify-center px-4 py-10 overflow-x-hidden dark"
-      style={{ background: "var(--c-bg)", color: "var(--c-text)", fontFamily: "Inter, sans-serif" }}
+      className="min-h-[100dvh] flex flex-col items-center justify-center px-4 py-10 overflow-x-hidden bg-background text-foreground"
+      style={{ fontFamily: "Inter, sans-serif" }}
     >
       {/* Ambient glow */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
@@ -211,10 +211,10 @@ function VerifyEmailContent() {
 
         {/* Heading */}
         <div className="text-center space-y-2">
-          <h1 className="text-3xl font-black tracking-tight" style={{ color: "var(--c-text)" }}>
+          <h1 className="text-3xl font-black tracking-tight text-foreground">
             Check your <span style={{ color: "#388E3C" }}>email</span>
           </h1>
-          <p className="text-sm font-medium" style={{ color: "var(--c-text-muted)" }}>
+          <p className="text-sm font-medium text-muted-foreground">
             We sent a 6-digit code to
           </p>
           <p
@@ -226,14 +226,7 @@ function VerifyEmailContent() {
         </div>
 
         {/* Card */}
-        <div
-          className="w-full rounded-[28px] p-8 space-y-7"
-          style={{
-            background: "var(--c-card)",
-            border: "1px solid var(--c-border)",
-            boxShadow: "0 32px 80px -16px rgba(0,0,0,0.45)",
-          }}
-        >
+        <div className="w-full rounded-[28px] p-8 space-y-7 bg-card border border-border shadow-2xl">
           {/* Mail icon */}
           <div className="flex justify-center">
             {success ? (
@@ -270,13 +263,13 @@ function VerifyEmailContent() {
                 onFocus={(e) => e.target.select()}
                 className="w-12 h-14 text-center text-xl font-black rounded-[14px] outline-none transition-all duration-200 disabled:opacity-50"
                 style={{
-                  background: digit ? "rgba(56,142,60,0.12)" : "var(--c-bg)",
+                  background: digit ? "rgba(56,142,60,0.12)" : "hsl(var(--muted))",
                   border: error
                     ? "2px solid #ef4444"
                     : digit
                     ? "2px solid #388E3C"
-                    : "1.5px solid var(--c-border)",
-                  color: "var(--c-text)",
+                    : "1.5px solid hsl(var(--border))",
+                  color: "hsl(var(--foreground))",
                   caretColor: "#388E3C",
                   boxShadow: digit ? "0 0 0 3px rgba(56,142,60,0.1)" : "none",
                 }}
@@ -323,23 +316,18 @@ function VerifyEmailContent() {
 
           {/* Divider */}
           <div className="flex items-center gap-3">
-            <div className="flex-1 h-px" style={{ background: "var(--c-border)" }} />
-            <span className="text-xs font-medium" style={{ color: "var(--c-text-muted)" }}>
+            <div className="flex-1 h-px bg-border" />
+            <span className="text-xs font-medium text-muted-foreground">
               Didn&apos;t get it?
             </span>
-            <div className="flex-1 h-px" style={{ background: "var(--c-border)" }} />
+            <div className="flex-1 h-px bg-border" />
           </div>
 
           {/* Resend */}
           <button
             onClick={handleResend}
             disabled={resending || cooldown > 0 || success}
-            className="w-full h-12 rounded-[16px] font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
-            style={{
-              background: "transparent",
-              border: "1.5px solid var(--c-border)",
-              color: "var(--c-text-muted)",
-            }}
+            className="w-full h-12 rounded-[16px] font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50 bg-transparent border-[1.5px] border-border text-muted-foreground"
           >
             {resending ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -353,15 +341,14 @@ function VerifyEmailContent() {
         {/* Back to login */}
         <button
           onClick={() => router.push("/login")}
-          className="flex items-center gap-2 text-sm font-bold transition-opacity hover:opacity-70"
-          style={{ color: "var(--c-text-muted)" }}
+          className="flex items-center gap-2 text-sm font-bold transition-opacity hover:opacity-70 text-muted-foreground"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to login
         </button>
 
         {/* Note */}
-        <p className="text-center text-xs" style={{ color: "var(--c-text-muted)", opacity: 0.5 }}>
+        <p className="text-center text-xs text-muted-foreground opacity-50">
           Tip: check your spam folder if you don&apos;t see it within 2 minutes
         </p>
       </div>
@@ -372,7 +359,7 @@ function VerifyEmailContent() {
 export default function OnboardingVerifyEmailPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-[100dvh] flex items-center justify-center dark" style={{ background: "var(--c-bg)" }}>
+      <div className="min-h-[100dvh] flex items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin" style={{ color: "#388E3C" }} />
       </div>
     }>

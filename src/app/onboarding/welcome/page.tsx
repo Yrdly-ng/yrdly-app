@@ -227,7 +227,7 @@ export default function OnboardingWelcomePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-[100dvh] bg-background dark" style={{ background: "var(--background)", color: "var(--foreground)" }}>
+      <div className="min-h-[100dvh] bg-background text-foreground">
         <OnboardingProgress />
         <div className="flex items-center justify-center p-4 pt-8">
           <LoadingState 
@@ -240,7 +240,7 @@ export default function OnboardingWelcomePage() {
   }
 
   return (
-    <div className="min-h-[100dvh] pb-20 overflow-x-hidden relative dark" style={{ background: "var(--background)", color: "var(--foreground)", fontFamily: "Inter, sans-serif" }}>
+    <div className="min-h-[100dvh] pb-20 overflow-x-hidden relative bg-background text-foreground" style={{ fontFamily: "Inter, sans-serif" }}>
       <OnboardingProgress />
       
       {/* Background Glows */}
@@ -281,11 +281,11 @@ export default function OnboardingWelcomePage() {
                 <Sparkles className="w-4 h-4 text-[#388E3C]" />
                 <span className="text-xs font-black uppercase tracking-widest text-[#388E3C]">Profile Verified</span>
               </div>
-              <h2 className="text-4xl md:text-5xl font-black tracking-tight text-[var(--c-text)] leading-tight">
+              <h2 className="text-4xl md:text-5xl font-black tracking-tight text-foreground leading-tight">
                 Welcome home,<br/>{profile?.name?.split(' ')[0]}!
               </h2>
               <p className="text-muted-foreground text-lg max-w-[300px] mx-auto leading-relaxed">
-                Your journey in <span className="text-[var(--c-text)] font-bold">{profile?.location?.state || 'your neighborhood'}</span> starts now.
+                Your journey in <span className="text-foreground font-bold">{profile?.location?.state || 'your neighborhood'}</span> starts now.
               </p>
             </div>
           </div>
@@ -294,18 +294,14 @@ export default function OnboardingWelcomePage() {
 
           {/* Action Card */}
           <div 
-            className={`rounded-[48px] overflow-hidden transition-all duration-1000 delay-500 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.8)] backdrop-blur-3xl`}
-            style={{ 
-              background: "linear-gradient(135deg, rgba(30, 33, 38, 0.9) 0%, rgba(13, 15, 17, 0.95) 100%)",
-              border: "1px solid var(--c-border)"
-            }}
+            className={`rounded-[48px] overflow-hidden transition-all duration-1000 delay-500 shadow-2xl bg-card border-border border backdrop-blur-3xl`}
           >
             <div className="p-10 space-y-10 relative">
               {/* Decorative Shine */}
               <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-tr from-[#388E3C]/5 via-transparent to-transparent pointer-events-none" />
 
               <div className="space-y-3 text-center relative z-10">
-                <h3 className="text-3xl font-black text-white tracking-tight">Ready to explore?</h3>
+                <h3 className="text-3xl font-black text-foreground tracking-tight">Ready to explore?</h3>
                 <p className="text-base text-muted-foreground font-medium opacity-80">
                   Discover events, connect with locals, and build your neighborhood legacy.
                 </p>
@@ -329,13 +325,13 @@ export default function OnboardingWelcomePage() {
                 
                 <button 
                   onClick={handleSkipTourClick}
-                  className="w-full h-16 rounded-[28px] flex items-center justify-center font-black text-muted-foreground hover:text-white transition-all border border-border hover:border-[#388E3C]/30 hover:bg-[#388E3C]/5 active:scale-[0.98] uppercase tracking-[0.2em] text-[0.6875rem]"
+                  className="w-full h-16 rounded-[28px] flex items-center justify-center font-black text-muted-foreground hover:text-foreground transition-all border border-border hover:border-[#388E3C]/30 hover:bg-[#388E3C]/5 active:scale-[0.98] uppercase tracking-[0.2em] text-[0.6875rem]"
                 >
                   Jump Right In
                 </button>
               </div>
               
-              <div className="flex items-center gap-3 justify-center px-6 py-3 rounded-2xl bg-white/[0.03] border border-border relative z-10">
+              <div className="flex items-center gap-3 justify-center px-6 py-3 rounded-2xl bg-muted/50 border border-border relative z-10">
                 <div className="w-8 h-8 rounded-lg bg-[#388E3C]/10 flex items-center justify-center">
                   <CheckCircle className="w-5 h-5 text-[#388E3C]" />
                 </div>
