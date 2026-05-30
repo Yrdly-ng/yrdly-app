@@ -142,11 +142,10 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
       
       const toUpdate = (unread || []).filter(msg => !msg.read_by?.includes(user.id));
       if (toUpdate.length > 0) {
-        for (const msg of toUpdate) {
-          await supabase.from("messages")
-            .update({ is_read: true, read_by: [...(msg.read_by || []), user.id] })
-            .eq("id", msg.id);
-        }
+        await supabase.rpc('mark_messages_as_read', {
+          p_conversation_id: conversation.id,
+          p_user_id: user.id
+        });
       }
 
       const lastMsgDate = conversation.last_message_timestamp ? new Date(conversation.last_message_timestamp).getTime() : 0;
