@@ -48,6 +48,9 @@ export const usePosts = (filter?: LocationFilter | null) => {
           query = query.eq('ward', filterWard);
         }
 
+        // Hide sold marketplace items from the feed
+        query = query.or('category.neq.For Sale,is_sold.eq.false');
+
         const { data, error } = await query.order('timestamp', { ascending: false });
 
         if (error) {
@@ -88,6 +91,8 @@ export const usePosts = (filter?: LocationFilter | null) => {
           if (filterState && newPost.state && newPost.state !== filterState) return;
           if (filterLga && newPost.lga && newPost.lga !== filterLga) return;
           if (filterWard && newPost.ward && newPost.ward !== filterWard) return;
+          // Don't show sold items in the feed
+          if (newPost.category === 'For Sale' && newPost.is_sold) return;
           
           // Check if post already exists in state
           setPosts(currentPosts => {
@@ -122,6 +127,12 @@ export const usePosts = (filter?: LocationFilter | null) => {
         } else if (payload.eventType === 'UPDATE') {
           // Update existing post in the list
           const updatedPost = payload.new as Post;
+
+          // If a For Sale post just became sold, remove it from the feed instantly
+          if (updatedPost.category === 'For Sale' && updatedPost.is_sold) {
+            setPosts(prevPosts => prevPosts.filter(p => p.id !== updatedPost.id));
+            return;
+          }
           
           // Fetch user data for the updated post
           const fetchUserData = async () => {

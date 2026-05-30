@@ -273,6 +273,23 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
         </div>
       )}
 
+      {/* Video player */}
+      {post.video_url && (
+        <div className="px-3 pb-4">
+          <div className="relative rounded-xl overflow-hidden bg-black">
+            <video
+              src={post.video_url}
+              controls
+              playsInline
+              preload="metadata"
+              poster={post.video_thumbnail_url ?? undefined}
+              className="w-full object-contain"
+              style={{ borderRadius: 12, maxHeight: 400 }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Engagement row */}
       <div className="flex items-center justify-between px-4 py-3 border-t border-border">
         <div className="flex items-center gap-4">
