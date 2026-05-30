@@ -35,6 +35,9 @@ import { cn } from '@/lib/utils';
 import type { Post, User } from '@/types';
 import Image from 'next/image';
 
+import { motion, AnimatePresence } from 'framer-motion';
+import TextareaAutosize from 'react-textarea-autosize';
+
 /* ─── design tokens ─────────────────────────────────────────────── */
 const BG = 'var(--c-bg)';
 const CARD_BG = 'var(--c-card)';
@@ -50,8 +53,8 @@ interface Comment {
     text: string;
     timestamp: string;
     parentId?: string | null;
-    reactions: Record<string, string[]>;
-    likedBy?: string[];
+    likeCount: number;
+    isLikedByMe: boolean;
 }
 
 interface CommentSectionProps {
@@ -136,6 +139,18 @@ export function CommentSection({
                 .eq('post_id', postId)
                 .order('timestamp', { ascending: true });
             if (!error && data) {
+                let userLikes = new Set<string>();
+                if (data.length > 0) {
+                    const { data: likes } = await supabase
+                        .from('comment_likes')
+                        .select('comment_id')
+                        .eq('user_id', currentUser.id)
+                        .in('comment_id', data.map(c => c.id));
+                    if (likes) {
+                        likes.forEach(l => userLikes.add(l.comment_id));
+                    }
+                }
+
                 const mapped = data.map((c: any) => ({
                     id: c.id,
                     userId: c.user_id,
@@ -144,13 +159,11 @@ export function CommentSection({
                     text: c.text,
                     timestamp: c.timestamp,
                     parentId: c.parent_id,
-                    reactions: c.reactions || {},
-                    likedBy: c.reactions?.['❤️'] || [],
+                    likeCount: c.like_count || 0,
+                    isLikedByMe: userLikes.has(c.id),
                 }));
                 setComments(mapped);
-                const liked = new Set<string>();
-                mapped.forEach(c => { if (c.likedBy?.includes(currentUser.id)) liked.add(c.id); });
-                setLikedComments(liked);
+                setLikedComments(new Set(userLikes));
                 const count = mapped.length;
                 onCommentCountChange?.(count);
                 const { data: pr } = await supabase.from('posts').select('comment_count').eq('id', postId).single();
@@ -166,12 +179,12 @@ export function CommentSection({
             .on('postgres_changes', { event: '*', schema: 'public', table: 'comments', filter: `post_id=eq.${postId}` }, (payload) => {
                 if (payload.eventType === 'INSERT' && payload.new) {
                     const d = payload.new as any;
-                    const nc: Comment = { id: d.id, userId: d.user_id, authorName: d.author_name, authorImage: d.author_image, text: d.text, timestamp: d.timestamp, parentId: d.parent_id, reactions: d.reactions || {}, likedBy: d.reactions?.['❤️'] || [] };
+                    const nc: Comment = { id: d.id, userId: d.user_id, authorName: d.author_name, authorImage: d.author_image, text: d.text, timestamp: d.timestamp, parentId: d.parent_id, likeCount: d.like_count || 0, isLikedByMe: false };
                     setComments(prev => [...prev.filter(c => c.id !== nc.id), nc].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()));
                     setTimeout(() => commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
                 } else if (payload.eventType === 'UPDATE' && payload.new) {
                     const d = payload.new as any;
-                    setComments(prev => prev.map(c => c.id === d.id ? { ...c, text: d.text, reactions: d.reactions || {}, likedBy: d.reactions?.['❤️'] || [] } : c));
+                    setComments(prev => prev.map(c => c.id === d.id ? { ...c, text: d.text, likeCount: d.like_count || 0 } : c));
                 } else if (payload.eventType === 'DELETE') {
                     setComments(prev => prev.filter(c => c.id !== payload.old.id));
                 }
@@ -203,8 +216,8 @@ export function CommentSection({
             text,
             timestamp: new Date().toISOString(),
             parentId: parentId || null,
-            reactions: {},
-            likedBy: [],
+            likeCount: 0,
+            isLikedByMe: false,
         };
         setComments(prev => [...prev, optimistic]);
         setNewComment('');
@@ -214,7 +227,7 @@ export function CommentSection({
         try {
             const { data, error } = await supabase.from('comments').insert({ post_id: postId, user_id: currentUser.id, author_name: optimistic.authorName, author_image: optimistic.authorImage, text, parent_id: parentId || null }).select().single();
             if (error) throw error;
-            setComments(prev => prev.map(c => c.id === optimistic.id ? { id: data.id, userId: data.user_id, authorName: data.author_name, authorImage: data.author_image, text: data.text, timestamp: data.timestamp, parentId: data.parent_id, reactions: data.reactions || {}, likedBy: data.reactions?.['❤️'] || [] } : c));
+            setComments(prev => prev.map(c => c.id === optimistic.id ? { id: data.id, userId: data.user_id, authorName: data.author_name, authorImage: data.author_image, text: data.text, timestamp: data.timestamp, parentId: data.parent_id, likeCount: 0, isLikedByMe: false } : c));
             if (onCommentCountChange) {
                 const { data: pr } = await supabase.from('posts').select('comment_count').eq('id', postId).single();
                 if (pr) { const n = (pr.comment_count || 0) + 1; await supabase.from('posts').update({ comment_count: n }).eq('id', postId); onCommentCountChange(n); }
@@ -228,19 +241,36 @@ export function CommentSection({
 
     const handleLikeComment = useCallback(async (commentId: string) => {
         if (!currentUser) return;
-        const comment = comments.find(c => c.id === commentId);
-        if (!comment) return;
         const isLiked = likedComments.has(commentId);
-        const hearts = comment.reactions?.['❤️'] || [];
-        const newHearts = isLiked ? hearts.filter(id => id !== currentUser.id) : [...hearts, currentUser.id];
-        const next: Record<string, string[]> = { ...comment.reactions };
-        if (newHearts.length > 0) next['❤️'] = newHearts;
-        else delete next['❤️'];
-        if (isLiked) setLikedComments(prev => { const s = new Set(prev); s.delete(commentId); return s; });
-        else setLikedComments(prev => new Set(prev).add(commentId));
-        setComments(prev => prev.map(c => c.id === commentId ? { ...c, reactions: next, likedBy: next['❤️'] || [] } : c));
-        try { const { error } = await supabase.from('comments').update({ reactions: next }).eq('id', commentId); if (error) throw error; } catch { /* revert */ }
-    }, [currentUser, comments, likedComments]);
+
+        // Optimistic UI update
+        if (isLiked) {
+            setLikedComments(prev => { const s = new Set(prev); s.delete(commentId); return s; });
+            setComments(prev => prev.map(c => c.id === commentId ? { ...c, likeCount: Math.max(0, c.likeCount - 1), isLikedByMe: false } : c));
+        } else {
+            setLikedComments(prev => new Set(prev).add(commentId));
+            setComments(prev => prev.map(c => c.id === commentId ? { ...c, likeCount: c.likeCount + 1, isLikedByMe: true } : c));
+        }
+
+        try {
+            if (isLiked) {
+                const { error } = await supabase.from('comment_likes').delete().eq('comment_id', commentId).eq('user_id', currentUser.id);
+                if (error) throw error;
+            } else {
+                const { error } = await supabase.from('comment_likes').insert({ comment_id: commentId, user_id: currentUser.id });
+                if (error) throw error;
+            }
+        } catch {
+            // Revert on failure
+            if (isLiked) {
+                setLikedComments(prev => new Set(prev).add(commentId));
+                setComments(prev => prev.map(c => c.id === commentId ? { ...c, likeCount: c.likeCount + 1, isLikedByMe: true } : c));
+            } else {
+                setLikedComments(prev => { const s = new Set(prev); s.delete(commentId); return s; });
+                setComments(prev => prev.map(c => c.id === commentId ? { ...c, likeCount: Math.max(0, c.likeCount - 1), isLikedByMe: false } : c));
+            }
+        }
+    }, [currentUser, likedComments]);
 
     const handleDeleteComment = useCallback(async (commentId: string) => {
         if (!currentUser) return;
@@ -271,11 +301,16 @@ export function CommentSection({
         const hasReplies = replies.length > 0;
         const showReplies = expandedReplies.has(comment.id);
         const isLiked = likedComments.has(comment.id);
-        const likeCount = comment.reactions?.['❤️']?.length || 0;
         const replyCount = replies.length;
 
         return (
-            <div key={comment.id} className={cn('flex gap-3 pt-2', isReply && 'ml-11')}>
+            <motion.div 
+                initial={{ opacity: 0, y: 10 }} 
+                animate={{ opacity: 1, y: 0 }} 
+                exit={{ opacity: 0, scale: 0.95 }}
+                key={comment.id} 
+                className={cn('flex gap-3 pt-2', isReply && 'ml-11')}
+            >
                 {/* Avatar */}
                 <div className="flex flex-col items-center gap-0 flex-shrink-0">
                     <Avatar className="h-8 w-8">
@@ -319,10 +354,14 @@ export function CommentSection({
 
                     {/* Reactions & Actions Row */}
                     <div className="flex items-center gap-4 mt-1">
-                        <button onClick={() => handleLikeComment(comment.id)} className="flex items-center gap-1.5 group">
+                        <motion.button 
+                            whileTap={{ scale: 1.3 }}
+                            onClick={() => handleLikeComment(comment.id)} 
+                            className="flex items-center gap-1.5 group"
+                        >
                             <Heart className={cn("w-3.5 h-3.5 transition-colors", isLiked ? "fill-[#ED1111] text-[#ED1111]" : "text-muted-foreground group-hover:text-foreground")} />
-                            {likeCount > 0 && <span className={cn("text-xs font-medium transition-colors", isLiked ? "text-[#ED1111]" : "text-muted-foreground")}>{fmt(likeCount)}</span>}
-                        </button>
+                            {comment.likeCount > 0 && <span className={cn("text-xs font-medium transition-colors", isLiked ? "text-[#ED1111]" : "text-muted-foreground")}>{fmt(comment.likeCount)}</span>}
+                        </motion.button>
                         
                         <button onClick={() => setReplyingTo(comment.id)} className="text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors">
                             Reply
@@ -378,11 +417,13 @@ export function CommentSection({
                     {/* Replies list */}
                     {showReplies && hasReplies && (
                         <div className="mt-2 flex flex-col gap-1">
-                            {replies.map(reply => renderComment(reply, true))}
+                            <AnimatePresence initial={false}>
+                                {replies.map(reply => renderComment(reply, true))}
+                            </AnimatePresence>
                         </div>
                     )}
                 </div>
-            </div>
+            </motion.div>
         );
     }, [repliesByParent, expandedReplies, likedComments, currentUser, handleLikeComment, handleDeleteComment, toggleReplies, editingComment, editText]);
 
@@ -394,30 +435,38 @@ export function CommentSection({
 
     /* ── comment input box ──────────────────────────────────────── */
     const inputBox = (
-        <div className={cn('flex-shrink-0', isInline ? 'px-4 py-3' : 'px-4 py-3 border-t border-border')}>
+        <div className="flex flex-col w-full">
             {replyingTo && (
-                <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground font-medium px-1">
+                <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground font-medium px-2">
                     <span>Replying to {comments.find(c => c.id === replyingTo)?.authorName}</span>
                     <button onClick={() => setReplyingTo(null)} className="hover:text-foreground font-semibold">Cancel</button>
                 </div>
             )}
-            <form onSubmit={handlePostComment} className="flex items-center gap-3">
-                <Avatar className="h-9 w-9 flex-shrink-0">
+            <form onSubmit={handlePostComment} className="flex items-end gap-3 w-full">
+                <Avatar className="h-9 w-9 flex-shrink-0 mb-1">
                     <AvatarImage src={userDetails?.avatar_url} />
                     <AvatarFallback className="text-xs bg-[#388E3C] text-white">{userDetails?.name?.charAt(0) || 'U'}</AvatarFallback>
                 </Avatar>
-                <div className="flex-1 relative flex items-center rounded-full bg-accent/50 border border-transparent focus-within:border-[#388E3C]/50 focus-within:bg-transparent transition-all overflow-hidden">
-                    <input
-                        ref={inputRef}
+                <div className="flex-1 relative flex items-end rounded-[20px] bg-accent/50 border border-transparent focus-within:border-[#388E3C]/50 focus-within:bg-transparent transition-all overflow-hidden p-1">
+                    <TextareaAutosize
+                        ref={inputRef as any}
                         value={newComment}
                         onChange={e => setNewComment(e.target.value)}
                         placeholder={replyingTo ? 'Add a reply…' : 'Add a comment...'}
-                        className="flex-1 h-[40px] bg-transparent px-4 text-[0.875rem] text-foreground outline-none placeholder:text-muted-foreground"
+                        minRows={1}
+                        maxRows={4}
+                        onKeyDown={e => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                handlePostComment(e);
+                            }
+                        }}
+                        className="flex-1 bg-transparent px-3 py-2 text-[0.875rem] text-foreground outline-none placeholder:text-muted-foreground resize-none"
                     />
                     <button 
                         type="submit" 
                         disabled={!newComment.trim()}
-                        className="mr-3 text-sm font-bold text-[#388E3C] disabled:opacity-0 transition-opacity"
+                        className="mb-2 mr-3 text-sm font-bold text-[#388E3C] disabled:opacity-0 transition-opacity flex-shrink-0"
                     >
                         Post
                     </button>
@@ -430,12 +479,12 @@ export function CommentSection({
     if (!isInline) {
         return (
             <div
-                className="flex flex-col w-full rounded-[11px] overflow-hidden"
+                className="flex flex-col w-full max-h-[80vh] rounded-[11px] overflow-hidden relative"
                 style={{ background: BG, border: '0.2px solid var(--c-border)' }}
             >
                 {/* Post preview block */}
                 {!hidePostPreview && post && author && (
-                    <div className="px-4 pt-4 pb-3">
+                    <div className="px-4 pt-4 pb-3 flex-shrink-0">
                         <div className="flex items-start gap-3">
                             {/* Poster avatar + vertical line */}
                             <div className="flex flex-col items-center">
@@ -457,14 +506,11 @@ export function CommentSection({
                     </div>
                 )}
 
-                {/* Comment input */}
-                {inputBox}
-
                 {/* Divider */}
-                <div className="mx-4" style={{ borderTop: '0.2px solid var(--c-border)' }} />
+                <div className="mx-4 flex-shrink-0" style={{ borderTop: '0.2px solid var(--c-border)' }} />
 
                 {/* Toolbar */}
-                <div className="flex items-center justify-start px-4 py-2.5">
+                <div className="flex flex-shrink-0 items-center justify-start px-4 py-2.5">
                     <div className="flex items-center gap-3">
                         <button className="text-muted-foreground hover:text-foreground transition-colors">
                             <Paperclip className="w-5 h-5" style={{ color: GREEN }} />
@@ -477,7 +523,7 @@ export function CommentSection({
                 </div>
 
                 {/* Comments */}
-                <div className="px-4 pb-4 space-y-3 overflow-y-auto" style={{ maxHeight: 'min(40vh, 300px)' }}>
+                <div className="px-4 pb-4 space-y-3 overflow-y-auto flex-1">
                     {parentComments.length === 0 ? (
                         <div className="py-8 text-center">
                             <p className="text-[0.8125rem] text-muted-foreground" style={{ fontFamily: FONT_RALEWAY }}>No comments yet. Be the first!</p>
@@ -487,15 +533,19 @@ export function CommentSection({
                     )}
                     <div ref={commentsEndRef} />
                 </div>
+
+                {/* Sticky Comment input */}
+                <div className="sticky bottom-0 w-full backdrop-blur-md bg-background/80 border-t border-border/50 p-3 z-10 flex-shrink-0">
+                    {inputBox}
+                </div>
             </div>
         );
     }
 
     /* ── INLINE variant: embedded beneath a post card ─────────── */
     return (
-        <div className="flex flex-col h-auto">
-            {inputBox}
-            <div className="px-4 pb-4 space-y-3 overflow-y-auto" style={{ maxHeight: 'min(60vh, 400px)' }}>
+        <div className="flex flex-col h-auto relative">
+            <div className="px-4 pb-4 space-y-3 overflow-y-auto flex-1" style={{ maxHeight: 'min(60vh, 400px)' }}>
                 {parentComments.length === 0 ? (
                     <div className="py-8 text-center flex flex-col items-center gap-2">
                         <MessageCircle className="w-10 h-10 text-muted-foreground" />
@@ -506,6 +556,10 @@ export function CommentSection({
                     parentComments.map(c => renderComment(c))
                 )}
                 <div ref={commentsEndRef} />
+            </div>
+            {/* Sticky Comment input */}
+            <div className="sticky bottom-0 w-full backdrop-blur-md bg-background/80 border-t border-border/50 p-3 z-10">
+                {inputBox}
             </div>
         </div>
     );
