@@ -356,7 +356,7 @@ function PostForm({
           style={{ background: GREEN, fontFamily: FONT_RL }}
         >
           {loading
-            ? isEditMode ? "Saving…" : "Posting…"
+            ? <Loader2 className="w-4 h-4 animate-spin text-foreground mx-auto" />
             : isEditMode ? "Save" : "Post"}
         </button>
       </div>

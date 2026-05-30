@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/use-supabase-auth";
 import { supabase } from "@/lib/supabase";
 import { StorageService } from "@/lib/storage-service";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, ImagePlus, VideoIcon, Send, MessageCircle } from "lucide-react";
+import { ArrowLeft, ImagePlus, VideoIcon, Send, MessageCircle, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { ActivityIndicator } from "@/components/ActivityIndicator";
 import { useTypingDetection } from "@/hooks/use-typing-detection";
@@ -466,7 +466,7 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
             disabled={(!newMessage.trim() && !selectedFile && !videoFile) || sending}
             className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-transform active:scale-95 shadow-lg"
             style={{ background: GREEN }}>
-            <Send className="w-5 h-5 text-foreground" />
+            {sending ? <Loader2 className="w-5 h-5 text-foreground animate-spin" /> : <Send className="w-5 h-5 text-foreground" />}
           </button>
         </form>
         <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />
