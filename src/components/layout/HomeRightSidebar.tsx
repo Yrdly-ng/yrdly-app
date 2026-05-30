@@ -154,6 +154,7 @@ export function HomeRightSidebar() {
           .from('posts')
           .select('id, title, text, price, image_urls, image_url')
           .eq('category', 'For Sale')
+          .eq('is_sold', false)
           .gt('price', 0)
           .order('timestamp', { ascending: false })
           .limit(6),
