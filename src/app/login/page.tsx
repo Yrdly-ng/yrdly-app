@@ -67,8 +67,14 @@ export default function LoginPage() {
   if (authLoading) {
     return (
       <div className="min-h-[100dvh] flex items-center justify-center" style={{ background: colors.background }}>
-        <div className="text-center font-sans">
-          <div className="w-10 h-10 rounded-md mb-4 mx-auto animate-pulse" style={{ background: colors.logoGreen }} />
+        <div className="text-center font-sans flex flex-col items-center gap-3">
+          <Image
+            src="/yrdly-logo.png"
+            alt="Yrdly"
+            width={64}
+            height={64}
+            className="animate-pulse rounded-[14px]"
+          />
           <p className="text-sm" style={{ color: colors.textFaded }}>Loading...</p>
         </div>
       </div>
