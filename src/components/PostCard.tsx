@@ -2,7 +2,7 @@
 "use client";
 
 import type { User, Post } from "@/types";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -234,6 +234,27 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isEventEditDialogOpen, setIsEventEditDialogOpen] = useState(false);
   const [isTextExpanded, setIsTextExpanded] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  /* ── auto-pause video when scrolled out of view ── */
+  useEffect(() => {
+    if (!videoRef.current || !post.video_url) return;
+    
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          // If video is playing and scrolls out of view (less than 20% visible), pause it
+          if (!entry.isIntersecting && !videoRef.current?.paused) {
+            videoRef.current?.pause();
+          }
+        });
+      },
+      { threshold: 0.2 } // Trigger when less than 20% is visible
+    );
+    
+    observer.observe(videoRef.current);
+    return () => observer.disconnect();
+  }, [post.video_url]);
 
   /* ── fetch author ── */
   useEffect(() => {
@@ -649,6 +670,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
           <div className="px-3 pb-3">
             <div className="relative rounded-xl overflow-hidden bg-black">
               <video
+                ref={videoRef}
                 src={post.video_url}
                 controls
                 playsInline
