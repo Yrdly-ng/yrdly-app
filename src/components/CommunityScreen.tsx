@@ -164,7 +164,7 @@ export function CommunityScreen({ className }: CommunityScreenProps) {
       // Count users in the same location
       let usersQuery = supabase
         .from("users")
-        .select("*", { count: "exact", head: true });
+        .select("id");
       // Filter neighbors by location
       if (filterState) {
         usersQuery = usersQuery.contains('location', { state: filterState });
@@ -175,7 +175,10 @@ export function CommunityScreen({ className }: CommunityScreenProps) {
       if (filterWard) {
         usersQuery = usersQuery.contains('location', { ward: filterWard });
       }
-      const { count: totalUsers } = await usersQuery;
+      const { data: locationUsers } = await usersQuery;
+      const totalUsers = locationUsers?.length || 0;
+      const locationUserIds = new Set(locationUsers?.map(u => u.id) || []);
+
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
       const { data: activePosters } = await supabase
@@ -190,6 +193,14 @@ export function CommunityScreen({ className }: CommunityScreenProps) {
         ...(activePosters?.map((p) => p.user_id) || []),
         ...(activeCommenters?.map((c) => c.user_id) || []),
       ]);
+      
+      let activeTodayCount = 0;
+      activeUserIds.forEach(id => {
+        if (locationUserIds.has(id)) {
+          activeTodayCount++;
+        }
+      });
+
       let postsQuery = supabase
         .from("posts")
         .select("*", { count: "exact", head: true })
@@ -204,9 +215,10 @@ export function CommunityScreen({ className }: CommunityScreenProps) {
         postsQuery = postsQuery.eq('ward', filterWard);
       }
       const { count: newPosts24h } = await postsQuery;
+      
       setStats({
-        totalUsers: totalUsers || 0,
-        activeToday: activeUserIds.size,
+        totalUsers: totalUsers,
+        activeToday: activeTodayCount,
         newPosts24h: newPosts24h || 0,
       });
     };
