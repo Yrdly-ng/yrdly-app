@@ -37,6 +37,13 @@ export class StorageService {
         return 'image/bmp';
       case 'tiff':
         return 'image/tiff';
+      // Video formats
+      case 'mp4':
+        return 'video/mp4';
+      case 'webm':
+        return 'video/webm';
+      case 'mov':
+        return 'video/quicktime';
       default:
         return 'image/jpeg'; // Default fallback
     }
@@ -352,4 +359,77 @@ export class StorageService {
       return { url: null, error };
     }
   }
+
+  // Upload post video (Supabase JS v2 uses Tus resumable protocol automatically for files > 6 MB)
+  static async uploadPostVideo(
+    userId: string,
+    file: File
+  ): Promise<{ url: string | null; thumbnailDataUrl: string | null; error: any }> {
+    try {
+      const { validateVideoFile, generateVideoThumbnail } = await import('./video-utils');
+      const validationError = validateVideoFile(file);
+      if (validationError) {
+        return { url: null, thumbnailDataUrl: null, error: validationError };
+      }
+
+      const ext = file.name.split('.').pop() ?? 'mp4';
+      const path = `${userId}/${Date.now()}.${ext}`;
+
+      const { data, error } = await supabase.storage
+        .from('post-videos')
+        .upload(path, file, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: file.type || this.getMimeType(file),
+        });
+
+      if (error) {
+        console.error('Post video upload error:', error);
+        return { url: null, thumbnailDataUrl: null, error };
+      }
+
+      const url = this.getPublicUrl('post-videos', data.path);
+      const thumbnailDataUrl = await generateVideoThumbnail(file);
+      return { url, thumbnailDataUrl, error: null };
+    } catch (error) {
+      console.error('Post video upload error:', error);
+      return { url: null, thumbnailDataUrl: null, error };
+    }
+  }
+
+  // Upload a video in a DM conversation
+  static async uploadChatVideo(
+    conversationId: string,
+    file: File
+  ): Promise<{ url: string | null; error: any }> {
+    try {
+      const { validateVideoFile } = await import('./video-utils');
+      const validationError = validateVideoFile(file);
+      if (validationError) {
+        return { url: null, error: validationError };
+      }
+
+      const ext = file.name.split('.').pop() ?? 'mp4';
+      const path = `${conversationId}/${Date.now()}.${ext}`;
+
+      const { data, error } = await supabase.storage
+        .from('chat-videos')
+        .upload(path, file, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: file.type || this.getMimeType(file),
+        });
+
+      if (error) {
+        console.error('Chat video upload error:', error);
+        return { url: null, error };
+      }
+
+      return { url: this.getPublicUrl('chat-videos', data.path), error: null };
+    } catch (error) {
+      console.error('Chat video upload error:', error);
+      return { url: null, error };
+    }
+  }
 }
+

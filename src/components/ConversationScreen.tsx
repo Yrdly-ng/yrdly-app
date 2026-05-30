@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/use-supabase-auth";
 import { supabase } from "@/lib/supabase";
 import { StorageService } from "@/lib/storage-service";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, ImagePlus, Send, MessageCircle } from "lucide-react";
+import { ArrowLeft, ImagePlus, VideoIcon, Send, MessageCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { ActivityIndicator } from "@/components/ActivityIndicator";
 import { useTypingDetection } from "@/hooks/use-typing-detection";
@@ -35,6 +35,7 @@ interface ChatMessage {
   text: string;
   content?: string;
   image_url: string | null;
+  video_url?: string | null;
   created_at: string;
   is_read: boolean;
   read_by?: string[];
@@ -69,11 +70,14 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
   const [newMessage, setNewMessage] = useState("");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoPreview, setVideoPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
   const { otherTypingUsers, handleTyping, stopTyping } = useTypingDetection(conversationId);
 
@@ -201,22 +205,33 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
 
   const handleSend = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !conversation || (!newMessage.trim() && !selectedFile)) return;
+    if (!user || !conversation || (!newMessage.trim() && !selectedFile && !videoFile)) return;
     setSending(true);
     try {
       let imageUrl: string | null = null;
+      let videoUrl: string | null = null;
       if (selectedFile) {
         const { url, error } = await StorageService.uploadChatImage(conversation.id, selectedFile);
         if (!error) imageUrl = url;
       }
+      if (videoFile) {
+        const { url, error } = await StorageService.uploadChatVideo(conversation.id, videoFile);
+        if (error) {
+          const msg = typeof error === 'string' ? error : 'Video upload failed.';
+          alert(msg);
+          setSending(false);
+          return;
+        }
+        videoUrl = url;
+      }
       await supabase.from("messages").insert({
         conversation_id: conversation.id, sender_id: user.id,
-        text: newMessage.trim() || "", image_url: imageUrl,
+        text: newMessage.trim() || "", image_url: imageUrl, video_url: videoUrl,
         created_at: new Date().toISOString(), is_read: true, read_by: [user.id],
       });
       await supabase.from("conversations").update({
         updated_at: new Date().toISOString(),
-        last_message_text: newMessage.trim() || (imageUrl ? "📷 Photo" : ""),
+        last_message_text: newMessage.trim() || (videoUrl ? "🎬 Video" : imageUrl ? "📷 Photo" : ""),
         last_message_timestamp: new Date().toISOString(),
         last_message_sender_id: user.id,
       }).eq("id", conversation.id);
@@ -225,13 +240,14 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
       for (const pid of others) {
         try {
           const { NotificationTriggers } = await import("@/lib/notification-triggers");
-          await NotificationTriggers.onMessageSent(pid, user.id, conversation.id, newMessage.trim() || (imageUrl ? "📷 Photo" : ""));
+          await NotificationTriggers.onMessageSent(pid, user.id, conversation.id, newMessage.trim() || (videoUrl ? "🎬 Video" : imageUrl ? "📷 Photo" : ""));
         } catch {}
       }
       setNewMessage(""); setSelectedFile(null); setImagePreview(null);
+      setVideoFile(null); setVideoPreview(null);
       stopTyping();
     } catch (e) { console.error(e); } finally { setSending(false); }
-  }, [user, conversation, newMessage, selectedFile, stopTyping]);
+  }, [user, conversation, newMessage, selectedFile, videoFile, stopTyping]);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -240,6 +256,17 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
     const reader = new FileReader();
     reader.onload = (ev) => setImagePreview(ev.target?.result as string);
     reader.readAsDataURL(file);
+  };
+
+  const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const MAX = 15 * 1024 * 1024;
+    const ALLOWED = ['video/mp4', 'video/webm', 'video/quicktime'];
+    if (!ALLOWED.includes(file.type) || file.size > MAX) return;
+    setVideoFile(file);
+    setVideoPreview(URL.createObjectURL(file));
+    if (videoInputRef.current) videoInputRef.current.value = '';
   };
 
   /* ─── Render ─── */
@@ -333,6 +360,18 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
                       <Image src={msg.image_url} alt="Message image" width={192} height={192} className="w-full h-auto object-cover" />
                     </div>
                   )}
+                  {msg.video_url && (
+                    <div className="rounded-[10px] overflow-hidden" style={{ maxWidth: 220 }}>
+                      <video
+                        src={msg.video_url}
+                        controls
+                        playsInline
+                        preload="metadata"
+                        className="w-full h-auto"
+                        style={{ maxHeight: 160 }}
+                      />
+                    </div>
+                  )}
                   {(msg.text || msg.content) && (
                     <div
                       className="px-4 py-3 text-foreground text-[0.8125rem] leading-relaxed"
@@ -386,6 +425,16 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
               style={{ background: "#E53935" }}>×</button>
           </div>
         )}
+        {/* Video preview */}
+        {videoPreview && (
+          <div className="relative mb-3 inline-block">
+            <video src={videoPreview} preload="metadata" className="rounded-[10px] w-20 h-20 object-cover" />
+            <button
+              onClick={() => { setVideoFile(null); setVideoPreview(null); }}
+              className="absolute -top-2 -right-2 w-6 h-6 rounded-full text-foreground text-xs flex items-center justify-center"
+              style={{ background: "#E53935" }}>×</button>
+          </div>
+        )}
         <form onSubmit={handleSend} className="flex items-center gap-3">
           <button type="button" onClick={() => fileInputRef.current?.click()}
             className="p-2 rounded-full flex-shrink-0 transition-colors"
@@ -393,6 +442,13 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
             onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.opacity = "0.8")}
             onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}>
             <ImagePlus className="w-6 h-6" />
+          </button>
+          <button type="button" onClick={() => videoInputRef.current?.click()}
+            className="p-2 rounded-full flex-shrink-0 transition-colors"
+            style={{ color: GREEN }}
+            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.opacity = "0.8")}
+            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}>
+            <VideoIcon className="w-6 h-6" />
           </button>
           <div className="flex-1 relative">
             <input
@@ -408,13 +464,14 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
           </div>
           <button
             type="submit"
-            disabled={(!newMessage.trim() && !selectedFile) || sending}
+            disabled={(!newMessage.trim() && !selectedFile && !videoFile) || sending}
             className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-transform active:scale-95 shadow-lg"
             style={{ background: GREEN }}>
             <Send className="w-5 h-5 text-foreground" />
           </button>
         </form>
         <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />
+        <input ref={videoInputRef} type="file" accept="video/mp4,video/webm,video/quicktime" onChange={handleVideoSelect} className="hidden" />
       </footer>
     </div>
   );

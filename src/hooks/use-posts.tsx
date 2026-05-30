@@ -244,7 +244,8 @@ export const usePosts = (filter?: LocationFilter | null) => {
     async (
       postData: Partial<Omit<Post, 'id'>>,
       postIdToUpdate?: string,
-      imageFiles?: FileList
+      imageFiles?: FileList,
+      videoFile?: File
     ) => {
       if (!user || !profile) {
         toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in.' });
@@ -276,6 +277,20 @@ export const usePosts = (filter?: LocationFilter | null) => {
             imageUrls = [...imageUrls, ...uploadedUrls];
         }
 
+        // Upload video if provided (new posts only)
+        let videoUrl: string | null = null;
+        let videoThumbnailUrl: string | null = null;
+        if (videoFile && !postIdToUpdate) {
+          const { url, thumbnailDataUrl, error: videoError } = await StorageService.uploadPostVideo(user.id, videoFile);
+          if (videoError) {
+            const errMsg = typeof videoError === 'string' ? videoError : 'Please try a smaller or shorter clip.';
+            toast({ variant: 'destructive', title: 'Video upload failed', description: errMsg });
+            return;
+          }
+          videoUrl = url;
+          videoThumbnailUrl = thumbnailDataUrl;
+        }
+
         // Clean up the data to remove undefined values and exclude imageFiles
         const cleanedPostData = Object.fromEntries(
           Object.entries(postData).filter(([key, value]) => 
@@ -292,6 +307,8 @@ export const usePosts = (filter?: LocationFilter | null) => {
           author_name: profile.name || 'Anonymous',
           author_image: profile.avatar_url || '',
           image_urls: imageUrls.length > 0 ? imageUrls : [],
+          video_url: videoUrl,
+          video_thumbnail_url: videoThumbnailUrl,
           timestamp: postIdToUpdate ? postData.timestamp : new Date().toISOString(),
           category: postData.category || 'General',
           // Location stamping — only set on new posts, preserve on edits
@@ -420,10 +437,10 @@ export const usePosts = (filter?: LocationFilter | null) => {
             return;
         }
         try {
-            // First, get the post to retrieve image URLs
+            // First, get the post to retrieve image and video URLs
             const { data: postData, error: fetchError } = await supabase
                 .from('posts')
-                .select('image_urls')
+                .select('image_urls, video_url')
                 .eq('id', postId)
                 .single();
 
@@ -462,6 +479,18 @@ export const usePosts = (filter?: LocationFilter | null) => {
                 });
 
                 await Promise.all(deletePromises);
+            }
+
+            // Delete associated video from storage
+            if (postData?.video_url) {
+                try {
+                    const url = new URL(postData.video_url);
+                    const pathParts = url.pathname.split('/');
+                    const path = pathParts.slice(3).join('/');
+                    await supabase.storage.from('post-videos').remove([path]);
+                } catch {
+                    // Non-fatal: video cleanup failed
+                }
             }
 
             toast({ title: 'Success', description: 'Post deleted successfully.' });

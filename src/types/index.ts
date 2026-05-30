@@ -86,6 +86,8 @@ export interface Post {
   description?: string;
   image_url?: string;
   image_urls?: string[];
+  video_url?: string | null;
+  video_thumbnail_url?: string | null;
   timestamp: string;
   comment_count: number;
   category: PostCategory;
@@ -184,6 +186,7 @@ export interface Message {
   sender: User;
   text?: string;
   imageUrl?: string;
+  videoUrl?: string;
   timestamp: string;
   isRead: boolean;
 }

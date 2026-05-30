@@ -644,6 +644,22 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
             <ImageCollage urls={urls} onImageClick={handleImageClick} />
           </div>
         )}
+        {/* Video player */}
+        {post.video_url && (
+          <div className="px-3 pb-3">
+            <div className="relative rounded-xl overflow-hidden bg-black">
+              <video
+                src={post.video_url}
+                controls
+                playsInline
+                preload="metadata"
+                poster={post.video_thumbnail_url ?? undefined}
+                className="w-full max-h-[360px] object-contain"
+                style={{ borderRadius: 12 }}
+              />
+            </div>
+          </div>
+        )}
         {/* Engagement */}
         <div className="px-4 pb-4 border-t border-border pt-3">
           <EngagementRow
@@ -658,6 +674,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
       </>
     );
   }
+
 
   return (
     <>

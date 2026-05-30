@@ -44,9 +44,9 @@ export const PAGINATION_CONSTANTS = {
 // File Upload
 export const FILE_CONSTANTS = {
   MAX_IMAGE_SIZE: 5 * 1024 * 1024, // 5MB
-  MAX_VIDEO_SIZE: 50 * 1024 * 1024, // 50MB
+  MAX_VIDEO_SIZE: 15 * 1024 * 1024, // 15MB — capped for Supabase free plan (1 GB total storage)
   ALLOWED_IMAGE_TYPES: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
-  ALLOWED_VIDEO_TYPES: ['video/mp4', 'video/webm'],
+  ALLOWED_VIDEO_TYPES: ['video/mp4', 'video/webm', 'video/quicktime'],
 };
 
 // Community Stats Fallback

@@ -19,7 +19,7 @@ import { useState, useEffect, memo, useCallback, useMemo, useRef } from "react";
 import * as React from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { Post } from "@/types";
-import { X, Paperclip, MapPin, Loader2 } from "lucide-react";
+import { X, Paperclip, Loader2, VideoIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
@@ -94,7 +94,7 @@ type CreatePostDialogProps = {
   children?:     React.ReactNode;
   postToEdit?:   Post;
   onOpenChange?: (open: boolean) => void;
-  createPost:    (postData: any, postId?: string, imageFiles?: FileList) => Promise<void>;
+  createPost:    (postData: any, postId?: string, imageFiles?: FileList, videoFile?: File) => Promise<void>;
   open?:         boolean;
 };
 
@@ -106,6 +106,9 @@ function PostForm({
   onClose,
   isEditMode,
   fileInputRef,
+  videoInputRef,
+  videoFile,
+  setVideoFile,
 }: {
   form: any;
   loading: boolean;
@@ -113,10 +116,51 @@ function PostForm({
   onClose: () => void;
   isEditMode: boolean;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
+  videoInputRef: React.RefObject<HTMLInputElement | null>;
+  videoFile: File | null;
+  setVideoFile: (f: File | null) => void;
 }) {
   const text = form.watch("text") as string;
   const { toast } = useToast();
   const [fetchingLocation, setFetchingLocation] = React.useState(false);
+  const [videoDuration, setVideoDuration] = React.useState<string | null>(null);
+  const [videoPreviewUrl, setVideoPreviewUrl] = React.useState<string | null>(null);
+
+  // Keep object URL in sync with videoFile
+  React.useEffect(() => {
+    if (!videoFile) { setVideoPreviewUrl(null); setVideoDuration(null); return; }
+    const url = URL.createObjectURL(videoFile);
+    setVideoPreviewUrl(url);
+    // Read duration
+    const v = document.createElement('video');
+    v.src = url;
+    v.preload = 'metadata';
+    v.addEventListener('loadedmetadata', () => {
+      const d = v.duration;
+      const m = Math.floor(d / 60);
+      const s = Math.floor(d % 60);
+      setVideoDuration(`${m}:${String(s).padStart(2, '0')}`);
+    });
+    return () => URL.revokeObjectURL(url);
+  }, [videoFile]);
+
+  const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Inline validation
+    const MAX = 15 * 1024 * 1024;
+    const ALLOWED = ['video/mp4', 'video/webm', 'video/quicktime'];
+    if (!ALLOWED.includes(file.type)) {
+      toast({ variant: 'destructive', title: 'Unsupported format', description: 'Only MP4, WebM, and MOV videos are supported.' });
+      return;
+    }
+    if (file.size > MAX) {
+      toast({ variant: 'destructive', title: 'Video too large', description: 'Video must be under 15 MB. Try trimming or compressing it first.' });
+      return;
+    }
+    setVideoFile(file);
+    if (videoInputRef.current) videoInputRef.current.value = '';
+  };
 
   const handleGif = () => {
     toast({
@@ -235,6 +279,34 @@ function PostForm({
             ))}
           </div>
         )}
+
+        {/* ── Video Preview ── */}
+        {videoFile && videoPreviewUrl && (
+          <div className="relative mt-2 rounded-xl overflow-hidden bg-black">
+            <video
+              src={videoPreviewUrl}
+              controls
+              playsInline
+              preload="metadata"
+              className="w-full max-h-48 object-contain"
+            />
+            {videoDuration && (
+              <span
+                className="absolute bottom-2 left-2 text-[0.625rem] font-bold px-2 py-0.5 rounded-full"
+                style={{ background: 'rgba(0,0,0,0.65)', color: '#fff', fontFamily: FONT_RL }}
+              >
+                {videoDuration}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => { setVideoFile(null); }}
+              className="absolute top-2 right-2 bg-black/60 rounded-full p-1 hover:bg-black"
+            >
+              <X size={12} color="white" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ── Divider ── */}
@@ -244,7 +316,7 @@ function PostForm({
       <div className="flex items-center justify-between px-5 py-3 flex-shrink-0">
         {/* Left icons */}
         <div className="flex items-center gap-4">
-          {/* Paperclip / attachment */}
+          {/* Paperclip / photos */}
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
@@ -253,7 +325,7 @@ function PostForm({
           >
             <Paperclip size={22} color={GREEN} strokeWidth={2} />
           </button>
-          {/* Hidden file input */}
+          {/* Hidden image input */}
           <input
             ref={fileInputRef}
             type="file"
@@ -261,6 +333,24 @@ function PostForm({
             multiple
             className="hidden"
             onChange={(e) => form.setValue("imageFiles", e.target.files)}
+          />
+
+          {/* Video */}
+          <button
+            type="button"
+            onClick={() => videoInputRef.current?.click()}
+            className="hover:opacity-70 transition-opacity"
+            aria-label="Attach video"
+          >
+            <VideoIcon size={22} color={GREEN} strokeWidth={2} />
+          </button>
+          {/* Hidden video input */}
+          <input
+            ref={videoInputRef}
+            type="file"
+            accept="video/mp4,video/webm,video/quicktime"
+            className="hidden"
+            onChange={handleVideoSelect}
           />
 
           {/* GIF */}
@@ -314,9 +404,11 @@ const CreatePostDialogComponent = ({
   const { user } = useAuth();
   const [internalOpen, setInternalOpen] = useState(false);
   const [loading, setLoading]           = useState(false);
+  const [videoFile, setVideoFile]       = useState<File | null>(null);
   const isMobile    = useIsMobile();
   const isEditMode  = !!postToEdit;
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const fileInputRef  = useRef<HTMLInputElement | null>(null);
+  const videoInputRef = useRef<HTMLInputElement | null>(null);
 
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
 
@@ -345,14 +437,15 @@ const CreatePostDialogComponent = ({
   const handleOpenChange = useCallback((next: boolean) => {
     if (externalOpen === undefined) setInternalOpen(next);
     onOpenChange?.(next);
-    if (!next) form.reset();
+    if (!next) { form.reset(); setVideoFile(null); }
   }, [onOpenChange, externalOpen, form]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
     const imageFiles = values.imageFiles?.length > 0 ? values.imageFiles : undefined;
     const postData   = { ...values, image_urls: isEditMode && postToEdit?.image_urls ? postToEdit.image_urls : undefined };
-    await createPost(postData, postToEdit?.id, imageFiles);
+    await createPost(postData, postToEdit?.id, imageFiles, videoFile ?? undefined);
+    setVideoFile(null);
     setLoading(false);
     handleOpenChange(false);
   }
@@ -368,7 +461,7 @@ const CreatePostDialogComponent = ({
     width:        "100%",
   };
 
-  const formProps = { form, loading, onSubmit, onClose: () => handleOpenChange(false), isEditMode, fileInputRef };
+  const formProps = { form, loading, onSubmit, onClose: () => handleOpenChange(false), isEditMode, fileInputRef, videoInputRef, videoFile, setVideoFile };
 
   if (isMobile) {
     return (
