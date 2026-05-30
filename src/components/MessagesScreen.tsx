@@ -109,14 +109,14 @@ export function MessagesScreen() {
                 .order("created_at", { ascending: true });
               const last = chatMsgs?.[chatMsgs.length - 1];
               if (!last || last.sender_id === user.id || isReadByReceipt) return { ...conv, unread_count: 0 };
-              return { ...conv, unread_count: (chatMsgs || []).filter((m: any) => m.sender_id !== user.id && !m.metadata?.isRead).length || 1 };
+              return { ...conv, unread_count: (chatMsgs || []).filter((m: any) => m.sender_id !== user.id && !m.metadata?.isRead).length || 0 };
             }
             const last = conv.messages?.[conv.messages.length - 1];
             if (!last || last.sender_id === user.id || isReadByReceipt) return { ...conv, unread_count: 0 };
             const unread = (conv.messages || []).filter(
               (m: any) => m.sender_id !== user.id && (!m.is_read || !m.read_by?.includes(user.id))
             ).length;
-            return { ...conv, unread_count: unread || 1 };
+            return { ...conv, unread_count: unread || 0 };
           })
         );
 

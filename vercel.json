@@ -10,6 +10,10 @@
     {
       "path": "/api/cron/process-event-payouts",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/unread-notifications",
+      "schedule": "0 10 * * *"
     }
   ]
 }

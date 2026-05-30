@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef as reactUseRef } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/use-supabase-auth";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import type { User, Post } from "@/types";
+import { NotificationTriggers } from "@/lib/notification-triggers";
 import { FriendsList } from "./FriendsList";
 import { useToast } from "@/hooks/use-toast";
 import { shortenAddress } from "@/lib/utils";
@@ -151,6 +152,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
   const [showFriendsList, setShowFriendsList] = useState(false);
   const [showRemoveFriendDialog, setShowRemoveFriendDialog] = useState(false);
   const [stats, setStats] = useState({ friends: 0, events: 0 });
+  const hasTriggeredViewRef = reactUseRef<boolean>(false);
 
   const targetUser = externalTargetUser || user || currentUser;
   const targetProfile = externalTargetUser ? null : (user ? null : currentProfile);
@@ -191,9 +193,15 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
       setUserEvents(eventsRes.data || []);
       setStats({ friends: userData?.friends?.length || 0, events: eventsCountRes.data?.length || 0 });
       setLoading(false);
+      
+      // Trigger profile view notification if viewing someone else's profile
+      if (!hasTriggeredViewRef.current && currentUser?.id && targetUser.id !== currentUser.id) {
+          hasTriggeredViewRef.current = true;
+          NotificationTriggers.onProfileView(targetUser.id, currentUser.id).catch(console.error);
+      }
     };
     fetch();
-  }, [targetUser, targetProfile]);
+  }, [targetUser, targetProfile, currentUser, hasTriggeredViewRef]);
 
   // Real-time sub
   useEffect(() => {

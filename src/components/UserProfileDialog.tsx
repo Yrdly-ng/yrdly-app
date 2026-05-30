@@ -1,10 +1,11 @@
 
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef as reactUseRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/use-supabase-auth';
+import { NotificationTriggers } from '@/lib/notification-triggers';
 import type { User } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -44,6 +45,9 @@ export function UserProfileDialog({ user: profileUser, open, onOpenChange }: Use
     const { toast } = useToast();
     const router = useRouter();
     const isDesktop = useMediaQuery("(min-width: 768px)");
+    
+    // Ensure we only trigger the notification once per open session
+    const hasTriggeredViewRef = reactUseRef<boolean>(false);
 
     // ── Single source of truth for friendship state ──
     const friendship = useFriendshipGlobal(profileUser?.id);
@@ -66,7 +70,20 @@ export function UserProfileDialog({ user: profileUser, open, onOpenChange }: Use
             setIsBlocked(data?.blocked_users?.includes(profileUser.id) ?? false);
         };
         fetchBlockStatus();
-    }, [open, currentUser, profileUser, onOpenChange]);
+        
+        // Trigger profile view notification
+        if (!hasTriggeredViewRef.current && currentUser.id !== profileUser.id) {
+            hasTriggeredViewRef.current = true;
+            NotificationTriggers.onProfileView(profileUser.id, currentUser.id).catch(console.error);
+        }
+    }, [open, currentUser, profileUser, onOpenChange, hasTriggeredViewRef]);
+
+    // Reset the triggered ref when dialog closes
+    useEffect(() => {
+        if (!open) {
+            hasTriggeredViewRef.current = false;
+        }
+    }, [open, hasTriggeredViewRef]);
 
     // ── Block / Unblock ──
     const handleBlockUser = async () => {
