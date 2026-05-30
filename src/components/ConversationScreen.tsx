@@ -362,7 +362,7 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
                   {msg.video_url && (
                     <div className="rounded-[10px] overflow-hidden" style={{ maxWidth: 220 }}>
                       <video
-                        src={msg.video_url}
+                        src={msg.video_url.includes('#t=') ? msg.video_url : `${msg.video_url}#t=0.001`}
                         controls
                         playsInline
                         preload="metadata"
@@ -427,7 +427,7 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
         {/* Video preview */}
         {videoPreview && (
           <div className="relative mb-3 inline-block">
-            <video src={videoPreview} preload="metadata" className="rounded-[10px] w-20 h-20 object-cover" />
+            <video src={videoPreview.includes('#t=') ? videoPreview : `${videoPreview}#t=0.001`} preload="metadata" className="rounded-[10px] w-20 h-20 object-cover" />
             <button
               onClick={() => { setVideoFile(null); setVideoPreview(null); }}
               className="absolute -top-2 -right-2 w-6 h-6 rounded-full text-foreground text-xs flex items-center justify-center"

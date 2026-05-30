@@ -278,7 +278,7 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
         <div className="px-3 pb-4">
           <div className="relative rounded-xl overflow-hidden bg-black">
             <video
-              src={post.video_url}
+              src={post.video_url.includes('#t=') ? post.video_url : `${post.video_url}#t=0.001`}
               controls
               playsInline
               preload="metadata"
