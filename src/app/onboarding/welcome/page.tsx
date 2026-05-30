@@ -227,7 +227,7 @@ export default function OnboardingWelcomePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-[100dvh] bg-background">
+      <div className="min-h-[100dvh] bg-background dark" style={{ background: "var(--background)", color: "var(--foreground)" }}>
         <OnboardingProgress />
         <div className="flex items-center justify-center p-4 pt-8">
           <LoadingState 
@@ -240,7 +240,7 @@ export default function OnboardingWelcomePage() {
   }
 
   return (
-    <div className="min-h-[100dvh] pb-20 overflow-x-hidden relative" style={{ background: "var(--background)", color: "var(--foreground)", fontFamily: "Inter, sans-serif" }}>
+    <div className="min-h-[100dvh] pb-20 overflow-x-hidden relative dark" style={{ background: "var(--background)", color: "var(--foreground)", fontFamily: "Inter, sans-serif" }}>
       <OnboardingProgress />
       
       {/* Background Glows */}

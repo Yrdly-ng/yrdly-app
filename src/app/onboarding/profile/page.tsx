@@ -294,7 +294,7 @@ export default function OnboardingProfilePage() {
   // Show loading state while location data is being loaded
   if (locationLoading && states.length === 0) {
     return (
-      <div className="min-h-[100dvh] bg-background">
+      <div className="min-h-[100dvh] bg-background dark" style={{ background: "var(--c-bg)", color: "var(--c-text)" }}>
         <OnboardingProgress />
         <div className="flex items-center justify-center p-4 pt-8">
           <LoadingState 
@@ -307,7 +307,7 @@ export default function OnboardingProfilePage() {
   }
 
   return (
-    <div className="min-h-[100dvh] pb-20 overflow-x-hidden" style={{ background: "var(--c-bg)", color: "var(--c-text)", fontFamily: "Inter, sans-serif" }}>
+    <div className="min-h-[100dvh] pb-20 overflow-x-hidden dark" style={{ background: "var(--c-bg)", color: "var(--c-text)", fontFamily: "Inter, sans-serif" }}>
       <OnboardingProgress />
       
       {/* Animated Background Elements */}
@@ -331,66 +331,6 @@ export default function OnboardingProfilePage() {
               <p className="text-muted-foreground text-lg font-medium">
                 Your neighborhood identity starts here
               </p>
-            </div>
-          </div>
-
-          {/* Premium Digital ID Preview */}
-          <div className="relative group perspective mx-auto w-full max-w-md px-4">
-            <div className="absolute inset-0 bg-gradient-to-br from-[#388E3C]/30 to-transparent rounded-[32px] blur-3xl opacity-40 group-hover:opacity-60 transition-opacity duration-1000" />
-            <div 
-              className="relative w-full min-h-[240px] rounded-[32px] p-6 sm:p-8 border border-border overflow-hidden transition-all duration-700 shadow-2xl backdrop-blur-2xl"
-              style={{ 
-                background: "linear-gradient(135deg, rgba(30, 33, 38, 0.8) 0%, rgba(13, 15, 17, 0.8) 100%)",
-                boxShadow: "inset 0 0 60px var(--c-border)"
-              }}
-            >
-              {/* Card Holographic Pattern */}
-              <div className="absolute inset-0 opacity-[0.05] pointer-events-none" style={{ backgroundImage: "radial-gradient(circle at 2px 2px, white 1px, transparent 0)", backgroundSize: "32px 32px" }} />
-
-              <div className="h-full flex flex-col justify-between relative z-10 gap-6">
-                <div className="flex items-start gap-4 sm:gap-6">
-                  <div className="relative shrink-0">
-                    <div className="w-24 h-24 rounded-3xl bg-background border border-border flex items-center justify-center overflow-hidden shadow-2xl relative group/avatar">
-                      <div className="absolute inset-0 bg-[#388E3C] opacity-0 group-hover/avatar:opacity-10 transition-opacity" />
-                      <User className="w-12 h-12 text-[#388E3C]/40 group-hover/avatar:scale-110 transition-transform duration-500" />
-                    </div>
-                    <div className="absolute -bottom-2 -right-2 w-9 h-9 rounded-full bg-[#388E3C] border-[4px] border-[var(--c-card)] flex items-center justify-center shadow-lg animate-pulse">
-                      <CheckCircle2 className="w-4 h-4 text-white" />
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2 py-1 flex-1 min-w-0 pr-12">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#388E3C]/10 border border-[#388E3C]/20 shrink-0">
-                      <Sparkles className="w-3 h-3 text-[#388E3C] shrink-0" />
-                      <span className="text-[0.625rem] uppercase tracking-[0.2em] font-black text-[#388E3C] truncate">Citizen One</span>
-                    </div>
-                    <div className="text-3xl font-black text-white leading-none tracking-tight truncate">
-                      {form.watch('fullName') || 'Identity Name'}
-                    </div>
-                    <div className="text-base font-bold text-muted-foreground truncate">
-                      @{form.watch('username') || 'handle'}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-end justify-between border-t border-border pt-4 sm:pt-6 mt-auto">
-                  <div className="space-y-2">
-                    <div className="text-[0.625rem] uppercase tracking-widest font-black text-muted-foreground opacity-60 ml-0.5">Primary Sector</div>
-                    <div className="flex items-center gap-2.5 text-white font-black">
-                      <div className="w-8 h-8 rounded-lg bg-[#388E3C]/10 flex items-center justify-center">
-                        <MapPin className="w-4 h-4 text-[#388E3C]" />
-                      </div>
-                      <span className="text-base">{form.watch('location.lga') || 'Sector Unassigned'}</span>
-                    </div>
-                  </div>
-                  <div className="text-right flex flex-col items-end gap-1">
-                    <div className="text-[0.625rem] uppercase tracking-widest font-black text-muted-foreground opacity-60">Verification</div>
-                    <div className="px-3 py-1 rounded-lg bg-[#388E3C]/10 text-[#388E3C] text-[0.6875rem] font-black border border-[#388E3C]/20">
-                      ACTIVE RESIDENT
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
 
@@ -500,24 +440,7 @@ export default function OnboardingProfilePage() {
                   {/* Location Grid */}
                   <div className="space-y-8 pt-8 border-t border-border">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-[18px] flex items-center justify-center bg-[#388E3C]/10 border border-[#388E3C]/20">
-                          <MapPin className="w-6 h-6 text-[#388E3C]" />
-                        </div>
-                        <h3 className="text-2xl font-black text-white tracking-tight">Geographic Sector</h3>
-                      </div>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div className="px-3 py-1 rounded-full bg-white/5 border border-border text-[0.625rem] font-black text-muted-foreground cursor-default">
-                              REQUIRED
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent className="bg-card border-border text-white font-bold p-3 rounded-xl shadow-2xl backdrop-blur-xl">
-                            Used to connect you with relevant local neighborhood content.
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                      <h3 className="text-2xl font-black text-[var(--c-text)] tracking-tight">Geographic Sector</h3>
                     </div>
 
                     {!showManualLocation ? (
@@ -529,7 +452,6 @@ export default function OnboardingProfilePage() {
                           if (loc.lat && loc.lng) {
                             setGpsLocation({ lat: loc.lat, lng: loc.lng });
                           }
-                          setShowManualLocation(true);
                         }}
                         onFallbackToManual={() => setShowManualLocation(true)}
                       />

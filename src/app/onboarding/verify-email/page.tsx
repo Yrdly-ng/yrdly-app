@@ -180,7 +180,7 @@ function VerifyEmailContent() {
 
   if (loading) {
     return (
-      <div className="min-h-[100dvh] flex items-center justify-center" style={{ background: "var(--c-bg)" }}>
+      <div className="min-h-[100dvh] flex items-center justify-center dark" style={{ background: "var(--c-bg)" }}>
         <Loader2 className="w-8 h-8 animate-spin" style={{ color: "#388E3C" }} />
       </div>
     );
@@ -188,7 +188,7 @@ function VerifyEmailContent() {
 
   return (
     <div
-      className="min-h-[100dvh] flex flex-col items-center justify-center px-4 py-10 overflow-x-hidden"
+      className="min-h-[100dvh] flex flex-col items-center justify-center px-4 py-10 overflow-x-hidden dark"
       style={{ background: "var(--c-bg)", color: "var(--c-text)", fontFamily: "Inter, sans-serif" }}
     >
       {/* Ambient glow */}
@@ -372,7 +372,7 @@ function VerifyEmailContent() {
 export default function OnboardingVerifyEmailPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-[100dvh] flex items-center justify-center" style={{ background: "var(--c-bg)" }}>
+      <div className="min-h-[100dvh] flex items-center justify-center dark" style={{ background: "var(--c-bg)" }}>
         <Loader2 className="w-8 h-8 animate-spin" style={{ color: "#388E3C" }} />
       </div>
     }>
