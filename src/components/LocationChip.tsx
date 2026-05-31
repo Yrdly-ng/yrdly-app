@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import states from "@/data/states.json";
 
 const GREEN = "#388E3C";
-const FONT = "Pacifico", cursive;
+const FONT = "\"Pacifico\", cursive";
 const CARD = "var(--c-card)";
 const BG = "var(--c-bg)";
 

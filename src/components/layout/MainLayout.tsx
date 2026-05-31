@@ -252,7 +252,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                   <Avatar className="w-8 h-8 md:w-9 md:h-9 rounded-full">
                     <AvatarImage src={profile?.avatar_url || ""} />
                     <AvatarFallback
-                      style={{ background: "#388E3C", color: "#fff", fontFamily: "Pacifico", cursive, fontWeight: 700 }}
+                      style={{ background: "#388E3C", color: "#fff", fontFamily: "\"Pacifico\", cursive", fontWeight: 700 }}
                     >
                       {profile?.name?.charAt(0).toUpperCase() || "U"}
                     </AvatarFallback>
@@ -297,7 +297,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                           "text-[0.875rem] leading-snug",
                           isActive ? "text-[#388E3C] font-semibold" : "text-[#252629] font-normal"
                         )}
-                        style={{ fontFamily: "Pacifico", cursive }}
+                        style={{ fontFamily: "\"Pacifico\", cursive" }}
                       >
                         {label}
                       </span>
@@ -315,7 +315,7 @@ export function MainLayout({ children }: MainLayoutProps) {
               >
                 <Button
                   className="w-full h-10 rounded-full text-white font-semibold text-[0.875rem]"
-                  style={{ background: "#388E3C", fontFamily: "Pacifico", cursive }}
+                  style={{ background: "#388E3C", fontFamily: "\"Pacifico\", cursive" }}
                   onClick={() => setPostDialogOpen(true)}
                 >
                   <Plus weight="bold" className="w-4 h-4 mr-1.5" />

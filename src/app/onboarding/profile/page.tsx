@@ -294,7 +294,7 @@ export default function OnboardingProfilePage() {
   // Show loading state while location data is being loaded
   if (locationLoading && states.length === 0) {
     return (
-      <div className="min-h-[100dvh] bg-background text-foreground" style={{ fontFamily: "Pacifico", cursive }}>
+      <div className="min-h-[100dvh] bg-background text-foreground" style={{ fontFamily: "\"Pacifico\", cursive" }}>
         <OnboardingProgress />
         <div className="flex items-center justify-center p-4 pt-8">
           <LoadingState 
@@ -307,7 +307,7 @@ export default function OnboardingProfilePage() {
   }
 
   return (
-    <div className="min-h-[100dvh] pb-20 overflow-x-hidden bg-background text-foreground" style={{ fontFamily: "Pacifico", cursive }}>
+    <div className="min-h-[100dvh] pb-20 overflow-x-hidden bg-background text-foreground" style={{ fontFamily: "\"Pacifico\", cursive" }}>
       <OnboardingProgress />
       
       {/* Animated Background Elements */}

@@ -15,7 +15,7 @@ import Image from "next/image";
 const GREEN = "#388E3C";
 const CARD = "var(--c-card)";
 const BG = "var(--c-bg)";
-const FONT = "Pacifico", cursive;
+const FONT = "\"Pacifico\", cursive";
 
 interface ConversationRow {
   id: string;
@@ -317,7 +317,7 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
           </div>
         </div>
         <div className="ml-3 flex-1 min-w-0">
-          <h1 className="text-[1rem] font-bold text-foreground truncate" style={{ fontFamily: "Pacifico", cursive }}>
+          <h1 className="text-[1rem] font-bold text-foreground truncate" style={{ fontFamily: "\"Pacifico\", cursive" }}>
             {otherParticipant.name}
           </h1>
           <p className="text-[0.75rem]" style={{ fontFamily: FONT, color: "var(--c-text-muted)" }}>

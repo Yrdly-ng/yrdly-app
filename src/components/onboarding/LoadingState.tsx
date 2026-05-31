@@ -41,7 +41,7 @@ export function LoadingState({ type, message, progress }: LoadingStateProps) {
   const Icon = config.icon;
 
   return (
-    <div className="flex flex-col items-center justify-center p-8 space-y-12 animate-in fade-in zoom-in duration-1000 min-h-[500px] relative overflow-hidden" style={{ fontFamily: "Pacifico", cursive }}>
+    <div className="flex flex-col items-center justify-center p-8 space-y-12 animate-in fade-in zoom-in duration-1000 min-h-[500px] relative overflow-hidden" style={{ fontFamily: "\"Pacifico\", cursive" }}>
       
       {/* Dynamic Background Glows */}
       <div 

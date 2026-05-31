@@ -29,7 +29,7 @@ export function OnboardingProgress({ className = '' }: OnboardingProgressProps) 
         background: "var(--c-bg)", 
         borderBottom: "1px solid var(--c-border)",
         backdropFilter: "blur(20px)",
-        fontFamily: "Pacifico", cursive
+        fontFamily: "\"Pacifico\", cursive"
       }}
     >
       <div className="max-w-md mx-auto px-4 py-3">

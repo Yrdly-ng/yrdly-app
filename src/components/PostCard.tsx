@@ -53,7 +53,7 @@ import { ImageSwiper } from "./ImageSwiper";
 const CARD_BG = "var(--c-card)";
 const BG = "var(--c-bg)";
 const GREEN = "#388E3C";
-const FONT_RALEWAY = "Pacifico", cursive;
+const FONT_RALEWAY = "\"Pacifico\", cursive";
 const FONT_PACIFICO = "Pacifico, cursive";
 
 function fmt(n: number) {

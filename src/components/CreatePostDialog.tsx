@@ -28,7 +28,7 @@ import Image from "next/image";
 const BG       = "var(--c-bg)";
 const BORDER   = "rgba(187,187,187,0.3)";
 const GREEN    = "#388E3C";
-const FONT_RL  = "Pacifico", cursive;
+const FONT_RL  = "\"Pacifico\", cursive";
 
 // ── Schema ─────────────────────────────────────────────────────
 const BlobImage = memo(({ file, className, alt }: { file: File, className?: string, alt?: string }) => {

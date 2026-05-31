@@ -32,9 +32,9 @@ const GREEN_LIGHT = "#82DB7E";
 const CARD = "var(--c-card)";
 const SURFACE = "var(--c-card)";
 const BG = "var(--c-bg)";
-const FONT = "Pacifico", cursive;
-const RALEWAY = "Pacifico", cursive;
-const JAKARTA = "Pacifico", cursive;
+const FONT = "\"Pacifico\", cursive";
+const RALEWAY = "\"Pacifico\", cursive";
+const JAKARTA = "\"Pacifico\", cursive";
 
 interface ProfileScreenProps {
   onBack?: () => void;

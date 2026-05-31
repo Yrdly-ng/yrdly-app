@@ -10,7 +10,7 @@ interface ProfileDropdownProps {
   onClose: () => void;
 }
 
-const FONT = "Pacifico", cursive;
+const FONT = "\"Pacifico\", cursive";
 const GREEN = "#388E3C";
 
 export function ProfileDropdown({ onClose }: ProfileDropdownProps) {

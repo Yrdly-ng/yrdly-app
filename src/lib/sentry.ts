@@ -19,7 +19,7 @@ export const captureException = (error: any) => {
   console.error("Captured Exception:", error);
 };
 
-export const startSpan = (context: any, callback: (span: any) => void) => {
+export const startSpan = <T>(context: any, callback: (span: any) => T): T => {
   // Mock span that just runs the callback and measures simple time if needed
   const span = { ...context };
   return callback(span);
@@ -96,11 +96,11 @@ export const trackRealtimeError = (error: Error, context: {
   console.error("Realtime Error:", error, context);
 };
 
-export const createUISpan = (name: string, op: string, callback: (span: any) => void) => {
+export const createUISpan = <T>(name: string, op: string, callback: (span: any) => T): T => {
   return startSpan({ name, op }, callback);
 };
 
-export const createAPISpan = (name: string, op: string, callback: (span: any) => void) => {
+export const createAPISpan = <T>(name: string, op: string, callback: (span: any) => T): T => {
   return startSpan({ name, op }, callback);
 };
 

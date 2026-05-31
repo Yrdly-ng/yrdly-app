@@ -7,7 +7,7 @@ import { ArrowLeft, Clock, Briefcase, Bell } from "lucide-react";
 const GREEN = "#388E3C";
 const GREEN_LIGHT = "#82DB7E";
 const CARD = "var(--c-card)";
-const FONT = "Pacifico", cursive;
+const FONT = "\"Pacifico\", cursive";
 const PACIFICO = "Pacifico, cursive";
 
 export default function BusinessesPage() {

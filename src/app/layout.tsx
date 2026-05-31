@@ -8,13 +8,9 @@ import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { ThemeProvider } from "@/components/ThemeProvider";
 import Script from "next/script";
-import dynamic from 'next/dynamic';
+import { Suspense } from 'react';
+import PostHogPageView from '@/components/providers/PostHogPageView';
 import { PostHogProvider } from '@/components/providers/PostHogProvider';
-
-const PostHogPageView = dynamic(
-  () => import('@/components/providers/PostHogPageView'),
-  { ssr: false }
-);
 
 export const metadata: Metadata = {
   title: 'Yrdly - Your Neighborhood Network',
@@ -61,7 +57,9 @@ export default function RootLayout({
             storageKey="yrdly-theme"
           >
             <AuthProvider>
-              <PostHogPageView />
+              <Suspense fallback={null}>
+                <PostHogPageView />
+              </Suspense>
               {children}
             </AuthProvider>
           <Toaster />

@@ -11,14 +11,17 @@ import { useFriendshipContext } from "@/contexts/FriendshipContext";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNowStrict } from 'date-fns';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import * as Sentry from "@sentry/nextjs";
+const Sentry = {
+  startSpan: async (opts: any, cb: (span: any) => Promise<any>) => cb({ setAttribute: () => {} }),
+  captureException: (e: any) => console.error(e)
+};
 
 const GREEN = "#388E3C";
 const GREEN_LIGHT = "#82DB7E";
 const CARD = "var(--c-card)";
 const SURFACE = "var(--c-bg)";
-const FONT = "Pacifico", cursive;
-const RALEWAY = "Pacifico", cursive;
+const FONT = "\"Pacifico\", cursive";
+const RALEWAY = "\"Pacifico\", cursive";
 
 interface NotificationsDropdownProps {
   isOpen: boolean;

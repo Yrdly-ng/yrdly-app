@@ -146,7 +146,7 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
             className="w-full pl-12 pr-4 py-2.5 bg-transparent text-foreground text-base italic font-light rounded-full outline-none placeholder:text-[#BBBBBB]"
             style={{
               border: "0.5px solid #388E3C",
-              fontFamily: "Pacifico", cursive,
+              fontFamily: "\"Pacifico\", cursive",
               fontWeight: 300,
             }}
           />
@@ -204,7 +204,7 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
           >
             {searchTerm ? `No results for "${searchTerm}"` : "Marketplace is empty"}
           </h3>
-          <p className="text-sm" style={{ color: "var(--c-text-muted)", fontFamily: "Pacifico", cursive }}>
+          <p className="text-sm" style={{ color: "var(--c-text-muted)", fontFamily: "\"Pacifico\", cursive" }}>
             {searchTerm
               ? "Try a different search term."
               : "Be the first to list an item in your neighborhood!"}
@@ -309,7 +309,7 @@ function MarketplaceCard({
         {/* Item name */}
         <p
           className="text-foreground text-[0.8125rem] leading-[15px] line-clamp-2"
-          style={{ fontFamily: "Pacifico", cursive, fontWeight: 500 }}
+          style={{ fontFamily: "\"Pacifico\", cursive", fontWeight: 500 }}
           onClick={() => onItemClick?.(item)}
         >
           {item.title || item.text || "Untitled"}
@@ -318,7 +318,7 @@ function MarketplaceCard({
         {/* Price */}
         <p
           className="text-[1.375rem] leading-[28px] font-bold"
-          style={{ fontFamily: "Pacifico", cursive, color: "#388E3C" }}
+          style={{ fontFamily: "\"Pacifico\", cursive", color: "#388E3C" }}
         >
           {formatPrice(item.price || 0)}
         </p>
@@ -333,7 +333,7 @@ function MarketplaceCard({
                 style={{
                   borderColor: "#388E3C",
                   color: "#388E3C",
-                  fontFamily: "Pacifico", cursive,
+                  fontFamily: "\"Pacifico\", cursive",
                   background: "transparent",
                 }}
               >
@@ -354,7 +354,7 @@ function MarketplaceCard({
                 className="flex-1 text-xs py-1.5 rounded-full font-medium transition-colors text-foreground"
                 style={{
                   background: "#388E3C",
-                  fontFamily: "Pacifico", cursive,
+                  fontFamily: "\"Pacifico\", cursive",
                 }}
               >
                 {item.price === 0 ? "Claim Free" : "Buy Now"}
@@ -395,13 +395,13 @@ function MarketplaceCard({
           </div>
           <span
             className="text-[0.6875rem] truncate"
-            style={{ color: "var(--c-text-muted)", fontFamily: "Pacifico", cursive }}
+            style={{ color: "var(--c-text-muted)", fontFamily: "\"Pacifico\", cursive" }}
           >
             {item.user?.name || "Unknown Seller"}
           </span>
           <span
             className="text-[0.625rem] ml-auto flex-shrink-0"
-            style={{ color: "#555", fontFamily: "Pacifico", cursive }}
+            style={{ color: "#555", fontFamily: "\"Pacifico\", cursive" }}
           >
             {new Date(item.timestamp).toLocaleDateString("en-NG", {
               day: "numeric",

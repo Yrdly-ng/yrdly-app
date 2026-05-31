@@ -59,7 +59,7 @@ export default function AddPayoutAccountPage() {
   return (
     <div
       className="min-h-dvh flex flex-col items-center"
-      style={{ background: BG, color: "var(--c-text)", fontFamily: "Pacifico", cursive }}
+      style={{ background: BG, color: "var(--c-text)", fontFamily: "\"Pacifico\", cursive" }}
     >
       {/* Aura glows */}
       <div className="fixed -z-10 top-0 right-0 w-[500px] h-[500px] rounded-full pointer-events-none" style={{ background: "rgba(77,162,78,0.04)", filter: "blur(120px)" }} />
@@ -82,7 +82,7 @@ export default function AddPayoutAccountPage() {
 
         {/* Intro */}
         <section className="mb-8">
-          <p className="text-[0.75rem] mb-4" style={{ color: MUTED, fontFamily: "Pacifico", cursive }}>
+          <p className="text-[0.75rem] mb-4" style={{ color: MUTED, fontFamily: "\"Pacifico\", cursive" }}>
             Required to receive your marketplace earnings
           </p>
           <div
@@ -90,7 +90,7 @@ export default function AddPayoutAccountPage() {
             style={{ background: "rgba(130,219,126,0.08)" }}
           >
             <Lock className="w-4 h-4 flex-shrink-0" style={{ color: GreenL }} />
-            <p className="text-[0.6875rem]" style={{ color: GreenL, fontFamily: "Pacifico", cursive }}>
+            <p className="text-[0.6875rem]" style={{ color: GreenL, fontFamily: "\"Pacifico\", cursive" }}>
               Your account details are encrypted at rest
             </p>
           </div>
@@ -100,7 +100,7 @@ export default function AddPayoutAccountPage() {
 
           {/* Bank selector */}
           <div className="space-y-2 relative">
-            <label className="text-[0.8125rem] font-medium ml-4" style={{ color: MUTED, fontFamily: "Pacifico", cursive }}>
+            <label className="text-[0.8125rem] font-medium ml-4" style={{ color: MUTED, fontFamily: "\"Pacifico\", cursive" }}>
               Select Bank
             </label>
             <div className="relative">
@@ -115,7 +115,7 @@ export default function AddPayoutAccountPage() {
                   background: CARDH,
                   color: "var(--c-text)",
                   border: bankOpen ? `1px solid ${Green}` : "1px solid rgba(64,73,61,0.2)",
-                  fontFamily: "Pacifico", cursive,
+                  fontFamily: "\"Pacifico\", cursive",
                 }}
               />
               <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: MUTED }} />
@@ -129,7 +129,7 @@ export default function AddPayoutAccountPage() {
                   <li key={b}>
                     <button
                       className="w-full text-left px-5 py-3 text-sm hover:opacity-80 flex items-center justify-between transition-colors"
-                      style={{ color: "var(--c-text)", fontFamily: "Pacifico", cursive }}
+                      style={{ color: "var(--c-text)", fontFamily: "\"Pacifico\", cursive" }}
                       onClick={() => { setSelectedBank(b); setBankQuery(b); setBankOpen(false); setVerifiedName(null); }}
                     >
                       {b}
@@ -143,7 +143,7 @@ export default function AddPayoutAccountPage() {
 
           {/* Account number */}
           <div className="space-y-2">
-            <label className="text-[0.8125rem] font-medium ml-4" style={{ color: MUTED, fontFamily: "Pacifico", cursive }}>
+            <label className="text-[0.8125rem] font-medium ml-4" style={{ color: MUTED, fontFamily: "\"Pacifico\", cursive" }}>
               Account Number
             </label>
             <input
@@ -158,7 +158,7 @@ export default function AddPayoutAccountPage() {
                 background: CARDH,
                 color: "var(--c-text)",
                 border: "1px solid rgba(64,73,61,0.2)",
-                fontFamily: "Pacifico", cursive,
+                fontFamily: "\"Pacifico\", cursive",
                 letterSpacing: "0.1em",
               }}
             />
@@ -174,7 +174,7 @@ export default function AddPayoutAccountPage() {
                 background: "transparent",
                 borderColor: "rgba(77,162,78,0.4)",
                 color: GreenL,
-                fontFamily: "Pacifico", cursive,
+                fontFamily: "\"Pacifico\", cursive",
                 opacity: (!selectedBank || accNumber.length < 10) ? 0.4 : 1,
               }}
             >
@@ -190,7 +190,7 @@ export default function AddPayoutAccountPage() {
             {verifiedName && (
               <div className="flex items-center gap-3 px-4 py-2 rounded-xl" style={{ background: "rgba(130,219,126,0.07)" }}>
                 <Check className="w-5 h-5 flex-shrink-0" style={{ color: GreenL }} />
-                <p className="text-[0.8125rem]" style={{ color: GreenL, fontFamily: "Pacifico", cursive }}>
+                <p className="text-[0.8125rem]" style={{ color: GreenL, fontFamily: "\"Pacifico\", cursive" }}>
                   Account Name: <span className="font-bold">{verifiedName}</span>
                 </p>
               </div>
@@ -199,7 +199,7 @@ export default function AddPayoutAccountPage() {
 
           {/* Verified name (read-only) */}
           <div className="space-y-2" style={{ opacity: verifiedName ? 1 : 0.4 }}>
-            <label className="text-[0.8125rem] font-medium ml-4" style={{ color: MUTED, fontFamily: "Pacifico", cursive }}>
+            <label className="text-[0.8125rem] font-medium ml-4" style={{ color: MUTED, fontFamily: "\"Pacifico\", cursive" }}>
               Verified Account Name
             </label>
             <input
@@ -208,14 +208,14 @@ export default function AddPayoutAccountPage() {
               value={verifiedName ?? ""}
               placeholder="Will auto-fill after verification"
               className="w-full h-14 rounded-full px-6"
-              style={{ background: "var(--c-bg)", color: MUTED, fontFamily: "Pacifico", cursive, cursor: "default", border: "1px solid rgba(64,73,61,0.1)" }}
+              style={{ background: "var(--c-bg)", color: MUTED, fontFamily: "\"Pacifico\", cursive", cursor: "default", border: "1px solid rgba(64,73,61,0.1)" }}
             />
           </div>
 
           {/* Info note */}
           <div className="flex items-start gap-3 px-4 py-2">
             <Info className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: MUTED }} />
-            <p className="text-[0.6875rem] leading-relaxed" style={{ color: MUTED, fontFamily: "Pacifico", cursive }}>
+            <p className="text-[0.6875rem] leading-relaxed" style={{ color: MUTED, fontFamily: "\"Pacifico\", cursive" }}>
               We verify your account via Flutterwave to ensure accurate payouts. Your data is protected by industry-standard protocols.
             </p>
           </div>
@@ -230,7 +230,7 @@ export default function AddPayoutAccountPage() {
             style={{
               background: verifiedName ? "#4da24e" : CARDH,
               color: verifiedName ? "#003207" : MUTED,
-              fontFamily: "Pacifico", cursive,
+              fontFamily: "\"Pacifico\", cursive",
               boxShadow: verifiedName ? "0 8px 24px rgba(77,162,78,0.2)" : "none",
               cursor: verifiedName ? "pointer" : "not-allowed",
             }}
@@ -240,7 +240,7 @@ export default function AddPayoutAccountPage() {
           <button
             onClick={() => router.back()}
             className="w-full py-2 text-sm hover:text-foreground transition-colors"
-            style={{ color: MUTED, fontFamily: "Pacifico", cursive }}
+            style={{ color: MUTED, fontFamily: "\"Pacifico\", cursive" }}
           >
             Cancel
           </button>

@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 
 const GREEN = "#388E3C";
 const CARD = "var(--c-card)";
-const FONT = "Pacifico", cursive;
+const FONT = "\"Pacifico\", cursive";
 const PACIFICO = "Pacifico, cursive";
 
 function deduplicateConversations(conversations: Conversation[]): Conversation[] {

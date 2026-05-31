@@ -37,7 +37,7 @@ import Image from "next/image";
 const BG_DARK = "var(--c-bg)";
 const CARD_BG = "var(--c-card)";
 const GREEN = "#388E3C";
-const FONT_RALEWAY = "Pacifico", cursive;
+const FONT_RALEWAY = "\"Pacifico\", cursive";
 const FONT_PACIFICO = "Pacifico, cursive";
 
 /* ─── schema ────────────────────────────────────────────────────── */
