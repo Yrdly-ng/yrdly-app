@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from "@/lib/supabase-server";
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { createClient } from '@supabase/supabase-js';
+import { getPostHogClient } from '@/lib/posthog-server';
 
 /**
  * POST /api/events/[id]/cancel
@@ -81,6 +82,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         errors.push(`Ticket ${ticket.id}: ${(err as Error).message}`);
       }
     }
+
+    const posthog = getPostHogClient();
+    posthog.capture({
+      distinctId: user.id,
+      event: 'event_cancelled',
+      properties: {
+        event_id: id,
+        tickets_refunded: refunded,
+        refund_errors: errors.length,
+      },
+    });
 
     return NextResponse.json({
       success: true,

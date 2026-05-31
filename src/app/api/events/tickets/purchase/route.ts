@@ -5,6 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { EVENT_CONSTANTS } from '@/lib/constants';
 import { ResendEmailService } from '@/lib/resend-service';
 import QRCode from 'qrcode';
+import { getPostHogClient } from '@/lib/posthog-server';
 
 /**
  * POST /api/events/tickets/purchase
@@ -201,6 +202,20 @@ export async function POST(request: NextRequest) {
         console.error('[v0] Free ticket email failed (non-critical):', emailErr);
       }
 
+      const posthog = getPostHogClient();
+      posthog.capture({
+        distinctId: user.id,
+        event: 'ticket_purchased',
+        properties: {
+          ticket_id: ticket.id,
+          event_id,
+          tier_id,
+          tier_name: tier.name,
+          amount: 0,
+          is_free: true,
+        },
+      });
+
       return NextResponse.json({ success: true, free: true, ticket_id: ticket.id });
     }
 
@@ -255,6 +270,20 @@ export async function POST(request: NextRequest) {
         details: flwData.message || 'Flutterwave API error'
       }, { status: 502 });
     }
+
+    const posthog = getPostHogClient();
+    posthog.capture({
+      distinctId: user.id,
+      event: 'ticket_purchased',
+      properties: {
+        event_id,
+        tier_id,
+        tier_name: tier.name,
+        amount: tier.price,
+        is_free: false,
+        tx_ref: txRef,
+      },
+    });
 
     return NextResponse.json({ success: true, payment_link: flwData.data.link, tx_ref: txRef });
   } catch (error) {

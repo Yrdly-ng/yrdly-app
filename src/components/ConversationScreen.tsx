@@ -165,7 +165,7 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
       };
 
       await supabase.from("conversations")
-        .update({ context: newContext, unread_count: 0, updated_at: new Date().toISOString() })
+        .update({ context: newContext, updated_at: new Date().toISOString() })
         .eq("id", conversation.id);
     };
     mark();

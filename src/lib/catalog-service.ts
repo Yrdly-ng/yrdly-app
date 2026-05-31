@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 import type { CatalogItem } from '@/types';
-import * as Sentry from '@sentry/nextjs';
+import * as Sentry from '@/lib/sentry';
 
 export class CatalogService {
   /**

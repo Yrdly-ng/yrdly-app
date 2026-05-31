@@ -1,5 +1,4 @@
 // next.config.mjs
-import { withSentryConfig } from '@sentry/nextjs';
 import { fileURLToPath } from 'url';
 import path from 'path';
 
@@ -53,32 +52,24 @@ const nextConfig = {
   
   // Disable source maps in production for better performance
   productionBrowserSourceMaps: false,
+
+  async rewrites() {
+    return [
+      {
+        source: "/ingest/static/:path*",
+        destination: "https://us-assets.i.posthog.com/static/:path*",
+      },
+      {
+        source: "/ingest/array/:path*",
+        destination: "https://us-assets.i.posthog.com/array/:path*",
+      },
+      {
+        source: "/ingest/:path*",
+        destination: "https://us.i.posthog.com/:path*",
+      },
+    ];
+  },
+  skipTrailingSlashRedirect: true,
 };
 
-
-
-export default withSentryConfig(nextConfig, {
-  // For all available options, see:
-  // https://www.npmjs.com/package/@sentry/webpack-plugin#options
-
-  org: "yrdly-yo",
-
-  project: "yrdly-web-app",
-
-  // Only print logs for uploading source maps in CI
-  silent: !process.env.CI,
-
-  // For all available options, see:
-  // https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
-
-  // Disable source map uploading for faster builds
-  widenClientFileUpload: true,
-
-  authToken: process.env.SENTRY_AUTH_TOKEN,
-
-  // Uncomment to route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers.
-  // This can increase your server load as well as your hosting bill.
-  // Note: Check that the configured route will not match with your Next.js middleware, otherwise reporting of client-
-  // side errors will fail.
-  tunnelRoute: "/monitoring",
-});
+export default nextConfig;

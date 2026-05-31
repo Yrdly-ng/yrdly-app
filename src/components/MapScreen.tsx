@@ -149,10 +149,11 @@ export function MapScreen({ className }: MapScreenProps) {
       const userState = profile?.location?.state;
 
       // Fetch Events
-      const { data: evts } = await supabase.from('events').select('*').not('location', 'is', null);
+      const { data: evts } = await supabase.from('events').select('*').not('lat', 'is', null).not('lng', 'is', null);
       (evts || []).forEach(e => {
-        const loc = extract(e.location);
-        if (loc) found.push({ id: e.id, type: 'event', position: loc, title: e.title, address: loc.address || 'Location TBD', description: e.description, date: e.start_time, attendees: e.attendee_count || 0, image: e.image_url });
+        if (e.lat && e.lng) {
+          found.push({ id: e.id, type: 'event', position: { lat: Number(e.lat), lng: Number(e.lng) }, title: e.title, address: e.location_address || 'Location TBD', description: e.description, date: e.start_time, attendees: e.attendee_count || 0, image: e.cover_image_url });
+        }
       });
 
       // Fetch Businesses

@@ -8,6 +8,13 @@ import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { ThemeProvider } from "@/components/ThemeProvider";
 import Script from "next/script";
+import dynamic from 'next/dynamic';
+import { PostHogProvider } from '@/components/providers/PostHogProvider';
+
+const PostHogPageView = dynamic(
+  () => import('@/components/providers/PostHogPageView'),
+  { ssr: false }
+);
 
 export const metadata: Metadata = {
   title: 'Yrdly - Your Neighborhood Network',
@@ -44,17 +51,19 @@ export default function RootLayout({
       </head>
 
       <body className={cn('font-body antialiased min-h-[100dvh] bg-background')}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          themes={['light', 'dark']}
-          enableSystem={false}
-          disableTransitionOnChange
-          storageKey="yrdly-theme"
-        >
-          <AuthProvider>
-            {children}
-          </AuthProvider>
+        <PostHogProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="light"
+            themes={['light', 'dark']}
+            enableSystem={false}
+            disableTransitionOnChange
+            storageKey="yrdly-theme"
+          >
+            <AuthProvider>
+              <PostHogPageView />
+              {children}
+            </AuthProvider>
           <Toaster />
           <Analytics />
           <SpeedInsights />
@@ -75,6 +84,7 @@ export default function RootLayout({
             src="https://desk.zoho.com/portal/api/web/asapApp/1369927000000404854?orgId=925875390" 
           />
         </ThemeProvider>
+        </PostHogProvider>
       </body>
     </html>
   );

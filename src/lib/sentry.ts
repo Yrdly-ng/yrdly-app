@@ -1,269 +1,145 @@
-import * as Sentry from "@sentry/nextjs";
+// Mock Sentry utility functions for error tracking and user context
+// Replaced with console logging to facilitate removal of @sentry/nextjs
 
-// Get the logger for structured logging
-const { logger } = Sentry;
+const mockLogger = {
+  trace: (...args: any[]) => console.trace(...args),
+  debug: (...args: any[]) => console.debug(...args),
+  info: (...args: any[]) => console.info(...args),
+  warn: (...args: any[]) => console.warn(...args),
+  error: (...args: any[]) => console.error(...args),
+  fatal: (...args: any[]) => console.error('FATAL', ...args),
+  fmt: (template: TemplateStringsArray, ...values: any[]) => {
+    return template.reduce((acc, str, i) => acc + str + (values[i] || ''), '');
+  }
+};
 
-// Sentry utility functions for better error tracking and user context
+export const logger = mockLogger;
 
-/**
- * Set user context for better error tracking
- */
+export const captureException = (error: any) => {
+  console.error("Captured Exception:", error);
+};
+
+export const startSpan = (context: any, callback: (span: any) => void) => {
+  // Mock span that just runs the callback and measures simple time if needed
+  const span = { ...context };
+  return callback(span);
+};
+
 export const setUserContext = (user: {
   id: string;
   email?: string;
   name?: string;
   avatar_url?: string;
 }) => {
-  Sentry.setUser({
-    id: user.id,
-    email: user.email,
-    username: user.name,
-    // Don't include sensitive data like passwords
-  });
-  
-  // Set additional context
-  Sentry.setContext("user", {
-    id: user.id,
-    name: user.name,
-    avatar_url: user.avatar_url,
-  });
+  // console.log("Set User Context:", user);
 };
 
-/**
- * Clear user context on logout
- */
 export const clearUserContext = () => {
-  Sentry.setUser(null);
-  Sentry.setContext("user", null);
+  // console.log("Clear User Context");
 };
 
-/**
- * Track user actions as breadcrumbs
- */
 export const trackUserAction = (action: string, data?: Record<string, any>) => {
-  Sentry.addBreadcrumb({
-    message: action,
-    category: 'user-action',
-    data: data,
-    level: 'info',
-    timestamp: Date.now() / 1000,
-  });
+  // console.log("User Action:", action, data);
 };
 
-/**
- * Track API errors with context
- */
 export const trackApiError = (error: Error, context: {
   endpoint: string;
   method: string;
   userId?: string;
   requestData?: any;
 }) => {
-  Sentry.withScope((scope) => {
-    scope.setTag('error_type', 'api_error');
-    scope.setContext('api_request', {
-      endpoint: context.endpoint,
-      method: context.method,
-      userId: context.userId,
-      requestData: context.requestData,
-    });
-    
-    Sentry.captureException(error);
-  });
+  console.error("API Error:", error, context);
 };
 
-/**
- * Track component errors with context
- */
 export const trackComponentError = (error: Error, context: {
   component: string;
   userId?: string;
   props?: any;
 }) => {
-  Sentry.withScope((scope) => {
-    scope.setTag('error_type', 'component_error');
-    scope.setContext('component', {
-      name: context.component,
-      userId: context.userId,
-      props: context.props,
-    });
-    
-    Sentry.captureException(error);
-  });
+  console.error("Component Error:", error, context);
 };
 
-/**
- * Track performance metrics
- */
 export const trackPerformance = (name: string, duration: number, context?: Record<string, any>) => {
-  Sentry.addBreadcrumb({
-    message: `Performance: ${name}`,
-    category: 'performance',
-    data: {
-      duration,
-      ...context,
-    },
-    level: 'info',
-    timestamp: Date.now() / 1000,
-  });
+  // console.log("Performance:", name, duration, context);
 };
 
-/**
- * Track feature usage
- */
 export const trackFeatureUsage = (feature: string, data?: Record<string, any>) => {
-  Sentry.addBreadcrumb({
-    message: `Feature used: ${feature}`,
-    category: 'feature_usage',
-    data: data,
-    level: 'info',
-    timestamp: Date.now() / 1000,
-  });
+  // console.log("Feature Usage:", feature, data);
 };
 
-/**
- * Track custom events
- */
 export const trackEvent = (eventName: string, data?: Record<string, any>) => {
-  Sentry.captureMessage(eventName, {
-    level: 'info',
-    tags: {
-      event_type: 'custom_event',
-    },
-    extra: data,
-  });
+  // console.log("Track Event:", eventName, data);
 };
 
-/**
- * Track database errors
- */
 export const trackDatabaseError = (error: Error, context: {
   operation: string;
   table?: string;
   userId?: string;
   query?: string;
 }) => {
-  Sentry.withScope((scope) => {
-    scope.setTag('error_type', 'database_error');
-    scope.setContext('database', {
-      operation: context.operation,
-      table: context.table,
-      userId: context.userId,
-      query: context.query,
-    });
-    
-    Sentry.captureException(error);
-  });
+  console.error("Database Error:", error, context);
 };
 
-/**
- * Track authentication errors
- */
 export const trackAuthError = (error: Error, context: {
   action: string;
   userId?: string;
   provider?: string;
 }) => {
-  Sentry.withScope((scope) => {
-    scope.setTag('error_type', 'auth_error');
-    scope.setContext('authentication', {
-      action: context.action,
-      userId: context.userId,
-      provider: context.provider,
-    });
-    
-    Sentry.captureException(error);
-  });
+  console.error("Auth Error:", error, context);
 };
 
-/**
- * Track real-time errors
- */
 export const trackRealtimeError = (error: Error, context: {
   channel: string;
   event: string;
   userId?: string;
 }) => {
-  Sentry.withScope((scope) => {
-    scope.setTag('error_type', 'realtime_error');
-    scope.setContext('realtime', {
-      channel: context.channel,
-      event: context.event,
-      userId: context.userId,
-    });
-    
-    Sentry.captureException(error);
-  });
+  console.error("Realtime Error:", error, context);
 };
 
-/**
- * Create a span for UI interactions
- */
 export const createUISpan = (name: string, op: string, callback: (span: any) => void) => {
-  return Sentry.startSpan(
-    {
-      op: op,
-      name: name,
-    },
-    callback
-  );
+  return startSpan({ name, op }, callback);
 };
 
-/**
- * Create a span for API calls
- */
 export const createAPISpan = (name: string, op: string, callback: (span: any) => void) => {
-  return Sentry.startSpan(
-    {
-      op: op,
-      name: name,
-    },
-    callback
-  );
+  return startSpan({ name, op }, callback);
 };
 
-/**
- * Structured logging functions
- */
 export const logTrace = (message: string, data?: Record<string, any>) => {
-  logger.trace(message, data);
+  mockLogger.trace(message, data);
 };
 
 export const logDebug = (message: string, data?: Record<string, any>) => {
-  logger.debug(message, data);
+  mockLogger.debug(message, data);
 };
 
 export const logInfo = (message: string, data?: Record<string, any>) => {
-  logger.info(message, data);
+  mockLogger.info(message, data);
 };
 
 export const logWarn = (message: string, data?: Record<string, any>) => {
-  logger.warn(message, data);
+  mockLogger.warn(message, data);
 };
 
 export const logError = (message: string, data?: Record<string, any>) => {
-  logger.error(message, data);
+  mockLogger.error(message, data);
 };
 
 export const logFatal = (message: string, data?: Record<string, any>) => {
-  logger.fatal(message, data);
+  mockLogger.fatal(message, data);
 };
 
-/**
- * Template literal logging with variables
- */
 export const logDebugFmt = (template: TemplateStringsArray, ...values: any[]) => {
-  logger.debug(logger.fmt(template, ...values));
+  mockLogger.debug(mockLogger.fmt(template, ...values));
 };
 
 export const logInfoFmt = (template: TemplateStringsArray, ...values: any[]) => {
-  logger.info(logger.fmt(template, ...values));
+  mockLogger.info(mockLogger.fmt(template, ...values));
 };
 
 export const logWarnFmt = (template: TemplateStringsArray, ...values: any[]) => {
-  logger.warn(logger.fmt(template, ...values));
+  mockLogger.warn(mockLogger.fmt(template, ...values));
 };
 
 export const logErrorFmt = (template: TemplateStringsArray, ...values: any[]) => {
-  logger.error(logger.fmt(template, ...values));
+  mockLogger.error(mockLogger.fmt(template, ...values));
 };

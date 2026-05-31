@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/use-supabase-auth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import type { Post as PostType } from "@/types";
+import posthog from "posthog-js";
 
 export default function MarketplacePage() {
   const router = useRouter();
@@ -14,7 +15,11 @@ export default function MarketplacePage() {
   const { toast } = useToast();
 
   const handleItemClick = (item: PostType) => {
-    // Navigate to detailed item page
+    posthog.capture('marketplace_item_clicked', {
+      item_id: item.id,
+      item_title: item.title || item.text,
+      item_price: item.price,
+    });
     router.push(`/marketplace/${item.id}`);
   };
 
@@ -68,13 +73,20 @@ export default function MarketplacePage() {
           })
           .select('id')
           .single();
-        
+
         if (createError) throw createError;
         conversationId = newConv.id;
       } else {
         conversationId = existingConversations[0].id;
       }
-      
+
+      posthog.capture('marketplace_seller_messaged', {
+        item_id: item.id,
+        item_title: item.title || item.text,
+        item_price: item.price,
+        seller_id: item.user_id,
+      });
+
       // Navigate to the conversation
       router.push(`/messages/${conversationId}`);
     } catch (error) {

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { CheckCircle, XCircle, Loader2, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/lib/supabase';
+import posthog from 'posthog-js';
 
 export default function PaymentVerificationPage() {
   const router = useRouter();
@@ -63,6 +64,11 @@ export default function PaymentVerificationPage() {
       if (result.success) {
         setVerificationStatus('success');
         setTransactionId(result.transactionId);
+        posthog.capture('payment_verified', {
+          transaction_id: result.transactionId,
+          amount: result.amount,
+          tx_ref: txRef,
+        });
 
         // Redirect immediately to Stitch escrow-confirmation page
         setTimeout(() => {
@@ -73,6 +79,10 @@ export default function PaymentVerificationPage() {
       } else {
         setVerificationStatus('failed');
         setErrorMessage(result.error || 'Payment verification failed');
+        posthog.capture('payment_verification_failed', {
+          error: result.error,
+          tx_ref: txRef,
+        });
       }
     } catch (error) {
       console.error('Payment verification error:', error);

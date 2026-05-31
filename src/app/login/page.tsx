@@ -11,6 +11,7 @@ import Image from 'next/image';
 import { Loader2, Mail, Eye, EyeOff, AlertTriangle } from 'lucide-react';
 import { AUTH_CONSTANTS, ERROR_MESSAGES } from '@/lib/constants';
 import { ErrorMessageFormatter } from '@/lib/error-messages';
+import posthog from 'posthog-js';
 
 // Design tokens from Figma
 const colors = {
@@ -92,6 +93,8 @@ export default function LoginPage() {
         const { user: newUser, error: err } = await signUp(email, password, name);
         if (err) setError(err.message);
         else if (newUser) {
+          posthog.identify(newUser.id, { email: newUser.email, name });
+          posthog.capture('user_signed_up', { method: 'email' });
           setLoginAttempts(0);
           setLockoutUntil(null);
           if (newUser.email_confirmed_at) router.push('/home');
@@ -111,6 +114,8 @@ export default function LoginPage() {
             setError(suggestion ? `${friendly} ${suggestion}` : friendly);
           }
         } else if (signedUser) {
+          posthog.identify(signedUser.id, { email: signedUser.email });
+          posthog.capture('user_signed_in', { method: 'email' });
           setLoginAttempts(0);
           setLockoutUntil(null);
           router.push('/home');
@@ -126,6 +131,7 @@ export default function LoginPage() {
   const handleGoogleSignIn = async () => {
     setError('');
     setLoading(true);
+    posthog.capture('google_sign_in_initiated');
     try {
       const { error: err } = await signInWithGoogle();
       if (err) setError(err.message);

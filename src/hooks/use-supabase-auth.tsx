@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { AuthService, AuthUser } from '@/lib/auth-service';
 import { supabase } from '@/lib/supabase';
+import posthog from 'posthog-js';
 
 interface AuthContextType {
   user: User | null;
@@ -230,6 +231,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     setLoading(true);
     try {
+      posthog.capture('user_signed_out');
+      posthog.reset();
       const result = await AuthService.signOut();
       setUser(null);
       setProfile(null);

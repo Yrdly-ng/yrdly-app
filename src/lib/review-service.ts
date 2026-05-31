@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import * as Sentry from '@sentry/nextjs';
+import * as Sentry from '@/lib/sentry';
 import { NotificationService } from './notification-service';
 import { EscrowStatus } from '@/types/escrow';
 

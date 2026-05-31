@@ -53,3 +53,4 @@ firebase-service-account.json
 # Claude Code
 .claude/
 .env*
+.env.local
