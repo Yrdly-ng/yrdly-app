@@ -77,6 +77,23 @@ export class NotificationTriggers {
     try {
       console.log('Creating message notification:', { toUserId, fromUserId, conversationId, messageContent });
       
+      // Debounce: Check for recent notifications in the last 60 seconds to prevent spam
+      const oneMinuteAgo = new Date(Date.now() - 60000).toISOString();
+      const { data: recentNotifs } = await supabase
+        .from('notifications')
+        .select('id')
+        .eq('user_id', toUserId)
+        .eq('type', 'message')
+        .eq('sender_id', fromUserId)
+        .eq('related_id', conversationId)
+        .gte('created_at', oneMinuteAgo)
+        .limit(1);
+
+      if (recentNotifs && recentNotifs.length > 0) {
+         console.log('Skipping message notification (debounced)');
+         return;
+      }
+
       // Get sender's name
       const { data: senderData } = await supabase
         .from('users')

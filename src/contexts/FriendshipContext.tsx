@@ -36,13 +36,13 @@ export function FriendshipProvider({ children }: { children: React.ReactNode }) 
 
       try {
         // Check friends array first
-        const { data: me } = await supabase
-          .from("users")
-          .select("friends")
-          .eq("id", user.id)
-          .single();
+        const [{ data: me }, { data: them }] = await Promise.all([
+          supabase.from("users").select("friends").eq("id", user.id).single(),
+          supabase.from("users").select("friends").eq("id", targetUserId).single()
+        ]);
 
-        if (me?.friends?.includes(targetUserId)) {
+        if (me?.friends?.includes(targetUserId) || them?.friends?.includes(user.id)) {
+          // Sync them if they are out of sync (optional, but for now just showing as friends)
           updateStatus(targetUserId, "friends");
           return;
         }

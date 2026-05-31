@@ -19,7 +19,7 @@ import { MarketplaceCreatorOnboarding } from "@/components/marketplace/Marketpla
 /* ─── gradient SVG icons ──────────────────────────────────────── */
 function HandshakeGradient() {
   return (
-    <svg width="16" height="16" viewBox="0 0 42 42" fill="none">
+    <svg width="24" height="24" viewBox="0 0 42 42" fill="none">
       <defs>
         <linearGradient id="hg1" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="17.37%" stopColor="#FFD600" />
@@ -34,7 +34,7 @@ function HandshakeGradient() {
 
 function TicketGradient() {
   return (
-    <svg width="16" height="16" viewBox="0 0 42 42" fill="none">
+    <svg width="24" height="24" viewBox="0 0 42 42" fill="none">
       <defs>
         <linearGradient id="tg1" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="17.37%" stopColor="#FF0048" />
@@ -100,7 +100,7 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
           <div className="flex items-center gap-2 overflow-x-auto pb-0.5 scrollbar-hide">
             <button
               onClick={() => setMarketplaceOnboardingOpen(true)}
-              className="flex items-center gap-1.5 rounded-[20.5px] px-3 py-1.5 text-foreground text-[0.75rem] font-semibold hover:bg-accent transition-colors"
+              className="flex items-center gap-2 rounded-full px-4 py-2 text-foreground text-[0.875rem] font-bold hover:bg-accent transition-colors"
               style={{ fontFamily: FONT_RALEWAY }}
             >
               <HandshakeGradient />
@@ -110,7 +110,7 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
 
             <button
               onClick={() => setOnboardingOpen(true)}
-              className="flex items-center gap-1.5 rounded-[20.5px] px-3 py-1.5 text-foreground text-[0.75rem] font-semibold hover:bg-accent transition-colors"
+              className="flex items-center gap-2 rounded-full px-4 py-2 text-foreground text-[0.875rem] font-bold hover:bg-accent transition-colors"
               style={{ fontFamily: FONT_RALEWAY }}
             >
               <TicketGradient />

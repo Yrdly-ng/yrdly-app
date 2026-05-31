@@ -151,6 +151,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
   const [activeTab, setActiveTab] = useState("posts");
   const [showFriendsList, setShowFriendsList] = useState(false);
   const [showRemoveFriendDialog, setShowRemoveFriendDialog] = useState(false);
+  const [showAvatarPreview, setShowAvatarPreview] = useState(false);
   const [stats, setStats] = useState({ friends: 0, events: 0 });
   const hasTriggeredViewRef = reactUseRef<boolean>(false);
 
@@ -298,8 +299,9 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
           {/* Avatar with spinning dashed ring */}
           <div className="relative inline-block">
             <div
-              className="w-32 h-32 rounded-full overflow-hidden shadow-2xl border-4 relative z-10"
+              className="w-32 h-32 rounded-full overflow-hidden shadow-2xl border-4 relative z-10 cursor-pointer"
               style={{ borderColor: BG }}
+              onClick={() => { if (avatarUrl) setShowAvatarPreview(true); }}
             >
               <Avatar className="w-full h-full">
                 <AvatarImage src={avatarUrl || "/placeholder.svg"} className="object-cover" />
@@ -745,6 +747,18 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
             onClick={(e) => e.stopPropagation()}
           >
             <FriendsList userId={targetUser?.id || ""} onBack={() => setShowFriendsList(false)} />
+          </div>
+        </div>
+      )}
+
+      {/* ── Avatar Preview Modal ── */}
+      {showAvatarPreview && avatarUrl && (
+        <div
+          className="fixed inset-0 flex items-center justify-center z-[120] p-4 bg-black/90 backdrop-blur-sm cursor-zoom-out"
+          onClick={() => setShowAvatarPreview(false)}
+        >
+          <div className="relative w-full max-w-lg aspect-square">
+            <Image src={avatarUrl} alt={name} fill className="object-contain" />
           </div>
         </div>
       )}

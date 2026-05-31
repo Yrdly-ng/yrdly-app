@@ -232,8 +232,6 @@ export function MapScreen({ className }: MapScreenProps) {
         disableDefaultUI
         mapId="7bdaf6c131a6958be5380043f"
         className="w-full h-full absolute inset-0"
-        /* @ts-ignore */
-        styles={DARK_MAP_STYLES}
       >
         <MapLogicOverlay setBounds={setBounds} setZoom={setZoom} />
         

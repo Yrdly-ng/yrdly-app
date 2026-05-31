@@ -77,8 +77,11 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
         // Posts — scoped to user's state
         let postsQuery = supabase.from('posts').select('*').or(`text.ilike.%${q}%,title.ilike.%${q}%,description.ilike.%${q}%`);
         if (userState) postsQuery = postsQuery.eq('state', userState);
-        const { data: posts } = await postsQuery.limit(5);
-        (posts || []).forEach(p => found.push({ type: 'post', data: p as Post }));
+        const { data: posts } = await postsQuery.limit(10); // Increase limit slightly to account for filtered out sold items
+        (posts || []).forEach(p => {
+          if (p.is_sold) return;
+          found.push({ type: 'post', data: p as Post });
+        });
 
         // Businesses — scoped to user's state
         let bizQuery = supabase.from('businesses').select('*').or(`name.ilike.%${q}%,description.ilike.%${q}%,category.ilike.%${q}%`);

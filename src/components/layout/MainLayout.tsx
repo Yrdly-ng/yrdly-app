@@ -177,9 +177,9 @@ export function MainLayout({ children }: MainLayoutProps) {
                 <Image
                   src="/yrdly-logo.png"
                   alt="Yrdly"
-                  width={39}
-                  height={37}
-                  className="h-8 w-8 object-contain md:h-[37px] md:w-[39px]"
+                  width={56}
+                  height={56}
+                  className="h-11 w-11 object-contain md:h-[48px] md:w-[48px]"
                 />
               </Link>
 
