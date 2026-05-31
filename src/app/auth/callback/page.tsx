@@ -114,7 +114,7 @@ export default function AuthCallback() {
   return (
     <div
       className="min-h-[100dvh] flex flex-col items-center justify-center px-4 py-10 overflow-x-hidden"
-      style={{ background: "var(--c-bg)", color: "var(--c-text)", fontFamily: "Inter, sans-serif" }}
+      style={{ background: "var(--c-bg)", color: "var(--c-text)", fontFamily: "Pacifico", cursive }}
     >
       {/* Ambient glow */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">

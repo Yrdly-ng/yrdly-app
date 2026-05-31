@@ -15,8 +15,8 @@ export default {
         'xs': '475px',
       },
       fontFamily: {
-        body: ['var(--font-pt-sans)', 'Work Sans', ...fontFamily.sans],
-        headline: ['var(--font-pt-sans)', 'Plus Jakarta Sans', ...fontFamily.sans],
+        body: ['var(--font-pacifico)', 'Pacifico', 'cursive'],
+        headline: ['var(--font-pacifico)', 'Pacifico', 'cursive'],
         code: ['monospace'],
         pacifico: ['var(--font-pacifico)', 'Pacifico', 'cursive'],
         display: ['var(--font-pacifico)', 'Pacifico', 'cursive'],

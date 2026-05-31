@@ -240,7 +240,7 @@ export default function OnboardingWelcomePage() {
   }
 
   return (
-    <div className="min-h-[100dvh] pb-20 overflow-x-hidden relative bg-background text-foreground" style={{ fontFamily: "Inter, sans-serif" }}>
+    <div className="min-h-[100dvh] pb-20 overflow-x-hidden relative bg-background text-foreground" style={{ fontFamily: "Pacifico", cursive }}>
       <OnboardingProgress />
       
       {/* Background Glows */}

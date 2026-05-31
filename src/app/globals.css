@@ -5,9 +5,10 @@
 
 @layer base {
   :root {
-    --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-sans: "Pacifico", cursive, "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     --font-mono: ui-monospace, monospace;
     --font-jersey25: "Jersey 25", sans-serif;
+    --font-pacifico: "Pacifico", cursive;
     --font-raleway: "Raleway", sans-serif;
 
     --safe-top: env(safe-area-inset-top, 0px);

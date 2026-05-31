@@ -30,7 +30,7 @@ export function EmptyFeed({ createPost }: EmptyFeedProps) {
       <h2 
         className="text-2xl font-extrabold mb-3"
         style={{ 
-          fontFamily: "Inter, sans-serif", 
+          fontFamily: "Pacifico", cursive, 
           color: "var(--c-text)",
           letterSpacing: "-0.02em"
         }}
@@ -41,7 +41,7 @@ export function EmptyFeed({ createPost }: EmptyFeedProps) {
       <p 
         className="mb-8 max-w-sm mx-auto text-[0.9375rem] leading-relaxed"
         style={{ 
-          fontFamily: "Inter, sans-serif", 
+          fontFamily: "Pacifico", cursive, 
           color: "var(--c-text-muted)" 
         }}
       >
@@ -53,7 +53,7 @@ export function EmptyFeed({ createPost }: EmptyFeedProps) {
           className="w-full sm:w-auto px-8 py-3.5 rounded-full flex items-center justify-center text-foreground font-bold transition-all active:scale-95 shadow-[0_8px_20px_rgba(56,142,60,0.25)] hover:shadow-[0_10px_25px_rgba(56,142,60,0.35)]"
           style={{
             background: "#388E3C",
-            fontFamily: "Inter, sans-serif",
+            fontFamily: "Pacifico", cursive,
             letterSpacing: "0.02em"
           }}
         >

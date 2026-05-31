@@ -34,19 +34,19 @@ export default function AppearancePage() {
       <Link
         href="/settings"
         className="flex items-center gap-2 text-sm font-bold text-[#388E3C]"
-        style={{ fontFamily: "Inter, sans-serif" }}
+        style={{ fontFamily: "Pacifico", cursive }}
       >
         <ArrowLeft className="h-4 w-4" /> Back to Settings
       </Link>
 
       <h1
         className="text-2xl font-extrabold text-foreground"
-        style={{ fontFamily: "Inter, sans-serif" }}
+        style={{ fontFamily: "Pacifico", cursive }}
       >
         Appearance
       </h1>
 
-      <p className="text-sm text-muted-foreground" style={{ fontFamily: "Inter, sans-serif" }}>
+      <p className="text-sm text-muted-foreground" style={{ fontFamily: "Pacifico", cursive }}>
         Choose how Yrdly looks for you.
       </p>
 
@@ -79,13 +79,13 @@ export default function AppearancePage() {
               <div className="flex-1 min-w-0">
                 <p
                   className={cn("font-semibold text-sm", isActive ? "text-[#388E3C]" : "text-foreground")}
-                  style={{ fontFamily: "Inter, sans-serif" }}
+                  style={{ fontFamily: "Pacifico", cursive }}
                 >
                   {label}
                 </p>
                 <p
                   className="text-[0.6875rem] mt-0.5 text-muted-foreground"
-                  style={{ fontFamily: "Inter, sans-serif" }}
+                  style={{ fontFamily: "Pacifico", cursive }}
                 >
                   {description}
                 </p>
@@ -93,7 +93,7 @@ export default function AppearancePage() {
               {isActive && (
                 <span
                   className="ml-auto text-[0.625rem] font-bold px-2.5 py-1 rounded-full flex-shrink-0"
-                  style={{ background: "#388E3C", color: "#fff", fontFamily: "Inter, sans-serif" }}
+                  style={{ background: "#388E3C", color: "#fff", fontFamily: "Pacifico", cursive }}
                 >
                   Active
                 </span>

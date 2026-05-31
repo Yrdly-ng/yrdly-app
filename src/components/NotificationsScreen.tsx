@@ -39,7 +39,7 @@ const GREEN_LIGHT = "#82DB7E";
 const CARD = "var(--c-card)";
 const SURFACE = "var(--c-card)";
 const BG = "var(--c-bg)";
-const FONT = "Inter, sans-serif";
+const FONT = "Pacifico", cursive;
 const PACIFICO = "Pacifico, cursive";
 
 interface NotificationsScreenProps {

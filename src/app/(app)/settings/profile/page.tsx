@@ -83,7 +83,7 @@ export default function EditProfilePage() {
   };
 
   return (
-    <div className="min-h-[100dvh] pb-36" style={{ background: "var(--c-bg)", fontFamily: "Inter, sans-serif", color: "var(--c-text)" }}>
+    <div className="min-h-[100dvh] pb-36" style={{ background: "var(--c-bg)", fontFamily: "Pacifico", cursive, color: "var(--c-text)" }}>
 
       {/* Sticky Header */}
       <header
@@ -161,7 +161,7 @@ export default function EditProfilePage() {
             onClick={handleSave}
             disabled={saving}
             className="w-full py-4 rounded-full flex items-center justify-center gap-3 text-foreground font-extrabold uppercase tracking-[0.2em] transition-all active:scale-[0.98] shadow-[0_10px_30px_rgba(56,142,60,0.2)]"
-            style={{ background: "#388E3C", fontFamily: "Inter, sans-serif", opacity: saving ? 0.7 : 1 }}
+            style={{ background: "#388E3C", fontFamily: "Pacifico", cursive, opacity: saving ? 0.7 : 1 }}
           >
             {saving ? "Saving…" : "Save Changes"}
             {!saving && (
@@ -179,7 +179,7 @@ function SectionHeader({ color, label }: { color: string; label: string }) {
   return (
     <div className="flex items-center gap-3">
       <span className="w-1 h-6 rounded-full flex-shrink-0" style={{ background: color }} />
-      <h2 className="font-bold uppercase tracking-widest text-lg" style={{ fontFamily: "Inter, sans-serif", color: color + "cc" }}>{label}</h2>
+      <h2 className="font-bold uppercase tracking-widest text-lg" style={{ fontFamily: "Pacifico", cursive, color: color + "cc" }}>{label}</h2>
     </div>
   );
 }

@@ -215,7 +215,7 @@ interface FailedPayout {
   }
 
   return (
-    <div className="min-h-dvh pb-20" style={{ background: "var(--background)", color: "var(--foreground)", fontFamily: "Inter, sans-serif" }}>
+    <div className="min-h-dvh pb-20" style={{ background: "var(--background)", color: "var(--foreground)", fontFamily: "Pacifico", cursive }}>
       {/* Header */}
       <header
         className="fixed top-0 w-full z-50 flex items-center border-b border-border"

@@ -18,7 +18,7 @@ import { LocationChip } from "@/components/LocationChip";
 
 const GREEN = "#388E3C";
 const CARD = "var(--c-card)";
-const FONT = "Inter, sans-serif";
+const FONT = "Pacifico", cursive;
 const PACIFICO = "Pacifico, cursive";
 
 interface CommunityScreenProps {
@@ -125,7 +125,7 @@ function StatCard({
         <Icon className="w-5 h-5" style={{ color: GREEN }} />
       </div>
       <div>
-        <div className="text-xl font-bold text-foreground" style={{ fontFamily: "Inter, sans-serif" }}>
+        <div className="text-xl font-bold text-foreground" style={{ fontFamily: "Pacifico", cursive }}>
           {value}
         </div>
         <div
@@ -412,7 +412,7 @@ export function CommunityScreen({ className }: CommunityScreenProps) {
         {(pendingFriendRequests.length > 0 || friendRequestsLoading) && (
           <section className="space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-foreground font-semibold text-lg" style={{ fontFamily: "Inter, sans-serif" }}>
+              <h2 className="text-foreground font-semibold text-lg" style={{ fontFamily: "Pacifico", cursive }}>
                 Friend Requests
               </h2>
               <button
@@ -458,7 +458,7 @@ export function CommunityScreen({ className }: CommunityScreenProps) {
                           </AvatarFallback>
                         </Avatar>
                         <div className="text-center">
-                          <p className="text-foreground text-sm font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
+                          <p className="text-foreground text-sm font-semibold" style={{ fontFamily: "Pacifico", cursive }}>
                             {sender.name}
                           </p>
                           {loc && (
@@ -479,7 +479,7 @@ export function CommunityScreen({ className }: CommunityScreenProps) {
 
         {/* ── Recent Updates Feed ── */}
         <section className="space-y-4">
-          <h2 className="text-foreground font-semibold text-lg" style={{ fontFamily: "Inter, sans-serif" }}>
+          <h2 className="text-foreground font-semibold text-lg" style={{ fontFamily: "Pacifico", cursive }}>
             Recent Updates
           </h2>
 

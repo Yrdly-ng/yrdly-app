@@ -23,7 +23,7 @@ import { useTheme } from "@/components/ThemeProvider";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 
-const FONT = "Inter, sans-serif";
+const FONT = "Pacifico", cursive;
 const PACIFICO = "Pacifico, cursive";
 const GREEN = "#388E3C";
 const CARD = "var(--c-card)";
@@ -229,7 +229,7 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
           <button onClick={() => router.back()} className="w-10 h-10 flex items-center justify-center rounded-full transition-colors hover:bg-accent">
             <ArrowLeft className="w-5 h-5 text-foreground" style={{ color: "var(--c-text)" }} />
           </button>
-          <h1 style={{ fontFamily: "Inter, sans-serif", fontSize: 18, fontWeight: 700, color: "var(--c-text)" }}>Settings</h1>
+          <h1 style={{ fontFamily: "Pacifico", cursive, fontSize: 18, fontWeight: 700, color: "var(--c-text)" }}>Settings</h1>
         </div>
       </header>
 

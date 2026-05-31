@@ -17,7 +17,7 @@ const BG = "var(--c-bg)";
 const CARD_BG = "var(--c-card)";
 const GREEN = "#388E3C";
 const FADED = "#BBBBBB";
-const FONT_RALEWAY = "Inter, sans-serif";
+const FONT_RALEWAY = "Pacifico", cursive;
 const FONT_PACIFICO = "Pacifico, cursive";
 
 export default function MarketplaceItemPage() {

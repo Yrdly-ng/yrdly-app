@@ -17,8 +17,8 @@ const GREEN = "#388E3C";
 const GREEN_LIGHT = "#82DB7E";
 const CARD = "var(--c-card)";
 const SURFACE = "var(--c-bg)";
-const FONT = "Inter, sans-serif";
-const RALEWAY = "Inter, sans-serif";
+const FONT = "Pacifico", cursive;
+const RALEWAY = "Pacifico", cursive;
 
 interface NotificationsDropdownProps {
   isOpen: boolean;

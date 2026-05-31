@@ -10,7 +10,7 @@ import { supabase } from "@/lib/supabase";
 import { GpsLocationStep } from "@/components/onboarding/GpsLocationStep";
 import { OUTSIDE_NIGERIA } from "@/lib/geocoding-service";
 
-const FONT = "Inter, sans-serif";
+const FONT = "Pacifico", cursive;
 const PACIFICO = "Pacifico, cursive";
 const GREEN = "#388E3C";
 const CARD = "var(--c-card)";

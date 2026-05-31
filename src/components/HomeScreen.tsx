@@ -50,7 +50,7 @@ function TicketGradient() {
 }
 
 
-const FONT_RALEWAY = "Inter, sans-serif";
+const FONT_RALEWAY = "Pacifico", cursive;
 const GREEN = "#388E3C";
 
 interface HomeScreenProps {

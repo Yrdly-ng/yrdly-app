@@ -192,7 +192,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                   <MagnifyingGlass weight="bold" className="h-5 w-5 flex-shrink-0 text-[#767676]" />
                   <span
                     className="font-light italic text-xs text-[#767676] truncate"
-                    style={{ fontFamily: '"Inter", sans-serif' }}
+                    style={{ fontFamily: '"Pacifico", cursive' }}
                   >
                     Search for events, items
                   </span>
@@ -252,7 +252,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                   <Avatar className="w-8 h-8 md:w-9 md:h-9 rounded-full">
                     <AvatarImage src={profile?.avatar_url || ""} />
                     <AvatarFallback
-                      style={{ background: "#388E3C", color: "#fff", fontFamily: "Inter, sans-serif", fontWeight: 700 }}
+                      style={{ background: "#388E3C", color: "#fff", fontFamily: "Pacifico", cursive, fontWeight: 700 }}
                     >
                       {profile?.name?.charAt(0).toUpperCase() || "U"}
                     </AvatarFallback>
@@ -297,7 +297,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                           "text-[0.875rem] leading-snug",
                           isActive ? "text-[#388E3C] font-semibold" : "text-[#252629] font-normal"
                         )}
-                        style={{ fontFamily: "Inter, sans-serif" }}
+                        style={{ fontFamily: "Pacifico", cursive }}
                       >
                         {label}
                       </span>
@@ -315,7 +315,7 @@ export function MainLayout({ children }: MainLayoutProps) {
               >
                 <Button
                   className="w-full h-10 rounded-full text-white font-semibold text-[0.875rem]"
-                  style={{ background: "#388E3C", fontFamily: "Inter, sans-serif" }}
+                  style={{ background: "#388E3C", fontFamily: "Pacifico", cursive }}
                   onClick={() => setPostDialogOpen(true)}
                 >
                   <Plus weight="bold" className="w-4 h-4 mr-1.5" />
@@ -382,7 +382,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                       "text-[0.5625rem] font-bold tracking-tight mt-1 transition-colors",
                       isActive ? "text-[#388E3C]" : "text-[#767676]"
                     )}
-                    style={{ fontFamily: '"Inter", sans-serif' }}
+                    style={{ fontFamily: '"Pacifico", cursive' }}
                   >
                     {label}
                   </span>

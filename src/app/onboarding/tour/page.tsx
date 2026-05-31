@@ -98,7 +98,7 @@ export default function OnboardingTourPage() {
   const Icon = slide.icon;
 
   return (
-    <div className="min-h-[100dvh] relative flex flex-col items-center justify-between overflow-hidden px-6 py-12 bg-background" style={{ fontFamily: "Inter, sans-serif" }}>
+    <div className="min-h-[100dvh] relative flex flex-col items-center justify-between overflow-hidden px-6 py-12 bg-background" style={{ fontFamily: "Pacifico", cursive }}>
       
       {/* Background Animated Blobs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
