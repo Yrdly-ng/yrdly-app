@@ -13,7 +13,14 @@ export const supabase = createClient(supabaseUrl || "https://dummy.supabase.co",
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true
+    detectSessionInUrl: true,
+    cookieOptions: {
+      domain: process.env.NEXT_PUBLIC_COOKIE_DOMAIN || '.yrdly.ng',
+      maxAge: 365 * 24 * 60 * 60,
+      path: '/',
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production'
+    }
   },
   realtime: {
     params: {

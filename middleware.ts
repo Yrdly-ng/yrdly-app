@@ -2,13 +2,19 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Nextdoor-style handoff: redirect the app's /login page back to the marketing site
+  if (pathname === '/login' || pathname === '/signup') {
+    const marketingUrl = process.env.NEXT_PUBLIC_MARKETING_URL || 'https://yrdly.ng';
+    return NextResponse.redirect(marketingUrl);
+  }
+
   const maintenanceEnabled = process.env.MAINTENANCE_MODE === 'true';
 
   if (!maintenanceEnabled) {
     return NextResponse.next();
   }
-
-  const { pathname } = request.nextUrl;
 
   // Allow the maintenance page itself and common static assets to load
   const isAllowedPath =
