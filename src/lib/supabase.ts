@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createBrowserClient } from '@supabase/ssr';
 
 // Supabase configuration
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -8,19 +8,14 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('[Yrdly] Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY');
 }
 
-// Create Supabase client for client-side operations
-export const supabase = createClient(supabaseUrl || "https://dummy.supabase.co", supabaseAnonKey || "dummy-key", {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true,
-    cookieOptions: {
-      domain: process.env.NEXT_PUBLIC_COOKIE_DOMAIN || '.yrdly.ng',
-      maxAge: 365 * 24 * 60 * 60,
-      path: '/',
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production'
-    }
+// Create Supabase client for client-side operations using SSR package to support cookieOptions
+export const supabase = createBrowserClient(supabaseUrl || "https://dummy.supabase.co", supabaseAnonKey || "dummy-key", {
+  cookieOptions: {
+    domain: process.env.NEXT_PUBLIC_COOKIE_DOMAIN || '.yrdly.ng',
+    maxAge: 365 * 24 * 60 * 60,
+    path: '/',
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production'
   },
   realtime: {
     params: {
