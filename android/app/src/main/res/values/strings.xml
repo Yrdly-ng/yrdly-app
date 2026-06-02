@@ -1,7 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<resources>
-    <string name="app_name">Yrdly</string>
-    <string name="title_activity_main">Yrdly</string>
-    <string name="package_name">com.yrdly.app</string>
-    <string name="custom_url_scheme">com.yrdly.app</string>
-</resources>
