@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -25,6 +25,7 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
+import { AppHeader } from '@/components/AppHeader';
 
 export default function DisputeDetailsPage() {
   const params = useParams();
@@ -222,16 +223,26 @@ export default function DisputeDetailsPage() {
   const otherUser = isBuyer ? transaction.seller : transaction.buyer;
 
   return (
-    <div className="min-h-[100dvh] bg-background p-4">
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Dispute Details</h1>
-            <p className="text-muted-foreground">Dispute ID: {dispute.id}</p>
+    <div className="min-h-[100dvh] bg-background">
+      <AppHeader 
+        title="Dispute" 
+        onBack={() => {
+          if (window.history.length <= 1 && transaction?.id) {
+            router.push(`/transactions/${transaction.id}`);
+          } else {
+            router.back();
+          }
+        }} 
+      />
+      <div className="p-4">
+        <div className="max-w-4xl mx-auto space-y-6">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-muted-foreground">Dispute ID: {dispute.id}</p>
+            </div>
+            {getStatusBadge(dispute.status)}
           </div>
-          {getStatusBadge(dispute.status)}
-        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Item Details */}
@@ -411,5 +422,6 @@ export default function DisputeDetailsPage() {
         )}
       </div>
     </div>
+  </div>
   );
 }

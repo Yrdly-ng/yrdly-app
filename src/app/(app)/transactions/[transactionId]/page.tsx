@@ -28,6 +28,7 @@ import { EscrowStatus, DeliveryOption } from '@/types/escrow';
 import Image from 'next/image';
 import { SubmitReviewDialog } from '@/components/reviews/SubmitReviewDialog';
 import { ReviewService } from '@/lib/review-service';
+import { AppHeader } from '@/components/AppHeader';
 
 interface TransactionDetails {
   id: string;
@@ -324,16 +325,26 @@ export default function TransactionDetailsPage() {
   const otherUser = isBuyer ? transaction.seller : transaction.buyer;
 
   return (
-    <div className="min-h-[100dvh] bg-background p-4">
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Transaction Details</h1>
-            <p className="text-muted-foreground">Transaction ID: {transaction.id}</p>
+    <div className="min-h-[100dvh] bg-background">
+      <AppHeader 
+        title="Transaction Details" 
+        onBack={() => {
+          if (window.history.length <= 1) {
+            router.push('/profile/purchases');
+          } else {
+            router.back();
+          }
+        }} 
+      />
+      <div className="p-4">
+        <div className="max-w-4xl mx-auto space-y-6">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-muted-foreground">Transaction ID: {transaction.id}</p>
+            </div>
+            {getStatusBadge(transaction.status)}
           </div>
-          {getStatusBadge(transaction.status)}
-        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Item Details */}
@@ -609,5 +620,6 @@ export default function TransactionDetailsPage() {
         </div>
       </div>
     </div>
+  </div>
   );
 }

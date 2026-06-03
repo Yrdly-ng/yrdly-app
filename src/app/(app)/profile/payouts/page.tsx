@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/use-supabase-auth';
@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
+import { AppHeader } from '@/components/AppHeader';
 
 export default function PayoutHistoryPage() {
   const { user } = useAuth();
@@ -85,12 +86,22 @@ export default function PayoutHistoryPage() {
 
   if (loading) {
     return (
-      <div className="min-h-[100dvh] bg-background p-4">
-        <div className="max-w-4xl mx-auto space-y-6">
-          <div>
-            <h1 className="text-2xl font-bold">Payout History</h1>
-            <p className="text-muted-foreground">Your payout requests and history</p>
-          </div>
+      <div className="min-h-[100dvh] bg-background">
+        <AppHeader 
+          title="Payouts" 
+          onBack={() => {
+            if (window.history.length <= 1) {
+              router.push('/profile');
+            } else {
+              router.back();
+            }
+          }} 
+        />
+        <div className="p-4">
+          <div className="max-w-4xl mx-auto space-y-6">
+            <div>
+              <p className="text-muted-foreground">Your payout requests and history</p>
+            </div>
           
           <div className="space-y-4">
             {[...Array(5)].map((_, i) => (
@@ -112,16 +123,27 @@ export default function PayoutHistoryPage() {
           </div>
         </div>
       </div>
+    </div>
     );
   }
 
   return (
-    <div className="min-h-[100dvh] bg-background p-4">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold">Payout History</h1>
-          <p className="text-muted-foreground">Your payout requests and history</p>
-        </div>
+    <div className="min-h-[100dvh] bg-background">
+      <AppHeader 
+        title="Payouts" 
+        onBack={() => {
+          if (window.history.length <= 1) {
+            router.push('/profile');
+          } else {
+            router.back();
+          }
+        }} 
+      />
+      <div className="p-4">
+        <div className="max-w-4xl mx-auto space-y-6">
+          <div>
+            <p className="text-muted-foreground">Your payout requests and history</p>
+          </div>
 
         {payouts.length === 0 ? (
           <Card>
@@ -226,5 +248,6 @@ export default function PayoutHistoryPage() {
         )}
       </div>
     </div>
+  </div>
   );
 }
