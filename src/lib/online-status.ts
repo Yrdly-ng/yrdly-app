@@ -128,8 +128,9 @@ export class OnlineStatusService {
     this.listeners.set(userId, callback);
 
     // Set up real-time subscription for this user
+    const channelId = `online_status_${userId}_${Math.random().toString(36).substring(2, 15)}`;
     const channel = supabase
-      .channel(`online_status_${userId}`)
+      .channel(channelId)
       .on('postgres_changes', {
         event: 'UPDATE',
         schema: 'public',

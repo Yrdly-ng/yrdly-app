@@ -87,8 +87,9 @@ export function useTypingDetection(conversationId: string) {
   useEffect(() => {
     if (!conversationId) return;
 
+    const channelId = `typing-${conversationId}-${Math.random().toString(36).substring(2, 15)}`;
     const channel = supabase
-      .channel(`typing-${conversationId}`)
+      .channel(channelId)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',

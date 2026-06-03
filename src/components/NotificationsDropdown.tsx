@@ -383,7 +383,8 @@ export function NotificationsDropdown({ isOpen, onClose, onNotificationCountChan
 
     fetchNotifications();
 
-    const channel = supabase.channel('notifications')
+    const channelId = `notifications-${Math.random().toString(36).substring(2, 15)}`;
+    const channel = supabase.channel(channelId)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` }, (payload) => {
         if (payload.eventType === 'INSERT') {
           const n = payload.new as any;

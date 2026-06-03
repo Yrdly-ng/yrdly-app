@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Loader2 } from 'lucide-react';
+import Image from 'next/image';
 
 export default function AuthCallback() {
   const router = useRouter();
@@ -130,7 +131,7 @@ export default function AuthCallback() {
 
       <div className="relative z-10 w-full max-w-[420px] flex flex-col items-center gap-8">
         <div className="text-center font-sans flex flex-col items-center gap-4">
-          <img
+          <Image
             src="/yrdly-logo.png"
             alt="Yrdly"
             width={72}

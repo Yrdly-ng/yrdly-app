@@ -92,8 +92,9 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
 
     fetchItems();
 
+    const channelId = `marketplace-items-${Math.random().toString(36).substring(2, 15)}`;
     const channel = supabase
-      .channel("marketplace-items")
+      .channel(channelId)
       .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, (payload) => {
         if (payload.eventType === "INSERT") {
           const newItem = payload.new as PostType;
