@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { X, ShoppingBag, Banknote, Zap, CheckCircle2, ArrowRight, Loader2 } from "lucide-react";
 
-const GREEN = "#388E3C";
+const GREEN = "hsl(var(--primary))";
 const DARK = "var(--c-bg)";
 const CARD = "var(--c-card)";
 const BORDER = "rgba(56,142,60,0.3)";

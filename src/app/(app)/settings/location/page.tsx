@@ -10,9 +10,9 @@ import { supabase } from "@/lib/supabase";
 import { GpsLocationStep } from "@/components/onboarding/GpsLocationStep";
 import { OUTSIDE_NIGERIA } from "@/lib/geocoding-service";
 
-const FONT = "\"Pacifico\", cursive";
-const PACIFICO = "Pacifico, cursive";
-const GREEN = "#388E3C";
+const FONT = "var(--font-work-sans)";
+const PACIFICO = "var(--font-jersey25)";
+const GREEN = "hsl(var(--primary))";
 const CARD = "var(--c-card)";
 const BG = "var(--c-bg)";
 
@@ -220,9 +220,9 @@ export default function LocationSettingsPage() {
         ) : (
           <div className="space-y-6">
             {manualReason === OUTSIDE_NIGERIA && (
-              <div className="w-full rounded-[24px] bg-[#388E3C]/10 border border-[#388E3C]/30 p-4 flex flex-col items-center justify-center space-y-2 text-center animate-in fade-in slide-in-from-top-2 duration-300">
-                <MapPin className="w-6 h-6 text-[#388E3C]" />
-                <p className="text-[#388E3C] font-bold text-sm">
+              <div className="w-full rounded-[24px] bg-primary/10 border border-primary/30 p-4 flex flex-col items-center justify-center space-y-2 text-center animate-in fade-in slide-in-from-top-2 duration-300">
+                <MapPin className="w-6 h-6 text-primary" />
+                <p className="text-primary font-bold text-sm">
                   It looks like you&apos;re currently outside Nigeria. Please select your home community below.
                 </p>
               </div>

@@ -52,9 +52,9 @@ import { ImageSwiper } from "./ImageSwiper";
 /* ─── design tokens ─────────────────────────────────────────────── */
 const CARD_BG = "var(--c-card)";
 const BG = "var(--c-bg)";
-const GREEN = "#388E3C";
-const FONT_RALEWAY = "\"Pacifico\", cursive";
-const FONT_PACIFICO = "Pacifico, cursive";
+const GREEN = "hsl(var(--primary))";
+const FONT_RALEWAY = "var(--font-raleway)";
+const FONT_PACIFICO = "var(--font-jersey25)";
 
 function fmt(n: number) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -149,7 +149,7 @@ function ImageCollage({
         <Image src={urls[2]} alt="" fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover" />
         {urls.length > 3 && (
           <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-            <span className="text-white font-semibold text-base font-sans">+{urls.length - 3}</span>
+            <span className="text-primary-foreground font-semibold text-base font-sans">+{urls.length - 3}</span>
           </div>
         )}
       </div>

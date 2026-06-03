@@ -294,7 +294,7 @@ export default function OnboardingProfilePage() {
   // Show loading state while location data is being loaded
   if (locationLoading && states.length === 0) {
     return (
-      <div className="min-h-[100dvh] bg-background text-foreground" style={{ fontFamily: "\"Pacifico\", cursive" }}>
+      <div className="min-h-[100dvh] bg-background text-foreground" style={{ fontFamily: "var(--font-work-sans)" }}>
         <OnboardingProgress />
         <div className="flex items-center justify-center p-4 pt-8">
           <LoadingState 
@@ -307,7 +307,7 @@ export default function OnboardingProfilePage() {
   }
 
   return (
-    <div className="min-h-[100dvh] pb-20 overflow-x-hidden bg-background text-foreground" style={{ fontFamily: "\"Pacifico\", cursive" }}>
+    <div className="min-h-[100dvh] pb-20 overflow-x-hidden bg-background text-foreground" style={{ fontFamily: "var(--font-work-sans)" }}>
       <OnboardingProgress />
       
       {/* Animated Background Elements */}
@@ -326,7 +326,7 @@ export default function OnboardingProfilePage() {
             </div>
             <div className="space-y-3">
               <h2 className="text-4xl md:text-5xl font-black tracking-tight text-foreground leading-tight">
-                Refine Your <span style={{ color: "#388E3C" }}>Presence</span>
+                Refine Your <span style={{ color: "hsl(var(--primary))" }}>Presence</span>
               </h2>
               <p className="text-muted-foreground text-lg font-medium">
                 Your neighborhood identity starts here
@@ -349,17 +349,17 @@ export default function OnboardingProfilePage() {
                           <TooltipTrigger asChild>
                             <HelpCircle className="w-4 h-4 text-muted-foreground/40 cursor-help" />
                           </TooltipTrigger>
-                          <TooltipContent className="bg-card border-border text-white font-bold p-4 rounded-2xl max-w-[200px] shadow-2xl backdrop-blur-xl">
+                          <TooltipContent className="bg-card border-border text-primary-foreground font-bold p-4 rounded-2xl max-w-[200px] shadow-2xl backdrop-blur-xl">
                             Used for identity verification and official neighborhood transactions.
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
                     </div>
                     <div className="relative group">
-                      <div className="absolute inset-0 bg-[#388E3C] rounded-[24px] opacity-0 group-focus-within:opacity-5 blur-xl transition-opacity" />
+                      <div className="absolute inset-0 bg-primary rounded-[24px] opacity-0 group-focus-within:opacity-5 blur-xl transition-opacity" />
                       <Input
                         placeholder="e.g. Tolu Oyelowo"
-                        className="h-16 rounded-[24px] bg-muted/50 border-border focus:border-[#388E3C]/50 transition-all text-xl font-bold px-8"
+                        className="h-16 rounded-[24px] bg-muted/50 border-border focus:border-primary/50 transition-all text-xl font-bold px-8"
                         autoComplete="name"
                         {...form.register('fullName')}
                       />
@@ -378,21 +378,21 @@ export default function OnboardingProfilePage() {
                     </div>
                     
                     <div className="relative group">
-                      <div className="absolute inset-0 bg-[#388E3C] rounded-[24px] opacity-0 group-focus-within:opacity-5 blur-xl transition-opacity pointer-events-none" />
-                      <div className="absolute left-8 top-1/2 -translate-y-1/2 text-[#388E3C] font-black text-2xl pointer-events-none">@</div>
+                      <div className="absolute inset-0 bg-primary rounded-[24px] opacity-0 group-focus-within:opacity-5 blur-xl transition-opacity pointer-events-none" />
+                      <div className="absolute left-8 top-1/2 -translate-y-1/2 text-primary font-black text-2xl pointer-events-none">@</div>
                       <Input
                         placeholder="username"
-                        className="h-16 pl-16 pr-16 rounded-[24px] bg-muted/50 border-border focus:border-[#388E3C]/50 transition-all text-xl font-bold"
+                        className="h-16 pl-16 pr-16 rounded-[24px] bg-muted/50 border-border focus:border-primary/50 transition-all text-xl font-bold"
                         {...form.register('username')}
                         onFocus={() => setShowSuggestions(usernameSuggestions.length > 0)}
                         onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                         maxLength={20}
                       />
                       <div className="absolute right-8 top-1/2 -translate-y-1/2 flex items-center gap-3 pointer-events-none">
-                         {checkingUsername && <div className="w-6 h-6 border-3 border-[#388E3C] border-t-transparent rounded-full animate-spin" />}
+                         {checkingUsername && <div className="w-6 h-6 border-3 border-primary border-t-transparent rounded-full animate-spin" />}
                          {!checkingUsername && usernameAvailable === true && (
-                           <div className="w-8 h-8 rounded-full bg-[#388E3C]/10 flex items-center justify-center border border-[#388E3C]/20">
-                             <CheckCircle2 className="w-5 h-5 text-[#388E3C]" />
+                           <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20">
+                             <CheckCircle2 className="w-5 h-5 text-primary" />
                            </div>
                          )}
                          {!checkingUsername && usernameAvailable === false && (
@@ -409,8 +409,8 @@ export default function OnboardingProfilePage() {
 
                     {showSuggestions && usernameSuggestions.length > 0 && (
                       <div className="bg-background/80 rounded-[32px] p-6 space-y-5 border border-border animate-in fade-in zoom-in-95 duration-500 backdrop-blur-3xl shadow-[0_30px_60px_-12px_rgba(0,0,0,0.8)]">
-                        <div className="flex items-center gap-3 text-[0.6875rem] uppercase tracking-[0.25em] font-black text-[#388E3C]">
-                          <div className="w-10 h-10 rounded-xl bg-[#388E3C]/10 flex items-center justify-center border border-[#388E3C]/20">
+                        <div className="flex items-center gap-3 text-[0.6875rem] uppercase tracking-[0.25em] font-black text-primary">
+                          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20">
                             <Lightbulb className="w-5 h-5" />
                           </div>
                           <span>Recommended Handles</span>
@@ -421,7 +421,7 @@ export default function OnboardingProfilePage() {
                               key={index}
                               type="button"
                               onClick={() => handleUseSuggestion(suggestion)}
-                              className="px-6 py-3 text-sm bg-white/5 text-white font-bold rounded-2xl border border-border hover:border-[#388E3C]/40 hover:bg-[#388E3C]/10 transition-all hover:scale-105 active:scale-95"
+                              className="px-6 py-3 text-sm bg-background/5 text-primary-foreground font-bold rounded-2xl border border-border hover:border-primary/40 hover:bg-primary/10 transition-all hover:scale-105 active:scale-95"
                             >
                               @{suggestion}
                             </button>
@@ -454,12 +454,12 @@ export default function OnboardingProfilePage() {
                         <div className="space-y-3">
                           <Label className="text-[0.6875rem] uppercase tracking-widest font-black text-muted-foreground ml-1">State / Region</Label>
                           <Select value={form.watch('location.state')} onValueChange={handleStateChange}>
-                            <SelectTrigger className="h-16 rounded-[22px] bg-muted/50 border-border text-lg font-bold px-6 focus:ring-[#388E3C]/30">
+                            <SelectTrigger className="h-16 rounded-[22px] bg-muted/50 border-border text-lg font-bold px-6 focus:ring-primary/30">
                               <SelectValue placeholder="Select State" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border max-h-[300px] rounded-2xl shadow-2xl backdrop-blur-3xl">
                               {states.filter(s => s).map(state => (
-                                <SelectItem key={state} value={state} className="focus:bg-[#388E3C] focus:text-white font-bold py-3 px-6 rounded-xl cursor-pointer transition-colors">{state}</SelectItem>
+                                <SelectItem key={state} value={state} className="focus:bg-primary focus:text-primary-foreground font-bold py-3 px-6 rounded-xl cursor-pointer transition-colors">{state}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
@@ -472,12 +472,12 @@ export default function OnboardingProfilePage() {
                             onValueChange={handleLgaChange}
                             disabled={!form.watch('location.state')}
                           >
-                            <SelectTrigger className="h-16 rounded-[22px] bg-muted/50 border-border text-lg font-bold px-6 focus:ring-[#388E3C]/30 disabled:opacity-30">
+                            <SelectTrigger className="h-16 rounded-[22px] bg-muted/50 border-border text-lg font-bold px-6 focus:ring-primary/30 disabled:opacity-30">
                               <SelectValue placeholder="Select LGA" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border max-h-[300px] rounded-2xl shadow-2xl backdrop-blur-3xl">
                               {lgas.filter(l => l).map(lga => (
-                                <SelectItem key={lga} value={lga} className="focus:bg-[#388E3C] focus:text-white font-bold py-3 px-6 rounded-xl cursor-pointer transition-colors">{lga}</SelectItem>
+                                <SelectItem key={lga} value={lga} className="focus:bg-primary focus:text-primary-foreground font-bold py-3 px-6 rounded-xl cursor-pointer transition-colors">{lga}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
@@ -488,7 +488,7 @@ export default function OnboardingProfilePage() {
                           <button
                             type="button"
                             onClick={() => setShowManualLocation(false)}
-                            className="text-sm font-bold text-[#388E3C] hover:text-[#2E7D32] transition-colors"
+                            className="text-sm font-bold text-primary hover:text-[#2E7D32] transition-colors"
                           >
                             Use Auto-Detect instead
                           </button>
@@ -502,17 +502,17 @@ export default function OnboardingProfilePage() {
                   <button 
                     type="submit" 
                     disabled={isSubmitting || usernameAvailable === false || checkingUsername}
-                    className="w-full h-20 rounded-[28px] flex items-center justify-center text-white text-2xl font-black transition-all active:scale-[0.98] disabled:opacity-50 disabled:grayscale overflow-hidden relative group"
+                    className="w-full h-20 rounded-[28px] flex items-center justify-center text-primary-foreground text-2xl font-black transition-all active:scale-[0.98] disabled:opacity-50 disabled:grayscale overflow-hidden relative group"
                     style={{
-                      background: "#388E3C",
+                      background: "hsl(var(--primary))",
                       boxShadow: "0 25px 50px -12px rgba(56,142,60,0.5)"
                     }}
                   >
-                    <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
+                    <div className="absolute inset-0 bg-background/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
                     <span className="relative z-10 flex items-center gap-4">
                       {isSubmitting ? (
                         <>
-                          <div className="w-7 h-7 border-4 border-white border-t-transparent rounded-full animate-spin" />
+                          <div className="w-7 h-7 border-4 border-border border-t-transparent rounded-full animate-spin" />
                           Syncing Identity...
                         </>
                       ) : (
@@ -529,7 +529,7 @@ export default function OnboardingProfilePage() {
           </div>
 
           <div className="flex flex-col items-center gap-6 py-8">
-             <div className="flex items-center gap-3 text-[0.6875rem] font-black text-[#388E3C] uppercase tracking-[0.3em]">
+             <div className="flex items-center gap-3 text-[0.6875rem] font-black text-primary uppercase tracking-[0.3em]">
                <CheckCircle2 className="w-4 h-4" />
                Identity Encryption Active
              </div>

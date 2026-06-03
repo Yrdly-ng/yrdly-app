@@ -152,7 +152,7 @@ export default function EventDetailPage() {
   if (loading) {
     return (
       <div className="min-h-[100dvh] bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-[#388E3C] animate-spin" />
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
       </div>
     );
   }
@@ -226,7 +226,7 @@ export default function EventDetailPage() {
                     key={i}
                     onClick={() => setActiveImageIndex(i)}
                     className={`rounded-full transition-all duration-200 ${
-                      i === activeImageIndex ? "w-4 h-1.5 bg-white" : "w-1.5 h-1.5 bg-white/40"
+                      i === activeImageIndex ? "w-4 h-1.5 bg-background" : "w-1.5 h-1.5 bg-background/40"
                     }`}
                   />
                 ))}
@@ -260,7 +260,7 @@ export default function EventDetailPage() {
           <div className="flex items-center gap-2">
             {isOrganizer && (
               <Link href={`/events/${id}/manage`}>
-                <button className="px-4 py-2 rounded-full bg-[#388E3C]/90 backdrop-blur-sm text-xs font-sans font-medium text-foreground">
+                <button className="px-4 py-2 rounded-full bg-primary/90 backdrop-blur-sm text-xs font-sans font-medium text-foreground">
                   Manage Event
                 </button>
               </Link>
@@ -277,7 +277,7 @@ export default function EventDetailPage() {
         {/* Status badge */}
         {isCancelled && (
           <div className="absolute top-16 left-4 z-10">
-            <Badge className="bg-red-500/90 text-white border-0 font-sans">Cancelled</Badge>
+            <Badge className="bg-red-500/90 text-primary-foreground border-0 font-sans">Cancelled</Badge>
           </div>
         )}
       </div>
@@ -295,7 +295,7 @@ export default function EventDetailPage() {
       <div className="max-w-2xl mx-auto px-4 pt-6 space-y-6">
         {/* Title & category */}
         <div>
-          <Badge className="bg-[#388E3C]/20 text-[#4CAF50] border-[#388E3C]/30 text-xs font-sans mb-3">
+          <Badge className="bg-primary/20 text-[#4CAF50] border-primary/30 text-xs font-sans mb-3">
             {event.category}
           </Badge>
           <h1 className="font-sans font-extrabold text-2xl sm:text-3xl text-foreground leading-tight">
@@ -306,7 +306,7 @@ export default function EventDetailPage() {
         {/* Meta info */}
         <div className="space-y-3">
           <div className="flex items-start gap-3 text-muted-foreground">
-            <CalendarDays className="w-5 h-5 flex-shrink-0 mt-0.5 text-[#388E3C]" />
+            <CalendarDays className="w-5 h-5 flex-shrink-0 mt-0.5 text-primary" />
             <div>
               <p className="font-sans font-medium text-sm">{formatDate(event.start_time)}</p>
               <p className="font-sans text-xs text-muted-foreground">
@@ -318,7 +318,7 @@ export default function EventDetailPage() {
 
           {(event.location_address || event.state) && (
             <div className="flex items-start gap-3 text-muted-foreground">
-              <MapPin className="w-5 h-5 flex-shrink-0 mt-0.5 text-[#388E3C]" />
+              <MapPin className="w-5 h-5 flex-shrink-0 mt-0.5 text-primary" />
               <div>
                 <p className="font-sans font-medium text-sm">
                   {event.location_online ? "Online Event" : (event.location_address || event.state)}
@@ -332,7 +332,7 @@ export default function EventDetailPage() {
 
           {event.location_online && event.online_link && (
             <div className="flex items-center gap-3 text-muted-foreground">
-              <Globe className="w-5 h-5 flex-shrink-0 text-[#388E3C]" />
+              <Globe className="w-5 h-5 flex-shrink-0 text-primary" />
               <a href={event.online_link} target="_blank" rel="noopener noreferrer"
                 className="font-sans text-sm text-[#4CAF50] underline underline-offset-2 truncate">
                 Join Online
@@ -341,18 +341,18 @@ export default function EventDetailPage() {
           )}
 
           <div className="flex items-center gap-3 text-muted-foreground">
-            <Users className="w-5 h-5 flex-shrink-0 text-[#388E3C]" />
+            <Users className="w-5 h-5 flex-shrink-0 text-primary" />
             <p className="font-sans text-sm">{event.attendee_count} attending</p>
           </div>
         </div>
 
-        <Separator className="bg-white/10" />
+        <Separator className="bg-background/10" />
 
         {/* Organizer */}
         <div className="flex items-center gap-3">
           <Avatar className="w-10 h-10 border border-border">
             <AvatarImage src={(event.organizer as any)?.avatar_url} />
-            <AvatarFallback className="bg-[#388E3C] text-white text-sm">
+            <AvatarFallback className="bg-primary text-primary-foreground text-sm">
               {(event.organizer as any)?.name?.charAt(0) || "O"}
             </AvatarFallback>
           </Avatar>
@@ -362,7 +362,7 @@ export default function EventDetailPage() {
           </div>
         </div>
 
-        <Separator className="bg-white/10" />
+        <Separator className="bg-background/10" />
 
         {/* Description */}
         {event.description && (
@@ -404,7 +404,7 @@ export default function EventDetailPage() {
                         disabled={soldOut || isOrganizer || hasTicket}
                         onClick={() => handleSelectTier(tier)}
                         className="rounded-full font-sans text-xs text-foreground px-4"
-                        style={{ background: soldOut ? "#374151" : hasTicket ? "#388E3C" : "#388E3C" }}
+                        style={{ background: soldOut ? "#374151" : hasTicket ? "hsl(var(--primary))" : "hsl(var(--primary))" }}
                       >
                         {soldOut ? "Sold Out" : isOrganizer ? "Yours" : hasTicket ? "Purchased" : "Get"}
                       </Button>
@@ -433,7 +433,7 @@ export default function EventDetailPage() {
           >
             {/* Drag handle */}
             <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
-              <div className="w-10 h-1 rounded-full bg-white/20" />
+              <div className="w-10 h-1 rounded-full bg-background/20" />
             </div>
 
             {/* Scrollable body */}
@@ -455,7 +455,7 @@ export default function EventDetailPage() {
                     </h3>
                     <button
                       onClick={() => setPurchase({ step: "idle", tier: null, errorMsg: "" })}
-                      className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/20 transition"
+                      className="w-7 h-7 rounded-full bg-background/10 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-background/20 transition"
                     >
                       <ChevronRight className="w-4 h-4 rotate-90" />
                     </button>
@@ -463,20 +463,20 @@ export default function EventDetailPage() {
 
                   <div className="space-y-3">
                     <input
-                      className="w-full bg-background border border-border rounded-xl px-4 py-3 text-foreground font-sans text-sm placeholder:text-muted-foreground outline-none focus:border-[#388E3C]"
+                      className="w-full bg-background border border-border rounded-xl px-4 py-3 text-foreground font-sans text-sm placeholder:text-muted-foreground outline-none focus:border-primary"
                       placeholder="Full Name *"
                       value={form.name}
                       onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                     />
                     <input
-                      className="w-full bg-background border border-border rounded-xl px-4 py-3 text-foreground font-sans text-sm placeholder:text-muted-foreground outline-none focus:border-[#388E3C]"
+                      className="w-full bg-background border border-border rounded-xl px-4 py-3 text-foreground font-sans text-sm placeholder:text-muted-foreground outline-none focus:border-primary"
                       placeholder="Email Address *"
                       type="email"
                       value={form.email}
                       onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
                     />
                     <input
-                      className="w-full bg-background border border-border rounded-xl px-4 py-3 text-foreground font-sans text-sm placeholder:text-muted-foreground outline-none focus:border-[#388E3C]"
+                      className="w-full bg-background border border-border rounded-xl px-4 py-3 text-foreground font-sans text-sm placeholder:text-muted-foreground outline-none focus:border-primary"
                       placeholder="Phone (optional)"
                       type="tel"
                       value={form.phone}
@@ -492,7 +492,7 @@ export default function EventDetailPage() {
 
                   <Button
                     className="w-full rounded-full h-12 font-sans font-medium text-foreground text-sm"
-                    style={{ background: "#388E3C" }}
+                    style={{ background: "hsl(var(--primary))" }}
                     disabled={purchase.step === "loading"}
                     onClick={handlePurchase}
                   >

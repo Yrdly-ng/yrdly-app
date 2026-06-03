@@ -10,8 +10,8 @@ interface ProfileDropdownProps {
   onClose: () => void;
 }
 
-const FONT = "\"Pacifico\", cursive";
-const GREEN = "#388E3C";
+const FONT = "var(--font-work-sans)";
+const GREEN = "hsl(var(--primary))";
 
 export function ProfileDropdown({ onClose }: ProfileDropdownProps) {
   const router = useRouter();

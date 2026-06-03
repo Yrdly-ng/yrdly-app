@@ -75,7 +75,6 @@ export class NotificationTriggers {
     messageContent: string
   ) {
     try {
-      console.log('Creating message notification:', { toUserId, fromUserId, conversationId, messageContent });
       
       // Debounce: Check for recent notifications in the last 60 seconds to prevent spam
       const oneMinuteAgo = new Date(Date.now() - 60000).toISOString();
@@ -90,7 +89,6 @@ export class NotificationTriggers {
         .limit(1);
 
       if (recentNotifs && recentNotifs.length > 0) {
-         console.log('Skipping message notification (debounced)');
          return;
       }
 
@@ -106,8 +104,6 @@ export class NotificationTriggers {
           ? messageContent.substring(0, 50) + '...' 
           : messageContent;
 
-        console.log('Sender data found:', senderData);
-        console.log('Creating notification for user:', toUserId);
 
         await NotificationService.createNotification({
           userId: toUserId,
@@ -124,7 +120,6 @@ export class NotificationTriggers {
           }
         });
       } else {
-        console.log('No sender data found for user:', fromUserId);
       }
     } catch (error) {
       console.error('Error creating message notification:', error);

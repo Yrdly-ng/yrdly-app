@@ -73,7 +73,7 @@ function MapLogicOverlay({ setBounds, setZoom }: { setBounds: (b: [number,number
     };
     update();
     const l1 = map.addListener('idle', update);
-    return () => { google.maps.event.removeListener(l1); };
+    return () => { (window as any).google.maps.event.removeListener(l1); };
   }, [map, setBounds, setZoom]);
   return null;
 }
@@ -95,7 +95,7 @@ function RecenterButton({ coords }: { coords: { lat: number; lng: number } | nul
   return (
     <button
       onClick={recenter}
-      className="absolute right-4 z-20 w-12 h-12 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.3)] flex items-center justify-center text-white transition-transform active:scale-90"
+      className="absolute right-4 z-20 w-12 h-12 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.3)] flex items-center justify-center text-primary-foreground transition-transform active:scale-90"
       style={{ top: 180, background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.2)' }}
     >
       <Navigation className="w-5 h-5 fill-white" />
@@ -241,7 +241,7 @@ export function MapScreen({ className }: MapScreenProps) {
             <div className="relative flex items-center justify-center">
               <div className="absolute w-14 h-14 bg-blue-500/20 rounded-full animate-ping" />
               <div className="absolute w-8 h-8 bg-blue-500/40 rounded-full animate-pulse" />
-              <div className="relative w-4 h-4 bg-blue-500 rounded-full border-[3px] border-white shadow-lg" />
+              <div className="relative w-4 h-4 bg-blue-500 rounded-full border-[3px] border-border shadow-lg" />
             </div>
           </AdvancedMarker>
         )}
@@ -263,7 +263,7 @@ export function MapScreen({ className }: MapScreenProps) {
                   map.panTo({ lat, lng });
                 }}
               >
-                <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-black text-lg border-4 border-[var(--c-card)] shadow-2xl transition-transform hover:scale-110" style={{ background: '#388E3C' }}>
+                <div className="w-12 h-12 rounded-full flex items-center justify-center text-primary-foreground font-black text-lg border-4 border-[var(--c-card)] shadow-2xl transition-transform hover:scale-110" style={{ background: 'hsl(var(--primary))' }}>
                   {point_count}
                 </div>
               </AdvancedMarker>
@@ -287,22 +287,22 @@ export function MapScreen({ className }: MapScreenProps) {
                     )}
                     style={{ background: getGradient(m.type) }}
                   >
-                    {m.type === 'event'    && <Calendar className="w-5 h-5 text-white" />}
-                    {m.type === 'business' && <Briefcase className="w-5 h-5 text-white" />}
+                    {m.type === 'event'    && <Calendar className="w-5 h-5 text-primary-foreground" />}
+                    {m.type === 'business' && <Briefcase className="w-5 h-5 text-primary-foreground" />}
                     {m.type === 'marketplace' && (
-                      <span className="text-white font-black text-[0.65rem] px-1 tracking-tighter">
+                      <span className="text-primary-foreground font-black text-[0.65rem] px-1 tracking-tighter">
                         {m.price === 0 ? 'Free' : `₦${(m.price || 0) / 1000}k`}
                       </span>
                     )}
                     {m.type === 'friend'   && (
                       m.avatar_url
                         ? <div className="relative w-full h-full rounded-full overflow-hidden"><Image src={m.avatar_url} alt="" fill className="object-cover" sizes="44px" /></div>
-                        : <Users className="w-5 h-5 text-white" />
+                        : <Users className="w-5 h-5 text-primary-foreground" />
                     )}
                   </div>
                 </div>
                 
-                <div className="mt-1.5 px-2.5 py-1 rounded-full text-[0.65rem] font-bold text-white shadow-md opacity-90 group-hover:opacity-100 transition-opacity backdrop-blur-md" style={{ background: 'rgba(21,24,29,0.85)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <div className="mt-1.5 px-2.5 py-1 rounded-full text-[0.65rem] font-bold text-primary-foreground shadow-md opacity-90 group-hover:opacity-100 transition-opacity backdrop-blur-md" style={{ background: 'rgba(21,24,29,0.85)', border: '1px solid rgba(255,255,255,0.1)' }}>
                   {m.title.length > 16 ? m.title.slice(0, 14) + '…' : m.title}
                 </div>
               </div>
@@ -441,8 +441,9 @@ export function MapScreen({ className }: MapScreenProps) {
       </div>
 
       {loading && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-          <div className="w-12 h-12 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
+          <div className="w-16 h-16 bg-muted/20 animate-pulse rounded-full border-4 border-primary/20 mb-4" />
+          <div className="w-32 h-4 bg-muted/20 animate-pulse rounded-full" />
         </div>
       )}
 

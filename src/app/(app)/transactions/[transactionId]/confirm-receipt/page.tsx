@@ -11,7 +11,7 @@ import { ArrowLeft, CheckCircle, AlertTriangle, Info } from "lucide-react";
 /* ── Design tokens ─────────────────────────────────── */
 const BG      = "var(--c-bg)";
 const CARD    = "var(--c-card)";
-const GREEN   = "#388E3C";
+const GREEN   = "hsl(var(--primary))";
 const GREEN_L = "#82DB7E";
 const MUTED   = "var(--c-text-muted)";
 const RED     = "#E53935";
@@ -103,7 +103,7 @@ export default function ConfirmReceiptPage() {
           <button onClick={() => router.back()} className="active:scale-95 transition-transform hover:opacity-80 flex items-center justify-center">
             <ArrowLeft className="w-6 h-6 text-primary" />
           </button>
-          <h1 className="font-pacifico text-2xl tracking-tight text-on-background">Did You Receive It?</h1>
+          <h1 className="font-jersey25 text-2xl tracking-tight text-on-background">Did You Receive It?</h1>
         </div>
       </header>
 
@@ -137,7 +137,7 @@ export default function ConfirmReceiptPage() {
             </div>
             <h4 className="font-editorial font-bold text-sm text-on-surface mb-1">All Good!</h4>
             <p className="font-editorial text-xs text-on-surface-variant mb-6">Item received in good condition</p>
-            <div className="mt-auto w-full py-2.5 px-6 bg-tertiary-container text-white rounded-full font-editorial text-sm font-bold shadow-lg shadow-tertiary-container/20">
+            <div className="mt-auto w-full py-2.5 px-6 bg-tertiary-container text-primary-foreground rounded-full font-editorial text-sm font-bold shadow-lg shadow-tertiary-container/20">
               {loading ? "Confirming..." : "Confirm Receipt"}
             </div>
           </button>

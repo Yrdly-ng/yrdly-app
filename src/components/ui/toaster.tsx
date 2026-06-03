@@ -23,7 +23,7 @@ export function Toaster() {
               {variant === "destructive" ? (
                 <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
               ) : (
-                <CheckCircle2 className="w-5 h-5 text-[#388E3C] mt-0.5 shrink-0" />
+                <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 shrink-0" />
               )}
               <div className="grid gap-1">
                 {title && <ToastTitle>{title}</ToastTitle>}

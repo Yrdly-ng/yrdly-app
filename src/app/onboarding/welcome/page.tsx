@@ -240,12 +240,12 @@ export default function OnboardingWelcomePage() {
   }
 
   return (
-    <div className="min-h-[100dvh] pb-20 overflow-x-hidden relative bg-background text-foreground" style={{ fontFamily: "\"Pacifico\", cursive" }}>
+    <div className="min-h-[100dvh] pb-20 overflow-x-hidden relative bg-background text-foreground" style={{ fontFamily: "var(--font-work-sans)" }}>
       <OnboardingProgress />
       
       {/* Background Glows */}
-      <div className="fixed top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#388E3C]/10 blur-[120px] rounded-full pointer-events-none" />
-      <div className="fixed bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#388E3C]/5 blur-[120px] rounded-full pointer-events-none" />
+      <div className="fixed top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 blur-[120px] rounded-full pointer-events-none" />
+      <div className="fixed bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/5 blur-[120px] rounded-full pointer-events-none" />
 
       {/* Confetti Effect */}
       {showConfetti && (
@@ -257,7 +257,7 @@ export default function OnboardingWelcomePage() {
               style={{
                 left: `${Math.random() * 100}%`,
                 top: `-20px`,
-                background: ['#388E3C', '#ffb347', '#a7d1ab', '#ffffff'][Math.floor(Math.random() * 4)],
+                background: ['hsl(var(--primary))', '#ffb347', '#a7d1ab', '#ffffff'][Math.floor(Math.random() * 4)],
                 animationDelay: `${Math.random() * 3}s`,
                 animationDuration: `${2 + Math.random() * 2}s`,
                 opacity: 0.6,
@@ -277,9 +277,9 @@ export default function OnboardingWelcomePage() {
             </div>
             
             <div className="space-y-3">
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#388E3C]/10 border border-[#388E3C]/20 mb-2">
-                <Sparkles className="w-4 h-4 text-[#388E3C]" />
-                <span className="text-xs font-black uppercase tracking-widest text-[#388E3C]">Profile Verified</span>
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 mb-2">
+                <Sparkles className="w-4 h-4 text-primary" />
+                <span className="text-xs font-black uppercase tracking-widest text-primary">Profile Verified</span>
               </div>
               <h2 className="text-4xl md:text-5xl font-black tracking-tight text-foreground leading-tight">
                 Welcome home,<br/>{profile?.name?.split(' ')[0]}!
@@ -298,7 +298,7 @@ export default function OnboardingWelcomePage() {
           >
             <div className="p-10 space-y-10 relative">
               {/* Decorative Shine */}
-              <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-tr from-[#388E3C]/5 via-transparent to-transparent pointer-events-none" />
+              <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-tr from-primary/5 via-transparent to-transparent pointer-events-none" />
 
               <div className="space-y-3 text-center relative z-10">
                 <h3 className="text-3xl font-black text-foreground tracking-tight">Ready to explore?</h3>
@@ -310,13 +310,13 @@ export default function OnboardingWelcomePage() {
               <div className="space-y-5 relative z-10">
                 <button 
                   onClick={handleTakeTour}
-                  className="w-full h-20 rounded-[28px] flex items-center justify-center text-white text-xl font-black transition-all active:scale-[0.98] group relative overflow-hidden shadow-2xl"
+                  className="w-full h-20 rounded-[28px] flex items-center justify-center text-primary-foreground text-xl font-black transition-all active:scale-[0.98] group relative overflow-hidden shadow-2xl"
                   style={{
-                    background: "#388E3C",
+                    background: "hsl(var(--primary))",
                     boxShadow: "0 20px 40px -10px rgba(56,142,60,0.5)"
                   }}
                 >
-                  <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
+                  <div className="absolute inset-0 bg-background/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
                   <span className="relative z-10 flex items-center gap-3">
                     Take a Quick Tour
                     <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform duration-300" />
@@ -325,15 +325,15 @@ export default function OnboardingWelcomePage() {
                 
                 <button 
                   onClick={handleSkipTourClick}
-                  className="w-full h-16 rounded-[28px] flex items-center justify-center font-black text-muted-foreground hover:text-foreground transition-all border border-border hover:border-[#388E3C]/30 hover:bg-[#388E3C]/5 active:scale-[0.98] uppercase tracking-[0.2em] text-[0.6875rem]"
+                  className="w-full h-16 rounded-[28px] flex items-center justify-center font-black text-muted-foreground hover:text-foreground transition-all border border-border hover:border-primary/30 hover:bg-primary/5 active:scale-[0.98] uppercase tracking-[0.2em] text-[0.6875rem]"
                 >
                   Jump Right In
                 </button>
               </div>
               
               <div className="flex items-center gap-3 justify-center px-6 py-3 rounded-2xl bg-muted/50 border border-border relative z-10">
-                <div className="w-8 h-8 rounded-lg bg-[#388E3C]/10 flex items-center justify-center">
-                  <CheckCircle className="w-5 h-5 text-[#388E3C]" />
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <CheckCircle className="w-5 h-5 text-primary" />
                 </div>
                 <span className="text-[0.6875rem] font-black uppercase tracking-widest text-muted-foreground">
                   Welcome guide sent to {profile?.email}

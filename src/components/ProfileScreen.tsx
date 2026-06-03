@@ -27,14 +27,14 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-const GREEN = "#388E3C";
+const GREEN = "hsl(var(--primary))";
 const GREEN_LIGHT = "#82DB7E";
 const CARD = "var(--c-card)";
 const SURFACE = "var(--c-card)";
 const BG = "var(--c-bg)";
-const FONT = "\"Pacifico\", cursive";
-const RALEWAY = "\"Pacifico\", cursive";
-const JAKARTA = "\"Pacifico\", cursive";
+const FONT = "var(--font-work-sans)";
+const RALEWAY = "var(--font-raleway)";
+const JAKARTA = "var(--font-work-sans)";
 
 interface ProfileScreenProps {
   onBack?: () => void;
@@ -530,7 +530,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
             <button
               key={href}
               onClick={() => router.push(href)}
-              className="w-full flex items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-white/5 active:bg-white/10"
+              className="w-full flex items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-background/5 active:bg-background/10"
               style={{
                 borderBottom: i < arr.length - 1 ? "1px solid var(--c-border)" : "none",
               }}

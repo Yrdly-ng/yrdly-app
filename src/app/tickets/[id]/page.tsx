@@ -76,7 +76,7 @@ export default function TicketPage() {
   if (error || !ticket) {
     return (
       <div className="min-h-[100dvh] bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
+        <div className="bg-background rounded-lg shadow-lg p-8 max-w-md w-full text-center">
           <div className="text-6xl mb-4">🎟️</div>
           <h1 className="text-2xl font-bold text-slate-900 mb-2">Ticket Not Found</h1>
           <p className="text-slate-600 mb-6">
@@ -84,7 +84,7 @@ export default function TicketPage() {
           </p>
           <Link
             href="/"
-            className="inline-flex items-center justify-center gap-2 bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors"
+            className="inline-flex items-center justify-center gap-2 bg-green-600 text-primary-foreground px-6 py-2 rounded-lg hover:bg-green-700 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Home
@@ -106,7 +106,7 @@ export default function TicketPage() {
   return (
     <div className="min-h-[100dvh] bg-gradient-to-br from-slate-50 to-slate-100">
       {/* Header */}
-      <div className="bg-white border-b border-slate-200">
+      <div className="bg-background border-b border-slate-200">
         <div className="max-w-3xl mx-auto px-4 py-4 sm:py-6">
           <Link
             href="/"
@@ -132,7 +132,7 @@ export default function TicketPage() {
         </div>
 
         {/* Ticket Card */}
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-8">
+        <div className="bg-background rounded-xl shadow-lg overflow-hidden mb-8">
           {/* Event Cover Image */}
           {ticket.event.cover_image_url && (
             <div className="relative h-48 sm:h-64 bg-gradient-to-br from-slate-200 to-slate-300">
@@ -281,7 +281,7 @@ export default function TicketPage() {
         <div className="flex gap-3 justify-center">
           <button
             onClick={() => window.print()}
-            className="inline-flex items-center gap-2 bg-white border border-slate-300 text-slate-700 px-6 py-2 rounded-lg hover:bg-slate-50 transition-colors font-medium"
+            className="inline-flex items-center gap-2 bg-background border border-slate-300 text-slate-700 px-6 py-2 rounded-lg hover:bg-slate-50 transition-colors font-medium"
           >
             <Download className="w-4 h-4" />
             Print Ticket

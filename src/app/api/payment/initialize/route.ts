@@ -5,6 +5,11 @@ import { MARKETPLACE_CONSTANTS } from "@/lib/constants";
 import { getAuthenticatedUser } from "@/lib/supabase-server";
 import { getPostHogClient } from "@/lib/posthog-server";
 
+// ── Rate Limit State ──────────────────────────────────────────────────────
+const rateLimitMap = new Map<string, { count: number; windowStart: number }>();
+const RATE_LIMIT_MAX = 10;
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+
 
 /**
  * POST /api/payment/initialize
@@ -17,6 +22,24 @@ import { getPostHogClient } from "@/lib/posthog-server";
  */
 export async function POST(request: NextRequest) {
   try {
+    // ── Rate Limiting ────────────────────────────────────────────────────────
+    const ip = request.headers.get("x-forwarded-for") || "unknown";
+    const now = Date.now();
+    const rateLimit = rateLimitMap.get(ip);
+
+    if (rateLimit) {
+      if (now - rateLimit.windowStart < RATE_LIMIT_WINDOW_MS) {
+        if (rateLimit.count >= RATE_LIMIT_MAX) {
+          return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+        }
+        rateLimit.count++;
+      } else {
+        rateLimitMap.set(ip, { count: 1, windowStart: now });
+      }
+    } else {
+      rateLimitMap.set(ip, { count: 1, windowStart: now });
+    }
+
     // ── Authenticate the caller ───────────────────────────────────────────────
     const { data: { user }, error: authError } = await getAuthenticatedUser(request);
 

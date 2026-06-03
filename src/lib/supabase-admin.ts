@@ -7,13 +7,16 @@ import { createClient } from "@supabase/supabase-js";
  * Add SUPABASE_SERVICE_ROLE_KEY to your .env.local — get it from:
  * Supabase Dashboard → Project Settings → API → service_role (secret)
  */
+if (process.env.NODE_ENV === 'production' && (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY)) {
+  throw new Error('[Yrdly] Missing Supabase environment variables. Check your .env.local file.');
+}
 if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
   console.error('CRITICAL: Missing Supabase environment variables');
 }
 
 export const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || "https://dummy.supabase.co",
-  process.env.SUPABASE_SERVICE_ROLE_KEY || "dummy-key",
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
   {
     auth: {
       autoRefreshToken: false,

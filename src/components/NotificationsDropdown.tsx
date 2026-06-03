@@ -16,12 +16,12 @@ const Sentry = {
   captureException: (e: any) => console.error(e)
 };
 
-const GREEN = "#388E3C";
+const GREEN = "hsl(var(--primary))";
 const GREEN_LIGHT = "#82DB7E";
 const CARD = "var(--c-card)";
 const SURFACE = "var(--c-bg)";
-const FONT = "\"Pacifico\", cursive";
-const RALEWAY = "\"Pacifico\", cursive";
+const FONT = "var(--font-work-sans)";
+const RALEWAY = "var(--font-raleway)";
 
 interface NotificationsDropdownProps {
   isOpen: boolean;
@@ -295,7 +295,7 @@ function NotificationItem({ notification, onMarkAsRead, onDelete, onClose }: {
           </p>
           <div className="flex items-center gap-2 flex-shrink-0 mt-0.5">
             {!notification.is_read && (
-              <div className="w-2 h-2 rounded-full bg-[#388E3C]"></div>
+              <div className="w-2 h-2 rounded-full bg-primary"></div>
             )}
             {/* Actions Menu */}
             <DropdownMenu>

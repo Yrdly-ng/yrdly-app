@@ -16,8 +16,8 @@ const SLIDES = [
     title: "Vibrant Community",
     body: "Experience your neighborhood like never before. Real stories, real people, real connections.",
     icon: Globe,
-    gradient: "from-[#388E3C] to-[#82DB7E]",
-    accent: "#388E3C"
+    gradient: "from-primary to-[#82DB7E]",
+    accent: "hsl(var(--primary))"
   },
   {
     id: "trade",
@@ -32,7 +32,7 @@ const SLIDES = [
     title: "Local Excellence",
     body: "Support the gems in your backyard. Discover businesses that make your street special.",
     icon: Sparkles,
-    gradient: "from-[#4da24e] to-[#388E3C]",
+    gradient: "from-[#4da24e] to-primary",
     accent: "#4da24e"
   },
   {
@@ -40,8 +40,8 @@ const SLIDES = [
     title: "Digital Handshake",
     body: "Build a network of trust. Connect with verified neighbors and grow your local influence.",
     icon: Zap,
-    gradient: "from-[#388E3C] to-[#82DB7E]",
-    accent: "#388E3C"
+    gradient: "from-primary to-[#82DB7E]",
+    accent: "hsl(var(--primary))"
   },
 ] as const;
 
@@ -98,7 +98,7 @@ export default function OnboardingTourPage() {
   const Icon = slide.icon;
 
   return (
-    <div className="min-h-[100dvh] relative flex flex-col items-center justify-between overflow-hidden px-6 py-12 bg-background" style={{ fontFamily: "\"Pacifico\", cursive" }}>
+    <div className="min-h-[100dvh] relative flex flex-col items-center justify-between overflow-hidden px-6 py-12 bg-background" style={{ fontFamily: "var(--font-work-sans)" }}>
       
       {/* Background Animated Blobs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -128,7 +128,7 @@ export default function OnboardingTourPage() {
               className="h-1.5 rounded-full transition-all duration-500"
               style={{ 
                 width: i === step ? "24px" : "8px",
-                background: i === step ? "#388E3C" : "rgba(128,128,128,0.2)",
+                background: i === step ? "hsl(var(--primary))" : "rgba(128,128,128,0.2)",
                 boxShadow: i === step ? "0 0 10px rgba(56,142,60,0.5)" : "none"
               }}
             />
@@ -159,7 +159,7 @@ export default function OnboardingTourPage() {
               className="w-48 h-48 mx-auto rounded-[56px] flex items-center justify-center relative group"
               style={{ background: "rgba(255,255,255,0.03)", border: "1px solid var(--c-border)" }}
             >
-              <div className="absolute inset-0 bg-[#388E3C] blur-3xl opacity-10 group-hover:opacity-20 transition-opacity rounded-full" />
+              <div className="absolute inset-0 bg-primary blur-3xl opacity-10 group-hover:opacity-20 transition-opacity rounded-full" />
               <div 
                 className="w-32 h-32 rounded-[40px] flex items-center justify-center relative overflow-hidden"
                 style={{ background: `linear-gradient(135deg, ${slide.accent}22, ${slide.accent}00)` }}
@@ -169,10 +169,10 @@ export default function OnboardingTourPage() {
               
               {/* Decorative elements */}
               <div className="absolute -top-4 -right-4 w-12 h-12 rounded-2xl bg-[var(--c-card)] backdrop-blur-md border border-[var(--c-border)] flex items-center justify-center animate-bounce" style={{ animationDuration: '3s' }}>
-                <Sparkles className="w-5 h-5 text-[#388E3C]" />
+                <Sparkles className="w-5 h-5 text-primary" />
               </div>
-              <div className="absolute -bottom-2 -left-6 w-10 h-10 rounded-xl bg-[#388E3C]/10 backdrop-blur-md border border-[#388E3C]/20 flex items-center justify-center animate-pulse">
-                <Check className="w-4 h-4 text-[#388E3C]" />
+              <div className="absolute -bottom-2 -left-6 w-10 h-10 rounded-xl bg-primary/10 backdrop-blur-md border border-primary/20 flex items-center justify-center animate-pulse">
+                <Check className="w-4 h-4 text-primary" />
               </div>
             </div>
           </div>
@@ -193,13 +193,13 @@ export default function OnboardingTourPage() {
       <div className="w-full max-w-lg relative z-20">
         <button
           onClick={handleNext}
-          className="w-full h-18 rounded-[28px] flex items-center justify-center text-white font-black text-lg transition-all active:scale-[0.98] group overflow-hidden relative"
+          className="w-full h-18 rounded-[28px] flex items-center justify-center text-primary-foreground font-black text-lg transition-all active:scale-[0.98] group overflow-hidden relative"
           style={{ 
-            background: "#388E3C",
+            background: "hsl(var(--primary))",
             boxShadow: "0 20px 40px -10px rgba(56,142,60,0.4)"
           }}
         >
-          <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
+          <div className="absolute inset-0 bg-background/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
           <span className="relative z-10 flex items-center gap-3">
             {isLast ? "Begin Journey" : "Continue"}
             <ArrowRight className={cn("w-5 h-5 transition-transform duration-300", !isLast && "group-hover:translate-x-1")} />

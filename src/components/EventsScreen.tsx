@@ -158,7 +158,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
       <section className="space-y-3 sm:space-y-4">
         <h2
           className="text-lg sm:text-[1.125rem] leading-8 text-foreground"
-          style={{ fontFamily: '"Pacifico", cursive' }}
+          style={{ fontFamily: "var(--font-jersey25)" }}
         >
           Picked for You
         </h2>
@@ -217,8 +217,8 @@ export function EventsScreen({ className }: EventsScreenProps) {
                           </span>
                         </div>
                         <Button
-                          className="mt-4 w-full sm:w-auto sm:min-w-[180px] rounded-full font-sans font-medium text-sm text-foreground border border-white/80"
-                          style={{ background: "#388E3C" }}
+                          className="mt-4 w-full sm:w-auto sm:min-w-[180px] rounded-full font-sans font-medium text-sm text-foreground border border-border/80"
+                          style={{ background: "hsl(var(--primary))" }}
                           onClick={(e) => {
                             e.stopPropagation();
                             router.push(`/events/${event.id}`);
@@ -240,7 +240,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
                     aria-label={`Slide ${i + 1}`}
                     className={cn(
                       "w-1.5 h-1.5 rounded-full transition",
-                      i === carouselIndex ? "bg-[#388E3C]" : "bg-[#D9D9D9]"
+                      i === carouselIndex ? "bg-primary" : "bg-[#D9D9D9]"
                     )}
                     onClick={() => carouselApi?.scrollTo(i)}
                   />
@@ -256,7 +256,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
         <div className="flex items-center justify-between">
           <h2
             className="text-lg sm:text-[1.125rem] leading-8 text-foreground"
-            style={{ fontFamily: '"Pacifico", cursive' }}
+            style={{ fontFamily: "var(--font-jersey25)" }}
           >
             Events in your Area
           </h2>
@@ -307,7 +307,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
                 <Button
                   size="sm"
                   className="w-full rounded-[15px] font-sans text-[0.6875rem] text-foreground"
-                  style={{ background: "#388E3C" }}
+                  style={{ background: "hsl(var(--primary))" }}
                   onClick={(e) => {
                     e.stopPropagation();
                     router.push(`/events/${event.id}`);
@@ -327,7 +327,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
           onClick={() => setSortBy("all")}
           className={cn(
             "flex items-center gap-1.5 px-3 py-2 rounded-md font-sans text-[0.625rem] sm:text-xs flex-shrink-0",
-            sortBy === "all" ? "bg-white text-black" : "border border-border0 text-foreground"
+            sortBy === "all" ? "bg-foreground text-background" : "border border-border text-foreground"
           )}
         >
           All Events
@@ -337,7 +337,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
           onClick={() => setSortBy("price")}
           className={cn(
             "flex items-center gap-1.5 px-3 py-2 rounded-md font-sans text-[0.625rem] sm:text-xs flex-shrink-0",
-            sortBy === "price" ? "bg-white text-black" : "border border-border0 text-foreground"
+            sortBy === "price" ? "bg-foreground text-background" : "border border-border text-foreground"
           )}
         >
           Price
@@ -347,7 +347,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
           onClick={() => setSortBy("date")}
           className={cn(
             "flex items-center gap-1.5 px-3 py-2 rounded-md font-sans text-[0.625rem] sm:text-xs flex-shrink-0",
-            sortBy === "date" ? "bg-white text-black" : "border border-border0 text-foreground"
+            sortBy === "date" ? "bg-foreground text-background" : "border border-border text-foreground"
           )}
         >
           Date
@@ -359,7 +359,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
       <section className="space-y-4">
         <h2
           className="text-lg sm:text-[1.125rem] leading-8 text-foreground"
-          style={{ fontFamily: '"Pacifico", cursive' }}
+          style={{ fontFamily: "var(--font-jersey25)" }}
         >
           Mainstream Events
         </h2>
@@ -386,7 +386,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
                     <div className="flex items-center gap-2 mb-3">
                       <Avatar className="w-8 h-8">
                         <AvatarImage src={(event.organizer as any)?.avatar_url} />
-                        <AvatarFallback className="bg-[#388E3C] text-white text-xs">
+                        <AvatarFallback className="bg-primary text-primary-foreground text-xs">
                           {(event.organizer as any)?.name?.slice(0, 1) || "U"}
                         </AvatarFallback>
                       </Avatar>
@@ -423,7 +423,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
                     </div>
                   </div>
                   <div className="flex items-center justify-between mt-4">
-                    <span className="font-sans font-bold text-xl sm:text-2xl text-[#388E3C]">
+                    <span className="font-sans font-bold text-xl sm:text-2xl text-primary">
                       {event.ticket_tiers && event.ticket_tiers.length > 0
                         ? `From ₦${Math.min(...event.ticket_tiers.map(t => t.price)).toLocaleString()}`
                         : "Free"}
@@ -458,7 +458,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
         <Button
           size="lg"
           className="rounded-full h-12 w-12 sm:h-14 sm:w-14 shadow-lg p-0"
-          style={{ background: "#388E3C" }}
+          style={{ background: "hsl(var(--primary))" }}
           onClick={() => setOnboardingOpen(true)}
         >
           <Plus className="h-6 w-6 text-foreground" />

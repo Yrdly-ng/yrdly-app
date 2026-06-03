@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 
 /* ── Design tokens ─────────────────────────────────────── */
 const BG   = "var(--c-bg)";
-const GREEN = "#388E3C";
+const GREEN = "hsl(var(--primary))";
 const DIM  = "var(--c-text-muted)";
 
 export default function PaymentRedirectPage() {
@@ -37,12 +37,12 @@ export default function PaymentRedirectPage() {
           {/* Animated Spinner Container */}
           <div className="relative flex items-center justify-center">
             <div className="w-12 h-12 border-4 border-surface-variant rounded-full"></div>
-            <div className="absolute w-12 h-12 border-4 border-[#388E3C] border-t-transparent rounded-full animate-[spin_1s_linear_infinite]"></div>
+            <div className="absolute w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-[spin_1s_linear_infinite]"></div>
           </div>
           
           {/* Loading Messaging */}
           <div className="space-y-3">
-            <h1 className="font-pacifico text-[1.375rem] text-on-surface tracking-wide">
+            <h1 className="font-jersey25 text-[1.375rem] text-on-surface tracking-wide">
               Connecting to Flutterwave...
             </h1>
             <p className="font-editorial text-[0.8125rem] text-on-surface-variant leading-relaxed">

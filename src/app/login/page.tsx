@@ -18,9 +18,9 @@ const colors = {
   background: 'var(--c-bg)',
   blob: '#A154F2',
   overlay: 'rgba(255, 255, 255, 0.05)',
-  border: '#388E3C',
+  border: 'hsl(var(--primary))',
   inputBg: '#FFFFFF',
-  primary: '#388E3C',
+  primary: 'hsl(var(--primary))',
   text: 'var(--c-text)',
   textFaded: 'var(--c-text-muted)',
   link: '#1976D2',
@@ -188,7 +188,7 @@ export default function LoginPage() {
         <div className="text-center mb-5 sm:mb-8 w-full">
           <h1
             className="text-xl sm:text-2xl leading-tight sm:leading-[42px] px-1"
-            style={{ fontFamily: '"Pacifico", cursive', color: colors.text }}
+            style={{ fontFamily: "var(--font-jersey25)", color: colors.text }}
           >
             See what&apos;s happening
           </h1>
@@ -220,7 +220,7 @@ export default function LoginPage() {
               !isSignUp ? 'shadow-sm' : ''
             }`}
             style={{
-              background: !isSignUp ? '#388E3C' : 'transparent',
+              background: !isSignUp ? 'hsl(var(--primary))' : 'transparent',
               color: !isSignUp ? '#fff' : colors.textFaded,
             }}
           >
@@ -233,7 +233,7 @@ export default function LoginPage() {
               isSignUp ? 'shadow-sm' : ''
             }`}
             style={{
-              background: isSignUp ? '#388E3C' : 'transparent',
+              background: isSignUp ? 'hsl(var(--primary))' : 'transparent',
               color: isSignUp ? '#fff' : colors.textFaded,
             }}
           >
@@ -313,7 +313,7 @@ export default function LoginPage() {
                   style={{ borderColor: colors.border }}
                   aria-hidden
                 >
-                  {rememberMe && <span className="w-2 h-2 rounded-full bg-white" />}
+                  {rememberMe && <span className="w-2 h-2 rounded-full bg-background" />}
                 </span>
                 <input
                   type="checkbox"
@@ -335,7 +335,7 @@ export default function LoginPage() {
 
           <Button
             type="submit"
-            className={`w-full h-10 sm:h-11 ${pillRound} font-sans font-medium text-sm text-white hover:opacity-90 transition mt-1`}
+            className={`w-full h-10 sm:h-11 ${pillRound} font-sans font-medium text-sm text-primary-foreground hover:opacity-90 transition mt-1`}
             style={{ background: colors.primary }}
             disabled={loading || (!!lockoutUntil && Date.now() < lockoutUntil)}
           >
@@ -363,7 +363,7 @@ export default function LoginPage() {
           variant="outline"
           onClick={handleGoogleSignIn}
           disabled={loading}
-          className={`w-full h-10 sm:h-11 ${pillRound} font-sans font-medium text-sm border-[#388E3C] hover:bg-accent`}
+          className={`w-full h-10 sm:h-11 ${pillRound} font-sans font-medium text-sm border-primary hover:bg-accent`}
           style={{ color: colors.text }}
         >
           <svg className="mr-2 h-4 w-4 sm:h-[18px] sm:w-[18px] flex-shrink-0" viewBox="0 0 24 24">

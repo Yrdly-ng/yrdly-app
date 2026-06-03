@@ -84,7 +84,7 @@ export default function MyTicketsPage() {
 
       {/* Success banner */}
       {justPurchased && (
-        <div className="mx-4 mt-4 rounded-2xl bg-[#388E3C]/15 border border-[#388E3C]/30 p-4 flex items-center gap-3">
+        <div className="mx-4 mt-4 rounded-2xl bg-primary/15 border border-primary/30 p-4 flex items-center gap-3">
           <CheckCircle2 className="w-5 h-5 text-[#4CAF50] flex-shrink-0" />
           <div>
             <p className="font-sans font-bold text-sm text-[#4CAF50]">Ticket Confirmed!</p>
@@ -102,7 +102,7 @@ export default function MyTicketsPage() {
               Purchase tickets to local events and they&apos;ll appear here.
             </p>
             <Link href="/events">
-              <button className="mt-2 px-6 py-2.5 rounded-full bg-[#388E3C] font-sans text-sm text-foreground font-medium">
+              <button className="mt-2 px-6 py-2.5 rounded-full bg-primary font-sans text-sm text-foreground font-medium">
                 Explore Events
               </button>
             </Link>

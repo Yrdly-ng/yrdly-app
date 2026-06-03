@@ -147,7 +147,7 @@ export function ActivityIndicator({
       {/* Status Dot */}
       <div 
         className={cn(
-          "rounded-full border-2 border-white dark:border-gray-800",
+          "rounded-full border-2 border-border dark:border-gray-800",
           sizeClasses[size],
           getStatusColor()
         )}

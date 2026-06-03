@@ -13,7 +13,7 @@ import { supabase } from "@/lib/supabase";
 const BG     = "var(--c-bg)";
 const CARD   = "var(--c-card)";
 const CARDH  = "var(--c-card2)";
-const GREEN  = "#388E3C";
+const GREEN  = "hsl(var(--primary))";
 const GREEN_L = "#82DB7E";
 const MUTED  = "var(--c-text-muted)";
 const DIM    = "var(--c-text-muted)";
@@ -115,7 +115,7 @@ export function BuyButton({
       {/* Trigger */}
       <button
         onClick={() => setOpen(true)}
-        className="w-full h-14 bg-[#388E3C] rounded-full flex items-center justify-center font-editorial font-bold text-[0.875rem] text-white shadow-lg active:scale-95 transition-transform hover:opacity-90"
+        className="w-full h-14 bg-primary rounded-full flex items-center justify-center font-editorial font-bold text-[0.875rem] text-primary-foreground shadow-lg active:scale-95 transition-transform hover:opacity-90"
       >
         Buy Now — ₦{price.toLocaleString()}
       </button>
@@ -136,7 +136,7 @@ export function BuyButton({
                   onClick={() => setOpen(false)}
                   className="hover:opacity-80 transition-opacity active:scale-95 transition-transform flex items-center justify-center p-2 rounded-full"
                 >
-                  <X className="w-5 h-5 text-[#388E3C]" />
+                  <X className="w-5 h-5 text-primary" />
                 </button>
                 <h1 className="font-display text-2xl tracking-tight text-on-surface">
                   Order Summary
@@ -233,9 +233,9 @@ export function BuyButton({
                 <label className="block font-editorial font-medium text-[0.75rem] text-on-surface-variant mb-3 px-1">
                   Pay with
                 </label>
-                <div className="bg-surface-container-high border border-[#388E3C] rounded-[11px] p-4 flex items-center justify-between group cursor-pointer active:scale-[0.98] transition-all">
+                <div className="bg-surface-container-high border border-primary rounded-[11px] p-4 flex items-center justify-between group cursor-pointer active:scale-[0.98] transition-all">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 flex items-center justify-center bg-white rounded-md p-1.5">
+                    <div className="w-8 h-8 flex items-center justify-center bg-background rounded-md p-1.5">
                       <svg className="w-full h-full" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" fill="#00315f"></path>
                         <path d="M12 6c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm0 10c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4z" fill="#00315f"></path>
@@ -243,7 +243,7 @@ export function BuyButton({
                     </div>
                     <span className="font-editorial text-[0.875rem] text-on-surface">Debit/Credit Card</span>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-[#388E3C]" />
+                  <ChevronRight className="w-4 h-4 text-primary" />
                 </div>
               </div>
 
@@ -252,7 +252,7 @@ export function BuyButton({
                 <button
                   onClick={handleBuy}
                   disabled={loading}
-                  className="w-full h-14 bg-[#388E3C] rounded-full flex items-center justify-center font-editorial font-bold text-[0.875rem] text-white shadow-lg active:scale-95 transition-transform hover:opacity-90 disabled:opacity-75"
+                  className="w-full h-14 bg-primary rounded-full flex items-center justify-center font-editorial font-bold text-[0.875rem] text-primary-foreground shadow-lg active:scale-95 transition-transform hover:opacity-90 disabled:opacity-75"
                 >
                   {loading ? (
                     <span className="flex items-center gap-2">

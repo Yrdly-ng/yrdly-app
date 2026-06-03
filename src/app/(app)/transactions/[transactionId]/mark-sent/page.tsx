@@ -11,7 +11,7 @@ import { ArrowLeft, ShieldCheck, HeadphonesIcon } from "lucide-react";
 const BG    = "var(--c-bg)";
 const CARD  = "var(--c-card)";
 const CARDHIGH = "var(--c-card2)";
-const GREEN = "#388E3C";
+const GREEN = "hsl(var(--primary))";
 const GREEN_L = "#82DB7E";
 const MUTED = "var(--c-text-muted)";
 const DIM   = "var(--c-text-muted)";
@@ -59,7 +59,7 @@ export default function MarkAsSentPage() {
           <button onClick={() => router.back()} className="active:scale-95 transition-transform">
             <ArrowLeft className="w-6 h-6 text-on-surface" />
           </button>
-          <h1 className="text-on-background font-cursive text-[1.375rem] leading-none" style={{ fontFamily: "Pacifico, cursive" }}>Ready to Hand Over?</h1>
+          <h1 className="text-on-background font-cursive text-[1.375rem] leading-none" style={{ fontFamily: "var(--font-jersey25)" }}>Ready to Hand Over?</h1>
         </div>
       </header>
 
@@ -102,7 +102,7 @@ export default function MarkAsSentPage() {
             disabled={!allChecked || loading}
             className={`w-full py-5 px-8 rounded-full font-display font-bold text-base transition-all ${
               allChecked && !loading
-                ? "bg-[#388E3C] text-white shadow-[0_0_20px_rgba(56,142,60,0.4)] active:scale-95"
+                ? "bg-primary text-primary-foreground shadow-[0_0_20px_rgba(56,142,60,0.4)] active:scale-95"
                 : "bg-surface-container-high text-outline cursor-not-allowed opacity-80"
             }`}
             style={{ fontFamily: "Raleway, sans-serif" }}

@@ -12,7 +12,7 @@ import { supabase } from "@/lib/supabase";
 const BG     = "var(--c-bg)";
 const CARD   = "var(--c-bg)";
 const CARDH  = "var(--c-card2)";
-const Green  = "#388E3C";
+const Green  = "hsl(var(--primary))";
 const GreenL = "#82DB7E";
 const MUTED  = "var(--c-text-muted)";
 const DIM    = "var(--c-text-muted)";
@@ -93,9 +93,9 @@ export default function ReviewPage() {
       <header className="fixed top-0 w-full z-50 bg-[var(--c-bg)]/80 backdrop-blur-xl flex items-center px-6 h-16 w-full">
         <div className="flex items-center gap-4 w-full">
           <button onClick={() => router.back()} className="active:scale-95 transition-transform hover:opacity-80 transition-opacity">
-            <ArrowLeft className="text-[#388E3C] w-6 h-6" />
+            <ArrowLeft className="text-primary w-6 h-6" />
           </button>
-          <h1 className="font-pacifico text-2xl tracking-tight text-on-surface" style={{ fontFamily: "Pacifico, cursive" }}>Leave a Review</h1>
+          <h1 className="font-jersey25 text-2xl tracking-tight text-on-surface" style={{ fontFamily: "var(--font-jersey25)" }}>Leave a Review</h1>
         </div>
       </header>
 
@@ -142,7 +142,7 @@ export default function ReviewPage() {
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value.slice(0, 120))}
-              className="w-full bg-surface-container-high border-0 focus:ring-2 focus:ring-[#388E3C] rounded-[11px] p-4 font-editorial italic font-light text-on-surface-variant placeholder:text-on-surface-variant/40 resize-none transition-all"
+              className="w-full bg-surface-container-high border-0 focus:ring-2 focus:ring-primary rounded-[11px] p-4 font-editorial italic font-light text-on-surface-variant placeholder:text-on-surface-variant/40 resize-none transition-all"
               style={{ fontFamily: "Raleway, sans-serif" }}
               placeholder="Share your experience... (optional)"
               rows={5}
@@ -165,8 +165,8 @@ export default function ReviewPage() {
                   onClick={() => toggleTag(t)}
                   className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-editorial font-semibold transition-all ${
                     active 
-                      ? "bg-[#06171B] border border-[#388E3C] text-[#BBF7D0]" 
-                      : "bg-surface-container border border-white/10 text-on-surface-variant hover:border-white/20"
+                      ? "bg-[#06171B] border border-primary text-[#BBF7D0]" 
+                      : "bg-surface-container border border-border/10 text-on-surface-variant hover:border-border/20"
                   }`}
                   style={{ fontFamily: "Raleway, sans-serif" }}
                 >
@@ -182,7 +182,7 @@ export default function ReviewPage() {
           <button 
             onClick={handleSubmit}
             disabled={!rating || loading}
-            className="w-full py-4 bg-[#388E3C] text-on-primary font-editorial font-bold text-lg rounded-full shadow-lg active:scale-95 transition-all disabled:opacity-50 disabled:active:scale-100"
+            className="w-full py-4 bg-primary text-on-primary font-editorial font-bold text-lg rounded-full shadow-lg active:scale-95 transition-all disabled:opacity-50 disabled:active:scale-100"
             style={{ fontFamily: "Raleway, sans-serif" }}
           >
             {loading ? "Submitting..." : "Submit Review"}

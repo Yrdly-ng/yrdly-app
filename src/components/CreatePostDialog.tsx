@@ -27,8 +27,8 @@ import Image from "next/image";
 // ── Design tokens ──────────────────────────────────────────────
 const BG       = "var(--c-bg)";
 const BORDER   = "rgba(187,187,187,0.3)";
-const GREEN    = "#388E3C";
-const FONT_RL  = "\"Pacifico\", cursive";
+const GREEN    = "hsl(var(--primary))";
+const FONT_RL = "var(--font-raleway)";
 
 // ── Schema ─────────────────────────────────────────────────────
 const BlobImage = memo(({ file, className, alt }: { file: File, className?: string, alt?: string }) => {
@@ -39,8 +39,7 @@ const BlobImage = memo(({ file, className, alt }: { file: File, className?: stri
     return () => URL.revokeObjectURL(objectUrl);
   }, [file]);
   if (!url) return null;
-  // eslint-disable-next-line @next/next/no-img-element
-  return <img src={url} alt={alt || ""} className={className} />;
+  return <Image src={url} alt={alt || ""} fill className={className} />;
 });
 BlobImage.displayName = "BlobImage";
 

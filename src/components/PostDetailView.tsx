@@ -198,7 +198,7 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
         <button onClick={handleBack} className="p-1 -ml-1 rounded hover:bg-accent">
           <ChevronLeft className="w-6 h-6" />
         </button>
-        <span className="font-normal text-sm leading-tight" style={{ fontFamily: '"Pacifico", cursive' }}>
+        <span className="font-normal text-sm leading-tight" style={{ fontFamily: "var(--font-work-sans)" }}>
           Post
         </span>
       </div>
@@ -207,11 +207,11 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
       <div className="flex items-start justify-between gap-3 px-4 pt-4 pb-2">
         <div className="flex items-center gap-3 min-w-0">
           {loadingAuthor ? (
-            <div className="w-10 h-10 rounded-full bg-white/10 animate-pulse" />
+            <div className="w-10 h-10 rounded-full bg-background/10 animate-pulse" />
           ) : (
             <Avatar className="h-10 w-10 flex-shrink-0">
               <AvatarImage src={author?.avatar_url} />
-              <AvatarFallback className="bg-[#388E3C] text-white text-sm">{author?.name?.charAt(0) || "?"}</AvatarFallback>
+              <AvatarFallback className="bg-primary text-primary-foreground text-sm">{author?.name?.charAt(0) || "?"}</AvatarFallback>
             </Avatar>
           )}
           <div className="min-w-0">
@@ -264,7 +264,7 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
                 <Image src={urls[2]} alt="" fill className="object-cover" sizes="50vw" />
                 {urls.length > 3 && (
                   <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                    <span className="text-white font-semibold text-base font-sans">+{urls.length - 3}</span>
+                    <span className="text-primary-foreground font-semibold text-base font-sans">+{urls.length - 3}</span>
                   </div>
                 )}
               </div>
@@ -367,7 +367,7 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel className="bg-white/10 text-foreground border-0">Cancel</AlertDialogCancel>
+                <AlertDialogCancel className="bg-background/10 text-foreground border-0">Cancel</AlertDialogCancel>
                 <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
                   Delete
                 </AlertDialogAction>

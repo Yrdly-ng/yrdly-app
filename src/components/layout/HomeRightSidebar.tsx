@@ -10,9 +10,9 @@ import { useAuth } from '@/hooks/use-supabase-auth';
 
 /* ─── design tokens ─────────────────────────────────────────────── */
 const CARD_BG = 'var(--c-card)';
-const GREEN = '#388E3C';
+const GREEN = 'hsl(var(--primary))';
 const FONT_RALEWAY = 'Inter, sans-serif';
-const FONT_PACIFICO = 'Pacifico, cursive';
+const FONT_PACIFICO = "var(--font-jersey25)";
 
 type EventPost = Post & { user?: { name?: string; avatar_url?: string } };
 
@@ -56,7 +56,7 @@ function EventCard({ event }: { event: EventPost }) {
   return (
     <Link href={`/posts/${event.id}`} className="block p-3 hover:bg-accent transition-colors">
       {/* Top label */}
-      <p className="font-pacifico text-[0.9375rem] leading-[26px] text-foreground mb-1" style={{ fontFamily: FONT_PACIFICO }}>
+      <p className="font-jersey25 text-[0.9375rem] leading-[26px] text-foreground mb-1" style={{ fontFamily: FONT_PACIFICO }}>
         In your area
       </p>
 
@@ -68,7 +68,7 @@ function EventCard({ event }: { event: EventPost }) {
         {/* Mini header row */}
         <div className="flex items-center gap-2 p-2">
           {/* small image thumbnail */}
-          <div className="w-7 h-7 rounded-[3px] bg-white/10 overflow-hidden flex-shrink-0">
+          <div className="w-7 h-7 rounded-[3px] bg-background/10 overflow-hidden flex-shrink-0">
             {event.image_urls?.[0] ? (
               <Image src={event.image_urls[0]} alt="" width={28} height={28} className="w-full h-full object-cover" />
             ) : null}
@@ -178,10 +178,10 @@ export function HomeRightSidebar() {
         <div className="w-[140px] flex-shrink-0 rounded-[10px] overflow-hidden border border-border flex flex-col" style={{ background: CARD_BG }}>
           <div className="px-4 pt-4 pb-3 flex-1">
             <div className="relative mb-3 w-fit">
-              <div className="w-9 h-9 rounded-full bg-[#EBF5EB] flex items-center justify-center">
-                <MapPin className="w-4.5 h-4.5 text-[#388E3C]" />
+              <div className="w-9 h-9 rounded-full bg-accent flex items-center justify-center">
+                <MapPin className="w-4.5 h-4.5 text-primary" />
               </div>
-              <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[#388E3C] border-2 border-white" />
+              <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-primary border-2 border-border" />
             </div>
             <p className="text-[0.8125rem] font-bold text-foreground leading-snug" style={{ fontFamily: 'Inter, sans-serif' }}>
               {lga || state || 'My Area'}
@@ -194,10 +194,10 @@ export function HomeRightSidebar() {
           </div>
           <div className="border-t border-[var(--c-bg)]">
             <Link href="/map" className="flex items-center justify-between px-4 py-2.5 hover:bg-[var(--c-bg)] transition-colors">
-              <span className="text-[0.6875rem] font-semibold text-[#388E3C]" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <span className="text-[0.6875rem] font-semibold text-primary" style={{ fontFamily: 'Inter, sans-serif' }}>
                 See map
               </span>
-              <ChevronRight className="w-3.5 h-3.5 text-[#388E3C]" />
+              <ChevronRight className="w-3.5 h-3.5 text-primary" />
             </Link>
           </div>
         </div>

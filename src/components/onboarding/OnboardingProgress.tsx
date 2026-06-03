@@ -29,7 +29,7 @@ export function OnboardingProgress({ className = '' }: OnboardingProgressProps) 
         background: "var(--c-bg)", 
         borderBottom: "1px solid var(--c-border)",
         backdropFilter: "blur(20px)",
-        fontFamily: "\"Pacifico\", cursive"
+        fontFamily: "var(--font-work-sans)"
       }}
     >
       <div className="max-w-md mx-auto px-4 py-3">
@@ -43,7 +43,7 @@ export function OnboardingProgress({ className = '' }: OnboardingProgressProps) 
         </div>
         
         {/* Progress Bar Container */}
-        <div className="h-1.5 w-full rounded-full mb-3 bg-white/5 border border-border overflow-hidden">
+        <div className="h-1.5 w-full rounded-full mb-3 bg-background/5 border border-border overflow-hidden">
           <div 
             className="h-full rounded-full transition-all duration-1000 ease-out relative overflow-hidden"
             style={{ 
@@ -63,18 +63,18 @@ export function OnboardingProgress({ className = '' }: OnboardingProgressProps) 
               key={step.key}
               className={`flex items-center gap-1 text-xs`}
               style={{
-                color: index <= currentStepIndex ? "#388E3C" : "#666",
+                color: index <= currentStepIndex ? "hsl(var(--primary))" : "#666",
                 fontWeight: index <= currentStepIndex ? "600" : "400"
               }}
             >
               {index < currentStepIndex ? (
-                <CheckCircle className="w-3 h-3" style={{ color: "#388E3C" }} />
+                <CheckCircle className="w-3 h-3" style={{ color: "hsl(var(--primary))" }} />
               ) : (
                 <div
                   className="w-3 h-3 rounded-full border-2"
                   style={{
-                    borderColor: index === currentStepIndex ? "#388E3C" : "#555",
-                    background: index === currentStepIndex ? "#388E3C" : "transparent"
+                    borderColor: index === currentStepIndex ? "hsl(var(--primary))" : "#555",
+                    background: index === currentStepIndex ? "hsl(var(--primary))" : "transparent"
                   }}
                 />
               )}

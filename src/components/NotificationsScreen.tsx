@@ -34,13 +34,13 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-const GREEN = "#388E3C";
+const GREEN = "hsl(var(--primary))";
 const GREEN_LIGHT = "#82DB7E";
 const CARD = "var(--c-card)";
 const SURFACE = "var(--c-card)";
 const BG = "var(--c-bg)";
-const FONT = "\"Pacifico\", cursive";
-const PACIFICO = "Pacifico, cursive";
+const FONT = "var(--font-work-sans)";
+const PACIFICO = "var(--font-jersey25)";
 
 interface NotificationsScreenProps {
   className?: string;

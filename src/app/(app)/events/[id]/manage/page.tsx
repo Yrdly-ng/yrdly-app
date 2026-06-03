@@ -86,7 +86,7 @@ export default function ManageEventPage() {
     setCheckInLoading(false);
   };
 
-  if (loading) return <div className="min-h-[100dvh] bg-background flex items-center justify-center"><Loader2 className="w-8 h-8 text-[#388E3C] animate-spin" /></div>;
+  if (loading) return <div className="min-h-[100dvh] bg-background flex items-center justify-center"><Loader2 className="w-8 h-8 text-primary animate-spin" /></div>;
   if (!event) return null;
 
   const gross = tickets.filter(t => t.status !== "REFUNDED" && t.status !== "CANCELLED").reduce((s, t) => s + Number(t.amount_paid), 0);
@@ -120,7 +120,7 @@ export default function ManageEventPage() {
       <div className="flex border-b border-border px-4">
         {(["overview", "attendees", "checkin"] as const).map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)}
-            className={`flex-1 py-3 font-sans text-sm capitalize border-b-2 transition-colors ${activeTab === tab ? "border-[#388E3C] text-foreground font-semibold" : "border-transparent text-muted-foreground"}`}>
+            className={`flex-1 py-3 font-sans text-sm capitalize border-b-2 transition-colors ${activeTab === tab ? "border-primary text-foreground font-semibold" : "border-transparent text-muted-foreground"}`}>
             {tab === "checkin" ? "Check-in" : tab.charAt(0).toUpperCase() + tab.slice(1)}
           </button>
         ))}
@@ -143,7 +143,7 @@ export default function ManageEventPage() {
                 </div>
               ))}
             </div>
-            <div className="rounded-xl bg-[#388E3C]/10 border border-[#388E3C]/20 p-3">
+            <div className="rounded-xl bg-primary/10 border border-primary/20 p-3">
               <p className="font-sans text-xs text-muted-foreground">
                 2% platform fee deducted. Net payout of ₦{net.toLocaleString()} released {EVENT_CONSTANTS.AUTO_RELEASE_HOURS}h after event ends.
               </p>
@@ -155,7 +155,7 @@ export default function ManageEventPage() {
           <>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <input className="w-full bg-card border border-border rounded-xl pl-10 pr-4 py-3 text-foreground font-sans text-sm placeholder:text-muted-foreground outline-none focus:border-[#388E3C]"
+              <input className="w-full bg-card border border-border rounded-xl pl-10 pr-4 py-3 text-foreground font-sans text-sm placeholder:text-muted-foreground outline-none focus:border-primary"
                 placeholder="Search name, email or code…" value={search} onChange={e => setSearch(e.target.value)} />
             </div>
             <div className="space-y-2">
@@ -184,24 +184,24 @@ export default function ManageEventPage() {
           <>
             <div className="rounded-2xl bg-card border border-border p-5 space-y-4">
               <div className="flex items-center gap-2">
-                <QrCode className="w-5 h-5 text-[#388E3C]" />
+                <QrCode className="w-5 h-5 text-primary" />
                 <h3 className="font-sans font-bold text-sm text-foreground">Enter Ticket Code</h3>
               </div>
               <div className="flex gap-2">
                 <input
-                  className="flex-1 bg-background border border-border rounded-xl px-4 py-3 text-foreground font-mono text-sm placeholder:text-muted-foreground outline-none focus:border-[#388E3C] uppercase"
+                  className="flex-1 bg-background border border-border rounded-xl px-4 py-3 text-foreground font-mono text-sm placeholder:text-muted-foreground outline-none focus:border-primary uppercase"
                   placeholder="YRD-XXXXXXXX"
                   value={ticketCode}
                   onChange={e => { setTicketCode(e.target.value.toUpperCase()); setCheckInResult(null); }}
                   onKeyDown={e => e.key === "Enter" && handleCheckIn()}
                 />
                 <Button onClick={handleCheckIn} disabled={!ticketCode.trim() || checkInLoading}
-                  className="rounded-xl font-sans text-sm text-foreground px-5" style={{ background: "#388E3C" }}>
+                  className="rounded-xl font-sans text-sm text-foreground px-5" style={{ background: "hsl(var(--primary))" }}>
                   {checkInLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Check In"}
                 </Button>
               </div>
               {checkInResult && (
-                <div className={`rounded-xl p-4 flex items-start gap-3 ${checkInResult.valid ? "bg-[#388E3C]/15 border border-[#388E3C]/30" : "bg-red-500/15 border border-red-500/30"}`}>
+                <div className={`rounded-xl p-4 flex items-start gap-3 ${checkInResult.valid ? "bg-primary/15 border border-primary/30" : "bg-red-500/15 border border-red-500/30"}`}>
                   {checkInResult.valid ? <CheckCircle2 className="w-5 h-5 text-[#4CAF50] flex-shrink-0" /> : <XCircle className="w-5 h-5 text-red-400 flex-shrink-0" />}
                   <div>
                     <p className={`font-sans font-bold text-sm ${checkInResult.valid ? "text-[#4CAF50]" : "text-red-400"}`}>{checkInResult.message}</p>

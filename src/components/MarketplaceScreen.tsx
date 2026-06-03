@@ -146,7 +146,7 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
             className="w-full pl-12 pr-4 py-2.5 bg-transparent text-foreground text-base italic font-light rounded-full outline-none placeholder:text-[#BBBBBB]"
             style={{
               border: "0.5px solid #388E3C",
-              fontFamily: "\"Pacifico\", cursive",
+              fontFamily: "var(--font-work-sans)",
               fontWeight: 300,
             }}
           />
@@ -157,7 +157,7 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
       <div className="px-4 pt-4 pb-3">
         <h2
           className="text-lg"
-          style={{ fontFamily: "Pacifico, cursive", color: "var(--c-text)", fontWeight: 400 }}
+          style={{ fontFamily: "var(--font-jersey25)", color: "var(--c-text)", fontWeight: 400 }}
         >
           Closest to you
         </h2>
@@ -196,15 +196,15 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
             className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
             style={{ background: "var(--c-card)" }}
           >
-            <ShoppingBag className="w-8 h-8" style={{ color: "#388E3C" }} />
+            <ShoppingBag className="w-8 h-8" style={{ color: "hsl(var(--primary))" }} />
           </div>
           <h3
             className="text-xl mb-2"
-            style={{ fontFamily: "Pacifico, cursive", color: "var(--c-text)" }}
+            style={{ fontFamily: "var(--font-jersey25)", color: "var(--c-text)" }}
           >
             {searchTerm ? `No results for "${searchTerm}"` : "Marketplace is empty"}
           </h3>
-          <p className="text-sm" style={{ color: "var(--c-text-muted)", fontFamily: "\"Pacifico\", cursive" }}>
+          <p className="text-sm" style={{ color: "var(--c-text-muted)", fontFamily: "var(--font-work-sans)" }}>
             {searchTerm
               ? "Try a different search term."
               : "Be the first to list an item in your neighborhood!"}
@@ -217,7 +217,7 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
         <button
           onClick={() => setOnboardingOpen(true)}
           className="w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
-          style={{ background: "#388E3C" }}
+          style={{ background: "hsl(var(--primary))" }}
         >
           <Plus className="w-6 h-6 text-foreground" />
         </button>
@@ -299,7 +299,7 @@ function MarketplaceCard({
             className="w-full h-full flex items-center justify-center"
             style={{ background: "var(--c-card2)" }}
           >
-            <ShoppingBag className="w-10 h-10" style={{ color: "#388E3C", opacity: 0.5 }} />
+            <ShoppingBag className="w-10 h-10" style={{ color: "hsl(var(--primary))", opacity: 0.5 }} />
           </div>
         )}
       </div>
@@ -309,7 +309,7 @@ function MarketplaceCard({
         {/* Item name */}
         <p
           className="text-foreground text-[0.8125rem] leading-[15px] line-clamp-2"
-          style={{ fontFamily: "\"Pacifico\", cursive", fontWeight: 500 }}
+          style={{ fontFamily: "var(--font-work-sans)", fontWeight: 500 }}
           onClick={() => onItemClick?.(item)}
         >
           {item.title || item.text || "Untitled"}
@@ -318,7 +318,7 @@ function MarketplaceCard({
         {/* Price */}
         <p
           className="text-[1.375rem] leading-[28px] font-bold"
-          style={{ fontFamily: "\"Pacifico\", cursive", color: "#388E3C" }}
+          style={{ fontFamily: "var(--font-work-sans)", color: "hsl(var(--primary))" }}
         >
           {formatPrice(item.price || 0)}
         </p>
@@ -331,9 +331,9 @@ function MarketplaceCard({
                 onClick={() => onEdit(item)}
                 className="flex-1 flex items-center justify-center gap-1 text-xs py-1.5 rounded-full border transition-colors"
                 style={{
-                  borderColor: "#388E3C",
-                  color: "#388E3C",
-                  fontFamily: "\"Pacifico\", cursive",
+                  borderColor: "hsl(var(--primary))",
+                  color: "hsl(var(--primary))",
+                  fontFamily: "var(--font-work-sans)",
                   background: "transparent",
                 }}
               >
@@ -353,15 +353,15 @@ function MarketplaceCard({
                 onClick={() => onItemClick?.(item)}
                 className="flex-1 text-xs py-1.5 rounded-full font-medium transition-colors text-foreground"
                 style={{
-                  background: "#388E3C",
-                  fontFamily: "\"Pacifico\", cursive",
+                  background: "hsl(var(--primary))",
+                  fontFamily: "var(--font-work-sans)",
                 }}
               >
                 {item.price === 0 ? "Claim Free" : "Buy Now"}
               </button>
               <button
                 onClick={() => onMessageSeller?.(item)}
-                className="px-2.5 py-1.5 rounded-full border border-[#388E3C] text-[#388E3C] transition-colors hover:bg-[#388E3C]/10"
+                className="px-2.5 py-1.5 rounded-full border border-primary text-primary transition-colors hover:bg-primary/10"
               >
                 <MessageCircle className="w-3.5 h-3.5" />
               </button>
@@ -379,7 +379,7 @@ function MarketplaceCard({
         >
           <div
             className="w-4 h-4 rounded-full flex-shrink-0 flex items-center justify-center text-[0.5625rem] font-bold text-foreground overflow-hidden"
-            style={{ background: "#388E3C" }}
+            style={{ background: "hsl(var(--primary))" }}
           >
             {item.user?.avatar_url ? (
               <Image
@@ -395,13 +395,13 @@ function MarketplaceCard({
           </div>
           <span
             className="text-[0.6875rem] truncate"
-            style={{ color: "var(--c-text-muted)", fontFamily: "\"Pacifico\", cursive" }}
+            style={{ color: "var(--c-text-muted)", fontFamily: "var(--font-work-sans)" }}
           >
             {item.user?.name || "Unknown Seller"}
           </span>
           <span
             className="text-[0.625rem] ml-auto flex-shrink-0"
-            style={{ color: "#555", fontFamily: "\"Pacifico\", cursive" }}
+            style={{ color: "#555", fontFamily: "var(--font-work-sans)" }}
           >
             {new Date(item.timestamp).toLocaleDateString("en-NG", {
               day: "numeric",

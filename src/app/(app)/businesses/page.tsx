@@ -4,11 +4,11 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { ArrowLeft, Clock, Briefcase, Bell } from "lucide-react";
 
-const GREEN = "#388E3C";
+const GREEN = "hsl(var(--primary))";
 const GREEN_LIGHT = "#82DB7E";
 const CARD = "var(--c-card)";
-const FONT = "\"Pacifico\", cursive";
-const PACIFICO = "Pacifico, cursive";
+const FONT = "var(--font-work-sans)";
+const PACIFICO = "var(--font-jersey25)";
 
 export default function BusinessesPage() {
   const router = useRouter();

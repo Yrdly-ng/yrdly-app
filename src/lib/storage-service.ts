@@ -140,12 +140,10 @@ export class StorageService {
 
   // Get public URL for a file
   static getPublicUrl(bucket: string, path: string): string {
-    console.log('🔗 getPublicUrl called with bucket:', bucket, 'path:', path);
     const { data } = supabase.storage
       .from(bucket)
       .getPublicUrl(path);
     
-    console.log('🔗 Generated URL:', data.publicUrl);
     return data.publicUrl;
   }
 
@@ -245,20 +243,10 @@ export class StorageService {
     file: File
   ): Promise<{ url: string | null; error: any }> {
     try {
-      console.log('📤 StorageService.uploadChatImage called');
-      console.log('📤 Conversation ID:', conversationId);
-      console.log('📤 File details:', {
-        name: file.name,
-        size: file.size,
-        type: file.type
-      });
 
       const fileName = `${Date.now()}_${file.name}`;
       const path = `${conversationId}/${fileName}`;
-      console.log('📤 Generated path:', path);
-      console.log('📤 Bucket name: chat-images');
 
-      console.log('📤 Calling uploadFile...');
       const { data, error } = await this.uploadFile('chat-images', path, file);
       
       if (error) {
@@ -271,9 +259,7 @@ export class StorageService {
         });
         
         // Try with a different path structure as fallback
-        console.log('🔄 Trying fallback upload with different path...');
         const fallbackPath = `chat/${conversationId}/${fileName}`;
-        console.log('📤 Fallback path:', fallbackPath);
         
         const { data: fallbackData, error: fallbackError } = await this.uploadFile('chat-images', fallbackPath, file);
         
@@ -282,18 +268,11 @@ export class StorageService {
           return { url: null, error: fallbackError };
         }
         
-        console.log('✅ Fallback upload successful');
         const fallbackUrl = this.getPublicUrl('chat-images', fallbackPath);
-        console.log('📤 Fallback public URL:', fallbackUrl);
         return { url: fallbackUrl, error: null };
       }
-      console.log('✅ File uploaded successfully');
-      console.log('📤 Upload response data:', data);
 
-      console.log('📤 About to generate public URL with bucket: chat-images and path:', path);
       const publicUrl = this.getPublicUrl('chat-images', path);
-      console.log('📤 Generated public URL:', publicUrl);
-      console.log('📤 URL should contain chat-images, not post-images');
       return { url: publicUrl, error: null };
     } catch (error) {
       console.error('❌ Upload chat image error:', error);

@@ -52,7 +52,7 @@ export function OfflineStatus() {
 
   return (
     <div className="fixed bottom-20 left-4 z-50 pb-[env(safe-area-inset-bottom)]">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-4 max-w-sm">
+      <div className="bg-background dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-4 max-w-sm">
         {/* Status Header */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center space-x-2">
@@ -205,7 +205,7 @@ export function OfflineStatusCompact() {
 
   return (
     <div className="fixed bottom-20 left-4 z-50 pb-[env(safe-area-inset-bottom)]">
-      <div className="bg-white dark:bg-gray-800 rounded-full shadow-lg border border-gray-200 dark:border-gray-700 p-2">
+      <div className="bg-background dark:bg-gray-800 rounded-full shadow-lg border border-gray-200 dark:border-gray-700 p-2">
         <div className="flex items-center space-x-2">
           {isOnline ? (
             <Wifi className="w-4 h-4 text-green-500" />
@@ -214,7 +214,7 @@ export function OfflineStatusCompact() {
           )}
           
           {hasOfflineActions && (
-            <div className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+            <div className="bg-red-500 text-primary-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center">
               {pendingActionsCount > 9 ? '9+' : pendingActionsCount}
             </div>
           )}

@@ -8,7 +8,7 @@ import { useState } from "react";
 const BG    = "var(--c-bg)";
 const CARD  = "var(--c-card)";
 const CARDH = "var(--c-card2)";
-const GREEN  = "#388E3C";
+const GREEN  = "hsl(var(--primary))";
 const GREEN_L = "#82DB7E";
 const MUTED  = "var(--c-text-muted)";
 const DIM    = "var(--c-text-muted)";
@@ -35,9 +35,9 @@ export default function PayoutSuccessPage() {
       <header className="fixed top-0 w-full z-50 bg-[var(--c-bg)]/80 backdrop-blur-xl flex items-center px-6 h-16 w-full">
         <div className="flex items-center gap-4">
           <button onClick={() => router.push("/marketplace")} className="active:scale-95 transition-transform hover:opacity-80">
-            <ArrowLeft className="w-6 h-6 text-[#388E3C]" />
+            <ArrowLeft className="w-6 h-6 text-primary" />
           </button>
-          <h1 className="font-pacifico text-2xl tracking-tight text-on-surface">Checkout</h1>
+          <h1 className="font-jersey25 text-2xl tracking-tight text-on-surface">Checkout</h1>
         </div>
       </header>
 
@@ -56,7 +56,7 @@ export default function PayoutSuccessPage() {
 
         {/* Success Message */}
         <div className="text-center space-y-2 mb-10 z-10">
-          <h2 className="font-pacifico text-[1.75rem] text-[var(--c-text)] leading-tight">
+          <h2 className="font-jersey25 text-[1.75rem] text-[var(--c-text)] leading-tight">
             {amount !== "0" ? `${fmt(amount)} Sent!` : "Payout Sent!"}
           </h2>
           <p className="font-raleway text-[0.8125rem] text-on-surface-variant max-w-[280px] mx-auto">

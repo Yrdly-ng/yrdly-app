@@ -10,7 +10,7 @@ import { supabase } from "@/lib/supabase";
 /* ── Design tokens ─────────────────────────────────── */
 const BG     = "var(--c-bg)";
 const CARD   = "var(--c-card)";
-const GREEN  = "#388E3C";
+const GREEN  = "hsl(var(--primary))";
 const GREEN_L = "#82DB7E";
 const MUTED  = "var(--c-text-muted)";
 const DIM    = "var(--c-text-muted)";
@@ -107,9 +107,9 @@ export default function EscrowConfirmationPage() {
       <header className="fixed top-0 w-full z-50 bg-[var(--c-bg)]/80 backdrop-blur-xl flex items-center px-6 h-16 w-full">
         <div className="flex items-center gap-4">
           <button onClick={() => router.push("/marketplace")} className="active:scale-95 transition-transform hover:opacity-80">
-            <ArrowLeft className="w-6 h-6 text-[#388E3C]" />
+            <ArrowLeft className="w-6 h-6 text-primary" />
           </button>
-          <h1 className="font-pacifico text-2xl tracking-tight text-[#388E3C]">Checkout</h1>
+          <h1 className="font-jersey25 text-2xl tracking-tight text-primary">Checkout</h1>
         </div>
       </header>
 
@@ -118,13 +118,13 @@ export default function EscrowConfirmationPage() {
         <section className="flex flex-col items-center text-center mb-10">
           <div className="relative mb-6">
             {/* Pulsing Ring */}
-            <div className="absolute inset-0 rounded-full border-2 border-[#388E3C] animate-[pulse-ring_2s_cubic-bezier(0.4,0,0.6,1)_infinite]"></div>
+            <div className="absolute inset-0 rounded-full border-2 border-primary animate-[pulse-ring_2s_cubic-bezier(0.4,0,0.6,1)_infinite]"></div>
             {/* Main Check Icon */}
-            <div className="w-16 h-16 rounded-full bg-[#388E3C]/15 border-2 border-[#388E3C] flex items-center justify-center relative z-10">
-              <Check className="w-8 h-8 text-[#388E3C]" strokeWidth={3} />
+            <div className="w-16 h-16 rounded-full bg-primary/15 border-2 border-primary flex items-center justify-center relative z-10">
+              <Check className="w-8 h-8 text-primary" strokeWidth={3} />
             </div>
           </div>
-          <h2 className="font-pacifico text-[1.625rem] text-[var(--c-text)] leading-tight mb-2">Payment Secured!</h2>
+          <h2 className="font-jersey25 text-[1.625rem] text-[var(--c-text)] leading-tight mb-2">Payment Secured!</h2>
           <p className="font-raleway text-[0.875rem] text-on-surface-variant font-medium">{fmt(amount)} is held safely in escrow</p>
         </section>
 
@@ -135,7 +135,7 @@ export default function EscrowConfirmationPage() {
             <p className="font-raleway text-[0.6875rem] font-mono text-on-surface-variant">Ref: #{ref}</p>
           </div>
           <div className="flex-shrink-0">
-            <span className="px-3 py-1 rounded-full text-[0.625rem] font-bold tracking-wider bg-[#388E3C]/15 text-[#82DB7E] border border-[#388E3C] flex items-center gap-1">
+            <span className="px-3 py-1 rounded-full text-[0.625rem] font-bold tracking-wider bg-primary/15 text-[#82DB7E] border border-primary flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-[#82DB7E] animate-pulse"></span>
               IN ESCROW
             </span>
@@ -155,9 +155,9 @@ export default function EscrowConfirmationPage() {
                   <div key={i} className={`flex items-start gap-5 ${!active ? 'opacity-40' : 'group'}`}>
                     <div className="relative">
                       {active && (
-                        <div className="absolute inset-0 rounded-full bg-[#388E3C]/40 blur-md"></div>
+                        <div className="absolute inset-0 rounded-full bg-primary/40 blur-md"></div>
                       )}
-                      <div className={`w-8 h-8 rounded-full border ${active ? 'border-2 border-[#388E3C] bg-surface-container-high text-[#388E3C]' : 'border-outline-variant bg-surface-container text-on-surface-variant'} flex items-center justify-center font-bold text-sm relative z-10`}>
+                      <div className={`w-8 h-8 rounded-full border ${active ? 'border-2 border-primary bg-surface-container-high text-primary' : 'border-outline-variant bg-surface-container text-on-surface-variant'} flex items-center justify-center font-bold text-sm relative z-10`}>
                         {i + 1}
                       </div>
                     </div>
@@ -181,14 +181,14 @@ export default function EscrowConfirmationPage() {
           <button 
             onClick={handleMessageSeller}
             disabled={isMessaging}
-            className="w-full h-14 rounded-full bg-[#388E3C] text-white font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform shadow-lg shadow-[#388E3C]/20 disabled:opacity-70 disabled:active:scale-100"
+            className="w-full h-14 rounded-full bg-primary text-primary-foreground font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform shadow-lg shadow-[#388E3C]/20 disabled:opacity-70 disabled:active:scale-100"
           >
             {isMessaging ? <Loader2 className="w-5 h-5 animate-spin" /> : <MessageCircle className="w-5 h-5" />}
             Message Seller
           </button>
           <button 
             onClick={() => router.push(`/transactions/${transactionId}`)}
-            className="w-full h-14 rounded-full border border-[#388E3C] text-[#388E3C] font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform bg-surface/50 backdrop-blur-md"
+            className="w-full h-14 rounded-full border border-primary text-primary font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform bg-surface/50 backdrop-blur-md"
           >
             <Receipt className="w-5 h-5" />
             View Transaction

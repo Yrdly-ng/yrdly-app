@@ -129,7 +129,7 @@ export function CatalogItemScreen({
               <button
                 key={index}
                 className={`w-2 h-2 rounded-full ${
-                  index === currentImageIndex ? 'bg-white' : 'bg-white/50'
+                  index === currentImageIndex ? 'bg-primary' : 'bg-primary/50'
                 }`}
                 onClick={() => setCurrentImageIndex(index)}
               />

@@ -41,9 +41,9 @@ import TextareaAutosize from 'react-textarea-autosize';
 /* ─── design tokens ─────────────────────────────────────────────── */
 const BG = 'var(--c-bg)';
 const CARD_BG = 'var(--c-card)';
-const GREEN = '#388E3C';
+const GREEN = 'hsl(var(--primary))';
 const FONT_RALEWAY = 'Inter, sans-serif';
-const FONT_PACIFICO = 'Pacifico, cursive';
+const FONT_PACIFICO = "var(--font-jersey25)";
 
 interface Comment {
     id: string;
@@ -315,7 +315,7 @@ export function CommentSection({
                 <div className="flex flex-col items-center gap-0 flex-shrink-0">
                     <Avatar className="h-8 w-8">
                         <AvatarImage src={comment.authorImage} />
-                        <AvatarFallback className="text-xs bg-[#388E3C] text-white">{comment.authorName?.charAt(0)}</AvatarFallback>
+                        <AvatarFallback className="text-xs bg-primary text-primary-foreground">{comment.authorName?.charAt(0)}</AvatarFallback>
                     </Avatar>
                     {/* vertical connector to replies */}
                     {hasReplies && showReplies && (
@@ -342,7 +342,7 @@ export function CommentSection({
                                 try { await supabase.from('comments').update({ text: editText.trim() }).eq('id', comment.id); setEditingComment(null); } catch { }
                             }} className="flex gap-2 mt-1">
                                 <input value={editText} onChange={e => setEditText(e.target.value)} className="flex-1 bg-transparent text-foreground text-sm outline-none border-b border-border" />
-                                <button type="submit" className="text-xs text-[#388E3C] font-semibold">Save</button>
+                                <button type="submit" className="text-xs text-primary font-semibold">Save</button>
                                 <button type="button" onClick={() => setEditingComment(null)} className="text-xs text-muted-foreground">Cancel</button>
                             </form>
                         ) : (
@@ -393,7 +393,7 @@ export function CommentSection({
                                         <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter className="flex-col sm:flex-col gap-2 mt-4">
-                                        <AlertDialogAction onClick={() => handleDeleteComment(comment.id)} className="w-full bg-red-600 hover:bg-red-700 text-white rounded-[14px] h-12 font-semibold">Delete</AlertDialogAction>
+                                        <AlertDialogAction onClick={() => handleDeleteComment(comment.id)} className="w-full bg-red-600 hover:bg-red-700 text-primary-foreground rounded-[14px] h-12 font-semibold">Delete</AlertDialogAction>
                                         <AlertDialogCancel className="w-full mt-0 bg-transparent hover:bg-accent text-foreground border border-border rounded-[14px] h-12 font-semibold">Cancel</AlertDialogCancel>
                                     </AlertDialogFooter>
                                 </AlertDialogContent>
@@ -445,9 +445,9 @@ export function CommentSection({
             <form onSubmit={handlePostComment} className="flex items-end gap-3 w-full">
                 <Avatar className="h-9 w-9 flex-shrink-0 mb-1">
                     <AvatarImage src={userDetails?.avatar_url} />
-                    <AvatarFallback className="text-xs bg-[#388E3C] text-white">{userDetails?.name?.charAt(0) || 'U'}</AvatarFallback>
+                    <AvatarFallback className="text-xs bg-primary text-primary-foreground">{userDetails?.name?.charAt(0) || 'U'}</AvatarFallback>
                 </Avatar>
-                <div className="flex-1 relative flex items-end rounded-[20px] bg-accent/50 border border-transparent focus-within:border-[#388E3C]/50 focus-within:bg-transparent transition-all overflow-hidden p-1">
+                <div className="flex-1 relative flex items-end rounded-[20px] bg-accent/50 border border-transparent focus-within:border-primary/50 focus-within:bg-transparent transition-all overflow-hidden p-1">
                     <TextareaAutosize
                         ref={inputRef as any}
                         value={newComment}
@@ -466,7 +466,7 @@ export function CommentSection({
                     <button 
                         type="submit" 
                         disabled={!newComment.trim()}
-                        className="mb-2 mr-3 text-sm font-bold text-[#388E3C] disabled:opacity-0 transition-opacity flex-shrink-0"
+                        className="mb-2 mr-3 text-sm font-bold text-primary disabled:opacity-0 transition-opacity flex-shrink-0"
                     >
                         Post
                     </button>
@@ -490,7 +490,7 @@ export function CommentSection({
                             <div className="flex flex-col items-center">
                                 <Avatar className="h-10 w-10 flex-shrink-0">
                                     <AvatarImage src={author.avatar_url} />
-                                    <AvatarFallback className="text-xs bg-[#388E3C] text-white">{author.name?.charAt(0)}</AvatarFallback>
+                                    <AvatarFallback className="text-xs bg-primary text-primary-foreground">{author.name?.charAt(0)}</AvatarFallback>
                                 </Avatar>
                                 {/* green vertical connector */}
                                 <div className="w-px flex-1 mt-1" style={{ background: GREEN, minHeight: '40px' }} />

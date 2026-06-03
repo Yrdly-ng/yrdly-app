@@ -1,6 +1,6 @@
 {
-  "buildCommand": "npm install --legacy-peer-deps && npm run build",
-  "installCommand": "npm install --legacy-peer-deps",
+  "buildCommand": "pnpm run build",
+  "installCommand": "pnpm install",
   "framework": "nextjs",
   "crons": [
     {

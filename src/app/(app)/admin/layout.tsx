@@ -38,7 +38,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return (
       <div className="min-h-[100dvh] flex items-center justify-center" style={{ background: "var(--c-bg)" }}>
         <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#388E3C", borderTopColor: "transparent" }} />
+          <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "hsl(var(--primary))", borderTopColor: "transparent" }} />
           <p className="text-sm text-muted-foreground">Verifying access...</p>
         </div>
       </div>

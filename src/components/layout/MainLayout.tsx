@@ -192,7 +192,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                   <MagnifyingGlass weight="bold" className="h-5 w-5 flex-shrink-0 text-[#767676]" />
                   <span
                     className="font-light italic text-xs text-[#767676] truncate"
-                    style={{ fontFamily: '"Pacifico", cursive' }}
+                    style={{ fontFamily: "var(--font-work-sans)" }}
                   >
                     Search for events, items
                   </span>
@@ -220,7 +220,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                     {unreadMessagesCount > 0 && (
                       <span
                         className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 rounded-full flex items-center justify-center text-[0.5625rem] font-bold px-1"
-                        style={{ background: "#388E3C", color: "#fff", border: "1.5px solid #fff" }}
+                        style={{ background: "hsl(var(--primary))", color: "#fff", border: "1.5px solid #fff" }}
                       >
                         {unreadMessagesCount > 9 ? "9+" : unreadMessagesCount}
                       </span>
@@ -237,7 +237,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                   {unreadCount > 0 && (
                     <span
                       className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 rounded-full flex items-center justify-center text-[0.5625rem] font-bold px-1"
-                      style={{ background: "#388E3C", color: "#fff", border: "1.5px solid #fff" }}
+                      style={{ background: "hsl(var(--primary))", color: "#fff", border: "1.5px solid #fff" }}
                     >
                       {unreadCount > 9 ? "9+" : unreadCount}
                     </span>
@@ -252,7 +252,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                   <Avatar className="w-8 h-8 md:w-9 md:h-9 rounded-full">
                     <AvatarImage src={profile?.avatar_url || ""} />
                     <AvatarFallback
-                      style={{ background: "#388E3C", color: "#fff", fontFamily: "\"Pacifico\", cursive", fontWeight: 700 }}
+                      style={{ background: "hsl(var(--primary))", color: "#fff", fontFamily: "var(--font-work-sans)", fontWeight: 700 }}
                     >
                       {profile?.name?.charAt(0).toUpperCase() || "U"}
                     </AvatarFallback>
@@ -282,22 +282,22 @@ export function MainLayout({ children }: MainLayoutProps) {
                     <div
                       className={cn(
                         "flex items-center gap-3 px-3 py-2 rounded-xl transition-colors",
-                        isActive ? "bg-[#EBF5EB]" : "hover:bg-[var(--c-bg)]"
+                        isActive ? "bg-accent" : "hover:bg-[var(--c-bg)]"
                       )}
                     >
                       <Icon
                         className={cn(
                           "w-5 h-5 flex-shrink-0",
-                          isActive ? "text-[#388E3C]" : "text-[#555555]"
+                          isActive ? "text-primary" : "text-[#555555]"
                         )}
                         weight={isActive ? "fill" : "bold"}
                       />
                       <span
                         className={cn(
                           "text-[0.875rem] leading-snug",
-                          isActive ? "text-[#388E3C] font-semibold" : "text-[#252629] font-normal"
+                          isActive ? "text-primary font-semibold" : "text-[#252629] font-normal"
                         )}
-                        style={{ fontFamily: "\"Pacifico\", cursive" }}
+                        style={{ fontFamily: "var(--font-work-sans)" }}
                       >
                         {label}
                       </span>
@@ -314,8 +314,8 @@ export function MainLayout({ children }: MainLayoutProps) {
                 onOpenChange={setPostDialogOpen}
               >
                 <Button
-                  className="w-full h-10 rounded-full text-white font-semibold text-[0.875rem]"
-                  style={{ background: "#388E3C", fontFamily: "\"Pacifico\", cursive" }}
+                  className="w-full h-10 rounded-full text-primary-foreground font-semibold text-[0.875rem]"
+                  style={{ background: "hsl(var(--primary))", fontFamily: "var(--font-work-sans)" }}
                   onClick={() => setPostDialogOpen(true)}
                 >
                   <Plus weight="bold" className="w-4 h-4 mr-1.5" />
@@ -367,12 +367,12 @@ export function MainLayout({ children }: MainLayoutProps) {
                 >
                   <div className={cn(
                     "p-2 rounded-xl transition-all duration-300",
-                    isActive ? "bg-[#EBF5EB]" : "bg-transparent"
+                    isActive ? "bg-accent" : "bg-transparent"
                   )}>
                     <Icon
                       className={cn(
                         "w-5 h-5",
-                        isActive ? "text-[#388E3C]" : "text-[#767676]"
+                        isActive ? "text-primary" : "text-[#767676]"
                       )}
                       weight={isActive ? "fill" : "bold"}
                     />
@@ -380,9 +380,9 @@ export function MainLayout({ children }: MainLayoutProps) {
                   <span
                     className={cn(
                       "text-[0.5625rem] font-bold tracking-tight mt-1 transition-colors",
-                      isActive ? "text-[#388E3C]" : "text-[#767676]"
+                      isActive ? "text-primary" : "text-[#767676]"
                     )}
-                    style={{ fontFamily: '"Pacifico", cursive' }}
+                    style={{ fontFamily: "var(--font-work-sans)" }}
                   >
                     {label}
                   </span>

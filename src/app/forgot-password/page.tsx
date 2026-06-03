@@ -14,8 +14,8 @@ const colors = {
   background: 'var(--c-bg)',
   blob: '#A154F2',
   overlay: 'rgba(255, 255, 255, 0.05)',
-  border: '#388E3C',
-  primary: '#388E3C',
+  border: 'hsl(var(--primary))',
+  primary: 'hsl(var(--primary))',
   text: 'var(--c-text)',
   textFaded: 'var(--c-text-muted)',
   link: '#1976D2',
@@ -85,7 +85,7 @@ export default function ForgotPasswordPage() {
         <div className="text-center mb-8 w-full">
           <h1
             className="text-2xl text-[var(--c-text)] leading-tight px-1"
-            style={{ fontFamily: '"Pacifico", cursive' }}
+            style={{ fontFamily: "var(--font-jersey25)" }}
           >
             Reset Password
           </h1>
@@ -108,7 +108,7 @@ export default function ForgotPasswordPage() {
             <Button
               onClick={() => router.push('/login')}
               variant="outline"
-              className="w-full h-11 rounded-full font-sans text-[var(--c-text)] border-[#388E3C] hover:bg-accent"
+              className="w-full h-11 rounded-full font-sans text-[var(--c-text)] border-primary hover:bg-accent"
             >
               Back to Sign in
             </Button>
@@ -131,7 +131,7 @@ export default function ForgotPasswordPage() {
 
             <Button
               type="submit"
-              className={`w-full h-11 ${pillRound} font-sans font-medium text-white hover:opacity-90`}
+              className={`w-full h-11 ${pillRound} font-sans font-medium text-primary-foreground hover:opacity-90`}
               style={{ background: colors.primary }}
               disabled={loading}
             >

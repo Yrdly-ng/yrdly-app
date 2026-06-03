@@ -83,7 +83,7 @@ export default function EditProfilePage() {
   };
 
   return (
-    <div className="min-h-[100dvh] pb-36" style={{ background: "var(--c-bg)", fontFamily: "\"Pacifico\", cursive", color: "var(--c-text)" }}>
+    <div className="min-h-[100dvh] pb-36" style={{ background: "var(--c-bg)", fontFamily: "var(--font-work-sans)", color: "var(--c-text)" }}>
 
       {/* Sticky Header */}
       <header
@@ -94,7 +94,7 @@ export default function EditProfilePage() {
           <button onClick={() => router.back()} className="w-10 h-10 flex items-center justify-center rounded-full transition-colors hover:bg-accent">
             <ArrowLeft className="w-5 h-5" style={{ color: "var(--c-text)" }} />
           </button>
-          <h1 style={{ fontFamily: "Pacifico, cursive", fontSize: 18, color: "var(--c-text)" }}>Edit Profile</h1>
+          <h1 style={{ fontFamily: "var(--font-jersey25)", fontSize: 18, color: "var(--c-text)" }}>Edit Profile</h1>
         </div>
         <span style={{ fontFamily: "Jersey 25, sans-serif", fontSize: 20, color: "#259907" }}>Yrdly</span>
       </header>
@@ -104,11 +104,11 @@ export default function EditProfilePage() {
         {/* ── Avatar ── */}
         <section className="flex flex-col items-center py-4">
           <div className="relative">
-            <div className="absolute -inset-2 rounded-full border-2 border-dashed border-[#388E3C] opacity-60 animate-spin" style={{ animationDuration: "8s" }} />
+            <div className="absolute -inset-2 rounded-full border-2 border-dashed border-primary opacity-60 animate-spin" style={{ animationDuration: "8s" }} />
             <div className="relative w-24 h-24 rounded-full overflow-hidden border-4" style={{ borderColor: "var(--c-card)" }}>
               <Avatar className="w-full h-full">
                 <AvatarImage src={avatarPreview || avatarUrl} className="object-cover" />
-                <AvatarFallback style={{ background: "#388E3C", color: "#fff", fontSize: 32, fontWeight: 700 }}>
+                <AvatarFallback style={{ background: "hsl(var(--primary))", color: "#fff", fontSize: 32, fontWeight: 700 }}>
                   {name?.charAt(0)?.toUpperCase() || "U"}
                 </AvatarFallback>
               </Avatar>
@@ -161,7 +161,7 @@ export default function EditProfilePage() {
             onClick={handleSave}
             disabled={saving}
             className="w-full py-4 rounded-full flex items-center justify-center gap-3 text-foreground font-extrabold uppercase tracking-[0.2em] transition-all active:scale-[0.98] shadow-[0_10px_30px_rgba(56,142,60,0.2)]"
-            style={{ background: "#388E3C", fontFamily: "\"Pacifico\", cursive", opacity: saving ? 0.7 : 1 }}
+            style={{ background: "hsl(var(--primary))", fontFamily: "var(--font-work-sans)", opacity: saving ? 0.7 : 1 }}
           >
             {saving ? "Saving…" : "Save Changes"}
             {!saving && (
@@ -179,7 +179,7 @@ function SectionHeader({ color, label }: { color: string; label: string }) {
   return (
     <div className="flex items-center gap-3">
       <span className="w-1 h-6 rounded-full flex-shrink-0" style={{ background: color }} />
-      <h2 className="font-bold uppercase tracking-widest text-lg" style={{ fontFamily: "\"Pacifico\", cursive", color: color + "cc" }}>{label}</h2>
+      <h2 className="font-bold uppercase tracking-widest text-lg" style={{ fontFamily: "var(--font-jersey25)", color: color + "cc" }}>{label}</h2>
     </div>
   );
 }

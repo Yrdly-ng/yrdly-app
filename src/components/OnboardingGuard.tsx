@@ -54,7 +54,7 @@ export function OnboardingGuard({ children }: OnboardingGuardProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[100dvh]" style={{ background: "var(--c-bg)" }}>
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: "#388E3C" }} />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: "hsl(var(--primary))" }} />
       </div>
     );
   }
@@ -64,7 +64,7 @@ export function OnboardingGuard({ children }: OnboardingGuardProps) {
   if (!isOnboardingComplete) {
     return (
       <div className="flex items-center justify-center min-h-[100dvh]" style={{ background: "var(--c-bg)" }}>
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: "#388E3C" }} />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: "hsl(var(--primary))" }} />
       </div>
     );
   }

@@ -6,8 +6,8 @@ import { useLocation } from "@/contexts/LocationContext";
 import { useRouter } from "next/navigation";
 import states from "@/data/states.json";
 
-const GREEN = "#388E3C";
-const FONT = "\"Pacifico\", cursive";
+const GREEN = "hsl(var(--primary))";
+const FONT = "var(--font-work-sans)";
 const CARD = "var(--c-card)";
 const BG = "var(--c-bg)";
 

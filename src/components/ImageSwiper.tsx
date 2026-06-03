@@ -84,7 +84,7 @@ export function ImageSwiper({ images, isOpen, onClose, initialIndex = 0 }: Image
         variant="ghost"
         size="icon"
         onClick={onClose}
-        className="absolute top-4 right-4 z-10 text-foreground hover:bg-white/20"
+        className="absolute top-4 right-4 z-10 text-foreground hover:bg-background/20"
       >
         <X className="h-6 w-6" />
       </Button>
@@ -96,7 +96,7 @@ export function ImageSwiper({ images, isOpen, onClose, initialIndex = 0 }: Image
             variant="ghost"
             size="icon"
             onClick={goToPrevious}
-            className="absolute left-4 top-1/2 -translate-y-1/2 z-10 text-foreground hover:bg-white/20"
+            className="absolute left-4 top-1/2 -translate-y-1/2 z-10 text-foreground hover:bg-background/20"
           >
             <ChevronLeft className="h-8 w-8" />
           </Button>
@@ -104,7 +104,7 @@ export function ImageSwiper({ images, isOpen, onClose, initialIndex = 0 }: Image
             variant="ghost"
             size="icon"
             onClick={goToNext}
-            className="absolute right-4 top-1/2 -translate-y-1/2 z-10 text-foreground hover:bg-white/20"
+            className="absolute right-4 top-1/2 -translate-y-1/2 z-10 text-foreground hover:bg-background/20"
           >
             <ChevronRight className="h-8 w-8" />
           </Button>
@@ -152,7 +152,7 @@ export function ImageSwiper({ images, isOpen, onClose, initialIndex = 0 }: Image
               onClick={() => setCurrentIndex(index)}
               className={cn(
                 "w-2 h-2 rounded-full transition-colors",
-                index === currentIndex ? "bg-white" : "bg-white/50"
+                index === currentIndex ? "bg-background" : "bg-background/50"
               )}
             />
           ))}

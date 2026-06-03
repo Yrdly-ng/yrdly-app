@@ -36,9 +36,9 @@ import Image from "next/image";
 /* ─── design tokens ─────────────────────────────────────────────── */
 const BG_DARK = "var(--c-bg)";
 const CARD_BG = "var(--c-card)";
-const GREEN = "#388E3C";
-const FONT_RALEWAY = "\"Pacifico\", cursive";
-const FONT_PACIFICO = "Pacifico, cursive";
+const GREEN = "hsl(var(--primary))";
+const FONT_RALEWAY = "var(--font-raleway)";
+const FONT_PACIFICO = "var(--font-jersey25)";
 
 /* ─── schema ────────────────────────────────────────────────────── */
 const BlobImage = memo(({ file, className, alt }: { file: File, className?: string, alt?: string }) => {
@@ -116,7 +116,7 @@ function FormBody({
         <h1 className="text-2xl font-black font-sans">
             {isEditMode ? "Edit Item" : "Create Item for Sale"}
         </h1>
-        <button type="button" onClick={onClose} className="w-11 h-11 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition">
+        <button type="button" onClick={onClose} className="w-11 h-11 rounded-full bg-background/10 flex items-center justify-center hover:bg-background/20 transition">
           <X className="w-5 h-5" />
         </button>
       </div>
@@ -125,7 +125,7 @@ function FormBody({
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           
           <div className="space-y-4 p-6 rounded-3xl bg-card border border-border">
-            <h2 className="text-lg font-bold font-sans text-[#388E3C]">Item Details</h2>
+            <h2 className="text-lg font-bold font-sans text-primary">Item Details</h2>
             
             <FormField control={form.control} name="text" render={({ field }) => (
               <FormItem>
@@ -205,7 +205,7 @@ function FormBody({
             )}
           </div>
 
-          <button type="submit" className="w-full h-14 rounded-full font-sans font-bold text-lg bg-[#388E3C] flex items-center justify-center hover:bg-[#2E7D32] transition-colors disabled:opacity-50" disabled={loading}>
+          <button type="submit" className="w-full h-14 rounded-full font-sans font-bold text-lg bg-primary flex items-center justify-center hover:bg-[#2E7D32] transition-colors disabled:opacity-50" disabled={loading}>
             {loading ? <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> {isEditMode ? "Saving..." : "Listing Item..."}</> : (isEditMode ? "Save Changes" : "List Item")}
           </button>
         </form>

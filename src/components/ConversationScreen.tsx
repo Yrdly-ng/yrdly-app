@@ -12,10 +12,10 @@ import { useTypingDetection } from "@/hooks/use-typing-detection";
 import type { User } from "@/types";
 import Image from "next/image";
 
-const GREEN = "#388E3C";
+const GREEN = "hsl(var(--primary))";
 const CARD = "var(--c-card)";
 const BG = "var(--c-bg)";
-const FONT = "\"Pacifico\", cursive";
+const FONT = "var(--font-work-sans)";
 
 interface ConversationRow {
   id: string;
@@ -273,8 +273,10 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
     return (
       <div className="flex flex-col h-full" style={{ background: BG }}>
         <div className="h-16 animate-pulse" style={{ background: CARD }} />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="w-8 h-8 rounded-full border-2 border-[#388E3C] border-t-transparent animate-spin" />
+        <div className="flex-1 flex flex-col gap-4 p-4 mt-6">
+          <div className="w-[70%] h-16 bg-muted/20 animate-pulse rounded-[20px] rounded-tl-sm self-start" />
+          <div className="w-[60%] h-12 bg-muted/20 animate-pulse rounded-[20px] rounded-tr-sm self-end" />
+          <div className="w-[85%] h-20 bg-muted/20 animate-pulse rounded-[20px] rounded-tl-sm self-start" />
         </div>
       </div>
     );
@@ -317,7 +319,7 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
           </div>
         </div>
         <div className="ml-3 flex-1 min-w-0">
-          <h1 className="text-[1rem] font-bold text-foreground truncate" style={{ fontFamily: "\"Pacifico\", cursive" }}>
+          <h1 className="text-[1rem] font-bold text-foreground truncate" style={{ fontFamily: "var(--font-jersey25)" }}>
             {otherParticipant.name}
           </h1>
           <p className="text-[0.75rem]" style={{ fontFamily: FONT, color: "var(--c-text-muted)" }}>
@@ -457,7 +459,7 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
               onChange={(e) => { setNewMessage(e.target.value); handleTyping(); }}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSend(e as any); } }}
               disabled={sending}
-              className="w-full rounded-full px-5 py-3 text-[0.875rem] text-foreground outline-none focus:ring-1 focus:ring-[#388E3C]"
+              className="w-full rounded-full px-5 py-3 text-[0.875rem] text-foreground outline-none focus:ring-1 focus:ring-primary"
               style={{ background: "var(--c-card2)", fontFamily: FONT, caretColor: GREEN }}
             />
           </div>

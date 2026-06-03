@@ -11,7 +11,7 @@ import { ArrowLeft, Building2, CheckCircle, AlertCircle, Loader2, Sparkles } fro
 const BG     = "var(--c-bg)";
 const CARD   = "var(--c-card)";
 const CARDH  = "var(--c-card2)";
-const GREEN  = "#388E3C";
+const GREEN  = "hsl(var(--primary))";
 const GREEN_L = "#82DB7E";
 const MUTED  = "var(--c-text-muted)";
 const DIM    = "var(--c-text-muted)";
@@ -215,7 +215,7 @@ interface FailedPayout {
   }
 
   return (
-    <div className="min-h-dvh pb-20" style={{ background: "var(--background)", color: "var(--foreground)", fontFamily: "\"Pacifico\", cursive" }}>
+    <div className="min-h-dvh pb-20" style={{ background: "var(--background)", color: "var(--foreground)", fontFamily: "var(--font-work-sans)" }}>
       {/* Header */}
       <header
         className="fixed top-0 w-full z-50 flex items-center border-b border-border"
@@ -230,16 +230,16 @@ interface FailedPayout {
           <div className="flex items-center gap-4">
             <button 
               onClick={() => router.back()} 
-              className="w-10 h-10 rounded-full flex items-center justify-center bg-white/5 border border-border hover:bg-accent transition-all active:scale-90"
+              className="w-10 h-10 rounded-full flex items-center justify-center bg-background/5 border border-border hover:bg-accent transition-all active:scale-90"
             >
-              <ArrowLeft className="w-5 h-5" style={{ color: "#388E3C" }} />
+              <ArrowLeft className="w-5 h-5" style={{ color: "hsl(var(--primary))" }} />
             </button>
             <h1 className="text-xl font-black text-foreground tracking-tight">
               Payout Settings
             </h1>
           </div>
-          <div className="w-10 h-10 rounded-full bg-[#388E3C]/10 border border-[#388E3C]/20 flex items-center justify-center">
-            <Building2 className="w-5 h-5 text-[#388E3C]" />
+          <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
+            <Building2 className="w-5 h-5 text-primary" />
           </div>
         </div>
       </header>
@@ -251,8 +251,8 @@ interface FailedPayout {
             className="rounded-[20px] p-4 flex items-center gap-3"
             style={{ background: "rgba(56,142,60,0.08)", border: "1px solid rgba(56,142,60,0.25)" }}
           >
-            <div className="w-8 h-8 rounded-xl bg-[#388E3C]/20 flex items-center justify-center flex-shrink-0">
-              <CheckCircle className="w-4 h-4 text-[#388E3C]" />
+            <div className="w-8 h-8 rounded-xl bg-primary/20 flex items-center justify-center flex-shrink-0">
+              <CheckCircle className="w-4 h-4 text-primary" />
             </div>
             <p className="text-xs font-bold text-[#82DB7E]">
               Link your bank account and we&apos;ll take you straight back to finish creating your{" "}
@@ -267,10 +267,10 @@ interface FailedPayout {
           style={{ background: "rgba(56,142,60,0.05)", border: "1px solid rgba(56,142,60,0.2)" }}
         >
           <div className="absolute top-0 right-0 p-4 opacity-5">
-            <Building2 size={80} className="text-[#388E3C]" />
+            <Building2 size={80} className="text-primary" />
           </div>
-          <div className="w-10 h-10 rounded-2xl bg-[#388E3C]/20 flex items-center justify-center flex-shrink-0">
-            <Sparkles className="w-5 h-5 text-[#388E3C]" />
+          <div className="w-10 h-10 rounded-2xl bg-primary/20 flex items-center justify-center flex-shrink-0">
+            <Sparkles className="w-5 h-5 text-primary" />
           </div>
           <div className="relative z-10 space-y-1">
             <p className="text-sm font-black text-foreground">
@@ -308,7 +308,7 @@ interface FailedPayout {
                   <button
                     onClick={() => handleRetryPayout(payout.id)}
                     disabled={retryingId === payout.id || !existing}
-                    className="h-10 px-6 rounded-full text-xs font-black uppercase tracking-widest text-white transition-all active:scale-95 disabled:opacity-50"
+                    className="h-10 px-6 rounded-full text-xs font-black uppercase tracking-widest text-primary-foreground transition-all active:scale-95 disabled:opacity-50"
                     style={{ background: "#EF4444" }}
                   >
                     {retryingId === payout.id ? "Retrying..." : "Retry"}
@@ -336,12 +336,12 @@ interface FailedPayout {
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-[#388E3C]/10 flex items-center justify-center border border-[#388E3C]/20">
-                  <CheckCircle className="w-6 h-6 text-[#388E3C]" />
+                <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20">
+                  <CheckCircle className="w-6 h-6 text-primary" />
                 </div>
                 <div>
                   <h3 className="font-black text-foreground">Bank Linked</h3>
-                  <p className="text-xs font-bold text-[#388E3C] uppercase tracking-widest">Verified Account</p>
+                  <p className="text-xs font-bold text-primary uppercase tracking-widest">Verified Account</p>
                 </div>
               </div>
               <div className="text-[0.625rem] font-black text-muted-foreground uppercase tracking-tighter opacity-40">
@@ -368,7 +368,7 @@ interface FailedPayout {
 
             <button
               onClick={() => setShowForm(true)}
-              className="w-full h-14 rounded-2xl text-xs font-black uppercase tracking-widest text-foreground transition-all border border-border bg-white/[0.03] hover:bg-white/[0.08] active:scale-95"
+              className="w-full h-14 rounded-2xl text-xs font-black uppercase tracking-widest text-foreground transition-all border border-border bg-background/[0.03] hover:bg-background/[0.08] active:scale-95"
             >
               Update Bank Details
             </button>
@@ -404,7 +404,7 @@ interface FailedPayout {
                   <select
                     value={bankCode}
                     onChange={(e) => setBankCode(e.target.value)}
-                    className="w-full h-14 rounded-2xl p-4 text-base bg-white/5 border border-border focus:border-[#388E3C]/50 focus:outline-none transition-all appearance-none cursor-pointer text-foreground font-medium"
+                    className="w-full h-14 rounded-2xl p-4 text-base bg-background/5 border border-border focus:border-primary/50 focus:outline-none transition-all appearance-none cursor-pointer text-foreground font-medium"
                   >
                     <option value="" className="bg-card">Choose institution...</option>
                     {NIGERIAN_BANKS.map((bank) => (
@@ -433,7 +433,7 @@ interface FailedPayout {
                   onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, "").slice(0, 10))}
                   placeholder="0123456789"
                   maxLength={10}
-                  className="w-full h-14 rounded-2xl p-4 text-base bg-white/5 border border-border focus:border-[#388E3C]/50 focus:outline-none transition-all text-foreground font-medium placeholder:text-muted-foreground"
+                  className="w-full h-14 rounded-2xl p-4 text-base bg-background/5 border border-border focus:border-primary/50 focus:outline-none transition-all text-foreground font-medium placeholder:text-muted-foreground"
                 />
               </div>
 
@@ -450,7 +450,7 @@ interface FailedPayout {
                   value={accountName}
                   readOnly
                   placeholder="Auto-resolving name..."
-                  className="w-full h-14 rounded-2xl p-4 text-base bg-white/5 border border-border focus:outline-none transition-all text-foreground/70 font-medium placeholder:text-muted-foreground cursor-not-allowed"
+                  className="w-full h-14 rounded-2xl p-4 text-base bg-background/5 border border-border focus:outline-none transition-all text-foreground/70 font-medium placeholder:text-muted-foreground cursor-not-allowed"
                 />
               </div>
             </div>
@@ -462,11 +462,11 @@ interface FailedPayout {
                 disabled={loading || !bankCode || !accountNumber || !accountName}
                 className="w-full h-16 rounded-[24px] flex items-center justify-center text-foreground text-lg font-black transition-all active:scale-95 disabled:opacity-50 disabled:grayscale group relative overflow-hidden"
                 style={{
-                  background: "#388E3C",
+                  background: "hsl(var(--primary))",
                   boxShadow: "0 12px 24px -6px rgba(56,142,60,0.4)"
                 }}
               >
-                <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+                <div className="absolute inset-0 bg-background/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
                 <span className="relative z-10">
                   {loading ? (
                     <div className="flex items-center gap-3">
@@ -490,7 +490,7 @@ interface FailedPayout {
         )}
 
         {/* Security Note */}
-        <div className="flex items-center justify-center gap-3 px-6 py-4 rounded-3xl bg-white/[0.02] border border-border">
+        <div className="flex items-center justify-center gap-3 px-6 py-4 rounded-3xl bg-background/[0.02] border border-border">
           <AlertCircle className="w-4 h-4 text-muted-foreground" />
           <p className="text-[0.625rem] font-black uppercase tracking-widest text-muted-foreground">
             Encrypted & PCI-DSS Compliant Storage

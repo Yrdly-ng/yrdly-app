@@ -40,7 +40,7 @@ export const usePlaces = () => {
     let ward = "";
 
     if (results[0].address_components) {
-      results[0].address_components.forEach((component) => {
+      results[0].address_components.forEach((component: any) => {
         if (component.types.includes("administrative_area_level_1")) {
           state = component.long_name.replace(" State", "");
         }

@@ -47,9 +47,7 @@ const nextConfig = {
     removeConsole: process.env.NODE_ENV === 'production',
   },
   
-  // Ensure proper asset prefix for production
-  assetPrefix: process.env.NODE_ENV === 'production' ? '' : '',
-  
+
   // Disable source maps in production for better performance
   productionBrowserSourceMaps: false,
 

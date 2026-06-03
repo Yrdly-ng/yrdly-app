@@ -114,7 +114,7 @@ export default function AuthCallback() {
   return (
     <div
       className="min-h-[100dvh] flex flex-col items-center justify-center px-4 py-10 overflow-x-hidden"
-      style={{ background: "var(--c-bg)", color: "var(--c-text)", fontFamily: "\"Pacifico\", cursive" }}
+      style={{ background: "var(--c-bg)", color: "var(--c-text)", fontFamily: "var(--font-work-sans)" }}
     >
       {/* Ambient glow */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
@@ -149,7 +149,7 @@ export default function AuthCallback() {
         )}
         
         <p className="text-sm font-medium" style={{ color: "var(--c-text-muted)" }}>
-          If this takes too long, <a href="/home" className="underline transition-opacity hover:opacity-80" style={{ color: "#388E3C" }}>click here</a>
+          If this takes too long, <a href="/home" className="underline transition-opacity hover:opacity-80" style={{ color: "hsl(var(--primary))" }}>click here</a>
         </p>
       </div>
     </div>

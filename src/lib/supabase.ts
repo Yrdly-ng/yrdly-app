@@ -4,12 +4,15 @@ import { createBrowserClient } from '@supabase/ssr';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
+if (process.env.NODE_ENV === 'production' && (!supabaseUrl || !supabaseAnonKey)) {
+  throw new Error('[Yrdly] Missing Supabase environment variables. Check your .env.local file.');
+}
 if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('[Yrdly] Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY');
 }
 
 // Create Supabase client for client-side operations using SSR package to support cookieOptions
-export const supabase = createBrowserClient(supabaseUrl || "https://dummy.supabase.co", supabaseAnonKey || "dummy-key", {
+export const supabase = createBrowserClient(supabaseUrl!, supabaseAnonKey!, {
   cookieOptions: {
     domain: process.env.NEXT_PUBLIC_COOKIE_DOMAIN || '.yrdly.ng',
     maxAge: 365 * 24 * 60 * 60,

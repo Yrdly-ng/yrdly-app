@@ -14,13 +14,13 @@ export function GpsLocationStep({ onLocationFound, onFallbackToManual }: GpsLoca
 
   if (status === "success" && location) {
     return (
-      <div className="w-full rounded-[24px] bg-background/60 border border-[#388E3C]/50 p-6 space-y-6">
+      <div className="w-full rounded-[24px] bg-background/60 border border-primary/50 p-6 space-y-6">
         <div className="flex items-start gap-4">
-          <div className="w-12 h-12 shrink-0 rounded-2xl bg-[#388E3C]/10 flex items-center justify-center">
-            <CheckCircle2 className="w-6 h-6 text-[#388E3C]" />
+          <div className="w-12 h-12 shrink-0 rounded-2xl bg-primary/10 flex items-center justify-center">
+            <CheckCircle2 className="w-6 h-6 text-primary" />
           </div>
           <div>
-            <h4 className="text-white font-bold text-lg mb-1">Location Detected</h4>
+            <h4 className="text-primary-foreground font-bold text-lg mb-1">Location Detected</h4>
             <p className="text-muted-foreground text-sm font-medium">
               {location.lga}, {location.state} State
             </p>
@@ -30,7 +30,7 @@ export function GpsLocationStep({ onLocationFound, onFallbackToManual }: GpsLoca
           <button
             type="button"
             onClick={() => onLocationFound({ state: location.state, lga: location.lga, ward: location.ward, lat: location.lat, lng: location.lng })}
-            className="flex-1 h-12 bg-[#388E3C] hover:bg-[#2E7D32] text-white rounded-xl font-bold transition-colors"
+            className="flex-1 h-12 bg-primary hover:bg-[#2E7D32] text-primary-foreground rounded-xl font-bold transition-colors"
           >
             Confirm Location
           </button>
@@ -40,7 +40,7 @@ export function GpsLocationStep({ onLocationFound, onFallbackToManual }: GpsLoca
               reset();
               onFallbackToManual();
             }}
-            className="px-6 h-12 bg-white/5 hover:bg-white/10 text-white rounded-xl font-bold transition-colors border border-border"
+            className="px-6 h-12 bg-background/5 hover:bg-background/10 text-primary-foreground rounded-xl font-bold transition-colors border border-border"
           >
             Change
           </button>
@@ -52,9 +52,9 @@ export function GpsLocationStep({ onLocationFound, onFallbackToManual }: GpsLoca
   if (status === "requesting" || status === "geocoding") {
     return (
       <div className="w-full rounded-[24px] bg-background/60 border border-border p-8 flex flex-col items-center justify-center space-y-4 text-center">
-        <Loader2 className="w-8 h-8 text-[#388E3C] animate-spin" />
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
         <div>
-          <h4 className="text-white font-bold text-lg">Detecting Location</h4>
+          <h4 className="text-primary-foreground font-bold text-lg">Detecting Location</h4>
           <p className="text-muted-foreground text-sm font-medium">
             {status === "requesting" ? "Asking for permission..." : "Finding your neighborhood..."}
           </p>
@@ -66,16 +66,16 @@ export function GpsLocationStep({ onLocationFound, onFallbackToManual }: GpsLoca
   if (status === OUTSIDE_NIGERIA) {
     return (
       <div className="w-full space-y-4 animate-in fade-in zoom-in-95 duration-300">
-        <div className="w-full rounded-[24px] bg-[#388E3C]/10 border border-[#388E3C]/30 p-6 flex flex-col items-center justify-center space-y-3 text-center">
-          <Map className="w-8 h-8 text-[#388E3C]" />
-          <p className="text-[#388E3C] font-bold text-sm">
+        <div className="w-full rounded-[24px] bg-primary/10 border border-primary/30 p-6 flex flex-col items-center justify-center space-y-3 text-center">
+          <Map className="w-8 h-8 text-primary" />
+          <p className="text-primary font-bold text-sm">
             It looks like you&apos;re currently outside Nigeria. Please select your home community below.
           </p>
         </div>
         <button
           type="button"
           onClick={() => onFallbackToManual(OUTSIDE_NIGERIA)}
-          className="w-full py-4 rounded-xl text-white font-bold bg-[#388E3C] hover:bg-[#2E7D32] transition-colors shadow-lg"
+          className="w-full py-4 rounded-xl text-primary-foreground font-bold bg-primary hover:bg-[#2E7D32] transition-colors shadow-lg"
         >
           Select State & LGA Manually
         </button>
@@ -88,20 +88,20 @@ export function GpsLocationStep({ onLocationFound, onFallbackToManual }: GpsLoca
       <button
         type="button"
         onClick={detectLocation}
-        className="w-full relative group overflow-hidden rounded-[24px] bg-gradient-to-r from-[#388E3C]/20 to-[#388E3C]/10 border border-[#388E3C]/30 p-6 flex items-center justify-between transition-all hover:border-[#388E3C]/60 active:scale-[0.98]"
+        className="w-full relative group overflow-hidden rounded-[24px] bg-gradient-to-r from-primary/20 to-primary/10 border border-primary/30 p-6 flex items-center justify-between transition-all hover:border-primary/60 active:scale-[0.98]"
       >
-        <div className="absolute inset-0 bg-[#388E3C]/10 translate-x-[-100%] group-hover:translate-x-0 transition-transform duration-500 ease-out" />
+        <div className="absolute inset-0 bg-primary/10 translate-x-[-100%] group-hover:translate-x-0 transition-transform duration-500 ease-out" />
         <div className="relative z-10 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-[#388E3C]/20 flex items-center justify-center">
-            <Navigation className="w-5 h-5 text-[#388E3C]" />
+          <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
+            <Navigation className="w-5 h-5 text-primary" />
           </div>
           <div className="text-left">
-            <h4 className="text-white font-black text-lg">Auto-Detect Location</h4>
-            <p className="text-[#388E3C] text-xs font-bold uppercase tracking-wider">Use Device GPS</p>
+            <h4 className="text-primary-foreground font-black text-lg">Auto-Detect Location</h4>
+            <p className="text-primary text-xs font-bold uppercase tracking-wider">Use Device GPS</p>
           </div>
         </div>
-        <div className="relative z-10 w-8 h-8 rounded-full bg-[#388E3C]/20 flex items-center justify-center group-hover:bg-[#388E3C] transition-colors">
-          <MapPin className="w-4 h-4 text-[#388E3C] group-hover:text-white transition-colors" />
+        <div className="relative z-10 w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center group-hover:bg-primary transition-colors">
+          <MapPin className="w-4 h-4 text-primary group-hover:text-primary-foreground transition-colors" />
         </div>
       </button>
 
@@ -121,7 +121,7 @@ export function GpsLocationStep({ onLocationFound, onFallbackToManual }: GpsLoca
       <button
         type="button"
         onClick={() => onFallbackToManual()}
-        className="w-full py-4 rounded-xl text-muted-foreground font-bold hover:text-white hover:bg-white/5 transition-colors border border-transparent hover:border-border"
+        className="w-full py-4 rounded-xl text-muted-foreground font-bold hover:text-primary-foreground hover:bg-background/5 transition-colors border border-transparent hover:border-border"
       >
         Select State & LGA Manually
       </button>

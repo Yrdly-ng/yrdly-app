@@ -13,25 +13,25 @@ const loadingConfig = {
   email: {
     icon: Mail,
     defaultMessage: "Setting up your email verification...",
-    color: "#388E3C",
+    color: "hsl(var(--primary))",
     accent: "rgba(56, 142, 60, 0.2)"
   },
   profile: {
     icon: User,
     defaultMessage: "Creating your profile...",
-    color: "#388E3C",
+    color: "hsl(var(--primary))",
     accent: "rgba(56, 142, 60, 0.2)"
   },
   location: {
     icon: MapPin,
     defaultMessage: "Loading location data...",
-    color: "#388E3C",
+    color: "hsl(var(--primary))",
     accent: "rgba(56, 142, 60, 0.2)"
   },
   general: {
     icon: RefreshCw,
     defaultMessage: "Loading...",
-    color: "#388E3C",
+    color: "hsl(var(--primary))",
     accent: "rgba(56, 142, 60, 0.2)"
   }
 };
@@ -41,7 +41,7 @@ export function LoadingState({ type, message, progress }: LoadingStateProps) {
   const Icon = config.icon;
 
   return (
-    <div className="flex flex-col items-center justify-center p-8 space-y-12 animate-in fade-in zoom-in duration-1000 min-h-[500px] relative overflow-hidden" style={{ fontFamily: "\"Pacifico\", cursive" }}>
+    <div className="flex flex-col items-center justify-center p-8 space-y-12 animate-in fade-in zoom-in duration-1000 min-h-[500px] relative overflow-hidden" style={{ fontFamily: "var(--font-work-sans)" }}>
       
       {/* Dynamic Background Glows */}
       <div 
@@ -53,9 +53,9 @@ export function LoadingState({ type, message, progress }: LoadingStateProps) {
       <div className="relative">
         <div className="relative w-40 h-40">
           {/* Layered Orbiting Rings */}
-          <div className="absolute inset-0 rounded-full border border-[#388E3C]/20 animate-[spin_10s_linear_infinite]" />
-          <div className="absolute inset-4 rounded-full border border-[#388E3C]/10 animate-[spin_6s_linear_reverse_infinite]" />
-          <div className="absolute inset-8 rounded-full border-t-2 border-[#388E3C] animate-[spin_3s_ease-in-out_infinite]" />
+          <div className="absolute inset-0 rounded-full border border-primary/20 animate-[spin_10s_linear_infinite]" />
+          <div className="absolute inset-4 rounded-full border border-primary/10 animate-[spin_6s_linear_reverse_infinite]" />
+          <div className="absolute inset-8 rounded-full border-t-2 border-primary animate-[spin_3s_ease-in-out_infinite]" />
           
           {/* Main Icon Container - Premium Glassmorphism */}
           <div 
@@ -66,7 +66,7 @@ export function LoadingState({ type, message, progress }: LoadingStateProps) {
             }}
           >
             {/* Animated Gradient Shine */}
-            <div className="absolute inset-0 bg-gradient-to-tr from-[#388E3C]/10 via-transparent to-transparent opacity-50" />
+            <div className="absolute inset-0 bg-gradient-to-tr from-primary/10 via-transparent to-transparent opacity-50" />
             
             <div className="relative z-10 flex flex-col items-center gap-3">
               <Icon 
@@ -74,15 +74,15 @@ export function LoadingState({ type, message, progress }: LoadingStateProps) {
                 style={{ animationDuration: type === 'general' ? '2.5s' : '3s' }}
               />
               <div className="flex gap-1.5">
-                <div className="w-1.5 h-1.5 rounded-full bg-[#388E3C] animate-bounce" style={{ animationDelay: '0s' }} />
-                <div className="w-1.5 h-1.5 rounded-full bg-[#388E3C] animate-bounce" style={{ animationDelay: '0.2s' }} />
-                <div className="w-1.5 h-1.5 rounded-full bg-[#388E3C] animate-bounce" style={{ animationDelay: '0.4s' }} />
+                <div className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0s' }} />
+                <div className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0.2s' }} />
+                <div className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0.4s' }} />
               </div>
             </div>
             
             {/* Floating particles */}
-            <Sparkles className="absolute top-6 right-6 w-5 h-5 text-[#388E3C] opacity-40 animate-pulse" />
-            <Sparkles className="absolute bottom-6 left-6 w-3 h-3 text-[#388E3C] opacity-20 animate-pulse" style={{ animationDelay: '1s' }} />
+            <Sparkles className="absolute top-6 right-6 w-5 h-5 text-primary opacity-40 animate-pulse" />
+            <Sparkles className="absolute bottom-6 left-6 w-3 h-3 text-primary opacity-20 animate-pulse" style={{ animationDelay: '1s' }} />
           </div>
         </div>
       </div>
@@ -102,7 +102,7 @@ export function LoadingState({ type, message, progress }: LoadingStateProps) {
 
         {progress !== undefined && (
           <div className="w-full max-w-[280px] mx-auto space-y-5">
-            <div className="h-2.5 w-full bg-white/5 rounded-full overflow-hidden p-0.5 border border-border shadow-inner">
+            <div className="h-2.5 w-full bg-background/5 rounded-full overflow-hidden p-0.5 border border-border shadow-inner">
               <div 
                 className="h-full transition-all duration-1000 ease-out rounded-full relative overflow-hidden"
                 style={{ 
@@ -117,8 +117,8 @@ export function LoadingState({ type, message, progress }: LoadingStateProps) {
             </div>
             <div className="flex justify-between items-center px-2">
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-[#388E3C] animate-pulse" />
-                <span className="text-[0.6875rem] uppercase tracking-[0.25em] font-black text-[#388E3C]">Optimizing</span>
+                <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                <span className="text-[0.6875rem] uppercase tracking-[0.25em] font-black text-primary">Optimizing</span>
               </div>
               <span className="text-[0.6875rem] uppercase tracking-[0.25em] font-black text-foreground">{Math.round(progress)}%</span>
             </div>
@@ -127,8 +127,8 @@ export function LoadingState({ type, message, progress }: LoadingStateProps) {
       </div>
 
       {/* Security/Encouragement Badge */}
-      <div className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-white/[0.03] border border-border backdrop-blur-xl shadow-xl animate-in slide-in-from-bottom-4 duration-1000 delay-500">
-        <CheckCircle className="w-5 h-5 text-[#388E3C]" />
+      <div className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-background/[0.03] border border-border backdrop-blur-xl shadow-xl animate-in slide-in-from-bottom-4 duration-1000 delay-500">
+        <CheckCircle className="w-5 h-5 text-primary" />
         <span className="text-[0.6875rem] uppercase tracking-[0.3em] font-black text-muted-foreground">Secure Handshake Active</span>
       </div>
     </div>

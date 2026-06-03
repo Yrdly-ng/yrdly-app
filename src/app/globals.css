@@ -5,11 +5,11 @@
 
 @layer base {
   :root {
-    --font-sans: "Pacifico", cursive, "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-sans: "Work Sans", sans-serif;
     --font-mono: ui-monospace, monospace;
     --font-jersey25: "Jersey 25", sans-serif;
-    --font-pacifico: "Pacifico", cursive;
     --font-raleway: "Raleway", sans-serif;
+    --font-work-sans: "Work Sans", sans-serif;
 
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -72,48 +72,48 @@
     --c-shadow:    rgba(0,0,0,0.08);
   }
   .dark {
-    --c-bg:        #15181D;
-    --c-card:      #1E2126;
-    --c-card2:     #252A30;
-    --c-text:      #E1E2E9;
-    --c-text-muted:#899485;
-    --c-border:    #2A2F38;
+    --c-bg:        #0A0F0D;
+    --c-card:      #111713;
+    --c-card2:     #1A211B;
+    --c-text:      #FFFFFF;
+    --c-text-muted:#8A9E8B;
+    --c-border:    #2A3D2B;
     --c-shadow:    rgba(0,0,0,0.6);
   }
 
   .dark {
-    --background: 220 12% 6%;    /* #0d0f11 - Neutral Deep Charcoal */
-    --foreground: 210 20% 98%;   /* Almost white */
-    --card: 220 12% 9%;          /* #131619 - Slightly lighter for cards */
-    --card-foreground: 210 20% 98%;
-    --popover: 220 12% 8%;
-    --popover-foreground: 210 20% 98%;
-    --primary: 142 45% 39%;      /* #388E3C - Yrdly Green */
-    --primary-foreground: 0 0% 100%;
-    --secondary: 220 12% 14%;
-    --secondary-foreground: 210 20% 98%;
-    --muted: 220 12% 12%;
-    --muted-foreground: 215 12% 65%;
-    --accent: 142 45% 39%;
-    --accent-foreground: 0 0% 100%;
+    --background: 140 20% 5%;    /* #0A0F0D */
+    --foreground: 0 0% 100%;     /* #FFFFFF */
+    --card: 140 15% 7%;          /* #111713 */
+    --card-foreground: 0 0% 100%;
+    --popover: 140 15% 7%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 117 61% 68%;      /* #82DB7E */
+    --primary-foreground: 140 20% 5%;
+    --secondary: 140 12% 11%;    /* #1A211B */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 140 12% 11%;
+    --muted-foreground: 141 11% 58%; /* #8A9E8B */
+    --accent: 117 61% 68%;       /* #82DB7E */
+    --accent-foreground: 140 20% 5%;
     --destructive: 0 84% 60%;
-    --destructive-foreground: 210 20% 98%;
-    --border: 220 12% 14%;
-    --input: 220 12% 14%;
-    --ring: 142 45% 39%;
-    --chart-1: 142 45% 39%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 143 18% 20%;       /* #2A3D2B */
+    --input: 143 18% 20%;
+    --ring: 117 61% 68%;
+    --chart-1: 117 61% 68%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
-    --sidebar: 220 12% 7%;
-    --sidebar-foreground: 215 12% 90%;
-    --sidebar-primary: 142 45% 39%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 12% 12%;
-    --sidebar-accent-foreground: 142 45% 39%;
-    --sidebar-border: 220 12% 12%;
-    --sidebar-ring: 142 45% 39%;
+    --sidebar: 140 15% 7%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 117 61% 68%;
+    --sidebar-primary-foreground: 140 20% 5%;
+    --sidebar-accent: 140 12% 11%;
+    --sidebar-accent-foreground: 117 61% 68%;
+    --sidebar-border: 143 18% 20%;
+    --sidebar-ring: 117 61% 68%;
 
     --surface-dim: #101418;
     --surface-container-lowest: #0b0e13;

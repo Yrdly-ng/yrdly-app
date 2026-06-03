@@ -13,8 +13,8 @@ const colors = {
   background: 'var(--c-bg)',
   blob: '#A154F2',
   overlay: 'rgba(255, 255, 255, 0.05)',
-  border: '#388E3C',
-  primary: '#388E3C',
+  border: 'hsl(var(--primary))',
+  primary: 'hsl(var(--primary))',
   text: 'var(--c-text)',
   textFaded: 'var(--c-text-muted)',
 };
@@ -111,7 +111,7 @@ export default function ResetPasswordPage() {
         <div className="text-center mb-8 w-full">
           <h1
             className="text-2xl text-[var(--c-text)] leading-tight px-1"
-            style={{ fontFamily: '"Pacifico", cursive' }}
+            style={{ fontFamily: "var(--font-jersey25)" }}
           >
             Set New Password
           </h1>
@@ -171,7 +171,7 @@ export default function ResetPasswordPage() {
 
               <Button
                 type="submit"
-                className={`w-full h-11 ${pillRound} font-sans font-medium text-white hover:opacity-90`}
+                className={`w-full h-11 ${pillRound} font-sans font-medium text-primary-foreground hover:opacity-90`}
                 style={{ background: colors.primary }}
                 disabled={loading}
               >

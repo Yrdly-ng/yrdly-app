@@ -15,10 +15,10 @@ import { ClaimButton } from "@/components/escrow/ClaimButton";
 /* ─── colour tokens matching the Figma ─────────────────────────── */
 const BG = "var(--c-bg)";
 const CARD_BG = "var(--c-card)";
-const GREEN = "#388E3C";
+const GREEN = "hsl(var(--primary))";
 const FADED = "#BBBBBB";
-const FONT_RALEWAY = "\"Pacifico\", cursive";
-const FONT_PACIFICO = "Pacifico, cursive";
+const FONT_RALEWAY = "var(--font-raleway)";
+const FONT_PACIFICO = "var(--font-jersey25)";
 
 export default function MarketplaceItemPage() {
   const params = useParams();

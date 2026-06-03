@@ -13,10 +13,10 @@ import { useToast } from "@/hooks/use-toast";
 import { ActivityIndicator } from "@/components/ActivityIndicator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
-const GREEN = "#388E3C";
+const GREEN = "hsl(var(--primary))";
 const CARD = "var(--c-card)";
-const FONT = "\"Pacifico\", cursive";
-const PACIFICO = "Pacifico, cursive";
+const FONT = "var(--font-work-sans)";
+const PACIFICO = "var(--font-jersey25)";
 
 function deduplicateConversations(conversations: Conversation[]): Conversation[] {
   const seen = new Map<string, Conversation>();
@@ -299,7 +299,7 @@ export function MessagesScreen() {
                 <Edit className="w-5 h-5" style={{ color: GREEN }} />
               </button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md bg-white w-[90%] rounded-xl mx-auto p-0 gap-0 overflow-hidden" style={{ background: "var(--c-bg)" }}>
+            <DialogContent className="sm:max-w-md bg-background w-[90%] rounded-xl mx-auto p-0 gap-0 overflow-hidden" style={{ background: "var(--c-bg)" }}>
               <DialogHeader className="p-4 border-b border-border/20">
                 <DialogTitle style={{ fontFamily: FONT, color: "var(--c-text)" }}>New Message</DialogTitle>
               </DialogHeader>
@@ -315,7 +315,7 @@ export function MessagesScreen() {
                     <button
                       key={friend.id}
                       onClick={() => handleStartChat(friend.id)}
-                      className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-left"
+                      className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-black/5 dark:hover:bg-background/5 transition-colors text-left"
                     >
                       <Avatar className="w-10 h-10 border border-border/10">
                         <AvatarImage src={friend.avatar_url || "/placeholder.svg"} />

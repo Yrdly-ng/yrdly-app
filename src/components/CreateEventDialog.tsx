@@ -44,9 +44,9 @@ import type { Post } from "@/types";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 
-const inputBase = "bg-background border border-[#388E3C] text-foreground placeholder:text-muted-foreground placeholder:italic font-sans text-xs focus-visible:ring-[#388E3C] focus-visible:ring-offset-0";
+const inputBase = "bg-background border border-primary text-foreground placeholder:text-muted-foreground placeholder:italic font-sans text-xs focus-visible:ring-primary focus-visible:ring-offset-0";
 const labelClass = "font-sans font-semibold text-xs text-foreground";
-const pointerClass = "w-2 h-2 border-b border-l border-[#388E3C] rounded-bl-md flex-shrink-0 mt-1.5";
+const pointerClass = "w-2 h-2 border-b border-l border-primary rounded-bl-md flex-shrink-0 mt-1.5";
 
 const BlobImage = memo(({ file, className }: { file: File, className?: string }) => {
   const [url, setUrl] = useState<string>('');
@@ -244,7 +244,7 @@ const CreateEventDialogComponent = memo(function CreateEventDialog({ children, o
   const headerBlock = (
     <div className="flex items-start justify-between gap-4 p-5 sm:p-6 pb-2 flex-shrink-0">
       <div>
-        <h2 className="text-lg font-normal text-muted-foreground" style={{ fontFamily: '"Pacifico", cursive' }}>
+        <h2 className="text-lg font-normal text-muted-foreground" style={{ fontFamily: "var(--font-jersey25)" }}>
           {finalTitle}
         </h2>
         <p className="font-sans font-light italic text-xs text-foreground mt-0.5">{finalDescription}</p>
@@ -311,7 +311,7 @@ const CreateEventDialogComponent = memo(function CreateEventDialog({ children, o
                     <FormLabel className={labelClass}>Location</FormLabel>
                   </div>
                   <FormControl>
-                    <div className={cn("[&_input]:bg-background [&_input]:border-[#388E3C] [&_input]:rounded-full [&_input]:text-foreground [&_input]:placeholder:text-muted-foreground [&_input]:h-10")}>
+                    <div className={cn("[&_input]:bg-background [&_input]:border-primary [&_input]:rounded-full [&_input]:text-foreground [&_input]:placeholder:text-muted-foreground [&_input]:h-10")}>
                       <LocationInput name={field.name} control={form.control} defaultValue={field.value} />
                     </div>
                   </FormControl>
@@ -361,7 +361,7 @@ const CreateEventDialogComponent = memo(function CreateEventDialog({ children, o
                     <FormLabel className={labelClass}>Event Image</FormLabel>
                   </div>
                   <FormControl>
-                    <label className={cn("flex items-center gap-2 rounded-[5px] border border-[#388E3C] bg-background px-4 py-3 cursor-pointer text-foreground font-sans text-xs font-semibold italic")}>
+                    <label className={cn("flex items-center gap-2 rounded-[5px] border border-primary bg-background px-4 py-3 cursor-pointer text-foreground font-sans text-xs font-semibold italic")}>
                       <span>Choose Files</span>
                       <span className="font-normal text-muted-foreground">
                         {value && value.length > 0 ? `${value.length} file(s)` : "No file chosen"}
@@ -378,7 +378,7 @@ const CreateEventDialogComponent = memo(function CreateEventDialog({ children, o
                             <Image src={url} alt="" width={56} height={56} className="w-full h-full object-cover" />
                             <button
                               type="button"
-                              className="absolute top-0 right-0 w-5 h-5 rounded-full flex items-center justify-center bg-[#FF383C] border border-white"
+                              className="absolute top-0 right-0 w-5 h-5 rounded-full flex items-center justify-center bg-[#FF383C] border border-border"
                               onClick={() => setRemovedImageIndexes((prev) => [...prev, index])}
                             >
                               <X className="w-3 h-3 text-foreground" />
@@ -391,7 +391,7 @@ const CreateEventDialogComponent = memo(function CreateEventDialog({ children, o
                           <BlobImage file={file as File} className="w-full h-full object-cover" />
                           <button
                             type="button"
-                            className="absolute top-0 right-0 w-5 h-5 rounded-full flex items-center justify-center bg-[#FF383C] border border-white"
+                            className="absolute top-0 right-0 w-5 h-5 rounded-full flex items-center justify-center bg-[#FF383C] border border-border"
                             onClick={() => {
                               const dt = new DataTransfer();
                               Array.from(value).forEach((f, i) => { if (i !== index) dt.items.add(f as File); });
@@ -414,7 +414,7 @@ const CreateEventDialogComponent = memo(function CreateEventDialog({ children, o
           <Button
             type="submit"
             className="w-full rounded-full h-12 font-sans font-medium text-sm text-foreground"
-            style={{ background: "#388E3C" }}
+            style={{ background: "hsl(var(--primary))" }}
             disabled={loading}
           >
             {loading ? (isEditMode ? "Saving..." : "Creating...") : (isEditMode ? "Save Changes" : "Create Event")}

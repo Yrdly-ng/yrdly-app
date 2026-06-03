@@ -23,9 +23,9 @@ import { useTheme } from "@/components/ThemeProvider";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 
-const FONT = "\"Pacifico\", cursive";
-const PACIFICO = "Pacifico, cursive";
-const GREEN = "#388E3C";
+const FONT = "var(--font-work-sans)";
+const PACIFICO = "var(--font-jersey25)";
+const GREEN = "hsl(var(--primary))";
 const CARD = "var(--c-card)";
 
 interface SettingsScreenProps {
@@ -50,7 +50,7 @@ function Toggle({
       style={{ background: checked ? GREEN : "var(--c-card2)" }}
     >
       <span
-        className="pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transition-transform duration-200"
+        className="pointer-events-none inline-block h-5 w-5 rounded-full bg-background shadow transition-transform duration-200"
         style={{
           transform: checked ? "translateX(20px)" : "translateX(2px)",
           marginTop: 2,
@@ -148,7 +148,6 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
     onlineStatus: true,
   });
 
-  const [isDark, setIsDark] = useState(theme === "dark");
   const [emailReminders, setEmailReminders] = useState(true);
 
   useEffect(() => {
@@ -196,9 +195,8 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
     }
   };
 
-  const handleDarkModeToggle = (checked: boolean) => {
-    setIsDark(checked);
-    setTheme(checked ? "dark" : "light");
+  const handleThemeChange = (newTheme: string) => {
+    setTheme(newTheme);
   };
 
   const handleEmailRemindersToggle = async (checked: boolean) => {
@@ -229,7 +227,7 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
           <button onClick={() => router.back()} className="w-10 h-10 flex items-center justify-center rounded-full transition-colors hover:bg-accent">
             <ArrowLeft className="w-5 h-5 text-foreground" style={{ color: "var(--c-text)" }} />
           </button>
-          <h1 style={{ fontFamily: "\"Pacifico\", cursive", fontSize: 18, fontWeight: 700, color: "var(--c-text)" }}>Settings</h1>
+          <h1 style={{ fontFamily: "var(--font-jersey25)", fontSize: 18, fontWeight: 700, color: "var(--c-text)" }}>Settings</h1>
         </div>
       </header>
 
@@ -314,12 +312,32 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
         {/* ── Appearance ── */}
         <div className="space-y-3">
           <SectionLabel>Appearance</SectionLabel>
-          <ToggleRow
-            icon={Moon}
-            label="Dark mode"
-            checked={isDark}
-            onChange={handleDarkModeToggle}
-          />
+          <div className="flex gap-2">
+            <button
+              onClick={() => handleThemeChange('light')}
+              className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
+                theme === 'light' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+              }`}
+            >
+              Light
+            </button>
+            <button
+              onClick={() => handleThemeChange('dark')}
+              className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
+                theme === 'dark' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+              }`}
+            >
+              Dark
+            </button>
+            <button
+              onClick={() => handleThemeChange('system')}
+              className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
+                theme === 'system' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+              }`}
+            >
+              System
+            </button>
+          </div>
         </div>
 
         {/* ── Notifications ── */}

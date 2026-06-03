@@ -158,7 +158,7 @@ export async function POST(request: NextRequest) {
 
                   const totalSold = (paidTickets?.length || 0) + 1; // +1 for current free ticket
                   const grossRevenue = (paidTickets || []).reduce((sum, t) => sum + (t.amount_paid || 0), 0);
-                  const netPayout = Math.round(grossRevenue * (1 - 0.02) * 100) / 100; // 2% commission
+                  const netPayout = Math.round(grossRevenue * (1 - EVENT_CONSTANTS.COMMISSION_RATE) * 100) / 100; // Apply commission
 
                   console.log('[v0] Sending free ticket organizer notification to:', organizer.email);
                   await ResendEmailService.sendTicketSaleNotificationEmail(

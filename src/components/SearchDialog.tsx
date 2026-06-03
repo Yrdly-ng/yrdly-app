@@ -11,7 +11,7 @@ import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useKeyboardNavigation } from '@/hooks/use-keyboard-navigation';
 
-const GREEN      = "#388E3C";
+const GREEN      = "hsl(var(--primary))";
 const GREEN_LIGHT = "#82DB7E";
 const CARD       = "var(--c-card)";
 const CARD_HIGH  = "var(--c-card2)";
@@ -207,7 +207,7 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
             {!searchTerm && recents.length > 0 && (
               <section>
                 <div className="flex justify-between items-end mb-4 px-1">
-                  <h2 style={{ fontFamily: 'Pacifico, cursive', color: 'var(--c-text)', fontSize: 20 }}>Recent</h2>
+                  <h2 style={{ fontFamily: "var(--font-jersey25)", color: 'var(--c-text)', fontSize: 20 }}>Recent</h2>
                   <button
                     onClick={() => { localStorage.removeItem(RECENT_KEY); setRecents([]); }}
                     className="text-xs font-bold uppercase tracking-widest"
@@ -243,7 +243,7 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
             {!loading && searchTerm.length >= 2 && filteredResults.length === 0 && (
               <div className="flex flex-col items-center justify-center py-20">
                 <Search className="w-14 h-14 mb-4" style={{ color: GREEN, opacity: 0.3 }} />
-                <p style={{ fontFamily: 'Pacifico, cursive', color: 'var(--c-text)', fontSize: 20 }}>Nothing found</p>
+                <p style={{ fontFamily: "var(--font-work-sans)", color: 'var(--c-text)', fontSize: 20 }}>Nothing found</p>
                 <p className="mt-2 text-sm" style={{ color: 'var(--c-text-muted)', fontFamily: 'Inter, sans-serif' }}>Try a different search</p>
               </div>
             )}

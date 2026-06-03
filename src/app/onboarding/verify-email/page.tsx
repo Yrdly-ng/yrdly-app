@@ -181,7 +181,7 @@ function VerifyEmailContent() {
   if (loading) {
     return (
       <div className="min-h-[100dvh] flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: "#388E3C" }} />
+        <Loader2 className="w-8 h-8 animate-spin" style={{ color: "hsl(var(--primary))" }} />
       </div>
     );
   }
@@ -189,7 +189,7 @@ function VerifyEmailContent() {
   return (
     <div
       className="min-h-[100dvh] flex flex-col items-center justify-center px-4 py-10 overflow-x-hidden bg-background text-foreground"
-      style={{ fontFamily: "\"Pacifico\", cursive" }}
+      style={{ fontFamily: "var(--font-work-sans)" }}
     >
       {/* Ambient glow */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
@@ -212,14 +212,14 @@ function VerifyEmailContent() {
         {/* Heading */}
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-black tracking-tight text-foreground">
-            Check your <span style={{ color: "#388E3C" }}>email</span>
+            Check your <span style={{ color: "hsl(var(--primary))" }}>email</span>
           </h1>
           <p className="text-sm font-medium text-muted-foreground">
             We sent a 6-digit code to
           </p>
           <p
             className="text-sm font-bold px-4 py-1.5 rounded-full inline-block"
-            style={{ background: "rgba(56,142,60,0.12)", color: "#388E3C", border: "1px solid rgba(56,142,60,0.25)" }}
+            style={{ background: "rgba(56,142,60,0.12)", color: "hsl(var(--primary))", border: "1px solid rgba(56,142,60,0.25)" }}
           >
             {email || "your email"}
           </p>
@@ -234,14 +234,14 @@ function VerifyEmailContent() {
                 className="w-20 h-20 rounded-[24px] flex items-center justify-center"
                 style={{ background: "rgba(56,142,60,0.15)", border: "1px solid rgba(56,142,60,0.3)" }}
               >
-                <CheckCircle2 className="w-10 h-10" style={{ color: "#388E3C" }} />
+                <CheckCircle2 className="w-10 h-10" style={{ color: "hsl(var(--primary))" }} />
               </div>
             ) : (
               <div
                 className="w-20 h-20 rounded-[24px] flex items-center justify-center"
                 style={{ background: "rgba(56,142,60,0.08)", border: "1px solid rgba(56,142,60,0.2)" }}
               >
-                <Mail className="w-10 h-10" style={{ color: "#388E3C" }} />
+                <Mail className="w-10 h-10" style={{ color: "hsl(var(--primary))" }} />
               </div>
             )}
           </div>
@@ -270,7 +270,7 @@ function VerifyEmailContent() {
                     ? "2px solid #388E3C"
                     : "1.5px solid hsl(var(--border))",
                   color: "hsl(var(--foreground))",
-                  caretColor: "#388E3C",
+                  caretColor: "hsl(var(--primary))",
                   boxShadow: digit ? "0 0 0 3px rgba(56,142,60,0.1)" : "none",
                 }}
                 aria-label={`OTP digit ${i + 1}`}
@@ -287,7 +287,7 @@ function VerifyEmailContent() {
 
           {/* Success message */}
           {success && (
-            <p className="text-center text-sm font-bold" style={{ color: "#388E3C" }}>
+            <p className="text-center text-sm font-bold" style={{ color: "hsl(var(--primary))" }}>
               Verified! Taking you to your profile setup…
             </p>
           )}
@@ -297,8 +297,8 @@ function VerifyEmailContent() {
             <button
               onClick={() => handleVerify()}
               disabled={verifying}
-              className="w-full h-14 rounded-[18px] font-black text-white text-base flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-60"
-              style={{ background: "#388E3C", boxShadow: "0 12px 28px -6px rgba(56,142,60,0.45)" }}
+              className="w-full h-14 rounded-[18px] font-black text-primary-foreground text-base flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-60"
+              style={{ background: "hsl(var(--primary))", boxShadow: "0 12px 28px -6px rgba(56,142,60,0.45)" }}
             >
               {verifying ? (
                 <>
@@ -360,7 +360,7 @@ export default function OnboardingVerifyEmailPage() {
   return (
     <Suspense fallback={
       <div className="min-h-[100dvh] flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: "#388E3C" }} />
+        <Loader2 className="w-8 h-8 animate-spin" style={{ color: "hsl(var(--primary))" }} />
       </div>
     }>
       <VerifyEmailContent />

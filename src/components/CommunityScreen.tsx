@@ -16,10 +16,10 @@ import { useFriendshipGlobal } from "@/hooks/use-friendship-global";
 import { useLocation } from "@/contexts/LocationContext";
 import { LocationChip } from "@/components/LocationChip";
 
-const GREEN = "#388E3C";
+const GREEN = "hsl(var(--primary))";
 const CARD = "var(--c-card)";
-const FONT = "\"Pacifico\", cursive";
-const PACIFICO = "Pacifico, cursive";
+const FONT = "var(--font-work-sans)";
+const PACIFICO = "var(--font-jersey25)";
 
 interface CommunityScreenProps {
   className?: string;
@@ -125,7 +125,7 @@ function StatCard({
         <Icon className="w-5 h-5" style={{ color: GREEN }} />
       </div>
       <div>
-        <div className="text-xl font-bold text-foreground" style={{ fontFamily: "\"Pacifico\", cursive" }}>
+        <div className="text-xl font-bold text-foreground" style={{ fontFamily: "var(--font-work-sans)" }}>
           {value}
         </div>
         <div
@@ -345,7 +345,7 @@ export function CommunityScreen({ className }: CommunityScreenProps) {
             placeholder="Search for neighbors or posts..."
             value={searchQuery}
             onChange={(e) => handleSearchChange(e.target.value)}
-            className="w-full rounded-full px-6 pl-11 py-4 text-sm text-foreground outline-none focus:ring-1 focus:ring-[#388E3C]/50"
+            className="w-full rounded-full px-6 pl-11 py-4 text-sm text-foreground outline-none focus:ring-1 focus:ring-primary/50"
             style={{
               background: "var(--c-card2)",
               border: "0.5px solid #388E3C",
@@ -412,7 +412,7 @@ export function CommunityScreen({ className }: CommunityScreenProps) {
         {(pendingFriendRequests.length > 0 || friendRequestsLoading) && (
           <section className="space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-foreground font-semibold text-lg" style={{ fontFamily: "\"Pacifico\", cursive" }}>
+              <h2 className="text-foreground font-semibold text-lg" style={{ fontFamily: "var(--font-jersey25)" }}>
                 Friend Requests
               </h2>
               <button
@@ -458,7 +458,7 @@ export function CommunityScreen({ className }: CommunityScreenProps) {
                           </AvatarFallback>
                         </Avatar>
                         <div className="text-center">
-                          <p className="text-foreground text-sm font-semibold" style={{ fontFamily: "\"Pacifico\", cursive" }}>
+                          <p className="text-foreground text-sm font-semibold" style={{ fontFamily: "var(--font-work-sans)" }}>
                             {sender.name}
                           </p>
                           {loc && (
@@ -479,7 +479,7 @@ export function CommunityScreen({ className }: CommunityScreenProps) {
 
         {/* ── Recent Updates Feed ── */}
         <section className="space-y-4">
-          <h2 className="text-foreground font-semibold text-lg" style={{ fontFamily: "\"Pacifico\", cursive" }}>
+          <h2 className="text-foreground font-semibold text-lg" style={{ fontFamily: "var(--font-jersey25)" }}>
             Recent Updates
           </h2>
 

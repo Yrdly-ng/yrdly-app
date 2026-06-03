@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 
+// @ts-ignore
 import './globals.css';
 import { cn } from '@/lib/utils';
 import { Toaster } from '@/components/ui/toaster';
@@ -20,13 +21,6 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-  viewportFit: 'cover',
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
-    { media: '(prefers-color-scheme: dark)', color: 'var(--c-bg)' }
-  ]
 };
 
 export default function RootLayout({
@@ -41,7 +35,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}
         <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Jersey+25&family=Pacifico&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Jersey+25&family=Raleway:wght@300;400;500;600;700&family=Work+Sans:wght@300;400;500;600;700&display=swap"
           rel="stylesheet"
         />
       </head>
@@ -52,7 +46,7 @@ export default function RootLayout({
             attribute="class"
             defaultTheme="light"
             themes={['light', 'dark']}
-            enableSystem={false}
+            enableSystem={true}
             disableTransitionOnChange
             storageKey="yrdly-theme"
           >

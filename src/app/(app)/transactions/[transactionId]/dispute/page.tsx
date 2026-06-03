@@ -11,7 +11,7 @@ import { DisputeService, DisputeEvidence } from "@/lib/dispute-service";
 const BG    = "var(--c-bg)";
 const CARD  = "var(--c-card)";
 const CARDLO = "var(--c-bg)";
-const GREEN = "#388E3C";
+const GREEN = "hsl(var(--primary))";
 const RED   = "#E53935";
 const MUTED = "var(--c-text-muted)";
 
@@ -69,10 +69,10 @@ export default function DisputePage() {
       <header className="fixed top-0 w-full z-50 bg-[var(--c-bg)]/80 backdrop-blur-xl flex items-center px-6 h-16 w-full">
         <div className="flex items-center gap-4 w-full">
           <button onClick={() => router.back()} className="active:scale-95 transition-transform hover:opacity-80 transition-opacity">
-            <ArrowLeft className="text-[#388E3C] w-6 h-6" />
+            <ArrowLeft className="text-primary w-6 h-6" />
           </button>
           <div className="flex items-center gap-2">
-            <h1 className="font-pacifico text-2xl tracking-tight text-on-surface" style={{ fontFamily: "Pacifico, cursive" }}>Raise a Dispute</h1>
+            <h1 className="font-jersey25 text-2xl tracking-tight text-on-surface" style={{ fontFamily: "var(--font-jersey25)" }}>Raise a Dispute</h1>
             <span className="bg-[#E53935] w-2 h-2 rounded-full ring-4 ring-[#E53935]/20 animate-pulse"></span>
           </div>
         </div>
@@ -96,7 +96,7 @@ export default function DisputePage() {
                   key={i}
                   className={`flex items-center justify-between p-4 rounded-[11px] border-l-4 cursor-pointer group transition-all ${
                     active 
-                      ? "bg-surface-container border-[#388E3C] ring-1 ring-[#388E3C]" 
+                      ? "bg-surface-container border-primary ring-1 ring-primary" 
                       : "bg-surface-container-low hover:bg-surface-container border-transparent"
                   }`}
                 >
@@ -110,8 +110,8 @@ export default function DisputePage() {
                     onChange={() => setSelected(i)}
                     className={`w-5 h-5 border-2 bg-transparent focus:ring-0 ${
                       active 
-                        ? "border-[#388E3C] text-[#388E3C] checked:bg-[#388E3C]" 
-                        : "border-outline-variant text-[#388E3C]"
+                        ? "border-primary text-primary checked:bg-primary" 
+                        : "border-outline-variant text-primary"
                     }`}
                   />
                 </label>
@@ -129,7 +129,7 @@ export default function DisputePage() {
           <textarea
             value={detail}
             onChange={(e) => setDetail(e.target.value.slice(0, 150))}
-            className="w-full h-32 bg-[#1B2B3A] border-none focus:ring-1 focus:ring-[#388E3C] rounded-[11px] p-4 font-raleway text-sm text-on-surface placeholder:italic placeholder:font-light placeholder:text-outline/50 transition-all resize-none"
+            className="w-full h-32 bg-[#1B2B3A] border-none focus:ring-1 focus:ring-primary rounded-[11px] p-4 font-raleway text-sm text-on-surface placeholder:italic placeholder:font-light placeholder:text-outline/50 transition-all resize-none"
             style={{ fontFamily: "Raleway, sans-serif" }}
             placeholder="Tell us what happened..."
           ></textarea>
@@ -140,9 +140,9 @@ export default function DisputePage() {
           <label className="text-on-surface-variant font-raleway text-xs uppercase tracking-widest font-bold px-1" style={{ fontFamily: "Raleway, sans-serif" }}>Evidence</label>
           <button 
             onClick={() => fileRef.current?.click()}
-            className="w-full aspect-[4/1] bg-surface-container border-2 border-dashed border-[#388E3C] rounded-[11px] flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-surface-container-high transition-colors"
+            className="w-full aspect-[4/1] bg-surface-container border-2 border-dashed border-primary rounded-[11px] flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-surface-container-high transition-colors"
           >
-            <Camera className="text-[#388E3C] w-6 h-6" />
+            <Camera className="text-primary w-6 h-6" />
             <p className="font-raleway text-[0.75rem] text-[#bfcab9]" style={{ fontFamily: "Raleway, sans-serif" }}>Upload photos or screenshots</p>
           </button>
           <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImageAdd} />
@@ -156,7 +156,7 @@ export default function DisputePage() {
                   <img src={src} alt="Evidence" className="w-full h-full object-cover" />
                   <button 
                     onClick={() => setImages((prev) => prev.filter((_, idx) => idx !== i))}
-                    className="absolute top-1 right-1 w-6 h-6 bg-black/60 backdrop-blur-md rounded-full flex items-center justify-center text-white"
+                    className="absolute top-1 right-1 w-6 h-6 bg-black/60 backdrop-blur-md rounded-full flex items-center justify-center text-primary-foreground"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -171,7 +171,7 @@ export default function DisputePage() {
           <button 
             onClick={handleSubmit}
             disabled={loading}
-            className="w-full py-4 bg-[#E53935] text-white font-raleway font-bold rounded-full shadow-lg shadow-[#E53935]/20 active:scale-95 transition-all"
+            className="w-full py-4 bg-[#E53935] text-primary-foreground font-raleway font-bold rounded-full shadow-lg shadow-[#E53935]/20 active:scale-95 transition-all"
             style={{ fontFamily: "Raleway, sans-serif" }}
           >
             {loading ? "Submitting..." : "Submit Dispute"}
