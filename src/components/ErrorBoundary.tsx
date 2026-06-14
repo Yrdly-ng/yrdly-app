@@ -5,7 +5,6 @@ import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import * as Sentry from '@sentry/nextjs';
 import { trackComponentError } from '@/lib/sentry';
 
 interface Props {
@@ -55,18 +54,6 @@ export class ErrorBoundary extends Component<Props, State> {
       props: {
         hasCustomFallback: !!this.props.fallback,
         hasCustomErrorHandler: !!this.props.onError,
-      },
-    });
-
-    // Also capture with Sentry directly for additional context
-    Sentry.captureException(error, {
-      contexts: {
-        react: {
-          componentStack: errorInfo.componentStack,
-        },
-      },
-      tags: {
-        error_boundary: true,
       },
     });
 

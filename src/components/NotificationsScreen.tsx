@@ -21,7 +21,6 @@ import { useFriendshipContext } from "@/contexts/FriendshipContext";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNowStrict } from "date-fns";
 import { useRouter } from "next/navigation";
-import * as Sentry from "@sentry/nextjs";
 import {
   AlertDialog,
   AlertDialogAction,
