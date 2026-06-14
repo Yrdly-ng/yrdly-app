@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getAuthenticatedUser } from "@/lib/supabase-server";
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { getPostHogClient } from '@/lib/posthog-server';
 
 /**
  * POST /api/events/tickets/refund
@@ -81,6 +82,17 @@ export async function POST(request: NextRequest) {
     } catch (e) {
       console.error('Failed to send refund notification:', e);
     }
+
+    const posthog = getPostHogClient();
+    posthog.capture({
+      distinctId: user.id,
+      event: 'ticket_refunded',
+      properties: {
+        ticket_id,
+        event_id: event.id,
+        amount: ticket.amount_paid,
+      },
+    });
 
     return NextResponse.json({ success: true, message: 'Refund processed successfully' });
   } catch (error) {

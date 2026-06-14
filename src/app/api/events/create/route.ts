@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from "@/lib/supabase-server";
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { createClient } from '@supabase/supabase-js';
+import { getPostHogClient } from '@/lib/posthog-server';
 
 /**
  * POST /api/events/create
@@ -150,6 +151,20 @@ export async function POST(request: NextRequest) {
         // Non-critical, continue
       }
     }
+
+    const posthog = getPostHogClient();
+    posthog.capture({
+      distinctId: user.id,
+      event: 'event_created',
+      properties: {
+        event_id: event.id,
+        title,
+        category: category || 'General',
+        status,
+        has_paid_tiers: hasPaidTiers,
+        ticket_tier_count: (ticketTiers || []).length,
+      },
+    });
 
     return NextResponse.json({ success: true, eventId: event.id, status });
   } catch (error) {

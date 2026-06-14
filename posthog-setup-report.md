@@ -1,33 +1,41 @@
 <wizard-report>
 # PostHog post-wizard report
 
-The wizard has completed a deep integration of PostHog analytics into the Yrdly app. PostHog was already partially integrated (provider + pageview tracking), so the wizard migrated the initialization to `instrumentation-client.ts` (the recommended approach for Next.js 15.3+), removed the `useEffect`-based init from `PostHogProvider`, added `capture_exceptions: true` for error tracking, and configured a reverse proxy. A server-side client (`posthog-node`) was installed and wired into four critical API routes. User identification and sign-out reset were added to the auth flows.
+The wizard has completed a deep integration of PostHog into the Yrdly app. The critical fix was creating `instrumentation-client.ts` at the project root — PostHog was imported and called throughout the codebase but `posthog.init()` was never invoked, so all client-side events were silently dropped. Six new events were added to cover gaps in server-side and client-side tracking, user identification was extended to cover Google OAuth callbacks, and a five-insight dashboard was created in PostHog.
+
+## Changes summary
+
+| Area | Change |
+|---|---|
+| `instrumentation-client.ts` (new) | Calls `posthog.init()` — the missing initialization. Uses the `/ingest` reverse proxy already configured in `next.config.mjs`. Sets `capture_pageview: false` since `PostHogPageView` handles it manually. Enables `capture_exceptions: true`. |
+| `src/hooks/use-supabase-auth.tsx` | Added `posthog.identify()` in the `onAuthStateChange` handler to identify users after Google OAuth redirects and on session restore. |
+| `.env.local` | Confirmed `NEXT_PUBLIC_POSTHOG_KEY` and `NEXT_PUBLIC_POSTHOG_HOST` are set to the correct values. |
+
+## Events added
 
 | Event | Description | File |
 |---|---|---|
-| `user_signed_up` | Fired when a user creates a new email/password account. Calls `posthog.identify()` with the new user's ID and email. | `src/app/login/page.tsx` |
-| `user_signed_in` | Fired when a user signs in with email/password. Calls `posthog.identify()` with user ID and email. | `src/app/login/page.tsx` |
-| `google_sign_in_initiated` | Fired when a user clicks the Google sign-in button. | `src/app/login/page.tsx` |
-| `user_signed_out` | Fired before sign-out; followed by `posthog.reset()` to clear the identity. | `src/hooks/use-supabase-auth.tsx` |
-| `marketplace_item_clicked` | Fired when a user clicks a marketplace listing. Properties: `item_id`, `item_title`, `item_price`. | `src/app/(app)/marketplace/page.tsx` |
-| `marketplace_seller_messaged` | Fired when a user opens a chat with a seller. Properties: `item_id`, `item_title`, `item_price`, `seller_id`. | `src/app/(app)/marketplace/page.tsx` |
-| `payment_verified` | Fired on the client when marketplace payment verification succeeds. Properties: `transaction_id`, `amount`, `tx_ref`. | `src/app/(app)/payment/verify/page.tsx` |
-| `payment_verification_failed` | Fired on the client when payment verification fails. Properties: `error`, `tx_ref`. | `src/app/(app)/payment/verify/page.tsx` |
-| `payment_initialized` | Server-side: fired when an escrow payment link is successfully created. Properties: `transaction_id`, `item_id`, `amount`, `currency`, `seller_id`. | `src/app/api/payment/initialize/route.ts` |
-| `ticket_purchased` | Server-side: fired when a free ticket is issued or a paid ticket payment link is created. Properties: `ticket_id`/`tx_ref`, `event_id`, `tier_id`, `tier_name`, `amount`, `is_free`. | `src/app/api/events/tickets/purchase/route.ts` |
-| `event_published` | Server-side: fired when an organizer publishes a draft event. Properties: `event_id`. | `src/app/api/events/[id]/publish/route.ts` |
-| `event_cancelled` | Server-side: fired when an organizer cancels an event and refunds are triggered. Properties: `event_id`, `tickets_refunded`, `refund_errors`. | `src/app/api/events/[id]/cancel/route.ts` |
+| `event_created` | Server-side: fired when a user creates a new event (DRAFT or PUBLISHED). Properties: `event_id`, `title`, `category`, `status`, `has_paid_tiers`, `ticket_tier_count`. | `src/app/api/events/create/route.ts` |
+| `dispute_opened` | Client-side: fired when a user submits the Open Dispute form. Properties: `transaction_id`, `dispute_reason`, `has_evidence`. | `src/components/disputes/OpenDisputeDialog.tsx` |
+| `review_submitted` | Client-side: fired when a user submits a business review after a transaction. Properties: `business_id`, `transaction_id`, `rating`, `has_comment`. | `src/components/reviews/SubmitReviewDialog.tsx` |
+| `ticket_checked_in` | Server-side: fired when an organizer scans and checks in a ticket holder. Properties: `event_id`, `ticket_id`, `tier_name`. | `src/app/api/events/checkin/route.ts` |
+| `ticket_refunded` | Server-side: fired when an organizer issues a manual ticket refund. Properties: `ticket_id`, `event_id`, `amount`. | `src/app/api/events/tickets/refund/route.ts` |
+| `free_item_claimed` | Server-side: fired when a buyer claims a free marketplace item. Properties: `item_id`, `transaction_id`, `seller_id`. | `src/app/api/marketplace/claim/route.ts` |
+
+## Previously existing events (no changes needed)
+
+`user_signed_up`, `user_signed_in`, `google_sign_in_initiated`, `user_signed_out`, `marketplace_item_clicked`, `marketplace_seller_messaged`, `payment_initialized`, `payment_verified`, `payment_verification_failed`, `ticket_purchased`, `event_published`, `event_cancelled`
 
 ## Next steps
 
 We've built some insights and a dashboard for you to keep an eye on user behavior, based on the events we just instrumented:
 
-- [Analytics basics dashboard](/dashboard/1649209)
-- [Sign-up total (last 30 days)](/insights/VOZSNQJI)
-- [User sign-ups and sign-ins](/insights/rP5iXxZ4)
-- [Payments over time](/insights/oJWz16t5)
-- [Marketplace purchase funnel](/insights/CQAkv3mi)
-- [Event publishing and ticket sales](/insights/JADfGgft)
+- [Analytics basics (wizard) — Dashboard](https://us.posthog.com/project/469812/dashboard/1710932)
+- [Marketplace Purchase Funnel](https://us.posthog.com/project/469812/insights/PNVDPOAY)
+- [Event Ticketing Funnel](https://us.posthog.com/project/469812/insights/OQ1j3kpZ)
+- [New User Signups](https://us.posthog.com/project/469812/insights/lOCno9mS)
+- [Key Business Activity](https://us.posthog.com/project/469812/insights/mcwEMFvJ)
+- [Disputes & Reviews Trend](https://us.posthog.com/project/469812/insights/cCai4OJE)
 
 ### Agent skill
 

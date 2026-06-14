@@ -13,6 +13,7 @@ import { DisputeService, DisputeEvidence } from '@/lib/dispute-service';
 import { StorageService } from '@/lib/storage-service';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-supabase-auth';
+import posthog from 'posthog-js';
 
 interface OpenDisputeDialogProps {
   transactionId: string;
@@ -123,6 +124,12 @@ export function OpenDisputeDialog({ transactionId, children }: OpenDisputeDialog
         selectedReason,
         evidence
       );
+
+      posthog.capture('dispute_opened', {
+        transaction_id: transactionId,
+        dispute_reason: selectedReason,
+        has_evidence: fileUrls.length > 0,
+      });
 
       toast({
         title: "Dispute Opened",

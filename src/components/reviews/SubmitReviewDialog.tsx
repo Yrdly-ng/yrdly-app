@@ -16,6 +16,7 @@ import { Star } from "lucide-react";
 import { ReviewService } from "@/lib/review-service";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-supabase-auth";
+import posthog from "posthog-js";
 
 interface SubmitReviewDialogProps {
   businessId: string;
@@ -69,6 +70,13 @@ export function SubmitReviewDialog({
         rating,
         comment.trim() || undefined
       );
+
+      posthog.capture('review_submitted', {
+        business_id: businessId,
+        transaction_id: transactionId,
+        rating,
+        has_comment: comment.trim().length > 0,
+      });
 
       toast({
         title: "Review Submitted",

@@ -128,8 +128,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = AuthService.onAuthStateChange(async (user) => {
       if (isMounted) {
         setUser(user);
-        
+
         if (user) {
+          posthog.identify(user.id, {
+            email: user.email,
+            name: user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split('@')[0],
+          });
+
           try {
             // First, try to get existing profile
             let userProfile = await AuthService.getUserProfile(user.id);

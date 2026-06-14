@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { DeliveryOption, PaymentMethod, EscrowStatus } from "@/types/escrow";
 import { getAuthenticatedUser } from "@/lib/supabase-server";
+import { getPostHogClient } from "@/lib/posthog-server";
 
 /**
  * POST /api/marketplace/claim
@@ -142,6 +143,17 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    const posthog = getPostHogClient();
+    posthog.capture({
+      distinctId: user.id,
+      event: 'free_item_claimed',
+      properties: {
+        item_id: itemId,
+        transaction_id: txData.id,
+        seller_id: sellerId,
+      },
+    });
 
     return NextResponse.json({
       success: true,
