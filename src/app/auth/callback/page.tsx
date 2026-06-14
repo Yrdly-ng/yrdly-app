@@ -27,6 +27,27 @@ export default function AuthCallback() {
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         const searchParams = new URLSearchParams(window.location.search);
         
+        // Handle PKCE auth code
+        const code = searchParams.get('code');
+        if (code) {
+          setStatus('Exchanging code for session...');
+          try {
+            const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+            if (error) throw error;
+            if (data.session) {
+              setStatus('Session established, redirecting...');
+              setTimeout(() => {
+                window.location.href = '/home';
+              }, 1000);
+              return;
+            }
+          } catch (err) {
+            console.error('Exchange error:', err);
+            setError(`Auth error: ${err instanceof Error ? err.message : 'Failed to verify login'}`);
+            setTimeout(() => router.push('/login?error=Auth error'), 2000);
+            return;
+          }
+        }
         
         // If we have an access token in the hash, exchange it for a session
         if (hashParams.get('access_token')) {
