@@ -73,18 +73,7 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
         <LocationChip />
       </div>
 
-      <div className="flex items-center gap-2 px-1 pb-1 overflow-x-auto scrollbar-hide">
-        {["All", "General", "Event", "For Sale", "Business"].map((cat) => (
-          <button
-            key={cat}
-            className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold ${
-              cat === "All" ? "bg-foreground text-background" : "bg-[var(--c-card)] text-muted-foreground border border-border"
-            }`}
-          >
-            {cat}
-          </button>
-        ))}
-      </div>
+
       {/* ── Post Bar ── */}
       <div className="rounded-[11px] overflow-hidden" style={{ background: "var(--c-card)" }}>
         <div className="p-4">
