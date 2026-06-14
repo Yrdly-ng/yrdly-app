@@ -1,10 +1,13 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { createClient as createJsClient } from "@supabase/supabase-js";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import type { NextRequest } from "next/server";
 
 export async function createClient() {
   const cookieStore = await cookies();
+  const reqHeaders = await headers();
+  const host = reqHeaders.get("host") || "";
+  const isLocalhost = host.includes("localhost") || host.includes("127.0.0.1");
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -19,7 +22,7 @@ export async function createClient() {
             cookiesToSet.forEach(({ name, value, options }) => {
               const finalOptions = {
                 ...options,
-                domain: process.env.NEXT_PUBLIC_COOKIE_DOMAIN || '.yrdly.ng',
+                domain: isLocalhost ? undefined : (process.env.NEXT_PUBLIC_COOKIE_DOMAIN || '.yrdly.ng'),
               };
               cookieStore.set(name, value, finalOptions);
             });

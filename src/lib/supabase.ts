@@ -11,10 +11,13 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('[Yrdly] Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY');
 }
 
+const isLocalhost = typeof window !== 'undefined' && 
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
 // Create Supabase client for client-side operations using SSR package to support cookieOptions
 export const supabase = createBrowserClient(supabaseUrl!, supabaseAnonKey!, {
   cookieOptions: {
-    domain: process.env.NEXT_PUBLIC_COOKIE_DOMAIN || '.yrdly.ng',
+    domain: isLocalhost ? undefined : (process.env.NEXT_PUBLIC_COOKIE_DOMAIN || '.yrdly.ng'),
     maxAge: 365 * 24 * 60 * 60,
     path: '/',
     sameSite: 'lax',
