@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/use-supabase-auth";
 import { supabase } from "@/lib/supabase";
 import { StorageService } from "@/lib/storage-service";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, ImagePlus, VideoIcon, Send, MessageCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, ImagePlus, VideoIcon, Send, MessageCircle, Loader2, Download, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { ActivityIndicator } from "@/components/ActivityIndicator";
 import { useTypingDetection } from "@/hooks/use-typing-detection";
@@ -74,6 +74,7 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -268,6 +269,23 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
     if (videoInputRef.current) videoInputRef.current.value = '';
   };
 
+  const handleDownload = async (url: string, defaultFilename: string) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = defaultFilename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (e) {
+      window.open(url, '_blank');
+    }
+  };
+
   /* ─── Render ─── */
   if (loading) {
     return (
@@ -357,20 +375,35 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
                 )}
                 <div className="flex flex-col gap-1">
                   {msg.image_url && (
-                    <div className="rounded-[10px] overflow-hidden border" style={{ borderColor: "var(--c-border)", maxWidth: 192 }}>
-                      <Image src={msg.image_url} alt="Message image" width={192} height={192} className="w-full h-auto object-cover" />
+                    <div className="relative group rounded-[10px] overflow-hidden border cursor-pointer" style={{ borderColor: "var(--c-border)", maxWidth: 280 }} onClick={() => setFullscreenImage(msg.image_url!)}>
+                      <Image src={msg.image_url} alt="Message image" width={280} height={280} className="w-full h-auto object-cover" />
+                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <span className="bg-black/50 text-white p-2 rounded-full backdrop-blur-sm">
+                          <ImagePlus className="w-5 h-5" />
+                        </span>
+                      </div>
                     </div>
                   )}
                   {msg.video_url && (
-                    <div className="rounded-[10px] overflow-hidden" style={{ maxWidth: 220 }}>
+                    <div className="rounded-[10px] overflow-hidden relative group" style={{ maxWidth: 280, width: "100%", background: "#000" }}>
                       <video
                         src={msg.video_url.includes('#t=') ? msg.video_url : `${msg.video_url}#t=0.001`}
                         controls
                         playsInline
                         preload="metadata"
                         className="w-full h-auto"
-                        style={{ maxHeight: 160 }}
+                        style={{ maxHeight: 360 }}
                       />
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownload(msg.video_url!, `video-${Date.now()}.mp4`);
+                        }}
+                        className="absolute top-2 right-2 p-2 bg-black/50 hover:bg-black/80 rounded-full text-white backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                        title="Download Video"
+                      >
+                        <Download className="w-4 h-4" />
+                      </button>
                     </div>
                   )}
                   {(msg.text || msg.content) && (
@@ -474,6 +507,40 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
         <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />
         <input ref={videoInputRef} type="file" accept="video/mp4,video/webm,video/quicktime" onChange={handleVideoSelect} className="hidden" />
       </footer>
+
+      {/* Fullscreen Image Modal */}
+      {fullscreenImage && (
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-4 backdrop-blur-sm"
+          onClick={() => setFullscreenImage(null)}
+        >
+          <div className="absolute top-4 right-4 flex gap-4 z-10">
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDownload(fullscreenImage, `image-${Date.now()}.jpg`);
+              }}
+              className="text-white p-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors backdrop-blur-md"
+              title="Download Image"
+            >
+              <Download className="w-6 h-6" />
+            </button>
+            <button 
+              onClick={() => setFullscreenImage(null)}
+              className="text-white p-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors backdrop-blur-md"
+              title="Close"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+          <img 
+            src={fullscreenImage} 
+            alt="Fullscreen" 
+            className="max-w-full max-h-[90vh] object-contain rounded-md" 
+            onClick={(e) => e.stopPropagation()} 
+          />
+        </div>
+      )}
     </div>
   );
 }
