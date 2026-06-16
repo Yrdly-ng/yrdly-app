@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const txRef = searchParams.get('tx_ref');
   const status = searchParams.get('status');
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://yrdly-app.vercel.app';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.yrdly.ng';
 
   if (!txRef) {
     return NextResponse.redirect(`${appUrl}/events?error=invalid_ref`);
@@ -121,13 +121,13 @@ export async function GET(request: NextRequest) {
       if (eData) {
         await supabaseAdmin.from('events').update({ attendee_count: (eData.attendee_count || 0) + 1 }).eq('id', event_id);
       }
-    } catch (e) {}
+    } catch (e) { }
 
     // ── Send ticket confirmation email to buyer ────────────────────────────
     try {
       const resendStatus = ResendEmailService.getConfigurationStatus();
       console.log('[v0] Resend config status:', resendStatus);
-      
+
       if (!ResendEmailService.isConfigured()) {
         console.warn('[v0] Resend is not configured. Skipping buyer email.');
       } else {
