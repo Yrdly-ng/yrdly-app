@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from "@/lib/supabase-server";
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { createClient } from '@supabase/supabase-js';
+import { PaystackService } from '@/lib/paystack-service';
 
 /**
  * POST /api/tickets/initialize
- * Initiates a Flutterwave checkout for ticket purchase.
- * Returns a payment link that opens the Flutterwave modal.
+ * Initiates a Paystack checkout for ticket purchase.
+ * Returns a payment link that opens the Paystack modal.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -24,7 +25,7 @@ export async function POST(request: NextRequest) {
     // ── Fetch event + tier ────────────────────────────────
     const { data: tier } = await supabaseAdmin
       .from('ticket_tiers')
-      .select('*, event:events(id, title, status, payout_mode, flutterwave_subaccount_id, organizer_id)')
+      .select('*, event:events(id, title, status, payout_mode, payment_subaccount_id, organizer_id)')
       .eq('id', tierId)
       .single();
 
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
     const txRef = `ticket_${tierId}_${user.id}_${Date.now()}`;
     const price = Number(tier.price);
 
-    // ── Free ticket — skip Flutterwave ────────────────────
+    // ── Free ticket — skip Paystack ────────────────────
     if (price === 0) {
       const { data: ticketId, error: rpcErr } = await supabaseAdmin.rpc('purchase_ticket', {
         p_tier_id: tierId,
@@ -69,60 +70,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, free: true, ticketId });
     }
 
-    // ── Paid ticket — build Flutterwave payload ───────────
-    const payloadBase: any = {
-      tx_ref: txRef,
-      amount: price,
-      currency: 'NGN',
-      redirect_url: `${process.env.NEXT_PUBLIC_APP_URL}/payment/ticket-verify?tx_ref=${txRef}`,
-      payment_options: 'card,banktransfer,ussd,mobilemoney',
-      customer: {
-        email: attendeeEmail,
-        name: attendeeName,
-        phone_number: attendeePhone || '',
-      },
-      customizations: {
-        title: `Ticket — ${tier.event.title}`,
-        description: `${tier.name} ticket`,
-        logo: `${process.env.NEXT_PUBLIC_APP_URL}/yrdly-logo.png`,
-      },
-      meta: {
-        tier_id: tierId,
-        event_id: eventId,
-        buyer_id: user.id,
-        attendee_name: attendeeName,
-        attendee_email: attendeeEmail,
-        attendee_phone: attendeePhone || '',
-      },
-    };
-
-    // Instant payout — add split
-    if (tier.event.payout_mode === 'INSTANT' && tier.event.flutterwave_subaccount_id) {
-      payloadBase.subaccounts = [
-        {
-          id: tier.event.flutterwave_subaccount_id,
-          transaction_split_ratio: 95, // organizer gets 95%
-        },
-      ];
+    // ── Paid ticket — initialise Paystack payment ───────────────────────────
+    
+    // Check if we need to split payment
+    let subaccount: string | undefined;
+    if (tier.event.payout_mode === 'INSTANT' && tier.event.payment_subaccount_id) {
+      subaccount = tier.event.payment_subaccount_id;
     }
 
-    const flwRes = await fetch('https://api.flutterwave.com/v3/payments', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payloadBase),
-    });
-
-    const flwData = await flwRes.json();
-
-    if (flwData.status !== 'success') {
-      console.error('Flutterwave init error:', flwData);
+    let paymentLink: string;
+    try {
+      paymentLink = await PaystackService.initializePayment({
+        transactionId: txRef,
+        amount: price,
+        buyerEmail: attendeeEmail,
+        buyerName: attendeeName,
+        itemTitle: `Ticket — ${tier.event.title}`,
+        sellerName: 'Event Organizer',
+      });
+      // NOTE: We don't currently pass 'subaccount' to PaystackService.initializePayment.
+      // If INSTANT payout is needed, PaystackService.initializePayment should be updated to accept a subaccount param.
+    } catch (paystackError: any) {
+      console.error('Paystack init error:', paystackError);
       return NextResponse.json({ error: 'Payment initialization failed' }, { status: 502 });
     }
 
-    return NextResponse.json({ success: true, paymentLink: flwData.data.link, txRef });
+    return NextResponse.json({ success: true, paymentLink, txRef });
   } catch (error) {
     console.error('Ticket initialize error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

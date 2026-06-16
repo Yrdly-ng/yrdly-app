@@ -3,10 +3,11 @@ import { getAuthenticatedUser } from "@/lib/supabase-server";
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { createClient } from '@supabase/supabase-js';
 import { getPostHogClient } from '@/lib/posthog-server';
+import { PaystackService } from '@/lib/paystack-service';
 
 /**
  * POST /api/events/[id]/cancel
- * Cancels the event, triggers Flutterwave refunds for all PAID tickets,
+ * Cancels the event, triggers Paystack refunds for all PAID tickets,
  * updates statuses, and notifies all buyers via in-app notification.
  */
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -35,7 +36,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     // Fetch all PAID tickets for this event
     const { data: paidTickets } = await supabaseAdmin
       .from('tickets')
-      .select('id, buyer_id, flutterwave_flw_ref, amount_paid, attendee_email, attendee_name')
+      .select('id, buyer_id, payment_provider_ref, amount_paid, attendee_email, attendee_name')
       .eq('event_id', id)
       .eq('status', 'PAID');
 
@@ -44,19 +45,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     for (const ticket of paidTickets || []) {
       try {
-        // Call Flutterwave refund if we have a reference
-        if (ticket.flutterwave_flw_ref) {
-          const refundRes = await fetch(`https://api.flutterwave.com/v3/transactions/${ticket.flutterwave_flw_ref}/refund`, {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ amount: ticket.amount_paid }),
-          });
-          const refundData = await refundRes.json();
-          if (refundData.status !== 'success') {
-            errors.push(`Ticket ${ticket.id}: refund failed — ${refundData.message}`);
+        // Refund via Paystack if we have a payment reference
+        if (ticket.payment_provider_ref && ticket.amount_paid > 0) {
+          const refunded = await PaystackService.refundTransaction(
+            ticket.payment_provider_ref,
+            ticket.amount_paid
+          );
+          if (!refunded) {
+            errors.push(`Ticket ${ticket.id}: Paystack refund failed`);
           }
         }
 

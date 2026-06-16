@@ -5,7 +5,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { FlutterwaveService } from './flutterwave-service';
+import { PaystackService } from './paystack-service';
 import { EVENT_CONSTANTS } from './constants';
 import type { EventPayout } from '@/types/events';
 
@@ -72,7 +72,7 @@ export class EventEscrowService {
     // Find completed events that ended before the cutoff with no payout yet
     const { data: events, error } = await adminSupabase
       .from('events')
-      .select('id, organizer_id, flutterwave_subaccount_id, title')
+      .select('id, organizer_id, payment_subaccount_id, title')
       .eq('status', 'COMPLETED')
       .lt('end_time', cutoff)
       .is('payout_released_at', null);
@@ -145,8 +145,8 @@ export class EventEscrowService {
 
     if (payoutError || !payout) throw payoutError || new Error('Failed to create payout record');
 
-    // Execute transfer via Flutterwave
-    const transferSuccess = await FlutterwaveService.transferToSeller({
+    // Execute transfer via Paystack
+    const transferSuccess = await PaystackService.transferToSeller({
       bankCode: bankDetails.bankCode,
       accountNumber: bankDetails.accountNumber,
       amount: net,
@@ -156,7 +156,7 @@ export class EventEscrowService {
 
     const updatePayload = transferSuccess
       ? { status: 'COMPLETED', paid_at: new Date().toISOString() }
-      : { status: 'FAILED', failure_reason: 'Flutterwave transfer failed' };
+      : { status: 'FAILED', failure_reason: 'Paystack transfer failed' };
 
     await adminSupabase
       .from('event_payouts')
@@ -172,7 +172,7 @@ export class EventEscrowService {
     }
 
     if (!transferSuccess) {
-      throw new Error('Flutterwave transfer failed');
+      throw new Error('Paystack transfer failed');
     }
   }
 
@@ -182,7 +182,7 @@ export class EventEscrowService {
   }> {
     const { data: tickets, error } = await adminSupabase
       .from('tickets')
-      .select('id, flutterwave_tx_ref, amount_paid, buyer_id')
+      .select('id, payment_tx_ref, amount_paid, buyer_id')
       .eq('event_id', eventId)
       .eq('status', 'PAID');
 
@@ -193,29 +193,14 @@ export class EventEscrowService {
 
     for (const ticket of tickets) {
       try {
-        if (ticket.amount_paid > 0 && ticket.flutterwave_tx_ref) {
-          // 1. Get the transaction ID from Flutterwave using tx_ref
-          const verifyRes = await fetch(
-            `https://api.flutterwave.com/v3/transactions/verify_by_reference?tx_ref=${ticket.flutterwave_tx_ref}`,
-            { headers: { Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}` } }
+        if (ticket.amount_paid > 0 && ticket.payment_tx_ref) {
+          // Refund via Paystack using the stored payment reference
+          const refunded = await PaystackService.refundTransaction(
+            ticket.payment_tx_ref,
+            ticket.amount_paid
           );
-          const verifyData = await verifyRes.json();
-          
-          if (verifyData.status === 'success' && verifyData.data?.id) {
-            // 2. Issue the refund
-            const refundRes = await fetch(`https://api.flutterwave.com/v3/transactions/${verifyData.data.id}/refund`, {
-              method: 'POST',
-              headers: {
-                Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({ amount: ticket.amount_paid })
-            });
-            const refundData = await refundRes.json();
-            
-            if (refundData.status !== 'success') {
-              throw new Error(`Refund failed: ${refundData.message}`);
-            }
+          if (!refunded) {
+            throw new Error(`Paystack refund failed for ticket ${ticket.id}`);
           }
         }
 

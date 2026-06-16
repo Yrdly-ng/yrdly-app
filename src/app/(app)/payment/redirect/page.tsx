@@ -43,7 +43,7 @@ export default function PaymentRedirectPage() {
           {/* Loading Messaging */}
           <div className="space-y-3">
             <h1 className="font-jersey25 text-[1.375rem] text-on-surface tracking-wide">
-              Connecting to Flutterwave...
+              Connecting to Paystack...
             </h1>
             <p className="font-editorial text-[0.8125rem] text-on-surface-variant leading-relaxed">
               Please do not close this screen

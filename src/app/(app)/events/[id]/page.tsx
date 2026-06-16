@@ -131,7 +131,7 @@ export default function EventDetailPage() {
         setPurchase((s) => ({ ...s, step: "success" }));
         setTimeout(() => router.push("/my-tickets?success=1"), 1500);
       } else {
-        // Paid — redirect to Flutterwave
+        // Paid — redirect to Paystack
         window.location.href = data.payment_link;
       }
     } catch (err: any) {

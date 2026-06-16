@@ -1,5 +1,5 @@
 import { supabaseAdmin } from './supabase-admin';
-import { FlutterwaveService } from './flutterwave-service';
+import { PaystackService } from './paystack-service';
 import { NotificationService } from './notification-service';
 
 export interface PayoutRequest {
@@ -186,7 +186,7 @@ export class PayoutService {
             throw new Error('Missing bank details for payout. Seller must re-add their account.');
           }
 
-          const transferResult = await FlutterwaveService.transferToSeller({
+          const transferResult = await PaystackService.transferToSeller({
             bankCode,
             accountNumber,
             amount: payoutRequest.amount,

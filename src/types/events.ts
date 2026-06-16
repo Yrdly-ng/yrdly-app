@@ -31,7 +31,7 @@ export interface Event {
   visibility: EventVisibility;
   payout_mode: EventPayoutMode;
   payout_released_at: string | null;
-  flutterwave_subaccount_id: string | null;
+  payment_subaccount_id: string | null;
   published_at: string | null;
   scheduled_publish_at: string | null;
   attendee_count: number;
@@ -75,8 +75,8 @@ export interface Ticket {
   ticket_code: string;
   qr_data: string | null;
   status: TicketStatus;
-  flutterwave_tx_ref: string | null;
-  flutterwave_flw_ref: string | null;
+  payment_tx_ref: string | null;
+  payment_provider_ref: string | null;
   amount_paid: number;
   scanned_at: string | null;
   scanned_by: string | null;
@@ -94,7 +94,7 @@ export interface EventPayout {
   gross_amount: number;
   commission_amount: number;
   net_amount: number;
-  flutterwave_transfer_id: string | null;
+  payment_transfer_id: string | null;
   status: EventPayoutStatus;
   failure_reason: string | null;
   paid_at: string | null;

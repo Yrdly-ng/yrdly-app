@@ -6,10 +6,11 @@ import { EVENT_CONSTANTS } from '@/lib/constants';
 import { ResendEmailService } from '@/lib/resend-service';
 import QRCode from 'qrcode';
 import { getPostHogClient } from '@/lib/posthog-server';
+import { PaystackService } from '@/lib/paystack-service';
 
 /**
  * POST /api/events/tickets/purchase
- * Initialises a Flutterwave payment for a ticket.
+ * Initialises a Paystack payment for a ticket.
  * Returns a payment link — the client redirects the user there.
  */
 export async function POST(request: NextRequest) {
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
     // ── Validate event & tier ────────────────────────────────────────────────
     const { data: event } = await supabaseAdmin
       .from('events')
-      .select('id, title, status, organizer_id, flutterwave_subaccount_id')
+      .select('id, title, status, organizer_id, payment_subaccount_id')
       .eq('id', event_id)
       .single();
 
@@ -219,55 +220,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, free: true, ticket_id: ticket.id });
     }
 
-    // ── Paid ticket — initialise Flutterwave payment ─────────────────────────
+    // ── Paid ticket — initialise Paystack payment ─────────────────────────
     const txRef = `evt-${event_id.substring(0, 8)}-${Date.now()}`;
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://yrdly-app.vercel.app';
 
-    // Build payload
-    const flwPayload: any = {
-      tx_ref: txRef,
-      amount: tier.price,
-      currency: 'NGN',
-      redirect_url: `${appUrl}/api/events/tickets/verify?tx_ref=${txRef}`,
-      payment_options: 'card,banktransfer,ussd,mobilemoney',
-      customer: { 
-        email: attendee_email, 
-        name: attendee_name, 
-        phonenumber: attendee_phone || '' 
-      },
-      customizations: {
-        title: event.title,
-        description: `${tier.name} ticket`,
-        logo: `${appUrl}/yrdly-logo.png`,
-      },
-      meta: {
-        tx_ref: txRef,
-        event_id,
-        tier_id,
-        buyer_id: user.id,
-        attendee_name,
-        attendee_email,
-        attendee_phone: attendee_phone || '',
-      },
-    };
-
-    // Call Flutterwave API directly
-    const flwRes = await fetch('https://api.flutterwave.com/v3/payments', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(flwPayload),
-    });
-
-    const flwData = await flwRes.json();
-
-    if (flwData.status !== 'success') {
-      console.error('[v0] Flutterwave init error:', flwData);
-      return NextResponse.json({ 
+    let paymentLink: string;
+    try {
+      paymentLink = await PaystackService.initializePayment({
+        transactionId: txRef,
+        amount: tier.price,
+        buyerEmail: attendee_email,
+        buyerName: attendee_name,
+        itemTitle: `${tier.name} — ${event.title}`,
+        sellerName: 'Event Organizer',
+      });
+    } catch (paystackError: any) {
+      console.error('[v0] Paystack init error:', paystackError);
+      return NextResponse.json({
         error: 'Payment initialization failed',
-        details: flwData.message || 'Flutterwave API error'
+        details: paystackError?.message || 'Paystack API error',
       }, { status: 502 });
     }
 
@@ -285,7 +255,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ success: true, payment_link: flwData.data.link, tx_ref: txRef });
+    return NextResponse.json({ success: true, payment_link: paymentLink, tx_ref: txRef });
   } catch (error) {
     console.error('[v0] Ticket purchase error:', error);
     if (error instanceof Error) {

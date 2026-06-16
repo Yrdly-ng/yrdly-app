@@ -4,6 +4,7 @@ import { DeliveryOption, PaymentMethod, EscrowStatus } from "@/types/escrow";
 import { MARKETPLACE_CONSTANTS } from "@/lib/constants";
 import { getAuthenticatedUser } from "@/lib/supabase-server";
 import { getPostHogClient } from "@/lib/posthog-server";
+import { PaystackService } from "@/lib/paystack-service";
 
 // ── Rate Limit State ──────────────────────────────────────────────────────
 const rateLimitMap = new Map<string, { count: number; windowStart: number }>();
@@ -14,10 +15,10 @@ const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
 /**
  * POST /api/payment/initialize
  *
- * Creates an escrow transaction in Supabase + initialises a Flutterwave
+ * Creates an escrow transaction in Supabase + initialises a Paystack
  * Standard payment link, then returns the link to the client.
  *
- * This is the server-side entry-point so that the FLW secret key is
+ * This is the server-side entry-point so that the Paystack secret key is
  * never exposed to the browser.
  */
 export async function POST(request: NextRequest) {
@@ -136,10 +137,10 @@ export async function POST(request: NextRequest) {
     const commission = Math.round(authorizedPrice * MARKETPLACE_CONSTANTS.COMMISSION_RATE);
     const totalAmount = authorizedPrice;
 
-    // ── Look up seller's Flutterwave subaccount ──────────
+    // ── Look up seller's payout account ──────────────────
     const { data: sellerAccount } = await supabaseAdmin
       .from("seller_accounts")
-      .select("flutterwave_subaccount_id, verification_status, account_updated_at, updated_at")
+      .select("payment_subaccount_id, verification_status, account_updated_at, updated_at")
       .eq("user_id", sellerId)
       .eq("is_active", true)
       .single();
@@ -204,62 +205,23 @@ export async function POST(request: NextRequest) {
 
     const transactionId = txData.id;
 
-    // ── Build Flutterwave Standard payment payload ────────
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
-
-    if (!appUrl) {
-      console.error("[PaymentInit] CRITICAL: NEXT_PUBLIC_APP_URL is not set in environment variables");
+    // ── Initialise Paystack payment ───────────────────────
+    // Full amount collected into platform account and held in escrow.
+    // Seller payout triggered after buyer confirms receipt.
+    let paymentLink: string;
+    try {
+      paymentLink = await PaystackService.initializePayment({
+        transactionId,
+        amount: totalAmount,
+        buyerEmail,
+        buyerName,
+        itemTitle,
+        sellerName,
+      });
+    } catch (paystackError: any) {
+      console.error("Paystack error:", paystackError);
       return NextResponse.json(
-        { error: "Server configuration error - payment redirect URL not configured" },
-        { status: 500 }
-      );
-    }
-
-    const flwPayload: Record<string, any> = {
-      tx_ref: transactionId,
-      amount: totalAmount,
-      currency: MARKETPLACE_CONSTANTS.CURRENCY,
-      redirect_url: `${appUrl}/payment/verify?tx_ref=${transactionId}&itemId=${itemId}`,
-      payment_options: "card,banktransfer,ussd",
-      customer: {
-        email: buyerEmail,
-        name: buyerName,
-      },
-      customizations: {
-        title: "Yrdly Marketplace",
-        description: `Payment for ${itemTitle} from ${sellerName}`,
-        logo: `${appUrl}/yrdly-logo.png`,
-      },
-      meta: {
-        transaction_id: transactionId,
-        item_title: itemTitle,
-        seller_name: sellerName,
-        commission,
-        item_price: authorizedPrice,
-      },
-    };
-
-    // ── Call Flutterwave Standard API ─────────────────────
-    // Note: no split payment — full amount is collected to the platform account
-    // and held in escrow. Seller payout is triggered manually after buyer confirms receipt.
-    const flwRes = await fetch(
-      "https://api.flutterwave.com/v3/payments",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(flwPayload),
-      }
-    );
-
-    const flwData = await flwRes.json();
-
-    if (flwData.status !== "success" || !flwData.data?.link) {
-      console.error("Flutterwave error:", flwData);
-      return NextResponse.json(
-        { error: flwData.message || "Failed to initialize payment" },
+        { error: paystackError?.message || "Failed to initialize payment" },
         { status: 502 }
       );
     }
@@ -279,7 +241,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      paymentLink: flwData.data.link,
+      paymentLink,
       transactionId,
     });
   } catch (error) {

@@ -41,7 +41,7 @@ export default function AddPayoutAccountPage() {
   const handleVerify = async () => {
     if (!selectedBank || accNumber.length < 10) return;
     setVerifying(true);
-    // Placeholder — wire to Flutterwave Resolve Account API
+    // Placeholder — wire to Paystack Resolve Account API
     await new Promise((r) => setTimeout(r, 1400));
     setVerifiedName(`${user?.user_metadata?.name ?? "Account Holder"}`);
     setVerifying(false);
@@ -216,7 +216,7 @@ export default function AddPayoutAccountPage() {
           <div className="flex items-start gap-3 px-4 py-2">
             <Info className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: MUTED }} />
             <p className="text-[0.6875rem] leading-relaxed" style={{ color: MUTED, fontFamily: "var(--font-work-sans)" }}>
-              We verify your account via Flutterwave to ensure accurate payouts. Your data is protected by industry-standard protocols.
+              We verify your account via Paystack to ensure accurate payouts. Your data is protected by industry-standard protocols.
             </p>
           </div>
         </div>

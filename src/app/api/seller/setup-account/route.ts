@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from "@/lib/supabase-server";
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { createClient } from '@supabase/supabase-js';
+import { PaystackService } from '@/lib/paystack-service';
 
 /**
  * Normalises a name string for fuzzy comparison:
@@ -30,8 +31,7 @@ function namesMatch(a: string, b: string): boolean {
  *
  * 1. Resolves the bank account via Paystack and verifies the name
  *    matches the authenticated user's profile name.
- * 2. Creates (or retrieves) a Flutterwave subaccount.
- * 3. Stores the account in `seller_accounts` with pending verification
+ * 2. Stores the account in `seller_accounts` with pending verification
  *    status and an `account_updated_at` timestamp for the cooling-off guard.
  */
 export async function POST(request: NextRequest) {
@@ -58,114 +58,43 @@ export async function POST(request: NextRequest) {
 
     const profileName = profile?.name || '';
 
-    // ── Task 1: Flutterwave account resolution & name match ─
-    if (process.env.FLUTTERWAVE_SECRET_KEY) {
-      const flwResolveRes = await fetch('https://api.flutterwave.com/v3/accounts/resolve', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          account_number: accountNumber,
-          account_bank: bankCode,
-        }),
-      });
+    // ── Task 1: Paystack account resolution & name match ─
+    const resolveResult = await PaystackService.resolveAccount(accountNumber, bankCode);
 
-      const flwResolveData = await flwResolveRes.json();
+    if (resolveResult.valid && resolveResult.accountName) {
+      const resolvedName = resolveResult.accountName;
 
-      if (flwResolveData.status === 'success' && flwResolveData.data?.account_name) {
-        const resolvedName: string = flwResolveData.data.account_name;
-
-        // Compare resolved bank name vs user-entered name
-        if (!namesMatch(resolvedName, accountName)) {
-          return NextResponse.json(
-            {
-              error: `Account name mismatch. The bank reports this account belongs to "${resolvedName}". Please use your own account.`,
-              code: 'NAME_MISMATCH',
-            },
-            { status: 422 }
-          );
-        }
-
-        // Also compare resolved bank name vs profile name (fraud guard)
-        // Bypass this check in Test Mode since test accounts return dummy names
-        const isTestMode = process.env.FLUTTERWAVE_SECRET_KEY?.startsWith('FLWSECK_TEST');
-        if (!isTestMode && profileName && !namesMatch(resolvedName, profileName)) {
-          return NextResponse.json(
-            {
-              error: `This bank account does not appear to belong to you. Please add an account registered in your own name.`,
-              code: 'OWNERSHIP_MISMATCH',
-            },
-            { status: 422 }
-          );
-        }
-      } else {
-        // Flutterwave could not resolve — reject rather than skip the check
-        console.warn('[AccountSetup] Flutterwave resolve failed:', flwResolveData);
+      // Compare resolved bank name vs user-entered name
+      if (!namesMatch(resolvedName, accountName)) {
         return NextResponse.json(
-          { error: 'Could not verify account details. Please check your account number and bank, then try again.' },
+          {
+            error: `Account name mismatch. The bank reports this account belongs to "${resolvedName}". Please use your own account.`,
+            code: 'NAME_MISMATCH',
+          },
+          { status: 422 }
+        );
+      }
+
+      // Also compare resolved bank name vs profile name (fraud guard)
+      if (profileName && !namesMatch(resolvedName, profileName)) {
+        return NextResponse.json(
+          {
+            error: `This bank account does not appear to belong to you. Please add an account registered in your own name.`,
+            code: 'OWNERSHIP_MISMATCH',
+          },
           { status: 422 }
         );
       }
     } else {
-      console.warn('[AccountSetup] FLUTTERWAVE_SECRET_KEY not set — skipping name match');
+      // Paystack could not resolve — reject rather than skip the check
+      console.warn('[AccountSetup] Paystack resolve failed');
+      return NextResponse.json(
+        { error: 'Could not verify account details. Please check your account number and bank, then try again.' },
+        { status: 422 }
+      );
     }
 
-    // ── Task 2: Create Flutterwave subaccount (best-effort) ──
-    let subaccountId: string | null = null;
-
-    if (process.env.FLUTTERWAVE_SECRET_KEY) {
-      try {
-        const flwRes = await fetch('https://api.flutterwave.com/v3/subaccounts', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            account_bank: bankCode,
-            account_number: accountNumber,
-            business_name: accountName,
-            business_email: user.email,
-            business_contact: accountName,
-            business_contact_mobile: '',
-            business_mobile: '',
-            country: 'NG',
-            split_type: 'percentage',
-            split_value: 0.97, // Seller gets 97%
-          }),
-        });
-
-        const flwData = await flwRes.json();
-
-        if (flwData.status === 'success') {
-          subaccountId = flwData.data?.subaccount_id ?? null;
-        } else if (flwData.message?.toLowerCase().includes('already exists')) {
-          // Try to retrieve the existing subaccount
-          const listRes = await fetch('https://api.flutterwave.com/v3/subaccounts', {
-            headers: { Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}` },
-          });
-          const listData = await listRes.json();
-
-          if (listData.status === 'success' && Array.isArray(listData.data)) {
-            const existing = listData.data.find(
-              (s: any) => s.account_number === accountNumber && s.account_bank === bankCode
-            );
-            if (existing) subaccountId = existing.subaccount_id;
-          }
-          // If still not found, we continue without a subaccount ID — account is stored and can be retried
-        } else {
-          // Non-fatal: log and continue without a subaccount ID so the user account is saved
-          console.warn('[AccountSetup] Flutterwave subaccount creation failed (non-fatal):', flwData.message);
-        }
-      } catch (flwErr) {
-        // Network / timeout error — save account without subaccount ID, retry later
-        console.warn('[AccountSetup] Flutterwave request failed (non-fatal):', flwErr);
-      }
-    } else {
-      console.warn('[AccountSetup] FLUTTERWAVE_SECRET_KEY not set — skipping subaccount creation');
-    }
+    let subaccountId: string | null = null; // We don't create Paystack subaccounts here yet
 
     // ── Deactivate any existing accounts ──────────────────
     // If this is an account update (not initial setup), mark the change time
@@ -196,7 +125,7 @@ export async function POST(request: NextRequest) {
           account_number: accountNumber,
           account_name: accountName,
         },
-        flutterwave_subaccount_id: subaccountId,
+        payment_subaccount_id: subaccountId,
         verification_status: 'verified',
         is_active: true,
         is_primary: true,

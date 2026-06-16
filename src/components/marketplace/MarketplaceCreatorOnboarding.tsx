@@ -194,7 +194,7 @@ export function MarketplaceCreatorOnboarding({ isOpen, onClose, onContinue }: Ma
                 {/* How it works */}
                 <div className="space-y-3">
                   {[
-                    { icon: Zap, label: "Instant setup", desc: "Link your Nigerian bank account via Flutterwave" },
+                    { icon: Zap, label: "Instant setup", desc: "Link your Nigerian bank account via Paystack" },
                     { icon: Banknote, label: "Escrow Protection", desc: "Funds are held securely until the buyer confirms delivery" },
                     { icon: CheckCircle2, label: "You keep 95%", desc: "Yrdly takes a 5% platform fee only on paid items" },
                   ].map(({ icon: Icon, label, desc }) => (

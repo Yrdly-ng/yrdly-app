@@ -34,13 +34,13 @@ export async function POST(request: NextRequest) {
     if (hasPaidTiers || payoutMode === 'INSTANT') {
       const { data: sellerAccount } = await supabaseAdmin
         .from('seller_accounts')
-        .select('id, flutterwave_subaccount_id')
+        .select('id, payment_subaccount_id')
         .eq('user_id', user.id)
         .eq('is_active', true)
         .eq('is_primary', true)
         .single();
 
-      if (!sellerAccount?.flutterwave_subaccount_id) {
+      if (!sellerAccount?.payment_subaccount_id) {
         return NextResponse.json(
           { error: 'PAYOUT_ACCOUNT_REQUIRED', message: 'Link your bank account in Settings → Payout Settings before creating a paid event.' },
           { status: 402 }
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     // Get subaccount ID if exists
     const { data: sa } = await supabaseAdmin
       .from('seller_accounts')
-      .select('flutterwave_subaccount_id')
+      .select('payment_subaccount_id')
       .eq('user_id', user.id)
       .eq('is_active', true)
       .single();
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
         status,
         visibility: visibility || 'PUBLIC',
         payout_mode: payoutMode || 'POST_EVENT',
-        flutterwave_subaccount_id: sa?.flutterwave_subaccount_id || null,
+        payment_subaccount_id: sa?.payment_subaccount_id || null,
         published_at: publish ? now : null,
       })
       .select('id')

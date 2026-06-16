@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { FlutterwaveService } from '@/lib/flutterwave-service';
+import { PaystackService } from '@/lib/paystack-service';
 import { PayoutService } from '@/lib/payout-service';
 import { NotificationService } from '@/lib/notification-service';
 
@@ -48,10 +48,10 @@ export async function POST(
     }
 
     // 3. Process Payments (Refund Buyer)
-    if (refundAmount > 0 && transaction.flutterwave_tx_ref) {
-      const refundSuccess = await FlutterwaveService.refundTransaction(transaction.flutterwave_tx_ref, refundAmount);
+    if (refundAmount > 0 && transaction.payment_reference) {
+      const refundSuccess = await PaystackService.refundTransaction(transaction.payment_reference, refundAmount);
       if (!refundSuccess) {
-        return NextResponse.json({ error: 'Failed to process refund with Flutterwave' }, { status: 500 });
+        return NextResponse.json({ error: 'Failed to process refund with Paystack' }, { status: 500 });
       }
     }
 

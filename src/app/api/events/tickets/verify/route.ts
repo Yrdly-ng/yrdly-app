@@ -4,10 +4,11 @@ import { ResendEmailService } from '@/lib/resend-service';
 import { emailTemplates } from '@/lib/email-templates';
 import QRCode from 'qrcode';
 import { EVENT_CONSTANTS } from '@/lib/constants';
+import { PaystackService } from '@/lib/paystack-service';
 
 /**
  * GET /api/events/tickets/verify?tx_ref=...
- * Flutterwave redirects here after payment.
+ * Paystack redirects here after payment.
  * Verifies the transaction, creates the ticket, generates QR, fires confirmation email.
  */
 export async function GET(request: NextRequest) {
@@ -26,25 +27,26 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // ── Verify with Flutterwave ──────────────────────────────────────────────
-    const flwRes = await fetch(
-      `https://api.flutterwave.com/v3/transactions/verify_by_reference?tx_ref=${txRef}`,
-      { headers: { Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}` } }
-    );
-    const flwData = await flwRes.json();
+    // ── Verify with Paystack ──────────────────────────────────────────
+    const verification = await PaystackService.verifyPayment(txRef);
 
-    if (flwData.status !== 'success' || flwData.data?.status !== 'successful') {
+    if (!verification.success || verification.status !== 'success') {
       return NextResponse.redirect(`${appUrl}/events?error=payment_failed`);
     }
 
-    const { tx_ref, flw_ref, amount, meta, id: flwId } = flwData.data;
-    const { event_id, tier_id, buyer_id, attendee_name, attendee_email, attendee_phone } = meta;
+    const { transactionReference, amount, metadata } = verification;
+    const { event_id, tier_id, buyer_id, attendee_name, attendee_email, attendee_phone } = metadata || {};
+
+    if (!event_id || !tier_id || !buyer_id) {
+      console.error('[Verify] Missing metadata in Paystack response', metadata);
+      return NextResponse.redirect(`${appUrl}/events?error=invalid_metadata`);
+    }
 
     // ── Idempotency check — don't create duplicate tickets ───────────────────
     const { data: existing } = await supabaseAdmin
       .from('tickets')
       .select('id')
-      .eq('flutterwave_tx_ref', tx_ref)
+      .eq('payment_tx_ref', txRef)
       .single();
 
     if (existing) {
@@ -70,16 +72,9 @@ export async function GET(request: NextRequest) {
 
     // ── Check Capacity ───────────────────────────────────────────────────────
     if (tier.capacity !== null && (tier.sold || 0) >= tier.capacity) {
-      console.warn(`[Verify] Tier ${tier_id} is sold out. Refunding transaction ${flwId}`);
+      console.warn(`[Verify] Tier ${tier_id} is sold out. Refunding transaction ${txRef}`);
       try {
-        await fetch(`https://api.flutterwave.com/v3/transactions/${flwId}/refund`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ amount: amount })
-        });
+        await PaystackService.refundTransaction(txRef, amount);
       } catch (e) {
         console.error('[Verify] Failed to refund oversold ticket', e);
       }
@@ -87,8 +82,8 @@ export async function GET(request: NextRequest) {
     }
 
     // ── Generate ticket code & QR ────────────────────────────────────────────
-    const ticketCode = `${EVENT_CONSTANTS.TICKET_CODE_PREFIX}-${tx_ref.substring(tx_ref.length - 8).toUpperCase()}`;
-    const qrPayload = JSON.stringify({ ticket_code: ticketCode, event_id, tier_id, tx_ref });
+    const ticketCode = `${EVENT_CONSTANTS.TICKET_CODE_PREFIX}-${txRef.substring(txRef.length - 8).toUpperCase()}`;
+    const qrPayload = JSON.stringify({ ticket_code: ticketCode, event_id, tier_id, tx_ref: txRef });
     const qrDataUrl = await QRCode.toDataURL(qrPayload, { width: 300, margin: 2 });
 
     // ── Insert ticket ────────────────────────────────────────────────────────
@@ -104,8 +99,8 @@ export async function GET(request: NextRequest) {
         ticket_code: ticketCode,
         qr_data: qrPayload,
         status: 'PAID',
-        flutterwave_tx_ref: tx_ref,
-        flutterwave_flw_ref: flw_ref,
+        payment_tx_ref: txRef,
+        payment_provider_ref: transactionReference || txRef,
         amount_paid: amount,
       })
       .select('id')
@@ -146,7 +141,7 @@ export async function GET(request: NextRequest) {
           startDate.toLocaleDateString('en-NG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
           startDate.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' }),
           event.location_address || event.state || 'See event details',
-          tx_ref
+          txRef
         );
 
         console.log('[v0] Sending ticket confirmation to:', attendee_email);
@@ -156,7 +151,7 @@ export async function GET(request: NextRequest) {
           startDate.toLocaleDateString('en-NG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
           startDate.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' }),
           event.location_address || event.state || 'See event details',
-          tx_ref
+          txRef
         );
         console.log('[v0] Ticket confirmation email sent successfully');
       }

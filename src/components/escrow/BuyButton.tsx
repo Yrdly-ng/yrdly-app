@@ -99,7 +99,7 @@ export function BuyButton({
       }
 
       setOpen(false);
-      // Navigate to redirect loading page then to Flutterwave
+      // Navigate to redirect loading page then to Paystack
       router.push(
         `/payment/redirect?link=${encodeURIComponent(data.paymentLink)}&txn=${data.transactionId}`
       );

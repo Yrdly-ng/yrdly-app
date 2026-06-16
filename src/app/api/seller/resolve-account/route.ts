@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { getAuthenticatedUser } from '@/lib/supabase-server';
+import { PaystackService } from '@/lib/paystack-service';
+
 export async function POST(request: NextRequest) {
   try {
     // ── Authenticate ─────────────────────────────────────
@@ -16,35 +17,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    if (!process.env.FLUTTERWAVE_SECRET_KEY) {
-      console.warn('[ResolveAccount] FLUTTERWAVE_SECRET_KEY not set.');
-      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
-    }
+    // ── Call Paystack API ─────────────────────────────────────
+    const result = await PaystackService.resolveAccount(accountNumber, bankCode);
 
-    // ── Call Flutterwave API ─────────────────────────────────────
-    const flwRes = await fetch('https://api.flutterwave.com/v3/accounts/resolve', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        account_number: accountNumber,
-        account_bank: bankCode,
-      }),
-    });
-
-    const flwData = await flwRes.json();
-
-    if (flwData.status === 'success' && flwData.data?.account_name) {
+    if (result.valid && result.accountName) {
       return NextResponse.json({
         success: true,
-        accountName: flwData.data.account_name,
+        accountName: result.accountName,
       });
     } else {
-      console.warn('[ResolveAccount] Flutterwave resolve failed:', flwData);
       return NextResponse.json(
-        { error: flwData.message || 'Could not resolve account details.' },
+        { error: 'Could not resolve account details. Please check your account number and bank.' },
         { status: 422 }
       );
     }

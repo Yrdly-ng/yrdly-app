@@ -193,7 +193,7 @@ export function EventCreatorOnboarding({ isOpen, onClose }: EventCreatorOnboardi
                 {/* How it works */}
                 <div className="space-y-3">
                   {[
-                    { icon: Zap, label: "Instant setup", desc: "Link your Nigerian bank account via Flutterwave" },
+                    { icon: Zap, label: "Instant setup", desc: "Link your Nigerian bank account via Paystack" },
                     { icon: Banknote, label: "Automatic payouts", desc: "Funds are released after your event ends" },
                     { icon: CheckCircle2, label: "You keep 95%", desc: "Yrdly takes a 5% platform fee only on paid tickets" },
                   ].map(({ icon: Icon, label, desc }) => (

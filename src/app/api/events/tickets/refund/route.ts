@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { getAuthenticatedUser } from "@/lib/supabase-server";
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { getPostHogClient } from '@/lib/posthog-server';
+import { PaystackService } from '@/lib/paystack-service';
 
 /**
  * POST /api/events/tickets/refund
@@ -22,7 +23,7 @@ export async function POST(request: NextRequest) {
     const { data: ticket } = await supabaseAdmin
       .from('tickets')
       .select(`
-        id, status, flutterwave_flw_ref, amount_paid, buyer_id,
+        id, status, payment_provider_ref, amount_paid, buyer_id,
         attendee_name, attendee_email,
         event:events!tickets_event_id_fkey(id, title, organizer_id)
       `)
@@ -40,23 +41,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `Ticket status is "${ticket.status}" — cannot refund` }, { status: 400 });
     }
 
-    // ── Call Flutterwave refund API ──────────────────────────────────────────
-    if (ticket.flutterwave_flw_ref && ticket.amount_paid > 0) {
-      const refundRes = await fetch(
-        `https://api.flutterwave.com/v3/transactions/${ticket.flutterwave_flw_ref}/refund`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ amount: ticket.amount_paid }),
-        }
+    // ── Call Paystack refund API ─────────────────────────────────────
+    if (ticket.payment_provider_ref && ticket.amount_paid > 0) {
+      const refunded = await PaystackService.refundTransaction(
+        ticket.payment_provider_ref,
+        ticket.amount_paid
       );
-      const refundData = await refundRes.json();
-      if (refundData.status !== 'success') {
+      if (!refunded) {
         return NextResponse.json(
-          { error: `Refund failed: ${refundData.message}` },
+          { error: 'Refund failed — please try again or contact support' },
           { status: 502 }
         );
       }

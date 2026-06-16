@@ -2,14 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { EscrowStatus } from '@/types/escrow';
 import { getAuthenticatedUser } from "@/lib/supabase-server";
+import { PaystackService } from '@/lib/paystack-service';
 
 export async function POST(request: NextRequest) {
   try {
-    // transactionReference = Flutterwave's numeric transaction_id (preferred)
-    // txRef = our UUID tx_ref (fallback when FLW doesn't append transaction_id)
-    const { transactionReference, txRef: bodyTxRef } = await request.json();
+    // txRef = our transaction UUID, which is also the Paystack reference
+    const { txRef: bodyTxRef } = await request.json();
 
-    if (!transactionReference && !bodyTxRef) {
+    if (!bodyTxRef) {
       return NextResponse.json(
         { error: 'Transaction reference is required' },
         { status: 400 }
@@ -48,41 +48,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // ── Verify with Flutterwave using numeric transaction_id ──
-    // If only tx_ref (UUID) was provided we cannot call the verify endpoint —
-    // rely on the webhook to have updated the status, then re-check.
-    if (!transactionReference) {
+    // ── Verify with Paystack using the reference (same as our txRef) ──
+    const verification = await PaystackService.verifyPayment(bodyTxRef);
+
+    if (!verification.success || verification.status !== 'success') {
+      console.error(`[PaymentVerify] Paystack verification failed:`, verification.error);
       return NextResponse.json(
-        { error: 'Flutterwave transaction_id not available. Payment may still be processing — please wait a moment and retry.' },
-        { status: 202 }
-      );
-    }
-
-    console.log(`[PaymentVerify] Verifying transaction: ${transactionReference}`);
-
-    const flwRes = await fetch(
-      `https://api.flutterwave.com/v3/transactions/${transactionReference}/verify`,
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}`,
-        },
-      }
-    );
-    const flwData = await flwRes.json();
-
-    if (flwData.status !== 'success' || flwData.data?.status !== 'successful') {
-      console.error(`[PaymentVerify] Flutterwave verification failed:`, flwData.message);
-      return NextResponse.json(
-        { error: flwData.message || 'Payment verification failed' },
+        { error: verification.error || 'Payment verification failed' },
         { status: 400 }
       );
     }
 
-    const txRef: string = flwData.data.tx_ref;          // our UUID
-    const flwTxId: string = String(flwData.data.id);    // FLW numeric ID
-    const amount: number = parseFloat(flwData.data.amount);
+    const txRef: string = verification.transactionReference!; // our UUID
+    const amount: number = verification.amount!;
 
-    console.log(`[PaymentVerify] Flutterwave confirmed payment for txRef: ${txRef}`);
+    console.log(`[PaymentVerify] Paystack confirmed payment for txRef: ${txRef}`);
 
     // ── Lookup the transaction ────────────────────────────
     const { data: txRow } = await supabaseAdmin
@@ -125,7 +105,7 @@ export async function POST(request: NextRequest) {
       .from('escrow_transactions')
       .update({
         status: EscrowStatus.PAID,
-        payment_reference: flwTxId,   // store FLW numeric ID, not our UUID
+        payment_reference: txRef,   // store our UUID as the reference
         paid_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })

@@ -5,7 +5,7 @@ import { PayoutService } from './payout-service';
 
 export class TransactionStatusService {
   /**
-   * Confirm payment after Flutterwave verification
+   * Confirm payment after Paystack verification
    */
   static async confirmPayment(transactionId: string): Promise<void> {
     try {

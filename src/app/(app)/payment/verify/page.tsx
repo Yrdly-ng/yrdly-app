@@ -97,7 +97,7 @@ export default function PaymentVerificationPage() {
       return;
     }
 
-    // ── Cancelled / failed from Flutterwave ──────────────
+    // ── Cancelled / failed from Paystack ──────────────
     if (flwStatus === 'cancelled' || flwStatus === 'failed') {
       toast({
         title: flwStatus === 'cancelled' ? 'Payment cancelled' : 'Payment failed',
@@ -142,7 +142,7 @@ export default function PaymentVerificationPage() {
         <CardHeader className="text-center">
           <CardTitle>Payment Verification</CardTitle>
           <CardDescription>
-            Verifying your payment with Flutterwave...
+            Verifying your payment with Paystack...
           </CardDescription>
         </CardHeader>
         
