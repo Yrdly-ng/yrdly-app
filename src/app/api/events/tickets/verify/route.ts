@@ -34,7 +34,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${appUrl}/events?error=payment_failed`);
     }
 
-    const { transactionReference, amount, metadata } = verification;
+    const { transactionReference, metadata } = verification;
+    const amount = verification.amount || 0;
     const { event_id, tier_id, buyer_id, attendee_name, attendee_email, attendee_phone } = metadata || {};
 
     if (!event_id || !tier_id || !buyer_id) {
