@@ -33,13 +33,16 @@ export async function POST(request: NextRequest) {
     // Find ticket
     const { data: ticket } = await supabaseAdmin
       .from('tickets')
-      .select('id, status, attendee_name, attendee_email, tier:ticket_tiers!tickets_tier_id_fkey(name)')
+      .select('id, status, attendee_name, attendee_email, expires_at, tier:ticket_tiers!tickets_tier_id_fkey(name)')
       .eq('ticket_code', ticket_code.trim().toUpperCase())
       .eq('event_id', event_id)
       .single();
 
     if (!ticket) {
       return NextResponse.json({ valid: false, error: 'INVALID_TICKET', message: 'Ticket not found for this event' }, { status: 404 });
+    }
+    if (ticket.expires_at && new Date(ticket.expires_at) < new Date()) {
+      return NextResponse.json({ valid: false, error: 'TICKET_EXPIRED', message: 'This ticket has expired' }, { status: 400 });
     }
     if (ticket.status === 'USED') {
       return NextResponse.json({ valid: false, error: 'ALREADY_SCANNED', message: 'Ticket already used', attendee_name: ticket.attendee_name }, { status: 409 });

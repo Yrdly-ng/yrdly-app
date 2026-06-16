@@ -80,6 +80,7 @@ export interface Ticket {
   amount_paid: number;
   scanned_at: string | null;
   scanned_by: string | null;
+  expires_at: string | null;
   created_at: string;
   updated_at: string;
   // Joined fields

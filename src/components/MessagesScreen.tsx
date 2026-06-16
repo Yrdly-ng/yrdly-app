@@ -340,7 +340,7 @@ export function MessagesScreen() {
             placeholder="Search conversations..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-full py-3 pl-11 pr-4 text-sm text-foreground outline-none"
+            className="w-full rounded-full py-3 pl-11 pr-4 text-base md:text-sm text-foreground outline-none"
             style={{ background: "var(--c-card2)", border: "0.5px solid rgba(130,219,126,0.4)", fontFamily: FONT }}
           />
         </div>

@@ -103,6 +103,7 @@ export async function GET(request: NextRequest) {
         payment_tx_ref: txRef,
         payment_provider_ref: transactionReference || txRef,
         amount_paid: amount,
+        expires_at: event.end_time || null,
       })
       .select('id')
       .single();

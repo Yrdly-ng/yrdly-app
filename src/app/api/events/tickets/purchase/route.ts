@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     // ── Validate event & tier ────────────────────────────────────────────────
     const { data: event } = await supabaseAdmin
       .from('events')
-      .select('id, title, status, organizer_id, payment_subaccount_id')
+      .select('id, title, status, organizer_id, payment_subaccount_id, end_time')
       .eq('id', event_id)
       .single();
 
@@ -89,6 +89,7 @@ export async function POST(request: NextRequest) {
           qr_data: qrData,
           status: 'PAID',
           amount_paid: 0,
+          expires_at: event.end_time || null,
         })
         .select('id')
         .single();

@@ -492,7 +492,7 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
               onChange={(e) => { setNewMessage(e.target.value); handleTyping(); }}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSend(e as any); } }}
               disabled={sending}
-              className="w-full rounded-full px-5 py-3 text-[0.875rem] text-foreground outline-none focus:ring-1 focus:ring-primary"
+              className="w-full rounded-full px-5 py-3 text-base md:text-[0.875rem] text-foreground outline-none focus:ring-1 focus:ring-primary"
               style={{ background: "var(--c-card2)", fontFamily: FONT, caretColor: GREEN }}
             />
           </div>
