@@ -152,8 +152,11 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
   const [showFriendsList, setShowFriendsList] = useState(false);
   const [showRemoveFriendDialog, setShowRemoveFriendDialog] = useState(false);
   const [showAvatarPreview, setShowAvatarPreview] = useState(false);
-  const [stats, setStats] = useState({ friends: 0, events: 0 });
+  const [stats, setStats] = useState({ friends: 0, events: 0, followers: 0, following: 0 });
   const hasTriggeredViewRef = reactUseRef<boolean>(false);
+
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
 
   const targetUser = externalTargetUser || user || currentUser;
   const targetProfile = externalTargetUser ? null : (user ? null : currentProfile);
@@ -188,11 +191,16 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
         supabase.from("events").select("id").eq("organizer_id", targetUser.id),
       ]);
 
+      if (currentUser?.id && targetUser.id !== currentUser.id) {
+        const { data: fData } = await supabase.from('followers').select('id').eq('follower_id', currentUser.id).eq('following_id', targetUser.id).maybeSingle();
+        setIsFollowing(!!fData);
+      }
+
       setUserPosts(postsRes.data || []);
       setUserItems(itemsRes.data || []);
       setUserBusinesses(bizRes.data || []);
       setUserEvents(eventsRes.data || []);
-      setStats({ friends: userData?.friends?.length || 0, events: eventsCountRes.data?.length || 0 });
+      setStats(prev => ({ ...prev, friends: userData?.friends?.length || 0, events: eventsCountRes.data?.length || 0 }));
       setLoading(false);
       
       // Trigger profile view notification if viewing someone else's profile
@@ -250,6 +258,25 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
       router.push(`/messages/${convId}`);
     } catch {
       toast({ variant: "destructive", title: "Error", description: "Could not open conversation." });
+    }
+  };
+
+  const handleToggleFollow = async () => {
+    if (!currentUser || !targetUser) return;
+    setFollowLoading(true);
+    try {
+      if (isFollowing) {
+        await supabase.from('followers').delete().eq('follower_id', currentUser.id).eq('following_id', targetUser.id);
+        setIsFollowing(false);
+      } else {
+        await supabase.from('followers').insert({ follower_id: currentUser.id, following_id: targetUser.id });
+        setIsFollowing(true);
+        // Optional: Trigger a notification for following here if supported
+      }
+    } catch (e: any) {
+      toast({ variant: 'destructive', description: e.message });
+    } finally {
+      setFollowLoading(false);
     }
   };
 
@@ -371,10 +398,18 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
                         className="text-red-400 focus:text-red-400 focus:bg-red-500/10 cursor-pointer"
                         onClick={() => setShowRemoveFriendDialog(true)}
                       >
-                        <UserMinus className="w-4 h-4 mr-2" /> Remove Friend
+                        <UserMinus className="w-4 h-4 mr-2" /> Disconnect
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
+                  <button
+                    onClick={handleToggleFollow}
+                    disabled={followLoading}
+                    className="flex-1 flex items-center justify-center gap-2 rounded-full h-14 text-sm font-bold text-foreground transition-all active:scale-95 shadow-lg border"
+                    style={{ background: isFollowing ? "transparent" : GREEN, borderColor: isFollowing ? "var(--c-border)" : "transparent", fontFamily: FONT }}
+                  >
+                    {followLoading ? "..." : isFollowing ? "Following" : "Follow"}
+                  </button>
                 </>
               ) : friendshipStatus === 'request_sent' ? (
                 // Request pending: show "Sent" + Cancel button
@@ -390,10 +425,18 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
                   <button
                     onClick={() => friendship.cancelRequest()}
                     disabled={friendship.isLoading}
-                    className="px-5 h-14 rounded-full text-sm font-bold border transition-all active:scale-95"
+                    className="flex-1 flex items-center justify-center gap-2 rounded-full h-14 text-sm font-bold border transition-all active:scale-95"
                     style={{ borderColor: "rgba(229,57,53,0.4)", color: "#E53935", fontFamily: FONT }}
                   >
                     {friendship.isLoading ? "..." : "Cancel"}
+                  </button>
+                  <button
+                    onClick={handleToggleFollow}
+                    disabled={followLoading}
+                    className="flex-1 flex items-center justify-center gap-2 rounded-full h-14 text-sm font-bold text-foreground transition-all active:scale-95 shadow-lg border"
+                    style={{ background: isFollowing ? "transparent" : GREEN, borderColor: isFollowing ? "var(--c-border)" : "transparent", fontFamily: FONT }}
+                  >
+                    {followLoading ? "..." : isFollowing ? "Following" : "Follow"}
                   </button>
                 </>
               ) : friendshipStatus === 'request_received' ? (
@@ -418,16 +461,26 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
                   </button>
                 </>
               ) : (
-                // No relationship: Add Friend
-                <button
-                  onClick={() => friendship.addFriend()}
-                  disabled={friendship.isLoading}
-                  className="flex-1 flex items-center justify-center gap-2 rounded-full h-14 text-sm font-bold text-foreground transition-all active:scale-95 shadow-lg"
-                  style={{ background: GREEN, fontFamily: FONT, boxShadow: "0 8px 20px rgba(56,142,60,0.2)" }}
-                >
-                  <Users className="w-5 h-5" />
-                  {friendship.isLoading ? "..." : "Add Friend"}
-                </button>
+                // No relationship: Connect
+                <>
+                  <button
+                    onClick={() => friendship.addFriend()}
+                    disabled={friendship.isLoading}
+                    className="flex-1 flex items-center justify-center gap-2 rounded-full h-14 text-sm font-bold text-foreground transition-all active:scale-95 shadow-lg"
+                    style={{ background: GREEN, fontFamily: FONT, boxShadow: "0 8px 20px rgba(56,142,60,0.2)" }}
+                  >
+                    <Users className="w-5 h-5" />
+                    {friendship.isLoading ? "..." : "Connect"}
+                  </button>
+                  <button
+                    onClick={handleToggleFollow}
+                    disabled={followLoading}
+                    className="flex-1 flex items-center justify-center gap-2 rounded-full h-14 text-sm font-bold text-foreground transition-all active:scale-95 shadow-lg border"
+                    style={{ background: isFollowing ? "transparent" : GREEN, borderColor: isFollowing ? "var(--c-border)" : "transparent", fontFamily: FONT }}
+                  >
+                    {followLoading ? "..." : isFollowing ? "Following" : "Follow"}
+                  </button>
+                </>
               )}
             </div>
           )}
@@ -451,9 +504,9 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
             <AlertDialog open={showRemoveFriendDialog} onOpenChange={setShowRemoveFriendDialog}>
               <AlertDialogContent style={{ background: "var(--c-card)", border: "1px solid rgba(130,219,126,0.2)" }}>
                 <AlertDialogHeader>
-                  <AlertDialogTitle className="text-foreground">Remove Friend?</AlertDialogTitle>
+                  <AlertDialogTitle className="text-foreground">Disconnect?</AlertDialogTitle>
                   <AlertDialogDescription style={{ color: "var(--c-text-muted)" }}>
-                    Are you sure you want to remove {name} as a friend? This cannot be undone.
+                    Are you sure you want to remove {name} as a connection? This cannot be undone.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
