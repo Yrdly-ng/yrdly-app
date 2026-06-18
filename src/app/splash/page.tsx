@@ -42,7 +42,7 @@ export default function Splash() {
   return (
     <div className={cn("flex items-center justify-center h-[100dvh] transition-opacity duration-500", fade ? "opacity-100" : "opacity-0")}>
         <Image 
-          src="/yrdly-logo.png" 
+          src="/logo.png" 
           alt="Yrdly Logo" 
           width={128} 
           height={128} 

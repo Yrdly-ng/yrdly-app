@@ -153,7 +153,7 @@ export default function AuthCallback() {
       <div className="relative z-10 w-full max-w-[420px] flex flex-col items-center gap-8">
         <div className="text-center font-sans flex flex-col items-center gap-4">
           <Image
-            src="/yrdly-logo.png"
+            src="/logo.png"
             alt="Yrdly"
             width={72}
             height={72}

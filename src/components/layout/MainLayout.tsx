@@ -175,7 +175,7 @@ export function MainLayout({ children }: MainLayoutProps) {
             <div className="w-full max-w-7xl mx-auto flex items-center gap-4">
               <Link href="/home" className="flex items-center gap-1.5 flex-shrink-0">
                 <Image
-                  src="/yrdly-logo.png"
+                  src="/logo.png"
                   alt="Yrdly"
                   width={56}
                   height={56}

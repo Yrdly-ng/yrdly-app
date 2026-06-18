@@ -6,7 +6,7 @@ export function YrdlyLogo() {
   return (
     <div className="flex items-center gap-1">
       <Image 
-        src="/yrdly-logo.png" 
+        src="/logo.png" 
         alt="Yrdly Logo" 
         width={64} 
         height={64}

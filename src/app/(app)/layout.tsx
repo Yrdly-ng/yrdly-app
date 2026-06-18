@@ -60,7 +60,7 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex h-[100dvh] w-screen items-center justify-center bg-background">
         <Image 
-            src="/yrdly-logo.png" 
+            src="/logo.png" 
             alt="Yrdly Logo" 
             width={96} 
             height={96} 

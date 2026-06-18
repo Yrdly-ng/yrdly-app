@@ -105,7 +105,7 @@ export const emailTemplates = {
       <body>
         <div class="container">
           <div class="header">
-            <div class="logo"><img src="${APP_URL}/yrdly-logo.png" alt="${APP_NAME} Logo" /></div>
+            <div class="logo"><img src="${APP_URL}/logo.png" alt="${APP_NAME} Logo" /></div>
             <div class="tagline">Your Local Community Network</div>
           </div>
           
@@ -185,7 +185,7 @@ export const emailTemplates = {
       <body>
         <div class="container">
           <div class="header">
-            <div class="logo"><img src="${APP_URL}/yrdly-logo.png" alt="${APP_NAME} Logo" /></div>
+            <div class="logo"><img src="${APP_URL}/logo.png" alt="${APP_NAME} Logo" /></div>
             <div class="tagline">Protecting Your Neighborhood Profile</div>
           </div>
           
@@ -275,7 +275,7 @@ export const emailTemplates = {
       <body>
         <div class="container">
           <div class="header">
-            <div class="logo"><img src="${APP_URL}/yrdly-logo.png" alt="${APP_NAME} Logo" /></div>
+            <div class="logo"><img src="${APP_URL}/logo.png" alt="${APP_NAME} Logo" /></div>
             <div class="tagline">Neighborhood Network Confirmed</div>
           </div>
           
@@ -397,7 +397,7 @@ export const emailTemplates = {
       <body>
         <div class="container">
           <div class="header">
-            <div class="logo"><img src="${APP_URL}/yrdly-logo.png" alt="${APP_NAME} Logo" /></div>
+            <div class="logo"><img src="${APP_URL}/logo.png" alt="${APP_NAME} Logo" /></div>
             <div class="tagline">Your digital ticket is ready!</div>
           </div>
           
@@ -489,7 +489,7 @@ export const emailTemplates = {
       <body>
         <div class="container">
           <div class="header">
-            <div class="logo"><img src="${APP_URL}/yrdly-logo.png" alt="${APP_NAME} Logo" /></div>
+            <div class="logo"><img src="${APP_URL}/logo.png" alt="${APP_NAME} Logo" /></div>
             <div class="tagline">You have a new ticket sale!</div>
           </div>
           
@@ -585,7 +585,7 @@ export const emailTemplates = {
       <body>
         <div class="container">
           <div class="header">
-            <div class="logo"><img src="${APP_URL}/yrdly-logo.png" alt="${APP_NAME} Logo" /></div>
+            <div class="logo"><img src="${APP_URL}/logo.png" alt="${APP_NAME} Logo" /></div>
             <div class="tagline">Payment Confirmed</div>
           </div>
           
@@ -673,7 +673,7 @@ export const emailTemplates = {
       <body>
         <div class="container">
           <div class="header">
-            <div class="logo"><img src="${APP_URL}/yrdly-logo.png" alt="${APP_NAME} Logo" /></div>
+            <div class="logo"><img src="${APP_URL}/logo.png" alt="${APP_NAME} Logo" /></div>
             <div class="tagline">You have a new order!</div>
           </div>
           

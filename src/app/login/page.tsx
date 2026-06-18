@@ -70,7 +70,7 @@ export default function LoginPage() {
       <div className="min-h-[100dvh] flex items-center justify-center" style={{ background: colors.background }}>
         <div className="text-center font-sans flex flex-col items-center gap-3">
           <Image
-            src="/yrdly-logo.png"
+            src="/logo.png"
             alt="Yrdly"
             width={64}
             height={64}
@@ -200,7 +200,7 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="flex items-center justify-center mb-4 sm:mb-6">
           <Image
-            src="/yrdly-logo.png"
+            src="/logo.png"
             alt="Yrdly"
             width={72}
             height={72}
