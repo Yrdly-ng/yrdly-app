@@ -5,6 +5,7 @@ import { EscrowStatus } from '@/types/escrow';
 import { ResendEmailService } from '@/lib/resend-service';
 import { emailTemplates } from '@/lib/email-templates';
 import { PaystackService } from '@/lib/paystack-service';
+import { TicketService } from '@/lib/ticket-service';
 
 /**
  * POST /api/webhooks/paystack
@@ -60,11 +61,10 @@ export async function POST(request: NextRequest) {
       if (txRef.startsWith('evt-')) {
         console.log(`[Webhook] Processing event ticket transaction ${txRef}`);
         try {
-          const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://yrdly-app.vercel.app';
-          await fetch(`${appUrl}/api/events/tickets/verify?tx_ref=${txRef}`, { method: 'GET' });
-          console.log(`[Webhook] Event ticket verify triggered for ${txRef}`);
+          await TicketService.verifyAndProcessTicket(txRef);
+          console.log(`[Webhook] Event ticket verify successful for ${txRef}`);
         } catch (e) {
-          console.error('[Webhook] Failed to trigger verify route for event ticket', e);
+          console.error('[Webhook] Failed to verify event ticket', e);
         }
         return NextResponse.json({ status: 'ok' });
       }

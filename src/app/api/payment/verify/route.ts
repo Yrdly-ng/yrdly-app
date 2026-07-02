@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     // ── Lookup the transaction ────────────────────────────
     const { data: txRow } = await supabaseAdmin
       .from('escrow_transactions')
-      .select('buyer_id, item_id, seller_id, status')
+      .select('buyer_id, item_id, seller_id, status, total_amount')
       .eq('id', txRef)
       .single();
 
@@ -76,6 +76,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Transaction not found' },
         { status: 404 }
+      );
+    }
+
+    if (Math.abs(amount - txRow.total_amount) > 1) {
+      console.error(`[PaymentVerify] Amount mismatch. Expected: ${txRow.total_amount}, Actual: ${amount}`);
+      return NextResponse.json(
+        { error: 'Amount mismatch' },
+        { status: 400 }
       );
     }
 

@@ -28,10 +28,10 @@ export class EventEscrowService {
   /**
    * Get the organizer's bank details for outbound transfers
    */
-  static async getOrganizerBankDetails(organizerId: string): Promise<{ bankCode: string; accountNumber: string } | null> {
+  static async getOrganizerBankDetails(organizerId: string): Promise<{ bankCode: string; accountNumber: string; updatedAt: string } | null> {
     const { data, error } = await adminSupabase
       .from('seller_accounts')
-      .select('account_details, account_type')
+      .select('account_details, account_type, updated_at')
       .eq('user_id', organizerId)
       .eq('is_primary', true)
       .eq('is_active', true)
@@ -45,7 +45,7 @@ export class EventEscrowService {
     const accountNumber = accountDetails?.account_number || accountDetails?.accountNumber;
 
     if (!bankCode || !accountNumber) return null;
-    return { bankCode, accountNumber };
+    return { bankCode, accountNumber, updatedAt: data.updated_at };
   }
 
   /**
@@ -119,15 +119,28 @@ export class EventEscrowService {
     const bankDetails = await this.getOrganizerBankDetails(organizerId);
     if (!bankDetails) throw new Error('Organizer has no verified payout account');
 
-    // Check for existing payout record to avoid double-processing
+    // Enforce 24-hour cooling off period
+    const coolingOffPeriod = 24 * 60 * 60 * 1000;
+    const isCoolingOff = bankDetails.updatedAt && (Date.now() - new Date(bankDetails.updatedAt).getTime() < coolingOffPeriod);
+    if (isCoolingOff) {
+      console.warn(`[EventEscrowService] Payout delayed for event ${eventId}. Organizer account in cooling-off period.`);
+      return; // Skip payout, will be retried in next cron run
+    }
+
+    // Check for existing payout record to avoid double-processing or infinite retries
     const { data: existing } = await adminSupabase
       .from('event_payouts')
       .select('id, status')
       .eq('event_id', eventId)
-      .in('status', ['PENDING', 'PROCESSING', 'COMPLETED'])
+      .in('status', ['PENDING', 'PROCESSING', 'COMPLETED', 'FAILED'])
       .single();
 
-    if (existing) return; // Already processed or in progress
+    if (existing) {
+      if (existing.status === 'FAILED') {
+        console.warn(`[EventEscrowService] Event ${eventId} payout previously failed. Requires manual intervention.`);
+      }
+      return; // Already processed, in progress, or failed permanently
+    }
 
     // Create payout record
     const { data: payout, error: payoutError } = await adminSupabase
