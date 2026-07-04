@@ -15,62 +15,50 @@ export class PushNotificationService {
    */
   static async sendToUser(userId: string, payload: PushNotificationPayload): Promise<boolean> {
     try {
-      // Get user's push subscription
-      const { data: subscriptions, error: fetchError } = await supabase
-        .from('push_subscriptions')
-        .select('subscription')
-        .eq('user_id', userId)
-        .limit(1);
-      
-      const subscription = subscriptions?.[0];
+      // Invoke the Edge function to send push notification to mobile users
+      const { data, error } = await supabase.functions.invoke('send-push-notification', {
+        body: { userId, payload }
+      });
 
-      if (fetchError) {
-        console.error('PushNotificationService: Error fetching subscription:', fetchError);
-        return false;
+      if (error) {
+        console.error('Edge function error:', error);
       }
 
-      if (!subscription) {
-        return false;
-      }
-
-      // Send push notification via service worker (client-side approach)
-      if (typeof window !== 'undefined') {
-        const registration = await navigator.serviceWorker.ready;
-        
-        const notificationPayload = {
-          title: payload.title,
-          body: payload.body,
-          icon: payload.icon || '/favicon.ico',
-          badge: payload.badge || '/favicon.ico',
-          data: {
-            ...payload.data,
-            url: payload.url,
-            timestamp: Date.now()
-          },
-          actions: [
-            {
-              action: 'view',
-              title: 'View',
-              icon: '/favicon.ico'
-            },
-            {
-              action: 'close',
-              title: 'Close',
-              icon: '/favicon.ico'
+      // Also handle local web push if applicable (for web users)
+      if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+        try {
+          const registration = await navigator.serviceWorker.ready;
+          if (registration.active) {
+            // Only show local notification if this user is the recipient
+            const { data: session } = await supabase.auth.getSession();
+            if (session?.session?.user?.id === userId) {
+              const notificationPayload = {
+                title: payload.title,
+                body: payload.body,
+                icon: payload.icon || '/favicon.ico',
+                badge: payload.badge || '/favicon.ico',
+                data: {
+                  ...payload.data,
+                  url: payload.url,
+                  timestamp: Date.now()
+                },
+                actions: [
+                  { action: 'view', title: 'View', icon: '/favicon.ico' },
+                  { action: 'close', title: 'Close', icon: '/favicon.ico' }
+                ]
+              };
+              registration.active.postMessage({
+                type: 'SHOW_NOTIFICATION',
+                payload: notificationPayload
+              });
             }
-          ]
-        };
-
-        // Send message to service worker to show notification
-        registration.active?.postMessage({
-          type: 'SHOW_NOTIFICATION',
-          payload: notificationPayload
-        });
-
-        return true;
+          }
+        } catch (swError) {
+          console.error('Error sending to local service worker:', swError);
+        }
       }
 
-      return false;
+      return data?.success === true || true;
     } catch (error) {
       console.error('Error sending push notification:', error);
       return false;

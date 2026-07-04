@@ -327,6 +327,21 @@ export function MarketplaceChatLayout({
         imageUrl
       );
       
+      // Trigger notification for the other participant
+      if (buyer?.uid) {
+        try {
+          const { NotificationTriggers } = await import("@/lib/notification-triggers");
+          await NotificationTriggers.onMessageSent(
+            buyer.uid,
+            user.id,
+            selectedChat.id,
+            newMessage.trim() || (imageUrl ? "📷 Photo" : "")
+          );
+        } catch (error) {
+          console.error("Error triggering notification:", error);
+        }
+      }
+      
       setNewMessage("");
       setImageFile(null);
       setImagePreview(null);
@@ -335,7 +350,7 @@ export function MarketplaceChatLayout({
       console.error("Error sending message: ", error);
       setUploadProgress(null);
     }
-  }, [newMessage, imageFile, selectedChat, user, profile?.name]);
+  }, [newMessage, imageFile, selectedChat, user, profile?.name, buyer]);
 
   // Chat input is now inlined to prevent focus loss
 
