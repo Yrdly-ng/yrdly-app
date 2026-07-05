@@ -223,7 +223,9 @@ export class StorageService {
       const fileName = `${Date.now()}_${file.name}`;
       const path = `posts/${postId}/${fileName}`;
 
-      const { data, error } = await this.uploadFile('post-images', path, file);
+      const { data, error } = await this.uploadFile('post-images', path, file, {
+        cacheControl: '604800',
+      });
       
       if (error) {
         return { url: null, error };
@@ -247,7 +249,9 @@ export class StorageService {
       const fileName = `${Date.now()}_${file.name}`;
       const path = `${conversationId}/${fileName}`;
 
-      const { data, error } = await this.uploadFile('chat-images', path, file);
+      const { data, error } = await this.uploadFile('chat-images', path, file, {
+        cacheControl: '86400',
+      });
       
       if (error) {
         console.error('❌ Upload file error:', error);
@@ -261,7 +265,9 @@ export class StorageService {
         // Try with a different path structure as fallback
         const fallbackPath = `chat/${conversationId}/${fileName}`;
         
-        const { data: fallbackData, error: fallbackError } = await this.uploadFile('chat-images', fallbackPath, file);
+        const { data: fallbackData, error: fallbackError } = await this.uploadFile('chat-images', fallbackPath, file, {
+          cacheControl: '86400',
+        });
         
         if (fallbackError) {
           console.error('❌ Fallback upload also failed:', fallbackError);
@@ -325,7 +331,9 @@ export class StorageService {
       const fileName = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
       const path = `${transactionId}/${fileName}`;
 
-      const { data, error } = await this.uploadFile('dispute-evidence', path, file);
+      const { data, error } = await this.uploadFile('dispute-evidence', path, file, {
+        cacheControl: '86400',
+      });
       
       if (error) {
         return { url: null, error };
@@ -357,7 +365,7 @@ export class StorageService {
       const { data, error } = await supabase.storage
         .from('post-videos')
         .upload(path, file, {
-          cacheControl: '3600',
+          cacheControl: '604800',
           upsert: false,
           contentType: file.type || this.getMimeType(file),
         });
@@ -394,7 +402,7 @@ export class StorageService {
       const { data, error } = await supabase.storage
         .from('chat-videos')
         .upload(path, file, {
-          cacheControl: '3600',
+          cacheControl: '604800',
           upsert: false,
           contentType: file.type || this.getMimeType(file),
         });

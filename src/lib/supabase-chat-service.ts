@@ -260,6 +260,29 @@ export class SupabaseChatService {
         console.error('Error updating conversation last message:', conversationUpdateError);
         // Don't throw here, message was sent successfully
       }
+
+      // Fire push notification to the recipient (non-sender participant)
+      try {
+        const { data: chatRow } = await supabase
+          .from('item_chats')
+          .select('buyer_id, seller_id')
+          .eq('id', chatId)
+          .single();
+
+        if (chatRow) {
+          const toUserId = chatRow.buyer_id === senderId ? chatRow.seller_id : chatRow.buyer_id;
+          const { NotificationTriggers } = await import('@/lib/notification-triggers');
+          await NotificationTriggers.onMessageSent(
+            toUserId,
+            senderId,
+            chatId,
+            imageUrl ? '📷 Photo' : content
+          );
+        }
+      } catch (notifError) {
+        console.error('Error firing marketplace message notification:', notifError);
+        // Non-fatal: message was already sent successfully
+      }
     } catch (error) {
       console.error('Error in sendMessage:', error);
       throw error;

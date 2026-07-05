@@ -9,7 +9,7 @@ import {
 } from '@/types/escrow';
 import { MARKETPLACE_CONSTANTS } from '@/lib/constants';
 
-const COMMISSION_RATE = MARKETPLACE_CONSTANTS.COMMISSION_RATE; // 3% commission
+const COMMISSION_RATE = MARKETPLACE_CONSTANTS.COMMISSION_RATE; // 3% platform commission
 
 export class EscrowService {
   // Create a new escrow transaction

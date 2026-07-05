@@ -1,4 +1,12 @@
 /**
+ * ⚠️ DUPLICATED ACROSS REPOS
+ * This file is manually kept in sync with the equivalent file in the sibling repo:
+ *   yrdly-app  ↔  yrdly-mobile  (src/lib/constants.ts)
+ * Any change to COMMISSION_RATE, AUTO_RELEASE_HOURS, or other business constants
+ * MUST be applied to both repos in the same change.
+ */
+
+/**
  * Application Constants
  * Central location for all magic numbers, limits, and configuration values
  */
@@ -70,7 +78,7 @@ export const ERROR_MESSAGES = {
 
 // Marketplace & Escrow
 export const MARKETPLACE_CONSTANTS = {
-  COMMISSION_RATE: 0.05, // 5% platform commission
+  COMMISSION_RATE: 0.03, // 3% platform commission
   AUTO_RELEASE_HOURS: 48, // Hours before auto-releasing funds to seller
   CURRENCY: 'NGN',
   MIN_PRICE: 100, // Minimum item price in NGN

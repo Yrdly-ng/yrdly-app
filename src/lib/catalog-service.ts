@@ -296,7 +296,7 @@ export class CatalogService {
       const { data, error } = await supabase.storage
         .from('catalog-items')
         .upload(fileName, file, {
-          cacheControl: '3600',
+          cacheControl: '86400',
           upsert: false,
         });
 
