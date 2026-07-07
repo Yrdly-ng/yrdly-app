@@ -109,7 +109,7 @@ function ImageCollage({
     return (
       <div
         className="relative w-full cursor-pointer overflow-hidden"
-        style={{ borderRadius: 12, height: 320, maxHeight: 320 }}
+        style={{ borderRadius: 12, aspectRatio: "4/5" }}
         onClick={() => onImageClick(0)}
       >
         <Image
@@ -126,7 +126,7 @@ function ImageCollage({
   // 2 images: equal side-by-side at fixed height
   if (urls.length === 2) {
     return (
-      <div className="grid grid-cols-2 gap-0.5 overflow-hidden" style={{ borderRadius: 12, height: 240 }}>
+      <div className="grid grid-cols-2 gap-0.5 overflow-hidden" style={{ borderRadius: 12, aspectRatio: "4/5" }}>
         {urls.map((u, i) => (
           <div key={i} className="relative cursor-pointer h-full" onClick={() => onImageClick(i)}>
             <Image src={u} alt="" fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover" />
@@ -138,7 +138,7 @@ function ImageCollage({
 
   // 3+: 1 tall left + 2 right stacked (Nextdoor style)
   return (
-    <div className="grid grid-cols-2 gap-0.5 overflow-hidden" style={{ borderRadius: 12, height: 260 }}>
+    <div className="grid grid-cols-2 gap-0.5 overflow-hidden" style={{ borderRadius: 12, aspectRatio: "4/5" }}>
       <div className="relative row-span-2 cursor-pointer h-full" onClick={() => onImageClick(0)}>
         <Image src={urls[0]} alt="" fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover" />
       </div>
@@ -236,20 +236,32 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
   const [isTextExpanded, setIsTextExpanded] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  const [videoProgress, setVideoProgress] = useState(0);
+
   /* ── auto-pause video when scrolled out of view ── */
   useEffect(() => {
     if (!videoRef.current || !post.video_url) return;
     
+    // Force muted via JS to ensure browsers allow autoplay
+    videoRef.current.muted = true;
+    videoRef.current.defaultMuted = true;
+    
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          // If video is playing and scrolls out of view (less than 20% visible), pause it
+          // If video is playing and scrolls out of view, pause it
           if (!entry.isIntersecting && !videoRef.current?.paused) {
             videoRef.current?.pause();
+          } else if (entry.isIntersecting && videoRef.current?.paused) {
+            // Single-playback guarantee: pause all other videos
+            document.querySelectorAll('video').forEach(v => {
+              if (v !== videoRef.current && !v.paused) v.pause();
+            });
+            videoRef.current?.play().catch(e => console.log('Autoplay prevented:', e));
           }
         });
       },
-      { threshold: 0.2 } // Trigger when less than 20% is visible
+      { threshold: 0.6 } // Increased threshold so it only plays when mostly in view
     );
     
     observer.observe(videoRef.current);
@@ -593,7 +605,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
         {/* image */}
         {urls.length > 0 && (
           <div className="px-3 pb-3">
-            <div className="relative w-full overflow-hidden" style={{ borderRadius: 12, height: 320, maxHeight: 320 }}>
+            <div className="relative w-full overflow-hidden" style={{ borderRadius: 12, aspectRatio: "4/5" }}>
               <Image src={urls[0]} alt="" fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover" />
             </div>
           </div>
@@ -672,13 +684,27 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
               <video
                 ref={videoRef}
                 src={post.video_url.includes('#t=') ? post.video_url : `${post.video_url}#t=0.001`}
-                controls
                 playsInline
+                muted
+                loop
                 preload="metadata"
                 poster={post.video_thumbnail_url ?? undefined}
-                className="w-full max-h-[360px] object-cover"
-                style={{ borderRadius: 12 }}
+                className="w-full object-cover"
+                style={{ borderRadius: 12, aspectRatio: "4/5" }}
+                onTimeUpdate={() => {
+                  if (videoRef.current) {
+                    const progress = (videoRef.current.currentTime / videoRef.current.duration) * 100;
+                    setVideoProgress(progress || 0);
+                  }
+                }}
               />
+              {/* Custom Thin Progress Bar */}
+              <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-white/30 z-10">
+                <div 
+                  className="h-full bg-white/90 transition-all duration-75 ease-linear"
+                  style={{ width: `${videoProgress}%` }}
+                />
+              </div>
             </div>
           </div>
         )}

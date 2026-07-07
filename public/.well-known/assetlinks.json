@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.feranmi.dev.yrdlymobile",
+      "sha256_cert_fingerprints": [
+        "C0B231C5C34B33275C065B52EC66F3D78600B8D80ED6DBD3A7CBC4A9793B000E"
+      ]
+    }
+  }
+]
