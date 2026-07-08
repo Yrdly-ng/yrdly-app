@@ -333,9 +333,12 @@ export class DisputeService {
   /**
    * Get disputes by status (admin)
    */
-  static async getDisputesByStatus(status: string): Promise<DisputeData[]> {
+  static async getDisputesByStatus(status: string, page: number = 1, limit: number = 20): Promise<{ data: DisputeData[], count: number }> {
     try {
-      const { data, error } = await supabase
+      const from = (page - 1) * limit;
+      const to = from + limit - 1;
+
+      let query = supabase
         .from('disputes')
         .select(`
           *,
@@ -362,16 +365,22 @@ export class DisputeService {
               avatar_url
             )
           )
-        `)
-        .eq('status', status)
-        .order('created_at', { ascending: false });
+        `, { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range(from, to);
+
+      if (status && status !== 'all') {
+        query = query.eq('status', status);
+      }
+
+      const { data, error, count } = await query;
 
       if (error) {
         console.error('Error fetching disputes by status:', error);
         throw error;
       }
 
-      return data || [];
+      return { data: data || [], count: count || 0 };
     } catch (error) {
       console.error('Failed to get disputes by status:', error);
       throw new Error('Failed to get disputes by status');

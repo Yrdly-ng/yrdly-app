@@ -6,8 +6,7 @@ import { getAuthenticatedUser } from "@/lib/supabase-server";
 import { getPostHogClient } from "@/lib/posthog-server";
 import { PaystackService } from "@/lib/paystack-service";
 
-// ── Rate Limit State ──────────────────────────────────────────────────────
-const rateLimitMap = new Map<string, { count: number; windowStart: number }>();
+// Rate limiting constants
 const RATE_LIMIT_MAX = 10;
 const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
 
@@ -25,20 +24,43 @@ export async function POST(request: NextRequest) {
   try {
     // ── Rate Limiting ────────────────────────────────────────────────────────
     const ip = request.headers.get("x-forwarded-for") || "unknown";
-    const now = Date.now();
-    const rateLimit = rateLimitMap.get(ip);
+    const endpoint = "/api/payment/initialize";
+    const now = new Date();
 
-    if (rateLimit) {
-      if (now - rateLimit.windowStart < RATE_LIMIT_WINDOW_MS) {
-        if (rateLimit.count >= RATE_LIMIT_MAX) {
+    const { data: rlData } = await supabaseAdmin
+      .from('rate_limits')
+      .select('*')
+      .eq('ip_address', ip)
+      .eq('endpoint', endpoint)
+      .single();
+
+    if (rlData) {
+      const windowStart = new Date(rlData.window_start).getTime();
+      if (now.getTime() - windowStart < RATE_LIMIT_WINDOW_MS) {
+        if (rlData.request_count >= RATE_LIMIT_MAX) {
           return NextResponse.json({ error: "Too many requests" }, { status: 429 });
         }
-        rateLimit.count++;
+        await supabaseAdmin
+          .from('rate_limits')
+          .update({ request_count: rlData.request_count + 1 })
+          .eq('ip_address', ip)
+          .eq('endpoint', endpoint);
       } else {
-        rateLimitMap.set(ip, { count: 1, windowStart: now });
+        await supabaseAdmin
+          .from('rate_limits')
+          .update({ request_count: 1, window_start: now.toISOString() })
+          .eq('ip_address', ip)
+          .eq('endpoint', endpoint);
       }
     } else {
-      rateLimitMap.set(ip, { count: 1, windowStart: now });
+      await supabaseAdmin
+        .from('rate_limits')
+        .insert({
+          ip_address: ip,
+          endpoint: endpoint,
+          request_count: 1,
+          window_start: now.toISOString()
+        });
     }
 
     // ── Authenticate the caller ───────────────────────────────────────────────

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/use-supabase-auth';
@@ -32,23 +32,16 @@ export default function AdminDisputesPage() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const limit = 20;
 
   const fetchDisputes = useCallback(async () => {
     try {
-      let data: DisputeData[] = [];
-      
-      if (statusFilter === 'all') {
-        // Fetch all disputes by getting each status
-        const statuses = ['open', 'under_review', 'resolved', 'closed'];
-        const allDisputes = await Promise.all(
-          statuses.map(status => DisputeService.getDisputesByStatus(status))
-        );
-        data = allDisputes.flat();
-      } else {
-        data = await DisputeService.getDisputesByStatus(statusFilter);
-      }
-      
+      setLoading(true);
+      const { data, count } = await DisputeService.getDisputesByStatus(statusFilter, page, limit);
       setDisputes(data);
+      setTotalCount(count);
     } catch (error) {
       console.error('Error fetching disputes:', error);
       toast({
@@ -68,7 +61,12 @@ export default function AdminDisputesPage() {
     }
 
     fetchDisputes();
-  }, [user, statusFilter, router, fetchDisputes]);
+  }, [user, statusFilter, page, router, fetchDisputes]);
+
+  // Reset page when filter changes
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter, searchTerm]);
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
@@ -277,6 +275,33 @@ export default function AdminDisputesPage() {
                 </CardContent>
               </Card>
             ))}
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {totalCount > limit && (
+          <div className="flex justify-between items-center mt-6">
+            <span className="text-sm text-muted-foreground">
+              Showing {(page - 1) * limit + 1} to {Math.min(page * limit, totalCount)} of {totalCount} disputes
+            </span>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page === 1}
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page * limit >= totalCount}
+                onClick={() => setPage(p => p + 1)}
+              >
+                Next
+              </Button>
+            </div>
           </div>
         )}
 
