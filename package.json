@@ -89,6 +89,7 @@
     "use-debounce": "^10.0.1",
     "use-places-autocomplete": "^4.0.1",
     "vaul": "^1.1.2",
+    "vexo-analytics": "^1.5.8",
     "zod": "^3.23.8"
   },
   "devDependencies": {
