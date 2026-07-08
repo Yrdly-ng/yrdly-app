@@ -52,7 +52,7 @@ export default function AdminDisputesPage() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, toast]);
+  }, [statusFilter, page, toast]);
 
   useEffect(() => {
     if (!user) {
