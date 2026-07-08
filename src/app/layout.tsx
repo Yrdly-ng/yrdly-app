@@ -12,7 +12,6 @@ import Script from "next/script";
 import { Suspense } from 'react';
 import PostHogPageView from '@/components/providers/PostHogPageView';
 import { PostHogProvider } from '@/components/providers/PostHogProvider';
-import { VexoProvider } from '@/components/providers/VexoProvider';
 
 export const metadata: Metadata = {
   title: 'Yrdly - Your Neighborhood Network',
@@ -60,7 +59,6 @@ export default function RootLayout({
           <Toaster />
           <Analytics />
           <SpeedInsights />
-          <VexoProvider />
 
           <Script id="zohodeskasap" strategy="lazyOnload">
             {`

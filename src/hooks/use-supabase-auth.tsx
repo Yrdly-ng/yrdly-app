@@ -5,7 +5,7 @@ import { User } from '@supabase/supabase-js';
 import { AuthService, AuthUser } from '@/lib/auth-service';
 import { supabase } from '@/lib/supabase';
 import posthog from 'posthog-js';
-import { identifyDevice } from 'vexo-analytics';
+
 
 interface AuthContextType {
   user: User | null;
@@ -43,11 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (currentUser) {
             try {
               if (currentUser.email) {
-                try {
-                  identifyDevice(currentUser.email);
-                } catch (e) {
-                  console.warn('Failed to identify device for Vexo:', e);
-                }
+                // Posthog handles identity tracking
               }
 
               // First, try to get existing profile
@@ -145,11 +141,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           });
 
           if (user.email) {
-            try {
-              identifyDevice(user.email);
-            } catch (e) {
-              console.warn('Failed to identify device for Vexo:', e);
-            }
+            // Posthog handles identity tracking
           }
 
           try {
