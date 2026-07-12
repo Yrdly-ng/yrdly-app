@@ -97,9 +97,17 @@ export async function POST(request: NextRequest) {
     };
 
     // ── Validate ──────────────────────────────────────────
-    if (!itemId || !buyerId || !sellerId || !price || !buyerEmail) {
+    const missing = [];
+    if (!itemId) missing.push('itemId');
+    if (!buyerId) missing.push('buyerId');
+    if (!sellerId) missing.push('sellerId');
+    if (price === undefined || price === null) missing.push('price');
+    if (!buyerEmail) missing.push('buyerEmail');
+
+    if (missing.length > 0) {
+      console.log("[PaymentInit] Missing fields:", missing, "Payload:", body);
       return NextResponse.json(
-        { error: "Missing required fields" },
+        { error: `Missing required fields: ${missing.join(', ')}` },
         { status: 400 }
       );
     }
@@ -174,36 +182,39 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Task 2: Block payouts to unverified accounts ──────
-    if (!sellerAccount || sellerAccount.verification_status !== "verified") {
-      try {
-        require('fs').writeFileSync('/Users/macbook/Development/projects/yrdly-app/debug-payment.json', JSON.stringify({
-          sellerId,
-          sellerAccount,
-          sellerAccountError,
-          itemData
-        }, null, 2));
-      } catch(e) {}
-      
-      return NextResponse.json(
-        {
-          error:
-            "The seller has not yet verified their payout account. Payment cannot proceed until their account is verified.",
-          code: "SELLER_UNVERIFIED",
-          debug: {
+    // Skip this check if the item is free since no money is exchanged
+    if (totalAmount > 0) {
+      if (!sellerAccount || sellerAccount.verification_status !== "verified") {
+        try {
+          require('fs').writeFileSync('/Users/macbook/Development/projects/yrdly-app/debug-payment.json', JSON.stringify({
             sellerId,
             sellerAccount,
             sellerAccountError,
-          }
-        },
-        { status: 402 }
-      );
+            itemData
+          }, null, 2));
+        } catch(e) {}
+        
+        return NextResponse.json(
+          {
+            error:
+              "The seller has not yet verified their payout account. Payment cannot proceed until their account is verified.",
+            code: "SELLER_UNVERIFIED",
+            debug: {
+              sellerId,
+              sellerAccount,
+              sellerAccountError,
+            }
+          },
+          { status: 402 }
+        );
+      }
     }
 
     // ── Task 3: 24-hour cooling-off after account change ──
     // Only apply the 24-hour hold if account_updated_at is explicitly set
     // (i.e., for existing accounts that changed their payout details).
     // New accounts have account_updated_at = null and can sell immediately.
-    if (sellerAccount.account_updated_at) {
+    if (sellerAccount?.account_updated_at) {
       const updatedTime = new Date(sellerAccount.account_updated_at).getTime();
       const hoursSinceUpdate = (Date.now() - updatedTime) / (1000 * 60 * 60);
       if (hoursSinceUpdate < 24) {
@@ -253,23 +264,45 @@ export async function POST(request: NextRequest) {
     // ── Initialise Paystack payment ───────────────────────
     // Full amount collected into platform account and held in escrow.
     // Seller payout triggered after buyer confirms receipt.
-    let paymentLink: string;
-    try {
-      paymentLink = await PaystackService.initializePayment({
-        transactionId,
-        amount: totalAmount,
-        buyerEmail,
-        buyerName,
-        itemTitle,
-        sellerName,
-        callbackUrl: callbackUrl || `${origin}/payment/verify?tx_ref=${transactionId}`
-      });
-    } catch (paystackError: any) {
-      console.error("Paystack error:", paystackError);
-      return NextResponse.json(
-        { error: paystackError?.message || "Failed to initialize payment" },
-        { status: 502 }
-      );
+    let paymentLink: string | undefined = undefined;
+    if (totalAmount > 0) {
+      try {
+        paymentLink = await PaystackService.initializePayment({
+          transactionId,
+          amount: totalAmount,
+          buyerEmail,
+          buyerName,
+          itemTitle,
+          sellerName,
+          callbackUrl: callbackUrl || `${origin}/payment/verify?tx_ref=${transactionId}`
+        });
+      } catch (paystackError: any) {
+        console.error("Paystack error:", paystackError);
+        return NextResponse.json(
+          { error: paystackError?.message || "Failed to initialize payment" },
+          { status: 502 }
+        );
+      }
+    } else {
+      // Free item, bypass Paystack and mark as PAID immediately
+      await supabaseAdmin
+        .from('escrow_transactions')
+        .update({
+          status: EscrowStatus.PAID,
+          paid_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', transactionId);
+
+      await supabaseAdmin
+        .from('posts')
+        .update({ 
+          is_sold: true, 
+          sold_to_user_id: buyerId,
+          sold_at: new Date().toISOString(),
+          transaction_id: transactionId,
+        })
+        .eq('id', itemId);
     }
 
     const posthog = getPostHogClient();
