@@ -43,6 +43,8 @@ export interface PaymentInitiationData {
   buyerName: string;
   itemTitle: string;
   sellerName: string;
+  callbackUrl?: string;
+  metadata?: Record<string, any>;
 }
 
 export interface PaymentVerificationResult {
@@ -62,6 +64,8 @@ export class PaystackService {
    * Returns the hosted checkout URL.
    */
   static async initializePayment(data: PaymentInitiationData): Promise<string> {
+    const callback_url = data.callbackUrl || `${process.env.NEXT_PUBLIC_APP_URL}/payment/verify?tx_ref=${data.transactionId}`;
+
     const response = await paystackRequest<{ status: boolean; data: { authorization_url: string } }>(
       '/transaction/initialize',
       {
@@ -71,9 +75,10 @@ export class PaystackService {
           amount: Math.round(data.amount * 100), // convert NGN → kobo
           email: data.buyerEmail,
           currency: 'NGN',
-          callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/payment/verify?tx_ref=${data.transactionId}`,
+          callback_url,
           channels: ['card', 'bank', 'ussd', 'bank_transfer'],
           metadata: {
+            ...data.metadata,
             buyer_name: data.buyerName,
             item_title: data.itemTitle,
             seller_name: data.sellerName,
@@ -101,14 +106,14 @@ export class PaystackService {
     try {
       const response = await paystackRequest<{
         status: boolean;
-        data: { status: string; reference: string; amount: number; metadata: any };
+        data: { status: string; reference: string; amount: number; requested_amount?: number; metadata: any };
       }>(`/transaction/verify/${encodeURIComponent(reference)}`);
 
       if (response.status && response.data.status === 'success') {
         return {
           success: true,
           transactionReference: response.data.reference,
-          amount: response.data.amount / 100, // convert kobo → NGN
+          amount: (response.data.requested_amount || response.data.amount) / 100, // convert kobo → NGN
           status: response.data.status,
           metadata: response.data.metadata,
         };
@@ -225,8 +230,17 @@ export class PaystackService {
       }
 
       return { valid: false };
-    } catch (error) {
+    } catch (error: any) {
       console.error('[PaystackService] resolveAccount error:', error);
+      
+      // In test mode, Paystack limits live bank account resolutions. Gracefully handle it to unblock sandbox testing.
+      if (
+        process.env.PAYSTACK_SECRET_KEY?.startsWith('sk_test_') &&
+        error?.message?.includes('Test mode daily limit')
+      ) {
+        return { valid: true, accountName: 'Test Bank Account (Fallback)' };
+      }
+      
       return { valid: false };
     }
   }

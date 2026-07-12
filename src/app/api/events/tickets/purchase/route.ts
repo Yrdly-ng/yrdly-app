@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
     }
 
-    const { event_id, tier_id, attendee_name, attendee_email, attendee_phone } = await request.json();
+    const { event_id, tier_id, attendee_name, attendee_email, attendee_phone, callbackUrl } = await request.json();
 
     if (!event_id || !tier_id || !attendee_name || !attendee_email) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -223,6 +223,7 @@ export async function POST(request: NextRequest) {
 
     // ── Paid ticket — initialise Paystack payment ─────────────────────────
     const txRef = `evt-${event_id.substring(0, 8)}-${Date.now()}`;
+    const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
 
     let paymentLink: string;
     try {
@@ -233,6 +234,15 @@ export async function POST(request: NextRequest) {
         buyerName: attendee_name,
         itemTitle: `${tier.name} — ${event.title}`,
         sellerName: 'Event Organizer',
+        callbackUrl: callbackUrl || `${origin}/my-tickets?success=1`,
+        metadata: {
+          event_id,
+          tier_id,
+          buyer_id: user.id,
+          attendee_name,
+          attendee_email,
+          attendee_phone: attendee_phone || null
+        }
       });
     } catch (paystackError: any) {
       console.error('[v0] Paystack init error:', paystackError);

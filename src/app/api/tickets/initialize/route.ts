@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Build tx_ref carrying all data for webhook ────────
-    const txRef = `ticket_${tierId}_${user.id}_${Date.now()}`;
+    const txRef = `evt-tkt-${tierId.substring(0,6)}-${user.id.substring(0,4)}-${Date.now()}`;
     const price = Number(tier.price);
 
     // ── Free ticket — skip Paystack ────────────────────
@@ -71,6 +71,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Paid ticket — initialise Paystack payment ───────────────────────────
+    const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
     
     // Check if we need to split payment
     let subaccount: string | undefined;
@@ -87,6 +88,15 @@ export async function POST(request: NextRequest) {
         buyerName: attendeeName,
         itemTitle: `Ticket — ${tier.event.title}`,
         sellerName: 'Event Organizer',
+        callbackUrl: `${origin}/my-tickets?success=1`,
+        metadata: {
+          event_id: eventId,
+          tier_id: tierId,
+          buyer_id: user.id,
+          attendee_name: attendeeName,
+          attendee_email: attendeeEmail,
+          attendee_phone: attendeePhone || null
+        }
       });
       // NOTE: We don't currently pass 'subaccount' to PaystackService.initializePayment.
       // If INSTANT payout is needed, PaystackService.initializePayment should be updated to accept a subaccount param.

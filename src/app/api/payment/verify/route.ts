@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
     if (Math.abs(amount - txRow.total_amount) > 1) {
       console.error(`[PaymentVerify] Amount mismatch. Expected: ${txRow.total_amount}, Actual: ${amount}`);
       return NextResponse.json(
-        { error: 'Amount mismatch' },
+        { error: `Amount mismatch. Expected: ${txRow.total_amount}, Actual: ${amount}` },
         { status: 400 }
       );
     }

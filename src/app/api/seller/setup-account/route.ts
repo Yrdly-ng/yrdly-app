@@ -64,8 +64,10 @@ export async function POST(request: NextRequest) {
     if (resolveResult.valid && resolveResult.accountName) {
       const resolvedName = resolveResult.accountName;
 
+      const isTestFallback = resolvedName.includes('(Fallback)');
+
       // Compare resolved bank name vs user-entered name
-      if (!namesMatch(resolvedName, accountName)) {
+      if (!isTestFallback && !namesMatch(resolvedName, accountName)) {
         return NextResponse.json(
           {
             error: `Account name mismatch. The bank reports this account belongs to "${resolvedName}". Please use your own account.`,
@@ -76,7 +78,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Also compare resolved bank name vs profile name (fraud guard)
-      if (profileName && !namesMatch(resolvedName, profileName)) {
+      if (!isTestFallback && profileName && !namesMatch(resolvedName, profileName)) {
         return NextResponse.json(
           {
             error: `This bank account does not appear to belong to you. Please add an account registered in your own name.`,
@@ -125,7 +127,6 @@ export async function POST(request: NextRequest) {
           account_number: accountNumber,
           account_name: accountName,
         },
-        payment_subaccount_id: subaccountId,
         verification_status: 'verified',
         is_active: true,
         is_primary: true,

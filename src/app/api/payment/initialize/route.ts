@@ -83,6 +83,7 @@ export async function POST(request: NextRequest) {
       buyerName,
       itemTitle,
       sellerName,
+      callbackUrl,
     } = body as {
       itemId: string;
       buyerId: string;
@@ -92,6 +93,7 @@ export async function POST(request: NextRequest) {
       buyerName: string;
       itemTitle: string;
       sellerName: string;
+      callbackUrl?: string;
     };
 
     // ── Validate ──────────────────────────────────────────
@@ -160,20 +162,38 @@ export async function POST(request: NextRequest) {
     const totalAmount = authorizedPrice;
 
     // ── Look up seller's payout account ──────────────────
-    const { data: sellerAccount } = await supabaseAdmin
+    const { data: sellerAccount, error: sellerAccountError } = await supabaseAdmin
       .from("seller_accounts")
-      .select("payment_subaccount_id, verification_status, account_updated_at, updated_at")
+      .select("verification_status, account_updated_at, updated_at")
       .eq("user_id", sellerId)
       .eq("is_active", true)
       .single();
 
+    if (sellerAccountError) {
+      console.error("[PaymentInit] Error fetching seller account for", sellerId, ":", sellerAccountError);
+    }
+
     // ── Task 2: Block payouts to unverified accounts ──────
     if (!sellerAccount || sellerAccount.verification_status !== "verified") {
+      try {
+        require('fs').writeFileSync('/Users/macbook/Development/projects/yrdly-app/debug-payment.json', JSON.stringify({
+          sellerId,
+          sellerAccount,
+          sellerAccountError,
+          itemData
+        }, null, 2));
+      } catch(e) {}
+      
       return NextResponse.json(
         {
           error:
             "The seller has not yet verified their payout account. Payment cannot proceed until their account is verified.",
           code: "SELLER_UNVERIFIED",
+          debug: {
+            sellerId,
+            sellerAccount,
+            sellerAccountError,
+          }
         },
         { status: 402 }
       );
@@ -227,6 +247,9 @@ export async function POST(request: NextRequest) {
 
     const transactionId = txData.id;
 
+    // Get request origin to ensure we redirect back to the correct host (localhost vs production)
+    const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
+    
     // ── Initialise Paystack payment ───────────────────────
     // Full amount collected into platform account and held in escrow.
     // Seller payout triggered after buyer confirms receipt.
@@ -239,6 +262,7 @@ export async function POST(request: NextRequest) {
         buyerName,
         itemTitle,
         sellerName,
+        callbackUrl: callbackUrl || `${origin}/payment/verify?tx_ref=${transactionId}`
       });
     } catch (paystackError: any) {
       console.error("Paystack error:", paystackError);

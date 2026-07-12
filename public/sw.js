@@ -1,6 +1,6 @@
 // Yrdly Service Worker
 // Version is injected at build time by scripts/inject-sw-version.js
-const CACHE_VERSION = 'local-1783529627661';
+const CACHE_VERSION = 'local-1783815284717';
 const CACHE_NAME = `yrdly-v${CACHE_VERSION}`;
 
 // Assets to pre-cache on install

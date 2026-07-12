@@ -103,6 +103,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     const setupProfileRealtime = (userId: string) => {
+      if (profileChannel) {
+        supabase.removeChannel(profileChannel);
+        profileChannel = null;
+      }
+      
       // Set up real-time subscription for profile updates
       profileChannel = supabase
         .channel(`user-profile-${userId}`)
