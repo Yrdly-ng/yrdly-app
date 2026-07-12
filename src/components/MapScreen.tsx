@@ -149,7 +149,12 @@ export function MapScreen({ className }: MapScreenProps) {
       const userState = profile?.location?.state;
 
       // Fetch Events
-      const { data: evts } = await supabase.from('events').select('*').not('lat', 'is', null).not('lng', 'is', null);
+      const { data: evts } = await supabase.from('events')
+        .select('*')
+        .eq('status', 'PUBLISHED')
+        .or(`end_time.gte.${new Date().toISOString()},start_time.gte.${new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()}`)
+        .not('lat', 'is', null)
+        .not('lng', 'is', null);
       (evts || []).forEach(e => {
         if (e.lat && e.lng) {
           found.push({ id: e.id, type: 'event', position: { lat: Number(e.lat), lng: Number(e.lng) }, title: e.title, address: e.location_address || 'Location TBD', description: e.description, date: e.start_time, attendees: e.attendee_count || 0, image: e.cover_image_url });
