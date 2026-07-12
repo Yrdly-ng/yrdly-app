@@ -40,10 +40,17 @@ export async function POST(request: NextRequest) {
         .eq('is_primary', true)
         .single();
 
-      if (!sellerAccount?.payment_subaccount_id) {
+      if (!sellerAccount) {
         return NextResponse.json(
           { error: 'PAYOUT_ACCOUNT_REQUIRED', message: 'Link your bank account in Settings → Payout Settings before creating a paid event.' },
           { status: 402 }
+        );
+      }
+
+      if (payoutMode === 'INSTANT' && !sellerAccount.payment_subaccount_id) {
+        return NextResponse.json(
+          { error: 'INSTANT_PAYOUT_UNAVAILABLE', message: 'Instant payouts require a verified Paystack subaccount. Please use Post-Event payouts.' },
+          { status: 400 }
         );
       }
     }
