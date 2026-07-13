@@ -435,7 +435,22 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
   const handleCardClick = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('button, a, [role="dialog"], [role="menu"]')) return;
     if (window.getSelection()?.toString()) return;
-    if (!isCommentsOpen) router.push(`/posts/${post.id}`);
+    if (!isCommentsOpen) {
+      if (post.category === "For Sale") {
+        router.push(`/marketplace/${post.id}`);
+      } else if (post.category === "Event" && post.event_link) {
+        const cleanLink = post.event_link.split('?')[0];
+        const parts = cleanLink.split('/');
+        const eventId = parts.pop() || parts.pop();
+        if (eventId) {
+          router.push(`/events/${eventId}`);
+        } else {
+          router.push(`/posts/${post.id}`);
+        }
+      } else {
+        router.push(`/posts/${post.id}`);
+      }
+    }
   };
 
   const handleImageClick = (index: number) => {

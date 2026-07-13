@@ -229,6 +229,25 @@ export class SupabaseChatService {
         console.error('Error sending message:', messageError);
         throw messageError;
       }
+      
+      // ALSO insert into the new `messages` table for unified inbox
+      const { error: unifiedMessageError } = await supabase
+        .from('messages')
+        .insert({
+          conversation_id: chatId,
+          sender_id: senderId,
+          text: content,
+          image_url: imageUrl || null,
+          video_url: null,
+          created_at: new Date().toISOString(),
+          is_read: true,
+          read_by: [senderId]
+        });
+        
+      if (unifiedMessageError) {
+        console.error('Error sending unified message:', unifiedMessageError);
+        // Don't throw, it's just for the unified inbox
+      }
 
       // Update the chat's last message
       const { error: updateError } = await supabase

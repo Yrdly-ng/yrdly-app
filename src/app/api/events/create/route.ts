@@ -159,19 +159,23 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const posthog = getPostHogClient();
-    posthog.capture({
-      distinctId: user.id,
-      event: 'event_created',
-      properties: {
-        event_id: event.id,
-        title,
-        category: category || 'General',
-        status,
-        has_paid_tiers: hasPaidTiers,
-        ticket_tier_count: (ticketTiers || []).length,
-      },
-    });
+    try {
+      const posthog = getPostHogClient();
+      posthog.capture({
+        distinctId: user.id,
+        event: 'event_created',
+        properties: {
+          event_id: event.id,
+          title,
+          category: category || 'General',
+          status,
+          has_paid_tiers: hasPaidTiers,
+          ticket_tier_count: (ticketTiers || []).length,
+        },
+      });
+    } catch (phError) {
+      console.error('PostHog error:', phError);
+    }
 
     return NextResponse.json({ success: true, eventId: event.id, status });
   } catch (error) {

@@ -69,7 +69,7 @@ interface Conversation {
 type Tab = "all" | "friends" | "marketplace" | "businesses";
 
 export function MessagesScreen() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<Tab>("all");
@@ -198,6 +198,8 @@ export function MessagesScreen() {
 
   const filteredConversations = useMemo(() => {
     return conversations.filter((c) => {
+      if (profile?.blocked_users && profile.blocked_users.includes(c.participantId)) return false;
+
       const tabOk =
         activeTab === "all" ||
         (activeTab === "friends" && c.type === "friend") ||
@@ -208,7 +210,7 @@ export function MessagesScreen() {
         c.lastMessage.toLowerCase().includes(searchQuery.toLowerCase());
       return tabOk && searchOk;
     });
-  }, [conversations, activeTab, searchQuery]);
+  }, [conversations, activeTab, searchQuery, profile?.blocked_users]);
 
   const unreadCounts = useMemo(() => ({
     all: conversations.reduce((s, c) => s + c.unreadCount, 0),
@@ -412,7 +414,6 @@ export function MessagesScreen() {
                   style={{
                     background: 'var(--c-card)',
                     borderRadius: 11,
-                    borderLeft: unread ? `4px solid ${GREEN}` : "4px solid transparent",
                   }}
                 >
                   {/* Avatar / Thumbnail */}

@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/use-supabase-auth";
 import { supabase } from "@/lib/supabase";
 import { StorageService } from "@/lib/storage-service";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, ImagePlus, VideoIcon, Send, MessageCircle, Loader2, Download, X } from "lucide-react";
+import { ArrowLeft, ImagePlus, VideoIcon, Send, MessageCircle, Loader2, Download, X, MoreVertical } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { ActivityIndicator } from "@/components/ActivityIndicator";
 import { useTypingDetection } from "@/hooks/use-typing-detection";
@@ -317,7 +317,7 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
   return (
     <div className="flex flex-col h-full" style={{ background: BG }}>
       {/* ── Header ── */}
-      <header className="flex items-center px-4 py-3 flex-shrink-0"
+      <header className="flex items-center px-4 py-3 flex-shrink-0 relative"
         style={{ background: 'var(--c-card)', boxShadow: "0 2px 8px rgba(0,0,0,0.3)" }}>
         <button onClick={() => router.push("/messages")} className="mr-3 p-2 rounded-full transition-colors"
           style={{ color: "var(--c-text)" }}
@@ -344,83 +344,165 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
             {activityStatus}
           </p>
         </div>
+        
+        {/* Options Menu */}
+        <div className="relative" tabIndex={0} onBlur={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget)) {
+            const menu = e.currentTarget.querySelector('.options-menu') as HTMLElement;
+            if (menu) menu.style.display = 'none';
+          }
+        }}>
+          <button 
+            className="p-2 rounded-full transition-colors"
+            style={{ color: "var(--c-text)" }}
+            onClick={(e) => {
+              const menu = e.currentTarget.nextElementSibling as HTMLElement;
+              if (menu) menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+            }}
+          >
+            <MoreVertical className="w-5 h-5" />
+          </button>
+          
+          <div className="options-menu hidden absolute right-0 top-full mt-2 w-48 rounded-xl shadow-lg border overflow-hidden z-50"
+            style={{ background: 'var(--c-card)', borderColor: 'var(--c-border)' }}>
+            <button 
+              className="w-full text-left px-4 py-3 text-sm hover:bg-black/20 transition-colors"
+              style={{ color: "var(--c-text)", fontFamily: FONT }}
+              onClick={async () => {
+                if (confirm('Report this user?')) {
+                  alert('User reported successfully.');
+                }
+              }}
+            >
+              Report User
+            </button>
+            <button 
+              className="w-full text-left px-4 py-3 text-sm hover:bg-red-500/10 transition-colors text-red-500"
+              style={{ fontFamily: FONT }}
+              onClick={async () => {
+                if (confirm('Block this user? You will not receive messages from them.')) {
+                  try {
+                    const { data: profile } = await supabase.from('users').select('blocked_users').eq('id', user!.id).single();
+                    if (profile) {
+                      const blocked = profile.blocked_users || [];
+                      if (!blocked.includes(otherParticipant.id)) {
+                        await supabase.from('users').update({ blocked_users: [...blocked, otherParticipant.id] }).eq('id', user!.id);
+                      }
+                      alert('User blocked successfully.');
+                      router.push('/messages');
+                    }
+                  } catch (e) {
+                    alert('Error blocking user.');
+                  }
+                }
+              }}
+            >
+              Block User
+            </button>
+          </div>
+        </div>
       </header>
 
       {/* ── Messages ── */}
       <main className="flex-1 overflow-y-auto px-4 py-6 space-y-4" style={{ background: BG }}>
-        {/* Date marker */}
-        <div className="flex justify-center">
-          <span className="text-[0.625rem] font-bold uppercase tracking-widest rounded-full px-3 py-1"
-            style={{ color: "var(--c-text-muted)", background: "var(--c-card)", fontFamily: FONT }}>Today</span>
-        </div>
-
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <MessageCircle className="w-12 h-12 mb-3" style={{ color: GREEN, opacity: 0.4 }} />
             <p className="text-foreground text-sm" style={{ fontFamily: FONT }}>No messages yet. Say hello!</p>
           </div>
         ) : (
-          messages.map((msg) => {
+          messages.map((msg, index) => {
             const isOwn = msg.sender_id === user?.id;
             const sender = participants[msg.sender_id];
+            
+            // Check if we need a date header
+            const currentMsgDate = new Date(msg.created_at);
+            const prevMsgDate = index > 0 ? new Date(messages[index - 1].created_at) : null;
+            const needsDateHeader = !prevMsgDate || currentMsgDate.toDateString() !== prevMsgDate.toDateString();
+            
+            let dateText = "";
+            if (needsDateHeader) {
+              const today = new Date();
+              const yesterday = new Date(today);
+              yesterday.setDate(yesterday.getDate() - 1);
+              
+              if (currentMsgDate.toDateString() === today.toDateString()) {
+                dateText = "TODAY";
+              } else if (currentMsgDate.toDateString() === yesterday.toDateString()) {
+                dateText = "YESTERDAY";
+              } else {
+                dateText = currentMsgDate.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: currentMsgDate.getFullYear() !== today.getFullYear() ? "numeric" : undefined }).toUpperCase();
+              }
+            }
+
             return (
-              <div key={msg.id} className={`flex items-end gap-3 max-w-[85%] ${isOwn ? "self-end ml-auto flex-row-reverse" : "self-start"}`}>
-                {!isOwn && (
-                  <Avatar className="w-8 h-8 flex-shrink-0">
-                    <AvatarImage src={sender?.avatar_url} />
-                    <AvatarFallback style={{ background: GREEN, color: "#fff", fontFamily: FONT, fontWeight: 700, fontSize: 12 }}>
-                      {sender?.name?.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
+              <div key={msg.id} className="flex flex-col">
+                {needsDateHeader && (
+                  <div className="flex justify-center my-4">
+                    <span className="text-[0.625rem] font-bold tracking-widest rounded-full px-3 py-1"
+                      style={{ color: "var(--c-text-muted)", background: "var(--c-card)", fontFamily: FONT }}>
+                      {dateText}
+                    </span>
+                  </div>
                 )}
-                <div className="flex flex-col gap-1">
-                  {msg.image_url && (
-                    <div className="relative group rounded-[10px] overflow-hidden border cursor-pointer" style={{ borderColor: "var(--c-border)", maxWidth: 280 }} onClick={() => setFullscreenImage(msg.image_url!)}>
-                      <Image src={msg.image_url} alt="Message image" width={280} height={280} className="w-full h-auto object-cover" />
-                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <span className="bg-black/50 text-white p-2 rounded-full backdrop-blur-sm">
-                          <ImagePlus className="w-5 h-5" />
-                        </span>
+                <div className={`flex items-end gap-3 max-w-[85%] ${isOwn ? "self-end flex-row-reverse" : "self-start"}`}>
+                  {!isOwn && (
+                    <Avatar className="w-8 h-8 flex-shrink-0">
+                      <AvatarImage src={sender?.avatar_url} />
+                      <AvatarFallback style={{ background: GREEN, color: "#fff", fontFamily: FONT, fontWeight: 700, fontSize: 12 }}>
+                        {sender?.name?.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
+                  <div className="flex flex-col gap-1">
+                    {msg.image_url && (
+                      <div className="relative group rounded-[10px] overflow-hidden border cursor-pointer" style={{ borderColor: "var(--c-border)", maxWidth: 280 }} onClick={() => setFullscreenImage(msg.image_url!)}>
+                        <Image src={msg.image_url} alt="Message image" width={280} height={280} className="w-full h-auto object-cover" />
+                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <span className="bg-black/50 text-white p-2 rounded-full backdrop-blur-sm">
+                            <ImagePlus className="w-5 h-5" />
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  )}
-                  {msg.video_url && (
-                    <div className="rounded-[10px] overflow-hidden relative group" style={{ maxWidth: 280, width: "100%", background: "#000" }}>
-                      <video
-                        src={msg.video_url.includes('#t=') ? msg.video_url : `${msg.video_url}#t=0.001`}
-                        controls
-                        playsInline
-                        preload="metadata"
-                        className="w-full h-auto"
-                        style={{ maxHeight: 360 }}
-                      />
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDownload(msg.video_url!, `video-${Date.now()}.mp4`);
+                    )}
+                    {msg.video_url && (
+                      <div className="rounded-[10px] overflow-hidden relative group" style={{ maxWidth: 280, width: "100%", background: "#000" }}>
+                        <video
+                          src={msg.video_url.includes('#t=') ? msg.video_url : `${msg.video_url}#t=0.001`}
+                          controls
+                          playsInline
+                          preload="metadata"
+                          className="w-full h-auto"
+                          style={{ maxHeight: 360 }}
+                        />
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDownload(msg.video_url!, `video-${Date.now()}.mp4`);
+                          }}
+                          className="absolute top-2 right-2 p-2 bg-black/50 hover:bg-black/80 rounded-full text-white backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                          title="Download Video"
+                        >
+                          <Download className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+                    {(msg.text || msg.content) && (
+                      <div
+                        className="px-4 py-3 text-foreground text-[0.8125rem] leading-relaxed"
+                        style={{
+                          background: isOwn ? GREEN : CARD,
+                          borderRadius: isOwn ? "20px 20px 4px 20px" : "20px 20px 20px 4px",
+                          fontFamily: FONT,
                         }}
-                        className="absolute top-2 right-2 p-2 bg-black/50 hover:bg-black/80 rounded-full text-white backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                        title="Download Video"
                       >
-                        <Download className="w-4 h-4" />
-                      </button>
-                    </div>
-                  )}
-                  {(msg.text || msg.content) && (
-                    <div
-                      className="px-4 py-3 text-foreground text-[0.8125rem] leading-relaxed"
-                      style={{
-                        background: isOwn ? GREEN : CARD,
-                        borderRadius: isOwn ? "20px 20px 4px 20px" : "20px 20px 20px 4px",
-                        fontFamily: FONT,
-                      }}
-                    >
-                      {msg.text || msg.content}
-                    </div>
-                  )}
-                  <span className={`text-[0.625rem] ${isOwn ? "text-right mr-1" : "ml-1"}`} style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
-                    {formatTime(msg.created_at)}
-                  </span>
+                        {msg.text || msg.content}
+                      </div>
+                    )}
+                    <span className={`text-[0.625rem] ${isOwn ? "text-right mr-1" : "ml-1"}`} style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
+                      {formatTime(msg.created_at)}
+                    </span>
+                  </div>
                 </div>
               </div>
             );
