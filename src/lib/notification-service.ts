@@ -94,7 +94,8 @@ export class NotificationService {
           title: params.title,
           body: params.message,
           data: params.data,
-          url: getNotificationUrl(params.type, params.relatedId)
+          url: getNotificationUrl(params.type, params.relatedId),
+          type: params.type
         });
       } catch (pushError) {
         console.error('Error sending push notification:', pushError);
@@ -134,7 +135,8 @@ export class NotificationService {
           title: params.title,
           body: params.message,
           data: params.data,
-          url: getNotificationUrl(params.type, params.relatedId)
+          url: getNotificationUrl(params.type, params.relatedId),
+          type: params.type
         });
       } catch (pushError) {
         console.error('Error sending push notification:', pushError);

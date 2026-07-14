@@ -7,6 +7,7 @@ export interface PushNotificationPayload {
   badge?: string;
   data?: Record<string, any>;
   url?: string;
+  type?: string;
 }
 
 export class PushNotificationService {
@@ -15,9 +16,10 @@ export class PushNotificationService {
    */
   static async sendToUser(userId: string, payload: PushNotificationPayload): Promise<boolean> {
     try {
+      const { type, ...restPayload } = payload;
       // Invoke the Edge function to send push notification to mobile users
       const { data, error } = await supabase.functions.invoke('send-push-notification', {
-        body: { userId, payload }
+        body: { userId, payload: restPayload, type }
       });
 
       if (error) {

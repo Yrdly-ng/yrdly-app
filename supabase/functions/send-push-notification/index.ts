@@ -18,16 +18,16 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { userId, payload } = await req.json();
+    const { userId, payload, type } = await req.json();
 
     if (!userId || !payload) {
       throw new Error('userId and payload are required');
     }
 
-    // 1. Get the user's push token
+    // 1. Get the user's push token and preferences
     const { data: user, error: userError } = await supabaseClient
       .from('users')
-      .select('push_token')
+      .select('push_token, notification_settings')
       .eq('id', userId)
       .single();
 
@@ -42,6 +42,45 @@ serve(async (req) => {
         JSON.stringify({ success: false, error: 'User does not have a push token' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
+    }
+
+    // 1.5 Enforce notification preferences
+    if (type && user?.notification_settings) {
+      const preferenceMap: Record<string, string> = {
+        'message': 'messages',
+        'marketplace_item_interest': 'messages',
+        'catalog_item_inquiry': 'messages',
+        'friend_request': 'friendRequests',
+        'friend_request_accepted': 'friendRequests',
+        'post_comment': 'comments',
+        'post_like': 'postLikes',
+        'event_invite': 'eventInvites',
+        'item_shipped': 'orderUpdates',
+        'delivery_confirmed': 'orderUpdates',
+        'funds_released': 'orderUpdates',
+        'payment_successful': 'paymentReceived',
+        'payout_processed': 'paymentReceived',
+        'payout_failed': 'paymentReceived',
+        'dispute_opened': 'disputeUpdates',
+        'dispute_resolved': 'disputeUpdates',
+      };
+
+      const mappedKey = preferenceMap[type];
+
+      if (mappedKey) {
+        if (user.notification_settings[mappedKey] === false) {
+          console.log(`Push skipped: User opted out of ${mappedKey} (type: ${type})`);
+          return new Response(
+            JSON.stringify({ success: true, skipped: true, reason: 'user_opt_out' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+          );
+        }
+      } else {
+        // Unmapped types fall through to default-send.
+        // This covers two distinct cases:
+        // 1. Genuinely no-toggle-exists-yet types (e.g. business_review_received, catalog_item_out_of_stock)
+        // 2. Intentionally always-sent critical types (e.g. welcome, system_announcement)
+      }
     }
 
     // 2. Send push notification via Expo
