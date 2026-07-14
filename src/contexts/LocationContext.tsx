@@ -28,7 +28,7 @@ const GLOBAL_FILTER_STORAGE_KEY = "yrdly_global_filter";
 const EXPIRATION_TIME_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 interface PersistedFilter {
-  filter: LocationFilter;
+  filter: LocationFilter | null;
   timestamp: number;
 }
 
@@ -57,7 +57,7 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
         
         // Handle migration from old format where the filter itself was saved directly
         // and new format where it is { filter, timestamp }
-        if (parsed.timestamp && parsed.filter) {
+        if (parsed.timestamp && parsed.hasOwnProperty('filter')) {
           const isExpired = Date.now() - parsed.timestamp > EXPIRATION_TIME_MS;
           if (isExpired) {
             localStorage.removeItem(GLOBAL_FILTER_STORAGE_KEY);
@@ -85,12 +85,8 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
   const setGlobalFilter = useCallback((newFilter: LocationFilter | null) => {
     setActiveFilterRaw(newFilter);
     try {
-      if (newFilter) {
-        const payload: PersistedFilter = { filter: newFilter, timestamp: Date.now() };
-        localStorage.setItem(GLOBAL_FILTER_STORAGE_KEY, JSON.stringify(payload));
-      } else {
-        localStorage.removeItem(GLOBAL_FILTER_STORAGE_KEY);
-      }
+      const payload: PersistedFilter = { filter: newFilter, timestamp: Date.now() };
+      localStorage.setItem(GLOBAL_FILTER_STORAGE_KEY, JSON.stringify(payload));
     } catch {
       // localStorage not available
     }

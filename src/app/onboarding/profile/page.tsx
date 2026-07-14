@@ -421,7 +421,7 @@ export default function OnboardingProfilePage() {
                               key={index}
                               type="button"
                               onClick={() => handleUseSuggestion(suggestion)}
-                              className="px-6 py-3 text-sm bg-background/5 text-primary-foreground font-bold rounded-2xl border border-border hover:border-primary/40 hover:bg-primary/10 transition-all hover:scale-105 active:scale-95"
+                              className="px-6 py-3 text-sm bg-background/5 text-foreground font-bold rounded-2xl border border-border hover:border-primary/40 hover:bg-primary/10 transition-all hover:scale-105 active:scale-95"
                             >
                               @{suggestion}
                             </button>

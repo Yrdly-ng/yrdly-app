@@ -420,7 +420,7 @@ export default function EventDetailPage() {
       {/* Purchase drawer overlay */}
       {(purchase.step === "form" || purchase.step === "loading" || purchase.step === "success") && (
         <div
-          className="fixed inset-0 z-50 flex items-end"
+          className="fixed inset-0 z-[110] flex items-end"
           onClick={() => purchase.step === "form" && setPurchase({ step: "idle", tier: null, errorMsg: "" })}
         >
           {/* Scrim */}

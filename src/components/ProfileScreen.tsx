@@ -529,30 +529,30 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
       {/* ── Stats ── */}
       <div className="grid grid-cols-2 gap-4">
         <button
-          className="flex items-center gap-4 p-5 text-left rounded-[11px] transition-colors"
+          className="flex items-center gap-3 p-4 text-left rounded-[11px] transition-colors min-w-0"
           style={{ background: SURFACE }}
           onClick={() => setShowFriendsList(true)}
         >
-          <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
+          <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
             style={{ background: "rgba(56,142,60,0.2)" }}>
-            <Users className="w-6 h-6" style={{ color: GREEN_LIGHT }} />
+            <Users className="w-5 h-5" style={{ color: GREEN_LIGHT }} />
           </div>
-          <div>
-            <p className="text-2xl font-bold text-foreground">{stats.friends.toLocaleString()}</p>
-            <p className="text-[0.625rem] font-bold uppercase tracking-tighter" style={{ color: "var(--c-text-muted)" }}>Connections</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-2xl font-bold text-foreground truncate">{stats.friends.toLocaleString()}</p>
+            <p className="text-[0.625rem] font-bold uppercase tracking-tighter truncate" style={{ color: "var(--c-text-muted)" }}>Connections</p>
           </div>
         </button>
         <div
-          className="flex items-center gap-4 p-5 rounded-[11px]"
+          className="flex items-center gap-3 p-4 rounded-[11px] min-w-0"
           style={{ background: SURFACE }}
         >
-          <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
+          <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
             style={{ background: "rgba(56,142,60,0.2)" }}>
-            <CalendarDays className="w-6 h-6" style={{ color: GREEN_LIGHT }} />
+            <CalendarDays className="w-5 h-5" style={{ color: GREEN_LIGHT }} />
           </div>
-          <div>
-            <p className="text-2xl font-bold text-foreground">{stats.events}</p>
-            <p className="text-[0.625rem] font-bold uppercase tracking-tighter" style={{ color: "var(--c-text-muted)" }}>Events</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-2xl font-bold text-foreground truncate">{stats.events}</p>
+            <p className="text-[0.625rem] font-bold uppercase tracking-tighter truncate" style={{ color: "var(--c-text-muted)" }}>Events</p>
           </div>
         </div>
       </div>

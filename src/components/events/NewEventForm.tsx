@@ -259,7 +259,7 @@ export function NewEventForm() {
                     <FormItem className="w-full sm:w-24">
                       <FormLabel className="text-xs text-muted-foreground">Price (₦)</FormLabel>
                       <FormControl>
-                        <Input type="number" min="0" className="bg-card border-none" {...field} onChange={e => field.onChange(Number(e.target.value))} />
+                        <Input type="number" min="0" placeholder="0" className="bg-card border-none" {...field} value={field.value === 0 ? "" : field.value} onChange={e => field.onChange(e.target.value === "" ? 0 : Number(e.target.value))} />
                       </FormControl>
                     </FormItem>
                   )} />
