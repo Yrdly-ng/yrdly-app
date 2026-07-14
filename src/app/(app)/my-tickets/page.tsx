@@ -161,11 +161,11 @@ export default function MyTicketsPage() {
       {/* Ticket detail modal */}
       {selected && (
         <div
-          className="fixed inset-0 z-50 bg-black/80 flex items-end justify-center"
+          className="fixed inset-0 z-[110] bg-black/80 flex items-end justify-center"
           onClick={() => setSelected(null)}
         >
           <div
-            className="w-full max-w-md rounded-t-3xl bg-card border border-border p-6 space-y-5"
+            className="w-full max-w-md rounded-t-3xl bg-card border border-border p-6 pb-10 space-y-5"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
