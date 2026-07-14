@@ -282,14 +282,41 @@ export class SupabaseChatService {
 
       // Fire push notification to the recipient (non-sender participant)
       try {
-        const { data: chatRow } = await supabase
-          .from('item_chats')
-          .select('buyer_id, seller_id')
+        // First check unified conversations table for type and participants
+        const { data: convRow, error: convError } = await supabase
+          .from('conversations')
+          .select('type, participant_ids')
           .eq('id', chatId)
           .single();
 
-        if (chatRow) {
-          const toUserId = chatRow.buyer_id === senderId ? chatRow.seller_id : chatRow.buyer_id;
+        let toUserId: string | null = null;
+        
+        if (convError && convError.code !== 'PGRST116') {
+          // Log unexpected database errors (PGRST116 is 'not found', which is expected for legacy chats)
+          console.error('Error fetching unified conversation for notification:', convError);
+        }
+
+        if (convRow && (convRow.type === 'friend' || convRow.type === 'briefcase')) {
+          // Use unified participant array
+          const participants: string[] = convRow.participant_ids || [];
+          const recipient = participants.find((id: string) => id !== senderId);
+          if (recipient) {
+            toUserId = recipient;
+          }
+        } else {
+          // Fallback to legacy item_chats for marketplace chats or missing conversation rows
+          const { data: chatRow } = await supabase
+            .from('item_chats')
+            .select('buyer_id, seller_id')
+            .eq('id', chatId)
+            .single();
+
+          if (chatRow) {
+            toUserId = chatRow.buyer_id === senderId ? chatRow.seller_id : chatRow.buyer_id;
+          }
+        }
+
+        if (toUserId) {
           const { NotificationTriggers } = await import('@/lib/notification-triggers');
           await NotificationTriggers.onMessageSent(
             toUserId,
@@ -299,7 +326,7 @@ export class SupabaseChatService {
           );
         }
       } catch (notifError) {
-        console.error('Error firing marketplace message notification:', notifError);
+        console.error('Error firing message notification:', notifError);
         // Non-fatal: message was already sent successfully
       }
     } catch (error) {
