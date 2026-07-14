@@ -23,17 +23,13 @@ export default function PaymentVerificationPage() {
   const [isRetrying, setIsRetrying] = useState(false);
 
   const txRef = searchParams.get('tx_ref');
-  const transactionRef = searchParams.get('transaction_id');
-  const flwStatus = searchParams.get('status');       // 'successful' | 'cancelled' | 'failed'
   const itemId = searchParams.get('itemId');          // passed from initialize route
 
   const verifyPayment = useCallback(async () => {
     try {
       setVerificationStatus('loading');
       
-      // Use transaction_id if available, otherwise use tx_ref
-      const reference = transactionRef || txRef;
-      if (!reference) {
+      if (!txRef) {
         throw new Error('No transaction reference found');
       }
 
@@ -48,7 +44,6 @@ export default function PaymentVerificationPage() {
           ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
         },
         body: JSON.stringify({
-          transactionReference: transactionRef || null,  // FLW numeric ID
           txRef: txRef || null,                          // our UUID
         }),
       });
@@ -89,7 +84,7 @@ export default function PaymentVerificationPage() {
       setVerificationStatus('error');
       setErrorMessage('An unexpected error occurred during verification');
     }
-  }, [transactionRef, txRef, router]);
+  }, [txRef, router]);
 
   useEffect(() => {
     if (!user) {
@@ -97,26 +92,14 @@ export default function PaymentVerificationPage() {
       return;
     }
 
-    // ── Cancelled / failed from Paystack ──────────────
-    if (flwStatus === 'cancelled' || flwStatus === 'failed') {
-      toast({
-        title: flwStatus === 'cancelled' ? 'Payment cancelled' : 'Payment failed',
-        description: 'You have been returned to the item page.',
-        variant: 'destructive',
-      });
-      // Go back to the specific item if we have the id, otherwise marketplace
-      router.replace(itemId ? `/marketplace/${itemId}` : '/marketplace');
-      return;
-    }
-
-    if (!txRef && !transactionRef) {
+    if (!txRef) {
       setVerificationStatus('error');
       setErrorMessage('Missing transaction reference');
       return;
     }
 
     verifyPayment();
-  }, [user, flwStatus, txRef, transactionRef, itemId, router, verifyPayment, toast]);
+  }, [user, txRef, itemId, router, verifyPayment, toast]);
 
   const handleRetry = async () => {
     setIsRetrying(true);
@@ -228,7 +211,7 @@ export default function PaymentVerificationPage() {
               <Alert>
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  If you completed the payment, please contact support with your transaction reference: {txRef || transactionRef}
+                  If you completed the payment, please contact support with your transaction reference: {txRef}
                 </AlertDescription>
               </Alert>
               <div className="space-y-2">

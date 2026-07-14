@@ -1,7 +1,7 @@
 # Yrdly App — Complete Technical Reference
 
 > **Last updated:** March 2026  
-> **Stack:** Next.js 15 (App Router, Turbopack) · Supabase · Flutterwave · Tailwind CSS · TypeScript
+> **Stack:** Next.js 15 (App Router, Turbopack) · Supabase · Paystack · Tailwind CSS · TypeScript
 
 ---
 
@@ -53,7 +53,7 @@ Yrdly is a **hyper-local community marketplace and social platform** for Nigeria
 | Auth | Supabase Auth (email/password + OAuth) |
 | Realtime | Supabase Realtime (chat messages) |
 | Storage | Supabase Storage (images, dispute evidence) |
-| Payments | Flutterwave v3 (hosted standard checkout) |
+| Payments | Paystack (hosted standard checkout) |
 | Deployment | Vercel (planned) |
 | Fonts | Raleway · Plus Jakarta Sans · Work Sans · Pacifico · Jersey 25 |
 
@@ -70,8 +70,8 @@ yrdly-app/
 │   │   │   ├── marketplace/          # Item listings grid
 │   │   │   │   └── [itemId]/         # Item detail + BuyButton
 │   │   │   ├── payment/
-│   │   │   │   ├── redirect/         # Loading spinner → Flutterwave
-│   │   │   │   ├── verify/           # FLW callback → API verify
+│   │   │   │   ├── redirect/         # Loading spinner → Paystack
+│   │   │   │   ├── verify/           # Paystack callback → API verify
 │   │   │   │   ├── escrow-confirmation/  # "Payment Secured!" screen
 │   │   │   │   └── success/          # Payout success + review prompt
 │   │   │   ├── transactions/
@@ -93,8 +93,8 @@ yrdly-app/
 │   │   │   └── notifications/        # Notification centre
 │   │   ├── api/
 │   │   │   └── payment/
-│   │   │       ├── initialize/route.ts   # ★ Creates escrow + FLW link
-│   │   │       └── verify/route.ts       # ★ Verifies FLW + marks PAID
+│   │   │       ├── initialize/route.ts   # ★ Creates escrow + Paystack link
+│   │   │       └── verify/route.ts       # ★ Verifies Paystack + marks PAID
 │   │   ├── auth/callback/            # Supabase OAuth callback
 │   │   ├── onboarding/               # Welcome → Tour → Profile setup
 │   │   ├── login/ signup/            # Auth screens
@@ -114,7 +114,7 @@ yrdly-app/
 │   │   ├── supabase.ts               # Anon client (browser-safe)
 │   │   ├── supabase-admin.ts         # ★ Service-role client (API routes only)
 │   │   ├── escrow-service.ts         # Escrow CRUD (uses anon client)
-│   │   ├── flutterwave-service.ts    # FLW helper (server-only)
+│   │   ├── paystack-service.ts       # Paystack helper (server-only)
 │   │   ├── transaction-status-service.ts  # Status transitions
 │   │   ├── item-tracking-service.ts  # Availability checks
 │   │   └── designTokens.ts           # Stitch design system tokens
@@ -230,17 +230,17 @@ Buyer taps "Pay Securely"
 POST /api/payment/initialize (server-side)
   - Validates availability
   - Creates escrow_transactions row (PENDING status)
-  - Calls Flutterwave v3 /payments API
+  - Calls Paystack /transaction/initialize API
   - Returns hosted checkout link
   ↓
-/payment/redirect (loading screen, then redirects to Flutterwave)
+/payment/redirect (loading screen, then redirects to Paystack)
   ↓
-Buyer completes payment on Flutterwave hosted page
+Buyer completes payment on Paystack hosted page
   ↓
-Flutterwave redirects to /payment/verify?tx_ref={id}
+Paystack redirects to /payment/verify?tx_ref={id}
   ↓
 /payment/verify page calls POST /api/payment/verify
-  - Verifies payment with Flutterwave
+  - Verifies payment with Paystack
   - Updates escrow status → PAID
   - Marks item as is_sold = true
   ↓
@@ -280,17 +280,17 @@ PENDING → PAID → SHIPPED → DELIVERED → COMPLETED
 | File | Role |
 |---|---|
 | `src/components/escrow/BuyButton.tsx` | UI sheet + calls `/api/payment/initialize` |
-| `src/app/api/payment/initialize/route.ts` | Creates escrow row + FLW link (server-side) |
+| `src/app/api/payment/initialize/route.ts` | Creates escrow row + Paystack link (server-side) |
 | `src/app/(app)/payment/redirect/page.tsx` | Auto-redirect loading screen |
-| `src/app/(app)/payment/verify/page.tsx` | Receives FLW callback, triggers API verify |
+| `src/app/(app)/payment/verify/page.tsx` | Receives Paystack callback, triggers API verify |
 | `src/app/api/payment/verify/route.ts` | Verifies payment + updates DB |
 | `src/app/(app)/payment/escrow-confirmation/page.tsx` | Success state shown to buyer |
 | `src/app/(app)/payment/success/page.tsx` | Payout confirmation + review |
 
-### Flutterwave Integration
+### Paystack Integration
 - **Mode:** Test mode (keys in `.env.local`)
-- **Method:** Flutterwave Standard (hosted checkout page)
-- **Test Card:** `5531 8866 5214 2950` · Expiry `09/32` · CVV `564` · PIN `3310` · OTP `12345`
+- **Method:** Paystack Standard (hosted checkout page)
+- **Test Card:** `4084 0840 8408 4081` · Expiry `any future date` · CVV `123` · PIN `any`
 - **Redirect URL:** `{APP_URL}/payment/verify?tx_ref={transactionId}`
 
 ---
@@ -309,13 +309,12 @@ NEXT_PUBLIC_APP_URL=http://localhost:9002
 # Supabase admin — bypasses RLS for server-side writes
 SUPABASE_SERVICE_ROLE_KEY=eyJ...   # Project Settings → API → service_role
 
-# Flutterwave v3 test keys
-FLUTTERWAVE_PUBLIC_KEY=FLWPUBK_TEST-...
-FLUTTERWAVE_SECRET_KEY=FLWSECK_TEST-...
-FLUTTERWAVE_ENCRYPTION_KEY=FLWSECK_TEST...
+# Paystack test keys
+PAYSTACK_PUBLIC_KEY=pk_test_...
+PAYSTACK_SECRET_KEY=sk_test_...
 
-# Webhook secret — must match Flutterwave dashboard → Webhooks → Secret hash
-FLUTTERWAVE_SECRET_HASH=your_secret_here
+# Webhook secret — must match Paystack dashboard → Webhooks
+PAYSTACK_WEBHOOK_SECRET=your_secret_here
 
 # App URL — update to https://... in production
 NEXT_PUBLIC_APP_URL=http://localhost:9002
@@ -360,7 +359,7 @@ total_amount    numeric  -- amount + commission
 seller_amount   numeric  -- amount - commission
 status          text     -- PENDING/PAID/SHIPPED/DELIVERED/COMPLETED/DISPUTED/CANCELLED
 payment_method  text
-payment_reference text   -- Flutterwave tx ref
+payment_reference text   -- Paystack tx ref
 delivery_details  jsonb
 dispute_reason  text
 paid_at         timestamptz
@@ -385,8 +384,8 @@ id              uuid PK
 user_id         uuid → users
 bank_name       text
 account_number  text
-account_name    text  -- Verified by Flutterwave
-flw_subaccount_id text
+account_name    text  -- Verified by Paystack
+paystack_subaccount_id text
 is_default      boolean
 created_at      timestamptz
 ```
@@ -402,8 +401,8 @@ created_at      timestamptz
 
 | Method | Route | Description |
 |---|---|---|
-| `POST` | `/api/payment/initialize` | Creates escrow + Flutterwave hosted link |
-| `POST` | `/api/payment/verify` | Verifies FLW payment, marks transaction PAID |
+| `POST` | `/api/payment/initialize` | Creates escrow + Paystack hosted link |
+| `POST` | `/api/payment/verify` | Verifies Paystack payment, marks transaction PAID |
 | `POST` | `/api/user-status` | Online/last-seen tracking |
 
 ### `POST /api/payment/initialize`
@@ -424,13 +423,13 @@ created_at      timestamptz
 ```json
 {
   "success": true,
-  "paymentLink": "https://checkout.flutterwave.com/v3/hosted/pay/...",
+  "paymentLink": "https://checkout.paystack.com/...",
   "transactionId": "uuid"
 }
 ```
 
 ### `POST /api/payment/verify`
-**Body:** `{ "transactionReference": "flw-tx-id" }`  
+**Body:** `{ "txRef": "uuid-here" }`  
 **Response:** `{ "success": true, "transactionId": "uuid", "amount": 4120 }`
 
 ---
@@ -475,9 +474,9 @@ npm start
 - [ ] Run the database migrations (tables listed in §10)
 - [ ] Copy your Supabase URL + anon key → `.env`
 - [ ] Copy your Supabase service role key → `.env.local`
-- [ ] Add your Flutterwave test keys → `.env.local`
+- [ ] Add your Paystack test keys → `.env.local`
 - [ ] Set `NEXT_PUBLIC_APP_URL` in `.env.local`
-- [ ] Set `FLUTTERWAVE_SECRET_HASH` in both `.env.local` and the FLW dashboard
+- [ ] Set `PAYSTACK_WEBHOOK_SECRET` in both `.env.local` and the Paystack dashboard
 
 ---
 
@@ -488,14 +487,14 @@ npm start
 |---|---|---|
 | Dispute submission (backend) | 🟡 UI done, placeholder | Wire to a `disputes` table |
 | Review submission (backend) | 🟡 UI done, placeholder | Wire to `reviews` table |
-| Add payout account (backend) | 🟡 UI done, placeholder | FLW Resolve Account API + `payout_accounts` table |
+| Add payout account (backend) | 🟡 UI done, placeholder | Paystack Resolve Account API + `payout_accounts` table |
 | 48h auto-release | 🔴 Not started | Requires Supabase Edge Function + pg_cron |
 | Commission from DB | 🔴 Hardcoded at 3% | Add `platform_config` table |
 | Delivery tracking | 🔴 Not started | Face-to-face only for now |
 | Location filtering (LGA/ward) | 🔴 Not started | Core to the "local first" vision |
-| Paid boosts | 🔴 Not started | Separate FLW payment flow |
+| Paid boosts | 🔴 Not started | Separate Paystack payment flow |
 | Push notifications | 🔴 Not started | Service worker registered, not sending |
-| Seller subaccounts (FLW) | 🔴 Not started | Needed for automated payouts |
+| Seller subaccounts (Paystack) | 🔴 Not started | Needed for automated payouts |
 
 ### Known Issues
 - `profile/payouts` page is **109 kB** — needs code splitting or lazy loading
@@ -503,7 +502,7 @@ npm start
 - Dispute image uploads need Supabase Storage bucket configured before use
 
 ### Architecture Decisions Made
-- **All payment calls go through API routes** — the Flutterwave secret key is never sent to the browser
+- **All payment calls go through API routes** — the Paystack secret key is never sent to the browser
 - **`supabaseAdmin` only in `/api/**`** — using it in a page component would expose the service role key in the client bundle
 - **Escrow happens client-to-escrow-to-seller** — we never send money anywhere automatically until the buyer confirms
 - **No delivery service** — the platform facilitates meeting/handover; it does not own the delivery leg
