@@ -83,7 +83,7 @@ function NavRow({
       }
     >
       <div className="flex items-center gap-3">
-        <Icon className="w-5 h-5 flex-shrink-0" style={{ color: GREEN }} />
+        <Icon className="w-5 h-5 flex-shrink-0 text-primary" />
         <span
           className="text-foreground text-[0.875rem]"
           style={{ fontFamily: FONT }}
@@ -113,7 +113,7 @@ function ToggleRow({
       style={{ background: 'var(--c-card)', borderRadius: 11 }}
     >
       <div className="flex items-center gap-3">
-        <Icon className="w-5 h-5 flex-shrink-0" style={{ color: GREEN }} />
+        <Icon className="w-5 h-5 flex-shrink-0 text-primary" />
         <span
           className="text-foreground text-[0.875rem]"
           style={{ fontFamily: FONT }}
@@ -278,7 +278,7 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
               ((e.currentTarget as HTMLElement).style.background = "var(--c-card2)")
             }
           >
-            <Pencil className="w-4 h-4" style={{ color: GREEN }} />
+            <Pencil className="w-4 h-4 text-primary" />
           </button>
         </section>
 

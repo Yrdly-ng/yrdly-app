@@ -174,7 +174,7 @@ export default function LocationSettingsPage() {
             className="w-10 h-10 rounded-full flex items-center justify-center"
             style={{ background: "rgba(56,142,60,0.15)" }}
           >
-            <MapPin className="w-5 h-5" style={{ color: GREEN }} />
+            <MapPin className="w-5 h-5 text-primary" />
           </div>
           <div className="flex-1">
             <p
@@ -328,8 +328,7 @@ export default function LocationSettingsPage() {
               <button
                 type="button"
                 onClick={() => setShowManualLocation(false)}
-                className="text-sm font-bold transition-colors"
-                style={{ color: GREEN }}
+                className="text-sm font-bold transition-colors text-primary"
               >
                 Use Auto-Detect instead
               </button>

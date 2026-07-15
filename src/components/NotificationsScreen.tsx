@@ -64,7 +64,7 @@ function NotificationIcon({ type }: { type: string }) {
   switch (type) {
     case "friend_request":
     case "friend_request_accepted":
-      return <UserPlus className={iconClass} style={{ color: GREEN_LIGHT }} />;
+      return <UserPlus className={[iconClass, "text-primary-light"].filter(Boolean).join(" ")} />;
     case "message":
     case "message_reaction":
       return <MessageCircle className={iconClass} style={{ color: "#60a5fa" }} />;
@@ -77,7 +77,7 @@ function NotificationIcon({ type }: { type: string }) {
       return <Calendar className={iconClass} style={{ color: "#fb923c" }} />;
     case "marketplace_item_sold":
     case "marketplace_item_interest":
-      return <ShoppingCart className={iconClass} style={{ color: GREEN_LIGHT }} />;
+      return <ShoppingCart className={[iconClass, "text-primary-light"].filter(Boolean).join(" ")} />;
     default:
       return <Bell className={iconClass} style={{ color: "var(--c-text-muted)" }} />;
   }
@@ -506,10 +506,9 @@ export function NotificationsScreen({ className }: NotificationsScreenProps) {
           {unreadCount > 0 && (
             <button
               onClick={handleMarkAllRead}
-              className="flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition-all active:scale-95"
+              className="flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition-all active:scale-95 text-primary-light"
               style={{
                 background: "rgba(56,142,60,0.15)",
-                color: GREEN_LIGHT,
                 border: "0.5px solid rgba(130,219,126,0.3)",
                 fontFamily: FONT,
               }}
@@ -573,7 +572,7 @@ export function NotificationsScreen({ className }: NotificationsScreenProps) {
               className="w-20 h-20 rounded-full flex items-center justify-center mb-5"
               style={{ background: "rgba(56,142,60,0.1)" }}
             >
-              <Bell className="w-9 h-9" style={{ color: GREEN_LIGHT, opacity: 0.5 }} />
+              <Bell className="w-9 h-9 text-primary-light" style={{ opacity: 0.5 }} />
             </div>
             <h2 className="text-foreground text-lg mb-2" style={{ fontFamily: PACIFICO }}>
               {activeFilter === "All" ? "No notifications yet" : `No ${activeFilter.toLowerCase()}`}

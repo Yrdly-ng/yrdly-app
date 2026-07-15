@@ -310,7 +310,7 @@ function NotificationItem({ notification, onMarkAsRead, onDelete, onClose }: {
               <DropdownMenuContent align="end" style={{ background: SURFACE, border: "1px solid rgba(130,219,126,0.2)", fontFamily: FONT, zIndex: 10000 }}>
                 {!notification.is_read && (
                   <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onMarkAsRead(notification.id); }} className="text-foreground hover:bg-card cursor-pointer">
-                    <Check className="w-4 h-4 mr-2" style={{ color: GREEN_LIGHT }} /> Mark as Read
+                    <Check className="w-4 h-4 mr-2 text-primary-light" /> Mark as Read
                   </DropdownMenuItem>
                 )}
                 {notification.type === 'friend_request' && (
@@ -459,8 +459,8 @@ export function NotificationsDropdown({ isOpen, onClose, onNotificationCountChan
           {unreadCount > 0 && (
             <button 
               onClick={handleMarkAllRead}
-              className="text-[0.625rem] font-bold uppercase tracking-tight px-3 py-1 rounded-full transition-colors"
-              style={{ color: GREEN_LIGHT, border: `1px solid rgba(130,219,126,0.3)`, fontFamily: FONT }}
+              className="text-[0.625rem] font-bold uppercase tracking-tight px-3 py-1 rounded-full transition-colors text-primary-light"
+              style={{ border: `1px solid rgba(130,219,126,0.3)`, fontFamily: FONT }}
               onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(130,219,126,0.05)")}
               onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
             >
@@ -489,7 +489,7 @@ export function NotificationsDropdown({ isOpen, onClose, onNotificationCountChan
           ) : (
             <div className="text-center py-10">
               <div className="inline-flex items-center justify-center w-12 h-12 rounded-full mb-3" style={{ background: "rgba(56,142,60,0.1)" }}>
-                <Bell className="h-6 w-6" style={{ color: GREEN_LIGHT, opacity: 0.7 }} />
+                <Bell className="h-6 w-6 text-primary-light" style={{ opacity: 0.7 }} />
               </div>
               <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: RALEWAY }}>No notifications</h3>
               <p className="text-[0.6875rem] mt-1" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>You&apos;re all caught up.</p>

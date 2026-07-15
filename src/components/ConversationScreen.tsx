@@ -303,7 +303,7 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
   if (!conversation || !otherParticipant) {
     return (
       <div className="flex flex-col h-full items-center justify-center" style={{ background: BG }}>
-        <MessageCircle className="w-12 h-12 mb-4" style={{ color: GREEN, opacity: 0.4 }} />
+        <MessageCircle className="w-12 h-12 mb-4 text-primary" style={{ opacity: 0.4 }} />
         <p className="text-foreground mb-4" style={{ fontFamily: FONT }}>Conversation not found</p>
         <button onClick={() => router.push("/messages")} className="rounded-full px-6 py-2 text-foreground text-sm" style={{ background: GREEN, fontFamily: FONT }}>
           Back to Messages
@@ -407,7 +407,7 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
       <main className="flex-1 overflow-y-auto px-4 py-6 space-y-4" style={{ background: BG }}>
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <MessageCircle className="w-12 h-12 mb-3" style={{ color: GREEN, opacity: 0.4 }} />
+            <MessageCircle className="w-12 h-12 mb-3 text-primary" style={{ opacity: 0.4 }} />
             <p className="text-foreground text-sm" style={{ fontFamily: FONT }}>No messages yet. Say hello!</p>
           </div>
         ) : (
@@ -553,15 +553,13 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
         )}
         <form onSubmit={handleSend} className="flex items-center gap-3">
           <button type="button" onClick={() => fileInputRef.current?.click()}
-            className="p-2 rounded-full flex-shrink-0 transition-colors"
-            style={{ color: GREEN }}
+            className="p-2 rounded-full flex-shrink-0 transition-colors text-primary"
             onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.opacity = "0.8")}
             onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}>
             <ImagePlus className="w-6 h-6" />
           </button>
           <button type="button" onClick={() => videoInputRef.current?.click()}
-            className="p-2 rounded-full flex-shrink-0 transition-colors"
-            style={{ color: GREEN }}
+            className="p-2 rounded-full flex-shrink-0 transition-colors text-primary"
             onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.opacity = "0.8")}
             onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}>
             <VideoIcon className="w-6 h-6" />

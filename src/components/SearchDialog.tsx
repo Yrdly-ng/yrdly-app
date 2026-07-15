@@ -210,8 +210,7 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
                   <h2 style={{ fontFamily: "var(--font-jersey25)", color: 'var(--c-text)', fontSize: 20 }}>Recent</h2>
                   <button
                     onClick={() => { localStorage.removeItem(RECENT_KEY); setRecents([]); }}
-                    className="text-xs font-bold uppercase tracking-widest"
-                    style={{ color: GREEN_LIGHT }}
+                    className="text-xs font-bold uppercase tracking-widest text-primary-light"
                   >
                     Clear All
                   </button>
@@ -235,14 +234,14 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
             {/* Loading */}
             {loading && (
               <div className="flex justify-center pt-10">
-                <div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: GREEN, borderTopColor: 'transparent' }} />
+                <div className="w-8 h-8 rounded-full border-2 animate-spin border-primary" style={{ borderTopColor: 'transparent' }} />
               </div>
             )}
 
             {/* Empty state */}
             {!loading && searchTerm.length >= 2 && filteredResults.length === 0 && (
               <div className="flex flex-col items-center justify-center py-20">
-                <Search className="w-14 h-14 mb-4" style={{ color: GREEN, opacity: 0.3 }} />
+                <Search className="w-14 h-14 mb-4 text-primary" style={{ opacity: 0.3 }} />
                 <p style={{ fontFamily: "var(--font-work-sans)", color: 'var(--c-text)', fontSize: 20 }}>Nothing found</p>
                 <p className="mt-2 text-sm" style={{ color: 'var(--c-text-muted)', fontFamily: 'Inter, sans-serif' }}>Try a different search</p>
               </div>
@@ -420,7 +419,7 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
                       </div>
                       <div className="p-3">
                         <p className="text-xs font-bold truncate" style={{ color: 'var(--c-text)' }}>{item.title || item.text}</p>
-                        {item.price && <p className="text-sm font-extrabold mt-1" style={{ color: GREEN_LIGHT }}>₦{item.price.toLocaleString()}</p>}
+                        {item.price && <p className="text-sm font-extrabold mt-1 text-primary-light">₦{item.price.toLocaleString()}</p>}
                       </div>
                     </div>
                   ))}
@@ -430,7 +429,7 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
 
             {/* Brand watermark */}
             <div className="flex justify-center py-6 opacity-[0.12] pointer-events-none">
-              <span style={{ fontFamily: 'Jersey 25, sans-serif', color: GREEN_LIGHT, fontSize: 28, letterSpacing: '0.2em' }}>YRDLY</span>
+              <span style={{ fontFamily: 'Jersey 25, sans-serif', fontSize: 28, letterSpacing: '0.2em' }} className="text-primary-light">YRDLY</span>
             </div>
           </div>
         </div>

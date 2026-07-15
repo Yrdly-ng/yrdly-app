@@ -204,7 +204,7 @@ export default function MarketplaceItemPage() {
                   className="w-full h-full flex items-center justify-center"
                   style={{ background: "var(--c-card2)" }}
                 >
-                  <ShoppingBag className="w-16 h-16" style={{ color: GREEN, opacity: 0.4 }} />
+                  <ShoppingBag className="w-16 h-16 text-primary" style={{ opacity: 0.4 }} />
                 </div>
               )}
             </div>
@@ -259,7 +259,7 @@ export default function MarketplaceItemPage() {
                 className="flex items-center gap-2 px-3 py-3 rounded-xl text-sm"
                 style={{ background: "var(--c-card2)", color: FADED, fontFamily: FONT_RALEWAY }}
               >
-                <MapPin className="w-4 h-4" style={{ color: GREEN }} />
+                <MapPin className="w-4 h-4 text-primary" />
                 <span>{[item.lga, item.state].filter(Boolean).join(", ")}</span>
               </div>
             ) : (
@@ -267,7 +267,7 @@ export default function MarketplaceItemPage() {
                 className="flex items-center gap-2 px-3 py-3 rounded-xl text-sm"
                 style={{ background: "var(--c-card2)", color: FADED, fontFamily: FONT_RALEWAY }}
               >
-                <MapPin className="w-4 h-4" style={{ color: GREEN }} />
+                <MapPin className="w-4 h-4 text-primary" />
                 <span>Location not specified</span>
               </div>
             )}
@@ -279,8 +279,8 @@ export default function MarketplaceItemPage() {
 
           {/* Price */}
           <p
-            className="text-[1.5rem] font-bold leading-[28px]"
-            style={{ fontFamily: FONT_RALEWAY, color: GREEN }}
+            className="text-[1.5rem] font-bold leading-[28px] text-primary"
+            style={{ fontFamily: FONT_RALEWAY }}
           >
             {formatPrice(item.price)}
           </p>
@@ -401,7 +401,7 @@ export default function MarketplaceItemPage() {
                     disabled={sendingMessage || !message.trim()}
                     className="absolute top-3 right-3 transition-opacity hover:opacity-70 disabled:opacity-40"
                   >
-                    <Send className="w-5 h-5" style={{ color: GREEN }} />
+                    <Send className="w-5 h-5 text-primary" />
                   </button>
                 </div>
                 <p
@@ -487,7 +487,7 @@ function RelatedCard({
             className="w-full h-full flex items-center justify-center"
             style={{ background: "var(--c-card2)" }}
           >
-            <ShoppingBag className="w-8 h-8" style={{ color: GREEN, opacity: 0.4 }} />
+            <ShoppingBag className="w-8 h-8 text-primary" style={{ opacity: 0.4 }} />
           </div>
         )}
       </div>
@@ -501,8 +501,8 @@ function RelatedCard({
           {item.title || item.text || "Untitled"}
         </p>
         <p
-          className="text-[1.375rem] font-bold"
-          style={{ fontFamily: FONT_RALEWAY, color: GREEN }}
+          className="text-[1.375rem] font-bold text-primary"
+          style={{ fontFamily: FONT_RALEWAY }}
         >
           {formatPrice(item.price)}
         </p>

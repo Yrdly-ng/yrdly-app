@@ -135,13 +135,13 @@ export function EventCreatorOnboarding({ isOpen, onClose }: EventCreatorOnboardi
                   >
                     <div className="flex items-start gap-3">
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(56,142,60,0.15)" }}>
-                        <Ticket className="w-5 h-5" style={{ color: GREEN }} />
+                        <Ticket className="w-5 h-5 text-primary" />
                       </div>
                       <div>
                         <p className="font-bold text-foreground font-sans text-[0.9375rem]">Free Event</p>
                         <p className="text-xs text-muted-foreground font-sans mt-0.5">Community meetups, block parties, open events. No payment setup needed.</p>
                         <div className="flex items-center gap-1 mt-2">
-                          <span className="text-[0.6875rem] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(56,142,60,0.2)", color: GREEN }}>
+                          <span className="text-[0.6875rem] font-bold px-2 py-0.5 rounded-full text-primary" style={{ background: "rgba(56,142,60,0.2)" }}>
                             ✓ Start immediately
                           </span>
                         </div>
@@ -158,13 +158,13 @@ export function EventCreatorOnboarding({ isOpen, onClose }: EventCreatorOnboardi
                   >
                     <div className="flex items-start gap-3">
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(56,142,60,0.15)" }}>
-                        <Banknote className="w-5 h-5" style={{ color: GREEN }} />
+                        <Banknote className="w-5 h-5 text-primary" />
                       </div>
                       <div>
                         <p className="font-bold text-foreground font-sans text-[0.9375rem]">Paid Event</p>
                         <p className="text-xs text-muted-foreground font-sans mt-0.5">Concerts, workshops, classes, VIP experiences. Sell tickets directly.</p>
                         <div className="flex items-center gap-2 mt-2 flex-wrap">
-                          <span className="text-[0.6875rem] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(56,142,60,0.2)", color: GREEN }}>
+                          <span className="text-[0.6875rem] font-bold px-2 py-0.5 rounded-full text-primary" style={{ background: "rgba(56,142,60,0.2)" }}>
                             You keep 95%
                           </span>
                           <span className="text-[0.6875rem] text-muted-foreground font-sans">Yrdly takes 5%</span>
@@ -199,7 +199,7 @@ export function EventCreatorOnboarding({ isOpen, onClose }: EventCreatorOnboardi
                   ].map(({ icon: Icon, label, desc }) => (
                     <div key={label} className="flex items-center gap-3 p-3 rounded-xl" style={{ border: "1px solid var(--c-border)" }}>
                       <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(56,142,60,0.15)" }}>
-                        <Icon className="w-4 h-4" style={{ color: GREEN }} />
+                        <Icon className="w-4 h-4 text-primary" />
                       </div>
                       <div>
                         <p className="text-sm font-bold text-foreground font-sans">{label}</p>
@@ -236,7 +236,7 @@ export function EventCreatorOnboarding({ isOpen, onClose }: EventCreatorOnboardi
                     className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4"
                     style={{ background: "rgba(56,142,60,0.15)" }}
                   >
-                    <CheckCircle2 className="w-10 h-10" style={{ color: GREEN }} />
+                    <CheckCircle2 className="w-10 h-10 text-primary" />
                   </div>
                   <h2 className="text-2xl font-black text-foreground font-sans">
                     You&apos;re all set!
@@ -257,7 +257,7 @@ export function EventCreatorOnboarding({ isOpen, onClose }: EventCreatorOnboardi
                   ].map((item, i) => (
                     <div key={i} className="flex items-center gap-2">
                       <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "rgba(56,142,60,0.2)" }}>
-                        <span className="text-[0.625rem] font-bold" style={{ color: GREEN }}>{i + 1}</span>
+                        <span className="text-[0.625rem] font-bold text-primary">{i + 1}</span>
                       </div>
                       <span className="text-sm text-muted-foreground font-sans">{item}</span>
                     </div>

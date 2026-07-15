@@ -298,7 +298,7 @@ export function MessagesScreen() {
           <Dialog open={isNewMessageOpen} onOpenChange={setIsNewMessageOpen}>
             <DialogTrigger asChild>
               <button aria-label="New Message">
-                <Edit className="w-5 h-5" style={{ color: GREEN }} />
+                <Edit className="w-5 h-5 text-primary" />
               </button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md bg-background w-[90%] rounded-xl mx-auto p-0 gap-0 overflow-hidden" style={{ background: "var(--c-bg)" }}>
@@ -394,7 +394,7 @@ export function MessagesScreen() {
           ))
         ) : filteredConversations.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <MessageCircle className="w-12 h-12 mb-4" style={{ color: GREEN, opacity: 0.4 }} />
+            <MessageCircle className="w-12 h-12 mb-4 text-primary" style={{ opacity: 0.4 }} />
             <h3 className="text-foreground text-lg mb-1" style={{ fontFamily: PACIFICO }}>No conversations</h3>
             <p className="text-sm" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
               {searchQuery ? "No matches found" : "Start chatting with your neighbors"}

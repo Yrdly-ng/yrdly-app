@@ -598,7 +598,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
         {/* Price + share */}
         {post.price != null && post.price > 0 && (
           <div className="flex items-center justify-between px-4 pb-3">
-            <span className="font-sans font-bold text-[1.5rem] leading-[28px]" style={{ color: GREEN }}>
+            <span className="font-sans font-bold text-[1.5rem] leading-[28px] text-primary">
               {formatPrice(post.price)}
             </span>
             <button onClick={handleShare} className="text-muted-foreground hover:text-foreground">
@@ -626,7 +626,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
           </div>
         )}
         {/* Price */}
-        <p className="px-4 pb-1 font-sans font-bold text-[1.5rem] leading-[28px]" style={{ color: GREEN }}>
+        <p className="px-4 pb-1 font-sans font-bold text-[1.5rem] leading-[28px] text-primary">
           {post.price ? formatPrice(post.price) : "Free"}
         </p>
         {/* Description / subtitle */}

@@ -30,8 +30,8 @@ export default function BusinessesPage() {
       {/* Back button */}
       <button
         onClick={() => router.back()}
-        className="absolute top-6 left-4 flex items-center gap-2 text-sm transition-opacity hover:opacity-70"
-        style={{ color: GREEN_LIGHT, fontFamily: FONT }}
+        className="absolute top-6 left-4 flex items-center gap-2 text-sm transition-opacity hover:opacity-70 text-primary-light"
+        style={{ fontFamily: FONT }}
       >
         <ArrowLeft className="w-4 h-4" /> Back
       </button>
@@ -41,7 +41,7 @@ export default function BusinessesPage() {
         className="w-24 h-24 rounded-full flex items-center justify-center mb-8 relative"
         style={{ background: "rgba(56,142,60,0.12)", border: "1px solid rgba(130,219,126,0.2)" }}
       >
-        <Briefcase className="w-10 h-10" style={{ color: GREEN_LIGHT }} />
+        <Briefcase className="w-10 h-10 text-primary-light" />
         <div
           className="absolute -top-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center"
           style={{ background: GREEN }}
@@ -77,11 +77,10 @@ export default function BusinessesPage() {
         ].map((feature) => (
           <span
             key={feature}
-            className="px-4 py-1.5 rounded-full text-xs font-semibold"
+            className="px-4 py-1.5 rounded-full text-xs font-semibold text-primary-light"
             style={{
               background: "var(--c-bg)",
               border: "1px solid rgba(130,219,126,0.25)",
-              color: GREEN_LIGHT,
               fontFamily: FONT,
             }}
           >
@@ -105,8 +104,8 @@ export default function BusinessesPage() {
 
       {/* Footer watermark */}
       <p
-        className="absolute bottom-8 text-xs opacity-30"
-        style={{ color: GREEN_LIGHT, fontFamily: PACIFICO, letterSpacing: "0.15em" }}
+        className="absolute bottom-8 text-xs opacity-30 text-primary-light"
+        style={{ fontFamily: PACIFICO, letterSpacing: "0.15em" }}
       >
         YRDLY
       </p>

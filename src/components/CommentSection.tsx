@@ -41,7 +41,6 @@ import TextareaAutosize from 'react-textarea-autosize';
 /* ─── design tokens ─────────────────────────────────────────────── */
 const BG = 'var(--c-bg)';
 const CARD_BG = 'var(--c-card)';
-const GREEN = 'hsl(var(--primary))';
 const FONT_RALEWAY = 'Inter, sans-serif';
 const FONT_PACIFICO = "var(--font-jersey25)";
 
@@ -72,11 +71,10 @@ interface CommentSectionProps {
 function Pointer({ className }: { className?: string }) {
     return (
         <div
-            className={cn('w-4 h-5 flex-shrink-0', className)}
+            className={[cn('w-4 h-5 flex-shrink-0', className), "border-primary"].filter(Boolean).join(" ")}
             style={{
                 borderWidth: '0px 0px 1px 1px',
                 borderStyle: 'solid',
-                borderColor: GREEN,
                 borderRadius: '0px 6px 6px 6px',
             }}
         />
@@ -513,11 +511,11 @@ export function CommentSection({
                 <div className="flex flex-shrink-0 items-center justify-start px-4 py-2.5">
                     <div className="flex items-center gap-3">
                         <button className="text-muted-foreground hover:text-foreground transition-colors">
-                            <Paperclip className="w-5 h-5" style={{ color: GREEN }} />
+                            <Paperclip className="w-5 h-5 text-primary" />
                         </button>
 
                         <button className="text-muted-foreground hover:text-foreground transition-colors">
-                            <MapPin className="w-5 h-5" style={{ color: GREEN }} />
+                            <MapPin className="w-5 h-5 text-primary" />
                         </button>
                     </div>
                 </div>

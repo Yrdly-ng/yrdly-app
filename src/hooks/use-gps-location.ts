@@ -26,6 +26,16 @@ export interface GpsLocationState {
   error: string | null;
 }
 
+// ── Fallback ──────────────────────────────────────────────────────
+export const DEFAULT_BOUNDING_BOX: ResolvedLocation = {
+  state: "Lagos",
+  lga: "Ikeja",
+  ward: "Ikeja",
+  displayAddress: "Nigeria", // Use country-level display for fallback
+  lat: 9.0820,
+  lng: 8.6753, // Centered roughly on Nigeria
+};
+
 // ── Hook ────────────────────────────────────────────────────────
 
 export function useGpsLocation() {
@@ -91,8 +101,8 @@ export function useGpsLocation() {
       if (err?.code === 1) {
         setState({
           status: "denied",
-          location: null,
-          error: "Location access was denied. You can select your location manually instead.",
+          location: DEFAULT_BOUNDING_BOX,
+          error: "Location access was denied. Showing Lagos feed instead.",
         });
       } else if (err?.code === 3) {
         setState({

@@ -122,7 +122,7 @@ function StatCard({
         className="w-10 h-10 rounded-full flex items-center justify-center"
         style={{ background: "rgba(56,142,60,0.2)" }}
       >
-        <Icon className="w-5 h-5" style={{ color: GREEN }} />
+        <Icon className="w-5 h-5 text-primary" />
       </div>
       <div>
         <div className="text-xl font-bold text-foreground" style={{ fontFamily: "var(--font-work-sans)" }}>
@@ -416,8 +416,8 @@ export function CommunityScreen({ className }: CommunityScreenProps) {
                 Friend Requests
               </h2>
               <button
-                className="text-[0.6875rem] font-bold uppercase tracking-widest"
-                style={{ color: GREEN, fontFamily: FONT }}
+                className="text-[0.6875rem] font-bold uppercase tracking-widest text-primary"
+                style={{ fontFamily: FONT }}
                 onClick={() => router.push('/notifications')}
               >
                 View All
@@ -495,7 +495,7 @@ export function CommunityScreen({ className }: CommunityScreenProps) {
                 className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
                 style={{ background: CARD }}
               >
-                <FileText className="w-8 h-8" style={{ color: GREEN, opacity: 0.5 }} />
+                <FileText className="w-8 h-8 text-primary" style={{ opacity: 0.5 }} />
               </div>
               <h3 className="text-foreground text-lg mb-2" style={{ fontFamily: PACIFICO }}>
                 No posts yet

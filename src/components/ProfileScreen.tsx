@@ -28,7 +28,6 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const GREEN = "hsl(var(--primary))";
-const GREEN_LIGHT = "#82DB7E";
 const CARD = "var(--c-card)";
 const SURFACE = "var(--c-card)";
 const BG = "var(--c-bg)";
@@ -118,7 +117,7 @@ function MiniCard({ title, sub, img, badge, onClick }: { title: string; sub?: st
           <Image src={img} alt={title} fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <Briefcase className="w-6 h-6" style={{ color: GREEN, opacity: 0.4 }} />
+            <Briefcase className="w-6 h-6 text-primary" style={{ opacity: 0.4 }} />
           </div>
         )}
         {badge && (
@@ -308,7 +307,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
     <div className="pb-28 space-y-4 max-w-5xl mx-auto px-4 pt-4" style={{ background: BG }}>
       {/* Back arrow (if external) */}
       {onBack && (
-        <button onClick={onBack} className="flex items-center gap-2 text-sm mb-1" style={{ color: GREEN_LIGHT, fontFamily: FONT }}>
+        <button onClick={onBack} className="flex items-center gap-2 text-sm mb-1 text-primary-light" style={{ fontFamily: FONT }}>
           <ArrowLeft className="w-4 h-4" /> Back
         </button>
       )}
@@ -535,7 +534,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
         >
           <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
             style={{ background: "rgba(56,142,60,0.2)" }}>
-            <Users className="w-5 h-5" style={{ color: GREEN_LIGHT }} />
+            <Users className="w-5 h-5 text-primary-light" />
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-2xl font-bold text-foreground truncate">{stats.friends.toLocaleString()}</p>
@@ -548,7 +547,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
         >
           <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
             style={{ background: "rgba(56,142,60,0.2)" }}>
-            <CalendarDays className="w-5 h-5" style={{ color: GREEN_LIGHT }} />
+            <CalendarDays className="w-5 h-5 text-primary-light" />
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-2xl font-bold text-foreground truncate">{stats.events}</p>
@@ -562,19 +561,19 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
         <section className="rounded-[11px] overflow-hidden" style={{ background: SURFACE }}>
           {[
             {
-              icon: <Ticket className="w-5 h-5" style={{ color: GREEN_LIGHT }} />,
+              icon: <Ticket className="w-5 h-5 text-primary-light" />,
               label: "My Tickets",
               sub: "View event tickets you've purchased",
               href: "/my-tickets",
             },
             {
-              icon: <Package className="w-5 h-5" style={{ color: GREEN_LIGHT }} />,
+              icon: <Package className="w-5 h-5 text-primary-light" />,
               label: "My Purchases",
               sub: "Track marketplace orders",
               href: "/profile/purchases",
             },
             {
-              icon: <TrendingUp className="w-5 h-5" style={{ color: GREEN_LIGHT }} />,
+              icon: <TrendingUp className="w-5 h-5 text-primary-light" />,
               label: "My Sales",
               sub: "Track items you have sold",
               href: "/profile/sold-items",
@@ -614,8 +613,8 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
             {interests.map((interest, i) => (
               <span
                 key={i}
-                className="px-4 py-1.5 rounded-full text-xs font-medium"
-                style={{ background: "var(--c-bg)", border: "1px solid rgba(130,219,126,0.3)", color: GREEN_LIGHT, fontFamily: FONT }}
+                className="px-4 py-1.5 rounded-full text-xs font-medium text-primary-light"
+                style={{ background: "var(--c-bg)", border: "1px solid rgba(130,219,126,0.3)", fontFamily: FONT }}
               >
                 {interest}
               </span>
@@ -680,7 +679,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
                 </div>
               </div>
             ) : (
-              <EmptyState icon={<Heart className="w-7 h-7" style={{ color: GREEN_LIGHT, opacity: 0.6 }} />}
+              <EmptyState icon={<Heart className="w-7 h-7 text-primary-light" style={{ opacity: 0.6 }} />}
                 label="No posts yet" action="Create your first post" onAction={() => router.push("/home")} />
             )
           )}
@@ -701,7 +700,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
                 ))}
               </div>
             ) : (
-              <EmptyState icon={<ShoppingBag className="w-7 h-7" style={{ color: GREEN_LIGHT, opacity: 0.6 }} />}
+              <EmptyState icon={<ShoppingBag className="w-7 h-7 text-primary-light" style={{ opacity: 0.6 }} />}
                 label="No items for sale" action="List your first item" onAction={() => router.push("/marketplace")} />
             )
           )}
@@ -722,7 +721,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
                 ))}
               </div>
             ) : (
-              <EmptyState icon={<Briefcase className="w-7 h-7" style={{ color: GREEN_LIGHT, opacity: 0.6 }} />}
+              <EmptyState icon={<Briefcase className="w-7 h-7 text-primary-light" style={{ opacity: 0.6 }} />}
                 label="No businesses yet" action="Create your business" onAction={() => router.push("/businesses")} />
             )
           )}
@@ -762,7 +761,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
                 ))}
               </div>
             ) : (
-              <EmptyState icon={<CalendarDays className="w-7 h-7" style={{ color: GREEN_LIGHT, opacity: 0.6 }} />}
+              <EmptyState icon={<CalendarDays className="w-7 h-7 text-primary-light" style={{ opacity: 0.6 }} />}
                 label="No events posted" action="Create your first event" onAction={() => router.push("/events")} />
             )
           )}

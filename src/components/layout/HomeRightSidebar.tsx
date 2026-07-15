@@ -10,7 +10,6 @@ import { useAuth } from '@/hooks/use-supabase-auth';
 
 /* ─── design tokens ─────────────────────────────────────────────── */
 const CARD_BG = 'var(--c-card)';
-const GREEN = 'hsl(var(--primary))';
 const FONT_RALEWAY = 'Inter, sans-serif';
 const FONT_PACIFICO = "var(--font-jersey25)";
 
@@ -128,7 +127,7 @@ function QuickSaleCard({ item }: { item: SalePost }) {
         <p className="font-sans font-semibold text-[0.75rem] text-foreground truncate" style={{ fontFamily: FONT_RALEWAY }}>
           {item.title || item.text?.split('\n')[0] || 'Item'}
         </p>
-        <p className="font-sans font-bold text-[0.875rem]" style={{ color: GREEN, fontFamily: FONT_RALEWAY }}>{price}</p>
+        <p className="font-sans font-bold text-[0.875rem] text-primary" style={{ fontFamily: FONT_RALEWAY }}>{price}</p>
       </div>
     </Link>
   );

@@ -70,10 +70,9 @@ export function LocationChip() {
     return (
       <button
         onClick={() => router.push("/onboarding/profile")}
-        className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[0.6875rem] font-semibold transition-all active:scale-95"
+        className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[0.6875rem] font-semibold transition-all active:scale-95 text-primary"
         style={{
           background: "rgba(56,142,60,0.15)",
-          color: GREEN,
           border: `0.5px solid ${GREEN}`,
           fontFamily: FONT,
         }}
