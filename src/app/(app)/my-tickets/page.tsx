@@ -95,15 +95,56 @@ export default function MyTicketsPage() {
 
       <div className="max-w-2xl mx-auto px-4 pt-4 space-y-3">
         {tickets.length === 0 ? (
-          <div className="rounded-2xl bg-card border border-border py-16 flex flex-col items-center gap-3">
-            <Ticket className="w-14 h-14 text-muted-foreground" />
-            <p className="font-sans font-semibold text-sm text-muted-foreground">No tickets yet</p>
-            <p className="font-sans text-xs text-muted-foreground text-center max-w-[220px]">
+          <div
+            className="text-center p-8 md:p-12 rounded-2xl mx-4 my-6"
+            style={{
+              background: "var(--c-card)",
+              border: "1px solid var(--c-border)",
+              boxShadow: "0 10px 30px rgba(0,0,0,0.2)"
+            }}
+          >
+            <div className="flex justify-center mb-6">
+              <span 
+                className="text-6xl animate-bounce" 
+                role="img" 
+                aria-label="Ticket"
+                style={{ animationDuration: '2s' }}
+              >
+                🎫
+              </span>
+            </div>
+            
+            <h2 
+              className="text-2xl font-extrabold mb-3"
+              style={{ 
+                fontFamily: "var(--font-jersey25)", 
+                color: "var(--c-text)",
+                letterSpacing: "-0.02em"
+              }}
+            >
+              No tickets yet!
+            </h2>
+            
+            <p 
+              className="mb-8 max-w-sm mx-auto text-[0.9375rem] leading-relaxed"
+              style={{ 
+                fontFamily: "var(--font-work-sans)", 
+                color: "var(--c-text-muted)" 
+              }}
+            >
               Purchase tickets to local events and they&apos;ll appear here.
             </p>
+            
             <Link href="/events">
-              <button className="mt-2 px-6 py-2.5 rounded-full bg-primary font-sans text-sm text-foreground font-medium">
-                Explore Events
+              <button
+                className="w-full sm:w-auto px-8 py-3.5 rounded-full flex items-center justify-center text-foreground font-bold mx-auto transition-all active:scale-95 shadow-[0_8px_20px_rgba(56,142,60,0.25)] hover:shadow-[0_10px_25px_rgba(56,142,60,0.35)]"
+                style={{
+                  background: "hsl(var(--primary))",
+                  fontFamily: "var(--font-work-sans)",
+                  letterSpacing: "0.02em"
+                }}
+              >
+                Browse Events
               </button>
             </Link>
           </div>

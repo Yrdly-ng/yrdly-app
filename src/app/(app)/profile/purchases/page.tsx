@@ -127,18 +127,58 @@ export default function PurchaseHistoryPage() {
       <div className="max-w-4xl mx-auto space-y-6 p-4">
 
         {purchases.length === 0 ? (
-          <Card>
-            <CardContent className="text-center p-8">
-              <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No Purchases Yet</h3>
-              <p className="text-muted-foreground mb-4">
-                You haven&apos;t purchased any items yet. Start shopping in the marketplace!
-              </p>
-              <Button onClick={() => router.push('/marketplace')}>
-                Browse Marketplace
-              </Button>
-            </CardContent>
-          </Card>
+          <div
+            className="text-center p-8 md:p-12 rounded-2xl mx-4 my-6"
+            style={{
+              background: "var(--c-card)",
+              border: "1px solid var(--c-border)",
+              boxShadow: "0 10px 30px rgba(0,0,0,0.2)"
+            }}
+          >
+            <div className="flex justify-center mb-6">
+              <span 
+                className="text-6xl animate-bounce" 
+                role="img" 
+                aria-label="Shopping Bag"
+                style={{ animationDuration: '2s' }}
+              >
+                🛍️
+              </span>
+            </div>
+            
+            <h2 
+              className="text-2xl font-extrabold mb-3"
+              style={{ 
+                fontFamily: "var(--font-jersey25)", 
+                color: "var(--c-text)",
+                letterSpacing: "-0.02em"
+              }}
+            >
+              No Purchases Yet
+            </h2>
+            
+            <p 
+              className="mb-8 max-w-sm mx-auto text-[0.9375rem] leading-relaxed"
+              style={{ 
+                fontFamily: "var(--font-work-sans)", 
+                color: "var(--c-text-muted)" 
+              }}
+            >
+              You haven&apos;t purchased any items yet. Start shopping in the marketplace!
+            </p>
+            
+            <Button 
+              onClick={() => router.push('/marketplace')}
+              className="w-full sm:w-auto px-8 py-6 rounded-full flex items-center justify-center font-bold mx-auto transition-all active:scale-95 shadow-[0_8px_20px_rgba(56,142,60,0.25)] hover:shadow-[0_10px_25px_rgba(56,142,60,0.35)]"
+              style={{
+                background: "hsl(var(--primary))",
+                fontFamily: "var(--font-work-sans)",
+                letterSpacing: "0.02em"
+              }}
+            >
+              Browse Marketplace
+            </Button>
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {purchases.map((purchase) => (
