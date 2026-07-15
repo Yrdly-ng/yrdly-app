@@ -1,51 +1,64 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+interface PushPayload {
+  title: string;
+  body: string;
+  data?: Record<string, unknown>;
+  url?: string;
+  badge?: number;
+}
+
 serve(async (req) => {
-  // Handle CORS
+  // Handle preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
-
-    const { userId, payload, type } = await req.json();
+    const { userId, payload, type } = await req.json() as {
+      userId: string;
+      payload: PushPayload;
+      type?: string;
+    };
 
     if (!userId || !payload) {
-      throw new Error('userId and payload are required');
+      return new Response(JSON.stringify({ error: 'Missing userId or payload' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    // 1. Get the user's push token and preferences
-    const { data: user, error: userError } = await supabaseClient
+    // Init Supabase admin client to read the user's push token
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    );
+
+    // Fetch the push token and preferences for this user
+    const { data: userData, error: userError } = await supabaseAdmin
       .from('users')
       .select('push_token, notification_settings')
       .eq('id', userId)
       .single();
 
-    if (userError) {
-      throw new Error(`Error fetching user: ${userError.message}`);
+    if (userError || !userData?.push_token) {
+      console.log(`No push token found for user ${userId}:`, userError?.message);
+      return new Response(JSON.stringify({ success: false, reason: 'no_token' }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    const pushToken = user?.push_token;
+    const pushToken = userData.push_token;
 
-    if (!pushToken) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'User does not have a push token' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-      );
-    }
-
-    // 1.5 Enforce notification preferences
-    if (type && user?.notification_settings) {
+    // Enforce notification preferences
+    if (type && userData?.notification_settings) {
       const preferenceMap: Record<string, string> = {
         'message': 'messages',
         'marketplace_item_interest': 'messages',
@@ -68,7 +81,7 @@ serve(async (req) => {
       const mappedKey = preferenceMap[type];
 
       if (mappedKey) {
-        if (user.notification_settings[mappedKey] === false) {
+        if (userData.notification_settings[mappedKey] === false) {
           console.log(`Push skipped: User opted out of ${mappedKey} (type: ${type})`);
           return new Response(
             JSON.stringify({ success: true, skipped: true, reason: 'user_opt_out' }),
@@ -83,40 +96,70 @@ serve(async (req) => {
       }
     }
 
-    // 2. Send push notification via Expo
+    // Validate it's a real Expo push token
+    if (!pushToken.startsWith('ExponentPushToken[') && !pushToken.startsWith('ExpoPushToken[')) {
+      console.log(`Invalid push token format for user ${userId}: ${pushToken}`);
+      return new Response(JSON.stringify({ success: false, reason: 'invalid_token_format' }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Send via Expo Push Notification Service
+    const expoPayload = {
+      to: pushToken,
+      title: payload.title,
+      body: payload.body,
+      sound: 'default',
+      badge: payload.badge ?? 1,
+      data: {
+        ...(payload.data ?? {}),
+        url: payload.url ?? '/',
+      },
+      channelId: 'default',
+      priority: 'high',
+    };
+
     const expoResponse = await fetch('https://exp.host/--/api/v2/push/send', {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
-        'Accept-encoding': 'gzip, deflate',
         'Content-Type': 'application/json',
-        // Optional: Include an Expo Access Token if required by the Expo project
-        ...(Deno.env.get('EXPO_ACCESS_TOKEN') ? { Authorization: `Bearer ${Deno.env.get('EXPO_ACCESS_TOKEN')}` } : {})
+        'Accept-Encoding': 'gzip, deflate',
       },
-      body: JSON.stringify({
-        to: pushToken,
-        sound: 'default',
-        title: payload.title,
-        body: payload.body,
-        data: payload.data || {},
-        badge: payload.badge ? parseInt(payload.badge, 10) : undefined,
-      }),
+      body: JSON.stringify(expoPayload),
     });
 
-    const expoData = await expoResponse.json();
+    const expoResult = await expoResponse.json();
+    console.log('Expo push result:', JSON.stringify(expoResult));
 
-    if (expoData.errors) {
-      throw new Error(`Expo Push API Error: ${JSON.stringify(expoData.errors)}`);
+    // Check for token errors and clean up invalid tokens
+    if (expoResult?.data?.status === 'error') {
+      const details = expoResult.data.details;
+      if (details?.error === 'DeviceNotRegistered') {
+        // Token is no longer valid — clear it so we stop sending to it
+        console.log(`Clearing invalid push token for user ${userId}`);
+        await supabaseAdmin
+          .from('users')
+          .update({ push_token: null })
+          .eq('id', userId);
+      }
+      return new Response(JSON.stringify({ success: false, reason: details?.error }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    return new Response(
-      JSON.stringify({ success: true, data: expoData }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-    );
-  } catch (error: any) {
-    return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-    );
+    return new Response(JSON.stringify({ success: true, result: expoResult }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+
+  } catch (err) {
+    console.error('send-push-notification error:', err);
+    return new Response(JSON.stringify({ error: String(err) }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 });
