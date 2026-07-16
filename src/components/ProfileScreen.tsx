@@ -372,16 +372,16 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
 
           {/* Action buttons for external profile */}
           {!actualIsOwnProfile && currentUser?.id !== targetUser?.id && (
-            <div className="flex flex-row items-center justify-center gap-3 mt-8 w-full max-w-[400px] mx-auto px-4">
+            <div className="flex flex-row flex-wrap items-center justify-center gap-2 sm:gap-3 mt-8 w-full max-w-[400px] mx-auto px-4">
               {friendshipStatus === 'friends' ? (
                 // Friends: show Message button + ⋯ overflow with Remove
                 <>
                   <button
                     onClick={handleMessageUser}
-                    className="flex-1 flex items-center justify-center gap-2 rounded-full h-14 text-sm font-bold text-foreground transition-all active:scale-95 shadow-lg"
+                    className="flex-1 min-w-[90px] flex items-center justify-center gap-1.5 sm:gap-2 rounded-full h-14 text-xs sm:text-sm font-bold text-foreground transition-all active:scale-95 shadow-lg"
                     style={{ background: GREEN, fontFamily: FONT, boxShadow: "0 8px 20px rgba(56,142,60,0.25)" }}
                   >
-                    <MessageCircle className="w-5 h-5" />
+                    <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
                     Message
                   </button>
                   <DropdownMenu>
@@ -405,7 +405,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
                   <button
                     onClick={handleToggleFollow}
                     disabled={followLoading}
-                    className="flex-1 flex items-center justify-center gap-2 rounded-full h-14 text-sm font-bold text-foreground transition-all active:scale-95 shadow-lg border"
+                    className="flex-1 min-w-[90px] flex items-center justify-center gap-1.5 sm:gap-2 rounded-full h-14 text-xs sm:text-sm font-bold text-foreground transition-all active:scale-95 shadow-lg border"
                     style={{ background: isFollowing ? "transparent" : GREEN, borderColor: isFollowing ? "var(--c-border)" : "transparent", fontFamily: FONT }}
                   >
                     {followLoading ? "..." : isFollowing ? "Following" : "Follow"}
@@ -416,16 +416,16 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
                 <>
                   <button
                     disabled
-                    className="flex-1 flex items-center justify-center gap-2 rounded-full h-14 text-sm font-bold text-muted-foreground border transition-all"
+                    className="flex-1 min-w-[110px] flex items-center justify-center gap-1.5 sm:gap-2 rounded-full h-14 text-xs sm:text-sm font-bold text-muted-foreground border transition-all"
                     style={{ background: "transparent", borderColor: "var(--c-border)", fontFamily: FONT }}
                   >
-                    <Users className="w-5 h-5" />
-                    Request Sent
+                    <Users className="w-4 h-4 sm:w-5 sm:h-5" />
+                    Sent
                   </button>
                   <button
                     onClick={() => friendship.cancelRequest()}
                     disabled={friendship.isLoading}
-                    className="flex-1 flex items-center justify-center gap-2 rounded-full h-14 text-sm font-bold border transition-all active:scale-95"
+                    className="flex-1 min-w-[90px] flex items-center justify-center gap-1.5 sm:gap-2 rounded-full h-14 text-xs sm:text-sm font-bold border transition-all active:scale-95"
                     style={{ borderColor: "rgba(229,57,53,0.4)", color: "#E53935", fontFamily: FONT }}
                   >
                     {friendship.isLoading ? "..." : "Cancel"}
@@ -433,7 +433,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
                   <button
                     onClick={handleToggleFollow}
                     disabled={followLoading}
-                    className="flex-1 flex items-center justify-center gap-2 rounded-full h-14 text-sm font-bold text-foreground transition-all active:scale-95 shadow-lg border"
+                    className="flex-[0.5] min-w-[90px] flex items-center justify-center gap-2 rounded-full h-14 text-xs sm:text-sm font-bold text-foreground transition-all active:scale-95 shadow-lg border"
                     style={{ background: isFollowing ? "transparent" : GREEN, borderColor: isFollowing ? "var(--c-border)" : "transparent", fontFamily: FONT }}
                   >
                     {followLoading ? "..." : isFollowing ? "Following" : "Follow"}
@@ -445,18 +445,19 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
                   <button
                     onClick={() => friendship.acceptRequest()}
                     disabled={friendship.isLoading}
-                    className="flex-1 flex items-center justify-center gap-2 rounded-full h-14 text-sm font-bold text-foreground transition-all active:scale-95 shadow-lg"
+                    className="flex-1 min-w-[90px] flex items-center justify-center gap-1.5 sm:gap-2 rounded-full h-14 text-xs sm:text-sm font-bold text-foreground transition-all active:scale-95 shadow-lg"
                     style={{ background: GREEN, fontFamily: FONT, boxShadow: "0 8px 20px rgba(56,142,60,0.2)" }}
                   >
-                    <Users className="w-5 h-5" />
+                    <Check className="w-4 h-4 sm:w-5 sm:h-5" />
                     {friendship.isLoading ? "..." : "Accept"}
                   </button>
                   <button
                     onClick={() => friendship.declineRequest()}
                     disabled={friendship.isLoading}
-                    className="px-5 h-14 rounded-full text-sm font-bold border transition-all active:scale-95"
-                    style={{ borderColor: "rgba(229,57,53,0.4)", color: "#E53935", fontFamily: FONT }}
+                    className="flex-1 min-w-[90px] flex items-center justify-center gap-1.5 sm:gap-2 rounded-full h-14 text-xs sm:text-sm font-bold border transition-all active:scale-95"
+                    style={{ borderColor: "var(--c-border)", color: "var(--c-text-muted)", fontFamily: FONT }}
                   >
+                    <X className="w-4 h-4 sm:w-5 sm:h-5" />
                     {friendship.isLoading ? "..." : "Decline"}
                   </button>
                 </>
@@ -466,16 +467,16 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
                   <button
                     onClick={() => friendship.addFriend()}
                     disabled={friendship.isLoading}
-                    className="flex-1 flex items-center justify-center gap-2 rounded-full h-14 text-sm font-bold text-foreground transition-all active:scale-95 shadow-lg"
+                    className="flex-1 min-w-[90px] flex items-center justify-center gap-1.5 sm:gap-2 rounded-full h-14 text-xs sm:text-sm font-bold text-foreground transition-all active:scale-95 shadow-lg"
                     style={{ background: GREEN, fontFamily: FONT, boxShadow: "0 8px 20px rgba(56,142,60,0.2)" }}
                   >
-                    <Users className="w-5 h-5" />
+                    <Users className="w-4 h-4 sm:w-5 sm:h-5" />
                     {friendship.isLoading ? "..." : "Connect"}
                   </button>
                   <button
                     onClick={handleToggleFollow}
                     disabled={followLoading}
-                    className="flex-1 flex items-center justify-center gap-2 rounded-full h-14 text-sm font-bold text-foreground transition-all active:scale-95 shadow-lg border"
+                    className="flex-1 min-w-[90px] flex items-center justify-center gap-1.5 sm:gap-2 rounded-full h-14 text-xs sm:text-sm font-bold text-foreground transition-all active:scale-95 shadow-lg border"
                     style={{ background: isFollowing ? "transparent" : GREEN, borderColor: isFollowing ? "var(--c-border)" : "transparent", fontFamily: FONT }}
                   >
                     {followLoading ? "..." : isFollowing ? "Following" : "Follow"}

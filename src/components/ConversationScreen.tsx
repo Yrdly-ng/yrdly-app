@@ -26,6 +26,12 @@ interface ConversationRow {
   created_at: string;
   updated_at: string;
   context?: any;
+  type?: 'friend' | 'marketplace' | 'briefcase';
+  item_id?: string;
+  item_title?: string;
+  item_image?: string;
+  item_price?: number;
+  business_name?: string;
 }
 
 interface ChatMessage {
@@ -419,6 +425,37 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
           </div>
         </div>
       </header>
+
+      {/* ── Item Context Banner ── */}
+      {conversation.item_title && (
+        <div 
+          onClick={() => {
+            if (conversation.item_id) {
+              router.push(`/marketplace/${conversation.item_id}`);
+            }
+          }}
+          className="flex items-center gap-3 p-3 mx-4 mt-3 rounded-[10px] border cursor-pointer transition-colors hover:bg-black/5"
+          style={{ background: "var(--c-card2)", borderColor: "var(--c-border)" }}
+        >
+          {conversation.item_image && (
+            <img 
+              src={conversation.item_image} 
+              alt={conversation.item_title} 
+              className="w-12 h-12 rounded-lg object-cover" 
+            />
+          )}
+          <div className="flex-1 min-w-0">
+            <h3 className="text-[0.875rem] font-semibold text-foreground truncate" style={{ fontFamily: FONT }}>
+              {conversation.item_title}
+            </h3>
+            {typeof conversation.item_price === 'number' && (
+              <p className="text-[0.875rem] font-bold mt-0.5" style={{ color: GREEN, fontFamily: FONT }}>
+                {conversation.item_price === 0 ? 'FREE' : `₦${conversation.item_price.toLocaleString()}`}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Messages ── */}
       <main className="flex-1 overflow-y-auto px-4 py-6 space-y-4" style={{ background: BG }}>
