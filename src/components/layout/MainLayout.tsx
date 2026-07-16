@@ -182,7 +182,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                   className="h-11 w-11 object-contain md:h-[48px] md:w-[48px]"
                 />
               </Link>
-              <div className="hidden md:flex flex-1 justify-start max-w-xl lg:pl-10">
+              <div className="hidden md:flex flex-1 justify-center max-w-2xl mx-auto">
                 <button
                   type="button"
                   onClick={() => setShowSearch(true)}

@@ -174,26 +174,6 @@ export function HomeRightSidebar() {
     <aside className="hidden lg:flex lg:flex-col lg:w-[380px] lg:flex-shrink-0 lg:overflow-y-auto gap-4 pt-1">
       <div className="flex gap-3 items-start">
 
-        {/* ── Neighborhood widget ── */}
-        <div className="w-[140px] flex-shrink-0 rounded-[10px] overflow-hidden border border-border flex flex-col" style={{ background: CARD_BG }}>
-          <div className="px-4 pt-4 pb-3 flex-1">
-            <div className="relative mb-3 w-fit">
-              <div className="w-9 h-9 rounded-full bg-accent flex items-center justify-center">
-                <MapPin className="w-4.5 h-4.5 text-primary" />
-              </div>
-              <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-primary border-2 border-border" />
-            </div>
-            <p className="text-[0.8125rem] font-bold text-foreground leading-snug" style={{ fontFamily: 'Inter, sans-serif' }}>
-              {lga || state || 'My Area'}
-            </p>
-            {state && lga && (
-              <p className="text-[0.6875rem] text-muted-foreground leading-snug mt-1" style={{ fontFamily: 'Inter, sans-serif' }}>
-                {state}
-              </p>
-            )}
-          </div>
-        </div>
-
         {/* ── Latest Events + Quick Sales ── */}
         <div className="flex-1 flex flex-col gap-4 min-w-0">
           <div>
