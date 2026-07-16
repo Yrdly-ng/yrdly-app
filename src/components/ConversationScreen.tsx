@@ -42,6 +42,8 @@ interface ChatMessage {
   content?: string;
   image_url: string | null;
   video_url?: string | null;
+  media_url?: string | null;
+  media_type?: string | null;
   created_at: string;
   is_read: boolean;
   read_by?: string[];
