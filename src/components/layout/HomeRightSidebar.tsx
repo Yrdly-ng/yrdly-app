@@ -55,11 +55,20 @@ function EventCard({ event }: { event: EventPost }) {
 
   let safeLink = `/posts/${event.id}`;
   if ((event as any).event_link) {
-    try {
-      const url = new URL((event as any).event_link);
-      safeLink = url.pathname + url.search;
-    } catch {
-      safeLink = (event as any).event_link;
+    const linkStr = (event as any).event_link as string;
+    if (linkStr.startsWith('yrdly://events/')) {
+      // Legacy mobile event (only in posts table)
+      const parts = linkStr.split('/');
+      safeLink = `/posts/${parts.pop() || event.id}`;
+    } else if (linkStr.startsWith('http')) {
+      try {
+        const url = new URL(linkStr);
+        safeLink = url.pathname + url.search;
+      } catch {
+        safeLink = linkStr;
+      }
+    } else {
+      safeLink = linkStr;
     }
   }
 

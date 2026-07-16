@@ -239,10 +239,7 @@ export function CatalogItemScreen({
                 {item.in_stock ? 'In Stock' : 'Out of Stock'}
               </span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Price:</span>
-              <span className="text-foreground font-semibold">₦{item.price.toLocaleString()}</span>
-            </div>
+
           </div>
         </div>
 
