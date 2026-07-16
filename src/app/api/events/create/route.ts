@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const {
-      title, description, category, coverImageUrl,
+      title, description, category, coverImageUrl, imageUrls,
       locationAddress, locationOnline, onlineLink, lat, lng, ward, lga, state,
       startTime, endTime, timezone,
       visibility, payoutMode, publish,
@@ -37,8 +37,8 @@ export async function POST(request: NextRequest) {
         .select('id, payment_subaccount_id')
         .eq('user_id', user.id)
         .eq('is_active', true)
-        .eq('is_primary', true)
-        .single();
+        .limit(1)
+        .maybeSingle();
 
       if (!sellerAccount) {
         return NextResponse.json(
@@ -61,7 +61,8 @@ export async function POST(request: NextRequest) {
       .select('payment_subaccount_id')
       .eq('user_id', user.id)
       .eq('is_active', true)
-      .single();
+      .limit(1)
+      .maybeSingle();
 
     // Get user profile for location fallback and post creation
     const { data: userProfile } = await supabaseAdmin
@@ -143,7 +144,7 @@ export async function POST(request: NextRequest) {
           event_date: startTime.split('T')[0],
           event_time: new Date(startTime).toTimeString().split(' ')[0].substring(0, 5),
           event_link: `${process.env.NEXT_PUBLIC_APP_URL || 'https://yrdly.ng'}/events/${event.id}`,
-          image_urls: coverImageUrl ? [coverImageUrl] : [],
+          image_urls: imageUrls && imageUrls.length > 0 ? imageUrls : coverImageUrl ? [coverImageUrl] : [],
           timestamp: now,
           state: finalState,
           lga: finalLga,
