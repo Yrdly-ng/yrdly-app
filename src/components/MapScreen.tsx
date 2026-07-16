@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Image from 'next/image';
-import { Search, Navigation, Calendar, Briefcase, Users, MapPin } from 'lucide-react';
+import { Search, Navigation, Calendar, Briefcase, Users, MapPin, Plus, Locate, Layers } from 'lucide-react';
 import { Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -95,10 +95,12 @@ function RecenterButton({ coords }: { coords: { lat: number; lng: number } | nul
   return (
     <button
       onClick={recenter}
-      className="absolute right-4 z-20 w-12 h-12 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.3)] flex items-center justify-center text-primary-foreground transition-transform active:scale-90"
-      style={{ top: 180, background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.2)' }}
+      title="Locate Me"
+      className="flex items-center gap-2 rounded-full px-4 py-2.5 text-xs font-bold shadow-2xl transition-all hover:scale-105 active:scale-95"
+      style={{ background: 'rgba(16,20,24,0.92)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.12)', color: '#ccc', position: 'absolute', right: 16, top: 180, zIndex: 20 }}
     >
-      <Navigation className="w-5 h-5 fill-white" />
+      <Locate className="w-4 h-4" style={{ color: '#82DB7E' }} />
+      <span>Locate me</span>
     </button>
   );
 }
@@ -223,8 +225,11 @@ export function MapScreen({ className }: MapScreenProps) {
     return filtered.filter(m => m.position.lng >= w && m.position.lng <= e && m.position.lat >= s && m.position.lat <= n);
   }, [bounds, filtered]);
 
-  const TABS: { key: FilterTab; label: string }[] = [
-    { key: 'all', label: 'All' }, { key: 'events', label: 'Events' }, { key: 'businesses', label: 'Businesses' }, { key: 'marketplace', label: 'Market' },
+  const TABS: { key: FilterTab; label: string; icon: React.ReactNode; color: string }[] = [
+    { key: 'all',          label: 'All',        icon: <Layers className="w-3.5 h-3.5" />,    color: '#82DB7E' },
+    { key: 'events',       label: 'Events',     icon: <Calendar className="w-3.5 h-3.5" />,  color: '#F59E0B' },
+    { key: 'businesses',   label: 'Businesses', icon: <Briefcase className="w-3.5 h-3.5" />, color: '#22c55e' },
+    { key: 'marketplace',  label: 'Market',     icon: <MapPin className="w-3.5 h-3.5" />,    color: '#E6A100' },
   ];
 
   const getPinColor = (t: string) => t === 'business' ? '#a5c8ff' : t === 'event' ? '#ffb4ab' : t === 'marketplace' ? '#E6A100' : '#82db7e';
@@ -287,32 +292,25 @@ export function MapScreen({ className }: MapScreenProps) {
               <div className="flex flex-col items-center cursor-pointer group">
                 <div className="relative">
                   {isToday && (
-                    <div className="absolute -inset-2 bg-red-500/30 rounded-full animate-ping" />
+                    <div className="absolute -inset-2 bg-amber-500/30 rounded-full animate-ping" />
                   )}
+                  {/* Circular marker with icon or avatar */}
                   <div
-                    className={cn(
-                      "w-11 h-11 rounded-full flex items-center justify-center shadow-xl border-2 transition-transform duration-300 group-hover:scale-110",
-                      m.type === 'friend' && m.avatar_url ? 'p-0 border-primary' : 'border-background'
-                    )}
-                    style={{ background: getGradient(m.type) }}
+                    className="w-11 h-11 rounded-full flex items-center justify-center shadow-xl border-[2.5px] transition-transform duration-200 group-hover:scale-110 overflow-hidden"
+                    style={{
+                      background: m.type === 'friend' ? 'rgba(139,92,246,0.15)' : m.type === 'event' ? 'rgba(245,158,11,0.15)' : m.type === 'business' ? 'rgba(34,197,94,0.15)' : 'rgba(230,161,0,0.15)',
+                      borderColor: m.type === 'friend' ? '#8B5CF6' : m.type === 'event' ? '#F59E0B' : m.type === 'business' ? '#22c55e' : '#E6A100',
+                    }}
                   >
-                    {m.type === 'event'    && <Calendar className="w-5 h-5 text-primary-foreground" />}
-                    {m.type === 'business' && <Briefcase className="w-5 h-5 text-primary-foreground" />}
-                    {m.type === 'marketplace' && (
-                      <span className="text-primary-foreground font-black text-[0.65rem] px-1 tracking-tighter">
-                        {m.price === 0 ? 'Free' : `₦${(m.price || 0) / 1000}k`}
-                      </span>
-                    )}
-                    {m.type === 'friend'   && (
-                      m.avatar_url
-                        ? <div className="relative w-full h-full rounded-full overflow-hidden"><Image src={m.avatar_url} alt="" fill className="object-cover" sizes="44px" /></div>
-                        : <Users className="w-5 h-5 text-primary-foreground" />
-                    )}
+                    {m.type === 'friend' && m.avatar_url
+                      ? <div className="relative w-full h-full"><Image src={m.avatar_url} alt="" fill className="object-cover" sizes="44px" /></div>
+                      : m.type === 'friend' ? <Users className="w-5 h-5" style={{ color: '#8B5CF6' }} />
+                      : m.type === 'event' ? <Calendar className="w-5 h-5" style={{ color: '#F59E0B' }} />
+                      : m.type === 'business' ? <Briefcase className="w-5 h-5" style={{ color: '#22c55e' }} />
+                      : <MapPin className="w-5 h-5" style={{ color: '#E6A100' }} />}
                   </div>
-                </div>
-                
-                <div className="mt-1.5 px-2.5 py-1 rounded-full text-[0.65rem] font-bold text-primary-foreground shadow-md opacity-90 group-hover:opacity-100 transition-opacity backdrop-blur-md" style={{ background: 'rgba(21,24,29,0.85)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                  {m.title.length > 16 ? m.title.slice(0, 14) + '…' : m.title}
+                  {/* Dot below */}
+                  <div className="w-2 h-2 rounded-full mx-auto mt-1 shadow-md" style={{ backgroundColor: m.type === 'friend' ? '#8B5CF6' : m.type === 'event' ? '#F59E0B' : m.type === 'business' ? '#22c55e' : '#E6A100' }} />
                 </div>
               </div>
             </AdvancedMarker>
@@ -406,34 +404,48 @@ export function MapScreen({ className }: MapScreenProps) {
       {/* ── Header overlay removed ── */}
 
       {/* ── Search + filter overlay ── */}
-      <div className="absolute top-16 left-4 right-4 z-10 space-y-3">
-        <div
-          className="flex items-center gap-3 rounded-2xl px-5 py-3.5 shadow-2xl transition-all hover:bg-card focus-within:bg-card focus-within:ring-2 focus-within:ring-primary/50"
-          style={{ background: 'rgba(21,24,29,0.75)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.1)' }}
-        >
-          <Search className="w-5 h-5 flex-shrink-0 opacity-70" style={{ color: '#82DB7E' }} />
-          <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search this area..."
-            className="flex-1 bg-transparent border-none outline-none text-sm font-medium placeholder:text-muted-foreground/70"
-            style={{ color: 'var(--c-text)', fontFamily: 'Inter, sans-serif' }}
-          />
+      <div className="absolute top-4 left-4 right-4 z-10 space-y-2.5">
+        {/* Search row */}
+        <div className="flex items-center gap-2">
+          <div
+            className="flex flex-1 items-center gap-3 rounded-2xl px-5 py-3 shadow-2xl"
+            style={{ background: 'rgba(13,17,23,0.92)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.1)' }}
+          >
+            <Search className="w-4 h-4 flex-shrink-0" style={{ color: '#82DB7E' }} />
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search streets, estates, businesses..."
+              className="flex-1 bg-transparent border-none outline-none text-sm font-medium placeholder:text-muted-foreground/60"
+              style={{ color: 'var(--c-text)', fontFamily: 'Inter, sans-serif' }}
+            />
+          </div>
+          {/* Near Me */}
+          <button
+            onClick={() => { if (map && userCoords) { map.panTo(userCoords); map.setZoom(15); } else if (navigator.geolocation) { navigator.geolocation.getCurrentPosition(p => { if (map) { map.panTo({ lat: p.coords.latitude, lng: p.coords.longitude }); map.setZoom(15); } }); } }}
+            className="flex items-center gap-1.5 rounded-2xl px-4 py-3 font-bold text-sm shadow-2xl flex-shrink-0 transition-all hover:scale-105 active:scale-95"
+            style={{ background: 'rgba(13,17,23,0.92)', backdropFilter: 'blur(16px)', border: '1px solid rgba(130,219,126,0.35)', color: '#82DB7E' }}
+          >
+            <Locate className="w-4 h-4" />
+            <span>Near Me</span>
+          </button>
         </div>
 
-        <div className="flex gap-2 overflow-x-auto pb-2 px-1" style={{ scrollbarWidth: 'none' }}>
+        {/* Filter chips with icons */}
+        <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
           {TABS.map(t => (
             <button
               key={t.key}
               onClick={() => setActiveTab(t.key)}
-              className="flex-shrink-0 rounded-full px-5 py-2.5 text-xs font-bold shadow-lg transition-all"
+              className="flex-shrink-0 flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold shadow-lg transition-all hover:scale-105 active:scale-95"
               style={
                 activeTab === t.key
-                  ? { background: '#82DB7E', color: '#00390a' }
-                  : { background: 'rgba(21,24,29,0.75)', backdropFilter: 'blur(16px)', color: 'var(--c-text)', border: '1px solid rgba(255,255,255,0.1)' }
+                  ? { background: t.color, color: activeTab === 'all' ? '#00390a' : '#0B0D0B' }
+                  : { background: 'rgba(13,17,23,0.88)', backdropFilter: 'blur(16px)', color: '#ccc', border: '1px solid rgba(255,255,255,0.1)' }
               }
             >
+              <span style={{ color: activeTab === t.key ? '#0B0D0B' : t.color }}>{t.icon}</span>
               {t.label}
             </button>
           ))}
@@ -448,6 +460,53 @@ export function MapScreen({ className }: MapScreenProps) {
       )}
 
       <RecenterButton coords={userCoords} />
+
+      {/* ── Area info card (floating bottom-left) ── */}
+      <div
+        className="absolute z-20 left-4 rounded-2xl p-4 w-52 shadow-2xl"
+        style={{ bottom: 170, background: 'rgba(13,17,23,0.94)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.08)' }}
+      >
+        <div className="flex items-center gap-1.5 mb-1">
+          <MapPin className="w-3.5 h-3.5" style={{ color: '#82DB7E' }} />
+          <span className="font-black text-sm text-white">{profile?.location?.state || 'Your Area'}</span>
+        </div>
+        <p className="text-[11px] mb-3" style={{ color: '#8a9bb0' }}>
+          {markers.filter(m => m.type === 'business').length} businesses
+          &nbsp;•&nbsp;
+          {markers.filter(m => m.type === 'event').length} events nearby
+        </p>
+        <button
+          onClick={() => router.push('/community' as any)}
+          className="w-full flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-black transition-all hover:opacity-90 active:scale-95"
+          style={{ background: '#82DB7E', color: '#0B0D0B' }}
+        >
+          View Community
+          <Navigation className="w-3 h-3" />
+        </button>
+      </div>
+
+      {/* ── FAB stack (right side) ── */}
+      <div className="absolute right-4 z-20 flex flex-col gap-2.5" style={{ bottom: 170 }}>
+        <button
+          onClick={() => router.push('/create' as any)}
+          className="flex items-center gap-2 rounded-full px-4 py-2.5 text-xs font-bold shadow-2xl transition-all hover:scale-105 active:scale-95"
+          style={{ background: '#82DB7E', color: '#0B0D0B', border: 'none' }}
+        >
+          <Plus className="w-4 h-4" />
+          Create Post
+        </button>
+        {selected && (
+          <a
+            href={`https://www.google.com/maps/dir/?api=1&destination=${selected.position.lat},${selected.position.lng}`}
+            target="_blank" rel="noopener noreferrer"
+            className="flex items-center gap-2 rounded-full px-4 py-2.5 text-xs font-bold shadow-2xl transition-all hover:scale-105 active:scale-95"
+            style={{ background: 'rgba(13,17,23,0.92)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.12)', color: '#ccc' }}
+          >
+            <Navigation className="w-4 h-4" style={{ color: '#82DB7E' }} />
+            Directions
+          </a>
+        )}
+      </div>
 
       {/* ── Fluid Bottom Sheet (Vaul) ── */}
       <VaulDrawer.Root 
@@ -470,11 +529,12 @@ export function MapScreen({ className }: MapScreenProps) {
             <div className="px-5 pb-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-lg font-bold text-foreground" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>Visible Near You</h2>
-                  <p className="text-xs font-medium text-muted-foreground/80 mt-0.5">
+                  <h2 className="text-lg font-bold text-foreground" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>Nearby Activity</h2>
+                  <p className="text-xs font-medium mt-0.5" style={{ color: '#8a9bb0' }}>
                     {visibleMarkers.length} places in this area
                   </p>
                 </div>
+                <button onClick={() => router.push('/home' as any)} className="text-xs font-bold" style={{ color: '#82DB7E' }}>See all ›</button>
               </div>
             </div>
 
@@ -503,11 +563,11 @@ export function MapScreen({ className }: MapScreenProps) {
                     }
                   </div>
                   <div className="flex flex-col flex-1 min-w-0">
-                    <p className="text-[0.6rem] font-bold uppercase tracking-wider mb-0.5" style={{ color: getPinColor(m.type) }}>
+                    <p className="text-[0.6rem] font-bold uppercase tracking-wider mb-0.5" style={{ color: m.type === 'friend' ? '#8B5CF6' : m.type === 'event' ? '#F59E0B' : m.type === 'business' ? '#22c55e' : '#E6A100' }}>
                       {m.type}
                     </p>
                     <p className="text-sm font-bold text-foreground truncate">{m.title}</p>
-                    <p className="text-xs truncate opacity-70 mt-0.5">{m.distance || m.address}</p>
+                    <p className="text-xs truncate mt-0.5" style={{ color: '#8a9bb0' }}>{m.distance || m.address}</p>
                   </div>
                   {m.price !== undefined && (
                     <div className="font-black text-sm pl-2 flex-shrink-0" style={{ color: getPinColor('marketplace') }}>
