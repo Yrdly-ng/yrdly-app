@@ -491,7 +491,7 @@ export function CommentSection({
                                     <AvatarFallback className="text-xs bg-primary text-primary-foreground">{author.name?.charAt(0)}</AvatarFallback>
                                 </Avatar>
                                 {/* green vertical connector */}
-                                <div className="w-px flex-1 mt-1" style={{ background: GREEN, minHeight: '40px' }} />
+                                <div className="w-px flex-1 mt-1" style={{ background: 'var(--c-border)', minHeight: '40px' }} />
                             </div>
                             {/* Post content */}
                             <div className="flex-1 min-w-0">
