@@ -306,38 +306,32 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
             onClick={() => router.push("/profile/payout-settings")}
           />
         </div>
-
-
+        {/* ── Privacy ── */}
+        <div className="space-y-3">
+          <SectionLabel>Privacy</SectionLabel>
+          <ToggleRow
+            icon={MapPin}
+            label="Share Location with Friends"
+            checked={privacy.locationVisible}
+            onChange={handleLocationSharingToggle}
+          />
+          <div
+            className="px-4 pb-2"
+            style={{ color: "var(--c-text-muted)", fontFamily: FONT, fontSize: 12, lineHeight: 1.5 }}
+          >
+            When enabled, mutual friends can see your approximate location on the Yrdly map.
+          </div>
+        </div>
 
         {/* ── Appearance ── */}
         <div className="space-y-3">
           <SectionLabel>Appearance</SectionLabel>
-          <div className="flex gap-2">
-            <button
-              onClick={() => handleThemeChange('light')}
-              className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
-                theme === 'light' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-              }`}
-            >
-              Light
-            </button>
-            <button
-              onClick={() => handleThemeChange('dark')}
-              className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
-                theme === 'dark' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-              }`}
-            >
-              Dark
-            </button>
-            <button
-              onClick={() => handleThemeChange('system')}
-              className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
-                theme === 'system' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-              }`}
-            >
-              System
-            </button>
-          </div>
+          <ToggleRow
+            icon={Moon}
+            label="Dark Mode"
+            checked={theme === 'dark'}
+            onChange={(checked) => handleThemeChange(checked ? 'dark' : 'light')}
+          />
         </div>
 
         {/* ── Notifications ── */}

@@ -64,6 +64,7 @@ export function MainLayout({ children }: MainLayoutProps) {
     (pathname.startsWith("/messages/") && pathname !== "/messages") ||
     pathname.includes("/chat");
   const isSubPage = pathname === "/profile/payout-settings";
+  const isMapPage = pathname === "/map";
 
   useEffect(() => {
     if (!user) return;
@@ -265,8 +266,8 @@ export function MainLayout({ children }: MainLayoutProps) {
         <div
           className={cn(
             "flex flex-col lg:flex-row min-h-[100dvh]",
-            (isChatPage || isSubPage) ? "lg:pt-[84px]" : "pt-16 md:pt-[84px]",
-            !isChatPage && "pb-[calc(64px+env(safe-area-inset-bottom)+2rem)] lg:pb-0"
+            (isChatPage || isSubPage) ? "lg:pt-[84px]" : isMapPage ? "" : "pt-16 md:pt-[84px]",
+            !isChatPage && !isMapPage && "pb-[calc(64px+env(safe-area-inset-bottom)+2rem)] lg:pb-0"
           )}
         >
           {/* ── Desktop Left Nav ── */}
@@ -327,12 +328,15 @@ export function MainLayout({ children }: MainLayoutProps) {
           {/* ── Main Content ── */}
           <main
             className={cn(
-              "flex-1 w-full min-w-0 lg:pl-[216px]",
-              (isChatPage || isSubPage) ? "lg:pr-6 lg:py-4 h-[100dvh] lg:h-auto" : "px-3 sm:px-4 md:px-6 py-4"
+              "flex-1 w-full min-w-0",
+              isMapPage ? "p-0 overflow-hidden" : "lg:pl-[216px]",
+              (isChatPage || isSubPage) ? "lg:pr-6 lg:py-4 h-[100dvh] lg:h-auto" : isMapPage ? "" : "px-3 sm:px-4 md:px-6 py-4"
             )}
           >
             <ErrorBoundary>
-              {isChatPage ? (
+              {isMapPage ? (
+                <div className="w-full h-[100dvh]">{children}</div>
+              ) : isChatPage ? (
                 <div className="w-full h-full lg:h-[calc(100vh-120px)]">{children}</div>
               ) : (
                 <div className="w-full max-w-[680px] mx-auto lg:max-w-[660px]">
@@ -347,7 +351,7 @@ export function MainLayout({ children }: MainLayoutProps) {
       </div>
 
       {/* ── Mobile Bottom Nav ── */}
-      {!isChatPage && (
+      {!isChatPage && !isMapPage && (
         <Suspense fallback={null}>
           <nav
             className="lg:hidden fixed bottom-0 left-0 right-0 z-[100] flex items-center justify-around px-2 bg-card border-t border-border shadow-[0_-2px_8px_rgba(0,0,0,0.08)]"

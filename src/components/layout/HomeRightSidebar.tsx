@@ -54,7 +54,7 @@ function EventCard({ event }: { event: EventPost }) {
   const colors = AVATAR_COLORS;
 
   return (
-    <Link href={`/posts/${event.id}`} className="block p-3 hover:bg-accent transition-colors">
+    <Link href={`/events/${event.id}`} className="block p-3 hover:bg-accent transition-colors">
       {/* Top label */}
       <p className="font-jersey25 text-[0.9375rem] leading-[26px] text-foreground mb-1" style={{ fontFamily: FONT_PACIFICO }}>
         In your area
@@ -118,7 +118,7 @@ type SalePost = Post & { user?: { name?: string; avatar_url?: string } };
 function QuickSaleCard({ item }: { item: SalePost }) {
   const price = item.price ? `₦${item.price.toLocaleString()}` : 'Free';
   return (
-    <Link href={`/posts/${item.id}`} className="flex gap-2 p-2 rounded-lg hover:bg-accent transition-colors">
+    <Link href={`/marketplace/${item.id}`} className="flex gap-2 p-2 rounded-lg hover:bg-accent transition-colors">
       <div className="w-12 h-12 rounded-lg bg-background overflow-hidden flex-shrink-0">
         {item.image_urls?.[0] && (
           <Image src={item.image_urls[0]} alt="" width={48} height={48} className="w-full h-full object-cover" />

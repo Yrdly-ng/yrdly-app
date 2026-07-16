@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import Supercluster from 'supercluster';
 import { cn } from '@/lib/utils';
 
-type FilterTab = 'all' | 'events' | 'businesses' | 'marketplace' | 'friends';
+type FilterTab = 'all' | 'events' | 'businesses' | 'marketplace';
 
 type MarkerData = {
   id: string;
@@ -121,6 +121,7 @@ export function MapScreen({ className }: MapScreenProps) {
   // Viewport tracking
   const [bounds, setBounds] = useState<[number,number,number,number]|null>(null);
   const [zoom, setZoom] = useState(14);
+  const [clusters, setClusters] = useState<ReturnType<typeof supercluster.getClusters>>([]);
 
   // Initialize Supercluster
   const supercluster = useMemo(() => new Supercluster({ radius: 60, maxZoom: 16 }), []);
@@ -195,12 +196,12 @@ export function MapScreen({ className }: MapScreenProps) {
   }, [user?.id, profile?.location?.state]);
 
   const filtered = useMemo(() => markers.filter(m => {
-    const matchTab = activeTab === 'all' || m.type === activeTab.replace('businesses', 'business').replace('friends', 'friend').replace('events', 'event');
+    const matchTab = activeTab === 'all' || m.type === activeTab.replace('businesses', 'business').replace('events', 'event') || (activeTab === 'all' && m.type === 'friend');
     const matchSearch = !search || m.title.toLowerCase().includes(search.toLowerCase()) || m.address.toLowerCase().includes(search.toLowerCase());
     return matchTab && matchSearch;
   }), [markers, activeTab, search]);
 
-  // Load supercluster
+  // Load supercluster and update clusters state
   useEffect(() => {
     const points = filtered.map(m => ({
       type: 'Feature' as const,
@@ -208,9 +209,12 @@ export function MapScreen({ className }: MapScreenProps) {
       geometry: { type: 'Point' as const, coordinates: [m.position.lng, m.position.lat] }
     }));
     supercluster.load(points);
-  }, [filtered, supercluster]);
+    if (bounds) {
+      setClusters(supercluster.getClusters(bounds, zoom));
+    }
+  }, [filtered, supercluster, bounds, zoom]);
 
-  const clusters = bounds ? supercluster.getClusters(bounds, zoom) : [];
+  // clusters is now reactive state — no plain const needed
 
   // Filter for dynamic bottom list
   const visibleMarkers = useMemo(() => {
@@ -220,7 +224,7 @@ export function MapScreen({ className }: MapScreenProps) {
   }, [bounds, filtered]);
 
   const TABS: { key: FilterTab; label: string }[] = [
-    { key: 'all', label: 'All' }, { key: 'events', label: 'Events' }, { key: 'businesses', label: 'Businesses' }, { key: 'marketplace', label: 'Market' }, { key: 'friends', label: 'Friends' },
+    { key: 'all', label: 'All' }, { key: 'events', label: 'Events' }, { key: 'businesses', label: 'Businesses' }, { key: 'marketplace', label: 'Market' },
   ];
 
   const getPinColor = (t: string) => t === 'business' ? '#a5c8ff' : t === 'event' ? '#ffb4ab' : t === 'marketplace' ? '#E6A100' : '#82db7e';
@@ -399,16 +403,7 @@ export function MapScreen({ className }: MapScreenProps) {
         </DrawerContent>
       </Drawer>
 
-      {/* ── Header overlay ── */}
-      <header
-        className="absolute top-0 left-0 right-0 z-20 flex justify-between items-center px-6 py-4 pb-6"
-        style={{ background: 'linear-gradient(to bottom, rgba(16,20,24,0.95) 0%, rgba(16,20,24,0) 100%)' }}
-      >
-        <div className="flex items-center gap-2 drop-shadow-md">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="#82DB7E"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-          <span style={{ fontFamily: 'Jersey 25, sans-serif', fontSize: 26, color: '#259907' }}>Yrdly</span>
-        </div>
-      </header>
+      {/* ── Header overlay removed ── */}
 
       {/* ── Search + filter overlay ── */}
       <div className="absolute top-16 left-4 right-4 z-10 space-y-3">
