@@ -17,10 +17,7 @@ export class ResendEmailService {
    * Check if Resend is properly configured
    */
   static isConfigured(): boolean {
-    return !!(
-      process.env.RESEND_API_KEY &&
-      process.env.RESEND_FROM_EMAIL
-    );
+    return !!process.env.RESEND_API_KEY;
   }
 
   /**

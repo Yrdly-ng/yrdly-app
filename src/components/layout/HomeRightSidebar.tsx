@@ -192,14 +192,6 @@ export function HomeRightSidebar() {
               </p>
             )}
           </div>
-          <div className="border-t border-[var(--c-bg)]">
-            <Link href="/map" className="flex items-center justify-between px-4 py-2.5 hover:bg-[var(--c-bg)] transition-colors">
-              <span className="text-[0.6875rem] font-semibold text-primary" style={{ fontFamily: 'Inter, sans-serif' }}>
-                See map
-              </span>
-              <ChevronRight className="w-3.5 h-3.5 text-primary" />
-            </Link>
-          </div>
         </div>
 
         {/* ── Latest Events + Quick Sales ── */}

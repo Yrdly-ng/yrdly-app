@@ -149,6 +149,12 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
         });
       }
 
+      // Clear notifications for this chat when opened
+      await supabase.from("notifications").delete()
+        .eq("user_id", user.id)
+        .eq("type", "message")
+        .eq("related_id", conversation.id);
+
       const lastMsgDate = conversation.last_message_timestamp ? new Date(conversation.last_message_timestamp).getTime() : 0;
       const readReceiptStr = conversation.context?.read_receipts?.[user.id];
       const readReceiptDate = readReceiptStr ? new Date(readReceiptStr).getTime() : 0;
@@ -178,7 +184,16 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
     const ch = supabase.channel(`messages-${conversation.id}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "messages", filter: `conversation_id=eq.${conversation.id}` },
         (payload) => {
-          if (payload.eventType === "INSERT") setMessages((p) => [...p, payload.new as ChatMessage]);
+          if (payload.eventType === "INSERT") {
+            setMessages((p) => [...p, payload.new as ChatMessage]);
+            // Clear notification if a new message arrives while we are in the chat
+            if (payload.new.sender_id !== user.id) {
+              supabase.from("notifications").delete()
+                .eq("user_id", user.id)
+                .eq("type", "message")
+                .eq("related_id", conversation.id).then();
+            }
+          }
           else if (payload.eventType === "UPDATE") setMessages((p) => p.map((m) => m.id === payload.new.id ? payload.new as ChatMessage : m));
           else if (payload.eventType === "DELETE") setMessages((p) => p.filter((m) => m.id !== payload.old.id));
         })
@@ -227,6 +242,8 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
       await supabase.from("messages").insert({
         conversation_id: conversation.id, sender_id: user.id,
         text: newMessage.trim() || "", image_url: imageUrl, video_url: videoUrl,
+        media_url: imageUrl || videoUrl,
+        media_type: videoUrl ? 'video' : (imageUrl ? 'image' : null),
         created_at: new Date().toISOString(), is_read: true, read_by: [user.id],
       });
       await supabase.from("conversations").update({
@@ -455,9 +472,9 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
                     </Avatar>
                   )}
                   <div className="flex flex-col gap-1">
-                    {msg.image_url && (
-                      <div className="relative group rounded-[10px] overflow-hidden border cursor-pointer" style={{ borderColor: "var(--c-border)", maxWidth: 280 }} onClick={() => setFullscreenImage(msg.image_url!)}>
-                        <Image src={msg.image_url} alt="Message image" width={280} height={280} className="w-full h-auto object-cover" />
+                    {(msg.image_url || (msg.media_type === 'image' && msg.media_url)) && (
+                      <div className="relative group rounded-[10px] overflow-hidden border cursor-pointer" style={{ borderColor: "var(--c-border)", maxWidth: 280 }} onClick={() => setFullscreenImage(msg.image_url || msg.media_url!)}>
+                        <Image src={msg.image_url || msg.media_url!} alt="Message image" width={280} height={280} className="w-full h-auto object-cover" />
                         <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                           <span className="bg-black/50 text-white p-2 rounded-full backdrop-blur-sm">
                             <ImagePlus className="w-5 h-5" />

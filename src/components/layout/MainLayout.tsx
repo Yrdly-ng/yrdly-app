@@ -182,8 +182,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                   className="h-11 w-11 object-contain md:h-[48px] md:w-[48px]"
                 />
               </Link>
-
-              <div className="hidden md:flex flex-1 justify-center max-w-xl">
+              <div className="hidden md:flex flex-1 justify-start max-w-xl lg:pl-10">
                 <button
                   type="button"
                   onClick={() => setShowSearch(true)}
@@ -288,14 +287,14 @@ export function MainLayout({ children }: MainLayoutProps) {
                       <Icon
                         className={cn(
                           "w-5 h-5 flex-shrink-0",
-                          isActive ? "text-primary" : "text-[#555555]"
+                          isActive ? "text-primary" : "text-[#555555] dark:text-gray-400"
                         )}
                         weight={isActive ? "fill" : "bold"}
                       />
                       <span
                         className={cn(
                           "text-[0.875rem] leading-snug",
-                          isActive ? "text-primary font-semibold" : "text-[#252629] font-normal"
+                          isActive ? "text-primary font-semibold" : "text-[#252629] dark:text-gray-200 font-normal"
                         )}
                         style={{ fontFamily: "var(--font-work-sans)" }}
                       >
