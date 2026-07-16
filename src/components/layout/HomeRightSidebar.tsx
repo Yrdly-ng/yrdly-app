@@ -53,8 +53,18 @@ function EventCard({ event }: { event: EventPost }) {
   const attendeeCount = (event as any).attendees?.length || 0;
   const colors = AVATAR_COLORS;
 
+  let safeLink = `/posts/${event.id}`;
+  if ((event as any).event_link) {
+    try {
+      const url = new URL((event as any).event_link);
+      safeLink = url.pathname + url.search;
+    } catch {
+      safeLink = (event as any).event_link;
+    }
+  }
+
   return (
-    <Link href={`/events/${event.id}`} className="block p-3 hover:bg-accent transition-colors">
+    <Link href={safeLink} className="block p-3 hover:bg-accent transition-colors">
       {/* Top label */}
       <p className="font-jersey25 text-[0.9375rem] leading-[26px] text-foreground mb-1" style={{ fontFamily: FONT_PACIFICO }}>
         In your area
@@ -146,7 +156,7 @@ export function HomeRightSidebar() {
       const [{ data: eventsData }, { data: salesData }] = await Promise.all([
         supabase
           .from('posts')
-          .select('id, title, text, event_date, event_location, image_urls, attendees, user:users!posts_user_id_fkey(name, avatar_url)')
+          .select('id, title, text, event_date, event_location, event_link, image_urls, attendees, user:users!posts_user_id_fkey(name, avatar_url)')
           .eq('category', 'Event')
           .order('timestamp', { ascending: false })
           .limit(4),

@@ -117,7 +117,7 @@ export function BuyButton({
         onClick={() => setOpen(true)}
         className="w-full h-14 bg-primary rounded-full flex items-center justify-center font-editorial font-bold text-[0.875rem] text-primary-foreground shadow-lg active:scale-95 transition-transform hover:opacity-90"
       >
-        Buy Now — ₦{price.toLocaleString()}
+        Buy Now
       </button>
 
       {/* Overlay */}
