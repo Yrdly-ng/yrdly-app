@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   ArrowLeft, MapPin, Calendar, Users, MessageCircle, ShoppingBag,
   Briefcase, CalendarDays, Clock, Heart, MoreHorizontal, UserMinus,
-  Ticket, Package, ChevronRight, TrendingUp, Shield
+  Ticket, Package, ChevronRight, TrendingUp, Shield, Check, X
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { supabase } from "@/lib/supabase";

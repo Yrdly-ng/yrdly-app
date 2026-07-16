@@ -186,7 +186,7 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
 
   /* ── Real-time messages ── */
   useEffect(() => {
-    if (!conversation) return;
+    if (!conversation || !user) return;
     const ch = supabase.channel(`messages-${conversation.id}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "messages", filter: `conversation_id=eq.${conversation.id}` },
         (payload) => {
@@ -205,7 +205,7 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
         })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [conversation]);
+  }, [conversation, user]);
 
   /* ── Activity ── */
   useEffect(() => {
@@ -438,6 +438,7 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
           style={{ background: "var(--c-card2)", borderColor: "var(--c-border)" }}
         >
           {conversation.item_image && (
+            /* eslint-disable-next-line @next/next/no-img-element */
             <img 
               src={conversation.item_image} 
               alt={conversation.item_title} 
