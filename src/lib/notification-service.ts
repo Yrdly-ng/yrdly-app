@@ -63,6 +63,18 @@ export interface CreateNotificationParams {
 
 export class NotificationService {
   /**
+   * Remove an actor from a notification (e.g. on unlike)
+   */
+  static async removeNotificationActor(params: { userId: string, type: string, senderId: string, relatedId: string }) {
+    await supabase.rpc('remove_notification_actor', {
+      p_user_id: params.userId,
+      p_type: params.type,
+      p_sender_id: params.senderId,
+      p_related_id: params.relatedId
+    });
+  }
+
+  /**
    * Create a new notification
    */
   static async createNotification(params: CreateNotificationParams): Promise<string> {
@@ -86,23 +98,37 @@ export class NotificationService {
         throw error;
       }
 
-      console.log('Notification created successfully via RPC:', data);
-
-      // Send push notification
-      try {
-        await PushNotificationService.sendToUser(params.userId, {
-          title: params.title,
-          body: params.message,
-          data: params.data,
-          url: getNotificationUrl(params.type, params.relatedId),
-          type: params.type
-        });
-      } catch (pushError) {
-        console.error('Error sending push notification:', pushError);
-        // Don't throw error - notification was created successfully
+      let notificationId = '';
+      let shouldPush = true;
+      let pushMessage = params.message;
+      
+      if (typeof data === 'object' && data !== null) {
+        notificationId = (data as any).id;
+        shouldPush = (data as any).should_push ?? true;
+        if ((data as any).message) pushMessage = (data as any).message;
+      } else {
+        notificationId = data as unknown as string;
       }
 
-      return data;
+      console.log('Notification created successfully via RPC, ID:', notificationId);
+
+      // Send push notification
+      if (shouldPush) {
+        try {
+          await PushNotificationService.sendToUser(params.userId, {
+            title: params.title,
+            body: pushMessage,
+            data: params.data,
+            url: getNotificationUrl(params.type, params.relatedId),
+            type: params.type
+          });
+        } catch (pushError) {
+          console.error('Error sending push notification:', pushError);
+          // Don't throw error - notification was created successfully
+        }
+      }
+
+      return notificationId;
     } catch (rpcError) {
       console.log('RPC function failed, falling back to direct insert:', rpcError);
       
@@ -127,7 +153,7 @@ export class NotificationService {
         throw error;
       }
 
-      console.log('Notification created successfully via direct insert:', data);
+      console.log('Notification created successfully via direct insert, ID:', data?.id);
 
       // Send push notification
       try {
@@ -143,7 +169,7 @@ export class NotificationService {
         // Don't throw error - notification was created successfully
       }
 
-      return data.id;
+      return data?.id;
     }
   }
 

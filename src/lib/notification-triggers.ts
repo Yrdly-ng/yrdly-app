@@ -165,6 +165,24 @@ export class NotificationTriggers {
   }
 
   /**
+   * Trigger removal of like actor when a post is unliked
+   */
+  static async onPostUnliked(postId: string, userId: string) {
+    try {
+      const { data: post } = await supabase.from('posts').select('user_id').eq('id', postId).single();
+      if (!post || post.user_id === userId) return;
+      await NotificationService.removeNotificationActor({
+        userId: post.user_id,
+        type: 'post_like',
+        senderId: userId,
+        relatedId: postId
+      });
+    } catch (e) {
+      console.error('Error removing like notification actor:', e);
+    }
+  }
+
+  /**
    * Trigger notification when a post is commented on
    */
   static async onPostCommented(postId: string, commenterId: string, commentContent: string) {

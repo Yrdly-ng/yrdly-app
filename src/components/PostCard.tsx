@@ -327,6 +327,8 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
       setIsLiked(!hasLiked);
       if (!hasLiked) {
         try { const { NotificationTriggers } = await import("@/lib/notification-triggers"); await NotificationTriggers.onPostLiked(post.id, currentUser.id); } catch {}
+      } else {
+        try { const { NotificationTriggers } = await import("@/lib/notification-triggers"); await NotificationTriggers.onPostUnliked(post.id, currentUser.id); } catch {}
       }
     } catch {
       toast({ variant: "destructive", title: "Error", description: "Failed to like post." });
