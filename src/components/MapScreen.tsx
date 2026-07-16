@@ -196,7 +196,7 @@ export function MapScreen({ className }: MapScreenProps) {
   }, [user?.id, profile?.location?.state]);
 
   const filtered = useMemo(() => markers.filter(m => {
-    const matchTab = activeTab === 'all' || m.type === activeTab.replace('businesses', 'business').replace('events', 'event') || (activeTab === 'all' && m.type === 'friend');
+    const matchTab = activeTab === 'all' || m.type === activeTab.replace('businesses', 'business').replace('events', 'event');
     const matchSearch = !search || m.title.toLowerCase().includes(search.toLowerCase()) || m.address.toLowerCase().includes(search.toLowerCase());
     return matchTab && matchSearch;
   }), [markers, activeTab, search]);
