@@ -12,6 +12,7 @@ import { useAuth } from '@/hooks/use-supabase-auth';
 const CARD_BG = 'var(--c-card)';
 const FONT_RALEWAY = 'Inter, sans-serif';
 const FONT_PACIFICO = "var(--font-jersey25)";
+const GREEN = 'hsl(var(--primary))';
 
 type EventPost = Post & { user?: { name?: string; avatar_url?: string } };
 

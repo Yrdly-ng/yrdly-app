@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const GREEN = "hsl(var(--primary))";
+const GREEN_LIGHT = "#82DB7E";
 const CARD = "var(--c-card)";
 const SURFACE = "var(--c-card)";
 const BG = "var(--c-bg)";
