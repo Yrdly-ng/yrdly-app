@@ -87,7 +87,7 @@ export default function EditProfilePage() {
 
       {/* Sticky Header */}
       <header
-        className="sticky top-0 z-50 flex items-center justify-between px-6 py-4"
+        className="sticky top-[calc(4rem+env(safe-area-inset-top))] md:top-[calc(84px+env(safe-area-inset-top))] z-40 flex items-center justify-between px-6 py-4"
         style={{ background: "var(--c-bg)" }}
       >
         <div className="flex items-center gap-4">

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -109,7 +109,7 @@ export default function ManageEventPage() {
 
   return (
     <div className="min-h-[100dvh] bg-background text-foreground pb-16">
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border px-4 py-4 flex items-center gap-3">
+      <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] md:top-[calc(84px+env(safe-area-inset-top))] z-40 bg-background/95 backdrop-blur-sm border-b border-border px-4 py-4 flex items-center gap-3">
         <button onClick={() => router.back()} className="text-muted-foreground hover:text-foreground"><ArrowLeft className="w-5 h-5" /></button>
         <div className="flex-1 min-w-0">
           <h1 className="font-sans font-bold text-base text-foreground truncate">{event.title}</h1>

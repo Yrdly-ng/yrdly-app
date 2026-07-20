@@ -91,7 +91,7 @@ export default function SoldItemsPage() {
   if (loading) {
     return (
       <div className="min-h-[100dvh] bg-background">
-        <div className="sticky top-0 z-50 flex items-center gap-3 px-4 py-4 bg-background/95 backdrop-blur-sm border-b border-border">
+        <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] md:top-[calc(84px+env(safe-area-inset-top))] z-40 flex items-center gap-3 px-4 py-4 bg-card border-b border-border shadow-sm">
           <button onClick={() => router.back()} className="p-2 -ml-2 rounded-full hover:bg-muted transition-colors">
             <ArrowLeft className="w-5 h-5 text-foreground" />
           </button>
@@ -121,7 +121,7 @@ export default function SoldItemsPage() {
 
   return (
     <div className="min-h-[100dvh] bg-background">
-      <div className="sticky top-0 z-50 flex items-center gap-3 px-4 py-4 bg-background/95 backdrop-blur-sm border-b border-border">
+      <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] md:top-[calc(84px+env(safe-area-inset-top))] z-40 flex items-center gap-3 px-4 py-4 bg-card border-b border-border shadow-sm">
         <button onClick={() => router.back()} className="p-2 -ml-2 rounded-full hover:bg-muted transition-colors">
           <ArrowLeft className="w-5 h-5 text-foreground" />
         </button>

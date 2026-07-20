@@ -40,7 +40,7 @@ export default function MyTicketsPage() {
   if (loading) {
     return (
       <div className="min-h-[100dvh] bg-background text-foreground pb-24">
-        <div className="sticky top-0 z-50 bg-background/95 border-b border-border px-4 py-4 flex items-center gap-3">
+        <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] md:top-[calc(84px+env(safe-area-inset-top))] z-40 bg-card border-b border-border shadow-sm px-4 py-4 flex items-center gap-3">
           <Skeleton className="h-9 w-9 bg-muted rounded-full" />
           <div className="space-y-2">
             <Skeleton className="h-6 w-32 bg-muted" />
@@ -72,7 +72,7 @@ export default function MyTicketsPage() {
   return (
     <div className="min-h-[100dvh] bg-background text-foreground pb-24">
       {/* Header */}
-      <div className="sticky top-0 z-50 flex items-center gap-3 px-4 py-4 bg-background/95 backdrop-blur-sm border-b border-border">
+      <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] md:top-[calc(84px+env(safe-area-inset-top))] z-40 flex items-center gap-3 px-4 py-4 bg-card border-b border-border shadow-sm">
         <button onClick={() => router.back()} className="p-2 -ml-2 rounded-full hover:bg-muted transition-colors">
           <ArrowLeft className="w-5 h-5 text-foreground" />
         </button>

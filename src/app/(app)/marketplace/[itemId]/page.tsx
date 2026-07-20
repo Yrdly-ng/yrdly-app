@@ -155,7 +155,7 @@ export default function MarketplaceItemPage() {
     <div className="min-h-[100dvh]" style={{ background: BG }}>
 
       {/* ── Back button row ── */}
-      <div className="sticky top-0 z-50 px-4 py-4 bg-background/95 backdrop-blur-sm border-b" style={{ borderColor: 'var(--c-border)' }}>
+      <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] md:top-[calc(84px+env(safe-area-inset-top))] z-40 px-4 py-4 bg-background/95 backdrop-blur-sm border-b" style={{ borderColor: 'var(--c-border)' }}>
         <button
           onClick={() => router.back()}
           className="flex items-center gap-2 text-sm transition-opacity hover:opacity-70"
