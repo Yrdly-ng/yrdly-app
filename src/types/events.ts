@@ -5,7 +5,7 @@
 
 export type EventStatus = 'DRAFT' | 'PUBLISHED' | 'CANCELLED' | 'COMPLETED';
 export type EventVisibility = 'PUBLIC' | 'WARD_ONLY' | 'LGA_ONLY' | 'UNLISTED';
-export type EventPayoutMode = 'INSTANT' | 'POST_EVENT';
+export type EventPayoutMode = 'POST_EVENT';
 export type TicketStatus = 'PAID' | 'USED' | 'REFUNDED' | 'CANCELLED';
 export type EventPayoutStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
 

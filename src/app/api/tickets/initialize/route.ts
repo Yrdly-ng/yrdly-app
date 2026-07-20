@@ -73,11 +73,7 @@ export async function POST(request: NextRequest) {
     // ── Paid ticket — initialise Paystack payment ───────────────────────────
     const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
     
-    // Check if we need to split payment
-    let subaccount: string | undefined;
-    if (tier.event.payout_mode === 'INSTANT' && tier.event.payment_subaccount_id) {
-      subaccount = tier.event.payment_subaccount_id;
-    }
+
 
     let paymentLink: string;
     try {

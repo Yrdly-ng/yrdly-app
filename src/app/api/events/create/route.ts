@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
       title, description, category, coverImageUrl, imageUrls,
       locationAddress, locationOnline, onlineLink, lat, lng, ward, lga, state,
       startTime, endTime, timezone,
-      visibility, payoutMode, publish,
+      visibility, publish,
       ticketTiers, // array of { name, description, price, capacity, saleEndsAt }
     } = body;
 
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
 
     // ── Gate: paid events require a payout account ────────
     const hasPaidTiers = (ticketTiers || []).some((t: any) => t.price > 0);
-    if (hasPaidTiers || payoutMode === 'INSTANT') {
+    if (hasPaidTiers) {
       const { data: sellerAccount } = await supabaseAdmin
         .from('seller_accounts')
         .select('id, payment_subaccount_id')
@@ -44,13 +44,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           { error: 'PAYOUT_ACCOUNT_REQUIRED', message: 'Link your bank account in Settings → Payout Settings before creating a paid event.' },
           { status: 402 }
-        );
-      }
-
-      if (payoutMode === 'INSTANT' && !sellerAccount.payment_subaccount_id) {
-        return NextResponse.json(
-          { error: 'INSTANT_PAYOUT_UNAVAILABLE', message: 'Instant payouts require a verified Paystack subaccount. Please use Post-Event payouts.' },
-          { status: 400 }
         );
       }
     }
@@ -96,7 +89,7 @@ export async function POST(request: NextRequest) {
         timezone: timezone || 'Africa/Lagos',
         status,
         visibility: visibility || 'PUBLIC',
-        payout_mode: payoutMode || 'POST_EVENT',
+        payout_mode: 'POST_EVENT',
         payment_subaccount_id: sa?.payment_subaccount_id || null,
         published_at: publish ? now : null,
       })
