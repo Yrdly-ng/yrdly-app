@@ -212,8 +212,11 @@ export async function POST(request: NextRequest) {
           }
         }
       } catch (notificationError) {
-      console.error('Failed to send payment notification:', notificationError);
-      // Don't fail the response — payment is confirmed
+        console.error('Failed to send payment notification:', notificationError);
+        // Don't fail the response — payment is confirmed
+      }
+    } catch (notificationProcessError) {
+      console.error('Failed to process payment notification:', notificationProcessError);
     }
 
     console.log(`[PaymentVerify] Payment verification completed successfully for transaction ${txRef}`);
