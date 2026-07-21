@@ -173,18 +173,45 @@ export async function POST(request: NextRequest) {
       const buyerName = buyer?.name || 'A buyer';
       const itemTitle = item?.title || item?.text || 'an item';
 
-      await supabaseAdmin
-        .from('notifications')
-        .insert({
-          user_id: txRow.seller_id,
-          type: 'payment_successful',
-          title: 'Payment Received! 💰',
-          message: `${buyerName} has paid for "${itemTitle}". Arrange handover with the buyer.`,
-          related_id: txRef,
-          related_type: 'escrow_transaction',
-          data: { buyerName, itemTitle, transactionId: txRef, amount },
+      try {
+        const { data: notifData, error: notifError } = await supabaseAdmin.rpc('create_notification', {
+          p_user_id: txRow.seller_id,
+          p_type: 'payment_successful',
+          p_title: 'Payment Received! 💰',
+          p_message: `${buyerName} has paid for "${itemTitle}". Arrange handover with the buyer.`,
+          p_sender_id: null,
+          p_related_id: txRef,
+          p_related_type: 'escrow_transaction',
+          p_data: { buyerName, itemTitle, transactionId: txRef, amount }
         });
-    } catch (notificationError) {
+
+        if (notifError) {
+          console.error('[PaymentVerify] Error creating notification via RPC:', notifError);
+        } else {
+          let shouldPush = true;
+          let pushMessage = `${buyerName} has paid for "${itemTitle}". Arrange handover with the buyer.`;
+          
+          if (notifData && typeof notifData === 'object') {
+            shouldPush = (notifData as any).should_push ?? true;
+            if ((notifData as any).message) pushMessage = (notifData as any).message;
+          }
+
+          if (shouldPush) {
+            await supabaseAdmin.functions.invoke('send-push-notification', {
+              body: { 
+                userId: txRow.seller_id, 
+                payload: {
+                  title: 'Payment Received! 💰',
+                  body: pushMessage,
+                  data: { buyerName, itemTitle, transactionId: txRef, amount },
+                  url: `/transactions/${txRef}`
+                },
+                type: 'payment_successful'
+              }
+            });
+          }
+        }
+      } catch (notificationError) {
       console.error('Failed to send payment notification:', notificationError);
       // Don't fail the response — payment is confirmed
     }
