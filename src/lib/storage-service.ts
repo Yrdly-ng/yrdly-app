@@ -220,7 +220,9 @@ export class StorageService {
     file: File
   ): Promise<{ url: string | null; error: any }> {
     try {
-      const fileName = `${Date.now()}_${file.name}`;
+      // Sanitize: replace spaces and special chars to avoid Supabase storage 400 errors
+      const safeName = file.name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9._-]/g, '');
+      const fileName = `${Date.now()}_${safeName}`;
       const path = `posts/${postId}/${fileName}`;
 
       const { data, error } = await this.uploadFile('post-images', path, file, {
