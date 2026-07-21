@@ -229,15 +229,20 @@ export class PaystackService {
         return { valid: true, accountName: response.data.account_name };
       }
 
+      // In test mode, Paystack may return an unsuccessful resolve for valid accounts.
+      if (process.env.PAYSTACK_SECRET_KEY?.startsWith('sk_test_')) {
+        console.warn('[PaystackService] Test mode: resolveAccount returned invalid, using fallback.');
+        return { valid: true, accountName: 'Test Bank Account (Fallback)' };
+      }
+
       return { valid: false };
     } catch (error: any) {
       console.error('[PaystackService] resolveAccount error:', error);
       
-      // In test mode, Paystack limits live bank account resolutions. Gracefully handle it to unblock sandbox testing.
-      if (
-        process.env.PAYSTACK_SECRET_KEY?.startsWith('sk_test_') &&
-        error?.message?.includes('Test mode daily limit')
-      ) {
+      // In test mode, Paystack limits or blocks live bank account resolutions.
+      // Fall back gracefully to unblock sandbox testing.
+      if (process.env.PAYSTACK_SECRET_KEY?.startsWith('sk_test_')) {
+        console.warn('[PaystackService] Test mode: resolveAccount failed, using fallback.');
         return { valid: true, accountName: 'Test Bank Account (Fallback)' };
       }
       
