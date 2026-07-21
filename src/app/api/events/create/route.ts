@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     if (hasPaidTiers) {
       const { data: sellerAccount } = await supabaseAdmin
         .from('seller_accounts')
-        .select('id, payment_subaccount_id')
+        .select('id, flutterwave_subaccount_id')
         .eq('user_id', user.id)
         .eq('is_active', true)
         .limit(1)
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     // Get subaccount ID if exists
     const { data: sa } = await supabaseAdmin
       .from('seller_accounts')
-      .select('payment_subaccount_id')
+      .select('flutterwave_subaccount_id')
       .eq('user_id', user.id)
       .eq('is_active', true)
       .limit(1)
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
         status,
         visibility: visibility || 'PUBLIC',
         payout_mode: 'POST_EVENT',
-        payment_subaccount_id: sa?.payment_subaccount_id || null,
+        payment_subaccount_id: sa?.flutterwave_subaccount_id || null,
         published_at: publish ? now : null,
       })
       .select('id')
