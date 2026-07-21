@@ -170,9 +170,13 @@ export async function GET(request: NextRequest) {
       .eq('user_id', user.id)
       .eq('is_active', true)
       .eq('is_primary', true)
-      .single();
+      .maybeSingle();
 
-    if (error || !data) {
+    if (error) {
+      console.error('Get seller account DB error:', error);
+      return NextResponse.json({ account: null });
+    }
+    if (!data) {
       return NextResponse.json({ account: null });
     }
 
