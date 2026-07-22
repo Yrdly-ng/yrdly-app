@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -69,7 +68,7 @@
     --c-text:      #1C1C1C;
     --c-text-muted:#616161;
     --c-border:    #E0E0E0;
-    --c-shadow:    rgba(0,0,0,0.08);
+    --c-shadow:    rgba(0,0,0,0.06);
   }
   .dark {
     --c-bg:        #0A0F0D;
@@ -154,11 +153,47 @@
 }
 
 .yrdly-shadow {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 6px 16px rgba(0,0,0,0.06);
 }
 
 .yrdly-shadow-lg {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.04), 0 12px 32px rgba(0,0,0,0.10);
+}
+
+/* New: soft, rounded polished card used across feed/panels */
+.yrdly-card {
+  background: var(--c-card);
+  border-radius: 1.25rem;
+  border: 1px solid rgba(0,0,0,0.04);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06);
+}
+
+/* New: fully-rounded pill search bar, matches reference design */
+.yrdly-search-pill {
+  border-radius: 9999px;
+  background: var(--c-card2);
+  border: 1px solid transparent;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.yrdly-search-pill:focus-within {
+  border-color: rgba(56, 142, 60, 0.35);
+  box-shadow: 0 0 0 3px rgba(56, 142, 60, 0.12);
+}
+
+/* New: pill buttons for primary actions (Interested / Sell / Create Event) */
+.yrdly-pill-btn {
+  border-radius: 9999px;
+  padding-inline: 1.25rem;
+  padding-block: 0.55rem;
+  font-weight: 600;
+  transition: transform 0.1s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+.yrdly-pill-btn:hover {
+  filter: brightness(1.05);
+  box-shadow: 0 4px 14px rgba(56, 142, 60, 0.25);
+}
+.yrdly-pill-btn:active {
+  transform: scale(0.98);
 }
 
 @layer utilities {
