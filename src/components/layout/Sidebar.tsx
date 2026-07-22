@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { Plus } from "@phosphor-icons/react";
+import { Gear } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-export function Sidebar({ navItems, pathname, onCreatePost }) {
+export function Sidebar({ navItems, pathname, profile, onSettings }) {
   return (
-    <aside className="h-screen w-20 bg-white border-r border-gray-100 flex flex-col justify-between fixed left-0 top-0 pt-[84px] shadow-[1px_0_12px_rgba(0,0,0,0.03)]">
-      <div className="flex flex-col items-center mt-6 space-y-2">
+    <aside className="hidden lg:flex h-screen w-64 bg-white border-r border-gray-100 flex-col justify-between fixed left-0 top-0 pt-[84px] z-40">
+      <nav className="flex flex-col mt-4 px-3 space-y-1">
         {navItems.map(({ href, label, icon: Icon }) => {
           const active =
             pathname === href ||
@@ -18,33 +19,44 @@ export function Sidebar({ navItems, pathname, onCreatePost }) {
               key={href}
               href={href}
               className={cn(
-                "flex flex-col items-center justify-center w-16 py-2.5 rounded-2xl transition-all duration-150",
+                "flex items-center gap-3 pl-4 pr-3 py-3 rounded-r-xl border-l-[3px] transition-all duration-150",
                 active
-                  ? "bg-primary/10 text-primary"
-                  : "text-gray-500 hover:bg-gray-50 hover:text-primary"
+                  ? "border-blue-600 bg-blue-50 text-blue-600"
+                  : "border-transparent text-gray-500 hover:bg-gray-50 hover:text-gray-700"
               )}
             >
               <Icon
                 size={22}
-                weight={active ? "fill" : "bold"}
-                className={cn(active ? "text-primary" : "text-gray-500")}
+                weight={active ? "fill" : "regular"}
+                className={active ? "text-blue-600" : "text-gray-500"}
               />
-              <span className={cn("text-[11px] mt-1 font-medium", active ? "text-primary" : "text-gray-500")}>
+              <span
+                className={cn(
+                  "text-[15px] font-semibold",
+                  active ? "text-blue-600" : "text-gray-700"
+                )}
+              >
                 {label}
               </span>
             </Link>
           );
         })}
-      </div>
+      </nav>
 
-      <div className="flex flex-col items-center mb-6 space-y-4">
+      <div className="flex items-center gap-3 px-6 py-5 border-t border-gray-100">
         <button
-          onClick={onCreatePost}
-          className="flex items-center justify-center w-12 h-12 rounded-full bg-primary text-white shadow-[0_4px_14px_rgba(56,142,60,0.35)] hover:brightness-105 active:scale-95 transition-all duration-150"
-          aria-label="Create post"
+          onClick={onSettings}
+          className="flex items-center justify-center w-9 h-9 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+          aria-label="Settings"
         >
-          <Plus size={22} weight="bold" />
+          <Gear size={20} weight="bold" />
         </button>
+        <Avatar className="w-9 h-9">
+          <AvatarImage src={profile?.avatar_url || ""} />
+          <AvatarFallback className="bg-primary text-white text-sm font-bold">
+            {profile?.name?.charAt(0).toUpperCase() || "U"}
+          </AvatarFallback>
+        </Avatar>
       </div>
     </aside>
   );
