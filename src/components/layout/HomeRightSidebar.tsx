@@ -8,10 +8,7 @@ import { MapPin } from "lucide-react";
 import type { Post } from "@/types";
 import { useAuth } from "@/hooks/use-supabase-auth";
 
-const CARD_BG = "var(--c-card)";
 const FONT_RALEWAY = "Inter, sans-serif";
-const FONT_PACIFICO = "var(--font-jersey25)";
-const GREEN = "hsl(var(--primary))";
 
 type EventPost = Post & { user?: { name?: string; avatar_url?: string } };
 type SalePost = Post & { user?: { name?: string; avatar_url?: string } };
@@ -19,10 +16,9 @@ type SalePost = Post & { user?: { name?: string; avatar_url?: string } };
 function formatDate(d: string | null | undefined) {
   if (!d) return "";
   try {
-    return new Date(d).toLocaleDateString("en-GB", {
+    return new Date(d).toLocaleDateString("en-US", {
+      month: "long",
       day: "numeric",
-      month: "short",
-      year: "numeric",
     });
   } catch {
     return "";
@@ -35,35 +31,7 @@ function getLocation(loc: unknown) {
   return typeof o.address === "string" ? o.address : "";
 }
 
-const AVATAR_COLORS = ["#D75656", "#5CD756", "#565CD7", "#D7569D"];
-
-function InterestedBubbles({ count }: { count: number }) {
-  return (
-    <div className="flex items-center gap-1.5">
-      <div className="flex -space-x-1">
-        {AVATAR_COLORS.slice(0, 4).map((c, i) => (
-          <div
-            key={i}
-            className="w-4 h-4 rounded-full border border-[var(--c-card)]"
-            style={{ background: c }}
-          />
-        ))}
-      </div>
-      {count > 0 && (
-        <span
-          className="font-sans font-light text-[0.4375rem] text-foreground"
-          style={{ fontFamily: FONT_RALEWAY }}
-        >
-          {count} are interested
-        </span>
-      )}
-    </div>
-  );
-}
-
 function EventCard({ event }: { event: EventPost }) {
-  const attendeeCount = (event as any).attendees?.length || 0;
-
   let safeLink = `/posts/${event.id}`;
   const rawLink = (event as any).event_link;
 
@@ -83,68 +51,54 @@ function EventCard({ event }: { event: EventPost }) {
     }
   }
 
+  const title = event.title || event.text?.split("\n")[0] || "Event";
+  const location = getLocation(event.event_location);
+
   return (
-    <Link href={safeLink} className="block p-3 hover:bg-accent transition-colors">
-      <p
-        className="text-[0.9375rem] leading-[26px] text-foreground mb-1"
-        style={{ fontFamily: FONT_PACIFICO }}
-      >
-        In your area
-      </p>
+    <Link
+      href={safeLink}
+      className="relative block w-full h-[180px] rounded-2xl overflow-hidden group"
+    >
+      {event.image_urls?.[0] ? (
+        <Image
+          src={event.image_urls[0]}
+          alt={title}
+          fill
+          className="object-cover group-hover:scale-105 transition-transform duration-300"
+          sizes="380px"
+        />
+      ) : (
+        <div className="absolute inset-0 bg-gray-300" />
+      )}
 
-      <div className="rounded-[4px] overflow-hidden" style={{ background: "var(--c-bg)" }}>
-        <div className="flex items-center gap-2 p-2">
-          <div className="w-7 h-7 rounded-[3px] bg-background/10 overflow-hidden flex-shrink-0">
-            {event.image_urls?.[0] && (
-              <Image
-                src={event.image_urls[0]}
-                alt=""
-                width={28}
-                height={28}
-                className="w-full h-full object-cover"
-              />
-            )}
-          </div>
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
 
-          <div className="min-w-0 flex-1">
-            <p
-              className="font-sans italic font-medium text-[0.6875rem] text-foreground truncate"
-              style={{ fontFamily: FONT_RALEWAY }}
-            >
-              {event.title || event.text?.split("\n")[0] || "Event"}
-            </p>
-            <p
-              className="font-sans font-normal text-[0.375rem] text-muted-foreground"
-              style={{ fontFamily: FONT_RALEWAY }}
-            >
-              {formatDate(event.event_date ?? null)}
-            </p>
-          </div>
-
-          <MapPin className="w-4 h-4 text-foreground flex-shrink-0" />
-        </div>
-
-        {(getLocation(event.event_location) || event.text) && (
+      <div className="absolute bottom-0 left-0 right-0 p-4 flex items-end justify-between gap-2">
+        <div className="min-w-0">
           <p
-            className="font-sans font-light text-[0.5625rem] text-foreground px-2 pb-2 leading-[11px]"
+            className="text-white font-extrabold text-xl leading-tight truncate"
             style={{ fontFamily: FONT_RALEWAY }}
           >
-            {getLocation(event.event_location) || event.text?.slice(0, 80)}
+            {title}
           </p>
-        )}
-
-        <div className="mx-2" style={{ borderTop: "0.5px solid #BBBBBB" }} />
-
-        <div className="flex items-center justify-between px-2 py-2">
-          <InterestedBubbles count={attendeeCount} />
-          <button
-            className="px-2 py-1 text-foreground font-sans font-light text-[0.5625rem] rounded-[11.5px]"
-            style={{ background: GREEN, fontFamily: FONT_RALEWAY }}
-            onClick={(e) => e.preventDefault()}
-          >
-            I&apos;m Interested
-          </button>
+          <p className="text-white/90 text-[13px] font-medium" style={{ fontFamily: FONT_RALEWAY }}>
+            {formatDate(event.event_date ?? null)}
+          </p>
+          {location && (
+            <p className="flex items-center gap-1 text-white/90 text-[12px] mt-0.5" style={{ fontFamily: FONT_RALEWAY }}>
+              <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
+              <span className="truncate">{location}</span>
+            </p>
+          )}
         </div>
+
+        <button
+          className="flex-shrink-0 px-4 py-2 rounded-full text-white text-[13px] font-semibold bg-blue-600 hover:bg-blue-700 transition-colors"
+          style={{ fontFamily: FONT_RALEWAY }}
+          onClick={(e) => e.preventDefault()}
+        >
+          Interested
+        </button>
       </div>
     </Link>
   );
@@ -152,33 +106,28 @@ function EventCard({ event }: { event: EventPost }) {
 
 function QuickSaleCard({ item }: { item: SalePost }) {
   const price = item.price ? `₦${item.price.toLocaleString()}` : "Free";
+  const title = item.title || item.text?.split("\n")[0] || "Item";
 
   return (
     <Link
       href={`/marketplace/${item.id}`}
-      className="flex gap-2 p-2 rounded-lg hover:bg-accent transition-colors"
+      className="flex items-center gap-3 p-3 rounded-2xl bg-white hover:shadow-md transition-shadow"
     >
-      <div className="w-12 h-12 rounded-lg bg-background overflow-hidden flex-shrink-0">
-        {item.image_urls?.[0] && (
-          <Image
-            src={item.image_urls[0]}
-            alt=""
-            width={48}
-            height={48}
-            className="w-full h-full object-cover"
-          />
-        )}
+      <div className="w-14 h-14 rounded-xl bg-gray-100 overflow-hidden flex-shrink-0 relative">
+        {item.image_urls?.[0] ? (
+          <Image src={item.image_urls[0]} alt={title} fill className="object-cover" sizes="56px" />
+        ) : null}
       </div>
 
       <div className="min-w-0 flex-1">
         <p
-          className="font-sans font-semibold text-[0.75rem] text-foreground truncate"
+          className="font-semibold text-[13px] text-gray-900 truncate"
           style={{ fontFamily: FONT_RALEWAY }}
         >
-          {item.title || item.text?.split("\n")[0] || "Item"}
+          {title}
         </p>
         <p
-          className="font-sans font-bold text-[0.875rem] text-primary"
+          className="font-bold text-[14px] text-primary"
           style={{ fontFamily: FONT_RALEWAY }}
         >
           {price}
@@ -204,7 +153,7 @@ export function HomeRightSidebar() {
           )
           .eq("category", "Event")
           .order("timestamp", { ascending: false })
-          .limit(4),
+          .limit(2),
         supabase
           .from("posts")
           .select("id, title, text, price, image_urls, image_url")
@@ -212,7 +161,7 @@ export function HomeRightSidebar() {
           .eq("is_sold", false)
           .gt("price", 0)
           .order("timestamp", { ascending: false })
-          .limit(6),
+          .limit(4),
       ]);
 
       if (eventsData) setEvents(eventsData as any);
@@ -224,63 +173,46 @@ export function HomeRightSidebar() {
   }, []);
 
   return (
-    <aside className="hidden lg:flex lg:flex-col lg:w-[380px] lg:flex-shrink-0 lg:overflow-y-auto gap-4 pt-1">
-      <div className="flex gap-3 items-start">
-        <div className="flex-1 flex flex-col gap-4 min-w-0">
-          <div>
-            <div className="flex items-center justify-between mb-2 px-1">
-              <h2
-                className="text-[1.125rem] leading-8 text-foreground"
-                style={{ fontFamily: FONT_PACIFICO }}
-              >
-                Latest Events
-              </h2>
-              <Link
-                href="/events"
-                className="font-sans font-medium text-[0.75rem] text-[#1976D2] hover:underline"
-                style={{ fontFamily: FONT_RALEWAY }}
-              >
-                See all
-              </Link>
-            </div>
+    <aside className="hidden lg:flex lg:flex-col lg:w-[380px] lg:flex-shrink-0 lg:overflow-y-auto gap-6 pt-1 pb-6">
+      <div>
+        <h2
+          className="text-[1.25rem] font-bold text-gray-900 mb-3 px-1"
+          style={{ fontFamily: FONT_RALEWAY }}
+        >
+          Upcoming Events
+        </h2>
 
-            <div className="rounded-[5px] overflow-hidden" style={{ background: CARD_BG }}>
-              {loading ? (
-                <div className="p-3 space-y-3">
-                  {[1, 2].map((i) => (
-                    <div key={i} className="h-[120px] rounded bg-background animate-pulse" />
-                  ))}
-                </div>
-              ) : events.length > 0 ? (
-                events.slice(0, 2).map((event) => <EventCard key={event.id} event={event} />)
-              ) : (
-                <p className="p-4 font-sans text-xs text-muted-foreground">No upcoming events.</p>
-              )}
-            </div>
-          </div>
+        <div className="flex flex-col gap-3">
+          {loading ? (
+            [1, 2].map((i) => (
+              <div key={i} className="h-[180px] rounded-2xl bg-white animate-pulse" />
+            ))
+          ) : events.length > 0 ? (
+            events.map((event) => <EventCard key={event.id} event={event} />)
+          ) : (
+            <p className="p-4 text-xs text-muted-foreground">No upcoming events.</p>
+          )}
+        </div>
+      </div>
 
-          <div>
-            <h2
-              className="text-[1.125rem] leading-8 text-foreground mb-2 px-1"
-              style={{ fontFamily: FONT_PACIFICO }}
-            >
-              Quick Sales
-            </h2>
+      <div>
+        <h2
+          className="text-[1.25rem] font-bold text-gray-900 mb-3 px-1"
+          style={{ fontFamily: FONT_RALEWAY }}
+        >
+          Quick Sales
+        </h2>
 
-            <div className="rounded-[5px] overflow-hidden" style={{ background: CARD_BG }}>
-              {loading ? (
-                <div className="p-3 space-y-2">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-14 rounded bg-background animate-pulse" />
-                  ))}
-                </div>
-              ) : sales.length > 0 ? (
-                sales.map((item) => <QuickSaleCard key={item.id} item={item} />)
-              ) : (
-                <p className="p-4 font-sans text-xs text-muted-foreground">No quick sales yet.</p>
-              )}
-            </div>
-          </div>
+        <div className="grid grid-cols-2 gap-3">
+          {loading ? (
+            [1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-20 rounded-2xl bg-white animate-pulse" />
+            ))
+          ) : sales.length > 0 ? (
+            sales.map((item) => <QuickSaleCard key={item.id} item={item} />)
+          ) : (
+            <p className="p-4 text-xs text-muted-foreground">No quick sales yet.</p>
+          )}
         </div>
       </div>
     </aside>
