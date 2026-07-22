@@ -1,7 +1,6 @@
 "use client";
 
-import type React from "react";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -19,7 +18,6 @@ import {
   Plus,
 } from "@phosphor-icons/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Suspense } from "react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { ProfileDropdown } from "@/components/ProfileDropdown";
 import { NotificationsDropdown } from "@/components/NotificationsDropdown";
@@ -30,6 +28,8 @@ import { HomeRightSidebar } from "./HomeRightSidebar";
 import { cn } from "@/lib/utils";
 import { CreatePostDialog } from "@/components/CreatePostDialog";
 import { usePosts } from "@/hooks/use-posts";
+import { Sidebar } from "./Sidebar";
+import { Topbar } from "./Topbar";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -46,8 +46,9 @@ const navItems = [
 export function MainLayout({ children }: MainLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, profile, signOut } = useAuth();
+  const { user, profile } = useAuth();
   const { createPost } = usePosts();
+
   const [showProfile, setShowProfile] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
@@ -68,15 +69,19 @@ export function MainLayout({ children }: MainLayoutProps) {
 
   useEffect(() => {
     if (!user) return;
+
     const fetchUnreadCount = async () => {
       const { count, error } = await supabase
         .from("notifications")
         .select("*", { count: "exact", head: true })
         .eq("user_id", user.id)
         .eq("is_read", false);
+
       if (!error) setUnreadCount(count || 0);
     };
+
     fetchUnreadCount();
+
     const ch = supabase
       .channel("notification_count")
       .on(
@@ -90,7 +95,7 @@ export function MainLayout({ children }: MainLayoutProps) {
         fetchUnreadCount
       )
       .subscribe();
-      
+
     window.addEventListener("notifications_read", fetchUnreadCount);
 
     return () => {
@@ -101,19 +106,30 @@ export function MainLayout({ children }: MainLayoutProps) {
 
   useEffect(() => {
     if (!user) return;
+
     const fetchUnreadMessagesCount = async () => {
       try {
         const { data, error } = await supabase
           .from("conversations")
           .select("id, type, participant_ids, context, last_message_timestamp")
           .contains("participant_ids", [user.id]);
+
         if (error) return;
+
         let unreadChatsCount = 0;
+
         for (const conv of data || []) {
           const readReceiptStr = conv.context?.read_receipts?.[user.id];
-          const readReceiptDate = readReceiptStr ? new Date(readReceiptStr).getTime() : 0;
-          const lastMsgDate = conv.last_message_timestamp ? new Date(conv.last_message_timestamp).getTime() : 0;
-          const isReadByReceipt = readReceiptDate >= lastMsgDate && lastMsgDate > 0;
+          const readReceiptDate = readReceiptStr
+            ? new Date(readReceiptStr).getTime()
+            : 0;
+
+          const lastMsgDate = conv.last_message_timestamp
+            ? new Date(conv.last_message_timestamp).getTime()
+            : 0;
+
+          const isReadByReceipt =
+            readReceiptDate >= lastMsgDate && lastMsgDate > 0;
 
           if (isReadByReceipt) continue;
 
@@ -125,7 +141,14 @@ export function MainLayout({ children }: MainLayoutProps) {
               .order("created_at", { ascending: false })
               .limit(1)
               .maybeSingle();
-            if (msgs && msgs.sender_id !== user.id && !msgs.metadata?.isRead) unreadChatsCount++;
+
+            if (
+              msgs &&
+              msgs.sender_id !== user.id &&
+              !msgs.metadata?.isRead
+            ) {
+              unreadChatsCount++;
+            }
           } else {
             const { data: msgs } = await supabase
               .from("messages")
@@ -134,20 +157,23 @@ export function MainLayout({ children }: MainLayoutProps) {
               .order("created_at", { ascending: false })
               .limit(1)
               .maybeSingle();
+
             if (
               msgs &&
               msgs.sender_id !== user.id &&
               !msgs.read_by?.includes(user.id)
-            )
+            ) {
               unreadChatsCount++;
+            }
           }
         }
+
         setUnreadMessagesCount(unreadChatsCount);
-      } catch {
-        // ignore
-      }
+      } catch {}
     };
+
     fetchUnreadMessagesCount();
+
     const ch = supabase
       .channel("conversations_count")
       .on(
@@ -156,6 +182,7 @@ export function MainLayout({ children }: MainLayoutProps) {
         fetchUnreadMessagesCount
       )
       .subscribe();
+
     return () => {
       supabase.removeChannel(ch);
     };
@@ -163,194 +190,56 @@ export function MainLayout({ children }: MainLayoutProps) {
 
   return (
     <>
-      <div className="min-h-[100dvh] bg-[var(--c-bg)]" role="application">
-        {/* ── Top Header ── */}
-        {/* ── Top Header ── */}
-        <Suspense fallback={null}>
-          <header
-            className={cn(
-              "fixed top-0 left-0 right-0 z-50 flex items-center px-4 md:px-6 bg-card border-b border-border shadow-sm pt-[max(env(safe-area-inset-top),0px)] h-[calc(4rem+env(safe-area-inset-top))] md:h-[calc(84px+env(safe-area-inset-top))]",
-              (isChatPage || isSubPage) ? "hidden lg:flex" : "flex"
-            )}
-          >
-            <div className="w-full max-w-7xl mx-auto flex items-center gap-4">
-              <Link href="/home" className="flex items-center gap-1.5 flex-shrink-0">
-                <Image
-                  src="/logo.png"
-                  alt="Yrdly"
-                  width={56}
-                  height={56}
-                  className="h-11 w-11 object-contain md:h-[48px] md:w-[48px]"
-                />
-              </Link>
-              <div className="hidden md:flex flex-1 justify-center max-w-2xl mx-auto">
-                <button
-                  type="button"
-                  onClick={() => setShowSearch(true)}
-                  className="w-full max-w-md h-10 rounded-full bg-background border border-border flex items-center gap-3 px-4 text-left hover:border-primary transition-colors"
-                >
-                  <MagnifyingGlass weight="bold" className="h-5 w-5 flex-shrink-0 text-[#767676]" />
-                  <span
-                    className="font-light italic text-xs text-[#767676] truncate"
-                    style={{ fontFamily: "var(--font-work-sans)" }}
-                  >
-                    Search for events, items
-                  </span>
-                </button>
-              </div>
+      {!isChatPage && !isMapPage && (
+        <Topbar
+          unreadMessages={unreadMessagesCount}
+          unreadNotifications={unreadCount}
+          onSearch={() => setShowSearch(true)}
+          onNotifications={() => setShowNotifications(!showNotifications)}
+          onProfile={() => setShowProfile(!showProfile)}
+          profile={profile}
+        />
+      )}
 
-              <div className="flex items-center gap-1 ml-auto md:gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="md:hidden text-[#555555] hover:bg-[var(--c-bg)] rounded-full"
-                  onClick={() => setShowSearch(true)}
-                >
-                  <MagnifyingGlass weight="bold" className="w-5 h-5" />
-                </Button>
+      <div
+        className={cn(
+          "flex min-h-[100dvh] bg-[var(--c-bg)]",
+          isChatPage || isMapPage ? "" : "pt-[84px]"
+        )}
+      >
+        {!isChatPage && !isMapPage && (
+          <Sidebar
+            navItems={navItems}
+            pathname={pathname}
+            onCreatePost={() => setPostDialogOpen(true)}
+          />
+        )}
 
-                <Link href="/map">
-                  <Button variant="ghost" size="icon" className="text-[#555555] hover:bg-[var(--c-bg)] rounded-full">
-                    <MapPin weight="bold" className="w-5 h-5" />
-                  </Button>
-                </Link>
-                <Link href="/messages">
-                  <Button variant="ghost" size="icon" className="relative text-[#555555] hover:bg-[var(--c-bg)] rounded-full">
-                    <ChatCircle weight="fill" className="w-5 h-5" />
-                    {unreadMessagesCount > 0 && (
-                      <span
-                        className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 rounded-full flex items-center justify-center text-[0.5625rem] font-bold px-1"
-                        style={{ background: "hsl(var(--primary))", color: "#fff", border: "1.5px solid #fff" }}
-                      >
-                        {unreadMessagesCount > 9 ? "9+" : unreadMessagesCount}
-                      </span>
-                    )}
-                  </Button>
-                </Link>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="relative text-[#555555] hover:bg-[var(--c-bg)] rounded-full transition-colors"
-                  onClick={() => setShowNotifications(!showNotifications)}
-                >
-                  <Bell weight="fill" className="w-5 h-5" />
-                  {unreadCount > 0 && (
-                    <span
-                      className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 rounded-full flex items-center justify-center text-[0.5625rem] font-bold px-1"
-                      style={{ background: "hsl(var(--primary))", color: "#fff", border: "1.5px solid #fff" }}
-                    >
-                      {unreadCount > 9 ? "9+" : unreadCount}
-                    </span>
-                  )}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="rounded-full overflow-hidden p-0.5"
-                  onClick={() => setShowProfile(!showProfile)}
-                >
-                  <Avatar className="w-8 h-8 md:w-9 md:h-9 rounded-full">
-                    <AvatarImage src={profile?.avatar_url || ""} />
-                    <AvatarFallback
-                      style={{ background: "hsl(var(--primary))", color: "#fff", fontFamily: "var(--font-work-sans)", fontWeight: 700 }}
-                    >
-                      {profile?.name?.charAt(0).toUpperCase() || "U"}
-                    </AvatarFallback>
-                  </Avatar>
-                </Button>
-              </div>
-            </div>
-          </header>
-        </Suspense>
-
-        <div
+        <main
           className={cn(
-            "flex flex-col lg:flex-row min-h-[100dvh]",
-            (isChatPage || isSubPage) ? "lg:pt-[84px]" : isMapPage ? "" : "pt-16 md:pt-[84px]",
-            !isChatPage && !isMapPage && "pb-[calc(64px+env(safe-area-inset-bottom)+2rem)] lg:pb-0"
+            "flex-1 w-full min-w-0",
+            isMapPage ? "p-0 overflow-hidden" : "px-3 sm:px-4 md:px-6 py-4",
+            isChatPage ? "h-[100dvh]" : ""
           )}
         >
-          {/* ── Desktop Left Nav ── */}
-          <nav
-            className="hidden lg:flex lg:flex-col lg:w-[200px] lg:flex-shrink-0 lg:fixed lg:left-0 lg:top-[84px] lg:bottom-0 lg:pt-3 lg:px-3 lg:pb-6 bg-card border-r border-border"
-          >
-            <div className="flex flex-col gap-0">
-              {navItems.map(({ href, label, icon: Icon }) => {
-                const isActive = pathname === href || (href !== "/home" && pathname.startsWith(href));
-                return (
-                  <Link key={href} href={href}>
-                    <div
-                      className={cn(
-                        "flex items-center gap-3 px-3 py-2 rounded-xl transition-colors",
-                        isActive ? "bg-accent" : "hover:bg-[var(--c-bg)]"
-                      )}
-                    >
-                      <Icon
-                        className={cn(
-                          "w-5 h-5 flex-shrink-0",
-                          isActive ? "text-primary" : "text-[#555555] dark:text-gray-400"
-                        )}
-                        weight={isActive ? "fill" : "bold"}
-                      />
-                      <span
-                        className={cn(
-                          "text-[0.875rem] leading-snug",
-                          isActive ? "text-primary font-semibold" : "text-[#252629] dark:text-gray-200 font-normal"
-                        )}
-                        style={{ fontFamily: "var(--font-work-sans)" }}
-                      >
-                        {label}
-                      </span>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-
-            <div className="mt-4 px-1">
-              <CreatePostDialog
-                createPost={createPost}
-                open={postDialogOpen}
-                onOpenChange={setPostDialogOpen}
-              >
-                <Button
-                  className="w-full h-10 rounded-full text-primary-foreground font-semibold text-[0.875rem]"
-                  style={{ background: "hsl(var(--primary))", fontFamily: "var(--font-work-sans)" }}
-                  onClick={() => setPostDialogOpen(true)}
-                >
-                  <Plus weight="bold" className="w-4 h-4 mr-1.5" />
-                  Post
-                </Button>
-              </CreatePostDialog>
-            </div>
-          </nav>
-
-          {/* ── Main Content ── */}
-          <main
-            className={cn(
-              "flex-1 w-full min-w-0",
-              isMapPage ? "p-0 overflow-hidden" : "lg:pl-[216px]",
-              (isChatPage || isSubPage) ? "lg:pr-6 lg:py-4 h-[100dvh] lg:h-auto" : isMapPage ? "" : "px-3 sm:px-4 md:px-6 py-4"
+          <ErrorBoundary>
+            {isMapPage ? (
+              <div className="w-full h-[100dvh]">{children}</div>
+            ) : isChatPage ? (
+              <div className="w-full h-full lg:h-[calc(100vh-120px)]">
+                {children}
+              </div>
+            ) : (
+              <div className="w-full max-w-[680px] mx-auto lg:max-w-[660px]">
+                {children}
+              </div>
             )}
-          >
-            <ErrorBoundary>
-              {isMapPage ? (
-                <div className="w-full h-[100dvh]">{children}</div>
-              ) : isChatPage ? (
-                <div className="w-full h-full lg:h-[calc(100vh-120px)]">{children}</div>
-              ) : (
-                <div className="w-full max-w-[680px] mx-auto lg:max-w-[660px]">
-                  {children}
-                </div>
-              )}
-            </ErrorBoundary>
-          </main>
+          </ErrorBoundary>
+        </main>
 
-          {showRightSidebar && <HomeRightSidebar />}
-        </div>
+        {showRightSidebar && <HomeRightSidebar />}
       </div>
 
-      {/* ── Mobile Bottom Nav ── */}
       {!isChatPage && !isMapPage && (
         <Suspense fallback={null}>
           <nav
@@ -361,17 +250,22 @@ export function MainLayout({ children }: MainLayoutProps) {
             }}
           >
             {navItems.map(({ href, label, icon: Icon }) => {
-              const isActive = pathname === href || (href !== "/home" && pathname.startsWith(href));
+              const isActive =
+                pathname === href ||
+                (href !== "/home" && pathname.startsWith(href));
+
               return (
                 <Link
                   key={href}
                   href={href}
                   className="flex flex-col items-center justify-center flex-1 h-full"
                 >
-                  <div className={cn(
-                    "p-2 rounded-xl transition-all duration-300",
-                    isActive ? "bg-accent" : "bg-transparent"
-                  )}>
+                  <div
+                    className={cn(
+                      "p-2 rounded-xl transition-all duration-300",
+                      isActive ? "bg-accent" : "bg-transparent"
+                    )}
+                  >
                     <Icon
                       className={cn(
                         "w-5 h-5",
@@ -396,9 +290,22 @@ export function MainLayout({ children }: MainLayoutProps) {
         </Suspense>
       )}
 
-      {showProfile && <ProfileDropdown onClose={() => setShowProfile(false)} />}
-      <NotificationsDropdown isOpen={showNotifications} onClose={() => setShowNotifications(false)} />
+      {showProfile && (
+        <ProfileDropdown onClose={() => setShowProfile(false)} />
+      )}
+
+      <NotificationsDropdown
+        isOpen={showNotifications}
+        onClose={() => setShowNotifications(false)}
+      />
+
       <SearchDialog open={showSearch} onOpenChange={setShowSearch} />
+
+      <CreatePostDialog
+        createPost={createPost}
+        open={postDialogOpen}
+        onOpenChange={setPostDialogOpen}
+      />
     </>
   );
 }
