@@ -8,9 +8,9 @@ import { Button } from "@/components/ui/button";
 import {
   House,
   Users,
-  Storefront,
-  GlobeHemisphereWest,
   Briefcase,
+  Calendar,
+  Buildings,
   MapPin,
   ChatCircle,
   Bell,
@@ -38,9 +38,9 @@ interface MainLayoutProps {
 const navItems = [
   { href: "/home", label: "Home", icon: House },
   { href: "/community", label: "Community", icon: Users },
-  { href: "/marketplace", label: "Market", icon: Storefront },
-  { href: "/events", label: "Events", icon: GlobeHemisphereWest },
-  { href: "/businesses", label: "Business", icon: Briefcase },
+  { href: "/marketplace", label: "Market", icon: Briefcase },
+  { href: "/events", label: "Events", icon: Calendar },
+  { href: "/businesses", label: "Business", icon: Buildings },
 ];
 
 export function MainLayout({ children }: MainLayoutProps) {
@@ -66,6 +66,13 @@ export function MainLayout({ children }: MainLayoutProps) {
     pathname.includes("/chat");
   const isSubPage = pathname === "/profile/payout-settings";
   const isMapPage = pathname === "/map";
+
+  const currentNavItem = navItems.find(
+    (item) =>
+      pathname === item.href ||
+      (item.href !== "/home" && pathname.startsWith(item.href))
+  );
+  const pageTitle = currentNavItem?.label || "Home";
 
   useEffect(() => {
     if (!user) return;
@@ -198,6 +205,7 @@ export function MainLayout({ children }: MainLayoutProps) {
           onNotifications={() => setShowNotifications(!showNotifications)}
           onProfile={() => setShowProfile(!showProfile)}
           profile={profile}
+          title={pageTitle}
         />
       )}
 
@@ -211,7 +219,8 @@ export function MainLayout({ children }: MainLayoutProps) {
           <Sidebar
             navItems={navItems}
             pathname={pathname}
-            onCreatePost={() => setPostDialogOpen(true)}
+            profile={profile}
+            onSettings={() => router.push("/settings")}
           />
         )}
 
@@ -219,7 +228,8 @@ export function MainLayout({ children }: MainLayoutProps) {
           className={cn(
             "flex-1 w-full min-w-0",
             isMapPage ? "p-0 overflow-hidden" : "px-3 sm:px-4 md:px-6 py-4",
-            isChatPage ? "h-[100dvh]" : ""
+            isChatPage ? "h-[100dvh]" : "",
+            !isChatPage && !isMapPage ? "lg:ml-64" : ""
           )}
         >
           <ErrorBoundary>
