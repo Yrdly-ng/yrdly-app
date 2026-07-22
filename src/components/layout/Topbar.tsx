@@ -14,7 +14,7 @@ export function Topbar({
   profile
 }) {
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 flex items-center px-6 bg-white border-b border-gray-200 shadow-sm h-[84px]">
+    <header className="fixed top-0 left-0 right-0 z-50 flex items-center px-6 bg-white border-b border-gray-100 shadow-[0_1px_8px_rgba(0,0,0,0.04)] h-[84px]">
       <div className="w-full max-w-7xl mx-auto flex items-center gap-4">
         <Link href="/home" className="flex items-center gap-1.5 flex-shrink-0">
           <img
@@ -28,20 +28,20 @@ export function Topbar({
           <button
             type="button"
             onClick={onSearch}
-            className="w-full max-w-md h-10 rounded-full bg-white border border-gray-200 flex items-center gap-3 px-4 text-left hover:border-blue-600 transition-colors"
+            className="yrdly-search-pill w-full max-w-md h-12 flex items-center gap-3 px-5 text-left"
           >
-            <MagnifyingGlass weight="bold" className="h-5 w-5 text-gray-500" />
-            <span className="font-light italic text-xs text-gray-500 truncate">
+            <MagnifyingGlass weight="bold" className="h-5 w-5 text-gray-400 flex-shrink-0" />
+            <span className="font-normal text-sm text-gray-500 truncate">
               Search for events, items
             </span>
           </button>
         </div>
 
-        <div className="flex items-center gap-2 ml-auto">
+        <div className="flex items-center gap-1.5 ml-auto">
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden text-gray-600 hover:bg-gray-100 rounded-full"
+            className="md:hidden text-gray-500 hover:bg-gray-50 hover:text-primary rounded-full"
             onClick={onSearch}
           >
             <MagnifyingGlass weight="bold" className="w-5 h-5" />
@@ -51,7 +51,7 @@ export function Topbar({
             <Button
               variant="ghost"
               size="icon"
-              className="text-gray-600 hover:bg-gray-100 rounded-full"
+              className="text-gray-500 hover:bg-gray-50 hover:text-primary rounded-full"
             >
               <MapPin weight="bold" className="w-5 h-5" />
             </Button>
@@ -61,11 +61,11 @@ export function Topbar({
             <Button
               variant="ghost"
               size="icon"
-              className="relative text-gray-600 hover:bg-gray-100 rounded-full"
+              className="relative text-gray-500 hover:bg-gray-50 hover:text-primary rounded-full"
             >
               <ChatCircle weight="fill" className="w-5 h-5" />
               {unreadMessages > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 rounded-full flex items-center justify-center text-[0.5625rem] font-bold px-1 bg-blue-600 text-white border border-white">
+                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 rounded-full flex items-center justify-center text-[0.5625rem] font-bold px-1 bg-primary text-white border-2 border-white">
                   {unreadMessages > 9 ? "9+" : unreadMessages}
                 </span>
               )}
@@ -75,12 +75,12 @@ export function Topbar({
           <Button
             variant="ghost"
             size="icon"
-            className="relative text-gray-600 hover:bg-gray-100 rounded-full"
+            className="relative text-gray-500 hover:bg-gray-50 hover:text-primary rounded-full"
             onClick={onNotifications}
           >
             <Bell weight="fill" className="w-5 h-5" />
             {unreadNotifications > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 rounded-full flex items-center justify-center text-[0.5625rem] font-bold px-1 bg-blue-600 text-white border border-white">
+              <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 rounded-full flex items-center justify-center text-[0.5625rem] font-bold px-1 bg-primary text-white border-2 border-white">
                 {unreadNotifications > 9 ? "9+" : unreadNotifications}
               </span>
             )}
@@ -89,12 +89,12 @@ export function Topbar({
           <Button
             variant="ghost"
             size="icon"
-            className="rounded-full overflow-hidden p-0.5"
+            className="rounded-full overflow-hidden p-0.5 ml-1 ring-2 ring-transparent hover:ring-primary/20 transition-all"
             onClick={onProfile}
           >
             <Avatar className="w-9 h-9 rounded-full">
               <AvatarImage src={profile?.avatar_url || ""} />
-              <AvatarFallback className="bg-blue-600 text-white font-bold">
+              <AvatarFallback className="bg-primary text-white font-bold">
                 {profile?.name?.charAt(0).toUpperCase() || "U"}
               </AvatarFallback>
             </Avatar>
