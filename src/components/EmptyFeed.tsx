@@ -9,11 +9,9 @@ interface EmptyFeedProps {
 export function EmptyFeed({ createPost }: EmptyFeedProps) {
   return (
     <div
-      className="text-center p-8 md:p-12 rounded-2xl mx-4 my-6"
+      className="text-center p-8 md:p-12 rounded-[1.5rem] mx-4 my-6 border border-black/[0.06] bg-[var(--c-card)] shadow-[0_18px_40px_rgba(0,0,0,0.08)]"
       style={{
         background: "var(--c-card)",
-        border: "1px solid var(--c-border)",
-        boxShadow: "0 10px 30px rgba(0,0,0,0.2)"
       }}
     >
       <div className="flex justify-center mb-6">

@@ -13,6 +13,8 @@ import Image from "next/image";
 import { useLocation } from "@/contexts/LocationContext";
 import { LocationChip } from "@/components/LocationChip";
 import { MarketplaceCreatorOnboarding } from "@/components/marketplace/MarketplaceCreatorOnboarding";
+import { Spotlight } from "@/components/ui/Spotlight";
+import { Magnetic } from "@/components/ui/Magnetic";
 
 
 interface MarketplaceScreenProps {
@@ -34,7 +36,16 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<string>("All Items");
   const { toast } = useToast();
+
+  const CATEGORY_PILLS: { label: string; emoji: string; keywords: string[] }[] = [
+    { label: "All Items", emoji: "🗂️", keywords: [] },
+    { label: "Phones", emoji: "📱", keywords: ["phone", "iphone", "samsung", "android", "smartphone"] },
+    { label: "Accessories", emoji: "🎧", keywords: ["accessor", "case", "charger", "headphone", "earbud", "cable"] },
+    { label: "Health & Beauty", emoji: "🌿", keywords: ["health", "beauty", "skincare", "cosmetic", "primrose", "oil", "cream"] },
+    { label: "Electronics", emoji: "💻", keywords: ["electronic", "laptop", "tv", "television", "computer", "gadget", "console"] },
+  ];
 
 
   const handleEditItem = (item: PostType) => {
@@ -113,15 +124,25 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
   }, [filterState, filterLga, filterWard]);
 
   const filteredItems = useMemo(() => {
-    if (!searchTerm) return items;
+    let list = items;
+
+    const activePill = CATEGORY_PILLS.find((c) => c.label === activeCategory);
+    if (activePill && activePill.keywords.length > 0) {
+      list = list.filter((item) => {
+        const haystack = `${item.title || ""} ${item.text || ""} ${item.description || ""}`.toLowerCase();
+        return activePill.keywords.some((kw) => haystack.includes(kw));
+      });
+    }
+
+    if (!searchTerm) return list;
     const q = searchTerm.toLowerCase();
-    return items.filter(
+    return list.filter(
       (item) =>
         (item.text?.toLowerCase() || "").includes(q) ||
         (item.title?.toLowerCase() || "").includes(q) ||
         (item.description?.toLowerCase() || "").includes(q)
     );
-  }, [items, searchTerm]);
+  }, [items, searchTerm, activeCategory]);
 
   const formatPrice = (price: number) =>
     price === 0 ? "FREE" : `₦${price.toLocaleString()}`;
@@ -162,6 +183,29 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
         >
           Closest to you
         </h2>
+      </div>
+
+      {/* Category filter pills */}
+      <div className="px-4 pb-3 flex items-center gap-2 overflow-x-auto scrollbar-hide">
+        {CATEGORY_PILLS.map((cat) => {
+          const active = activeCategory === cat.label;
+          return (
+            <button
+              key={cat.label}
+              onClick={() => setActiveCategory(cat.label)}
+              className="flex-shrink-0 flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all duration-150 active:scale-[0.97] border"
+              style={{
+                fontFamily: "var(--font-work-sans)",
+                background: active ? "hsl(var(--primary))" : "var(--c-card)",
+                color: active ? "var(--c-bg)" : "var(--c-text-muted)",
+                borderColor: active ? "hsl(var(--primary))" : "var(--c-border)",
+              }}
+            >
+              <span>{cat.emoji}</span>
+              {cat.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Items grid */}
@@ -278,39 +322,54 @@ function MarketplaceCard({
   const imageUrl = !imgError && item.image_urls?.[0] ? item.image_urls[0] : null;
 
   return (
-    <div
-      className="rounded-xl overflow-hidden flex flex-col transition-transform hover:scale-[1.02] hover:shadow-2xl cursor-pointer"
+    <Spotlight
+      className="group rounded-xl overflow-hidden flex flex-col transition-transform duration-300 hover:-translate-y-0.5 hover:shadow-2xl cursor-pointer"
       style={{ background: "var(--c-card)" }}
+      color="rgba(16,185,129,0.15)"
     >
-      {/* Image */}
+      {/* Image — uniform 1:1 ratio, cropped consistently */}
       <div
-        className="w-full relative flex-shrink-0"
-        style={{ height: "150px" }}
+        className="w-full relative flex-shrink-0 overflow-hidden"
+        style={{ aspectRatio: "1 / 1", background: "#1E293B" }}
         onClick={() => onItemClick?.(item)}
       >
         {imageUrl ? (
           <Image
             src={imageUrl}
-            alt={item.title || item.text || "Item"} fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            className="object-cover"
+            alt={item.title || item.text || "Item"}
+            fill
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
             onError={() => setImgError(true)}
           />
         ) : (
-          <div
-            className="w-full h-full flex items-center justify-center"
-            style={{ background: "var(--c-card2)" }}
-          >
+          <div className="w-full h-full flex items-center justify-center">
             <ShoppingBag className="w-10 h-10" style={{ color: "hsl(var(--primary))", opacity: 0.5 }} />
           </div>
+        )}
+
+        {/* Floating chat button over image corner */}
+        {!isOwner && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onMessageSeller?.(item);
+            }}
+            aria-label="Message seller"
+            className="absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-lg backdrop-blur-sm"
+            style={{ background: "rgba(15,23,42,0.72)", color: "#fff" }}
+          >
+            <MessageCircle className="w-4 h-4" />
+          </button>
         )}
       </div>
 
       {/* Info */}
       <div className="p-2.5 flex flex-col gap-1 flex-1">
-        {/* Item name */}
+        {/* Item name — single line, truncated */}
         <p
-          className="text-foreground text-[0.8125rem] leading-[15px] line-clamp-2"
-          style={{ fontFamily: "var(--font-work-sans)", fontWeight: 500 }}
+          className="text-foreground text-[0.875rem] leading-[17px] truncate"
+          style={{ fontFamily: "var(--font-work-sans)", fontWeight: 600 }}
           onClick={() => onItemClick?.(item)}
         >
           {item.title || item.text || "Untitled"}
@@ -350,19 +409,21 @@ function MarketplaceCard({
             </>
           ) : (
             <>
-              <button
+              <Magnetic
                 onClick={() => onItemClick?.(item)}
-                className="flex-1 text-xs py-1.5 rounded-full font-medium transition-colors text-foreground"
+                className="flex-1 text-xs py-1.5 rounded-full font-semibold transition-colors text-foreground justify-center"
                 style={{
                   background: "hsl(var(--primary))",
                   fontFamily: "var(--font-work-sans)",
                 }}
+                strength={4}
               >
                 {item.price === 0 ? "Claim Free" : "Buy Now"}
-              </button>
+              </Magnetic>
               <button
                 onClick={() => onMessageSeller?.(item)}
                 className="px-2.5 py-1.5 rounded-full border border-primary text-primary transition-colors hover:bg-primary/10"
+                aria-label="Message seller"
               >
                 <MessageCircle className="w-3.5 h-3.5" />
               </button>
@@ -370,9 +431,10 @@ function MarketplaceCard({
           )}
         </div>
 
-        {/* Seller */}
+        {/* Seller — dedicated top border + lighter text for legibility */}
         <button
-          className="flex items-center gap-1.5 mt-1 w-full text-left"
+          className="flex items-center gap-1.5 mt-1.5 pt-1.5 w-full text-left border-t"
+          style={{ borderColor: "rgba(148,163,184,0.2)" }}
           onClick={() => {
             const uid = item.user?.id || item.user_id;
             if (uid) onProfileClick(uid);
@@ -396,13 +458,13 @@ function MarketplaceCard({
           </div>
           <span
             className="text-[0.6875rem] truncate"
-            style={{ color: "var(--c-text-muted)", fontFamily: "var(--font-work-sans)" }}
+            style={{ color: "#94A3B8", fontFamily: "var(--font-work-sans)" }}
           >
             {item.user?.name || "Unknown Seller"}
           </span>
           <span
             className="text-[0.625rem] ml-auto flex-shrink-0"
-            style={{ color: "#555", fontFamily: "var(--font-work-sans)" }}
+            style={{ color: "#94A3B8", fontFamily: "var(--font-work-sans)" }}
           >
             {new Date(item.timestamp).toLocaleDateString("en-NG", {
               day: "numeric",
@@ -411,6 +473,6 @@ function MarketplaceCard({
           </span>
         </button>
       </div>
-    </div>
+    </Spotlight>
   );
 }

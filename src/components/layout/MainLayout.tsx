@@ -28,7 +28,6 @@ import { HomeRightSidebar } from "./HomeRightSidebar";
 import { cn } from "@/lib/utils";
 import { CreatePostDialog } from "@/components/CreatePostDialog";
 import { usePosts } from "@/hooks/use-posts";
-import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 
 interface MainLayoutProps {
@@ -206,6 +205,8 @@ export function MainLayout({ children }: MainLayoutProps) {
           onProfile={() => setShowProfile(!showProfile)}
           profile={profile}
           title={pageTitle}
+          navItems={navItems}
+          pathname={pathname}
         />
       )}
 
@@ -215,21 +216,13 @@ export function MainLayout({ children }: MainLayoutProps) {
           isChatPage || isMapPage ? "" : "pt-[84px]"
         )}
       >
-        {!isChatPage && !isMapPage && (
-          <Sidebar
-            navItems={navItems}
-            pathname={pathname}
-            profile={profile}
-            onSettings={() => router.push("/settings")}
-          />
-        )}
-
         <main
           className={cn(
             "flex-1 w-full min-w-0",
-            isMapPage ? "p-0 overflow-hidden" : "px-3 sm:px-4 md:px-6 py-4",
-            isChatPage ? "h-[100dvh]" : "",
-            !isChatPage && !isMapPage ? "lg:ml-64" : ""
+            isMapPage
+              ? "p-0 overflow-hidden"
+              : "px-3 sm:px-4 md:px-6 py-4",
+            isChatPage ? "h-[100dvh]" : ""
           )}
         >
           <ErrorBoundary>
@@ -249,56 +242,6 @@ export function MainLayout({ children }: MainLayoutProps) {
 
         {showRightSidebar && <HomeRightSidebar />}
       </div>
-
-      {!isChatPage && !isMapPage && (
-        <Suspense fallback={null}>
-          <nav
-            className="lg:hidden fixed bottom-0 left-0 right-0 z-[100] flex items-center justify-around px-2 bg-card border-t border-border shadow-[0_-2px_8px_rgba(0,0,0,0.08)]"
-            style={{
-              height: "calc(64px + max(env(safe-area-inset-bottom), 0px))",
-              paddingBottom: "max(env(safe-area-inset-bottom), 0px)",
-            }}
-          >
-            {navItems.map(({ href, label, icon: Icon }) => {
-              const isActive =
-                pathname === href ||
-                (href !== "/home" && pathname.startsWith(href));
-
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  className="flex flex-col items-center justify-center flex-1 h-full"
-                >
-                  <div
-                    className={cn(
-                      "p-2 rounded-xl transition-all duration-300",
-                      isActive ? "bg-accent" : "bg-transparent"
-                    )}
-                  >
-                    <Icon
-                      className={cn(
-                        "w-5 h-5",
-                        isActive ? "text-primary" : "text-[#767676]"
-                      )}
-                      weight={isActive ? "fill" : "bold"}
-                    />
-                  </div>
-                  <span
-                    className={cn(
-                      "text-[0.5625rem] font-bold tracking-tight mt-1 transition-colors",
-                      isActive ? "text-primary" : "text-[#767676]"
-                    )}
-                    style={{ fontFamily: "var(--font-work-sans)" }}
-                  >
-                    {label}
-                  </span>
-                </Link>
-              );
-            })}
-          </nav>
-        </Suspense>
-      )}
 
       {showProfile && (
         <ProfileDropdown onClose={() => setShowProfile(false)} />
