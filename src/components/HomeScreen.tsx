@@ -19,7 +19,7 @@ import { MarketplaceCreatorOnboarding } from "@/components/marketplace/Marketpla
 /* ─── gradient SVG icons ──────────────────────────────────────── */
 function HandshakeGradient() {
   return (
-    <svg width="24" height="24" viewBox="0 0 42 42" fill="none">
+    <svg width="22" height="22" viewBox="0 0 42 42" fill="none">
       <defs>
         <linearGradient id="hg1" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="17.37%" stopColor="#FFD600" />
@@ -34,7 +34,7 @@ function HandshakeGradient() {
 
 function TicketGradient() {
   return (
-    <svg width="24" height="24" viewBox="0 0 42 42" fill="none">
+    <svg width="22" height="22" viewBox="0 0 42 42" fill="none">
       <defs>
         <linearGradient id="tg1" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="17.37%" stopColor="#FF0048" />
@@ -67,7 +67,7 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
 
 
   return (
-    <div className="w-full pb-4 space-y-3">
+    <div className="w-full pb-4 space-y-4">
       {/* ── Location Chip ── */}
       <div className="flex items-center gap-2 px-1">
         <LocationChip />
@@ -75,34 +75,37 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
 
 
       {/* ── Post Bar ── */}
-      <div className="rounded-[11px] overflow-hidden" style={{ background: "var(--c-card)" }}>
+      <div
+        className="rounded-2xl overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.06)] border border-black/[0.03]"
+        style={{ background: "var(--c-card)" }}
+      >
         <div className="p-4">
           {/* Input row */}
           <div className="flex items-center gap-3">
-            <Avatar className="w-9 h-9 flex-shrink-0">
+            <Avatar className="w-10 h-10 flex-shrink-0">
               <AvatarImage src={profile?.avatar_url || ""} />
-              <AvatarFallback className="text-sm text-foreground" style={{ background: GREEN }}>
+              <AvatarFallback className="text-sm text-white font-semibold" style={{ background: GREEN }}>
                 {profile?.name?.charAt(0) || "U"}
               </AvatarFallback>
             </Avatar>
             <CreatePostDialog createPost={createPost}>
               <button
-                className="flex-1 h-10 rounded-full text-left px-4 font-sans font-light text-[0.75rem] text-muted-foreground hover:text-foreground transition-colors"
-                style={{ background: "var(--c-bg)", border: `0.5px solid ${GREEN}`, fontFamily: FONT_RALEWAY }}
+                className="flex-1 h-11 rounded-full text-left px-4 font-sans font-normal text-[0.875rem] text-muted-foreground hover:text-foreground bg-gray-50 hover:bg-gray-100 border border-transparent hover:border-gray-200 transition-all"
+                style={{ fontFamily: FONT_RALEWAY }}
               >
-                What&apos;s going on?
+                What&apos;s on your mind?
               </button>
             </CreatePostDialog>
           </div>
 
           {/* Divider */}
-          <div className="my-3" style={{ borderTop: "0.2px solid var(--c-border)" }} />
+          <div className="my-3" style={{ borderTop: "0.5px solid var(--c-border)" }} />
 
           {/* Action buttons - horizontally scrollable on small screens */}
           <div className="flex items-center gap-2 overflow-x-auto pb-0.5 scrollbar-hide">
             <button
               onClick={() => setMarketplaceOnboardingOpen(true)}
-              className="flex items-center gap-2 rounded-full px-4 py-2 text-foreground text-[0.875rem] font-bold hover:bg-accent transition-colors"
+              className="flex items-center gap-2 rounded-full px-4 py-2 text-foreground text-[0.875rem] font-semibold hover:bg-accent active:scale-[0.98] transition-all"
               style={{ fontFamily: FONT_RALEWAY }}
             >
               <HandshakeGradient />
@@ -112,11 +115,11 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
 
             <button
               onClick={() => setOnboardingOpen(true)}
-              className="flex items-center gap-2 rounded-full px-4 py-2 text-foreground text-[0.875rem] font-bold hover:bg-accent transition-colors"
+              className="flex items-center gap-2 rounded-full px-4 py-2 text-foreground text-[0.875rem] font-semibold hover:bg-accent active:scale-[0.98] transition-all"
               style={{ fontFamily: FONT_RALEWAY }}
             >
               <TicketGradient />
-              Event
+              Create Event
             </button>
 
           </div>
@@ -145,13 +148,13 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
 
       {/* ── Feed ── */}
       {loading ? (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-64 w-full rounded-[11px]" style={{ background: "var(--c-card)" }} />
+            <Skeleton key={i} className="h-64 w-full rounded-2xl" style={{ background: "var(--c-card)" }} />
           ))}
         </div>
       ) : posts.length > 0 ? (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {posts.map((post) => (
             <PostCard key={post.id} post={post} onDelete={deletePost} onCreatePost={createPost} />
           ))}
