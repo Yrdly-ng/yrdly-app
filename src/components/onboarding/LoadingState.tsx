@@ -1,7 +1,6 @@
 ﻿"use client";
 
-import { CheckCircle, RefreshCw, Mail, User, MapPin, Sparkles } from 'lucide-react';
-import { cn } from "@/lib/utils";
+import { RefreshCw, Mail, User, MapPin } from 'lucide-react';
 
 interface LoadingStateProps {
   type: 'email' | 'profile' | 'location' | 'general';
@@ -13,26 +12,22 @@ const loadingConfig = {
   email: {
     icon: Mail,
     defaultMessage: "Setting up your email verification...",
-    color: "hsl(var(--primary))",
-    accent: "rgba(56, 142, 60, 0.2)"
+    subtext: "Verifying your details..."
   },
   profile: {
     icon: User,
     defaultMessage: "Creating your profile...",
-    color: "hsl(var(--primary))",
-    accent: "rgba(56, 142, 60, 0.2)"
+    subtext: "Syncing your info..."
   },
   location: {
     icon: MapPin,
     defaultMessage: "Loading location data...",
-    color: "hsl(var(--primary))",
-    accent: "rgba(56, 142, 60, 0.2)"
+    subtext: "Getting your local data..."
   },
   general: {
     icon: RefreshCw,
     defaultMessage: "Loading...",
-    color: "hsl(var(--primary))",
-    accent: "rgba(56, 142, 60, 0.2)"
+    subtext: "Almost there..."
   }
 };
 
@@ -41,96 +36,44 @@ export function LoadingState({ type, message, progress }: LoadingStateProps) {
   const Icon = config.icon;
 
   return (
-    <div className="flex flex-col items-center justify-center p-8 space-y-12 animate-in fade-in zoom-in duration-1000 min-h-[500px] relative overflow-hidden" style={{ fontFamily: "var(--font-work-sans)" }}>
-      
-      {/* Dynamic Background Glows */}
-      <div 
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full blur-[120px] opacity-20 animate-pulse"
-        style={{ background: config.color }}
-      />
-      
-      {/* Animated Orbiting Element */}
-      <div className="relative">
-        <div className="relative w-40 h-40">
-          {/* Layered Orbiting Rings */}
-          <div className="absolute inset-0 rounded-full border border-primary/20 animate-[spin_10s_linear_infinite]" />
-          <div className="absolute inset-4 rounded-full border border-primary/10 animate-[spin_6s_linear_reverse_infinite]" />
-          <div className="absolute inset-8 rounded-full border-t-2 border-primary animate-[spin_3s_ease-in-out_infinite]" />
-          
-          {/* Main Icon Container - Premium Glassmorphism */}
-          <div 
-            className="absolute inset-0 rounded-[48px] flex items-center justify-center backdrop-blur-3xl overflow-hidden group shadow-[0_0_50px_-12px_rgba(56,142,60,0.5)]"
-            style={{ 
-              background: "linear-gradient(135deg, rgba(30, 33, 38, 0.8) 0%, rgba(13, 15, 17, 0.9) 100%)",
-              border: "1px solid var(--c-border)",
-            }}
-          >
-            {/* Animated Gradient Shine */}
-            <div className="absolute inset-0 bg-gradient-to-tr from-primary/10 via-transparent to-transparent opacity-50" />
-            
-            <div className="relative z-10 flex flex-col items-center gap-3">
-              <Icon 
-                className={cn("w-16 h-16 text-foreground drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]", type === 'general' ? 'animate-spin' : 'animate-bounce')} 
-                style={{ animationDuration: type === 'general' ? '2.5s' : '3s' }}
-              />
-              <div className="flex gap-1.5">
-                <div className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0s' }} />
-                <div className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0.2s' }} />
-                <div className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0.4s' }} />
-              </div>
-            </div>
-            
-            {/* Floating particles */}
-            <Sparkles className="absolute top-6 right-6 w-5 h-5 text-primary opacity-40 animate-pulse" />
-            <Sparkles className="absolute bottom-6 left-6 w-3 h-3 text-primary opacity-20 animate-pulse" style={{ animationDelay: '1s' }} />
-          </div>
-        </div>
-      </div>
-      
-      <div className="text-center space-y-8 max-w-sm relative z-10">
-        <div className="space-y-3">
-          <h3 className="text-4xl font-black tracking-tight text-foreground leading-tight">
-            {message || config.defaultMessage}
-          </h3>
-          <p className="text-muted-foreground text-lg font-medium leading-relaxed opacity-80">
-            {type === 'email' && "Verifying your digital signature and securing your neighborhood presence..."}
-            {type === 'profile' && "Syncing your identity with the neighborhood network..."}
-            {type === 'location' && "Calibrating local sector data for your experience..."}
-            {type === 'general' && "Crafting your premium neighborhood experience..."}
-          </p>
-        </div>
+    <div className="flex flex-col items-center justify-center p-8 space-y-8 min-h-[500px]" style={{ fontFamily: "var(--font-work-sans)" }}>
 
-        {progress !== undefined && (
-          <div className="w-full max-w-[280px] mx-auto space-y-5">
-            <div className="h-2.5 w-full bg-background/5 rounded-full overflow-hidden p-0.5 border border-border shadow-inner">
-              <div 
-                className="h-full transition-all duration-1000 ease-out rounded-full relative overflow-hidden"
-                style={{ 
-                  width: `${Math.min(100, Math.max(0, progress))}%`, 
-                  background: "linear-gradient(90deg, #388E3C 0%, #82DB7E 100%)",
-                  boxShadow: "0 0 25px rgba(56, 142, 60, 0.6)"
-                }}
-              >
-                {/* High-speed shimmer effect */}
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent translate-x-[-100%] animate-[shimmer_1.5s_infinite]" />
-              </div>
-            </div>
-            <div className="flex justify-between items-center px-2">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                <span className="text-[0.6875rem] uppercase tracking-[0.25em] font-black text-primary">Optimizing</span>
-              </div>
-              <span className="text-[0.6875rem] uppercase tracking-[0.25em] font-black text-foreground">{Math.round(progress)}%</span>
-            </div>
-          </div>
-        )}
+      <div
+        className="w-24 h-24 rounded-3xl flex items-center justify-center"
+        style={{
+          background: "linear-gradient(135deg, rgba(30, 33, 38, 0.9) 0%, rgba(13, 15, 17, 0.95) 100%)",
+          border: "1px solid var(--c-border)",
+        }}
+      >
+        <Icon className="w-10 h-10 text-primary animate-spin" style={{ animationDuration: '2.5s' }} />
       </div>
 
-      {/* Security/Encouragement Badge */}
-      <div className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-background/[0.03] border border-border backdrop-blur-xl shadow-xl animate-in slide-in-from-bottom-4 duration-1000 delay-500">
-        <CheckCircle className="w-5 h-5 text-primary" />
-        <span className="text-[0.6875rem] uppercase tracking-[0.3em] font-black text-muted-foreground">Secure Handshake Active</span>
+      <div className="text-center space-y-2 max-w-sm">
+        <h3 className="text-2xl font-bold tracking-tight text-foreground">
+          {message || config.defaultMessage}
+        </h3>
+        <p className="text-muted-foreground text-sm font-medium opacity-80">
+          {config.subtext}
+        </p>
       </div>
+
+      {progress !== undefined && (
+        <div className="w-full max-w-[280px] space-y-2">
+          <div className="h-2 w-full bg-background/10 rounded-full overflow-hidden border border-border">
+            <div
+              className="h-full rounded-full transition-all duration-500 ease-out"
+              style={{
+                width: `${Math.min(100, Math.max(0, progress))}%`,
+                background: "#388E3C"
+              }}
+            />
+          </div>
+          <div className="flex justify-between items-center px-1">
+            <span className="text-[0.6875rem] uppercase tracking-widest font-bold text-primary">Loading</span>
+            <span className="text-[0.6875rem] uppercase tracking-widest font-bold text-foreground">{Math.round(progress)}%</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

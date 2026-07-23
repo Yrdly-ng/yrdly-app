@@ -138,9 +138,15 @@ export class AuthService {
   }
 
   // Get current user
+  // Uses getSession() instead of getUser() for this check: getSession()
+  // reads the session from local storage synchronously (no network round
+  // trip), while getUser() re-verifies the token against Supabase's auth
+  // server on every call. That server round trip was adding significant
+  // delay before the app could paint anything. onAuthStateChange (already
+  // wired up in use-supabase-auth.tsx) keeps this in sync afterward.
   static async getCurrentUser(): Promise<User | null> {
     try {
-      const { data: { user }, error } = await supabase.auth.getUser();
+      const { data: { session }, error } = await supabase.auth.getSession();
       if (error) {
         // Don't log AuthSessionMissingError as it's expected when user is logged out
         if (error.message !== 'Auth session missing!') {
@@ -148,7 +154,7 @@ export class AuthService {
         }
         return null;
       }
-      return user;
+      return session?.user ?? null;
     } catch (error: any) {
       // Don't log AuthSessionMissingError as it's expected when user is logged out
       if (error.message !== 'Auth session missing!') {
@@ -276,4 +282,3 @@ export class AuthService {
     });
   }
 }
-

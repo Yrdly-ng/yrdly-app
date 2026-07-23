@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 // Removed Firebase imports - now using Supabase
 import { useAuth } from '@/hooks/use-supabase-auth';
@@ -51,7 +50,7 @@ export const usePosts = (filter?: LocationFilter | null) => {
         // Hide sold marketplace items from the feed
         query = query.or('category.neq.For Sale,is_sold.eq.false');
 
-        const { data, error } = await query.order('timestamp', { ascending: false });
+        const { data, error } = await query.order('timestamp', { ascending: false }).limit(30);
 
         if (error) {
           return;

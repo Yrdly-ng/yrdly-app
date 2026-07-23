@@ -220,7 +220,7 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
         </div>
       ) : filteredItems.length > 0 ? (
         <div className="px-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 pb-28">
-          {filteredItems.map((item) => (
+          {filteredItems.map((item, index) => (
             <MarketplaceCard
               key={item.id}
               item={item}
@@ -231,6 +231,7 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
               onEdit={handleEditItem}
               onDelete={handleDeleteItem}
               onProfileClick={(userId) => router.push(`/profile/${userId}`)}
+              priority={index < 4}
             />
           ))}
         </div>
@@ -305,6 +306,7 @@ interface CardProps {
   onEdit: (item: PostType) => void;
   onDelete: (id: string) => void;
   onProfileClick: (userId: string) => void;
+  priority?: boolean;
 }
 
 function MarketplaceCard({
@@ -316,6 +318,7 @@ function MarketplaceCard({
   onEdit,
   onDelete,
   onProfileClick,
+  priority,
 }: CardProps) {
   const [imgError, setImgError] = useState(false);
   const imageUrl = !imgError && item.image_urls?.[0] ? item.image_urls[0] : null;
@@ -339,6 +342,7 @@ function MarketplaceCard({
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             className="object-cover transition-transform duration-300 group-hover:scale-105"
             onError={() => setImgError(true)}
+            priority={priority}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
