@@ -50,7 +50,7 @@ export const usePosts = (filter?: LocationFilter | null) => {
         // Hide sold marketplace items from the feed
         query = query.or('category.neq.For Sale,is_sold.eq.false');
 
-        const { data, error } = await query.order('timestamp', { ascending: false }).limit(30);
+        const { data, error } = await query.order('timestamp', { ascending: false }).limit(20);
 
         if (error) {
           return;

@@ -229,6 +229,11 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
   const [videoProgress, setVideoProgress] = useState(0);
   const [isVideoMuted, setIsVideoMuted] = useState(true);
   const [isVideoPaused, setIsVideoPaused] = useState(false);
+  // Transient overlay shown when the user taps the left/right edge of the
+  // video to seek — mirrors TikTok/Instagram's flash-then-fade behavior
+  // instead of a permanently-visible button.
+  const [seekFlash, setSeekFlash] = useState<"back" | "forward" | null>(null);
+  const seekFlashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /* ── auto-pause video when scrolled out of view ── */
   useEffect(() => {
@@ -255,6 +260,48 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
     observer.observe(videoRef.current);
     return () => observer.disconnect();
   }, [post.video_url, isVideoPaused]);
+
+  useEffect(() => {
+    return () => {
+      if (seekFlashTimeoutRef.current) clearTimeout(seekFlashTimeoutRef.current);
+    };
+  }, []);
+
+  /* ── video tap zones: left 35% rewinds 5s, right 35% skips 5s,
+     middle 30% toggles play/pause. Works anywhere within each zone,
+     not just on a fixed button — and the seek icon only shows briefly
+     while it happens, instead of sitting on the video permanently. */
+  const handleVideoTap = (e: React.MouseEvent<HTMLVideoElement>) => {
+    e.stopPropagation();
+    const video = videoRef.current;
+    if (!video) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const tapX = e.clientX - rect.left;
+    const ratio = rect.width > 0 ? tapX / rect.width : 0.5;
+
+    const flashSeek = (direction: "back" | "forward") => {
+      if (seekFlashTimeoutRef.current) clearTimeout(seekFlashTimeoutRef.current);
+      setSeekFlash(direction);
+      seekFlashTimeoutRef.current = setTimeout(() => setSeekFlash(null), 600);
+    };
+
+    if (ratio < 0.35) {
+      video.currentTime = Math.max(video.currentTime - 5, 0);
+      flashSeek("back");
+    } else if (ratio > 0.65) {
+      video.currentTime = Math.min(video.currentTime + 5, video.duration || video.currentTime + 5);
+      flashSeek("forward");
+    } else {
+      if (video.paused) {
+        video.play().catch(() => {});
+        setIsVideoPaused(false);
+      } else {
+        video.pause();
+        setIsVideoPaused(true);
+      }
+    }
+  };
 
   /* ── fetch author ── */
   useEffect(() => {
@@ -709,21 +756,11 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
                     setVideoProgress(progress || 0);
                   }
                 }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (!videoRef.current) return;
-                  if (videoRef.current.paused) {
-                    videoRef.current.play().catch(() => {});
-                    setIsVideoPaused(false);
-                  } else {
-                    videoRef.current.pause();
-                    setIsVideoPaused(true);
-                  }
-                }}
+                onClick={handleVideoTap}
               />
 
               {/* Tap-to-pause overlay icon — mirrors Instagram's center play/pause flash */}
-              {isVideoPaused && (
+              {isVideoPaused && !seekFlash && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <div className="bg-black/40 rounded-full p-3">
                     <Play className="w-7 h-7 text-white fill-white" />
@@ -731,36 +768,22 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
                 </div>
               )}
 
-              {/* Skip -5s — left-middle, Instagram-style */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (!videoRef.current) return;
-                  videoRef.current.currentTime = Math.max(videoRef.current.currentTime - 5, 0);
-                }}
-                aria-label="Rewind 5 seconds"
-                className="absolute left-3 top-1/2 -translate-y-1/2 z-10 flex flex-col items-center gap-0.5 bg-black/50 hover:bg-black/70 transition-colors rounded-full px-2 py-2"
-              >
-                <RotateCcw className="w-4 h-4 text-white" />
-                <span className="text-[0.625rem] font-medium text-white">5s</span>
-              </button>
-
-              {/* Skip +5s — right-middle, Instagram-style */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (!videoRef.current) return;
-                  videoRef.current.currentTime = Math.min(
-                    videoRef.current.currentTime + 5,
-                    videoRef.current.duration || videoRef.current.currentTime + 5
-                  );
-                }}
-                aria-label="Skip forward 5 seconds"
-                className="absolute right-3 top-1/2 -translate-y-1/2 z-10 flex flex-col items-center gap-0.5 bg-black/50 hover:bg-black/70 transition-colors rounded-full px-2 py-2"
-              >
-                <RotateCw className="w-4 h-4 text-white" />
-                <span className="text-[0.625rem] font-medium text-white">5s</span>
-              </button>
+              {/* Seek flash — briefly appears where the user tapped, then fades.
+                  No permanent buttons sitting on the video. */}
+              {seekFlash && (
+                <div
+                  className={`absolute inset-y-0 ${seekFlash === "back" ? "left-0" : "right-0"} w-1/3 flex items-center justify-center pointer-events-none`}
+                >
+                  <div className="flex flex-col items-center gap-1 bg-black/50 rounded-full px-3 py-3 animate-in fade-in zoom-in duration-150">
+                    {seekFlash === "back" ? (
+                      <RotateCcw className="w-5 h-5 text-white" />
+                    ) : (
+                      <RotateCw className="w-5 h-5 text-white" />
+                    )}
+                    <span className="text-[0.625rem] font-medium text-white">5s</span>
+                  </div>
+                </div>
+              )}
 
               {/* Mute / unmute — Instagram-style mini speaker, bottom-right */}
               <button

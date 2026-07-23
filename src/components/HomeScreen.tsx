@@ -14,7 +14,6 @@ import { LocationChip } from "@/components/LocationChip";
 import { EventCreatorOnboarding } from "@/components/events/EventCreatorOnboarding";
 import { MarketplaceCreatorOnboarding } from "@/components/marketplace/MarketplaceCreatorOnboarding";
 import { Magnetic } from "@/components/ui/Magnetic";
-import { RevealOnScroll } from "@/components/ui/RevealOnScroll";
 
 
 
@@ -185,10 +184,8 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
         </div>
       ) : posts.length > 0 ? (
         <div>
-          {posts.map((post, idx) => (
-            <RevealOnScroll key={post.id} delay={Math.min(idx, 4) * 60}>
-              <PostCard post={post} onDelete={deletePost} onCreatePost={createPost} />
-            </RevealOnScroll>
+          {posts.map((post) => (
+            <PostCard key={post.id} post={post} onDelete={deletePost} onCreatePost={createPost} />
           ))}
         </div>
       ) : (
