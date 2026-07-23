@@ -147,7 +147,7 @@ export function CommunityScreen({ className }: CommunityScreenProps) {
   const filterState = activeFilter?.state;
   const filterLga = activeFilter?.lga;
   const filterWard = activeFilter?.ward;
-  const { posts, loading: postsLoading, createPost, deletePost } = usePosts(activeFilter);
+  const { posts, loading: postsLoading, loadingMore, hasMore, loadMore, createPost, deletePost } = usePosts(activeFilter);
   const [searchQuery, setSearchQuery] = useState("");
   const [showUserSearch, setShowUserSearch] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
@@ -156,6 +156,38 @@ export function CommunityScreen({ className }: CommunityScreenProps) {
   const [friendRequestsLoading, setFriendRequestsLoading] = useState(true);
   const [stats, setStats] = useState({ totalUsers: 0, activeToday: 0, newPosts24h: 0 });
   const searchRef = useRef<HTMLDivElement>(null);
+  const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
+  const loadMoreRef = useRef(loadMore);
+
+  useEffect(() => {
+    loadMoreRef.current = loadMore;
+  }, [loadMore]);
+
+  useEffect(() => {
+    // Don't try to attach until postsLoading has finished — before that
+    // the sentinel div hasn't been rendered into the DOM yet (it only
+    // renders once filteredPosts.length > 0), so
+    // loadMoreSentinelRef.current is still null.
+    if (postsLoading || !hasMore) return;
+    const el = loadMoreSentinelRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          loadMoreRef.current();
+        }
+      },
+      { rootMargin: "600px 0px" }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+    // posts.length is included so that if the list is ever
+    // cleared/refetched (e.g. filter change resets to a fresh short
+    // list), we re-check that the sentinel is actually mounted and
+    // re-attach if needed.
+  }, [hasMore, postsLoading, posts.length]);
 
   /* ── Stats ── */
   useEffect(() => {
@@ -509,6 +541,16 @@ export function CommunityScreen({ className }: CommunityScreenProps) {
               {filteredPosts.map((post) => (
                 <PostCard key={post.id} post={post} onDelete={deletePost} onCreatePost={createPost} />
               ))}
+
+              {hasMore && !searchQuery && (
+                <div ref={loadMoreSentinelRef} className="flex justify-center py-4">
+                  {loadingMore && (
+                    <span className="text-[0.8125rem] font-medium" style={{ color: "var(--c-text-muted)" }}>
+                      Loading more...
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </section>

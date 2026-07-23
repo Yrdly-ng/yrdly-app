@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { usePosts } from "@/hooks/use-posts";
@@ -79,13 +79,47 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [marketplaceOnboardingOpen, setMarketplaceOnboardingOpen] = useState(false);
   const [isCreateItemOpen, setIsCreateItemOpen] = useState(false);
-  const { posts, loading, deletePost, createPost } = usePosts(activeFilter);
+  const { posts, loading, loadingMore, hasMore, loadMore, deletePost, createPost } = usePosts(activeFilter);
+
+  // Auto-load the next page when the sentinel scrolls into view.
+  // We keep loadMore in a ref so the observer doesn't get torn down
+  // and recreated every time loadingMore flips (which would cause it
+  // to immediately re-fire since IntersectionObserver.observe() always
+  // calls back with the current intersection state on (re)connect).
+  const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
+  const loadMoreRef = useRef(loadMore);
+
+  useEffect(() => {
+    loadMoreRef.current = loadMore;
+  }, [loadMore]);
+
+  useEffect(() => {
+    // Don't try to attach until loading has finished — before that the
+    // sentinel div hasn't been rendered into the DOM yet (it only renders
+    // once posts.length > 0), so loadMoreSentinelRef.current is still null.
+    if (loading || !hasMore) return;
+    const el = loadMoreSentinelRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          loadMoreRef.current();
+        }
+      },
+      { rootMargin: "600px 0px" }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+    // posts.length is included so that if posts is ever cleared/refetched
+    // (e.g. filter change resets to a fresh short list), we re-check that
+    // the sentinel is actually mounted and re-attach if needed.
+  }, [hasMore, loading, posts.length]);
 
 
   return (
-    <div className="relative overflow-hidden w-full pb-4 space-y-4 bg-[var(--c-bg)] rounded-[1.5rem] border border-[var(--c-border)] shadow-[0_14px_40px_rgba(0,0,0,0.16)]">
-      <div className="pointer-events-none absolute -left-10 top-6 h-44 w-44 rounded-full bg-[rgba(92,213,120,0.08)] blur-3xl" />
-      <div className="pointer-events-none absolute right-8 top-14 h-32 w-32 rounded-full bg-[rgba(71,185,122,0.06)] blur-3xl" />
+    <div className="w-full pb-4 space-y-4">
 
       {/* ── Location Chip ── */}
       <div className="flex items-center gap-2 px-1">
@@ -183,10 +217,18 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
           ))}
         </div>
       ) : posts.length > 0 ? (
-        <div>
+        <div className="space-y-3">
           {posts.map((post) => (
             <PostCard key={post.id} post={post} onDelete={deletePost} onCreatePost={createPost} />
           ))}
+
+          {hasMore && (
+            <div ref={loadMoreSentinelRef} className="flex justify-center py-4">
+              {loadingMore && (
+                <span className="text-sm font-medium text-muted-foreground">Loading more...</span>
+              )}
+            </div>
+          )}
         </div>
       ) : (
         <div className="py-8">
