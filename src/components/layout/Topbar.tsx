@@ -46,12 +46,6 @@ export function Topbar({
           <span className="flex items-center justify-center rounded-full bg-[var(--c-card2)] p-1.5 md:p-2 shadow-sm">
             <img src="/logo.png" alt="Yrdly" className="h-9 w-9 md:h-9 md:w-9 object-contain" />
           </span>
-          <span
-            className="hidden sm:block text-[1.2rem] font-extrabold text-[var(--c-text)] tracking-tight"
-            style={{ fontFamily: "var(--font-raleway)" }}
-          >
-            Yrdly
-          </span>
         </Link>
 
         {/* Desktop nav — replaces the old left sidebar */}
