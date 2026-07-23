@@ -1,23 +1,14 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
-import { usePathname, useRouter } from "next/navigation";
-import Link from "next/link";
-import Image from "next/image";
-import { Button } from "@/components/ui/button";
+import React, { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import {
   House,
   Users,
   Briefcase,
   Calendar,
   Buildings,
-  MapPin,
-  ChatCircle,
-  Bell,
-  MagnifyingGlass,
-  Plus,
 } from "@phosphor-icons/react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { ProfileDropdown } from "@/components/ProfileDropdown";
 import { NotificationsDropdown } from "@/components/NotificationsDropdown";
@@ -29,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { CreatePostDialog } from "@/components/CreatePostDialog";
 import { usePosts } from "@/hooks/use-posts";
 import { Topbar } from "./Topbar";
+import { BottomNav } from "./BottomNav";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -42,9 +34,13 @@ const navItems = [
   { href: "/businesses", label: "Business", icon: Buildings },
 ];
 
+// Mobile bottom bar keeps only the 4 primary tabs within thumb reach
+const bottomNavItems = navItems.filter((item) =>
+  ["/home", "/community", "/marketplace", "/events"].includes(item.href)
+);
+
 export function MainLayout({ children }: MainLayoutProps) {
   const pathname = usePathname();
-  const router = useRouter();
   const { user, profile } = useAuth();
   const { createPost } = usePosts();
 
@@ -63,7 +59,6 @@ export function MainLayout({ children }: MainLayoutProps) {
   const isChatPage =
     (pathname.startsWith("/messages/") && pathname !== "/messages") ||
     pathname.includes("/chat");
-  const isSubPage = pathname === "/profile/payout-settings";
   const isMapPage = pathname === "/map";
 
   const currentNavItem = navItems.find(
@@ -213,7 +208,7 @@ export function MainLayout({ children }: MainLayoutProps) {
       <div
         className={cn(
           "flex min-h-[100dvh] bg-[var(--c-bg)]",
-          isChatPage || isMapPage ? "" : "pt-[84px]"
+          isChatPage || isMapPage ? "" : "pt-[64px] md:pt-[84px]"
         )}
       >
         <main
@@ -222,7 +217,8 @@ export function MainLayout({ children }: MainLayoutProps) {
             isMapPage
               ? "p-0 overflow-hidden"
               : "px-3 sm:px-4 md:px-6 py-4",
-            isChatPage ? "h-[100dvh]" : ""
+            isChatPage ? "h-[100dvh]" : "",
+            !isChatPage && !isMapPage ? "pb-20 md:pb-4" : ""
           )}
         >
           <ErrorBoundary>
@@ -242,6 +238,10 @@ export function MainLayout({ children }: MainLayoutProps) {
 
         {showRightSidebar && <HomeRightSidebar />}
       </div>
+
+      {!isChatPage && !isMapPage && (
+        <BottomNav navItems={bottomNavItems} pathname={pathname} />
+      )}
 
       {showProfile && (
         <ProfileDropdown onClose={() => setShowProfile(false)} />

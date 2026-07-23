@@ -13,7 +13,6 @@ import Image from "next/image";
 import { useLocation } from "@/contexts/LocationContext";
 import { LocationChip } from "@/components/LocationChip";
 import { MarketplaceCreatorOnboarding } from "@/components/marketplace/MarketplaceCreatorOnboarding";
-import { Spotlight } from "@/components/ui/Spotlight";
 import { Magnetic } from "@/components/ui/Magnetic";
 
 
@@ -322,10 +321,9 @@ function MarketplaceCard({
   const imageUrl = !imgError && item.image_urls?.[0] ? item.image_urls[0] : null;
 
   return (
-    <Spotlight
+    <div
       className="group rounded-xl overflow-hidden flex flex-col transition-transform duration-300 hover:-translate-y-0.5 hover:shadow-2xl cursor-pointer"
       style={{ background: "var(--c-card)" }}
-      color="rgba(16,185,129,0.15)"
     >
       {/* Image — uniform 1:1 ratio, cropped consistently */}
       <div
@@ -346,21 +344,6 @@ function MarketplaceCard({
           <div className="w-full h-full flex items-center justify-center">
             <ShoppingBag className="w-10 h-10" style={{ color: "hsl(var(--primary))", opacity: 0.5 }} />
           </div>
-        )}
-
-        {/* Floating chat button over image corner */}
-        {!isOwner && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onMessageSeller?.(item);
-            }}
-            aria-label="Message seller"
-            className="absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-lg backdrop-blur-sm"
-            style={{ background: "rgba(15,23,42,0.72)", color: "#fff" }}
-          >
-            <MessageCircle className="w-4 h-4" />
-          </button>
         )}
       </div>
 
@@ -473,6 +456,6 @@ function MarketplaceCard({
           </span>
         </button>
       </div>
-    </Spotlight>
+    </div>
   );
 }

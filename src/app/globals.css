@@ -406,13 +406,9 @@ div[id*="launcher"] {
 .dark .post-media-image:hover {
   filter: brightness(1);
 }
-/* ── Micro-interactions: tilt / spotlight / magnetic / ambient blobs ── */
+/* ── Micro-interactions: tilt / magnetic / ambient blobs ── */
 .tilt-card {
   transform-style: preserve-3d;
-}
-
-.spotlight-surface {
-  isolation: isolate;
 }
 
 .magnetic-btn {
