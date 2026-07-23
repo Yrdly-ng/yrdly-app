@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -41,7 +40,7 @@
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
+    --radius: 1rem;
     --sidebar: 0 0% 100%;
     --sidebar-foreground: 240 4% 16%;
     --sidebar-primary: 142 45% 39%;
@@ -69,60 +68,66 @@
     --c-text:      #1C1C1C;
     --c-text-muted:#616161;
     --c-border:    #E0E0E0;
-    --c-shadow:    rgba(0,0,0,0.08);
+    --c-shadow:    rgba(0,0,0,0.06);
   }
   .dark {
-    --c-bg:        #0A0F0D;
-    --c-card:      #111713;
-    --c-card2:     #1A211B;
-    --c-text:      #FFFFFF;
-    --c-text-muted:#8A9E8B;
-    --c-border:    #2A3D2B;
-    --c-shadow:    rgba(0,0,0,0.6);
+    --c-bg:        #070d0a;
+    --c-card:      #141f19;
+    --c-card2:     #1c2a21;
+    --c-text:      #f3f7f3;
+    --c-text-muted:#8fae9a;
+    --c-border:    rgba(255,255,255,0.08);
+    --c-shadow:    rgba(0,0,0,0.55);
+  }
+
+  .dark body {
+    background: radial-gradient(circle at top left, rgba(114, 187, 150, 0.12), transparent 24%),
+                radial-gradient(circle at 75% 15%, rgba(92, 213, 120, 0.08), transparent 18%),
+                linear-gradient(180deg, #07100d 0%, #0a1612 60%, #08120f 100%);
   }
 
   .dark {
-    --background: 140 20% 5%;    /* #0A0F0D */
-    --foreground: 0 0% 100%;     /* #FFFFFF */
-    --card: 140 15% 7%;          /* #111713 */
+    --background: 150 10% 6%;    /* deep charcoal green */
+    --foreground: 0 0% 100%;     /* white */
+    --card: 150 12% 10%;          /* rich dark panel */
     --card-foreground: 0 0% 100%;
-    --popover: 140 15% 7%;
+    --popover: 150 12% 10%; 
     --popover-foreground: 0 0% 100%;
-    --primary: 117 61% 68%;      /* #82DB7E */
-    --primary-foreground: 140 20% 5%;
-    --secondary: 140 12% 11%;    /* #1A211B */
+    --primary: 152 58% 39%;      /* premium emerald accent */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 150 12% 11%;    /* dark surface */
     --secondary-foreground: 0 0% 100%;
-    --muted: 140 12% 11%;
-    --muted-foreground: 141 11% 58%; /* #8A9E8B */
-    --accent: 117 61% 15%;       /* dark green tint */
-    --accent-foreground: 117 61% 68%;
-    --destructive: 0 84% 60%;
+    --muted: 150 12% 12%; 
+    --muted-foreground: 140 10% 60%; /* soft green text */
+    --accent: 152 58% 34%;       /* dark emerald */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%; 
     --destructive-foreground: 0 0% 100%;
-    --border: 143 18% 20%;       /* #2A3D2B */
-    --input: 143 18% 20%;
-    --ring: 117 61% 68%;
-    --chart-1: 117 61% 68%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-    --sidebar: 140 15% 7%;
+    --border: 140 18% 19%;       /* subtle dark border */
+    --input: 140 18% 19%; 
+    --ring: 152 58% 39%;
+    --chart-1: 152 58% 39%; 
+    --chart-2: 160 60% 45%; 
+    --chart-3: 30 80% 55%; 
+    --chart-4: 280 65% 60%; 
+    --chart-5: 340 75% 55%; 
+    --sidebar: 150 12% 10%; 
     --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 117 61% 68%;
-    --sidebar-primary-foreground: 140 20% 5%;
-    --sidebar-accent: 140 12% 11%;
-    --sidebar-accent-foreground: 117 61% 68%;
-    --sidebar-border: 143 18% 20%;
-    --sidebar-ring: 117 61% 68%;
+    --sidebar-primary: 152 58% 39%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 150 12% 11%;
+    --sidebar-accent-foreground: 152 58% 39%;
+    --sidebar-border: 140 18% 19%;
+    --sidebar-ring: 152 58% 39%;
 
-    --surface-dim: #101418;
-    --surface-container-lowest: #0b0e13;
-    --surface-container-low: #191c21;
-    --surface-container: #1d2025;
-    --surface-container-high: #272a2f;
-    --surface-container-highest: #32353a;
-    --on-surface: #e1e2e9;
-    --on-surface-variant: #bfcab9;
+    --surface-dim: #0f1613;
+    --surface-container-lowest: #0b120f;
+    --surface-container-low: #161f1a;
+    --surface-container: #192621;
+    --surface-container-high: #26322b;
+    --surface-container-highest: #303d35;
+    --on-surface: #f5f7f5;
+    --on-surface-variant: #9cb9a5;
   }
 }
 
@@ -139,11 +144,17 @@
     border-radius: 4px;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
+    background: radial-gradient(circle at top, rgba(222, 236, 180, 0.98), rgba(207, 219, 121, 0.94) 24%, rgba(183, 192, 81, 0.92) 52%, rgba(154, 163, 37, 0.88) 84%, rgba(227, 214, 128, 0.98) 100%);
+    background-attachment: fixed;
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
+  }
+
+  .dark body {
+    color: var(--c-text);
   }
 }
 
@@ -154,11 +165,47 @@
 }
 
 .yrdly-shadow {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 6px 16px rgba(0,0,0,0.06);
 }
 
 .yrdly-shadow-lg {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.04), 0 12px 32px rgba(0,0,0,0.10);
+}
+
+/* New: soft, rounded polished card used across feed/panels */
+.yrdly-card {
+  background: var(--c-card);
+  border-radius: 1.25rem;
+  border: 1px solid rgba(0,0,0,0.04);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06);
+}
+
+/* New: fully-rounded pill search bar, matches reference design */
+.yrdly-search-pill {
+  border-radius: 9999px;
+  background: var(--c-card2);
+  border: 1px solid transparent;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.yrdly-search-pill:focus-within {
+  border-color: rgba(56, 142, 60, 0.35);
+  box-shadow: 0 0 0 3px rgba(56, 142, 60, 0.12);
+}
+
+/* New: pill buttons for primary actions (Interested / Sell / Create Event) */
+.yrdly-pill-btn {
+  border-radius: 9999px;
+  padding-inline: 1.25rem;
+  padding-block: 0.55rem;
+  font-weight: 600;
+  transition: transform 0.1s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+.yrdly-pill-btn:hover {
+  filter: brightness(1.05);
+  box-shadow: 0 4px 14px rgba(56, 142, 60, 0.25);
+}
+.yrdly-pill-btn:active {
+  transform: scale(0.98);
 }
 
 @layer utilities {
@@ -349,4 +396,45 @@ div[id*="launcher"] {
   pointer-events: none !important;
   visibility: hidden !important;
   z-index: -9999 !important;
+}
+
+/* ── Dark mode media dimming: bright post/event covers shouldn't flashbang ── */
+.dark .post-media-image {
+  filter: brightness(0.9) contrast(1.05);
+  transition: filter 0.2s ease;
+}
+.dark .post-media-image:hover {
+  filter: brightness(1);
+}
+/* ── Micro-interactions: tilt / spotlight / magnetic / ambient blobs ── */
+.tilt-card {
+  transform-style: preserve-3d;
+}
+
+.spotlight-surface {
+  isolation: isolate;
+}
+
+.magnetic-btn {
+  will-change: transform;
+}
+
+.ambient-blob {
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tilt-card,
+  .magnetic-btn,
+  .ambient-blob {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+@media (hover: none) {
+  /* Touch devices: skip cursor-driven effects, no hover to trigger them anyway */
+  .tilt-card {
+    transform: none !important;
+  }
 }

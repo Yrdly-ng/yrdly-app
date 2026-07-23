@@ -26,6 +26,10 @@ import { cn } from "@/lib/utils";
 import { useLocation } from "@/contexts/LocationContext";
 import { LocationChip } from "@/components/LocationChip";
 import { EventCreatorOnboarding } from "@/components/events/EventCreatorOnboarding";
+import { TiltCard } from "@/components/ui/TiltCard";
+import { Spotlight } from "@/components/ui/Spotlight";
+import { Magnetic } from "@/components/ui/Magnetic";
+import { RevealOnScroll } from "@/components/ui/RevealOnScroll";
 
 interface EventsScreenProps {
   className?: string;
@@ -184,8 +188,9 @@ export function EventsScreen({ className }: EventsScreenProps) {
                     key={event.id}
                     className="pl-2 sm:pl-4 basis-full sm:basis-[85%] md:basis-[75%] lg:basis-[70%]"
                   >
-                    <div
-                      className="relative w-full rounded-[28px] overflow-hidden aspect-[820/330] max-h-[280px] sm:max-h-[330px] bg-card"
+                    <TiltCard
+                      className="w-full rounded-[28px] overflow-hidden aspect-[820/330] max-h-[280px] sm:max-h-[330px] bg-card"
+                      maxTilt={5}
                       onClick={() => router.push(`/events/${event.id}`)}
                     >
                       <Image
@@ -216,8 +221,8 @@ export function EventsScreen({ className }: EventsScreenProps) {
                             {event.location_address || "Online"}
                           </span>
                         </div>
-                        <Button
-                          className="mt-4 w-full sm:w-auto sm:min-w-[180px] rounded-full font-sans font-medium text-sm text-foreground border border-border/80"
+                        <Magnetic
+                          className="mt-4 w-full sm:w-auto sm:min-w-[180px] justify-center rounded-full font-sans font-medium text-sm text-foreground border border-border/80 h-9 px-4"
                           style={{ background: "hsl(var(--primary))" }}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -225,9 +230,9 @@ export function EventsScreen({ className }: EventsScreenProps) {
                           }}
                         >
                           Get Ticket
-                        </Button>
+                        </Magnetic>
                       </div>
-                    </div>
+                    </TiltCard>
                   </CarouselItem>
                 ))}
               </CarouselContent>
@@ -374,11 +379,12 @@ export function EventsScreen({ className }: EventsScreenProps) {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {mainstream.map((event) => (
-              <div
-                key={event.id}
+            {mainstream.map((event, idx) => (
+              <RevealOnScroll key={event.id} delay={(idx % 4) * 60}>
+              <Spotlight
                 className="rounded-[11px] overflow-hidden cursor-pointer transition hover:opacity-95"
                 style={{ background: "var(--c-card)" }}
+                color="rgba(59,130,246,0.12)"
                 onClick={() => router.push(`/events/${event.id}`)}
               >
                 <div className="p-4 sm:p-5">
@@ -447,7 +453,8 @@ export function EventsScreen({ className }: EventsScreenProps) {
                     </button>
                   </div>
                 </div>
-              </div>
+              </Spotlight>
+              </RevealOnScroll>
             ))}
           </div>
         )}

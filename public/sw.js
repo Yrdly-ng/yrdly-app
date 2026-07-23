@@ -1,6 +1,6 @@
 // Yrdly Service Worker
 // Version is injected at build time by scripts/inject-sw-version.js
-const CACHE_VERSION = 'local-1784201487726';
+const CACHE_VERSION = 'local-1784747999999';
 const CACHE_NAME = `yrdly-v${CACHE_VERSION}`;
 
 // Assets to pre-cache on install
@@ -32,7 +32,7 @@ self.addEventListener('activate', (event) => {
 });
 
 // ── Fetch ─────────────────────────────────────────────────────────────────────
-// Strategy: Network-first for API/auth calls, cache-first for static assets
+// Strategy: Network-first for API/auth calls, network-first for everything else in dev-safe mode
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -55,7 +55,23 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Cache-first for static assets (JS, CSS, images, fonts)
+  // Network-first for JS/CSS to avoid stale chunks in dev; cache-first for everything else
+  if (url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response && response.status === 200 && response.type !== 'opaque') {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request))
+    );
+    return;
+  }
+
+  // Cache-first for static assets (images, fonts)
   event.respondWith(
     caches.match(request).then((cached) => {
       if (cached) return cached;

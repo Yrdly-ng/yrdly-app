@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { User, Post } from "@/types";
@@ -48,6 +47,7 @@ import { CommentSection } from "./CommentSection";
 import { timeAgo, formatPrice } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { ImageSwiper } from "./ImageSwiper";
+import { TiltCard } from "./ui/TiltCard";
 
 /* ─── design tokens ─────────────────────────────────────────────── */
 const CARD_BG = "var(--c-card)";
@@ -64,33 +64,16 @@ function fmt(n: number) {
 
 /* ─── Category tag chips ──────────────────────────────────────── */
 function CategoryTag({ category }: { category: string }) {
-  if (category === "Event") {
-    return (
-      <span
-        className="px-3 py-1 rounded-[12.5px] font-sans font-medium text-[0.75rem] leading-[14px]"
-        style={{ background: "var(--c-bg)", border: "1px solid #983412", color: "#EBD598" }}
-      >
-        Event
-      </span>
-    );
-  }
-  if (category === "For Sale") {
-    return (
-      <span
-        className="px-3 py-1 rounded-[12.5px] font-sans font-medium text-[0.75rem] leading-[14px]"
-        style={{ background: "var(--c-bg)", border: `1px solid ${GREEN}`, color: "#BBF7D0" }}
-      >
-        For Sale
-      </span>
-    );
-  }
-  // General / default
+  const label = category || "General";
+  const styles: Record<string, string> = {
+    General: "bg-[#E0F2FE] text-[#0284C7] border-[#BAE6FD] dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-900/60",
+    Event: "bg-[#F3E8FF] text-[#7E22CE] border-[#E9D5FF] dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-900/60",
+    "For Sale": "bg-[#DCFCE7] text-[#15803D] border-[#BBF7D0] dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-900/60",
+  };
+  const style = styles[label] || styles.General;
   return (
-    <span
-      className="px-3 py-1 rounded-[12.5px] font-sans font-medium text-[0.75rem] leading-[14px] text-foreground"
-      style={{ background: "var(--c-card2)" }}
-    >
-      {category || "General"}
+    <span className={`px-3 py-1 rounded-full font-sans font-semibold text-[0.75rem] leading-[14px] border ${style}`}>
+      {label}
     </span>
   );
 }
@@ -107,53 +90,53 @@ function ImageCollage({
 
   if (urls.length === 1) {
     return (
-      <div
-        className="relative w-full cursor-pointer overflow-hidden"
-        style={{ borderRadius: 12, aspectRatio: "4/5" }}
+      <TiltCard
+        className="w-full cursor-pointer overflow-hidden"
+        style={{ borderRadius: 12, aspectRatio: "4/5", maxHeight: 480 }}
         onClick={() => onImageClick(0)}
       >
         <Image
           src={urls[0]}
           alt="Post image"
           fill
-          className="object-cover"
+          className="object-cover post-media-image"
           sizes="(max-width: 640px) 100vw, 626px"
         />
-      </div>
+      </TiltCard>
     );
   }
 
   // 2 images: equal side-by-side at fixed height
   if (urls.length === 2) {
     return (
-      <div className="grid grid-cols-2 gap-0.5 overflow-hidden" style={{ borderRadius: 12, aspectRatio: "4/5" }}>
+      <TiltCard className="grid grid-cols-2 gap-0.5 overflow-hidden" style={{ borderRadius: 12, aspectRatio: "4/5", maxHeight: 480 }} maxTilt={4}>
         {urls.map((u, i) => (
           <div key={i} className="relative cursor-pointer h-full" onClick={() => onImageClick(i)}>
-            <Image src={u} alt="" fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover" />
+            <Image src={u} alt="" fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover post-media-image" />
           </div>
         ))}
-      </div>
+      </TiltCard>
     );
   }
 
   // 3+: 1 tall left + 2 right stacked (Nextdoor style)
   return (
-    <div className="grid grid-cols-2 gap-0.5 overflow-hidden" style={{ borderRadius: 12, aspectRatio: "4/5" }}>
+    <TiltCard className="grid grid-cols-2 gap-0.5 overflow-hidden" style={{ borderRadius: 12, aspectRatio: "4/5", maxHeight: 480 }} maxTilt={4}>
       <div className="relative row-span-2 cursor-pointer h-full" onClick={() => onImageClick(0)}>
-        <Image src={urls[0]} alt="" fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover" />
+        <Image src={urls[0]} alt="" fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover post-media-image" />
       </div>
       <div className="relative cursor-pointer" onClick={() => onImageClick(1)}>
-        <Image src={urls[1]} alt="" fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover" />
+        <Image src={urls[1]} alt="" fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover post-media-image" />
       </div>
       <div className="relative cursor-pointer" onClick={() => onImageClick(2)}>
-        <Image src={urls[2]} alt="" fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover" />
+        <Image src={urls[2]} alt="" fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover post-media-image" />
         {urls.length > 3 && (
           <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
             <span className="text-primary-foreground font-semibold text-base font-sans">+{urls.length - 3}</span>
           </div>
         )}
       </div>
-    </div>
+    </TiltCard>
   );
 }
 
@@ -174,37 +157,38 @@ function EngagementRow({
   onShare: () => void;
 }) {
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-4">
+    <div className="flex items-center justify-between pt-3 border-t border-[var(--c-border)]">
+      <div className="flex items-center gap-1">
         {/* Likes */}
-        <div className="flex items-center gap-1.5">
-          <button onClick={onLike} className="flex items-center">
-            <Heart
-              className={`w-5 h-5 ${isLiked ? "text-[#ED1111]" : "text-muted-foreground"}`}
-              style={{
-                fill: isLiked ? "#ED1111" : "transparent",
-              }}
-            />
-          </button>
-          <span className="text-[0.75rem] font-light text-muted-foreground" style={{ fontFamily: FONT_RALEWAY }}>
+        <button
+          onClick={onLike}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full hover:bg-[var(--c-card2)] transition-colors duration-150"
+        >
+          <Heart
+            className={`w-5 h-5 ${isLiked ? "text-[#ED1111]" : "text-muted-foreground"}`}
+            style={{
+              fill: isLiked ? "#ED1111" : "transparent",
+            }}
+          />
+          <span className="text-[0.75rem] font-medium text-muted-foreground" style={{ fontFamily: FONT_RALEWAY }}>
             {fmt(likes)}
           </span>
-        </div>
-        {/* dot */}
-        <div className="w-[2px] h-[2px] rounded-full bg-muted-foreground" />
+        </button>
         {/* Comments */}
-        <div className="flex items-center gap-1.5">
-          <button onClick={onComment}>
-            <MessageCircle className="w-5 h-5 text-muted-foreground" />
-          </button>
-          <span className="text-[0.75rem] font-light text-muted-foreground" style={{ fontFamily: FONT_RALEWAY }}>
+        <button
+          onClick={onComment}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full hover:bg-[var(--c-card2)] transition-colors duration-150"
+        >
+          <MessageCircle className="w-5 h-5 text-muted-foreground" />
+          <span className="text-[0.75rem] font-medium text-muted-foreground" style={{ fontFamily: FONT_RALEWAY }}>
             {fmt(commentCount)}
           </span>
-        </div>
-        {/* dot */}
-        <div className="w-[2px] h-[2px] rounded-full bg-muted-foreground" />
+        </button>
         {/* Share */}
-        <button onClick={onShare}>
+        <button
+          onClick={onShare}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full hover:bg-[var(--c-card2)] transition-colors duration-150"
+        >
           <Share2 className="w-5 h-5 text-muted-foreground" />
         </button>
       </div>
@@ -497,13 +481,21 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
           </div>
         ) : (
           <div className="min-w-0">
-            <button onClick={openProfile}>
-              <p className="font-sans font-bold text-[0.875rem] text-foreground truncate hover:underline">{author?.name || "Anonymous"}</p>
-            </button>
-            <p className="font-sans font-normal text-[0.6875rem] text-muted-foreground">
-              {timeAgo(post.timestamp ? new Date(post.timestamp) : null)}
-              {post.updated_at && (new Date(post.updated_at).getTime() - new Date(post.timestamp).getTime() > 2000) && " (edited)"}
-            </p>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <button onClick={openProfile}>
+                <span className="font-sans font-bold text-[0.875rem] text-foreground hover:underline">{author?.name || "Anonymous"}</span>
+              </button>
+              <span className="text-muted-foreground text-[0.6875rem]">•</span>
+              <span className="font-sans font-normal text-[0.6875rem] text-muted-foreground">
+                {timeAgo(post.timestamp ? new Date(post.timestamp) : null)}
+              </span>
+              {post.updated_at && (new Date(post.updated_at).getTime() - new Date(post.timestamp).getTime() > 2000) && (
+                <>
+                  <span className="text-muted-foreground text-[0.6875rem]">•</span>
+                  <span className="font-sans font-normal text-[0.6875rem] text-muted-foreground">edited</span>
+                </>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -608,7 +600,6 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
             </button>
           </div>
         )}
-
       </>
     );
   } else if (post.category === "For Sale") {
@@ -622,8 +613,8 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
         {/* image */}
         {urls.length > 0 && (
           <div className="px-3 pb-3">
-            <div className="relative w-full overflow-hidden" style={{ borderRadius: 12, aspectRatio: "4/5" }}>
-              <Image src={urls[0]} alt="" fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover" />
+            <div className="relative w-full overflow-hidden" style={{ borderRadius: 12, aspectRatio: "4/5", maxHeight: 480 }}>
+              <Image src={urls[0]} alt="" fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover post-media-image" />
             </div>
           </div>
         )}
@@ -635,8 +626,6 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
         {desc && (
           <p className="px-4 pb-3 font-sans font-normal text-[0.8125rem] text-muted-foreground leading-[15px]">{desc}</p>
         )}
-        {/* Divider */}
-        <div className="mx-4 mb-2" style={{ borderTop: "0.2px solid rgba(0,0,0,0.08)" }} />
         {/* Message seller */}
         <div className="flex items-center justify-between px-4 pb-3 gap-2">
           <div
@@ -706,8 +695,8 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
                 loop
                 preload="metadata"
                 poster={post.video_thumbnail_url ?? undefined}
-                className="w-full object-cover"
-                style={{ borderRadius: 12, aspectRatio: "4/5" }}
+                className="w-full object-cover post-media-image"
+                style={{ borderRadius: 12, aspectRatio: "4/5", maxHeight: 480 }}
                 onTimeUpdate={() => {
                   if (videoRef.current) {
                     const progress = (videoRef.current.currentTime / videoRef.current.duration) * 100;
@@ -726,7 +715,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
           </div>
         )}
         {/* Engagement */}
-        <div className="px-4 pb-4 border-t border-border pt-3">
+        <div className="px-4 pb-4 pt-3">
           <EngagementRow
             likes={likes}
             commentCount={commentCount}
@@ -744,7 +733,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
   return (
     <>
       <div
-        className="w-full rounded-[11px] overflow-hidden cursor-pointer"
+        className="w-full overflow-hidden cursor-pointer bg-[var(--c-card)] rounded-[1.25rem] border border-[var(--c-border)] shadow-[0_2px_8px_rgba(0,0,0,0.05)] mb-4 transition-shadow duration-200 hover:shadow-[0_6px_20px_rgba(0,0,0,0.08)]"
         style={{ background: CARD_BG }}
         onClick={handleCardClick}
       >

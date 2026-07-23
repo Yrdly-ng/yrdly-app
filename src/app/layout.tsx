@@ -12,6 +12,7 @@ import Script from "next/script";
 import { Suspense } from 'react';
 import PostHogPageView from '@/components/providers/PostHogPageView';
 import { PostHogProvider } from '@/components/providers/PostHogProvider';
+import { AmbientBackground } from '@/components/ui/AmbientBackground';
 
 export const metadata: Metadata = {
   title: 'Yrdly - Your Neighborhood Network',
@@ -41,6 +42,7 @@ export default function RootLayout({
       </head>
 
       <body className={cn('font-body antialiased min-h-[100dvh] bg-background')}>
+        <AmbientBackground />
         <PostHogProvider>
           <ThemeProvider
             attribute="class"
