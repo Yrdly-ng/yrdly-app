@@ -13,6 +13,12 @@ import {
   MoreHorizontal,
   Trash2,
   Edit,
+  Volume2,
+  VolumeX,
+  RotateCw,
+  RotateCcw,
+  Pause,
+  Play,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { supabase } from "@/lib/supabase";
@@ -221,22 +227,25 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const [videoProgress, setVideoProgress] = useState(0);
+  const [isVideoMuted, setIsVideoMuted] = useState(true);
+  const [isVideoPaused, setIsVideoPaused] = useState(false);
+  // Transient overlay shown when the user taps the left/right edge of the
+  // video to seek — mirrors TikTok/Instagram's flash-then-fade behavior
+  // instead of a permanently-visible button.
+  const [seekFlash, setSeekFlash] = useState<"back" | "forward" | null>(null);
+  const seekFlashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /* ── auto-pause video when scrolled out of view ── */
   useEffect(() => {
     if (!videoRef.current || !post.video_url) return;
-    
-    // Force muted via JS to ensure browsers allow autoplay
-    videoRef.current.muted = true;
-    videoRef.current.defaultMuted = true;
-    
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           // If video is playing and scrolls out of view, pause it
           if (!entry.isIntersecting && !videoRef.current?.paused) {
             videoRef.current?.pause();
-          } else if (entry.isIntersecting && videoRef.current?.paused) {
+          } else if (entry.isIntersecting && videoRef.current?.paused && !isVideoPaused) {
             // Single-playback guarantee: pause all other videos
             document.querySelectorAll('video').forEach(v => {
               if (v !== videoRef.current && !v.paused) v.pause();
@@ -250,7 +259,49 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
     
     observer.observe(videoRef.current);
     return () => observer.disconnect();
-  }, [post.video_url]);
+  }, [post.video_url, isVideoPaused]);
+
+  useEffect(() => {
+    return () => {
+      if (seekFlashTimeoutRef.current) clearTimeout(seekFlashTimeoutRef.current);
+    };
+  }, []);
+
+  /* ── video tap zones: left 35% rewinds 5s, right 35% skips 5s,
+     middle 30% toggles play/pause. Works anywhere within each zone,
+     not just on a fixed button — and the seek icon only shows briefly
+     while it happens, instead of sitting on the video permanently. */
+  const handleVideoTap = (e: React.MouseEvent<HTMLVideoElement>) => {
+    e.stopPropagation();
+    const video = videoRef.current;
+    if (!video) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const tapX = e.clientX - rect.left;
+    const ratio = rect.width > 0 ? tapX / rect.width : 0.5;
+
+    const flashSeek = (direction: "back" | "forward") => {
+      if (seekFlashTimeoutRef.current) clearTimeout(seekFlashTimeoutRef.current);
+      setSeekFlash(direction);
+      seekFlashTimeoutRef.current = setTimeout(() => setSeekFlash(null), 600);
+    };
+
+    if (ratio < 0.35) {
+      video.currentTime = Math.max(video.currentTime - 5, 0);
+      flashSeek("back");
+    } else if (ratio > 0.65) {
+      video.currentTime = Math.min(video.currentTime + 5, video.duration || video.currentTime + 5);
+      flashSeek("forward");
+    } else {
+      if (video.paused) {
+        video.play().catch(() => {});
+        setIsVideoPaused(false);
+      } else {
+        video.pause();
+        setIsVideoPaused(true);
+      }
+    }
+  };
 
   /* ── fetch author ── */
   useEffect(() => {
@@ -691,7 +742,9 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
                 ref={videoRef}
                 src={post.video_url.includes('#t=') ? post.video_url : `${post.video_url}#t=0.001`}
                 playsInline
-                muted
+                disablePictureInPicture
+                controlsList="nodownload noremoteplayback nopictureinpicture"
+                muted={isVideoMuted}
                 loop
                 preload="metadata"
                 poster={post.video_thumbnail_url ?? undefined}
@@ -703,7 +756,51 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
                     setVideoProgress(progress || 0);
                   }
                 }}
+                onClick={handleVideoTap}
               />
+
+              {/* Tap-to-pause overlay icon — mirrors Instagram's center play/pause flash */}
+              {isVideoPaused && !seekFlash && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="bg-black/40 rounded-full p-3">
+                    <Play className="w-7 h-7 text-white fill-white" />
+                  </div>
+                </div>
+              )}
+
+              {/* Seek flash — briefly appears where the user tapped, then fades.
+                  No permanent buttons sitting on the video. */}
+              {seekFlash && (
+                <div
+                  className={`absolute inset-y-0 ${seekFlash === "back" ? "left-0" : "right-0"} w-1/3 flex items-center justify-center pointer-events-none`}
+                >
+                  <div className="flex flex-col items-center gap-1 bg-black/50 rounded-full px-3 py-3 animate-in fade-in zoom-in duration-150">
+                    {seekFlash === "back" ? (
+                      <RotateCcw className="w-5 h-5 text-white" />
+                    ) : (
+                      <RotateCw className="w-5 h-5 text-white" />
+                    )}
+                    <span className="text-[0.625rem] font-medium text-white">5s</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Mute / unmute — Instagram-style mini speaker, bottom-right */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsVideoMuted((prev) => !prev);
+                }}
+                aria-label={isVideoMuted ? "Unmute video" : "Mute video"}
+                className="absolute bottom-3 right-3 z-10 flex items-center justify-center bg-black/50 hover:bg-black/70 transition-colors rounded-full w-8 h-8"
+              >
+                {isVideoMuted ? (
+                  <VolumeX className="w-4 h-4 text-white" />
+                ) : (
+                  <Volume2 className="w-4 h-4 text-white" />
+                )}
+              </button>
+
               {/* Custom Thin Progress Bar */}
               <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-white/30 z-10">
                 <div 

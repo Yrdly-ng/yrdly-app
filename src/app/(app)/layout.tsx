@@ -1,4 +1,3 @@
-
 "use client";
 
 import Script from 'next/script';
@@ -24,7 +23,7 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const { user, profile, loading } = useAuth(); // Using Supabase auth
   const router = useRouter();
   const [profileUser, setProfileUser] = useState<User | null>(null);
-  
+
   // Initialize activity tracking
   useActivityTracking();
 
@@ -37,7 +36,7 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
         name: profile.name,
         avatar_url: profile.avatar_url,
       });
-      
+
       // Track user login
       trackUserAction('user_logged_in', {
         userId: user.id,
@@ -56,14 +55,18 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
     }
   }, [user, loading, router]);
 
-  if (loading || !user || !profile) {
+  // Only block on the auth check itself (user), not on profile.
+  // Profile is allowed to arrive after first paint so the app shell
+  // (Topbar, nav, page skeletons) doesn't sit behind a blank screen
+  // waiting on a second/third sequential fetch.
+  if (loading || !user) {
     return (
       <div className="flex h-[100dvh] w-screen items-center justify-center bg-background">
-        <Image 
-            src="/logo.png" 
-            alt="Yrdly Logo" 
-            width={96} 
-            height={96} 
+        <Image
+            src="/logo.png"
+            alt="Yrdly Logo"
+            width={96}
+            height={96}
             className="animate-pulse w-24 h-24"
             priority
         />
@@ -72,7 +75,7 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
   }
 
   const handleProfileClick = () => {
-    setProfileUser(profile as User);
+    if (profile) setProfileUser(profile as User);
   };
 
   return (

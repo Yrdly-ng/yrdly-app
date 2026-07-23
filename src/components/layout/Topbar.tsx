@@ -46,12 +46,6 @@ export function Topbar({
           <span className="flex items-center justify-center rounded-full bg-[var(--c-card2)] p-1.5 md:p-2 shadow-sm">
             <img src="/logo.png" alt="Yrdly" className="h-9 w-9 md:h-9 md:w-9 object-contain" />
           </span>
-          <span
-            className="hidden sm:block text-[1.2rem] font-extrabold text-[var(--c-text)] tracking-tight"
-            style={{ fontFamily: "var(--font-raleway)" }}
-          >
-            Yrdly
-          </span>
         </Link>
 
         {/* Desktop nav — replaces the old left sidebar */}
@@ -102,9 +96,6 @@ export function Topbar({
             <MagnifyingGlass weight="bold" className="h-4 w-4 text-current flex-shrink-0" />
             <span className="flex-1 font-normal text-sm truncate">
               Search for events, items, and people
-            </span>
-            <span className="hidden md:inline-flex items-center gap-0.5 flex-shrink-0 rounded-md bg-[var(--c-card)] border border-[var(--c-border)] px-1.5 py-1 text-[0.7rem] font-semibold text-[var(--c-text-muted)] group-hover:text-[var(--accent-foreground)]">
-              ⌘K
             </span>
           </button>
         </div>

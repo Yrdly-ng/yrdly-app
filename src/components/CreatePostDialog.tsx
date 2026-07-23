@@ -18,7 +18,7 @@ import { useState, useEffect, memo, useCallback, useMemo, useRef } from "react";
 import * as React from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { Post } from "@/types";
-import { X, Paperclip, Loader2, VideoIcon } from "lucide-react";
+import { X, Paperclip, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
@@ -282,6 +282,8 @@ function PostForm({
               src={videoPreviewUrl}
               controls
               playsInline
+                disablePictureInPicture
+                controlsList="nodownload noremoteplayback nopictureinpicture"
               preload="metadata"
               className="w-full max-h-48 object-contain"
             />
@@ -332,41 +334,39 @@ function PostForm({
       <div className="flex items-center justify-between px-5 py-3 flex-shrink-0">
         {/* Left icons */}
         <div className="flex items-center gap-4">
-          {/* Paperclip / photos */}
+          {/* Paperclip / photos + videos in one */}
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
             className="hover:opacity-70 transition-opacity"
-            aria-label="Attach image"
+            aria-label="Attach photo or video"
           >
             <Paperclip size={22} color={GREEN} strokeWidth={2} />
           </button>
-          {/* Hidden image input */}
+          {/* Hidden combined image/video input */}
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept="image/*,video/mp4,video/webm,video/quicktime"
             multiple
             className="hidden"
-            onChange={(e) => form.setValue("imageFiles", e.target.files)}
+            onChange={(e) => {
+              const files = e.target.files;
+              if (!files || files.length === 0) return;
+              const first = files[0];
+              if (first.type.startsWith("video/")) {
+                handleVideoSelect(e);
+              } else {
+                form.setValue("imageFiles", files);
+              }
+            }}
           />
-
-          {/* Video */}
-          <button
-            type="button"
-            onClick={() => videoInputRef.current?.click()}
-            className="hover:opacity-70 transition-opacity"
-            aria-label="Attach video"
-          >
-            <VideoIcon size={22} color={GREEN} strokeWidth={2} />
-          </button>
-          {/* Hidden video input */}
+          {/* Hidden video input kept for handleVideoSelect's validation/preview logic */}
           <input
             ref={videoInputRef}
             type="file"
             accept="video/mp4,video/webm,video/quicktime"
             className="hidden"
-            onChange={handleVideoSelect}
           />
 
 

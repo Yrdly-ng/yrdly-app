@@ -1,5 +1,4 @@
-
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 // Removed Firebase imports - now using Supabase
 import { useAuth } from '@/hooks/use-supabase-auth';
 import { supabase } from '@/lib/supabase';
@@ -12,52 +11,112 @@ import { useToast } from './use-toast';
 
 import { LocationFilter } from '@/contexts/LocationContext';
 
+const PAGE_SIZE = 20;
+
 export const usePosts = (filter?: LocationFilter | null) => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+
+  // Cursor for "Load more": the timestamp of the oldest post currently
+  // loaded. Using a timestamp cursor instead of an offset/page number
+  // keeps pagination correct even as realtime INSERTs/DELETEs change
+  // the list above the cursor.
+  const oldestTimestampRef = useRef<string | null>(null);
 
   const filterState = filter?.state;
   const filterLga = filter?.lga;
   const filterWard = filter?.ward;
 
+  const buildBaseQuery = useCallback(() => {
+    let query = supabase
+      .from('posts')
+      .select(`
+        *,
+        user:users!posts_user_id_fkey(
+          id,
+          name,
+          avatar_url,
+          created_at
+        )
+      `);
+
+    if (filterState) {
+      query = query.eq('state', filterState);
+    }
+    if (filterLga) {
+      query = query.eq('lga', filterLga);
+    }
+    if (filterWard) {
+      query = query.eq('ward', filterWard);
+    }
+
+    // Hide sold marketplace items from the feed
+    query = query.or('category.neq.For Sale,is_sold.eq.false');
+
+    return query;
+  }, [filterState, filterLga, filterWard]);
+
+  // Manually triggered — call this from a "Load more" button. Does not
+  // fire on its own (no scroll listener), so nothing loads until the
+  // user asks for it.
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      let query = buildBaseQuery();
+      if (oldestTimestampRef.current) {
+        query = query.lt('timestamp', oldestTimestampRef.current);
+      }
+
+      const { data, error } = await query
+        .order('timestamp', { ascending: false })
+        .limit(PAGE_SIZE);
+
+      if (error || !data) {
+        setLoadingMore(false);
+        return;
+      }
+
+      if (data.length > 0) {
+        oldestTimestampRef.current = (data[data.length - 1] as Post).timestamp as unknown as string;
+        setPosts(prev => {
+          const existingIds = new Set(prev.map(p => p.id));
+          const deduped = (data as Post[]).filter(p => !existingIds.has(p.id));
+          return [...prev, ...deduped];
+        });
+      }
+
+      setHasMore(data.length === PAGE_SIZE);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [buildBaseQuery, hasMore, loadingMore]);
+
   useEffect(() => {
+    // Reset pagination whenever the filter changes (new location = new list)
+    oldestTimestampRef.current = null;
+    setHasMore(true);
+
     const fetchPosts = async () => {
       try {
-        let query = supabase
-          .from('posts')
-          .select(`
-            *,
-            user:users!posts_user_id_fkey(
-              id,
-              name,
-              avatar_url,
-              created_at
-            )
-          `);
+        const query = buildBaseQuery();
 
-        // Apply location filters
-        if (filterState) {
-          query = query.eq('state', filterState);
-        }
-        if (filterLga) {
-          query = query.eq('lga', filterLga);
-        }
-        if (filterWard) {
-          query = query.eq('ward', filterWard);
-        }
-
-        // Hide sold marketplace items from the feed
-        query = query.or('category.neq.For Sale,is_sold.eq.false');
-
-        const { data, error } = await query.order('timestamp', { ascending: false });
+        const { data, error } = await query.order('timestamp', { ascending: false }).limit(PAGE_SIZE);
 
         if (error) {
+          setLoading(false);
           return;
         }
 
         setPosts(data as Post[]);
+        if (data && data.length > 0) {
+          oldestTimestampRef.current = (data[data.length - 1] as Post).timestamp as unknown as string;
+        }
+        setHasMore((data?.length || 0) === PAGE_SIZE);
         setLoading(false);
       } catch (error) {
         setLoading(false);
@@ -551,5 +610,5 @@ export const usePosts = (filter?: LocationFilter | null) => {
     }
   }, []);
 
-  return { posts, loading, createPost, createBusiness, deletePost, deleteBusiness, refreshPosts };
+  return { posts, loading, loadingMore, hasMore, loadMore, createPost, createBusiness, deletePost, deleteBusiness, refreshPosts };
 };

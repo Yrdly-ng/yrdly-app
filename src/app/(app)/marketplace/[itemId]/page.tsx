@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Send, ShoppingBag, MapPin } from "lucide-react";
+import { ArrowLeft, Send, ShoppingBag, MapPin, Share2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
@@ -32,6 +32,33 @@ export default function MarketplaceItemPage() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [message, setMessage] = useState("Hi, Is this available?");
   const [sendingMessage, setSendingMessage] = useState(false);
+  const [justShared, setJustShared] = useState(false);
+
+  const handleShare = async () => {
+    const shareUrl = typeof window !== "undefined" ? window.location.href : "";
+    const shareData = {
+      title: item?.title || item?.text || "Check this out on Yrdly Marketplace",
+      text: item?.title || item?.text || "Check this out on Yrdly Marketplace",
+      url: shareUrl,
+    };
+
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch {
+        // user cancelled or share failed — fall through to copy-link
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setJustShared(true);
+      setTimeout(() => setJustShared(false), 2000);
+    } catch {
+      // clipboard not available — silently ignore
+    }
+  };
 
   // Gallery drag-to-swipe state
   const [dragOffset, setDragOffset] = useState(0);
@@ -403,13 +430,26 @@ export default function MarketplaceItemPage() {
         {/* ════ RIGHT — price + seller + message ════ */}
         <div className="w-full lg:w-[340px] flex-shrink-0 flex flex-col gap-4">
 
-          {/* Price */}
-          <p
-            className="text-[1.5rem] font-bold leading-[28px] text-primary"
-            style={{ fontFamily: FONT_RALEWAY }}
-          >
-            {formatPrice(item.price)}
-          </p>
+          {/* Price + Share */}
+          <div className="flex items-center justify-between">
+            <p
+              className="text-[1.5rem] font-bold leading-[28px] text-primary"
+              style={{ fontFamily: FONT_RALEWAY }}
+            >
+              {formatPrice(item.price)}
+            </p>
+            <button
+              onClick={handleShare}
+              aria-label="Share this listing"
+              className="flex items-center justify-center w-9 h-9 rounded-full hover:bg-accent transition-colors flex-shrink-0"
+              style={{ border: "1px solid var(--c-border)" }}
+            >
+              <Share2 className="w-4 h-4 text-foreground" />
+            </button>
+          </div>
+          {justShared && (
+            <p className="text-xs text-primary -mt-2">Link copied to clipboard</p>
+          )}
 
           {/* Action Buttons — shown only to non-owners */}
           {!isOwn && !item.is_sold && (

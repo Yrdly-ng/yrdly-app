@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
@@ -11,6 +11,7 @@ import {
   MoreHorizontal,
   Trash2,
   Edit,
+  Play,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -281,6 +282,8 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
               src={post.video_url.includes('#t=') ? post.video_url : `${post.video_url}#t=0.001`}
               controls
               playsInline
+                disablePictureInPicture
+                controlsList="nodownload noremoteplayback nopictureinpicture"
               preload="metadata"
               poster={post.video_thumbnail_url ?? undefined}
               className="w-full object-cover"
