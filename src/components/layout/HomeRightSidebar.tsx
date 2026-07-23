@@ -4,10 +4,9 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
-import { MapPin, Users } from "lucide-react";
+import { MapPin, Users, Zap, DollarSign } from "lucide-react";
 import type { Post } from "@/types";
 import { useAuth } from "@/hooks/use-supabase-auth";
-import { Spotlight } from "@/components/ui/Spotlight";
 import { TiltCard } from "@/components/ui/TiltCard";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -92,33 +91,27 @@ function EventCard({ event }: { event: EventPost }) {
         />
         <DateBadge d={event.event_date} />
         <div className="absolute bottom-2.5 left-3 right-3">
-          <p className="text-[1rem] font-semibold text-white truncate drop-shadow-sm" style={{ fontFamily: FONT_RALEWAY }}>
+          <p className="text-[1.05rem] font-bold text-white truncate drop-shadow-sm tracking-tight" style={{ fontFamily: FONT_RALEWAY }}>
             {title}
           </p>
         </div>
       </div>
 
-      <div className="p-4 space-y-3">
-        <div className="flex flex-wrap items-center gap-2 text-[0.78rem] text-[var(--c-text-muted)]">
+      <div className="p-4">
+        <div className="flex flex-wrap items-center gap-2 text-[0.8rem] text-[var(--c-text-muted)]" style={{ fontFamily: FONT_RALEWAY }}>
           {location && (
-            <span className="inline-flex items-center gap-1 max-w-full rounded-full bg-[#F3F4F6] px-2.5 py-1">
-              <MapPin className="w-3.5 h-3.5 flex-shrink-0 text-[var(--c-text-muted)]" />
+            <span className="inline-flex items-center gap-1 max-w-full rounded-full bg-[#DCFCE7] text-[#15803D] border border-[#BBF7D0] dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-900/60 px-2.5 py-1 font-medium">
+              <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
               <span className="truncate">{location}</span>
             </span>
           )}
-          <span className="inline-flex items-center gap-1 rounded-full bg-[#F3F4F6] px-2.5 py-1">
-            <Users className="w-3.5 h-3.5 flex-shrink-0 text-[var(--c-text-muted)]" />
-            {attendeeCount} going
-          </span>
+          {attendeeCount > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-[#DCFCE7] text-[#15803D] border border-[#BBF7D0] dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-900/60 px-2.5 py-1 font-medium flex-shrink-0">
+              <Users className="w-3.5 h-3.5 flex-shrink-0" />
+              {attendeeCount} going
+            </span>
+          )}
         </div>
-
-        <button
-          className="w-full rounded-full bg-[var(--primary)] px-4 py-2.5 text-[0.85rem] font-semibold text-white transition-colors duration-150 hover:bg-[var(--primary-foreground)]"
-          style={{ fontFamily: FONT_RALEWAY }}
-          onClick={(e) => e.preventDefault()}
-        >
-          Interested
-        </button>
       </div>
     </Link>
   );
@@ -129,9 +122,8 @@ function QuickSaleCard({ item }: { item: SalePost }) {
   const title = item.title || item.text?.split("\n")[0] || "Item";
 
   return (
-    <Spotlight
+    <div
       className="rounded-[1.25rem] overflow-hidden bg-[var(--c-card)] border border-[var(--c-border)] shadow-sm hover:shadow-[0_16px_40px_rgba(0,0,0,0.16)] transition-shadow duration-200"
-      color="rgba(59,130,246,0.12)"
     >
       <Link
         href={`/marketplace/${item.id}`}
@@ -158,7 +150,7 @@ function QuickSaleCard({ item }: { item: SalePost }) {
           </p>
         </div>
       </Link>
-    </Spotlight>
+    </div>
   );
 }
 
@@ -246,20 +238,24 @@ export function HomeRightSidebar() {
       <div className="p-4 space-y-6">
         <div>
           <div className="flex items-center justify-between mb-3 px-1">
-            <h2
-              className="text-[1.25rem] font-bold text-[var(--c-text)]"
-              style={{ fontFamily: FONT_RALEWAY }}
-            >
-              Upcoming Events
-            </h2>
+            <div className="flex items-center gap-2.5 min-w-0">
+              <Zap className="w-5 h-5 flex-shrink-0 text-[var(--primary)] fill-[var(--primary)]" />
+              <h2
+                className="text-[1.25rem] font-bold truncate text-[var(--c-text)]"
+                style={{ fontFamily: FONT_RALEWAY }}
+              >
+                What&apos;s happening
+              </h2>
+            </div>
             <Link
               href="/events"
-              className="text-[0.8rem] font-semibold text-[var(--primary)] hover:underline"
+              className="flex-shrink-0 text-[0.8rem] font-semibold text-[var(--primary)] hover:underline"
               style={{ fontFamily: FONT_RALEWAY }}
             >
               See All →
             </Link>
           </div>
+          <div className="h-px mb-3 bg-gradient-to-r from-[var(--primary)]/25 via-[var(--c-border)] to-transparent" />
 
           <div className="flex flex-col gap-3">
             {loading ? (
@@ -275,12 +271,15 @@ export function HomeRightSidebar() {
         </div>
 
         <div>
-          <h2
-            className="text-[1.25rem] font-bold text-[var(--c-text)] mb-3 px-1"
-            style={{ fontFamily: FONT_RALEWAY }}
-          >
-            Quick Sales
-          </h2>
+          <div className="flex items-center gap-2.5 mb-3 px-1">
+            <DollarSign className="w-5 h-5 flex-shrink-0 text-[var(--primary)] fill-[var(--primary)]" />
+            <h2
+              className="text-[1.25rem] font-bold text-[var(--c-text)]"
+              style={{ fontFamily: FONT_RALEWAY }}
+            >
+              Quick Sales
+            </h2>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {loading ? (

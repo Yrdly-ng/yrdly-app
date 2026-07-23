@@ -40,11 +40,11 @@ export function Topbar({
   pathname = "",
 }: TopbarProps) {
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 flex items-center px-4 md:px-6 bg-[var(--c-card)]/80 backdrop-blur-md border-b border-[var(--c-border)] h-[84px] shadow-[0_8px_32px_rgba(0,0,0,0.08)]">
-      <div className="w-full flex items-center gap-4">
+    <header className="fixed top-0 left-0 right-0 z-50 flex items-center px-4 md:px-6 bg-[var(--c-card)]/80 backdrop-blur-md border-b border-[var(--c-border)] h-[64px] md:h-[84px] shadow-[0_8px_32px_rgba(0,0,0,0.08)]">
+      <div className="w-full flex items-center gap-3 md:gap-4">
         <Link href="/home" className="flex items-center gap-2.5 flex-shrink-0">
-          <span className="flex items-center justify-center rounded-full bg-[var(--c-card2)] p-2 shadow-sm">
-            <img src="/logo.png" alt="Yrdly" className="h-9 w-9 object-contain" />
+          <span className="flex items-center justify-center rounded-full bg-[var(--c-card2)] p-1.5 md:p-2 shadow-sm">
+            <img src="/logo.png" alt="Yrdly" className="h-7 w-7 md:h-9 md:w-9 object-contain" />
           </span>
           <span
             className="hidden sm:block text-[1.2rem] font-extrabold text-[var(--c-text)] tracking-tight"
@@ -83,7 +83,20 @@ export function Topbar({
           </nav>
         )}
 
-        <div className="flex-1 flex justify-center px-2 min-w-[120px]">
+        {/* Mobile compact middle: location badge fills the space instead of a full search bar */}
+        <div className="flex md:hidden flex-1 items-center justify-center px-1 min-w-0">
+          <button
+            type="button"
+            onClick={onSearch}
+            className="inline-flex items-center gap-1 flex-shrink-0 rounded-full bg-[var(--c-card2)] border border-[var(--c-border)] px-3 py-1.5 text-[0.75rem] font-semibold text-[var(--c-text)] max-w-full truncate"
+          >
+            <MapPin weight="fill" className="h-3.5 w-3.5 flex-shrink-0 text-[var(--primary)]" />
+            <span className="truncate">All Nigeria</span>
+          </button>
+        </div>
+
+        {/* Desktop full search bar */}
+        <div className="hidden md:flex flex-1 justify-center px-2 min-w-[120px]">
           <button
             type="button"
             onClick={onSearch}
@@ -105,8 +118,18 @@ export function Topbar({
           </button>
         </div>
 
-        <div className="flex items-center gap-2 ml-auto flex-shrink-0">
-          <div className="group/tip relative">
+        <div className="flex items-center gap-1.5 md:gap-2 ml-auto flex-shrink-0">
+          {/* Mobile search icon (opens same search dialog) */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="flex md:hidden w-9 h-9 items-center justify-center text-[var(--c-text-muted)] border border-[var(--c-border)] bg-[var(--c-card2)] rounded-full"
+            onClick={onSearch}
+          >
+            <MagnifyingGlass weight="bold" className="w-4 h-4" />
+          </Button>
+
+          <div className="hidden md:block group/tip relative">
             <Link href="/map">
               <Button
                 variant="ghost"
@@ -121,7 +144,7 @@ export function Topbar({
             </span>
           </div>
 
-          <div className="group/tip relative">
+          <div className="hidden md:block group/tip relative">
             <Link href="/messages">
               <Button
                 variant="ghost"
@@ -145,10 +168,10 @@ export function Topbar({
             <Button
               variant="ghost"
               size="icon"
-              className="relative w-10 h-10 flex items-center justify-center text-[var(--c-text-muted)] border border-[var(--c-border)] bg-[var(--c-card2)] rounded-full hover:bg-[#F3F4F6] hover:text-[var(--foreground)] transition-all duration-150"
+              className="relative w-9 h-9 md:w-10 md:h-10 flex items-center justify-center text-[var(--c-text-muted)] border border-[var(--c-border)] bg-[var(--c-card2)] rounded-full hover:bg-[#F3F4F6] hover:text-[var(--foreground)] transition-all duration-150"
               onClick={onNotifications}
             >
-              <Bell weight="bold" className="w-5 h-5" />
+              <Bell weight="bold" className="w-4 h-4 md:w-5 md:h-5" />
               {unreadNotifications > 0 && (
                 <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-[#ED1111] text-white text-[0.65rem] font-bold leading-none border-2 border-[var(--c-card)]">
                   {unreadNotifications > 9 ? "9+" : unreadNotifications}
@@ -163,7 +186,7 @@ export function Topbar({
           <Button
             variant="ghost"
             size="icon"
-            className="w-10 h-10 rounded-full overflow-hidden p-0.5 ml-1 border border-[var(--c-border)] bg-[var(--c-card2)] shadow-sm"
+            className="hidden md:flex w-10 h-10 rounded-full overflow-hidden p-0.5 ml-1 border border-[var(--c-border)] bg-[var(--c-card2)] shadow-sm"
             onClick={onProfile}
           >
             <Avatar className="w-10 h-10 rounded-full">

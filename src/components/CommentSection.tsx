@@ -25,8 +25,12 @@ import {
     Trash2,
     Edit2,
     MessageCircle,
-    Paperclip,
     MapPin,
+    Image as ImageIcon,
+    Smile,
+    Flag,
+    Share,
+    ChevronDown,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-supabase-auth';
 import { useToast } from '@/hooks/use-toast';
@@ -118,6 +122,9 @@ export function CommentSection({
     const [editText, setEditText] = useState('');
     const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set());
     const [likedComments, setLikedComments] = useState<Set<string>>(new Set());
+    const [bookmarkedComments, setBookmarkedComments] = useState<Set<string>>(new Set());
+    const [sortMode, setSortMode] = useState<'top' | 'latest'>('latest');
+    const [sortMenuOpen, setSortMenuOpen] = useState(false);
     const [authTimeout, setAuthTimeout] = useState(false);
 
     useEffect(() => {
@@ -270,6 +277,14 @@ export function CommentSection({
         }
     }, [currentUser, likedComments]);
 
+    const toggleBookmark = useCallback((commentId: string) => {
+        setBookmarkedComments(prev => {
+            const s = new Set(prev);
+            if (s.has(commentId)) s.delete(commentId); else s.add(commentId);
+            return s;
+        });
+    }, []);
+
     const handleDeleteComment = useCallback(async (commentId: string) => {
         if (!currentUser) return;
         try {
@@ -288,17 +303,24 @@ export function CommentSection({
     }, []);
 
     const parentComments = comments.filter(c => !c.parentId);
+    const sortedParentComments = [...parentComments].sort((a, b) => {
+        if (sortMode === 'top') {
+            return b.likeCount - a.likeCount;
+        }
+        return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+    });
     const repliesByParent = comments.reduce((acc, c) => {
         if (c.parentId) { if (!acc[c.parentId]) acc[c.parentId] = []; acc[c.parentId].push(c); }
         return acc;
     }, {} as Record<string, Comment[]>);
 
     /* ── single comment row ─────────────────────────────────────── */
-    const renderComment = useCallback((comment: Comment, isReply: boolean = false) => {
+    const renderComment = useCallback((comment: Comment, isReply: boolean = false, parentAuthorName?: string) => {
         const replies = repliesByParent[comment.id] || [];
         const hasReplies = replies.length > 0;
         const showReplies = expandedReplies.has(comment.id);
         const isLiked = likedComments.has(comment.id);
+        const isBookmarked = bookmarkedComments.has(comment.id);
         const replyCount = replies.length;
 
         return (
@@ -309,14 +331,14 @@ export function CommentSection({
                 key={comment.id} 
                 className={cn('flex gap-3 pt-2', isReply && 'ml-11')}
             >
-                {/* Avatar */}
+                {/* Avatar + threaded connector */}
                 <div className="flex flex-col items-center gap-0 flex-shrink-0">
                     <Avatar className="h-8 w-8">
                         <AvatarImage src={comment.authorImage} />
                         <AvatarFallback className="text-xs bg-primary text-primary-foreground">{comment.authorName?.charAt(0)}</AvatarFallback>
                     </Avatar>
-                    {/* vertical connector to replies */}
-                    {hasReplies && showReplies && (
+                    {/* vertical connector to replies — visible whenever this comment has replies */}
+                    {hasReplies && (
                         <div className="w-[1.5px] flex-1 mt-2 rounded-full" style={{ background: 'var(--c-border)', minHeight: '24px' }} />
                     )}
                 </div>
@@ -333,6 +355,11 @@ export function CommentSection({
                                 {timeAgoStr(comment.timestamp)}
                             </span>
                         </div>
+                        {isReply && parentAuthorName && (
+                            <p className="text-[0.75rem] text-muted-foreground mb-0.5">
+                                Replying to <span className="text-primary">@{parentAuthorName.replace(/\s+/g, '')}</span>
+                            </p>
+                        )}
                         {editingComment === comment.id ? (
                             <form onSubmit={async (e) => {
                                 e.preventDefault();
@@ -350,27 +377,39 @@ export function CommentSection({
                         )}
                     </div>
 
-                    {/* Reactions & Actions Row */}
-                    <div className="flex items-center gap-4 mt-1">
+                    {/* Inline quick-action toolbar: Like / Reply / Share */}
+                    <div className="flex items-center gap-5 mt-1.5">
                         <motion.button 
                             whileTap={{ scale: 1.3 }}
                             onClick={() => handleLikeComment(comment.id)} 
                             className="flex items-center gap-1.5 group"
                         >
-                            <Heart className={cn("w-3.5 h-3.5 transition-colors", isLiked ? "fill-[#ED1111] text-[#ED1111]" : "text-muted-foreground group-hover:text-foreground")} />
+                            <Heart className={cn("w-3.5 h-3.5 transition-colors", isLiked ? "fill-[#ED1111] text-[#ED1111]" : "text-muted-foreground group-hover:text-[#ED1111]")} />
                             {comment.likeCount > 0 && <span className={cn("text-xs font-medium transition-colors", isLiked ? "text-[#ED1111]" : "text-muted-foreground")}>{fmt(comment.likeCount)}</span>}
                         </motion.button>
-                        
-                        <button onClick={() => setReplyingTo(comment.id)} className="text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors">
-                            Reply
+
+                        <button
+                            onClick={() => setReplyingTo(comment.id)}
+                            className="flex items-center gap-1.5 group"
+                        >
+                            <MessageCircle className="w-3.5 h-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
+                            {replyCount > 0 && <span className="text-xs font-medium text-muted-foreground group-hover:text-primary transition-colors">{fmt(replyCount)}</span>}
                         </button>
-                        
+
+                        <motion.button
+                            whileTap={{ scale: 1.2 }}
+                            onClick={() => toggleBookmark(comment.id)}
+                            className="flex items-center gap-1.5 group"
+                        >
+                            <Share className={cn("w-3.5 h-3.5 transition-colors", isBookmarked ? "text-primary" : "text-muted-foreground group-hover:text-primary")} />
+                        </motion.button>
+
                         {/* Own comment menu */}
                         {currentUser?.id === comment.userId && (
                             <AlertDialog>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                        <button className="text-muted-foreground hover:text-foreground">
+                                        <button className="text-muted-foreground hover:text-foreground ml-auto">
                                             <MoreHorizontal className="h-4 w-4" />
                                         </button>
                                     </DropdownMenuTrigger>
@@ -416,14 +455,14 @@ export function CommentSection({
                     {showReplies && hasReplies && (
                         <div className="mt-2 flex flex-col gap-1">
                             <AnimatePresence initial={false}>
-                                {replies.map(reply => renderComment(reply, true))}
+                                {replies.map(reply => renderComment(reply, true, comment.authorName))}
                             </AnimatePresence>
                         </div>
                     )}
                 </div>
             </motion.div>
         );
-    }, [repliesByParent, expandedReplies, likedComments, currentUser, handleLikeComment, handleDeleteComment, toggleReplies, editingComment, editText]);
+    }, [repliesByParent, expandedReplies, likedComments, bookmarkedComments, currentUser, handleLikeComment, toggleBookmark, handleDeleteComment, toggleReplies, editingComment, editText]);
 
     /* ── guards ─────────────────────────────────────────────────── */
     if (isAuthLoading) return <div className="p-4 text-center text-muted-foreground text-sm" style={{ fontFamily: FONT_RALEWAY }}>Loading comments…</div>;
@@ -431,7 +470,45 @@ export function CommentSection({
 
     const isInline = variant === 'inline';
 
-    /* ── comment input box ──────────────────────────────────────── */
+    /* ── sort dropdown header ───────────────────────────────────── */
+    const sortHeader = (
+        <div className="relative flex-shrink-0 px-4 pt-2 pb-1">
+            <button
+                onClick={() => setSortMenuOpen(o => !o)}
+                className="flex items-center gap-1 text-[0.8125rem] font-semibold text-foreground"
+                style={{ fontFamily: FONT_RALEWAY }}
+            >
+                {sortMode === 'top' ? 'Top Replies' : 'Latest Replies'}
+                <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", sortMenuOpen && "rotate-180")} />
+            </button>
+            {sortMenuOpen && (
+                <div
+                    className="absolute left-4 top-full mt-1 z-20 rounded-xl overflow-hidden shadow-xl border border-border bg-card min-w-[160px]"
+                >
+                    <button
+                        onClick={() => { setSortMode('top'); setSortMenuOpen(false); }}
+                        className={cn(
+                            "w-full text-left px-3 py-2 text-sm font-medium hover:bg-accent transition-colors",
+                            sortMode === 'top' ? "text-primary" : "text-foreground"
+                        )}
+                    >
+                        Top Replies
+                    </button>
+                    <button
+                        onClick={() => { setSortMode('latest'); setSortMenuOpen(false); }}
+                        className={cn(
+                            "w-full text-left px-3 py-2 text-sm font-medium hover:bg-accent transition-colors",
+                            sortMode === 'latest' ? "text-primary" : "text-foreground"
+                        )}
+                    >
+                        Latest Replies
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+
+    /* ── comment input box (X-style composer) ──────────────────── */
     const inputBox = (
         <div className="flex flex-col w-full">
             {replyingTo && (
@@ -440,33 +517,51 @@ export function CommentSection({
                     <button onClick={() => setReplyingTo(null)} className="hover:text-foreground font-semibold">Cancel</button>
                 </div>
             )}
-            <form onSubmit={handlePostComment} className="flex items-end gap-3 w-full">
-                <Avatar className="h-9 w-9 flex-shrink-0 mb-1">
-                    <AvatarImage src={userDetails?.avatar_url} />
-                    <AvatarFallback className="text-xs bg-primary text-primary-foreground">{userDetails?.name?.charAt(0) || 'U'}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1 relative flex items-end rounded-[20px] bg-accent/50 border border-transparent focus-within:border-primary/50 focus-within:bg-transparent transition-all overflow-hidden p-1">
+            <form onSubmit={handlePostComment} className="flex flex-col w-full">
+                <div className="flex items-start gap-3 w-full">
+                    <Avatar className="h-9 w-9 flex-shrink-0">
+                        <AvatarImage src={userDetails?.avatar_url} />
+                        <AvatarFallback className="text-xs bg-primary text-primary-foreground">{userDetails?.name?.charAt(0) || 'U'}</AvatarFallback>
+                    </Avatar>
                     <TextareaAutosize
                         ref={inputRef as any}
                         value={newComment}
                         onChange={e => setNewComment(e.target.value)}
-                        placeholder={replyingTo ? 'Add a reply…' : 'Add a comment...'}
+                        placeholder={replyingTo ? 'Post your reply' : 'Post your reply'}
                         minRows={1}
-                        maxRows={4}
+                        maxRows={5}
                         onKeyDown={e => {
                             if (e.key === 'Enter' && !e.shiftKey) {
                                 e.preventDefault();
                                 handlePostComment(e);
                             }
                         }}
-                        className="flex-1 bg-transparent px-3 py-2 text-[0.875rem] text-foreground outline-none placeholder:text-muted-foreground resize-none"
+                        className="flex-1 bg-transparent pt-2 text-[0.9375rem] text-foreground outline-none placeholder:text-muted-foreground resize-none"
                     />
-                    <button 
-                        type="submit" 
+                </div>
+
+                {/* Icon toolbar + pill Reply button, flush left like X */}
+                <div className="flex items-center justify-between mt-2">
+                    <div className="flex items-center gap-1">
+                        <button type="button" className="p-1.5 rounded-full text-primary hover:bg-primary/10 transition-colors">
+                            <ImageIcon className="w-[1.125rem] h-[1.125rem]" />
+                        </button>
+                        <button type="button" className="p-1.5 rounded-full text-primary hover:bg-primary/10 transition-colors">
+                            <Smile className="w-[1.125rem] h-[1.125rem]" />
+                        </button>
+                        <button type="button" className="p-1.5 rounded-full text-primary hover:bg-primary/10 transition-colors">
+                            <MapPin className="w-[1.125rem] h-[1.125rem]" />
+                        </button>
+                        <button type="button" className="p-1.5 rounded-full text-primary hover:bg-primary/10 transition-colors">
+                            <Flag className="w-[1.125rem] h-[1.125rem]" />
+                        </button>
+                    </div>
+                    <button
+                        type="submit"
                         disabled={!newComment.trim()}
-                        className="mb-2 mr-3 text-sm font-bold text-primary disabled:opacity-0 transition-opacity flex-shrink-0"
+                        className="px-4 py-1.5 rounded-full text-[0.8125rem] font-bold bg-[#EFF3F4] text-[#0F1419] disabled:opacity-60 disabled:cursor-not-allowed transition-opacity flex-shrink-0"
                     >
-                        Post
+                        Reply
                     </button>
                 </div>
             </form>
@@ -497,7 +592,10 @@ export function CommentSection({
                             <div className="flex-1 min-w-0">
                                 <p className="text-[0.875rem] font-bold text-foreground" style={{ fontFamily: FONT_RALEWAY }}>{author.name}</p>
                                 <p className="text-[0.6875rem] text-foreground mb-2" style={{ fontFamily: FONT_RALEWAY }}>{timeAgoStr(post.timestamp)}</p>
-                                <p className="text-[0.8125rem] font-light text-foreground leading-[15px]" style={{ fontFamily: FONT_RALEWAY }}>{post.text}</p>
+                                <p className="text-[0.8125rem] font-light text-foreground leading-[15px] mb-2" style={{ fontFamily: FONT_RALEWAY }}>{post.text}</p>
+                                <p className="text-[0.8125rem] text-muted-foreground" style={{ fontFamily: FONT_RALEWAY }}>
+                                    Replying to <span className="text-primary">@{author.name?.replace(/\s+/g, '') || 'user'}</span>
+                                </p>
                             </div>
                             {/* Close is handled by Sheet component */}
                         </div>
@@ -507,27 +605,16 @@ export function CommentSection({
                 {/* Divider */}
                 <div className="mx-4 flex-shrink-0" style={{ borderTop: '0.2px solid var(--c-border)' }} />
 
-                {/* Toolbar */}
-                <div className="flex flex-shrink-0 items-center justify-start px-4 py-2.5">
-                    <div className="flex items-center gap-3">
-                        <button className="text-muted-foreground hover:text-foreground transition-colors">
-                            <Paperclip className="w-5 h-5 text-primary" />
-                        </button>
-
-                        <button className="text-muted-foreground hover:text-foreground transition-colors">
-                            <MapPin className="w-5 h-5 text-primary" />
-                        </button>
-                    </div>
-                </div>
+                {sortHeader}
 
                 {/* Comments */}
                 <div className="px-4 pb-4 space-y-3 overflow-y-auto flex-1">
-                    {parentComments.length === 0 ? (
+                    {sortedParentComments.length === 0 ? (
                         <div className="py-8 text-center">
                             <p className="text-[0.8125rem] text-muted-foreground" style={{ fontFamily: FONT_RALEWAY }}>No comments yet. Be the first!</p>
                         </div>
                     ) : (
-                        parentComments.map(c => renderComment(c))
+                        sortedParentComments.map(c => renderComment(c))
                     )}
                     <div ref={commentsEndRef} />
                 </div>
@@ -543,15 +630,16 @@ export function CommentSection({
     /* ── INLINE variant: embedded beneath a post card ─────────── */
     return (
         <div className="flex flex-col h-auto relative">
+            {sortHeader}
             <div className="px-4 pb-4 space-y-3 overflow-y-auto flex-1" style={{ maxHeight: 'min(60vh, 400px)' }}>
-                {parentComments.length === 0 ? (
+                {sortedParentComments.length === 0 ? (
                     <div className="py-8 text-center flex flex-col items-center gap-2">
                         <MessageCircle className="w-10 h-10 text-muted-foreground" />
                         <p className="text-[0.8125rem] text-muted-foreground" style={{ fontFamily: FONT_RALEWAY }}>No comments yet.</p>
                         <p className="text-[0.75rem] text-muted-foreground" style={{ fontFamily: FONT_RALEWAY }}>Be the first to comment!</p>
                     </div>
                 ) : (
-                    parentComments.map(c => renderComment(c))
+                    sortedParentComments.map(c => renderComment(c))
                 )}
                 <div ref={commentsEndRef} />
             </div>

@@ -327,27 +327,19 @@ export function useOffline() {
     };
   }, [syncOfflineData]);
 
-  // Check Firestore connection
+  // Track connection status using browser's native online/offline events
+  // (avoids redundant DB polling — this hook is mounted in multiple places)
   useEffect(() => {
-    const checkSupabaseConnection = async () => {
-      try {
-        // Try to access a table to check connection
-        const { error } = await supabase
-          .from('users')
-          .select('id')
-          .limit(1);
-        
-        if (error) throw error;
-        setIsFirestoreOnline(true);
-      } catch (error) {
-        setIsFirestoreOnline(false);
-      }
+    setIsFirestoreOnline(navigator.onLine);
+
+    const handleOnlineStatus = () => setIsFirestoreOnline(navigator.onLine);
+    window.addEventListener('online', handleOnlineStatus);
+    window.addEventListener('offline', handleOnlineStatus);
+
+    return () => {
+      window.removeEventListener('online', handleOnlineStatus);
+      window.removeEventListener('offline', handleOnlineStatus);
     };
-
-    const interval = setInterval(checkSupabaseConnection, 10000);
-    checkSupabaseConnection();
-
-    return () => clearInterval(interval);
   }, []);
 
   // Load offline actions from localStorage

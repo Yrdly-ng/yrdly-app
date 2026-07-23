@@ -13,7 +13,6 @@ import { PostCard } from "@/components/PostCard";
 import { LocationChip } from "@/components/LocationChip";
 import { EventCreatorOnboarding } from "@/components/events/EventCreatorOnboarding";
 import { MarketplaceCreatorOnboarding } from "@/components/marketplace/MarketplaceCreatorOnboarding";
-import { Spotlight } from "@/components/ui/Spotlight";
 import { Magnetic } from "@/components/ui/Magnetic";
 import { RevealOnScroll } from "@/components/ui/RevealOnScroll";
 
@@ -96,9 +95,8 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
 
 
       {/* ── Post Bar ── */}
-      <Spotlight
+      <div
         className="overflow-hidden rounded-[1.25rem] border border-[var(--c-border)] bg-[var(--c-card)]"
-        color="rgba(92,213,120,0.10)"
       >
 
         <div className="p-4">
@@ -156,7 +154,7 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
 
           </div>
         </div>
-      </Spotlight>
+      </div>
 
       {/* Event Creator Onboarding */}
       <EventCreatorOnboarding

@@ -9,6 +9,8 @@ import {
   Share2,
   ChevronDown,
   Plus,
+  Heart,
+  ArrowUpRight,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -27,7 +29,6 @@ import { useLocation } from "@/contexts/LocationContext";
 import { LocationChip } from "@/components/LocationChip";
 import { EventCreatorOnboarding } from "@/components/events/EventCreatorOnboarding";
 import { TiltCard } from "@/components/ui/TiltCard";
-import { Spotlight } from "@/components/ui/Spotlight";
 import { Magnetic } from "@/components/ui/Magnetic";
 import { RevealOnScroll } from "@/components/ui/RevealOnScroll";
 
@@ -61,6 +62,51 @@ function formatEventDateTime(d: string | null | undefined, t?: string | null): s
   }
 }
 
+function categoryEmoji(category: string | null | undefined): string {
+  const c = (category || "").toLowerCase();
+  if (c.includes("anime")) return "🎨";
+  if (c.includes("tech")) return "🧪";
+  if (c.includes("music") || c.includes("concert")) return "🎵";
+  if (c.includes("sport")) return "⚽";
+  if (c.includes("food")) return "🍔";
+  if (c.includes("art")) return "🎨";
+  if (c.includes("business")) return "💼";
+  if (c.includes("education")) return "📚";
+  return "✨";
+}
+
+function dateChipParts(d: string | null | undefined): { day: string; month: string } {
+  if (!d) return { day: "--", month: "" };
+  try {
+    const date = new Date(d);
+    return {
+      day: date.toLocaleDateString("en-GB", { day: "2-digit" }),
+      month: date.toLocaleDateString("en-GB", { month: "short" }).toUpperCase(),
+    };
+  } catch {
+    return { day: "--", month: "" };
+  }
+}
+
+const QUICK_FILTERS = ["Today", "This Weekend", "Free", "Anime", "Music"] as const;
+type QuickFilter = typeof QUICK_FILTERS[number];
+
+function isToday(d: string | null | undefined): boolean {
+  if (!d) return false;
+  const date = new Date(d);
+  const now = new Date();
+  return date.toDateString() === now.toDateString();
+}
+
+function isThisWeekend(d: string | null | undefined): boolean {
+  if (!d) return false;
+  const date = new Date(d);
+  const day = date.getDay();
+  const now = new Date();
+  const diffDays = Math.floor((date.getTime() - now.getTime()) / 86400000);
+  return (day === 0 || day === 6) && diffDays >= 0 && diffDays <= 7;
+}
+
 
 
 export function EventsScreen({ className }: EventsScreenProps) {
@@ -78,6 +124,26 @@ export function EventsScreen({ className }: EventsScreenProps) {
   const [sortBy, setSortBy] = useState<"date" | "price" | "all">("date");
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
+  const [activeQuickFilters, setActiveQuickFilters] = useState<Set<QuickFilter>>(new Set());
+  const [savedEvents, setSavedEvents] = useState<Set<string>>(new Set());
+
+  const toggleQuickFilter = (filter: QuickFilter) => {
+    setActiveQuickFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(filter)) next.delete(filter);
+      else next.add(filter);
+      return next;
+    });
+  };
+
+  const toggleSaved = (eventId: string) => {
+    setSavedEvents((prev) => {
+      const next = new Set(prev);
+      if (next.has(eventId)) next.delete(eventId);
+      else next.add(eventId);
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (!carouselApi) return;
@@ -112,6 +178,18 @@ export function EventsScreen({ className }: EventsScreenProps) {
 
   const filteredAndSorted = useMemo(() => {
     let list = [...events];
+    if (activeQuickFilters.size > 0) {
+      list = list.filter((event) => {
+        return Array.from(activeQuickFilters).every((f) => {
+          if (f === "Today") return isToday(event.start_time);
+          if (f === "This Weekend") return isThisWeekend(event.start_time);
+          if (f === "Free") return !event.ticket_tiers?.length || event.ticket_tiers.every(t => t.price === 0);
+          if (f === "Anime") return (event.category || "").toLowerCase().includes("anime");
+          if (f === "Music") return (event.category || "").toLowerCase().includes("music") || (event.category || "").toLowerCase().includes("concert");
+          return true;
+        });
+      });
+    }
     if (sortBy === "price") {
       list.sort((a, b) => {
         const aMin = Math.min(...(a.ticket_tiers?.map(t => t.price) || [0]));
@@ -122,7 +200,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
       list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     }
     return list;
-  }, [events, sortBy]);
+  }, [events, sortBy, activeQuickFilters]);
 
   const pickedForYou = filteredAndSorted.slice(0, 5);
   const inYourArea = filteredAndSorted.slice(0, 3);
@@ -154,9 +232,27 @@ export function EventsScreen({ className }: EventsScreenProps) {
 
   return (
     <div className={cn("p-3 sm:p-4 md:p-6 space-y-6 md:space-y-8 pb-20 lg:pb-8", className)}>
-      {/* Location filter */}
-      <div className="flex items-center gap-2">
+      {/* Location + Quick filter bar */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
         <LocationChip />
+        <div className="w-px h-5 bg-border flex-shrink-0" />
+        {QUICK_FILTERS.map((filter) => {
+          const active = activeQuickFilters.has(filter);
+          return (
+            <button
+              key={filter}
+              onClick={() => toggleQuickFilter(filter)}
+              className={cn(
+                "flex-shrink-0 px-3 py-1.5 rounded-full font-sans text-xs font-medium transition-all",
+                active
+                  ? "bg-primary text-foreground shadow-[0_4px_12px_rgba(92,213,120,0.35)]"
+                  : "border border-border text-foreground hover:bg-accent"
+              )}
+            >
+              {filter}
+            </button>
+          );
+        })}
       </div>
       {/* Picked for You */}
       <section className="space-y-3 sm:space-y-4">
@@ -178,7 +274,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
         ) : (
           <>
             <Carousel
-              opts={{ align: "center", loop: true }}
+              opts={{ align: "start", loop: true }}
               className="w-full"
               setApi={setCarouselApi}
             >
@@ -186,10 +282,10 @@ export function EventsScreen({ className }: EventsScreenProps) {
                 {pickedForYou.map((event) => (
                   <CarouselItem
                     key={event.id}
-                    className="pl-2 sm:pl-4 basis-full sm:basis-[85%] md:basis-[75%] lg:basis-[70%]"
+                    className="pl-2 sm:pl-4 basis-[92%] sm:basis-[82%] md:basis-[72%] lg:basis-[68%]"
                   >
                     <TiltCard
-                      className="w-full rounded-[28px] overflow-hidden aspect-[820/330] max-h-[280px] sm:max-h-[330px] bg-card"
+                      className="w-full rounded-[20px] sm:rounded-[24px] overflow-hidden aspect-[820/340] max-h-[300px] sm:max-h-[350px] bg-card"
                       maxTilt={5}
                       onClick={() => router.push(`/events/${event.id}`)}
                     >
@@ -200,18 +296,27 @@ export function EventsScreen({ className }: EventsScreenProps) {
                         className="object-cover"
                         sizes="(max-width: 768px) 100vw, 75vw"
                       />
+                      {/* Category badge */}
+                      <div className="absolute top-4 left-4 sm:top-5 sm:left-5 z-10">
+                        <span
+                          className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-sans font-semibold text-white"
+                          style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(6px)" }}
+                        >
+                          {categoryEmoji(event.category)} {event.category || "Event"}
+                        </span>
+                      </div>
+                      {/* Dark gradient overlay for text legibility */}
                       <div
-                        className="absolute inset-0 rounded-[28px]"
+                        className="absolute inset-0 rounded-[20px] sm:rounded-[24px]"
                         style={{
-                          background: "rgba(56,56,56,0.43)",
-                          backdropFilter: "blur(8.4px)",
+                          background: "linear-gradient(180deg, rgba(0,0,0,0) 30%, rgba(0,0,0,0.75) 100%)",
                         }}
                       />
                       <div className="absolute inset-0 flex flex-col justify-end p-4 sm:p-6 md:p-8">
-                        <h3 className="font-sans font-extrabold text-lg sm:text-[1.4375rem] text-foreground mb-2">
+                        <h3 className="font-sans font-extrabold text-lg sm:text-[1.4375rem] text-white mb-2 drop-shadow-sm">
                           {event.title || "Event"}
                         </h3>
-                        <div className="flex flex-wrap items-center gap-3 text-foreground text-xs sm:text-[0.8125rem] font-sans">
+                        <div className="flex flex-wrap items-center gap-3 text-white/90 text-xs sm:text-[0.8125rem] font-sans">
                           <span className="flex items-center gap-1">
                             <CalendarDays className="w-4 h-4" />
                             {formatEventDateTime(event.start_time)}
@@ -222,14 +327,14 @@ export function EventsScreen({ className }: EventsScreenProps) {
                           </span>
                         </div>
                         <Magnetic
-                          className="mt-4 w-full sm:w-auto sm:min-w-[180px] justify-center rounded-full font-sans font-medium text-sm text-foreground border border-border/80 h-9 px-4"
+                          className="absolute bottom-4 right-4 sm:bottom-6 sm:right-6 md:bottom-8 md:right-8 w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-foreground transition-shadow hover:shadow-[0_0_20px_rgba(92,213,120,0.5)]"
                           style={{ background: "hsl(var(--primary))" }}
                           onClick={(e) => {
                             e.stopPropagation();
                             router.push(`/events/${event.id}`);
                           }}
                         >
-                          Get Ticket
+                          <ArrowUpRight className="w-5 h-5" />
                         </Magnetic>
                       </div>
                     </TiltCard>
@@ -273,56 +378,80 @@ export function EventsScreen({ className }: EventsScreenProps) {
           </Link>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-          {inYourArea.map((event) => (
-            <div
-              key={event.id}
-              className="rounded overflow-hidden cursor-pointer transition hover:opacity-95"
-              style={{ background: "var(--c-card)" }}
-              onClick={() => router.push(`/events/${event.id}`)}
-            >
-              <div className="p-3 flex gap-2">
-                <div className="w-14 h-14 rounded flex-shrink-0 bg-background overflow-hidden">
-                  <Image
-                    src={event.cover_image_url || "/placeholder.svg"}
-                    alt=""
-                    width={56}
-                    height={56}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="font-sans font-medium italic text-xs sm:text-[0.8125rem] text-foreground truncate">
-                    {event.title || "Event"}
-                  </p>
-                  <p className="font-sans text-[0.5625rem] sm:text-[0.5625rem] text-foreground mt-0.5">
-                    {formatEventDate(event.start_time)}
-                  </p>
-                  <div className="flex items-center gap-1 mt-1 text-muted-foreground">
-                    <MapPin className="w-3 h-3 flex-shrink-0" />
-                    <span className="font-sans text-[0.5625rem] sm:text-[0.6875rem] truncate">
-                      {event.location_address || event.description?.slice(0, 30) || "—"}
-                    </span>
+          {inYourArea.map((event) => {
+            const { day, month } = dateChipParts(event.start_time);
+            const isSaved = savedEvents.has(event.id);
+            return (
+              <div
+                key={event.id}
+                className="rounded-xl overflow-hidden cursor-pointer transition-all duration-300 hover:-translate-y-1"
+                style={{ background: "var(--c-card)", boxShadow: "0 10px 30px rgba(0,0,0,0.06)" }}
+                onClick={() => router.push(`/events/${event.id}`)}
+              >
+                <div className="p-3 flex gap-2">
+                  <div className="relative w-14 h-14 rounded-lg flex-shrink-0 bg-background overflow-hidden">
+                    <Image
+                      src={event.cover_image_url || "/placeholder.svg"}
+                      alt=""
+                      width={56}
+                      height={56}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute top-0.5 left-0.5 rounded-md px-1 py-0.5 text-center leading-none" style={{ background: "rgba(0,0,0,0.55)" }}>
+                      <div className="text-white font-sans font-bold text-[0.5rem]">{day}</div>
+                      <div className="text-white/80 font-sans text-[0.4rem]">{month}</div>
+                    </div>
                   </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-sans font-medium italic text-xs sm:text-[0.8125rem] text-foreground truncate">
+                      {event.title || "Event"}
+                    </p>
+                    <p className="font-sans text-[0.5625rem] sm:text-[0.5625rem] text-foreground mt-0.5">
+                      {formatEventDate(event.start_time)}
+                    </p>
+                    <div className="flex items-center gap-1 mt-1 text-muted-foreground">
+                      <MapPin className="w-3 h-3 flex-shrink-0" />
+                      <span className="font-sans text-[0.5625rem] sm:text-[0.6875rem] truncate">
+                        {event.location_address || event.description?.slice(0, 30) || "—"}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    aria-label={isSaved ? "Unsave" : "Save"}
+                    className="p-1 h-fit text-muted-foreground hover:text-primary transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleSaved(event.id);
+                    }}
+                  >
+                    <Heart className={cn("w-4 h-4", isSaved && "fill-primary text-primary")} />
+                  </button>
+                </div>
+                <div className="px-3 pb-3 pt-0 border-t border-border">
+                  {event.attendee_count && event.attendee_count > 0 ? (
+                    <p className="font-sans text-[0.5625rem] text-muted-foreground mb-2 mt-2">
+                      {event.attendee_count === 1 ? "1 person going" : `${event.attendee_count} people going`}
+                    </p>
+                  ) : (
+                    <p className="font-sans text-[0.5625rem] text-muted-foreground mb-2 mt-2">
+                      Be the first to RSVP
+                    </p>
+                  )}
+                  <Button
+                    size="sm"
+                    className="w-full rounded-[15px] font-sans text-[0.6875rem] text-foreground transition-shadow hover:shadow-[0_0_16px_rgba(92,213,120,0.45)]"
+                    style={{ background: "hsl(var(--primary))" }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      router.push(`/events/${event.id}`);
+                    }}
+                  >
+                    Get Ticket
+                  </Button>
                 </div>
               </div>
-              <div className="px-3 pb-3 pt-0 border-t border-border">
-                <p className="font-sans text-[0.5625rem] text-muted-foreground mb-2">
-                  {event.attendee_count || 0} are interested
-                </p>
-                <Button
-                  size="sm"
-                  className="w-full rounded-[15px] font-sans text-[0.6875rem] text-foreground"
-                  style={{ background: "hsl(var(--primary))" }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    router.push(`/events/${event.id}`);
-                  }}
-                >
-                  Get Ticket
-                </Button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
@@ -331,9 +460,10 @@ export function EventsScreen({ className }: EventsScreenProps) {
         <button
           onClick={() => setSortBy("all")}
           className={cn(
-            "flex items-center gap-1.5 px-3 py-2 rounded-md font-sans text-[0.625rem] sm:text-xs flex-shrink-0",
-            sortBy === "all" ? "bg-foreground text-background" : "border border-border text-foreground"
+            "flex items-center gap-1.5 px-3 py-2 rounded-md font-sans text-[0.625rem] sm:text-xs flex-shrink-0 transition-all",
+            sortBy === "all" ? "bg-foreground text-background" : "text-foreground"
           )}
+          style={sortBy !== "all" ? { boxShadow: "0 2px 8px rgba(0,0,0,0.06)" } : undefined}
         >
           All Events
           <ChevronDown className="w-3 h-3" />
@@ -341,9 +471,10 @@ export function EventsScreen({ className }: EventsScreenProps) {
         <button
           onClick={() => setSortBy("price")}
           className={cn(
-            "flex items-center gap-1.5 px-3 py-2 rounded-md font-sans text-[0.625rem] sm:text-xs flex-shrink-0",
-            sortBy === "price" ? "bg-foreground text-background" : "border border-border text-foreground"
+            "flex items-center gap-1.5 px-3 py-2 rounded-md font-sans text-[0.625rem] sm:text-xs flex-shrink-0 transition-all",
+            sortBy === "price" ? "bg-foreground text-background" : "text-foreground"
           )}
+          style={sortBy !== "price" ? { boxShadow: "0 2px 8px rgba(0,0,0,0.06)" } : undefined}
         >
           Price
           <ChevronDown className="w-3 h-3" />
@@ -351,9 +482,10 @@ export function EventsScreen({ className }: EventsScreenProps) {
         <button
           onClick={() => setSortBy("date")}
           className={cn(
-            "flex items-center gap-1.5 px-3 py-2 rounded-md font-sans text-[0.625rem] sm:text-xs flex-shrink-0",
-            sortBy === "date" ? "bg-foreground text-background" : "border border-border text-foreground"
+            "flex items-center gap-1.5 px-3 py-2 rounded-md font-sans text-[0.625rem] sm:text-xs flex-shrink-0 transition-all",
+            sortBy === "date" ? "bg-foreground text-background" : "text-foreground"
           )}
+          style={sortBy !== "date" ? { boxShadow: "0 2px 8px rgba(0,0,0,0.06)" } : undefined}
         >
           Date
           <ChevronDown className="w-3 h-3" />
@@ -379,12 +511,14 @@ export function EventsScreen({ className }: EventsScreenProps) {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {mainstream.map((event, idx) => (
+            {mainstream.map((event, idx) => {
+              const { day, month } = dateChipParts(event.start_time);
+              const isSaved = savedEvents.has(event.id);
+              return (
               <RevealOnScroll key={event.id} delay={(idx % 4) * 60}>
-              <Spotlight
-                className="rounded-[11px] overflow-hidden cursor-pointer transition hover:opacity-95"
-                style={{ background: "var(--c-card)" }}
-                color="rgba(59,130,246,0.12)"
+              <div
+                className="rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 hover:-translate-y-1"
+                style={{ background: "var(--c-card)", boxShadow: "0 10px 30px rgba(0,0,0,0.06)" }}
                 onClick={() => router.push(`/events/${event.id}`)}
               >
                 <div className="p-4 sm:p-5">
@@ -417,6 +551,44 @@ export function EventsScreen({ className }: EventsScreenProps) {
                       className="object-cover"
                       sizes="(max-width: 768px) 100vw, 50vw"
                     />
+                    {/* Date chip overlay */}
+                    <div className="absolute top-2.5 left-2.5 rounded-lg px-2 py-1 text-center leading-none" style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }}>
+                      <div className="text-white font-sans font-bold text-xs">{day}</div>
+                      <div className="text-white/80 font-sans text-[0.5625rem]">{month}</div>
+                    </div>
+                    {/* Action buttons overlay */}
+                    <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5">
+                      <button
+                        aria-label={isSaved ? "Unsave" : "Save"}
+                        className="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
+                        style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)" }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleSaved(event.id);
+                        }}
+                      >
+                        <Heart className={cn("w-4 h-4 text-white", isSaved && "fill-white")} />
+                      </button>
+                      <button
+                        aria-label="Share"
+                        className="w-8 h-8 rounded-full flex items-center justify-center"
+                        style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)" }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (navigator.share) {
+                            navigator.share({
+                              title: event.title || "Event",
+                              url: window.location.origin + `/events/${event.id}`,
+                            });
+                          } else {
+                            navigator.clipboard.writeText(window.location.origin + `/events/${event.id}`);
+                            toast({ title: "Link copied" });
+                          }
+                        }}
+                      >
+                        <Share2 className="w-4 h-4 text-white" />
+                      </button>
+                    </div>
                   </div>
                   <div className="space-y-2 text-foreground font-sans text-[0.8125rem]">
                     <div className="flex items-center gap-2">
@@ -434,28 +606,32 @@ export function EventsScreen({ className }: EventsScreenProps) {
                         ? `From ₦${Math.min(...event.ticket_tiers.map(t => t.price)).toLocaleString()}`
                         : "Free"}
                     </span>
-                    <button
-                      className="p-2 text-foreground hover:bg-accent rounded-full"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (navigator.share) {
-                          navigator.share({
-                            title: event.title || "Event",
-                            url: window.location.origin + `/events/${event.id}`,
-                          });
-                        } else {
-                          navigator.clipboard.writeText(window.location.origin + `/events/${event.id}`);
-                          toast({ title: "Link copied" });
-                        }
-                      }}
-                    >
-                      <Share2 className="w-5 h-5" />
-                    </button>
+                    {event.attendee_count && event.attendee_count > 0 ? (
+                      <div className="flex items-center gap-1.5">
+                        <div className="flex -space-x-2">
+                          {Array.from({ length: Math.min(3, event.attendee_count) }).map((_, i) => (
+                            <div
+                              key={i}
+                              className="w-5 h-5 rounded-full border-2 border-[var(--c-card)] flex items-center justify-center text-[0.5rem] font-sans font-bold text-primary-foreground"
+                              style={{ background: "hsl(var(--primary))" }}
+                            >
+                              {String.fromCharCode(65 + i)}
+                            </div>
+                          ))}
+                        </div>
+                        <span className="font-sans text-[0.6875rem] text-muted-foreground">
+                          {event.attendee_count > 3 ? `+${event.attendee_count - 3} going` : "going"}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="font-sans text-[0.6875rem] text-muted-foreground">Be the first to join</span>
+                    )}
                   </div>
                 </div>
-              </Spotlight>
+              </div>
               </RevealOnScroll>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>
