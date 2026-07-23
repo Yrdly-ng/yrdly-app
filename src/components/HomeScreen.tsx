@@ -145,11 +145,11 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
 
             <Magnetic
               onClick={() => setOnboardingOpen(true)}
-              className="flex items-center gap-2 rounded-full px-4 py-2 text-[0.9rem] font-semibold text-[#7E22CE] bg-[#F3E8FF] border border-[#E9D5FF] shadow-sm hover:bg-[#E9D5FF] dark:text-purple-300 dark:bg-slate-800/80 dark:border-purple-900/50 dark:hover:bg-slate-700/80 dark:shadow-[0_0_12px_rgba(192,132,252,0.15)]"
+              className="flex items-center gap-2 rounded-full px-4 py-2 text-[0.9rem] font-semibold whitespace-nowrap text-[#7E22CE] bg-[#F3E8FF] border border-[#E9D5FF] shadow-sm hover:bg-[#E9D5FF] dark:text-purple-300 dark:bg-slate-800/80 dark:border-purple-900/50 dark:hover:bg-slate-700/80 dark:shadow-[0_0_12px_rgba(192,132,252,0.15)]"
               style={{ fontFamily: FONT_RALEWAY }}
             >
               <TicketGradient />
-              Create Event
+              Event
             </Magnetic>
 
           </div>

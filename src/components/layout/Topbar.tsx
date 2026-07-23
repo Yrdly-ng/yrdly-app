@@ -44,7 +44,7 @@ export function Topbar({
       <div className="w-full flex items-center gap-3 md:gap-4">
         <Link href="/home" className="flex items-center gap-2.5 flex-shrink-0">
           <span className="flex items-center justify-center rounded-full bg-[var(--c-card2)] p-1.5 md:p-2 shadow-sm">
-            <img src="/logo.png" alt="Yrdly" className="h-7 w-7 md:h-9 md:w-9 object-contain" />
+            <img src="/logo.png" alt="Yrdly" className="h-9 w-9 md:h-9 md:w-9 object-contain" />
           </span>
           <span
             className="hidden sm:block text-[1.2rem] font-extrabold text-[var(--c-text)] tracking-tight"
@@ -83,17 +83,8 @@ export function Topbar({
           </nav>
         )}
 
-        {/* Mobile compact middle: location badge fills the space instead of a full search bar */}
-        <div className="flex md:hidden flex-1 items-center justify-center px-1 min-w-0">
-          <button
-            type="button"
-            onClick={onSearch}
-            className="inline-flex items-center gap-1 flex-shrink-0 rounded-full bg-[var(--c-card2)] border border-[var(--c-border)] px-3 py-1.5 text-[0.75rem] font-semibold text-[var(--c-text)] max-w-full truncate"
-          >
-            <MapPin weight="fill" className="h-3.5 w-3.5 flex-shrink-0 text-[var(--primary)]" />
-            <span className="truncate">All Nigeria</span>
-          </button>
-        </div>
+        {/* Mobile: logo left, icons fill the rest of the row */}
+        <div className="flex md:hidden flex-1" />
 
         {/* Desktop full search bar */}
         <div className="hidden md:flex flex-1 justify-center px-2 min-w-[120px]">
@@ -129,29 +120,29 @@ export function Topbar({
             <MagnifyingGlass weight="bold" className="w-4 h-4" />
           </Button>
 
-          <div className="hidden md:block group/tip relative">
+          <div className="group/tip relative">
             <Link href="/map">
               <Button
                 variant="ghost"
                 size="icon"
-                className="w-10 h-10 flex items-center justify-center text-[var(--c-text-muted)] border border-[var(--c-border)] bg-[var(--c-card2)] rounded-full hover:bg-[#F3F4F6] hover:text-[var(--foreground)] transition-all duration-150"
+                className="w-9 h-9 md:w-10 md:h-10 flex items-center justify-center text-[var(--c-text-muted)] border border-[var(--c-border)] bg-[var(--c-card2)] rounded-full hover:bg-[#F3F4F6] hover:text-[var(--foreground)] transition-all duration-150"
               >
-                <MapPin weight="bold" className="w-5 h-5" />
+                <MapPin weight="bold" className="w-4 h-4 md:w-5 md:h-5" />
               </Button>
             </Link>
-            <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 whitespace-nowrap rounded-md bg-[var(--c-text)] px-2 py-1 text-[0.7rem] font-medium text-[var(--c-card)] opacity-0 scale-95 group-hover/tip:opacity-100 group-hover/tip:scale-100 transition-all duration-150 z-10">
+            <span className="hidden md:block pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 whitespace-nowrap rounded-md bg-[var(--c-text)] px-2 py-1 text-[0.7rem] font-medium text-[var(--c-card)] opacity-0 scale-95 group-hover/tip:opacity-100 group-hover/tip:scale-100 transition-all duration-150 z-10">
               Location
             </span>
           </div>
 
-          <div className="hidden md:block group/tip relative">
+          <div className="group/tip relative">
             <Link href="/messages">
               <Button
                 variant="ghost"
                 size="icon"
-                className="relative w-10 h-10 flex items-center justify-center text-[var(--c-text-muted)] border border-[var(--c-border)] bg-[var(--c-card2)] rounded-full hover:bg-[#F3F4F6] hover:text-[var(--foreground)] transition-all duration-150"
+                className="relative w-9 h-9 md:w-10 md:h-10 flex items-center justify-center text-[var(--c-text-muted)] border border-[var(--c-border)] bg-[var(--c-card2)] rounded-full hover:bg-[#F3F4F6] hover:text-[var(--foreground)] transition-all duration-150"
               >
-                <ChatCircle weight="bold" className="w-5 h-5" />
+                <ChatCircle weight="bold" className="w-4 h-4 md:w-5 md:h-5" />
                 {unreadMessages > 0 && (
                   <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-[#ED1111] text-white text-[0.65rem] font-bold leading-none border-2 border-[var(--c-card)]">
                     {unreadMessages > 9 ? "9+" : unreadMessages}
@@ -159,7 +150,7 @@ export function Topbar({
                 )}
               </Button>
             </Link>
-            <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 whitespace-nowrap rounded-md bg-[var(--c-text)] px-2 py-1 text-[0.7rem] font-medium text-[var(--c-card)] opacity-0 scale-95 group-hover/tip:opacity-100 group-hover/tip:scale-100 transition-all duration-150 z-10">
+            <span className="hidden md:block pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 whitespace-nowrap rounded-md bg-[var(--c-text)] px-2 py-1 text-[0.7rem] font-medium text-[var(--c-card)] opacity-0 scale-95 group-hover/tip:opacity-100 group-hover/tip:scale-100 transition-all duration-150 z-10">
               Messages
             </span>
           </div>
@@ -186,10 +177,10 @@ export function Topbar({
           <Button
             variant="ghost"
             size="icon"
-            className="hidden md:flex w-10 h-10 rounded-full overflow-hidden p-0.5 ml-1 border border-[var(--c-border)] bg-[var(--c-card2)] shadow-sm"
+            className="flex w-9 h-9 md:w-10 md:h-10 rounded-full overflow-hidden p-0.5 ml-1 border border-[var(--c-border)] bg-[var(--c-card2)] shadow-sm"
             onClick={onProfile}
           >
-            <Avatar className="w-10 h-10 rounded-full">
+            <Avatar className="w-full h-full rounded-full">
               <AvatarImage src={profile?.avatar_url || ""} />
               <AvatarFallback className="bg-[var(--primary)] text-white font-bold">
                 {profile?.name?.charAt(0).toUpperCase() || "U"}
