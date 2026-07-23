@@ -3,14 +3,9 @@
     "apps": [],
     "details": [
       {
-        "appID": "<YOUR_APPLE_TEAM_ID>.com.feranmi.dev.yrdlymobile",
+        "appID": "INSERT_TEAM_ID_HERE.com.feranmi.dev.yrdlymobile",
         "paths": ["*"]
       }
-    ]
-  },
-  "webcredentials": {
-    "apps": [
-      "<YOUR_APPLE_TEAM_ID>.com.feranmi.dev.yrdlymobile"
     ]
   }
 }
