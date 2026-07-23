@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -63,13 +62,13 @@ const getFormSchema = (hasExistingImages: boolean) =>
 
 
 // ── Location pin icon (SVG matching Figma) ─────────────────────
-const LocationIcon = () => (
+const LocationIcon = ({ filled = false }: { filled?: boolean }) => (
   <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path
       d="M11 2C7.686 2 5 4.686 5 8c0 4.5 6 12 6 12s6-7.5 6-12c0-3.314-2.686-6-6-6zm0 8.5A2.5 2.5 0 1 1 11 5.5a2.5 2.5 0 0 1 0 5z"
       stroke={GREEN}
       strokeWidth="1.3"
-      fill="none"
+      fill={filled ? GREEN : "none"}
     />
   </svg>
 );
@@ -108,6 +107,7 @@ function PostForm({
   const text = form.watch("text") as string;
   const { toast } = useToast();
   const [fetchingLocation, setFetchingLocation] = React.useState(false);
+  const [locationTag, setLocationTag] = React.useState<string | null>(null);
   const [videoDuration, setVideoDuration] = React.useState<string | null>(null);
   const [videoPreviewUrl, setVideoPreviewUrl] = React.useState<string | null>(null);
 
@@ -149,6 +149,11 @@ function PostForm({
 
 
   const handleLocation = async () => {
+    if (locationTag) {
+      // Tapping again while a tag is already attached just removes it
+      setLocationTag(null);
+      return;
+    }
     if (!navigator.geolocation) {
       toast({ title: "Location not supported", description: "Your browser doesn't support geolocation.", variant: "destructive" });
       return;
@@ -164,11 +169,10 @@ function PostForm({
           );
           const data = await res.json();
           const locationText = data.display_name
-            ? `📍 ${data.display_name.split(',').slice(0, 3).join(',').trim()}`
-            : `📍 ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
-          const currentText = form.getValues('text') || '';
-          const separator = currentText && !currentText.endsWith('\n') ? '\n' : '';
-          form.setValue('text', `${currentText}${separator}${locationText}`, { shouldDirty: true });
+            ? data.display_name.split(',').slice(0, 3).join(',').trim()
+            : `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+          // Attach as a tag instead of writing straight into the post body
+          setLocationTag(locationText);
         } catch {
           toast({ title: "Location error", description: "Could not fetch your address. Please try again.", variant: "destructive" });
         } finally {
@@ -187,7 +191,19 @@ function PostForm({
   };
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col" style={{ minHeight: 0, flex: 1 }}>
+    <form
+      onSubmit={form.handleSubmit((values: any) => {
+        if (locationTag) {
+          const currentText = values.text || "";
+          const separator = currentText && !currentText.endsWith("\n") ? "\n" : "";
+          onSubmit({ ...values, text: `${currentText}${separator}📍 ${locationTag}` });
+        } else {
+          onSubmit(values);
+        }
+      })}
+      className="flex flex-col"
+      style={{ minHeight: 0, flex: 1 }}
+    >
       {/* ── Top close button ── */}
       <div className="flex items-center justify-end px-3 pt-3 pb-1 flex-shrink-0">
         <button
@@ -286,6 +302,27 @@ function PostForm({
             </button>
           </div>
         )}
+
+        {/* ── Location tag (chip) — attached to the post, not inserted into the text ── */}
+        {locationTag && (
+          <div className="flex items-center gap-1.5 mt-2 w-fit max-w-full">
+            <span
+              className="flex items-center gap-1.5 rounded-full pl-3 pr-2 py-1.5 text-[0.8rem] font-medium max-w-full"
+              style={{ background: "rgba(34,197,94,0.12)", color: GREEN, fontFamily: FONT_RL }}
+            >
+              <LocationIcon />
+              <span className="truncate max-w-[220px]">{locationTag}</span>
+              <button
+                type="button"
+                onClick={() => setLocationTag(null)}
+                aria-label="Remove location tag"
+                className="flex-shrink-0 hover:opacity-70 transition-opacity"
+              >
+                <X size={14} />
+              </button>
+            </span>
+          </div>
+        )}
       </div>
 
       {/* ── Divider ── */}
@@ -339,11 +376,11 @@ function PostForm({
             onClick={handleLocation}
             disabled={fetchingLocation}
             className="hover:opacity-70 transition-opacity disabled:opacity-50"
-            aria-label="Add location"
+            aria-label={locationTag ? "Remove location tag" : "Tag your location"}
           >
             {fetchingLocation
               ? <Loader2 size={22} color={GREEN} strokeWidth={2} className="animate-spin" />
-              : <LocationIcon />}
+              : <LocationIcon filled={!!locationTag} />}
           </button>
         </div>
 

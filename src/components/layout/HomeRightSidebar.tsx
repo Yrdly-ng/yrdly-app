@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
-import { MapPin, Users, Zap, DollarSign } from "lucide-react";
+import { MapPin, Users, Zap } from "lucide-react";
 import type { Post } from "@/types";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { TiltCard } from "@/components/ui/TiltCard";
@@ -272,7 +272,12 @@ export function HomeRightSidebar() {
 
         <div>
           <div className="flex items-center gap-2.5 mb-3 px-1">
-            <DollarSign className="w-5 h-5 flex-shrink-0 text-[var(--primary)] fill-[var(--primary)]" />
+            <span
+              className="flex items-center justify-center w-5 h-5 flex-shrink-0 rounded-full text-[1.15rem] font-bold leading-none text-[var(--primary)]"
+              aria-hidden="true"
+            >
+              ₦
+            </span>
             <h2
               className="text-[1.25rem] font-bold text-[var(--c-text)]"
               style={{ fontFamily: FONT_RALEWAY }}

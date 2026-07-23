@@ -15,26 +15,48 @@ interface ImageSwiperProps {
 
 export function ImageSwiper({ images, isOpen, onClose, initialIndex = 0 }: ImageSwiperProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
-  const [touchStart, setTouchStart] = useState<number | null>(null);
-  const [touchEnd, setTouchEnd] = useState<number | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [containerWidth, setContainerWidth] = useState(0);
 
-  // Reset index when modal opens
+  const containerRef = useRef<HTMLDivElement>(null);
+  const dragStartX = useRef(0);
+  const lastX = useRef(0);
+  const lastTime = useRef(0);
+  const velocity = useRef(0);
+
   useEffect(() => {
     if (isOpen) {
       setCurrentIndex(initialIndex);
+      setDragOffset(0);
     }
   }, [isOpen, initialIndex]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const measure = () => {
+      if (containerRef.current) {
+        setContainerWidth(containerRef.current.offsetWidth);
+      }
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [isOpen]);
+
   const goToPrevious = useCallback(() => {
+    setIsAnimating(true);
     setCurrentIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
+    setDragOffset(0);
   }, [images.length]);
 
   const goToNext = useCallback(() => {
+    setIsAnimating(true);
     setCurrentIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
+    setDragOffset(0);
   }, [images.length]);
 
-  // Handle keyboard navigation
   useEffect(() => {
     if (!isOpen) return;
 
@@ -52,34 +74,82 @@ export function ImageSwiper({ images, isOpen, onClose, initialIndex = 0 }: Image
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose, goToNext, goToPrevious]);
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchEnd(null);
-    setTouchStart(e.targetTouches[0].clientX);
+  const startDrag = (clientX: number) => {
+    setIsAnimating(false);
+    setIsDragging(true);
+    dragStartX.current = clientX;
+    lastX.current = clientX;
+    lastTime.current = performance.now();
+    velocity.current = 0;
   };
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX);
-  };
+  const moveDrag = (clientX: number) => {
+    if (!isDragging) return;
 
-  const handleTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-    
-    const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > 50;
-    const isRightSwipe = distance < -50;
-
-    if (isLeftSwipe) {
-      goToNext();
-    } else if (isRightSwipe) {
-      goToPrevious();
+    const now = performance.now();
+    const dt = now - lastTime.current;
+    if (dt > 0) {
+      velocity.current = (clientX - lastX.current) / dt;
     }
+    lastX.current = clientX;
+    lastTime.current = now;
+
+    let offset = clientX - dragStartX.current;
+
+    const atFirst = currentIndex === 0;
+    const atLast = currentIndex === images.length - 1;
+    if ((atFirst && offset > 0) || (atLast && offset < 0)) {
+      offset = offset * 0.35;
+    }
+
+    setDragOffset(offset);
+  };
+
+  const endDrag = () => {
+    if (!isDragging) return;
+    setIsDragging(false);
+
+    const width = containerWidth || 1;
+    const distanceRatio = dragOffset / width;
+    const flingVelocity = velocity.current;
+
+    setIsAnimating(true);
+
+    const passedThreshold = Math.abs(distanceRatio) > 0.22;
+    const flungFast = Math.abs(flingVelocity) > 0.5;
+
+    if ((passedThreshold || flungFast) && dragOffset < 0 && currentIndex < images.length - 1) {
+      setCurrentIndex((prev) => prev + 1);
+    } else if ((passedThreshold || flungFast) && dragOffset > 0 && currentIndex > 0) {
+      setCurrentIndex((prev) => prev - 1);
+    }
+
+    setDragOffset(0);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => startDrag(e.targetTouches[0].clientX);
+  const handleTouchMove = (e: React.TouchEvent) => moveDrag(e.targetTouches[0].clientX);
+  const handleTouchEnd = () => endDrag();
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    startDrag(e.clientX);
+  };
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isDragging) moveDrag(e.clientX);
+  };
+  const handleMouseUp = () => endDrag();
+  const handleMouseLeave = () => {
+    if (isDragging) endDrag();
   };
 
   if (!isOpen) return null;
 
+  const baseOffsetPercent = -currentIndex * 100;
+  const dragOffsetPercent = containerWidth ? (dragOffset / containerWidth) * 100 : 0;
+
   return (
     <div className="fixed inset-0 z-[110] bg-black/90 flex items-center justify-center">
-      {/* Close button */}
       <Button
         variant="ghost"
         size="icon"
@@ -89,7 +159,6 @@ export function ImageSwiper({ images, isOpen, onClose, initialIndex = 0 }: Image
         <X className="h-6 w-6" />
       </Button>
 
-      {/* Navigation buttons */}
       {images.length > 1 && (
         <>
           <Button
@@ -111,45 +180,71 @@ export function ImageSwiper({ images, isOpen, onClose, initialIndex = 0 }: Image
         </>
       )}
 
-      {/* Image container */}
       <div
         ref={containerRef}
-        className="flex items-center justify-center w-full h-full px-10"
+        className="relative w-full h-full overflow-hidden select-none"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
+        style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
       >
-        <Image
-          src={images[currentIndex]}
-          alt={`Image ${currentIndex + 1}`}
-          width={0}
-          height={0}
-          sizes="100vw"
-          priority
+        <div
+          className="flex h-full"
           style={{
-            width: 'auto',
-            height: 'auto',
-            maxWidth: '100%',
-            maxHeight: '90vh',
-            objectFit: 'contain',
+            width: `${images.length * 100}%`,
+            transform: `translateX(calc(${baseOffsetPercent / images.length}% + ${dragOffsetPercent}%))`,
+            transition: isAnimating ? 'transform 320ms cubic-bezier(0.22, 1, 0.36, 1)' : 'none',
           }}
-        />
+          onTransitionEnd={() => setIsAnimating(false)}
+        >
+          {images.map((src, index) => (
+            <div
+              key={index}
+              className="flex items-center justify-center h-full px-10"
+              style={{ width: `${100 / images.length}%` }}
+            >
+              <Image
+                src={src}
+                alt={`Image ${index + 1}`}
+                width={0}
+                height={0}
+                sizes="100vw"
+                draggable={false}
+                priority={index === currentIndex}
+                style={{
+                  width: 'auto',
+                  height: 'auto',
+                  maxWidth: '100%',
+                  maxHeight: '90vh',
+                  objectFit: 'contain',
+                  pointerEvents: 'none',
+                }}
+              />
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Image counter */}
       {images.length > 1 && (
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 text-foreground px-3 py-1 rounded-full text-sm">
           {currentIndex + 1} / {images.length}
         </div>
       )}
 
-      {/* Dots indicator */}
       {images.length > 1 && (
         <div className="absolute bottom-16 left-1/2 -translate-x-1/2 flex gap-2">
           {images.map((_, index) => (
             <button
               key={index}
-              onClick={() => setCurrentIndex(index)}
+              onClick={() => {
+                setIsAnimating(true);
+                setCurrentIndex(index);
+                setDragOffset(0);
+              }}
               className={cn(
                 "w-2 h-2 rounded-full transition-colors",
                 index === currentIndex ? "bg-background" : "bg-background/50"

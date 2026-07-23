@@ -54,7 +54,20 @@ const CATALOG_CATEGORIES = [
   "General",
 ];
 
-const getFormSchema = (isEditMode: boolean) => z.object({
+const BlobImage = memo(({ file, className, alt }: { file: File; className?: string; alt?: string }) => {
+  const [url, setUrl] = React.useState<string>("");
+  React.useEffect(() => {
+    const objectUrl = URL.createObjectURL(file);
+    setUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file]);
+  if (!url) return null;
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={url} alt={alt || ""} className={className} />;
+});
+BlobImage.displayName = "BlobImage";
+
+const getFormSchema = (isEditMode: boolean, existingImageCount: number) => z.object({
   title: z.string().min(3, "Title must be at least 3 characters.").max(100, "Title too long"),
   description: z.string().min(1, "Description is required.").max(1000, "Description too long"),
   price: z.preprocess(
@@ -63,10 +76,18 @@ const getFormSchema = (isEditMode: boolean) => z.object({
   ),
   category: z.string().min(1, "Category is required."),
   in_stock: z.boolean().default(true),
-  image: z.any().refine(
-    (files) => files && (files.length > 0 || (Array.isArray(files) && files.some(f => typeof f === 'string'))),
-    "At least one image is required."
-  ),
+  image: z.any()
+    .refine(
+      (files) => files && (files.length > 0 || (Array.isArray(files) && files.some(f => typeof f === 'string'))),
+      "At least one image is required."
+    )
+    .refine(
+      (files) => {
+        const newCount = files && typeof files.length === "number" && !Array.isArray(files) ? files.length : 0;
+        return existingImageCount + newCount <= 4;
+      },
+      "You can add up to 4 images per item."
+    ),
 });
 
 type CreateCatalogItemDialogProps = {
@@ -91,7 +112,11 @@ const CreateCatalogItemDialogComponent = ({
   const isEditMode = !!itemToEdit;
   const { toast } = useToast();
 
-  const formSchema = useMemo(() => getFormSchema(isEditMode), [isEditMode]);
+  const remainingExistingImages = (itemToEdit?.images?.length || 0) - removedImageIndexes.length;
+  const formSchema = useMemo(
+    () => getFormSchema(isEditMode, Math.max(remainingExistingImages, 0)),
+    [isEditMode, remainingExistingImages]
+  );
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -333,14 +358,39 @@ const CreateCatalogItemDialogComponent = ({
         render={({ field: { onChange, value, ...rest } }) => (
           <FormItem>
             <FormLabel>
-              Images <span className="text-destructive">*</span> (Max 10)
+              Images <span className="text-destructive">*</span> (Max 4 — shown as a slideshow)
             </FormLabel>
             <FormControl>
               <Input
                 type="file"
                 accept="image/*"
                 multiple
-                onChange={(e) => onChange(e.target.files)}
+                onChange={(e) => {
+                  const files = e.target.files;
+                  if (!files || files.length === 0) return;
+                  const remainingSlots = Math.max(4 - Math.max(remainingExistingImages, 0), 0);
+
+                  // Keep files picked in an earlier pass, then add the new ones on top
+                  const currentValue = form.getValues("image");
+                  const alreadyPicked: File[] = currentValue && typeof currentValue.length === "number"
+                    ? Array.from(currentValue as FileList).filter((f) => f instanceof File)
+                    : [];
+
+                  const combined = [...alreadyPicked, ...Array.from(files)];
+                  const trimmed = combined.slice(0, remainingSlots);
+                  if (combined.length > remainingSlots) {
+                    toast({
+                      title: "Max 4 images",
+                      description: "You can add up to 4 images per item. Extra image(s) were not added.",
+                    });
+                  }
+                  const dt = new DataTransfer();
+                  trimmed.forEach((f) => dt.items.add(f));
+                  onChange(dt.files);
+
+                  // Reset so picking the same file again still fires onChange
+                  e.target.value = "";
+                }}
                 {...rest}
               />
             </FormControl>
@@ -348,6 +398,35 @@ const CreateCatalogItemDialogComponent = ({
           </FormItem>
         )}
       />
+
+      {/* Newly selected image previews */}
+      {form.watch("image") && form.watch("image").length > 0 &&
+        Array.from(form.watch("image") as FileList).some((f) => f instanceof File) && (
+        <div className="space-y-2">
+          <p className="text-sm text-muted-foreground">New images:</p>
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {Array.from(form.watch("image") as FileList).filter((f) => f instanceof File).map((file, i) => (
+              <div key={i} className="relative w-16 h-16 flex-shrink-0 rounded-md overflow-hidden group">
+                <BlobImage file={file as File} alt="Preview" className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const currentValue = form.getValues("image");
+                    const remaining = Array.from(currentValue as FileList).filter((f) => f instanceof File) as File[];
+                    remaining.splice(i, 1);
+                    const dt = new DataTransfer();
+                    remaining.forEach((f) => dt.items.add(f));
+                    form.setValue("image", dt.files, { shouldValidate: true });
+                  }}
+                  className="absolute top-0.5 right-0.5 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <X size={12} className="text-white" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {itemToEdit?.images && itemToEdit.images.length > 0 && (
         <div className="space-y-3">
@@ -462,4 +541,3 @@ const CreateCatalogItemDialogComponent = ({
 };
 
 export const CreateCatalogItemDialog = memo(CreateCatalogItemDialogComponent);
-

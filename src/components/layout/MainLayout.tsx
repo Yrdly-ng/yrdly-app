@@ -34,9 +34,9 @@ const navItems = [
   { href: "/businesses", label: "Business", icon: Buildings },
 ];
 
-// Mobile bottom bar keeps only the 4 primary tabs within thumb reach
+// Mobile bottom bar keeps the primary tabs within thumb reach
 const bottomNavItems = navItems.filter((item) =>
-  ["/home", "/community", "/marketplace", "/events"].includes(item.href)
+  ["/home", "/community", "/marketplace", "/events", "/businesses"].includes(item.href)
 );
 
 export function MainLayout({ children }: MainLayoutProps) {

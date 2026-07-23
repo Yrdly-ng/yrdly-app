@@ -315,13 +315,14 @@ export function CommentSection({
     }, {} as Record<string, Comment[]>);
 
     /* ── single comment row ─────────────────────────────────────── */
-    const renderComment = useCallback((comment: Comment, isReply: boolean = false, parentAuthorName?: string) => {
+    const renderComment = useCallback((comment: Comment, depth: number = 0, parentAuthorName?: string) => {
         const replies = repliesByParent[comment.id] || [];
         const hasReplies = replies.length > 0;
         const showReplies = expandedReplies.has(comment.id);
         const isLiked = likedComments.has(comment.id);
         const isBookmarked = bookmarkedComments.has(comment.id);
         const replyCount = replies.length;
+        const isReply = depth > 0;
 
         return (
             <motion.div 
@@ -329,18 +330,14 @@ export function CommentSection({
                 animate={{ opacity: 1, y: 0 }} 
                 exit={{ opacity: 0, scale: 0.95 }}
                 key={comment.id} 
-                className={cn('flex gap-3 pt-2', isReply && 'ml-11')}
+                className="flex gap-3 pt-2"
             >
-                {/* Avatar + threaded connector */}
+                {/* Avatar (connector now lives on the replies wrapper below, so it runs straight down) */}
                 <div className="flex flex-col items-center gap-0 flex-shrink-0">
-                    <Avatar className="h-8 w-8">
+                    <Avatar className={cn(isReply ? "h-7 w-7" : "h-8 w-8")}>
                         <AvatarImage src={comment.authorImage} />
                         <AvatarFallback className="text-xs bg-primary text-primary-foreground">{comment.authorName?.charAt(0)}</AvatarFallback>
                     </Avatar>
-                    {/* vertical connector to replies — visible whenever this comment has replies */}
-                    {hasReplies && (
-                        <div className="w-[1.5px] flex-1 mt-2 rounded-full" style={{ background: 'var(--c-border)', minHeight: '24px' }} />
-                    )}
                 </div>
 
                 {/* Content */}
@@ -438,8 +435,8 @@ export function CommentSection({
                         )}
                     </div>
 
-                    {/* View Replies */}
-                    {hasReplies && !isReply && (
+                    {/* View Replies — shown for ANY comment with replies, at any depth, like Instagram */}
+                    {hasReplies && (
                         <button
                             onClick={() => toggleReplies(comment.id)}
                             className="flex items-center gap-2 mt-2"
@@ -451,11 +448,11 @@ export function CommentSection({
                         </button>
                     )}
 
-                    {/* Replies list */}
+                    {/* Replies list — stacked straight down, no horizontal indent */}
                     {showReplies && hasReplies && (
                         <div className="mt-2 flex flex-col gap-1">
                             <AnimatePresence initial={false}>
-                                {replies.map(reply => renderComment(reply, true, comment.authorName))}
+                                {replies.map(reply => renderComment(reply, depth + 1, comment.authorName))}
                             </AnimatePresence>
                         </div>
                     )}

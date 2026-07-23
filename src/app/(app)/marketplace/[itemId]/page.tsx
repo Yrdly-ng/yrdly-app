@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Send, ShoppingBag, MapPin } from "lucide-react";
 import { useAuth } from "@/hooks/use-supabase-auth";
@@ -32,6 +32,17 @@ export default function MarketplaceItemPage() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [message, setMessage] = useState("Hi, Is this available?");
   const [sendingMessage, setSendingMessage] = useState(false);
+
+  // Gallery drag-to-swipe state
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isDraggingImage, setIsDraggingImage] = useState(false);
+  const [isImageAnimating, setIsImageAnimating] = useState(false);
+  const [galleryWidth, setGalleryWidth] = useState(0);
+  const galleryRef = useRef<HTMLDivElement>(null);
+  const dragStartXRef = useRef(0);
+  const lastXRef = useRef(0);
+  const lastTimeRef = useRef(0);
+  const velocityRef = useRef(0);
 
   const itemId = params.itemId as string;
 
@@ -136,6 +147,82 @@ export default function MarketplaceItemPage() {
   const images = item?.image_urls?.length ? item.image_urls : item?.image_url ? [item.image_url] : [];
   const isOwn = user?.id === item?.user_id;
 
+  /* ── gallery: touch-drag on mobile, simple arrow buttons on desktop ── */
+  useEffect(() => {
+    if (!galleryRef.current) return;
+    const measure = () => setGalleryWidth(galleryRef.current?.offsetWidth || 0);
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [images.length]);
+
+  const goToImage = (index: number) => {
+    setIsImageAnimating(true);
+    setCurrentImageIndex(index);
+    setDragOffset(0);
+  };
+
+  const goToPrevImage = () => {
+    if (currentImageIndex > 0) goToImage(currentImageIndex - 1);
+  };
+
+  const goToNextImage = () => {
+    if (currentImageIndex < images.length - 1) goToImage(currentImageIndex + 1);
+  };
+
+  const startImageDrag = (clientX: number) => {
+    setIsImageAnimating(false);
+    setIsDraggingImage(true);
+    dragStartXRef.current = clientX;
+    lastXRef.current = clientX;
+    lastTimeRef.current = performance.now();
+    velocityRef.current = 0;
+  };
+
+  const moveImageDrag = (clientX: number) => {
+    if (!isDraggingImage) return;
+    const now = performance.now();
+    const dt = now - lastTimeRef.current;
+    if (dt > 0) velocityRef.current = (clientX - lastXRef.current) / dt;
+    lastXRef.current = clientX;
+    lastTimeRef.current = now;
+
+    let offset = clientX - dragStartXRef.current;
+    const atFirst = currentImageIndex === 0;
+    const atLast = currentImageIndex === images.length - 1;
+    if ((atFirst && offset > 0) || (atLast && offset < 0)) offset *= 0.35;
+    setDragOffset(offset);
+  };
+
+  const endImageDrag = () => {
+    if (!isDraggingImage) return;
+    setIsDraggingImage(false);
+    const width = galleryWidth || 1;
+    const distanceRatio = dragOffset / width;
+    const flingVelocity = velocityRef.current;
+    setIsImageAnimating(true);
+
+    const passedThreshold = Math.abs(distanceRatio) > 0.22;
+    const flungFast = Math.abs(flingVelocity) > 0.5;
+
+    if ((passedThreshold || flungFast) && dragOffset < 0 && currentImageIndex < images.length - 1) {
+      setCurrentImageIndex((prev) => prev + 1);
+    } else if ((passedThreshold || flungFast) && dragOffset > 0 && currentImageIndex > 0) {
+      setCurrentImageIndex((prev) => prev - 1);
+    }
+    setDragOffset(0);
+  };
+
+  // Touch only — this is what makes mobile swipe work. Desktop uses the arrow buttons below instead,
+  // so there's no fighting with the browser's native trackpad swipe-back gesture.
+  const handleGalleryTouchStart = (e: React.TouchEvent) => startImageDrag(e.targetTouches[0].clientX);
+  const handleGalleryTouchMove = (e: React.TouchEvent) => moveImageDrag(e.targetTouches[0].clientX);
+  const handleGalleryTouchEnd = () => endImageDrag();
+  const handleGalleryMouseDown = (e: React.MouseEvent) => startImageDrag(e.clientX);
+  const handleGalleryMouseMove = (e: React.MouseEvent) => moveImageDrag(e.clientX);
+  const handleGalleryMouseUp = () => endImageDrag();
+  const handleGalleryMouseLeave = () => endImageDrag();
+
   /* ─────────────────────────────────────────── LOADING ── */
   if (loading) {
     return (
@@ -155,7 +242,7 @@ export default function MarketplaceItemPage() {
     <div className="min-h-[100dvh]" style={{ background: BG }}>
 
       {/* ── Back button row ── */}
-      <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] md:top-[calc(84px+env(safe-area-inset-top))] z-40 px-4 py-4 bg-background/95 backdrop-blur-sm border-b" style={{ borderColor: 'var(--c-border)' }}>
+      <div className="px-4 py-4 bg-background/95 border-b" style={{ borderColor: 'var(--c-border)' }}>
         <button
           onClick={() => router.back()}
           className="flex items-center gap-2 text-sm transition-opacity hover:opacity-70"
@@ -167,7 +254,7 @@ export default function MarketplaceItemPage() {
       </div>
 
       {/* ── Main two-column layout ── */}
-      <div className="px-4 pb-8 flex flex-col lg:flex-row gap-5 items-start">
+      <div className="px-4 pt-5 pb-8 flex flex-col lg:flex-row gap-5 items-start">
 
         {/* ════ LEFT — main item card ════ */}
         <div
@@ -192,13 +279,47 @@ export default function MarketplaceItemPage() {
 
           {/* Image + carousel */}
           <div className="px-3 sm:px-6 pt-5">
-            <div className="relative w-full rounded-xl overflow-hidden" style={{ aspectRatio: '4/3', maxHeight: '360px' }}>
+            <div
+              ref={galleryRef}
+              className="relative w-full rounded-xl overflow-hidden select-none"
+              style={{
+                aspectRatio: '4/3',
+                maxHeight: '360px',
+              }}
+              onTouchStart={images.length > 1 ? handleGalleryTouchStart : undefined}
+              onTouchMove={images.length > 1 ? handleGalleryTouchMove : undefined}
+              onTouchEnd={images.length > 1 ? handleGalleryTouchEnd : undefined}
+              onMouseDown={images.length > 1 ? handleGalleryMouseDown : undefined}
+              onMouseMove={images.length > 1 ? handleGalleryMouseMove : undefined}
+              onMouseUp={images.length > 1 ? handleGalleryMouseUp : undefined}
+              onMouseLeave={images.length > 1 ? handleGalleryMouseLeave : undefined}
+            >
               {images.length > 0 ? (
-                <Image
-                  src={images[currentImageIndex]}
-                  alt={item.title || "Item image"} fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  className="object-cover"
-                />
+                <div
+                  className="flex h-full"
+                  style={{
+                    width: `${images.length * 100}%`,
+                    transform: `translateX(calc(${(-currentImageIndex * 100) / images.length}% + ${
+                      galleryWidth ? (dragOffset / galleryWidth) * 100 : 0
+                    }%))`,
+                    transition: isImageAnimating ? "transform 320ms cubic-bezier(0.22, 1, 0.36, 1)" : "none",
+                  }}
+                  onTransitionEnd={() => setIsImageAnimating(false)}
+                >
+                  {images.map((src, i) => (
+                    <div key={i} className="relative h-full flex-shrink-0" style={{ width: `${100 / images.length}%` }}>
+                      <Image
+                        src={src}
+                        alt={item.title || "Item image"}
+                        fill
+                        draggable={false}
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        className="object-cover pointer-events-none"
+                        priority={i === currentImageIndex}
+                      />
+                    </div>
+                  ))}
+                </div>
               ) : (
                 <div
                   className="w-full h-full flex items-center justify-center"
@@ -207,6 +328,7 @@ export default function MarketplaceItemPage() {
                   <ShoppingBag className="w-16 h-16 text-primary" style={{ opacity: 0.4 }} />
                 </div>
               )}
+
             </div>
 
             {/* Dot indicators */}
@@ -215,7 +337,11 @@ export default function MarketplaceItemPage() {
                 {images.map((_, i) => (
                   <button
                     key={i}
-                    onClick={() => setCurrentImageIndex(i)}
+                    onClick={() => {
+                      setIsImageAnimating(true);
+                      setCurrentImageIndex(i);
+                      setDragOffset(0);
+                    }}
                     className="w-[6px] h-[6px] rounded-full transition-colors"
                     style={{ background: i === currentImageIndex ? "var(--c-text)" : FADED }}
                   />

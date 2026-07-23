@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -54,7 +53,7 @@ const BlobImage = memo(({ file, className, alt }: { file: File, className?: stri
 });
 BlobImage.displayName = "BlobImage";
 
-const getFormSchema = (isEditMode: boolean) =>
+const getFormSchema = (isEditMode: boolean, existingImageCount: number) =>
   z.object({
     text: z.string().min(1, "Item title can't be empty.").max(100),
     description: z
@@ -76,6 +75,13 @@ const getFormSchema = (isEditMode: boolean) =>
           (files.length > 0 ||
             (Array.isArray(files) && files.some((f) => typeof f === "string"))),
         "An image is required for the item."
+      )
+      .refine(
+        (files) => {
+          const newCount = files && typeof files.length === "number" && !Array.isArray(files) ? files.length : 0;
+          return existingImageCount + newCount <= 4;
+        },
+        "You can add up to 4 images per item."
       ),
   });
 
@@ -157,13 +163,38 @@ function FormBody({
             )} />
 
             <FormItem>
-              <FormLabel className="text-muted-foreground">Item Images</FormLabel>
+              <FormLabel className="text-muted-foreground">Item Images (Max 4 — shown as a slideshow)</FormLabel>
               <label className="flex items-center gap-3 w-full bg-background border border-border h-12 rounded-xl px-4 cursor-pointer hover:bg-accent transition">
                 <ImageIcon className="w-5 h-5 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">
                     {form.watch("image") && form.watch("image").length > 0 ? `${form.watch("image").length} image(s) selected` : "Choose images..."}
                 </span>
-                <input type="file" accept="image/*" multiple className="hidden" {...imageField} />
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    const files = e.target.files;
+                    if (!files || files.length === 0) return;
+                    const existingCount = (postToEdit?.image_urls?.length || 0) - removedImageIndexes.length;
+                    const remainingSlots = Math.max(4 - Math.max(existingCount, 0), 0);
+
+                    // Keep files already picked in an earlier pass, then add the new ones on top
+                    const currentValue = form.getValues("image");
+                    const alreadyPicked: File[] = currentValue && typeof currentValue.length === "number"
+                      ? Array.from(currentValue as FileList).filter((f) => f instanceof File)
+                      : [];
+
+                    const combined = [...alreadyPicked, ...Array.from(files)].slice(0, remainingSlots);
+                    const dt = new DataTransfer();
+                    combined.forEach((f) => dt.items.add(f));
+                    form.setValue("image", dt.files, { shouldValidate: true });
+
+                    // Reset the input so picking the same file again still fires onChange
+                    e.target.value = "";
+                  }}
+                />
               </label>
               <FormMessage />
             </FormItem>
@@ -174,8 +205,22 @@ function FormBody({
                 <p className="text-sm text-muted-foreground font-sans">New images:</p>
                 <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
                   {Array.from(form.watch("image") as FileList).filter(f => f instanceof File).map((file, i) => (
-                    <div key={i} className="relative w-16 h-16 flex-shrink-0 rounded-md overflow-hidden">
+                    <div key={i} className="relative w-16 h-16 flex-shrink-0 rounded-md overflow-hidden group">
                       <BlobImage file={file as File} alt="Preview" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const currentValue = form.getValues("image");
+                          const remaining = Array.from(currentValue as FileList).filter((f) => f instanceof File) as File[];
+                          remaining.splice(i, 1);
+                          const dt = new DataTransfer();
+                          remaining.forEach((f) => dt.items.add(f));
+                          form.setValue("image", dt.files, { shouldValidate: true });
+                        }}
+                        className="absolute top-0.5 right-0.5 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X size={12} className="text-white" />
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -230,7 +275,11 @@ const CreateItemDialogComponent = ({
 
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
 
-  const formSchema = useMemo(() => getFormSchema(isEditMode), [isEditMode]);
+  const remainingExistingImages = (postToEdit?.image_urls?.length || 0) - removedImageIndexes.length;
+  const formSchema = useMemo(
+    () => getFormSchema(isEditMode, Math.max(remainingExistingImages, 0)),
+    [isEditMode, remainingExistingImages]
+  );
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
