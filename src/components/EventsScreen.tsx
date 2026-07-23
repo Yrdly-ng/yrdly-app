@@ -88,7 +88,7 @@ function dateChipParts(d: string | null | undefined): { day: string; month: stri
   }
 }
 
-const QUICK_FILTERS = ["Today", "This Weekend", "Free", "Anime", "Music"] as const;
+const QUICK_FILTERS = ["Today"] as const;
 type QuickFilter = typeof QUICK_FILTERS[number];
 
 function isToday(d: string | null | undefined): boolean {
@@ -96,15 +96,6 @@ function isToday(d: string | null | undefined): boolean {
   const date = new Date(d);
   const now = new Date();
   return date.toDateString() === now.toDateString();
-}
-
-function isThisWeekend(d: string | null | undefined): boolean {
-  if (!d) return false;
-  const date = new Date(d);
-  const day = date.getDay();
-  const now = new Date();
-  const diffDays = Math.floor((date.getTime() - now.getTime()) / 86400000);
-  return (day === 0 || day === 6) && diffDays >= 0 && diffDays <= 7;
 }
 
 
@@ -121,7 +112,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
   const [rsvpLoading, setRsvpLoading] = useState<Set<string>>(new Set());
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [sortBy, setSortBy] = useState<"date" | "price" | "all">("date");
+  const [sortBy, setSortBy] = useState<"date" | "price" | "all" | "">("");
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
   const [activeQuickFilters, setActiveQuickFilters] = useState<Set<QuickFilter>>(new Set());
@@ -182,10 +173,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
       list = list.filter((event) => {
         return Array.from(activeQuickFilters).every((f) => {
           if (f === "Today") return isToday(event.start_time);
-          if (f === "This Weekend") return isThisWeekend(event.start_time);
           if (f === "Free") return !event.ticket_tiers?.length || event.ticket_tiers.every(t => t.price === 0);
-          if (f === "Anime") return (event.category || "").toLowerCase().includes("anime");
-          if (f === "Music") return (event.category || "").toLowerCase().includes("music") || (event.category || "").toLowerCase().includes("concert");
           return true;
         });
       });
@@ -232,10 +220,12 @@ export function EventsScreen({ className }: EventsScreenProps) {
 
   return (
     <div className={cn("p-3 sm:p-4 md:p-6 space-y-6 md:space-y-8 pb-20 lg:pb-8", className)}>
-      {/* Location + Quick filter bar */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+      {/* Location filter — its own row, same pattern as Market, so its dropdown is never clipped by a scroll container */}
+      <div className="flex items-center">
         <LocationChip />
-        <div className="w-px h-5 bg-border flex-shrink-0" />
+      </div>
+      {/* Quick filter bar */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
         {QUICK_FILTERS.map((filter) => {
           const active = activeQuickFilters.has(filter);
           return (
@@ -461,7 +451,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
           onClick={() => setSortBy("all")}
           className={cn(
             "flex items-center gap-1.5 px-3 py-2 rounded-md font-sans text-[0.625rem] sm:text-xs flex-shrink-0 transition-all",
-            sortBy === "all" ? "bg-foreground text-background" : "text-foreground"
+            sortBy === "all" ? "bg-primary text-foreground shadow-[0_4px_12px_rgba(92,213,120,0.35)]" : "text-foreground"
           )}
           style={sortBy !== "all" ? { boxShadow: "0 2px 8px rgba(0,0,0,0.06)" } : undefined}
         >
@@ -472,7 +462,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
           onClick={() => setSortBy("price")}
           className={cn(
             "flex items-center gap-1.5 px-3 py-2 rounded-md font-sans text-[0.625rem] sm:text-xs flex-shrink-0 transition-all",
-            sortBy === "price" ? "bg-foreground text-background" : "text-foreground"
+            sortBy === "price" ? "bg-primary text-foreground shadow-[0_4px_12px_rgba(92,213,120,0.35)]" : "text-foreground"
           )}
           style={sortBy !== "price" ? { boxShadow: "0 2px 8px rgba(0,0,0,0.06)" } : undefined}
         >
@@ -483,7 +473,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
           onClick={() => setSortBy("date")}
           className={cn(
             "flex items-center gap-1.5 px-3 py-2 rounded-md font-sans text-[0.625rem] sm:text-xs flex-shrink-0 transition-all",
-            sortBy === "date" ? "bg-foreground text-background" : "text-foreground"
+            sortBy === "date" ? "bg-primary text-foreground shadow-[0_4px_12px_rgba(92,213,120,0.35)]" : "text-foreground"
           )}
           style={sortBy !== "date" ? { boxShadow: "0 2px 8px rgba(0,0,0,0.06)" } : undefined}
         >

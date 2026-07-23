@@ -15,7 +15,6 @@ import { NotificationsDropdown } from "@/components/NotificationsDropdown";
 import { SearchDialog } from "@/components/SearchDialog";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { supabase } from "@/lib/supabase";
-import { HomeRightSidebar } from "./HomeRightSidebar";
 import { cn } from "@/lib/utils";
 import { CreatePostDialog } from "@/components/CreatePostDialog";
 import { usePosts } from "@/hooks/use-posts";
@@ -51,11 +50,6 @@ export function MainLayout({ children }: MainLayoutProps) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
 
-  const isHomePage = pathname === "/home";
-  const isPostDetailPage =
-    pathname.startsWith("/posts/") &&
-    pathname.split("/").filter(Boolean).length === 2;
-  const showRightSidebar = isHomePage || isPostDetailPage;
   const isChatPage =
     (pathname.startsWith("/messages/") && pathname !== "/messages") ||
     pathname.includes("/chat");
@@ -236,7 +230,6 @@ export function MainLayout({ children }: MainLayoutProps) {
           </ErrorBoundary>
         </main>
 
-        {showRightSidebar && <HomeRightSidebar />}
       </div>
 
       {!isChatPage && !isMapPage && (

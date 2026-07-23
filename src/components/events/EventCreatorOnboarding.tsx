@@ -84,7 +84,7 @@ export function EventCreatorOnboarding({ isOpen, onClose }: EventCreatorOnboardi
       >
         {/* Sheet */}
         <div
-          className="relative w-full max-w-md rounded-t-3xl sm:rounded-3xl flex flex-col"
+          className="relative w-full max-w-md rounded-t-3xl sm:rounded-3xl flex flex-col overflow-hidden"
           style={{
             background: 'var(--c-card)',
             border: `1px solid ${BORDER}`,

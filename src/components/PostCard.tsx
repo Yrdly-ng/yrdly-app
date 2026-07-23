@@ -13,6 +13,12 @@ import {
   MoreHorizontal,
   Trash2,
   Edit,
+  Volume2,
+  VolumeX,
+  RotateCw,
+  RotateCcw,
+  Pause,
+  Play,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { supabase } from "@/lib/supabase";
@@ -221,22 +227,20 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const [videoProgress, setVideoProgress] = useState(0);
+  const [isVideoMuted, setIsVideoMuted] = useState(true);
+  const [isVideoPaused, setIsVideoPaused] = useState(false);
 
   /* ── auto-pause video when scrolled out of view ── */
   useEffect(() => {
     if (!videoRef.current || !post.video_url) return;
-    
-    // Force muted via JS to ensure browsers allow autoplay
-    videoRef.current.muted = true;
-    videoRef.current.defaultMuted = true;
-    
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           // If video is playing and scrolls out of view, pause it
           if (!entry.isIntersecting && !videoRef.current?.paused) {
             videoRef.current?.pause();
-          } else if (entry.isIntersecting && videoRef.current?.paused) {
+          } else if (entry.isIntersecting && videoRef.current?.paused && !isVideoPaused) {
             // Single-playback guarantee: pause all other videos
             document.querySelectorAll('video').forEach(v => {
               if (v !== videoRef.current && !v.paused) v.pause();
@@ -250,7 +254,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
     
     observer.observe(videoRef.current);
     return () => observer.disconnect();
-  }, [post.video_url]);
+  }, [post.video_url, isVideoPaused]);
 
   /* ── fetch author ── */
   useEffect(() => {
@@ -691,7 +695,9 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
                 ref={videoRef}
                 src={post.video_url.includes('#t=') ? post.video_url : `${post.video_url}#t=0.001`}
                 playsInline
-                muted
+                disablePictureInPicture
+                controlsList="nodownload noremoteplayback nopictureinpicture"
+                muted={isVideoMuted}
                 loop
                 preload="metadata"
                 poster={post.video_thumbnail_url ?? undefined}
@@ -703,7 +709,75 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
                     setVideoProgress(progress || 0);
                   }
                 }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!videoRef.current) return;
+                  if (videoRef.current.paused) {
+                    videoRef.current.play().catch(() => {});
+                    setIsVideoPaused(false);
+                  } else {
+                    videoRef.current.pause();
+                    setIsVideoPaused(true);
+                  }
+                }}
               />
+
+              {/* Tap-to-pause overlay icon — mirrors Instagram's center play/pause flash */}
+              {isVideoPaused && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="bg-black/40 rounded-full p-3">
+                    <Play className="w-7 h-7 text-white fill-white" />
+                  </div>
+                </div>
+              )}
+
+              {/* Skip -5s — left-middle, Instagram-style */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!videoRef.current) return;
+                  videoRef.current.currentTime = Math.max(videoRef.current.currentTime - 5, 0);
+                }}
+                aria-label="Rewind 5 seconds"
+                className="absolute left-3 top-1/2 -translate-y-1/2 z-10 flex flex-col items-center gap-0.5 bg-black/50 hover:bg-black/70 transition-colors rounded-full px-2 py-2"
+              >
+                <RotateCcw className="w-4 h-4 text-white" />
+                <span className="text-[0.625rem] font-medium text-white">5s</span>
+              </button>
+
+              {/* Skip +5s — right-middle, Instagram-style */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!videoRef.current) return;
+                  videoRef.current.currentTime = Math.min(
+                    videoRef.current.currentTime + 5,
+                    videoRef.current.duration || videoRef.current.currentTime + 5
+                  );
+                }}
+                aria-label="Skip forward 5 seconds"
+                className="absolute right-3 top-1/2 -translate-y-1/2 z-10 flex flex-col items-center gap-0.5 bg-black/50 hover:bg-black/70 transition-colors rounded-full px-2 py-2"
+              >
+                <RotateCw className="w-4 h-4 text-white" />
+                <span className="text-[0.625rem] font-medium text-white">5s</span>
+              </button>
+
+              {/* Mute / unmute — Instagram-style mini speaker, bottom-right */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsVideoMuted((prev) => !prev);
+                }}
+                aria-label={isVideoMuted ? "Unmute video" : "Mute video"}
+                className="absolute bottom-3 right-3 z-10 flex items-center justify-center bg-black/50 hover:bg-black/70 transition-colors rounded-full w-8 h-8"
+              >
+                {isVideoMuted ? (
+                  <VolumeX className="w-4 h-4 text-white" />
+                ) : (
+                  <Volume2 className="w-4 h-4 text-white" />
+                )}
+              </button>
+
               {/* Custom Thin Progress Bar */}
               <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-white/30 z-10">
                 <div 

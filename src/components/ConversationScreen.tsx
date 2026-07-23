@@ -528,6 +528,8 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
                           src={msg.video_url.includes('#t=') ? msg.video_url : `${msg.video_url}#t=0.001`}
                           controls
                           playsInline
+                disablePictureInPicture
+                controlsList="nodownload noremoteplayback nopictureinpicture"
                           preload="metadata"
                           className="w-full h-auto"
                           style={{ maxHeight: 360 }}

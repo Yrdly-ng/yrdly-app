@@ -103,9 +103,6 @@ export function Topbar({
             <span className="flex-1 font-normal text-sm truncate">
               Search for events, items, and people
             </span>
-            <span className="hidden md:inline-flex items-center gap-0.5 flex-shrink-0 rounded-md bg-[var(--c-card)] border border-[var(--c-border)] px-1.5 py-1 text-[0.7rem] font-semibold text-[var(--c-text-muted)] group-hover:text-[var(--accent-foreground)]">
-              ⌘K
-            </span>
           </button>
         </div>
 
