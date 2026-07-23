@@ -52,11 +52,11 @@ export async function POST(request: NextRequest) {
     // ── Fetch user profile name for name-match check ─────
     const { data: profile } = await supabaseAdmin
       .from('users')
-      .select('name')
+      .select('name, legal_name')
       .eq('id', user.id)
       .single();
 
-    const profileName = profile?.name || '';
+    const profileName = profile?.legal_name || profile?.name || '';
 
     // ── Task 1: Paystack account resolution & name match ─
     const resolveResult = await PaystackService.resolveAccount(accountNumber, bankCode);
