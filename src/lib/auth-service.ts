@@ -8,6 +8,8 @@ export interface AuthUser {
   username?: string;
   avatar_url?: string;
   bio?: string;
+  phone?: string;
+  phone_verified?: boolean;
   location?: {
     state?: string;
     lga?: string;

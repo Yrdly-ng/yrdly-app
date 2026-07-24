@@ -19,6 +19,8 @@ interface AuthContextType {
   resetPassword: (email: string) => Promise<{ error: any }>;
   updatePassword: (newPassword: string) => Promise<{ error: any }>;
   updateProfile: (updates: Partial<AuthUser>) => Promise<void>;
+  sendPhoneOtp: (phone: string) => Promise<{ pinId: string | null; error: any }>;
+  verifyPhoneOtp: (pinId: string, otp: string) => Promise<{ verified: boolean; error: any }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -283,6 +285,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const sendPhoneOtp = async (phone: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('send-phone-otp', {
+        body: { phone },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      return { pinId: data.pinId, error: null };
+    } catch (error: any) {
+      console.error('sendPhoneOtp error:', error);
+      return { pinId: null, error: error.message || error };
+    }
+  };
+
+  const verifyPhoneOtp = async (pinId: string, otp: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-phone-otp', {
+        body: { pinId, pin: otp },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      if (data.verified) {
+        if (profile) {
+          setProfile({ ...profile, phone_verified: true, phone: data.msisdn });
+        }
+      }
+
+      return { verified: data.verified, error: null };
+    } catch (error: any) {
+      console.error('verifyPhoneOtp error:', error);
+      return { verified: false, error: error.message || error };
+    }
+  };
+
   const value = {
     user,
     profile,
@@ -295,6 +335,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     resetPassword,
     updatePassword,
     updateProfile,
+    sendPhoneOtp,
+    verifyPhoneOtp,
   };
 
   return (

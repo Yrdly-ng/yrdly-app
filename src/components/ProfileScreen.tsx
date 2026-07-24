@@ -524,6 +524,35 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
           )}
         </div>
       </section>
+      
+      {/* ── Phone Verification Prompt ── */}
+      {actualIsOwnProfile && displayProfile && !(displayProfile as any)?.phone_verified && (
+        <div
+          className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-[11px] cursor-pointer transition-transform active:scale-95"
+          style={{ 
+            background: "linear-gradient(135deg, rgba(130,219,126,0.15) 0%, rgba(110,223,81,0.05) 100%)",
+            border: "1px solid rgba(130,219,126,0.3)" 
+          }}
+          onClick={() => router.push('/verify-phone')}
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full flex items-center justify-center bg-primary/20">
+              <Shield className="w-5 h-5 text-primary-light" />
+            </div>
+            <div>
+              <p className="text-foreground font-bold text-sm" style={{ fontFamily: RALEWAY }}>Secure your account</p>
+              <p className="text-xs" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>Verify your phone number</p>
+            </div>
+          </div>
+          <button
+            className="px-4 py-2 rounded-full text-xs font-bold text-foreground shrink-0"
+            style={{ background: GREEN, fontFamily: FONT }}
+          >
+            Verify Now
+          </button>
+        </div>
+      )}
+
       {/* Spin keyframe */}
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
 
