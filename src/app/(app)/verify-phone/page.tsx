@@ -92,10 +92,10 @@ export default function VerifyPhonePage() {
         </div>
         
         <h1 className="text-3xl font-extrabold text-foreground text-center mb-3" style={{ fontFamily: RALEWAY }}>
-          What's your number?
+          What&apos;s your number?
         </h1>
         <p className="text-center text-sm mb-10 px-4 leading-relaxed" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
-          We'll send you a secure one-time passcode to verify this device.
+          We&apos;ll send you a secure one-time passcode to verify this device.
         </p>
 
         <div className="relative">

@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
 
       const buyerName = buyer?.name || 'Valued Customer';
       const sellerName = seller?.name || 'Seller';
-      const itemTitle = item?.title || item?.text || item?.description || 'an item';
+      const itemTitle = item?.title || (item as any)?.text || (item as any)?.description || 'an item';
 
       // ── Send emails ───────────────────────────────────
       if (buyer?.email && ResendEmailService.isConfigured()) {
