@@ -10,7 +10,7 @@ import type { User } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
-import { MapPin, MessageSquare, UserPlus, Check, X, Clock, MoreHorizontal, ShieldBan, UserMinus } from 'lucide-react';
+import { MapPin, MessageSquare, UserPlus, Check, X, Clock, MoreHorizontal, ShieldBan, UserMinus, Star, BadgeCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -33,6 +33,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useFriendshipGlobal } from '@/hooks/use-friendship-global';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface UserProfileDialogProps {
     user: User;
@@ -55,6 +56,7 @@ export function UserProfileDialog({ user: profileUser, open, onOpenChange }: Use
 
     // ── Block state ──
     const [isBlocked, setIsBlocked] = useState(false);
+    const [reviews, setReviews] = useState<any[]>([]);
 
     useEffect(() => {
         if (!open || !currentUser || !profileUser) return;
@@ -70,6 +72,12 @@ export function UserProfileDialog({ user: profileUser, open, onOpenChange }: Use
             setIsBlocked(data?.blocked_users?.includes(profileUser.id) ?? false);
         };
         fetchBlockStatus();
+        
+        const fetchReviews = async () => {
+            const { data } = await supabase.from('user_reviews').select('*, buyer:buyer_id(id, name, avatar_url)').eq('seller_id', profileUser.id).order('created_at', { ascending: false });
+            setReviews(data || []);
+        };
+        fetchReviews();
         
         // Trigger profile view notification
         if (!hasTriggeredViewRef.current && currentUser.id !== profileUser.id) {
@@ -296,7 +304,12 @@ export function UserProfileDialog({ user: profileUser, open, onOpenChange }: Use
                             <AvatarImage src={profileUser.avatar_url} alt={profileUser.name} />
                             <AvatarFallback>{profileUser.name?.charAt(0)}</AvatarFallback>
                         </Avatar>
-                        <h1 className="text-2xl font-bold">{profileUser.name}</h1>
+                        <h1 className="text-2xl font-bold flex items-center justify-center gap-1.5">
+                            {profileUser.name}
+                            {((profileUser as any).is_verified || (profileUser as any).verified_seller) && (
+                                <BadgeCheck className={`w-5 h-5 ${(profileUser as any).verified_seller ? 'text-yellow-500 fill-yellow-500/10' : 'text-green-500 fill-green-500/10'}`} />
+                            )}
+                        </h1>
                         {profileUser.location && (
                             <div className="flex items-center text-sm text-muted-foreground mt-1">
                                 <MapPin className="h-4 w-4 mr-1" />
@@ -304,24 +317,71 @@ export function UserProfileDialog({ user: profileUser, open, onOpenChange }: Use
                             </div>
                         )}
                     </CardHeader>
-                    <CardContent className="p-6 space-y-6">
-                        <div>
-                            <h2 className="font-semibold text-lg mb-2">Bio</h2>
-                            <p className="text-muted-foreground">{profileUser.bio || "This user hasn't written a bio yet."}</p>
-                        </div>
-                        {profileUser.interests && profileUser.interests.length > 0 && (
+                    
+                    <Tabs defaultValue="about" className="w-full">
+                        <TabsList className="w-full grid grid-cols-2">
+                            <TabsTrigger value="about">About</TabsTrigger>
+                            <TabsTrigger value="reviews">Reviews</TabsTrigger>
+                        </TabsList>
+                        
+                        <TabsContent value="about" className="p-6 space-y-6 max-h-[40vh] overflow-y-auto">
                             <div>
-                                <h2 className="font-semibold text-lg mb-3">Interests</h2>
-                                <div className="flex flex-wrap gap-2">
-                                    {profileUser.interests.map((interest, index) => (
-                                        <span key={index} className="px-3 py-1 bg-primary/10 text-primary text-sm rounded-full border border-primary/20">
-                                            {interest}
-                                        </span>
-                                    ))}
-                                </div>
+                                <h2 className="font-semibold text-lg mb-2">Bio</h2>
+                                <p className="text-muted-foreground">{profileUser.bio || "This user hasn't written a bio yet."}</p>
                             </div>
-                        )}
-                    </CardContent>
+                            {profileUser.interests && profileUser.interests.length > 0 && (
+                                <div>
+                                    <h2 className="font-semibold text-lg mb-3">Interests</h2>
+                                    <div className="flex flex-wrap gap-2">
+                                        {profileUser.interests.map((interest, index) => (
+                                            <span key={index} className="px-3 py-1 bg-primary/10 text-primary text-sm rounded-full border border-primary/20">
+                                                {interest}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </TabsContent>
+                        
+                        <TabsContent value="reviews" className="p-4 space-y-4 max-h-[40vh] overflow-y-auto">
+                            {reviews.length > 0 ? (
+                                reviews.map(review => (
+                                    <div key={review.id} className="p-4 rounded-xl bg-card border">
+                                        <div className="flex items-center justify-between mb-3">
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="w-8 h-8">
+                                                    <AvatarImage src={review.buyer?.avatar_url} />
+                                                    <AvatarFallback>{review.buyer?.name?.charAt(0) || 'U'}</AvatarFallback>
+                                                </Avatar>
+                                                <div>
+                                                    <div className="text-sm font-semibold">{review.buyer?.name || 'Anonymous'}</div>
+                                                    <div className="flex items-center text-xs text-muted-foreground">
+                                                        <Star className="w-3 h-3 text-yellow-500 fill-yellow-500 mr-1" />
+                                                        {review.rating} / 5
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {review.verified_purchase && (
+                                                <div className="flex items-center gap-1 text-[10px] font-medium text-primary bg-primary/10 px-2 py-1 rounded-full">
+                                                    <Check className="w-3 h-3" />
+                                                    Verified Purchase
+                                                </div>
+                                            )}
+                                        </div>
+                                        {review.comment && (
+                                            <p className="text-sm text-foreground/90">{review.comment}</p>
+                                        )}
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="text-center py-8 text-muted-foreground flex flex-col items-center">
+                                    <Star className="w-8 h-8 text-muted-foreground/30 mb-2" />
+                                    No reviews yet.
+                                </div>
+                            )}
+                        </TabsContent>
+                    </Tabs>
+
                     <CardFooter className="p-6 justify-center">
                         {renderActionButtons()}
                     </CardFooter>

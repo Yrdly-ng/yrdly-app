@@ -217,7 +217,7 @@ export async function POST(request: NextRequest) {
         buyerName: attendee_name,
         itemTitle: `${quantity}x ${tier.name} — ${event.title}`,
         sellerName: 'Event Organizer',
-        callbackUrl: callbackUrl || `${origin}/my-tickets?success=1`,
+        callbackUrl: callbackUrl || `${origin}/api/events/tickets/verify?tx_ref=${txRef}`,
         metadata: {
           event_id,
           tier_id,

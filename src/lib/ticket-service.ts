@@ -20,7 +20,7 @@ export class TicketService {
 
     if (!event_id || !tier_id || !buyer_id) {
       console.error('[TicketService] Missing metadata in Paystack response', metadata);
-      throw new Error('invalid_metadata');
+      console.error("Invalid metadata", metadata); throw new Error('invalid_metadata');
     }
 
     // ── Idempotency check — don't create duplicate tickets ───────────────────

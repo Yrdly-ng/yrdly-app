@@ -41,8 +41,7 @@ export interface AuthUser {
 }
 
 export class AuthService {
-  // Sign up with email and password
-  static async signUp(email: string, password: string, name: string) {
+  static async signUp(email: string, password: string, name: string, username?: string) {
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -51,6 +50,7 @@ export class AuthService {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
           data: {
             name,
+            username,
           },
         },
       });

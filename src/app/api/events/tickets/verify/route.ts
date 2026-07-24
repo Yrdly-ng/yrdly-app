@@ -1,6 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { TicketService } from '@/lib/ticket-service';
 
+export async function POST(request: NextRequest) {
+  try {
+    const { tx_ref } = await request.json();
+
+    if (!tx_ref) {
+      return NextResponse.json({ error: 'Missing tx_ref' }, { status: 400 });
+    }
+
+    const ticket = await TicketService.verifyAndProcessTicket(tx_ref);
+    return NextResponse.json({ success: true, ticket });
+  } catch (error: any) {
+    console.error('Ticket verify POST error:', error);
+    return NextResponse.json({ error: error.message || 'Verification failed' }, { status: 400 });
+  }
+}
+
 /**
  * GET /api/events/tickets/verify?tx_ref=...
  * Paystack redirects here after payment.

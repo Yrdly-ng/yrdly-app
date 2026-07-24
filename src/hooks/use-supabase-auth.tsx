@@ -11,7 +11,7 @@ interface AuthContextType {
   user: User | null;
   profile: AuthUser | null;
   loading: boolean;
-  signUp: (email: string, password: string, name: string) => Promise<{ user: User | null; error: any }>;
+  signUp: (email: string, password: string, name: string, username?: string) => Promise<{ user: User | null; error: any }>;
   signIn: (email: string, password: string) => Promise<{ user: User | null; error: any }>;
   signInWithGoogle: () => Promise<{ data: any; error: any }>;
   signInWithApple: () => Promise<{ data: any; error: any }>;
@@ -209,10 +209,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [profileCreationInProgress]);
 
-  const signUp = async (email: string, password: string, name: string) => {
+  const signUp = async (email: string, password: string, name: string, username?: string) => {
     setLoading(true);
     try {
-      const result = await AuthService.signUp(email, password, name);
+      const result = await AuthService.signUp(email, password, name, username);
       return result;
     } finally {
       setLoading(false);

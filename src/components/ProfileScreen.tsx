@@ -297,6 +297,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
   const displayUser = profileData || targetUser;
   const displayProfile = isExternalProfile ? profileData : (targetProfile ?? profileData);
   const name = (displayProfile as any)?.name || (displayUser as any)?.name || "Unknown";
+  const username = (displayProfile as any)?.username || (displayUser as any)?.user_metadata?.username;
   const bio = (displayProfile as any)?.bio;
   const interests = (displayProfile as any)?.interests as string[] | undefined;
   const avatarUrl = (displayProfile as any)?.avatar_url || (displayUser as any)?.avatar_url;
@@ -304,7 +305,9 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
     ? `${(displayProfile as any).location.state}, ${(displayProfile as any).location.lga}`
     : (displayProfile as any)?.location?.state || "";
   const joinedDate = new Date((displayUser as any)?.created_at || Date.now()).toLocaleDateString("en-US", { month: "short", year: "numeric" });
-  const isVerifiedUser = !!(displayProfile as any)?.phone_verified;
+  const isVerifiedUser = !!(displayProfile as any)?.is_verified;
+  const isVerifiedSeller = !!(displayProfile as any)?.verified_seller;
+  const email = (displayUser as any)?.email;
 
   return (
     <div className="pb-28 space-y-4 max-w-5xl mx-auto px-4 pt-4" style={{ background: BG }}>
@@ -349,10 +352,15 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
 
           <h1 className="mt-6 text-2xl text-foreground font-extrabold tracking-tight flex items-center justify-center gap-1.5" style={{ fontFamily: RALEWAY }}>
             {name}
-            {isVerifiedUser && (
-              <BadgeCheck className="w-6 h-6 text-green-500 fill-green-500/10" />
+            {(isVerifiedUser || isVerifiedSeller) && (
+              <BadgeCheck className={`w-6 h-6 ${isVerifiedSeller ? 'text-yellow-500 fill-yellow-500/10' : 'text-green-500 fill-green-500/10'}`} />
             )}
           </h1>
+          {username && (
+            <p className="mt-1 text-[0.875rem] font-medium" style={{ color: "var(--c-text-muted)" }}>
+              @{username}
+            </p>
+          )}
           {bio && (
             <p className="mt-2 text-[0.8125rem] font-light italic max-w-sm" style={{ fontFamily: RALEWAY, color: "var(--c-text-muted)" }}>
               {bio}
@@ -360,10 +368,20 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
           )}
 
           <div className="mt-5 flex items-center justify-center gap-5 flex-wrap text-[0.6875rem] font-bold uppercase tracking-widest" style={{ color: "var(--c-text-muted)" }}>
-            {locationStr && (
-              <div className="flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5" /> {locationStr}
+            {email && (
+              <div className="flex items-center gap-1.5 lowercase">
+                {email}
               </div>
+            )}
+            {locationStr && (
+              <a 
+                href={`https://maps.google.com/?q=${encodeURIComponent(locationStr)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 hover:text-primary transition-colors"
+              >
+                <MapPin className="w-3.5 h-3.5" /> {locationStr}
+              </a>
             )}
             <div className="flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5" /> Joined {joinedDate}

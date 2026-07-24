@@ -32,6 +32,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -90,7 +91,12 @@ export default function LoginPage() {
 
     try {
       if (isSignUp) {
-        const { user: newUser, error: err } = await signUp(email, password, name);
+        if (!username) {
+          setError('Username is required');
+          setLoading(false);
+          return;
+        }
+        const { user: newUser, error: err } = await signUp(email, password, name, username.toLowerCase());
         if (err) setError(err.message);
         else if (newUser) {
           posthog.identify(newUser.id, { email: newUser.email, name });
@@ -264,6 +270,20 @@ export default function LoginPage() {
                 placeholder="Enter your full name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                className={inputClass}
+                required={isSignUp}
+              />
+            </div>
+          )}
+
+          {isSignUp && (
+            <div className="space-y-1">
+              <label className="text-sm font-medium" style={{ color: colors.text }}>Username</label>
+              <Input
+                type="text"
+                placeholder="Enter a unique username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, ''))}
                 className={inputClass}
                 required={isSignUp}
               />
