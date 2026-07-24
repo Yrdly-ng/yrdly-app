@@ -1,0 +1,436 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-sans: "Work Sans", sans-serif;
+    --font-mono: ui-monospace, monospace;
+    --font-jersey25: "Jersey 25", sans-serif;
+    --font-raleway: "Raleway", sans-serif;
+    --font-work-sans: "Work Sans", sans-serif;
+
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+
+    /* Yrdly — Nextdoor-style light theme */
+    --background: 0 0% 95%;          /* #F2F2F2 - light gray app bg */
+    --foreground: 0 0% 11%;          /* #1C1C1C - neutral near-black (no blue tint) */
+    --card: 0 0% 100%;               /* #FFFFFF - white cards */
+    --card-foreground: 0 0% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 11%;
+    --primary: 142 45% 39%;          /* #388E3C - Yrdly green */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 93%;           /* #EDEDED */
+    --secondary-foreground: 0 0% 11%;
+    --muted: 0 0% 93%;
+    --muted-foreground: 0 0% 38%;    /* #616161 - Nextdoor secondary text */
+    --accent: 142 45% 93%;           /* light green tint */
+    --accent-foreground: 142 45% 25%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 88%;              /* #E0E0E0 */
+    --input: 0 0% 88%;
+    --ring: 142 45% 39%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --radius: 1rem;
+    --sidebar: 0 0% 100%;
+    --sidebar-foreground: 240 4% 16%;
+    --sidebar-primary: 142 45% 39%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 142 45% 93%;
+    --sidebar-accent-foreground: 142 45% 25%;
+    --sidebar-border: 0 0% 88%;
+    --sidebar-ring: 142 45% 39%;
+
+    --surface-dim: #F5F5F5;
+    --surface-container-lowest: #FFFFFF;
+    --surface-container-low: #F2F2F2;
+    --surface-container: #FFFFFF;
+    --surface-container-high: #EAEAEA;
+    --surface-container-highest: #E0E0E0;
+    --on-surface: #1C1C1C;
+    --on-surface-variant: #616161;
+  }
+
+  /* ── Inline-style color tokens (used via var(--c-*) in JSX style props) ── */
+  :root {
+    --c-bg:        #F2F2F2;
+    --c-card:      #FFFFFF;
+    --c-card2:     #F5F5F5;
+    --c-text:      #1C1C1C;
+    --c-text-muted:#616161;
+    --c-border:    #E0E0E0;
+    --c-shadow:    rgba(0,0,0,0.06);
+  }
+  .dark {
+    --c-bg:        #070d0a;
+    --c-card:      #141f19;
+    --c-card2:     #1c2a21;
+    --c-text:      #f3f7f3;
+    --c-text-muted:#8fae9a;
+    --c-border:    rgba(255,255,255,0.08);
+    --c-shadow:    rgba(0,0,0,0.55);
+  }
+
+  .dark body {
+    background: radial-gradient(circle at top left, rgba(114, 187, 150, 0.12), transparent 24%),
+                radial-gradient(circle at 75% 15%, rgba(92, 213, 120, 0.08), transparent 18%),
+                linear-gradient(180deg, #07100d 0%, #0a1612 60%, #08120f 100%);
+  }
+
+  .dark {
+    --background: 150 10% 6%;    /* deep charcoal green */
+    --foreground: 0 0% 100%;     /* white */
+    --card: 150 12% 10%;          /* rich dark panel */
+    --card-foreground: 0 0% 100%;
+    --popover: 150 12% 10%; 
+    --popover-foreground: 0 0% 100%;
+    --primary: 152 58% 39%;      /* premium emerald accent */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 150 12% 11%;    /* dark surface */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 150 12% 12%; 
+    --muted-foreground: 140 10% 60%; /* soft green text */
+    --accent: 152 58% 34%;       /* dark emerald */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%; 
+    --destructive-foreground: 0 0% 100%;
+    --border: 140 18% 19%;       /* subtle dark border */
+    --input: 140 18% 19%; 
+    --ring: 152 58% 39%;
+    --chart-1: 152 58% 39%; 
+    --chart-2: 160 60% 45%; 
+    --chart-3: 30 80% 55%; 
+    --chart-4: 280 65% 60%; 
+    --chart-5: 340 75% 55%; 
+    --sidebar: 150 12% 10%; 
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 152 58% 39%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 150 12% 11%;
+    --sidebar-accent-foreground: 152 58% 39%;
+    --sidebar-border: 140 18% 19%;
+    --sidebar-ring: 152 58% 39%;
+
+    --surface-dim: #0f1613;
+    --surface-container-lowest: #0b120f;
+    --surface-container-low: #161f1a;
+    --surface-container: #192621;
+    --surface-container-high: #26322b;
+    --surface-container-highest: #303d35;
+    --on-surface: #f5f7f5;
+    --on-surface-variant: #9cb9a5;
+  }
+}
+
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+  }
+  *:focus-visible {
+    outline: 2px solid #82DB7E;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  body {
+    @apply text-foreground;
+    background: radial-gradient(circle at top, rgba(222, 236, 180, 0.98), rgba(207, 219, 121, 0.94) 24%, rgba(183, 192, 81, 0.92) 52%, rgba(154, 163, 37, 0.88) 84%, rgba(227, 214, 128, 0.98) 100%);
+    background-attachment: fixed;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+
+  .dark body {
+    color: var(--c-text);
+  }
+}
+
+
+/* Yrdly specific styles */
+.yrdly-gradient {
+  background: linear-gradient(135deg, #a7d1ab 0%, #ffb347 100%);
+}
+
+.yrdly-shadow {
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 6px 16px rgba(0,0,0,0.06);
+}
+
+.yrdly-shadow-lg {
+  box-shadow: 0 2px 4px rgba(0,0,0,0.04), 0 12px 32px rgba(0,0,0,0.10);
+}
+
+/* New: soft, rounded polished card used across feed/panels */
+.yrdly-card {
+  background: var(--c-card);
+  border-radius: 1.25rem;
+  border: 1px solid rgba(0,0,0,0.04);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06);
+}
+
+/* New: fully-rounded pill search bar, matches reference design */
+.yrdly-search-pill {
+  border-radius: 9999px;
+  background: var(--c-card2);
+  border: 1px solid transparent;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.yrdly-search-pill:focus-within {
+  border-color: rgba(56, 142, 60, 0.35);
+  box-shadow: 0 0 0 3px rgba(56, 142, 60, 0.12);
+}
+
+/* New: pill buttons for primary actions (Interested / Sell / Create Event) */
+.yrdly-pill-btn {
+  border-radius: 9999px;
+  padding-inline: 1.25rem;
+  padding-block: 0.55rem;
+  font-weight: 600;
+  transition: transform 0.1s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+.yrdly-pill-btn:hover {
+  filter: brightness(1.05);
+  box-shadow: 0 4px 14px rgba(56, 142, 60, 0.25);
+}
+.yrdly-pill-btn:active {
+  transform: scale(0.98);
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .safe-area-inset {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  
+  /* Fixed header spacing - accounts for 64px header height + extra space */
+  .header-safe {
+    padding-top: 7rem; /* 112px - increased for better clearance */
+  }
+  
+  /* Fixed bottom navigation spacing - accounts for 64px bottom nav height + extra space */
+  .bottom-nav-safe {
+    padding-bottom: 8rem; /* 128px */
+  }
+  
+  /* Combined spacing for both header and bottom nav */
+  .mobile-safe {
+    padding-top: 6rem; /* 96px - header */
+    padding-bottom: 8rem; /* 128px - bottom nav */
+  }
+  
+  /* Ensure content doesn't get hidden behind fixed elements */
+  .content-safe {
+    position: relative;
+    z-index: 1;
+  }
+  
+  /* Prevent content from being hidden under fixed elements */
+  .no-overlap {
+    min-height: calc(100vh - 12rem); /* 100vh - header - bottom nav */
+  }
+  
+  /* Specific spacing for mobile layout */
+  .mobile-layout {
+    padding-top: 7rem; /* 112px for header + extra space */
+    padding-bottom: 8rem; /* 128px for bottom nav */
+    min-height: calc(100vh - 12rem);
+  }
+  
+  /* Ensure buttons and interactive elements are accessible */
+  .interactive-safe {
+    margin-bottom: 1rem; /* Extra space for interactive elements */
+  }
+  
+  /* Aggressive header spacing to prevent any overlap */
+  .header-spacing {
+    padding-top: 10rem; /* 160px - extremely aggressive spacing */
+    margin-top: 2rem; /* Additional margin for safety */
+  }
+  
+  /* Ensure first content element is fully visible */
+  .first-content-safe {
+    margin-top: 3rem; /* Additional margin for the first content element */
+    padding-top: 2rem; /* Extra padding for safety */
+  }
+}
+
+@layer utilities {
+    .animate-fade-in {
+        animation: fadeIn 0.2s ease-in-out;
+    }
+    .animate-fade-in-delay {
+        animation: fadeIn 0.2s ease-in-out 0.5s;
+        animation-fill-mode: both;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .scroll-container {
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-y: contain;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Safe Area Handling for Mobile Devices */
+@supports (padding: max(0px)) {
+  .safe-area-inset {
+    padding-top: max(1rem, env(safe-area-inset-top));
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+  
+  .safe-area-top {
+    padding-top: max(1rem, env(safe-area-inset-top));
+  }
+  
+  .safe-area-bottom {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+  
+  .safe-area-left {
+    padding-left: max(1rem, env(safe-area-inset-left));
+  }
+  
+  .safe-area-right {
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+}
+
+/* Mobile-specific safe area handling */
+@media (max-width: 768px) {
+  .safe-area-inset {
+    padding-top: max(1rem, env(safe-area-inset-top) + 1rem);
+    padding-bottom: max(1rem, env(safe-area-inset-bottom) + 1rem);
+  }
+}
+
+/* Added mobile-specific optimizations */
+@media (max-width: 640px) {
+  /* Prevent horizontal scrolling on mobile */
+  html,
+  body {
+    overflow-x: hidden;
+    width: 100%;
+    position: relative;
+    /* Prevent iOS text size adjustment on orientation change */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  /*
+   * touch-action: manipulation — removes the 300ms tap delay and disables
+   * double-tap-to-zoom on interactive elements. This prevents accidental zooming
+   * when tapping buttons quickly.
+   */
+  button,
+  a,
+  input,
+  textarea,
+  select,
+  [role="button"] {
+    touch-action: manipulation;
+  }
+
+  /* Optimize text rendering on mobile */
+  body {
+    text-rendering: optimizeLegibility;
+  }
+}
+
+/* Apply touch-action globally for all screen sizes (safe) */
+button,
+a,
+[role="button"],
+[tabindex] {
+  touch-action: manipulation;
+}
+
+/* Fix for Google Maps Autocomplete suggestions appearing behind dialogs */
+.pac-container {
+    z-index: 9999 !important;
+}
+
+/* Force hide the Zoho Desk ASAP launcher icon globally */
+#zohohc-asap-web-launcher, 
+#zohohc-asap-web-launcher-container,
+.zohohc-asap-web-launcher,
+#zohodesk-asap-launcher,
+#zohohc-asap-web-button,
+div[id^="zohohc-asap-web-button"],
+div[id*="launcher"] {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  z-index: -9999 !important;
+}
+
+/* ── Dark mode media dimming: bright post/event covers shouldn't flashbang ── */
+.dark .post-media-image {
+  filter: brightness(0.9) contrast(1.05);
+  transition: filter 0.2s ease;
+}
+.dark .post-media-image:hover {
+  filter: brightness(1);
+}
+/* ── Micro-interactions: tilt / magnetic / ambient blobs ── */
+.tilt-card {
+  transform-style: preserve-3d;
+}
+
+.magnetic-btn {
+  will-change: transform;
+}
+
+.ambient-blob {
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tilt-card,
+  .magnetic-btn,
+  .ambient-blob {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+@media (hover: none) {
+  /* Touch devices: skip cursor-driven effects, no hover to trigger them anyway */
+  .tilt-card {
+    transform: none !important;
+  }
+}

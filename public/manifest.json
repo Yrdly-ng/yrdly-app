@@ -1,0 +1,23 @@
+{
+  "name": "Yrdly",
+  "short_name": "Yrdly",
+  "description": "Your local neighborhood social network",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0A0F0D",
+  "theme_color": "#82DB7E",
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
+

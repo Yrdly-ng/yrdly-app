@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&amp;family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;family=Raleway:wght@300;400;600;700&amp;family=Work+Sans:ital,wght@0,300;0,400;0,600;1,300&amp;family=Jersey+25&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "tertiary-container": "#35a61a",
+              "outline": "#899485",
+              "surface-dim": "#101418",
+              "secondary-fixed-dim": "#a5c8ff",
+              "on-surface-variant": "#bfcab9",
+              "on-surface": "#e1e2e9",
+              "on-secondary": "#00315f",
+              "primary-fixed-dim": "#82db7e",
+              "tertiary-fixed-dim": "#6edf51",
+              "surface-container": "#1d2025",
+              "on-tertiary-fixed": "#032100",
+              "on-error-container": "#ffdad6",
+              "background": "#101418",
+              "surface-container-lowest": "#0b0e13",
+              "secondary-container": "#006ec9",
+              "surface-variant": "#32353a",
+              "surface": "#101418",
+              "primary-container": "#4da24e",
+              "inverse-primary": "#106d20",
+              "surface-container-highest": "#32353a",
+              "on-background": "#e1e2e9",
+              "on-error": "#690005",
+              "secondary-fixed": "#d4e3ff",
+              "error": "#ffb4ab",
+              "on-secondary-container": "#eaf0ff",
+              "surface-tint": "#82db7e",
+              "surface-container-high": "#272a2f",
+              "outline-variant": "#40493d",
+              "on-primary-container": "#003207",
+              "inverse-surface": "#e1e2e9",
+              "error-container": "#93000a",
+              "tertiary": "#6edf51",
+              "surface-container-low": "#191c21",
+              "on-tertiary-fixed-variant": "#0d5300",
+              "on-tertiary-container": "#053200",
+              "on-tertiary": "#073900",
+              "on-secondary-fixed-variant": "#004786",
+              "primary-fixed": "#9df898",
+              "tertiary-fixed": "#8afc6a",
+              "surface-bright": "#36393f",
+              "on-primary": "#00390a",
+              "secondary": "#a5c8ff",
+              "on-primary-fixed-variant": "#005312",
+              "inverse-on-surface": "#2e3036",
+              "primary": "#82db7e",
+              "on-secondary-fixed": "#001c3a",
+              "on-primary-fixed": "#002204"
+            },
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Work Sans"],
+              "label": ["Work Sans"],
+              "cursive": ["Pacifico"],
+              "brand": ["Jersey 25"],
+              "editorial": ["Raleway"]
+            },
+            borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .star-active {
+            font-variation-settings: 'FILL' 1;
+            color: #FFD700;
+        }
+        ::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body selection:bg-primary/30">
+<!-- Top App Bar (Shared Component Logic) -->
+<header class="fixed top-0 w-full z-50 bg-[#15181D]/80 backdrop-blur-xl flex items-center px-6 h-16 w-full">
+<div class="flex items-center gap-4 w-full">
+<button class="active:scale-95 transition-transform hover:opacity-80 transition-opacity">
+<span class="material-symbols-outlined text-[#388E3C]">arrow_back</span>
+</button>
+<h1 class="font-['Pacifico'] text-2xl tracking-tight text-on-surface">Leave a Review</h1>
+</div>
+</header>
+<main class="pt-24 pb-12 px-6 max-w-2xl mx-auto flex flex-col gap-10">
+<!-- User Card (The Person Being Reviewed) -->
+<section class="flex items-center gap-5 p-4 bg-surface-container-low rounded-lg">
+<div class="relative">
+<img alt="Portrait of a young Nigerian woman" class="w-16 h-16 rounded-full object-cover border-2 border-primary/20" data-alt="Close-up portrait of a young Nigerian woman with braided hair, soft outdoor lighting, smiling warmly against a blurred urban background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA7Q3h_JS95A2e8KQltJ499eUsRFfxztxh_sCyUIXqpbneT7jdEJKX9qCnC5DZx-letcebwL17cSV4mgQIW6t5syp4gSzBHzr9OeQSSJZ2220AJcsc2cYlL_gl7LAZoI4FPxAvb6woqFrIshv40EuUYH9ZTg192SUtDquHekJntf7tPQEIk_Fap03DxL8zlp1kb834gvf_Kg-5_Q-Vh5Va2MAA-TsfeYQ7Oug6Eg9MAbQ-yYtHuci9hL83AkDidFiZeOJt0aP0gak0K"/>
+</div>
+<div class="flex flex-col gap-1">
+<h2 class="font-editorial font-bold text-lg leading-tight">Chidinma Okafor</h2>
+<div class="flex">
+<span class="text-[10px] uppercase tracking-widest font-bold px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container">Seller</span>
+</div>
+</div>
+</section>
+<!-- Star Rating Section -->
+<section class="flex flex-col items-center gap-4 py-4">
+<div class="flex gap-2">
+<!-- Stars: 4 are filled as a preview state -->
+<span class="material-symbols-outlined text-[48px] star-active cursor-pointer">star</span>
+<span class="material-symbols-outlined text-[48px] star-active cursor-pointer">star</span>
+<span class="material-symbols-outlined text-[48px] star-active cursor-pointer">star</span>
+<span class="material-symbols-outlined text-[48px] star-active cursor-pointer">star</span>
+<span class="material-symbols-outlined text-[48px] text-outline cursor-pointer">star</span>
+</div>
+<p class="font-editorial text-primary-fixed-dim text-lg font-semibold">Good</p>
+</section>
+<!-- Review Text Area -->
+<section class="flex flex-col gap-3">
+<div class="relative">
+<textarea class="w-full bg-surface-container-high border-0 focus:ring-2 focus:ring-[#388E3C] rounded-[11px] p-4 font-editorial italic font-light text-on-surface-variant placeholder:text-on-surface-variant/40 resize-none transition-all" placeholder="Share your experience... (optional)" rows="5"></textarea>
+<div class="absolute bottom-3 right-4 text-[11px] font-label text-outline">
+                    0 / 120
+                </div>
+</div>
+</section>
+<!-- Tags Row (Horizontal Scroll) -->
+<section class="flex flex-col gap-4">
+<h3 class="text-xs uppercase tracking-[0.2em] font-bold text-outline">Quick Feedback</h3>
+<div class="flex overflow-x-auto gap-3 pb-2 -mx-2 px-2 scroll-smooth">
+<!-- Active Tag -->
+<button class="whitespace-nowrap px-4 py-2 rounded-full text-sm font-editorial font-semibold bg-[#06171B] border border-[#388E3C] text-[#BBF7D0] transition-all">
+                    Fast response
+                </button>
+<!-- Inactive Tags -->
+<button class="whitespace-nowrap px-4 py-2 rounded-full text-sm font-editorial font-semibold bg-surface-container border border-white/10 text-on-surface-variant hover:border-white/20 transition-all">
+                    Item as described
+                </button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full text-sm font-editorial font-semibold bg-surface-container border border-white/10 text-on-surface-variant hover:border-white/20 transition-all">
+                    Great seller
+                </button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full text-sm font-editorial font-semibold bg-surface-container border border-white/10 text-on-surface-variant hover:border-white/20 transition-all">
+                    Would recommend
+                </button>
+</div>
+</section>
+<!-- Actions -->
+<section class="flex flex-col items-center gap-6 mt-4">
+<button class="w-full py-4 bg-[#388E3C] text-on-primary font-editorial font-bold text-lg rounded-full shadow-lg active:scale-95 transition-all">
+                Submit Review
+            </button>
+<button class="text-outline font-editorial text-sm font-semibold hover:text-on-surface transition-colors">
+                Skip for now
+            </button>
+</section>
+</main>
+<!-- Visual Background Element -->
+<div class="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
+<div class="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-primary/5 rounded-full blur-[120px]"></div>
+<div class="absolute bottom-[-5%] left-[-10%] w-[40%] h-[40%] bg-secondary/5 rounded-full blur-[100px]"></div>
+</div>
+</body></html>

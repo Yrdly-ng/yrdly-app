@@ -1,0 +1,377 @@
+[
+  {
+    "code": "044",
+    "name": "Access Bank",
+    "slug": "access-bank"
+  },
+  {
+    "code": "023",
+    "name": "Citibank Nigeria",
+    "slug": "citibank-nigeria"
+  },
+  {
+    "code": "050",
+    "name": "Ecobank Nigeria",
+    "slug": "ecobank-nigeria"
+  },
+  {
+    "code": "011",
+    "name": "First Bank of Nigeria",
+    "slug": "first-bank-of-nigeria"
+  },
+  {
+    "code": "214",
+    "name": "First City Monument Bank",
+    "slug": "first-city-monument-bank"
+  },
+  {
+    "code": "070",
+    "name": "Fidelity Bank",
+    "slug": "fidelity-bank"
+  },
+  {
+    "code": "058",
+    "name": "GTBank",
+    "slug": "gtbank"
+  },
+  {
+    "code": "030",
+    "name": "Heritage Bank",
+    "slug": "heritage-bank"
+  },
+  {
+    "code": "301",
+    "name": "Jaiz Bank",
+    "slug": "jaiz-bank"
+  },
+  {
+    "code": "082",
+    "name": "Keystone Bank",
+    "slug": "keystone-bank"
+  },
+  {
+    "code": "221",
+    "name": "Stanbic IBTC Bank",
+    "slug": "stanbic-ibtc-bank"
+  },
+  {
+    "code": "068",
+    "name": "Standard Chartered Bank",
+    "slug": "standard-chartered-bank"
+  },
+  {
+    "code": "232",
+    "name": "Sterling Bank",
+    "slug": "sterling-bank"
+  },
+  {
+    "code": "032",
+    "name": "Union Bank of Nigeria",
+    "slug": "union-bank-of-nigeria"
+  },
+  {
+    "code": "033",
+    "name": "United Bank for Africa",
+    "slug": "united-bank-for-africa"
+  },
+  {
+    "code": "215",
+    "name": "Unity Bank",
+    "slug": "unity-bank"
+  },
+  {
+    "code": "035",
+    "name": "Wema Bank",
+    "slug": "wema-bank"
+  },
+  {
+    "code": "057",
+    "name": "Zenith Bank",
+    "slug": "zenith-bank"
+  },
+  {
+    "code": "100",
+    "name": "Providus Bank",
+    "slug": "providus-bank"
+  },
+  {
+    "code": "101",
+    "name": "Titan Trust Bank",
+    "slug": "titan-trust-bank"
+  },
+  {
+    "code": "102",
+    "name": "Globus Bank",
+    "slug": "globus-bank"
+  },
+  {
+    "code": "103",
+    "name": "Parallex Bank",
+    "slug": "parallex-bank"
+  },
+  {
+    "code": "104",
+    "name": "Premium Trust Bank",
+    "slug": "premium-trust-bank"
+  },
+  {
+    "code": "105",
+    "name": "Suntrust Bank",
+    "slug": "suntrust-bank"
+  },
+  {
+    "code": "106",
+    "name": "Optimus Bank",
+    "slug": "optimus-bank"
+  },
+  {
+    "code": "107",
+    "name": "Lotus Bank",
+    "slug": "lotus-bank"
+  },
+  {
+    "code": "108",
+    "name": "TAJ Bank",
+    "slug": "taj-bank"
+  },
+  {
+    "code": "109",
+    "name": "VFD Microfinance Bank",
+    "slug": "vfd-microfinance-bank"
+  },
+  {
+    "code": "110",
+    "name": "Mint Microfinance Bank",
+    "slug": "mint-microfinance-bank"
+  },
+  {
+    "code": "111",
+    "name": "M36 Microfinance Bank",
+    "slug": "m36-microfinance-bank"
+  },
+  {
+    "code": "112",
+    "name": "Parkway Microfinance Bank",
+    "slug": "parkway-microfinance-bank"
+  },
+  {
+    "code": "113",
+    "name": "Visa Microfinance Bank",
+    "slug": "visa-microfinance-bank"
+  },
+  {
+    "code": "114",
+    "name": "Vulte Microfinance Bank",
+    "slug": "vulte-microfinance-bank"
+  },
+  {
+    "code": "115",
+    "name": "Yes Microfinance Bank",
+    "slug": "yes-microfinance-bank"
+  },
+  {
+    "code": "116",
+    "name": "Amju Unique Microfinance Bank",
+    "slug": "amju-unique-microfinance-bank"
+  },
+  {
+    "code": "117",
+    "name": "Ampersand Microfinance Bank",
+    "slug": "ampersand-microfinance-bank"
+  },
+  {
+    "code": "118",
+    "name": "Bainescredit Microfinance Bank",
+    "slug": "bainescredit-microfinance-bank"
+  },
+  {
+    "code": "119",
+    "name": "Bowen Microfinance Bank",
+    "slug": "bowen-microfinance-bank"
+  },
+  {
+    "code": "120",
+    "name": "Carbon Microfinance Bank",
+    "slug": "carbon-microfinance-bank"
+  },
+  {
+    "code": "121",
+    "name": "Covenant Microfinance Bank",
+    "slug": "covenant-microfinance-bank"
+  },
+  {
+    "code": "122",
+    "name": "Fairmoney Microfinance Bank",
+    "slug": "fairmoney-microfinance-bank"
+  },
+  {
+    "code": "123",
+    "name": "Fastfund Microfinance Bank",
+    "slug": "fastfund-microfinance-bank"
+  },
+  {
+    "code": "124",
+    "name": "Fint Microfinance Bank",
+    "slug": "fint-microfinance-bank"
+  },
+  {
+    "code": "125",
+    "name": "Getmoney Microfinance Bank",
+    "slug": "getmoney-microfinance-bank"
+  },
+  {
+    "code": "126",
+    "name": "Hackman Microfinance Bank",
+    "slug": "hackman-microfinance-bank"
+  },
+  {
+    "code": "127",
+    "name": "Hasal Microfinance Bank",
+    "slug": "hasal-microfinance-bank"
+  },
+  {
+    "code": "128",
+    "name": "Ibile Microfinance Bank",
+    "slug": "ibile-microfinance-bank"
+  },
+  {
+    "code": "129",
+    "name": "Ikoyi Osun Microfinance Bank",
+    "slug": "ikoyi-osun-microfinance-bank"
+  },
+  {
+    "code": "130",
+    "name": "Imowo Microfinance Bank",
+    "slug": "imowo-microfinance-bank"
+  },
+  {
+    "code": "131",
+    "name": "Kredi Money Microfinance Bank",
+    "slug": "kredi-money-microfinance-bank"
+  },
+  {
+    "code": "132",
+    "name": "Kuda Microfinance Bank",
+    "slug": "kuda-microfinance-bank"
+  },
+  {
+    "code": "133",
+    "name": "Lagos Building Investment Company",
+    "slug": "lagos-building-investment-company"
+  },
+  {
+    "code": "134",
+    "name": "Mayfair Microfinance Bank",
+    "slug": "mayfair-microfinance-bank"
+  },
+  {
+    "code": "135",
+    "name": "Mint Microfinance Bank",
+    "slug": "mint-microfinance-bank"
+  },
+  {
+    "code": "136",
+    "name": "Moniepoint Microfinance Bank",
+    "slug": "moniepoint-microfinance-bank"
+  },
+  {
+    "code": "137",
+    "name": "NPF Microfinance Bank",
+    "slug": "npf-microfinance-bank"
+  },
+  {
+    "code": "138",
+    "name": "PalmPay Microfinance Bank",
+    "slug": "palmPay-microfinance-bank"
+  },
+  {
+    "code": "139",
+    "name": "Parallex Microfinance Bank",
+    "slug": "parallex-microfinance-bank"
+  },
+  {
+    "code": "140",
+    "name": "Personal Trust Microfinance Bank",
+    "slug": "personal-trust-microfinance-bank"
+  },
+  {
+    "code": "141",
+    "name": "Petra Microfinance Bank",
+    "slug": "petra-microfinance-bank"
+  },
+  {
+    "code": "142",
+    "name": "Polaris Microfinance Bank",
+    "slug": "polaris-microfinance-bank"
+  },
+  {
+    "code": "143",
+    "name": "QuickFund Microfinance Bank",
+    "slug": "quickfund-microfinance-bank"
+  },
+  {
+    "code": "144",
+    "name": "Sparkle Microfinance Bank",
+    "slug": "sparkle-microfinance-bank"
+  },
+  {
+    "code": "145",
+    "name": "Stellas Microfinance Bank",
+    "slug": "stellas-microfinance-bank"
+  },
+  {
+    "code": "146",
+    "name": "Tangerine Money Microfinance Bank",
+    "slug": "tangerine-money-microfinance-bank"
+  },
+  {
+    "code": "147",
+    "name": "Trident Microfinance Bank",
+    "slug": "trident-microfinance-bank"
+  },
+  {
+    "code": "148",
+    "name": "Trustfund Microfinance Bank",
+    "slug": "trustfund-microfinance-bank"
+  },
+  {
+    "code": "149",
+    "name": "Uhuru Microfinance Bank",
+    "slug": "uhuru-microfinance-bank"
+  },
+  {
+    "code": "150",
+    "name": "Unaab Microfinance Bank",
+    "slug": "unaab-microfinance-bank"
+  },
+  {
+    "code": "151",
+    "name": "Unical Microfinance Bank",
+    "slug": "unical-microfinance-bank"
+  },
+  {
+    "code": "152",
+    "name": "Unilag Microfinance Bank",
+    "slug": "unilag-microfinance-bank"
+  },
+  {
+    "code": "153",
+    "name": "Verdant Microfinance Bank",
+    "slug": "verdant-microfinance-bank"
+  },
+  {
+    "code": "154",
+    "name": "Visa Microfinance Bank",
+    "slug": "visa-microfinance-bank"
+  },
+  {
+    "code": "155",
+    "name": "Vulte Microfinance Bank",
+    "slug": "vulte-microfinance-bank"
+  },
+  {
+    "code": "156",
+    "name": "Yes Microfinance Bank",
+    "slug": "yes-microfinance-bank"
+  }
+]
