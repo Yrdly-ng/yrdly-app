@@ -23,6 +23,7 @@ export interface Business {
   lga?: string | null;
   ward?: string | null;
   rating?: number;
+  verified_seller?: boolean;
   review_count?: number;
   hours?: string;
   phone?: string;

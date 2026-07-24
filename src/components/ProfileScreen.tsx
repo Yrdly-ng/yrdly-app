@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   ArrowLeft, MapPin, Calendar, Users, MessageCircle, ShoppingBag,
   Briefcase, CalendarDays, Clock, Heart, MoreHorizontal, UserMinus,
-  Ticket, Package, ChevronRight, TrendingUp, Shield, Check, X, BadgeCheck
+  Ticket, Package, ChevronRight, TrendingUp, Shield, Check, X, BadgeCheck, Star
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { supabase } from "@/lib/supabase";
@@ -50,6 +50,7 @@ const TABS = [
   { key: "items", label: "Items" },
   { key: "businesses", label: "Business" },
   { key: "events", label: "Events" },
+  { key: "reviews", label: "Reviews" },
 ];
 
 function TabBar({ active, onChange }: { active: string; onChange: (k: string) => void }) {
@@ -84,7 +85,7 @@ function TabBar({ active, onChange }: { active: string; onChange: (k: string) =>
 }
 
 // ─── Empty state ─────────────────────────────────────────────────────────────
-function EmptyState({ icon, label, action, onAction }: { icon: React.ReactNode; label: string; action: string; onAction: () => void }) {
+function EmptyState({ icon, label, action, onAction }: { icon: React.ReactNode; label: string; action?: string; onAction?: () => void }) {
   return (
     <div
       className="flex flex-col items-center justify-center py-16 text-center rounded-[11px]"
@@ -94,13 +95,15 @@ function EmptyState({ icon, label, action, onAction }: { icon: React.ReactNode; 
         {icon}
       </div>
       <p className="text-foreground font-semibold mb-1 text-sm" style={{ fontFamily: RALEWAY }}>{label}</p>
-      <button
-        onClick={onAction}
-        className="mt-3 rounded-full px-5 py-2 text-xs font-bold"
-        style={{ background: GREEN, color: "#fff", fontFamily: FONT }}
-      >
-        {action}
-      </button>
+      {action && onAction && (
+        <button
+          onClick={onAction}
+          className="mt-3 rounded-full px-5 py-2 text-xs font-bold"
+          style={{ background: GREEN, color: "#fff", fontFamily: FONT }}
+        >
+          {action}
+        </button>
+      )}
     </div>
   );
 }
@@ -142,11 +145,12 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
   const { user: currentUser, profile: currentProfile } = useAuth();
   const { toast } = useToast();
 
-  const [profileData, setProfileData] = useState<User | null>(null);
+  const [profileData, setProfileData] = useState<any>(null);
   const [userPosts, setUserPosts] = useState<Post[]>([]);
   const [userItems, setUserItems] = useState<any[]>([]);
   const [userBusinesses, setUserBusinesses] = useState<any[]>([]);
   const [userEvents, setUserEvents] = useState<any[]>([]);
+  const [userReviews, setUserReviews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("posts");
   const [showFriendsList, setShowFriendsList] = useState(false);
@@ -183,12 +187,13 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
       const { data: userData } = await supabase.from("users").select("*, friends").eq("id", targetUser.id).single();
       if (userData) setProfileData(userData);
 
-      const [postsRes, itemsRes, bizRes, eventsRes, eventsCountRes] = await Promise.all([
+      const [postsRes, itemsRes, bizRes, eventsRes, eventsCountRes, reviewsRes] = await Promise.all([
         supabase.from("posts").select("*").eq("user_id", targetUser.id).eq("category", "General").order("timestamp", { ascending: false }).limit(10),
         supabase.from("posts").select("*").eq("user_id", targetUser.id).eq("category", "For Sale").order("timestamp", { ascending: false }).limit(10),
         supabase.from("businesses").select("*").eq("owner_id", targetUser.id).order("created_at", { ascending: false }).limit(10),
         supabase.from("events").select("*").eq("organizer_id", targetUser.id).order("created_at", { ascending: false }).limit(10),
         supabase.from("events").select("id").eq("organizer_id", targetUser.id),
+        supabase.from("user_reviews").select("*, buyer:buyer_id(id, name, avatar_url)").eq("seller_id", targetUser.id).order("created_at", { ascending: false }),
       ]);
 
       if (currentUser?.id && targetUser.id !== currentUser.id) {
@@ -200,6 +205,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
       setUserItems(itemsRes.data || []);
       setUserBusinesses(bizRes.data || []);
       setUserEvents(eventsRes.data || []);
+      setUserReviews(reviewsRes.data || []);
       setStats(prev => ({ ...prev, friends: userData?.friends?.length || 0, events: eventsCountRes.data?.length || 0 }));
       setLoading(false);
       
@@ -236,10 +242,6 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
     return () => window.removeEventListener("focus", h);
   }, [targetUser, loading]);
 
-  // (Friendship state is now managed by useFriendshipGlobal above)
-
-  // Friend actions are now delegated to the shared useFriendshipGlobal hook.
-
   const handleMessageUser = async () => {
     if (!currentUser || !targetUser) return;
     try {
@@ -271,7 +273,6 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
       } else {
         await supabase.from('followers').insert({ follower_id: currentUser.id, following_id: targetUser.id });
         setIsFollowing(true);
-        // Optional: Trigger a notification for following here if supported
       }
     } catch (e: any) {
       toast({ variant: 'destructive', description: e.message });
@@ -307,7 +308,6 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
 
   return (
     <div className="pb-28 space-y-4 max-w-5xl mx-auto px-4 pt-4" style={{ background: BG }}>
-      {/* Back arrow (if external) */}
       {onBack && (
         <button onClick={onBack} className="flex items-center gap-2 text-sm mb-1 text-primary-light" style={{ fontFamily: FONT }}>
           <ArrowLeft className="w-4 h-4" /> Back
@@ -319,12 +319,10 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
         className="flex flex-col items-center text-center p-8 relative overflow-hidden"
         style={{ background: 'var(--c-card)', borderRadius: 11 }}
       >
-        {/* Subtle green wash at top */}
         <div className="absolute top-0 left-0 w-full h-24 pointer-events-none"
           style={{ background: "linear-gradient(to bottom, rgba(130,219,126,0.08), transparent)" }} />
 
         <div className="relative z-10">
-          {/* Avatar with spinning dashed ring */}
           <div className="relative inline-block">
             <div
               className="w-32 h-32 rounded-full overflow-hidden shadow-2xl border-4 relative z-10 cursor-pointer"
@@ -342,7 +340,6 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
               className="absolute -inset-2 rounded-full border-2 border-dashed"
               style={{ borderColor: "rgba(130,219,126,0.4)", animation: "spin 20s linear infinite" }}
             />
-            {/* ActivityIndicator for other's profiles */}
             {!actualIsOwnProfile && targetUser && (
               <div className="absolute bottom-0 right-0 z-20">
                 <ActivityIndicator userId={targetUser.id} size="md" />
@@ -362,7 +359,6 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
             </p>
           )}
 
-          {/* Location + Join date */}
           <div className="mt-5 flex items-center justify-center gap-5 flex-wrap text-[0.6875rem] font-bold uppercase tracking-widest" style={{ color: "var(--c-text-muted)" }}>
             {locationStr && (
               <div className="flex items-center gap-1.5">
@@ -374,11 +370,9 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
             </div>
           </div>
 
-          {/* Action buttons for external profile */}
           {!actualIsOwnProfile && currentUser?.id !== targetUser?.id && (
             <div className="flex flex-row flex-wrap items-center justify-center gap-2 sm:gap-3 mt-8 w-full max-w-[400px] mx-auto px-4">
               {friendshipStatus === 'friends' ? (
-                // Friends: show Message button + ⋯ overflow with Remove
                 <>
                   <button
                     onClick={handleMessageUser}
@@ -416,7 +410,6 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
                   </button>
                 </>
               ) : friendshipStatus === 'request_sent' ? (
-                // Request pending: show "Sent" + Cancel button
                 <>
                   <button
                     disabled
@@ -444,7 +437,6 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
                   </button>
                 </>
               ) : friendshipStatus === 'request_received' ? (
-                // Incoming request: Accept + Decline
                 <>
                   <button
                     onClick={() => friendship.acceptRequest()}
@@ -466,7 +458,6 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
                   </button>
                 </>
               ) : (
-                // No relationship: Connect
                 <>
                   <button
                     onClick={() => friendship.addFriend()}
@@ -490,7 +481,6 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
             </div>
           )}
 
-          {/* Action buttons for own profile (Admin) */}
           {actualIsOwnProfile && (profileData as any)?.is_admin && (
             <div className="flex flex-row items-center justify-center gap-3 mt-8 w-full max-w-[400px] mx-auto px-4">
               <button
@@ -504,7 +494,6 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
             </div>
           )}
 
-          {/* Remove Friend confirmation dialog */}
           {showRemoveFriendDialog && (
             <AlertDialog open={showRemoveFriendDialog} onOpenChange={setShowRemoveFriendDialog}>
               <AlertDialogContent style={{ background: "var(--c-card)", border: "1px solid rgba(130,219,126,0.2)" }}>
@@ -529,7 +518,6 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
         </div>
       </section>
       
-      {/* ── Phone Verification Prompt ── */}
       {actualIsOwnProfile && displayProfile && !(displayProfile as any)?.phone_verified && (
         <div
           className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-[11px] cursor-pointer transition-transform active:scale-95"
@@ -557,10 +545,8 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
         </div>
       )}
 
-      {/* Spin keyframe */}
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
 
-      {/* ── Stats ── */}
       <div className="grid grid-cols-2 gap-4">
         <button
           className="flex items-center gap-3 p-4 text-left rounded-[11px] transition-colors min-w-0"
@@ -591,7 +577,6 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
         </div>
       </div>
 
-      {/* ── Quick Actions (own profile only) ── */}
       {actualIsOwnProfile && (
         <section className="rounded-[11px] overflow-hidden" style={{ background: SURFACE }}>
           {[
@@ -638,7 +623,6 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
         </section>
       )}
 
-      {/* ── Interests ── */}
       {interests && interests.length > 0 && (
         <section className="p-6 rounded-[11px]" style={{ background: CARD }}>
           <h3 className="text-xs font-bold uppercase tracking-[0.2em] mb-4" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
@@ -659,12 +643,11 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
       )}
 
       {/* ── Tabs ── */}
-      {actualIsOwnProfile ? (
-        <>
-          <TabBar active={activeTab} onChange={setActiveTab} />
+      <TabBar active={activeTab} onChange={setActiveTab} />
 
-          {/* Posts tab */}
-          {activeTab === "posts" && (
+      <div className="mt-5">
+        {/* Posts tab */}
+        {activeTab === "posts" && (
             userPosts.length > 0 ? (
               <div className="bento-section space-y-4">
                 {/* Large feature card for first post */}
@@ -800,26 +783,52 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
                 label="No events posted" action="Create your first event" onAction={() => router.push("/events")} />
             )
           )}
-        </>
-      ) : (
-        /* External profile – show recent posts inline */
-        userPosts.length > 0 && (
-          <section className="space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-[0.2em]" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
-              Recent Posts
-            </h3>
-            {userPosts.slice(0, 3).map((post) => (
-              <div key={post.id} className="p-5 rounded-[11px]" style={{ background: SURFACE }}>
-                <p className="text-foreground text-sm leading-relaxed" style={{ fontFamily: FONT }}>{post.text || post.title}</p>
-                <div className="flex items-center gap-3 mt-3 text-xs" style={{ color: "var(--c-text-muted)" }}>
-                  <span className="flex items-center gap-1"><Heart className="w-3 h-3" />{post.liked_by?.length || 0}</span>
-                  <span>{new Date(post.timestamp).toLocaleDateString()}</span>
-                </div>
+          {/* Reviews tab */}
+          {activeTab === "reviews" && (
+            userReviews.length > 0 ? (
+              <div className="space-y-3">
+                {userReviews.map((review) => (
+                  <div key={review.id} className="p-4 rounded-[11px]" style={{ background: SURFACE }}>
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-10 h-10 rounded-full overflow-hidden bg-[var(--c-card2)]">
+                        <Image
+                          src={review.buyer?.avatar_url || "/placeholder.svg"}
+                          alt={review.buyer?.name || "Anonymous"}
+                          width={40}
+                          height={40}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-foreground text-sm truncate" style={{ fontFamily: RALEWAY }}>
+                          {review.buyer?.name || "Anonymous"}
+                        </p>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
+                          <span className="text-xs font-medium text-foreground">{review.rating}</span>
+                        </div>
+                      </div>
+                      {review.verified_purchase && (
+                        <div className="flex items-center gap-1 bg-green-500/10 text-green-500 px-2 py-1 rounded-full">
+                          <BadgeCheck className="w-3 h-3" />
+                          <span className="text-[10px] font-bold uppercase tracking-wider">Verified</span>
+                        </div>
+                      )}
+                    </div>
+                    {review.comment && (
+                      <p className="text-sm text-muted-foreground mt-2" style={{ fontFamily: FONT }}>
+                        {review.comment}
+                      </p>
+                    )}
+                  </div>
+                ))}
               </div>
-            ))}
-          </section>
-        )
-      )}
+            ) : (
+              <EmptyState icon={<Star className="w-7 h-7 text-primary-light" style={{ opacity: 0.6 }} />}
+                label="No reviews yet" />
+            )
+          )}
+        </div>
 
       {/* ── Friends List Modal ── */}
       {showFriendsList && (

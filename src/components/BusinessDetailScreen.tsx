@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, Star, MapPin, Clock, Phone, MessageCircle, Share2, Heart, MoreVertical, Edit, Trash2, Plus, Package, BadgeCheck } from "lucide-react";
+import { ArrowLeft, Star, MapPin, Clock, Phone, Mail, MessageCircle, Share2, Heart, MoreVertical, Edit, Trash2, Plus, Package, BadgeCheck } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -502,13 +502,30 @@ export function BusinessDetailScreen({
             <div>
               <h3 className="font-semibold text-foreground mb-2">Contact Information</h3>
               <div className="space-y-2">
+                {business.email && (
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-muted-foreground">{business.email}</span>
+                  </div>
+                )}
                 {business.phone && (
                   <div className="flex items-center gap-2">
                     <Phone className="w-4 h-4 text-muted-foreground" />
                     <span className="text-muted-foreground">{business.phone}</span>
                   </div>
                 )}
-                <div className="flex items-center gap-2">
+                <a 
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                    typeof business.location === 'string' 
+                      ? business.location 
+                      : business.location?.address 
+                        ? business.location.address 
+                        : [business.lga, business.state].filter(Boolean).join(", ")
+                  )}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-2 hover:underline"
+                >
                   <MapPin className="w-4 h-4 text-muted-foreground" />
                   <span className="text-muted-foreground" title={typeof business.location === 'string' ? business.location : business.location?.address || 'Location not specified'}>
                     {typeof business.location === 'string' 
@@ -520,12 +537,7 @@ export function BusinessDetailScreen({
                           : 'Location not specified'
                     }
                   </span>
-                </div>
-                {business.email && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">{business.email}</span>
-                  </div>
-                )}
+                </a>
                 {business.website && (
                   <div className="flex items-center gap-2">
                     <span className="text-muted-foreground">{business.website}</span>

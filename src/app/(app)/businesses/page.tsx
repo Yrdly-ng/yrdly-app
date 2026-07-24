@@ -1,9 +1,9 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { ArrowLeft, Search, Star, MapPin, X, Plus } from "lucide-react";
+import { ArrowLeft, Search, Star, MapPin, X, Plus, BadgeCheck } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -283,9 +283,14 @@ function BusinessList({
           </div>
 
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-foreground truncate" style={{ fontFamily: FONT }}>
-              {biz.name}
-            </h3>
+            <div className="flex items-center gap-1">
+              <h3 className="font-semibold text-foreground truncate" style={{ fontFamily: FONT }}>
+                {biz.name}
+              </h3>
+              {biz.verified_seller && (
+                <BadgeCheck className="w-4 h-4 text-yellow-500 fill-yellow-500/10 shrink-0" />
+              )}
+            </div>
             <p className="text-xs text-muted-foreground truncate" style={{ fontFamily: FONT }}>
               {biz.category}
             </p>
