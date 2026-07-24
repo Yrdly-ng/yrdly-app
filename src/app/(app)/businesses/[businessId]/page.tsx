@@ -110,10 +110,16 @@ export default function BusinessDetailPage() {
         <h2 className="text-xl font-semibold text-foreground mb-2">Business not found</h2>
         <p className="text-muted-foreground mb-4">The business you&apos;re looking for doesn&apos;t exist or has been removed.</p>
         <button 
-          onClick={() => router.push('/businesses')}
+          onClick={() => {
+            if (window.history.length > 2) {
+              window.history.back();
+            } else {
+              router.push('/businesses');
+            }
+          }}
           className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
         >
-          Back to Businesses
+          Back
         </button>
       </div>
     );
@@ -122,7 +128,13 @@ export default function BusinessDetailPage() {
   return (
     <BusinessDetailScreen
       business={business}
-      onBack={() => router.push("/businesses")}
+      onBack={() => {
+        if (window.history.length > 2) {
+          window.history.back();
+        } else {
+          router.push('/businesses');
+        }
+      }}
       onMessageOwner={handleMessageOwner}
       onViewCatalogItem={handleViewCatalogItem}
     />

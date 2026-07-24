@@ -166,7 +166,6 @@ export function MapScreen({ className }: MapScreenProps) {
 
       // Fetch Businesses
       let bizsQuery = supabase.from('businesses').select('*').not('location', 'is', null);
-      if (userState) bizsQuery = bizsQuery.eq('state', userState);
       const { data: bizs } = await bizsQuery;
       (bizs || []).forEach(b => {
         const loc = extract(b.location);
