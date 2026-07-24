@@ -26,6 +26,7 @@ interface BuyButtonProps {
   condition?: string;
   sellerId: string;
   sellerName: string;
+  itemType?: 'post' | 'catalog_item';
 }
 
 export function BuyButton({
@@ -36,6 +37,7 @@ export function BuyButton({
   condition = "Used",
   sellerId,
   sellerName,
+  itemType = 'post',
 }: BuyButtonProps) {
   const { user }  = useAuth();
   const { toast } = useToast();
@@ -84,6 +86,7 @@ export function BuyButton({
             "Buyer",
           itemTitle,
           sellerName,
+          itemType,
         }),
       });
 

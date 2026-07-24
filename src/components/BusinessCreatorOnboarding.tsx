@@ -1,13 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Store, Wrench, ImagePlus, MapPinned, CheckCircle2, ArrowRight } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/hooks/use-supabase-auth";
+import { X, Store, Wrench, ImagePlus, MapPinned, CheckCircle2, ArrowRight, Loader2, ShieldAlert } from "lucide-react";
 
 const GREEN = "hsl(var(--primary))";
 const BORDER = "rgba(56,142,60,0.3)";
 
 type BusinessType = "product" | "service" | null;
-type Step = 1 | 2 | 3;
+type Step = "checking" | "not_verified" | "choose_type" | "what_you_need" | "all_set";
 
 interface BusinessCreatorOnboardingProps {
   isOpen: boolean;
@@ -16,26 +19,58 @@ interface BusinessCreatorOnboardingProps {
 }
 
 export function BusinessCreatorOnboarding({ isOpen, onClose, onContinue }: BusinessCreatorOnboardingProps) {
-  const [step, setStep] = useState<Step>(1);
+  const { user } = useAuth();
+  const router = useRouter();
+  const [step, setStep] = useState<Step>("checking");
   const [businessType, setBusinessType] = useState<BusinessType>(null);
 
   useEffect(() => {
-    if (!isOpen) return;
-    setStep(1);
+    if (!isOpen || !user) return;
     setBusinessType(null);
-  }, [isOpen]);
+    setStep("checking");
+
+    const checkSellerStatus = async () => {
+      const { data } = await supabase
+        .from("seller_accounts")
+        .select("id, verification_status")
+        .eq("user_id", user.id)
+        .eq("is_active", true)
+        .eq("is_primary", true)
+        .maybeSingle();
+
+      const isVerified = !!data && data.verification_status === "verified";
+      if (isVerified) {
+        setStep("choose_type");
+      } else {
+        setStep("not_verified");
+      }
+    };
+
+    checkSellerStatus();
+  }, [isOpen, user]);
 
   if (!isOpen) return null;
 
   const handleTypeSelect = (type: BusinessType) => {
     setBusinessType(type);
-    setStep(2);
+    setStep("what_you_need");
   };
 
   const handleBuildListing = () => {
     onClose();
     onContinue();
   };
+
+  const handleGoToVerification = () => {
+    onClose();
+    router.push("/profile/payout-settings?returnTo=businesses");
+  };
+
+  // Progress logic
+  let progressWidth = "0%";
+  if (step === "choose_type") progressWidth = "33%";
+  if (step === "what_you_need") progressWidth = "66%";
+  if (step === "all_set") progressWidth = "100%";
 
   return (
     <>
@@ -59,7 +94,7 @@ export function BusinessCreatorOnboarding({ isOpen, onClose, onContinue }: Busin
           <div className="h-1 w-full flex-shrink-0" style={{ background: "var(--c-border)" }}>
             <div
               className="h-full transition-all duration-500"
-              style={{ background: GREEN, width: step === 1 ? "33%" : step === 2 ? "66%" : "100%" }}
+              style={{ background: GREEN, width: progressWidth }}
             />
           </div>
 
@@ -76,8 +111,52 @@ export function BusinessCreatorOnboarding({ isOpen, onClose, onContinue }: Busin
             className="overflow-y-auto flex-1 p-6"
             style={{ paddingBottom: "calc(2rem + env(safe-area-inset-bottom))" }}
           >
+            {/* ── Checking ── */}
+            {step === "checking" && (
+              <div className="py-20 flex flex-col items-center justify-center space-y-4">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground font-sans">Checking account status...</p>
+              </div>
+            )}
+
+            {/* ── Not Verified ── */}
+            {step === "not_verified" && (
+              <div className="space-y-6 text-center py-4">
+                <div
+                  className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4"
+                  style={{ background: "rgba(220,38,38,0.1)" }}
+                >
+                  <ShieldAlert className="w-10 h-10 text-red-500" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-black text-foreground font-sans leading-tight">
+                    Verification Required
+                  </h2>
+                  <p className="text-sm text-muted-foreground font-sans mt-2 mb-6">
+                    Only verified sellers can create business listings. You need to set up and verify your payout account first to ensure a safe community.
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
+                  <button
+                    onClick={handleGoToVerification}
+                    className="w-full h-12 rounded-full font-sans font-bold text-foreground text-sm transition-opacity hover:opacity-90"
+                    style={{ background: GREEN }}
+                  >
+                    Verify Account →
+                  </button>
+                  <button
+                    onClick={onClose}
+                    className="w-full h-10 rounded-full font-sans text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Not now
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* ── Step 1: Choose business type ── */}
-            {step === 1 && (
+            {step === "choose_type" && (
               <div className="space-y-6">
                 <div>
                   <p className="text-xs font-sans text-muted-foreground uppercase tracking-widest mb-1">Step 1 of 3</p>
@@ -140,7 +219,7 @@ export function BusinessCreatorOnboarding({ isOpen, onClose, onContinue }: Busin
             )}
 
             {/* ── Step 2: What you'll need ── */}
-            {step === 2 && (
+            {step === "what_you_need" && (
               <div className="space-y-6">
                 <div>
                   <p className="text-xs font-sans text-muted-foreground uppercase tracking-widest mb-1">Step 2 of 3</p>
@@ -172,14 +251,14 @@ export function BusinessCreatorOnboarding({ isOpen, onClose, onContinue }: Busin
 
                 <div className="space-y-2">
                   <button
-                    onClick={() => setStep(3)}
+                    onClick={() => setStep("all_set")}
                     className="w-full h-12 rounded-full font-sans font-bold text-foreground text-sm transition-opacity hover:opacity-90"
                     style={{ background: GREEN }}
                   >
                     Continue →
                   </button>
                   <button
-                    onClick={() => setStep(1)}
+                    onClick={() => setStep("choose_type")}
                     className="w-full h-10 rounded-full font-sans text-sm text-muted-foreground hover:text-foreground transition-colors"
                   >
                     ← Go back
@@ -189,7 +268,7 @@ export function BusinessCreatorOnboarding({ isOpen, onClose, onContinue }: Busin
             )}
 
             {/* ── Step 3: All set ── */}
-            {step === 3 && (
+            {step === "all_set" && (
               <div className="space-y-6 text-center">
                 <div>
                   <p className="text-xs font-sans text-muted-foreground uppercase tracking-widest mb-4">Step 3 of 3</p>

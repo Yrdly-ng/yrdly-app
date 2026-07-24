@@ -9,6 +9,7 @@ import type { Business, CatalogItem } from "@/types";
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import Image from "next/image";
+import { BuyButton } from "@/components/escrow/BuyButton";
 
 interface CatalogItemScreenProps {
   business: Business;
@@ -180,16 +181,29 @@ export function CatalogItemScreen({
 
         {/* Action buttons */}
         <div className="flex gap-2">
-          {user?.id !== business.owner_id && (
-            <Button
-              className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={() => onMessageOwner(item)}
-              disabled={!item.in_stock}
-            >
-              <MessageCircle className="w-4 h-4 mr-2" />
-              {item.in_stock ? "Message About Item" : "Item Unavailable"}
-            </Button>
-          )}
+          {user?.id !== business.owner_id ? (
+            item.in_stock ? (
+              <div className="flex-1">
+                <BuyButton 
+                  itemId={item.id}
+                  itemTitle={item.title}
+                  itemImageUrl={item.images[0]}
+                  price={item.price}
+                  condition="New"
+                  sellerId={business.owner_id}
+                  sellerName={business.name}
+                  itemType="catalog_item"
+                />
+              </div>
+            ) : (
+              <Button
+                className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+                disabled
+              >
+                Item Unavailable
+              </Button>
+            )
+          ) : null}
           <Button
             variant="outline"
             className={`border-primary text-primary hover:bg-primary hover:text-primary-foreground bg-transparent ${user?.id === business.owner_id ? 'flex-1' : ''}`}
@@ -207,10 +221,10 @@ export function CatalogItemScreen({
             <Button
               variant="outline"
               className="flex-1"
-              onClick={() => onMessageOwner()}
+              onClick={() => onMessageOwner(item)}
             >
               <MessageCircle className="w-4 h-4 mr-2" />
-              Message Business
+              Message About Item
             </Button>
             <Button
               variant="outline"

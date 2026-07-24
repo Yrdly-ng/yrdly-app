@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
       // ── Check current transaction state (idempotent) ──
       const { data: txRow, error: fetchError } = await supabaseAdmin
         .from('escrow_transactions')
-        .select('id, status, item_id, buyer_id, seller_id, total_amount')
+        .select('id, status, item_id, buyer_id, seller_id, total_amount, item_type')
         .eq('id', txRef)
         .single();
 
@@ -115,25 +115,39 @@ export async function POST(request: NextRequest) {
 
       // ── Mark item as sold ─────────────────────────────
       if (txRow.item_id) {
-        await supabaseAdmin
-          .from('posts')
-          .update({
-            is_sold: true,
-            sold_to_user_id: txRow.buyer_id,
-            sold_at: new Date().toISOString(),
-            transaction_id: txRef,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', txRow.item_id);
+        if (txRow.item_type === 'catalog_item') {
+          await supabaseAdmin
+            .from('catalog_items')
+            .update({
+              in_stock: false,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', txRow.item_id);
+        } else {
+          await supabaseAdmin
+            .from('posts')
+            .update({
+              is_sold: true,
+              sold_to_user_id: txRow.buyer_id,
+              sold_at: new Date().toISOString(),
+              transaction_id: txRef,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', txRow.item_id);
+        }
       }
 
       // ── Fetch buyer, seller, item for notifications ───
       let buyer, seller, item;
       try {
+        const itemPromise = txRow.item_type === 'catalog_item'
+          ? supabaseAdmin.from('catalog_items').select('id, title, description, price').eq('id', txRow.item_id).single()
+          : supabaseAdmin.from('posts').select('id, title, text, price').eq('id', txRow.item_id).single();
+
         const [{ data: b }, { data: s }, { data: i }] = await Promise.all([
           supabaseAdmin.from('users').select('id, name, email').eq('id', txRow.buyer_id).single(),
           supabaseAdmin.from('users').select('id, name, email').eq('id', txRow.seller_id).single(),
-          supabaseAdmin.from('posts').select('id, title, text, price').eq('id', txRow.item_id).single(),
+          itemPromise,
         ]);
         buyer = b; seller = s; item = i;
       } catch (e) {
@@ -142,7 +156,7 @@ export async function POST(request: NextRequest) {
 
       const buyerName = buyer?.name || 'Valued Customer';
       const sellerName = seller?.name || 'Seller';
-      const itemTitle = item?.title || item?.text || 'an item';
+      const itemTitle = item?.title || item?.text || item?.description || 'an item';
 
       // ── Send emails ───────────────────────────────────
       if (buyer?.email && ResendEmailService.isConfigured()) {

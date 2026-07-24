@@ -84,6 +84,7 @@ export async function POST(request: NextRequest) {
       itemTitle,
       sellerName,
       callbackUrl,
+      itemType = 'post',
     } = body as {
       itemId: string;
       buyerId: string;
@@ -94,6 +95,7 @@ export async function POST(request: NextRequest) {
       itemTitle: string;
       sellerName: string;
       callbackUrl?: string;
+      itemType?: 'post' | 'catalog_item';
     };
 
     // ── Validate ──────────────────────────────────────────
@@ -128,20 +130,66 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Check availability ────────────────────────────────
-    console.log("[PaymentInit] Checking availability for itemId:", itemId);
+    console.log(`[PaymentInit] Checking availability for itemId: ${itemId}, type: ${itemType}`);
     
-    const { data: itemData, error: itemError } = await supabaseAdmin
-      .from("posts")
-      .select("id, is_sold, title, price, user_id")
-      .eq("id", itemId)
-      .single();
-
-    if (itemError) {
-      console.error("[PaymentInit] Database error or item not found:", itemError);
-      return NextResponse.json(
-        { error: "Item not found or database error. Please try again." },
-        { status: 404 }
-      );
+    let itemData: any = null;
+    
+    if (itemType === 'catalog_item') {
+      const { data, error } = await supabaseAdmin
+        .from("catalog_items")
+        .select("id, in_stock, title, price, business_id")
+        .eq("id", itemId)
+        .single();
+        
+      if (error) {
+        console.error("[PaymentInit] Database error or item not found:", error);
+        return NextResponse.json(
+          { error: "Item not found or database error. Please try again." },
+          { status: 404 }
+        );
+      }
+      
+      // We should verify that the sellerId actually owns the business this item belongs to
+      const { data: businessData } = await supabaseAdmin
+        .from("businesses")
+        .select("owner_id")
+        .eq("id", data.business_id)
+        .single();
+        
+      if (businessData?.owner_id !== sellerId) {
+        return NextResponse.json(
+          { error: "Seller ID mismatch." },
+          { status: 403 }
+        );
+      }
+      
+      itemData = {
+        id: data.id,
+        is_sold: !data.in_stock,
+        title: data.title,
+        price: data.price,
+        user_id: sellerId,
+        item_type: 'catalog_item'
+      };
+    } else {
+      const { data, error } = await supabaseAdmin
+        .from("posts")
+        .select("id, is_sold, title, price, user_id")
+        .eq("id", itemId)
+        .single();
+        
+      if (error) {
+        console.error("[PaymentInit] Database error or item not found:", error);
+        return NextResponse.json(
+          { error: "Item not found or database error. Please try again." },
+          { status: 404 }
+        );
+      }
+      
+      itemData = {
+        ...data,
+        item_type: 'post'
+      };
     }
 
     console.log("[PaymentInit] itemData:", JSON.stringify(itemData));
@@ -244,6 +292,7 @@ export async function POST(request: NextRequest) {
         delivery_details: { option: DeliveryOption.FACE_TO_FACE },
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        item_type: itemType, // Keep track of the item type in escrow_transactions
       })
       .select("id")
       .single();
@@ -294,15 +343,25 @@ export async function POST(request: NextRequest) {
         })
         .eq('id', transactionId);
 
-      await supabaseAdmin
-        .from('posts')
-        .update({ 
-          is_sold: true, 
-          sold_to_user_id: buyerId,
-          sold_at: new Date().toISOString(),
-          transaction_id: transactionId,
-        })
-        .eq('id', itemId);
+      if (itemType === 'catalog_item') {
+        await supabaseAdmin
+          .from('catalog_items')
+          .update({ 
+            in_stock: false, 
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', itemId);
+      } else {
+        await supabaseAdmin
+          .from('posts')
+          .update({ 
+            is_sold: true, 
+            sold_to_user_id: buyerId,
+            sold_at: new Date().toISOString(),
+            transaction_id: transactionId,
+          })
+          .eq('id', itemId);
+      }
     }
 
     const posthog = getPostHogClient();
