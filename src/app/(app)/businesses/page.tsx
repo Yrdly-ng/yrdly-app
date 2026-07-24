@@ -102,21 +102,19 @@ export default function BusinessesPage() {
     <div className="min-h-[100dvh] pb-10" style={{ background: "var(--c-bg)" }}>
       {/* Header */}
       <div className="sticky top-0 z-10 px-4 pt-4 pb-3 backdrop-blur-md" style={{ background: "var(--c-bg)cc" }}>
-        <button
-          onClick={() => {
-            if (showingList) {
+        {showingList && (
+          <button
+            onClick={() => {
               setActiveCategory(null);
               setSearchQuery("");
-            } else {
-              router.back();
-            }
-          }}
-          className="flex items-center gap-2 text-sm mb-3 transition-opacity hover:opacity-70 text-primary-light"
-          style={{ fontFamily: FONT }}
-        >
-          <ArrowLeft className="w-4 h-4" />
-          {showingList ? "Back to categories" : "Back"}
-        </button>
+            }}
+            className="flex items-center gap-2 text-sm mb-3 transition-opacity hover:opacity-70 text-primary-light"
+            style={{ fontFamily: FONT }}
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to categories
+          </button>
+        )}
 
         <h1 className="text-3xl mb-1 text-foreground" style={{ fontFamily: HEADING_FONT }}>
           Business Hub

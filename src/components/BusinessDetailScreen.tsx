@@ -264,7 +264,18 @@ export function BusinessDetailScreen({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 text-muted-foreground">
+          <a
+            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+              typeof business.location === 'string'
+                ? business.location
+                : business.location?.address
+                  ? business.location.address
+                  : [business.lga, business.state].filter(Boolean).join(", ")
+            )}`}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-2 text-muted-foreground hover:underline"
+          >
             <MapPin className="w-4 h-4 text-primary flex-shrink-0" />
             <span className="text-sm" title={typeof business.location === 'string' ? business.location : business.location?.address || 'Location not specified'}>
               {typeof business.location === 'string' 
@@ -276,13 +287,7 @@ export function BusinessDetailScreen({
                     : 'Location not specified'
               }
             </span>
-            {business.distance && (
-              <>
-                <span className="text-sm">•</span>
-                <span className="text-sm">{business.distance}</span>
-              </>
-            )}
-          </div>
+          </a>
         </div>
 
         {/* Action buttons */}
@@ -603,7 +608,11 @@ export function BusinessDetailScreen({
               ))
             ) : (
               <div className="text-center py-8">
-                <p className="text-muted-foreground">No reviews yet. Be the first to review this business!</p>
+                <p className="text-muted-foreground">
+                  {isOwner
+                    ? "Reviews will be seen here!!"
+                    : "No reviews yet. Be the first to review this business!"}
+                </p>
               </div>
             )}
           </TabsContent>
