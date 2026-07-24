@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   ArrowLeft, MapPin, Calendar, Users, MessageCircle, ShoppingBag,
   Briefcase, CalendarDays, Clock, Heart, MoreHorizontal, UserMinus,
-  Ticket, Package, ChevronRight, TrendingUp, Shield, Check, X
+  Ticket, Package, ChevronRight, TrendingUp, Shield, Check, X, BadgeCheck
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { supabase } from "@/lib/supabase";
@@ -303,6 +303,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
     ? `${(displayProfile as any).location.state}, ${(displayProfile as any).location.lga}`
     : (displayProfile as any)?.location?.state || "";
   const joinedDate = new Date((displayUser as any)?.created_at || Date.now()).toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  const isVerifiedUser = !!(displayProfile as any)?.phone_verified;
 
   return (
     <div className="pb-28 space-y-4 max-w-5xl mx-auto px-4 pt-4" style={{ background: BG }}>
@@ -349,8 +350,11 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
             )}
           </div>
 
-          <h1 className="mt-6 text-2xl text-foreground font-extrabold tracking-tight" style={{ fontFamily: RALEWAY }}>
+          <h1 className="mt-6 text-2xl text-foreground font-extrabold tracking-tight flex items-center justify-center gap-1.5" style={{ fontFamily: RALEWAY }}>
             {name}
+            {isVerifiedUser && (
+              <BadgeCheck className="w-6 h-6 text-green-500 fill-green-500/10" />
+            )}
           </h1>
           {bio && (
             <p className="mt-2 text-[0.8125rem] font-light italic max-w-sm" style={{ fontFamily: RALEWAY, color: "var(--c-text-muted)" }}>

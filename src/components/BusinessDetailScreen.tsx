@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, Star, MapPin, Clock, Phone, MessageCircle, Share2, Heart, MoreVertical, Edit, Trash2, Plus, Package } from "lucide-react";
+import { ArrowLeft, Star, MapPin, Clock, Phone, MessageCircle, Share2, Heart, MoreVertical, Edit, Trash2, Plus, Package, BadgeCheck } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -242,7 +242,10 @@ export function BusinessDetailScreen({
         <div className="space-y-2">
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <h1 className="text-2xl font-bold text-foreground">{business.name}</h1>
+              <h1 className="text-2xl font-bold text-foreground flex items-center gap-1.5">
+                {business.name}
+                <BadgeCheck className="w-6 h-6 text-yellow-500 fill-yellow-500/10" />
+              </h1>
               <Badge variant="outline" className="mt-1">
                 {business.category}
               </Badge>
