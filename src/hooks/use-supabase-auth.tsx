@@ -310,13 +310,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
-      if (data.verified) {
-        if (profile) {
-          setProfile({ ...profile, phone_verified: true, phone: data.msisdn });
-        }
+      if (profile) {
+        setProfile({ ...profile, phone_verified: true });
       }
 
-      return { verified: data.verified, error: null };
+      return { verified: true, error: null };
     } catch (error: any) {
       console.error('verifyPhoneOtp error:', error);
       return { verified: false, error: error.message || error };
