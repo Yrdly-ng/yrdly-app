@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Order Summary - Checkout</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Work+Sans:wght@300;400;500;600&amp;family=Pacifico&amp;family=Raleway:wght@400;500;600;700&amp;family=Jersey+25&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "tertiary-container": "#35a61a",
+            "outline": "#899485",
+            "surface-dim": "#101418",
+            "secondary-fixed-dim": "#a5c8ff",
+            "on-surface-variant": "#bfcab9",
+            "on-surface": "#e1e2e9",
+            "on-secondary": "#00315f",
+            "primary-fixed-dim": "#82db7e",
+            "tertiary-fixed-dim": "#6edf51",
+            "surface-container": "#1d2025",
+            "on-tertiary-fixed": "#032100",
+            "on-error-container": "#ffdad6",
+            "background": "#101418",
+            "surface-container-lowest": "#0b0e13",
+            "secondary-container": "#006ec9",
+            "surface-variant": "#32353a",
+            "surface": "#101418",
+            "primary-container": "#4da24e",
+            "inverse-primary": "#106d20",
+            "surface-container-highest": "#32353a",
+            "on-background": "#e1e2e9",
+            "on-error": "#690005",
+            "secondary-fixed": "#d4e3ff",
+            "error": "#ffb4ab",
+            "on-secondary-container": "#eaf0ff",
+            "surface-tint": "#82db7e",
+            "surface-container-high": "#272a2f",
+            "outline-variant": "#40493d",
+            "on-primary-container": "#003207",
+            "inverse-surface": "#e1e2e9",
+            "error-container": "#93000a",
+            "tertiary": "#6edf51",
+            "surface-container-low": "#191c21",
+            "on-tertiary-fixed-variant": "#0d5300",
+            "on-tertiary-container": "#053200",
+            "on-tertiary": "#073900",
+            "on-secondary-fixed-variant": "#004786",
+            "primary-fixed": "#9df898",
+            "tertiary-fixed": "#8afc6a",
+            "surface-bright": "#36393f",
+            "on-primary": "#00390a",
+            "secondary": "#a5c8ff",
+            "on-primary-fixed-variant": "#005312",
+            "inverse-on-surface": "#2e3036",
+            "primary": "#82db7e",
+            "on-secondary-fixed": "#001c3a",
+            "on-primary-fixed": "#002204"
+          },
+          fontFamily: {
+            "headline": ["Plus Jakarta Sans", "sans-serif"],
+            "body": ["Work Sans", "sans-serif"],
+            "label": ["Work Sans", "sans-serif"],
+            "display": ["Pacifico", "cursive"],
+            "brand": ["Jersey 25", "sans-serif"],
+            "editorial": ["Raleway", "sans-serif"]
+          },
+          borderRadius: {
+            "DEFAULT": "1rem",
+            "lg": "2rem",
+            "xl": "3rem",
+            "full": "9999px"
+          },
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      display: inline-block;
+      line-height: 1;
+      text-transform: none;
+      letter-spacing: normal;
+      word-wrap: normal;
+      white-space: nowrap;
+      direction: ltr;
+    }
+    body {
+      background-color: #101418;
+      color: #e1e2e9;
+      -webkit-font-smoothing: antialiased;
+    }
+    .glass-effect {
+      background: rgba(21, 24, 29, 0.8);
+      backdrop-filter: blur(20px);
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #32353a;
+      border-radius: 10px;
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-body selection:bg-primary-container selection:text-on-primary-container">
+<!-- Modal Container (Simulating the Slide-up from Chat) -->
+<div class="fixed inset-0 z-40 bg-black/60 flex items-end md:items-center justify-center">
+<div class="relative w-full max-w-md bg-surface-dim rounded-t-lg md:rounded-lg overflow-hidden shadow-2xl flex flex-col max-h-[813px]">
+<!-- TopAppBar Component Integration -->
+<header class="bg-[#15181D]/80 backdrop-blur-xl flex items-center px-6 h-16 w-full fixed top-0 w-full z-50">
+<div class="flex items-center gap-4 w-full">
+<button class="hover:opacity-80 transition-opacity active:scale-95 transition-transform flex items-center justify-center p-2 rounded-full">
+<span class="material-symbols-outlined text-[#388E3C]" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-['Pacifico'] text-2xl tracking-tight text-on-surface">Order Summary</h1>
+</div>
+</header>
+<!-- Scrollable Content Canvas -->
+<div class="flex-1 overflow-y-auto custom-scrollbar pt-20 pb-10 px-6">
+<!-- ITEM CARD -->
+<section class="bg-surface-container-high rounded-[11px] p-4 flex gap-4 mb-6 transition-all hover:bg-surface-container">
+<div class="w-14 h-14 shrink-0 rounded-[8px] overflow-hidden">
+<img alt="Product Image" class="w-full h-full object-cover" data-alt="Close-up of a limited edition sleek green and black sneaker sitting on a dark reflective surface with cinematic lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAT12Ih8MnHPNwP470rwN-xc-YgdWt1BD4qJ0ir-S6IH5FRNwTmVIq-ccxAruJALrWPSCxWamQvlUgy4eI0RyrcVfgl3dFZPOjGc5oQ40X_mVjm_O3-XuE5wHbDX4ofl5rEjfASJR-MFaRTK3OqG8bU9d6aBkhBiCopa8TdaSn6gE-hizC2PWW7A5YfnCb_1-zc8vve-_eUNfmDq7kVhlMNhe5gB4rCr8oUJ_v5k6O2se811Mfy136jePVcdkW288jWnpKW0T7A4lu3"/>
+</div>
+<div class="flex flex-col gap-1.5 flex-1">
+<div class="flex justify-between items-start">
+<h2 class="font-editorial font-bold text-[14px] text-on-surface leading-tight">Vintage Nike Air Jordan High - Pine Green</h2>
+</div>
+<div class="flex items-center gap-3">
+<span class="bg-surface-container text-[10px] font-editorial px-2 py-0.5 rounded-full text-on-surface-variant uppercase tracking-wider">Used</span>
+<div class="flex items-center gap-1.5">
+<div class="w-6 h-6 rounded-full overflow-hidden border border-outline-variant/20">
+<img alt="Seller Avatar" class="w-full h-full object-cover" data-alt="Portrait of a stylish young Nigerian man smiling warmly with professional studio soft box lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB8_I9g58_hdQkXJPf6-aJuBjIlTPPP3rUnIjjwoAsUGEzYB5zCCGNNh40imqLwUojEg7Xx6Zbnght91P5DqhW70xKnp1BM6jbzVKgGSG_0V7vZOPtajEC6O-WwXKkjcm2n2_Fky7dogpoFdTNqDilu1r-htl_h6e6vlKexJyKuTmi9Ve6QrktW2UqYc_xfx8Qpe2ZLtrlJtIumv-leI0ZwZi_1Fg3IKZOtSRF8lX1h2QbJ-S9s_4r8uNmJkhE6zxj_SwMhYfjelzjE"/>
+</div>
+<span class="font-editorial text-[12px] text-on-surface-variant">Sold by Adebayo K.</span>
+</div>
+</div>
+</div>
+</section>
+<!-- PRICE BREAKDOWN -->
+<section class="bg-surface-container rounded-[11px] p-4 mb-6 flex flex-col gap-3">
+<div class="flex justify-between items-center">
+<span class="font-editorial text-[13px] text-on-surface-variant">Item Price</span>
+<span class="font-editorial text-[14px] text-on-surface">₦45,000</span>
+</div>
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-1.5">
+<span class="font-editorial text-[13px] text-on-surface-variant">Yrdly Escrow Fee</span>
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant/60" data-icon="info">info</span>
+</div>
+<span class="font-editorial text-[14px] text-on-surface-variant">₦1,350</span>
+</div>
+<div class="h-[1px] w-full bg-on-surface/5 my-1"></div>
+<div class="flex justify-between items-center py-1">
+<span class="font-editorial font-bold text-[15px] text-on-surface">You Pay</span>
+<span class="font-editorial font-bold text-[18px] text-on-surface">₦46,350</span>
+</div>
+<p class="font-editorial text-[11px] text-on-surface-variant mt-1 leading-normal">
+            Funds are held securely until you confirm receipt
+          </p>
+</section>
+<!-- ESCROW EXPLAINER -->
+<section class="bg-tertiary-container/10 border border-tertiary/20 rounded-[11px] p-4 mb-8 flex gap-3">
+<div class="shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-tertiary text-[20px]" data-icon="lock" style="font-variation-settings: 'FILL' 1;">lock</span>
+</div>
+<div class="flex flex-col gap-0.5">
+<h3 class="font-editorial font-bold text-[13px] text-on-surface">Your payment is held in escrow</h3>
+<p class="font-editorial text-[11px] text-on-surface-variant leading-relaxed">
+              Release funds only after you confirm the item is in good condition.
+            </p>
+</div>
+</section>
+<!-- PAYMENT METHOD -->
+<div class="mb-10">
+<label class="block font-editorial font-medium text-[12px] text-on-surface-variant mb-3 px-1">Pay with</label>
+<div class="bg-surface-container-high border border-[#388E3C] rounded-[11px] p-4 flex items-center justify-between group cursor-pointer active:scale-[0.98] transition-all">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 flex items-center justify-center bg-white rounded-md p-1.5">
+<svg class="w-full h-full" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" fill="#00315f"></path>
+<path d="M12 6c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm0 10c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4z" fill="#00315f"></path>
+</svg>
+</div>
+<span class="font-editorial text-[14px] text-on-surface">Debit/Credit Card</span>
+</div>
+<button class="font-editorial text-[13px] text-[#388E3C] font-semibold hover:underline">Change</button>
+</div>
+</div>
+<!-- CTA BUTTON & TRUST -->
+<div class="flex flex-col items-center gap-4">
+<button class="w-full h-14 bg-[#388E3C] rounded-full flex items-center justify-center font-editorial font-bold text-[14px] text-white shadow-lg active:scale-95 transition-transform hover:opacity-90">
+            Pay ₦46,350 Securely
+          </button>
+<div class="flex items-center gap-1.5 opacity-60">
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant" data-icon="lock_person">lock_person</span>
+<span class="font-editorial text-[11px] text-on-surface-variant">256-bit SSL secured</span>
+</div>
+</div>
+</div>
+<!-- Handle bar for mobile sheet feel -->
+<div class="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1 bg-on-surface/10 rounded-full md:hidden"></div>
+</div>
+</div>
+</body></html>

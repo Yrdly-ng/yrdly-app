@@ -1,0 +1,25 @@
+# Block massive dependency trees
+node_modules/
+bower_components/
+.venv/
+env/
+vendor/
+
+# Block heavy build artifacts & caches
+dist/
+build/
+.next/
+.nuxt/
+.out/
+.cache/
+
+# Block database dumps and large media
+*.db
+*.sqlite
+*.mp4
+*.zip
+*.tar.gz
+
+# Block system files
+.DS_Store
+Thumbs.db

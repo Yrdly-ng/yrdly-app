@@ -1,0 +1,11 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "INSERT_TEAM_ID_HERE.com.feranmi.dev.yrdlymobile",
+        "paths": ["*"]
+      }
+    ]
+  }
+}

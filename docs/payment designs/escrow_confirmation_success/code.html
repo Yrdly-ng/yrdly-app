@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Payment Secured - Escrow Confirmation</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&amp;family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;family=Raleway:wght@400;500;600&amp;family=Work+Sans:wght@400;500;600&amp;family=Jersey+25&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.8); opacity: 0.5; }
+      100% { transform: scale(1.3); opacity: 0; }
+    }
+    .animate-pulse-ring {
+      animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+  </style>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "tertiary-container": "#35a61a",
+            "outline": "#899485",
+            "surface-dim": "#101418",
+            "secondary-fixed-dim": "#a5c8ff",
+            "on-surface-variant": "#bfcab9",
+            "on-surface": "#e1e2e9",
+            "on-secondary": "#00315f",
+            "primary-fixed-dim": "#82db7e",
+            "tertiary-fixed-dim": "#6edf51",
+            "surface-container": "#1d2025",
+            "on-tertiary-fixed": "#032100",
+            "on-error-container": "#ffdad6",
+            "background": "#101418",
+            "surface-container-lowest": "#0b0e13",
+            "secondary-container": "#006ec9",
+            "surface-variant": "#32353a",
+            "surface": "#101418",
+            "primary-container": "#4da24e",
+            "inverse-primary": "#106d20",
+            "surface-container-highest": "#32353a",
+            "on-background": "#e1e2e9",
+            "on-error": "#690005",
+            "secondary-fixed": "#d4e3ff",
+            "error": "#ffb4ab",
+            "on-secondary-container": "#eaf0ff",
+            "surface-tint": "#82db7e",
+            "surface-container-high": "#272a2f",
+            "outline-variant": "#40493d",
+            "on-primary-container": "#003207",
+            "inverse-surface": "#e1e2e9",
+            "error-container": "#93000a",
+            "tertiary": "#6edf51",
+            "surface-container-low": "#191c21",
+            "on-tertiary-fixed-variant": "#0d5300",
+            "on-tertiary-container": "#053200",
+            "on-tertiary": "#073900",
+            "on-secondary-fixed-variant": "#004786",
+            "primary-fixed": "#9df898",
+            "tertiary-fixed": "#8afc6a",
+            "surface-bright": "#36393f",
+            "on-primary": "#00390a",
+            "secondary": "#a5c8ff",
+            "on-primary-fixed-variant": "#005312",
+            "inverse-on-surface": "#2e3036",
+            "primary": "#82db7e",
+            "on-secondary-fixed": "#001c3a",
+            "on-primary-fixed": "#002204"
+          },
+          fontFamily: {
+            "headline": ["Plus Jakarta Sans"],
+            "body": ["Work Sans"],
+            "label": ["Work Sans"]
+          },
+          borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+        },
+      },
+    }
+  </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface font-body antialiased min-h-screen flex flex-col">
+<!-- Shared Component: TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-[#15181D]/80 backdrop-blur-xl flex items-center px-6 h-16 w-full">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-[#388E3C] cursor-pointer active:scale-95 transition-transform" data-icon="arrow_back">arrow_back</span>
+<h1 class="font-['Pacifico'] text-2xl tracking-tight text-[#388E3C]">Checkout</h1>
+</div>
+</header>
+<main class="flex-grow pt-24 pb-32 px-6 max-w-lg mx-auto w-full">
+<!-- Success Header Section -->
+<section class="flex flex-col items-center text-center mb-10">
+<div class="relative mb-6">
+<!-- Pulsing Ring -->
+<div class="absolute inset-0 rounded-full border-2 border-[#388E3C] animate-pulse-ring"></div>
+<!-- Main Check Icon -->
+<div class="w-16 h-16 rounded-full bg-[#388E3C]/15 border-2 border-[#388E3C] flex items-center justify-center relative z-10">
+<span class="material-symbols-outlined text-[#388E3C] text-4xl" data-icon="check_circle" data-weight="fill">check_circle</span>
+</div>
+</div>
+<h2 class="font-['Pacifico'] text-[26px] text-white leading-tight mb-2">Payment Secured!</h2>
+<p class="font-['Raleway'] text-[14px] text-on-surface-variant font-medium">₦46,350 is held safely in escrow</p>
+</section>
+<!-- Item Recap Card -->
+<article class="bg-surface-container rounded-[11px] p-4 flex items-center gap-4 mb-10 transition-transform hover:scale-[1.01]">
+<div class="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0">
+<img alt="Product Thumbnail" class="w-full h-full object-cover" data-alt="Close-up of a premium red sneaker against a dark background with dramatic studio lighting and clean highlights" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAH4g53C84Ez5R3xCFXQKsROm_heEmfFk7mTA1xY7nXUtWrYQi-W4FiKQ8ZHufRQ_grf6GIomNQojhyPlLzgLhYpOoNsBKhhMay-O2VNWHFQWwSrJVQg2Xy0kOZvOcbc1PbnUyh-DiY8b4cbKEBTDhReaQqUGIa8PRgqpodS3fsfrRIltz4rNO2Ekbx0rMk2knpYAGcYQVG8zdTXhpGaduT4C3GKwhjzdEs2jKQPI5pi67XhuKvpU3yFY7dRzP39t0FqbTcIQBLc7IF"/>
+</div>
+<div class="flex-grow min-w-0">
+<h3 class="text-white font-bold truncate">Premium Crimson Runners</h3>
+<p class="font-['Raleway'] text-[11px] font-mono text-on-surface-variant">Ref: #YRD28431</p>
+</div>
+<div class="flex-shrink-0">
+<span class="px-3 py-1 rounded-full text-[10px] font-bold tracking-wider bg-[#388E3C]/15 text-[#82DB7E] border border-[#388E3C] flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-[#82DB7E] animate-pulse"></span>
+          IN ESCROW
+        </span>
+</div>
+</article>
+<!-- What Happens Next Section -->
+<section class="space-y-6">
+<h4 class="text-on-surface-variant text-[12px] font-bold uppercase tracking-widest mb-4">What Happens Next</h4>
+<div class="relative">
+<!-- Connecting Line -->
+<div class="absolute left-4 top-4 bottom-4 w-[1px] bg-outline-variant/30"></div>
+<div class="space-y-8 relative">
+<!-- Step 1: Active -->
+<div class="flex items-start gap-5 group">
+<div class="relative">
+<div class="absolute inset-0 rounded-full bg-[#388E3C]/40 blur-md"></div>
+<div class="w-8 h-8 rounded-full border-2 border-[#388E3C] bg-surface-container-high text-[#388E3C] flex items-center justify-center font-bold text-sm relative z-10">1</div>
+</div>
+<div class="pt-1">
+<p class="text-white font-semibold">Seller prepares your item</p>
+<p class="text-xs text-on-surface-variant/70 mt-0.5">Notification sent to the merchant</p>
+</div>
+</div>
+<!-- Step 2: Inactive -->
+<div class="flex items-start gap-5 opacity-40">
+<div class="w-8 h-8 rounded-full border border-outline-variant bg-surface-container text-on-surface-variant flex items-center justify-center font-bold text-sm">2</div>
+<div class="pt-1">
+<p class="text-on-surface font-medium">Seller marks item as sent</p>
+</div>
+</div>
+<!-- Step 3: Inactive -->
+<div class="flex items-start gap-5 opacity-40">
+<div class="w-8 h-8 rounded-full border border-outline-variant bg-surface-container text-on-surface-variant flex items-center justify-center font-bold text-sm">3</div>
+<div class="pt-1">
+<p class="text-on-surface font-medium">You confirm receipt</p>
+</div>
+</div>
+<!-- Step 4: Inactive -->
+<div class="flex items-start gap-5 opacity-40">
+<div class="w-8 h-8 rounded-full border border-outline-variant bg-surface-container text-on-surface-variant flex items-center justify-center font-bold text-sm">4</div>
+<div class="pt-1">
+<p class="text-on-surface font-medium">Funds released to seller</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Actions -->
+<footer class="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-background via-background to-transparent pointer-events-none">
+<div class="max-w-lg mx-auto flex flex-col gap-3 pointer-events-auto">
+<button class="w-full h-14 rounded-full bg-[#388E3C] text-white font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform shadow-lg shadow-[#388E3C]/20">
+<span class="material-symbols-outlined" data-icon="chat">chat</span>
+        Message Seller
+      </button>
+<button class="w-full h-14 rounded-full border border-[#388E3C] text-[#388E3C] font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform bg-surface/50 backdrop-blur-md">
+<span class="material-symbols-outlined" data-icon="receipt_long">receipt_long</span>
+        View Transaction
+      </button>
+</div>
+</footer>
+</body></html>

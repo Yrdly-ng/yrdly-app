@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Payment Redirect - Yrdly</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Work+Sans:wght@300;400;500;600&amp;family=Pacifico&amp;family=Jersey+25&amp;family=Raleway:wght@300;400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Custom Keyframes for the requested animations without using JS */
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        @keyframes progress {
+            0% { width: 0%; }
+            50% { width: 70%; }
+            100% { width: 100%; }
+        }
+        .animate-custom-spin {
+            animation: spin 1s linear infinite;
+        }
+        .animate-progress-fill {
+            animation: progress 3s ease-in-out infinite;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "tertiary-container": "#35a61a",
+                        "outline": "#899485",
+                        "surface-dim": "#101418",
+                        "secondary-fixed-dim": "#a5c8ff",
+                        "on-surface-variant": "#bfcab9",
+                        "on-surface": "#e1e2e9",
+                        "on-secondary": "#00315f",
+                        "primary-fixed-dim": "#82db7e",
+                        "tertiary-fixed-dim": "#6edf51",
+                        "surface-container": "#1d2025",
+                        "on-tertiary-fixed": "#032100",
+                        "on-error-container": "#ffdad6",
+                        "background": "#101418",
+                        "surface-container-lowest": "#0b0e13",
+                        "secondary-container": "#006ec9",
+                        "surface-variant": "#32353a",
+                        "surface": "#101418",
+                        "primary-container": "#4da24e",
+                        "inverse-primary": "#106d20",
+                        "surface-container-highest": "#32353a",
+                        "on-background": "#e1e2e9",
+                        "on-error": "#690005",
+                        "secondary-fixed": "#d4e3ff",
+                        "error": "#ffb4ab",
+                        "on-secondary-container": "#eaf0ff",
+                        "surface-tint": "#82db7e",
+                        "surface-container-high": "#272a2f",
+                        "outline-variant": "#40493d",
+                        "on-primary-container": "#003207",
+                        "inverse-surface": "#e1e2e9",
+                        "error-container": "#93000a",
+                        "tertiary": "#6edf51",
+                        "surface-container-low": "#191c21",
+                        "on-tertiary-fixed-variant": "#0d5300",
+                        "on-tertiary-container": "#053200",
+                        "on-tertiary": "#073900",
+                        "on-secondary-fixed-variant": "#004786",
+                        "primary-fixed": "#9df898",
+                        "tertiary-fixed": "#8afc6a",
+                        "surface-bright": "#36393f",
+                        "on-primary": "#00390a",
+                        "secondary": "#a5c8ff",
+                        "on-primary-fixed-variant": "#005312",
+                        "inverse-on-surface": "#2e3036",
+                        "primary": "#82db7e",
+                        "on-secondary-fixed": "#001c3a",
+                        "on-primary-fixed": "#002204"
+                    },
+                    fontFamily: {
+                        "headline": ["Plus Jakarta Sans"],
+                        "body": ["Work Sans"],
+                        "label": ["Work Sans"],
+                        "brand": ["Jersey 25"],
+                        "cursive": ["Pacifico"],
+                        "functional": ["Raleway"]
+                    },
+                    borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface-container-low text-on-surface font-body min-h-screen selection:bg-primary selection:text-on-primary">
+<!-- Top AppBar (JSON Source: TopAppBar) -->
+<!-- Shell Visibility Check: Transactions suppress navigation. BottomNavBar is hidden. -->
+<header class="fixed top-0 w-full z-50 bg-[#15181D]/80 backdrop-blur-xl flex items-center px-6 h-16 w-full">
+<div class="flex items-center gap-4 w-full max-w-lg mx-auto justify-center">
+<span class="text-[#259907] font-brand text-[28px]">Yrdly</span>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="min-h-screen flex flex-col items-center justify-center p-6 bg-surface-container-low">
+<!-- Center Content Block -->
+<div class="flex flex-col items-center text-center space-y-8 max-w-sm">
+<!-- Animated Spinner Container -->
+<div class="relative flex items-center justify-center">
+<div class="w-12 h-12 border-4 border-surface-variant rounded-full"></div>
+<div class="absolute w-12 h-12 border-4 border-[#388E3C] border-t-transparent rounded-full animate-custom-spin"></div>
+</div>
+<!-- Loading Messaging -->
+<div class="space-y-3">
+<h1 class="font-cursive text-[22px] text-on-surface tracking-wide">
+                    Connecting to Paystack...
+                </h1>
+<p class="font-functional text-[13px] text-on-surface-variant leading-relaxed">
+                    Please do not close this screen
+                </p>
+</div>
+<!-- Progress Bar -->
+<div class="w-48 h-1.5 bg-surface-variant rounded-full overflow-hidden">
+<div class="h-full bg-tertiary-container rounded-full animate-progress-fill" style="width: 30%;"></div>
+</div>
+</div>
+<!-- Footer Lock / Security -->
+<footer class="absolute bottom-10 flex flex-col items-center gap-2">
+<div class="flex items-center gap-1.5 text-outline">
+<span class="material-symbols-outlined text-sm" data-icon="lock" style="font-variation-settings: 'FILL' 1;">lock</span>
+<span class="font-functional text-[11px] uppercase tracking-widest">Secured payment</span>
+</div>
+<!-- Subtle atmospheric glow backdrop behind the footer -->
+<div class="absolute -z-10 w-64 h-64 bg-primary/5 blur-[100px] rounded-full -bottom-20"></div>
+</footer>
+</main>
+<!-- Transactional Screen Suppression: 
+         - No BottomNavBar as per the "Destination Rule" & "Task-Focused" suppression protocol.
+         - FAB is suppressed as per "Contextual FAB Suppression" on Transactional screens.
+    -->
+</body></html>

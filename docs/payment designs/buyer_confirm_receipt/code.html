@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Work+Sans:wght@300;400;500;600&amp;family=Pacifico&amp;family=Jersey+25&amp;family=Raleway:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "tertiary-container": "#35a61a",
+              "outline": "#899485",
+              "surface-dim": "#101418",
+              "secondary-fixed-dim": "#a5c8ff",
+              "on-surface-variant": "#bfcab9",
+              "on-surface": "#e1e2e9",
+              "on-secondary": "#00315f",
+              "primary-fixed-dim": "#82db7e",
+              "tertiary-fixed-dim": "#6edf51",
+              "surface-container": "#1d2025",
+              "on-tertiary-fixed": "#032100",
+              "on-error-container": "#ffdad6",
+              "background": "#101418",
+              "surface-container-lowest": "#0b0e13",
+              "secondary-container": "#006ec9",
+              "surface-variant": "#32353a",
+              "surface": "#101418",
+              "primary-container": "#4da24e",
+              "inverse-primary": "#106d20",
+              "surface-container-highest": "#32353a",
+              "on-background": "#e1e2e9",
+              "on-error": "#690005",
+              "secondary-fixed": "#d4e3ff",
+              "error": "#ffb4ab",
+              "on-secondary-container": "#eaf0ff",
+              "surface-tint": "#82db7e",
+              "surface-container-high": "#272a2f",
+              "outline-variant": "#40493d",
+              "on-primary-container": "#003207",
+              "inverse-surface": "#e1e2e9",
+              "error-container": "#93000a",
+              "tertiary": "#6edf51",
+              "surface-container-low": "#191c21",
+              "on-tertiary-fixed-variant": "#0d5300",
+              "on-tertiary-container": "#053200",
+              "on-tertiary": "#073900",
+              "on-secondary-fixed-variant": "#004786",
+              "primary-fixed": "#9df898",
+              "tertiary-fixed": "#8afc6a",
+              "surface-bright": "#36393f",
+              "on-primary": "#00390a",
+              "secondary": "#a5c8ff",
+              "on-primary-fixed-variant": "#005312",
+              "inverse-on-surface": "#2e3036",
+              "primary": "#82db7e",
+              "on-secondary-fixed": "#001c3a",
+              "on-primary-fixed": "#002204"
+            },
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Work Sans"],
+              "label": ["Work Sans"],
+              "brand": ["Pacifico"],
+              "digital": ["Jersey 25"],
+              "editorial": ["Raleway"]
+            },
+            borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+      .timer-svg { transform: rotate(-90deg); }
+      .timer-ring-bg { stroke: #1d2025; }
+      .timer-ring-progress { stroke: #82db7e; stroke-dasharray: 283; stroke-dashoffset: 70; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body selection:bg-primary selection:text-on-primary min-h-screen">
+<!-- Top Navigation Anchor -->
+<header class="fixed top-0 w-full z-50 bg-[#15181D]/80 backdrop-blur-xl flex items-center px-6 h-16 w-full">
+<div class="flex items-center gap-4 w-full max-w-2xl mx-auto">
+<button class="active:scale-95 transition-transform hover:opacity-80 transition-opacity flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">arrow_back</span>
+</button>
+<h1 class="font-brand text-2xl tracking-tight text-on-background">Did You Receive It?</h1>
+</div>
+</header>
+<main class="pt-24 pb-12 px-6 max-w-2xl mx-auto flex flex-col items-center">
+<!-- Countdown Section -->
+<div class="relative flex flex-col items-center mb-10">
+<div class="relative w-48 h-48 flex items-center justify-center">
+<svg class="timer-svg w-full h-full">
+<circle class="timer-ring-bg fill-none stroke-[6px]" cx="96" cy="96" r="90"></circle>
+<circle class="timer-ring-progress fill-none stroke-[6px] stroke-round" cx="96" cy="96" r="90"></circle>
+</svg>
+<div class="absolute inset-0 flex flex-col items-center justify-center pt-2">
+<span class="font-digital text-[40px] text-primary leading-none">46:23:11</span>
+</div>
+</div>
+<p class="font-editorial text-[11px] text-on-surface-variant mt-4 uppercase tracking-widest text-center">
+                Remaining to confirm or auto-release
+            </p>
+</div>
+<!-- Item Recap Card (Editorial Style) -->
+<div class="w-full bg-surface-container-low rounded-lg p-4 flex items-center gap-4 mb-8">
+<div class="w-16 h-16 rounded-[11px] overflow-hidden flex-shrink-0">
+<img alt="Item Preview" class="w-full h-full object-cover" data-alt="high-end minimalist black t-shirt folded neatly on a textured dark slate background with sharp editorial lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCSMy00ngSyCjEAirMqJogiif8SuOwqVYnq2-ROiadIknjdF15GAKoylhIm1srbc2i2yocSaaDTlGXHAORfkKdoGsYWEEpvYTMvSVNc0PPIRvdeyx1AgHlFoUfh-ZQtbrknIK5mXv2h7KhCr3LzUQXATvBOV9EFMSIT4g4rL774c4UA0_GYVa32bhp3GBTPuz8Brlqfm6g9nMm1H74l7Td8gmQHt01eJWdHd8We4GGV8JbI7dUThvrcht--V5i3Wb4MjaWRo7EUmkUX"/>
+</div>
+<div class="flex flex-col">
+<span class="font-editorial text-xs text-on-surface-variant font-medium">Order #7729-BK</span>
+<h3 class="font-editorial font-bold text-base text-on-surface leading-tight">Vintage Washed Heavyweight Tee</h3>
+<p class="font-editorial text-sm text-primary font-semibold mt-0.5">₦42,500.00</p>
+</div>
+</div>
+<!-- Action Cards Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+<!-- All Good Card -->
+<button class="group flex flex-col items-center p-6 bg-surface-container rounded-lg border-2 border-transparent hover:border-tertiary-container transition-all text-center h-full active:scale-[0.98]">
+<div class="w-12 h-12 rounded-full bg-tertiary/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-tertiary text-3xl" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<h4 class="font-editorial font-bold text-sm text-on-surface mb-1">All Good!</h4>
+<p class="font-editorial text-xs text-on-surface-variant mb-6">Item received in good condition</p>
+<div class="mt-auto w-full py-2.5 px-6 bg-tertiary-container text-white rounded-full font-editorial text-sm font-bold shadow-lg shadow-tertiary-container/20">
+                    Confirm Receipt
+                </div>
+</button>
+<!-- Problem Card -->
+<button class="group flex flex-col items-center p-6 bg-surface-container rounded-lg border-2 border-transparent hover:border-error transition-all text-center h-full active:scale-[0.98]">
+<div class="w-12 h-12 rounded-full bg-error/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-error text-3xl" style="font-variation-settings: 'FILL' 1;">warning</span>
+</div>
+<h4 class="font-editorial font-bold text-sm text-on-surface mb-1">There's an issue</h4>
+<p class="font-editorial text-xs text-on-surface-variant mb-6">Not as described / missing items</p>
+<div class="mt-auto w-full py-2.5 px-6 border border-error text-error rounded-full font-editorial text-sm font-bold hover:bg-error/5 transition-colors">
+                    Raise Dispute
+                </div>
+</button>
+</div>
+<!-- Fine Print -->
+<div class="mt-12 w-full text-center">
+<div class="inline-flex items-center gap-2 px-4 py-2 bg-surface-container-high/30 rounded-full border border-outline-variant/10">
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">info</span>
+<p class="font-editorial text-[10px] text-on-surface-variant uppercase tracking-wider">
+                    If you take no action in 46h, funds will be auto-released to the seller.
+                </p>
+</div>
+</div>
+</main>
+<!-- Visual Polish: Background Ambient Glow -->
+<div class="fixed -bottom-24 -left-24 w-96 h-96 bg-primary/5 rounded-full blur-[120px] pointer-events-none"></div>
+<div class="fixed -top-24 -right-24 w-96 h-96 bg-secondary/5 rounded-full blur-[120px] pointer-events-none"></div>
+</body></html>

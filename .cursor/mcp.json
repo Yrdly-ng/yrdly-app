@@ -1,0 +1,45 @@
+{
+  "name": "upgrade-mcp",
+  "description": "Fetches upgrade guides, analyzes dependencies, and creates a migration plan.",
+  "tools": [
+    {
+      "name": "fetch-upgrade-docs",
+      "description": "Fetch official upgrade documentation for frameworks",
+      "command": "firecrawl-mcp",
+      "args": [
+        "scrape",
+        "--urls",
+        "https://nextjs.org/docs/upgrading",
+        "https://react.dev/blog",
+        "https://capacitorjs.com/docs/updating",
+        "--format",
+        "markdown",
+        "--output",
+        "./docs/upgrade-guides"
+      ]
+    },
+    {
+      "name": "analyze-packages",
+      "description": "Analyze package.json and recommend latest upgrade commands",
+      "command": "node",
+      "args": [
+        "-e",
+        "const fs=require('fs');const pkg=JSON.parse(fs.readFileSync('./package.json'));const deps={...pkg.dependencies,...pkg.devDependencies};const cmds=Object.keys(deps).map(d=>`${d}@latest`);console.log('Migration Commands:\\n');console.log('npm install '+cmds.join(' '));"
+      ]
+    },
+    {
+      "name": "generate-migration-plan",
+      "description": "Summarize breaking changes and commands into a single migration report",
+      "command": "node",
+      "args": [
+        "-e",
+        "const fs=require('fs');const docs=fs.readdirSync('./docs/upgrade-guides').map(f=>fs.readFileSync('./docs/upgrade-guides/'+f,'utf8')).join('\\n');console.log('### Migration Plan\\n');console.log('---\\n');console.log('Breaking Changes Summary:\\n');console.log(docs.match(/Breaking[\\s\\S]*?(?=\\n\\n)/gi)?.join('\\n')||'None found');console.log('\\nUpgrade Commands:');const pkg=JSON.parse(fs.readFileSync('./package.json'));const deps={...pkg.dependencies,...pkg.devDependencies};const cmds=Object.keys(deps).map(d=>`${d}@latest`);console.log('npm install '+cmds.join(' '));"
+      ]
+    }
+  ],
+  "mcpServers": {
+    "Sentry": {
+      "url": "https://mcp.sentry.dev/mcp/yrdly/yrdly-app"
+    }
+  }
+}
