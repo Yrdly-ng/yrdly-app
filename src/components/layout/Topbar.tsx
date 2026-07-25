@@ -40,7 +40,15 @@ export function Topbar({
   pathname = "",
 }: TopbarProps) {
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 flex items-center px-4 md:px-6 bg-[var(--c-card)]/80 backdrop-blur-md border-b border-[var(--c-border)] h-[64px] md:h-[84px] shadow-[0_8px_32px_rgba(0,0,0,0.08)]">
+    <header 
+      className="fixed top-0 left-0 right-0 z-50 flex items-center px-4 md:px-6 bg-[var(--c-card)]/80 backdrop-blur-md border-b border-[var(--c-border)] h-[64px] md:h-[84px] shadow-[0_8px_32px_rgba(0,0,0,0.08)] [transform:translateZ(0)] [will-change:transform]"
+      style={{
+        WebkitBackfaceVisibility: 'hidden',
+        backfaceVisibility: 'hidden',
+        WebkitTransform: 'translateZ(0)',
+        transform: 'translateZ(0)',
+      }}
+    >
       <div className="w-full flex items-center gap-3 md:gap-4">
         <Link href="/home" className="flex items-center gap-2.5 flex-shrink-0">
           <span className="flex items-center justify-center rounded-full bg-[var(--c-card2)] p-1.5 md:p-2 shadow-sm">
