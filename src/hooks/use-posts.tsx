@@ -112,7 +112,25 @@ export const usePosts = (filter?: LocationFilter | null) => {
           return;
         }
 
-        setPosts(data as Post[]);
+        let myFriendsList: string[] = [];
+        if (user) {
+          try {
+            const { data: uData } = await supabase.from('users').select('friends').eq('id', user.id).maybeSingle();
+            if (uData?.friends && Array.isArray(uData.friends)) {
+              myFriendsList = uData.friends;
+            }
+          } catch (e) {}
+        }
+
+        const visiblePosts = (data as Post[] || []).filter(post => {
+          const isPrivate = post.visibility === 'private' || (post as any).is_private === true;
+          if (!isPrivate) return true;
+          if (!user) return false;
+          if (post.user_id === user.id) return true;
+          return myFriendsList.includes(post.user_id);
+        });
+
+        setPosts(visiblePosts);
         if (data && data.length > 0) {
           oldestTimestampRef.current = (data[data.length - 1] as Post).timestamp as unknown as string;
         }

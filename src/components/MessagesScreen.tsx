@@ -22,7 +22,7 @@ function deduplicateConversations(conversations: Conversation[]): Conversation[]
   const seen = new Map<string, Conversation>();
   for (const conv of conversations) {
     let key: string;
-    if (conv.type === "business") {
+    if (conv.type === "business" || (conv.type as any) === "briefcase") {
       const context = conv.context as any;
       const catalogItemId = context?.catalog_item_id;
       key = catalogItemId

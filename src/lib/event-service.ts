@@ -26,13 +26,12 @@ export async function getPublishedEvents(opts?: {
       ticket_tiers(*)
     `)
     .eq('status', 'PUBLISHED')
-    .or(`end_time.gte.${new Date().toISOString()},start_time.gte.${new Date().toISOString()}`)
     .order('start_time', { ascending: true });
 
   if (opts?.state) query = query.eq('state', opts.state);
   if (opts?.lga) query = query.eq('lga', opts.lga);
   if (opts?.ward) query = query.eq('ward', opts.ward);
-  if (opts?.category) query = query.eq('category', opts.category);
+  if (opts?.category && opts.category !== 'All') query = query.ilike('category', `%${opts.category}%`);
   if (opts?.limit) query = query.limit(opts.limit);
 
   const { data, error } = await query;

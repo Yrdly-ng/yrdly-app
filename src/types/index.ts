@@ -105,6 +105,8 @@ export interface Post {
   condition?: string;
   is_sold?: boolean;
   liked_by: string[];
+  visibility?: string;
+  is_private?: boolean;
   created_at?: string;
   updated_at?: string;
   user?: {

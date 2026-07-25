@@ -88,7 +88,7 @@ function dateChipParts(d: string | null | undefined): { day: string; month: stri
   }
 }
 
-const QUICK_FILTERS = ["Today"] as const;
+const QUICK_FILTERS = ["All", "Today", "Free", "Music", "Tech", "Party", "Sports", "Business", "Arts & Culture", "Education", "Food & Drink"] as const;
 type QuickFilter = typeof QUICK_FILTERS[number];
 
 function isToday(d: string | null | undefined): boolean {
@@ -97,8 +97,6 @@ function isToday(d: string | null | undefined): boolean {
   const now = new Date();
   return date.toDateString() === now.toDateString();
 }
-
-
 
 export function EventsScreen({ className }: EventsScreenProps) {
   const { user } = useAuth();
@@ -115,14 +113,20 @@ export function EventsScreen({ className }: EventsScreenProps) {
   const [sortBy, setSortBy] = useState<"date" | "price" | "all" | "">("");
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
-  const [activeQuickFilters, setActiveQuickFilters] = useState<Set<QuickFilter>>(new Set());
+  const [activeQuickFilters, setActiveQuickFilters] = useState<Set<QuickFilter>>(new Set(["All"]));
   const [savedEvents, setSavedEvents] = useState<Set<string>>(new Set());
 
   const toggleQuickFilter = (filter: QuickFilter) => {
     setActiveQuickFilters((prev) => {
+      if (filter === "All") return new Set(["All"]);
       const next = new Set(prev);
-      if (next.has(filter)) next.delete(filter);
-      else next.add(filter);
+      next.delete("All");
+      if (next.has(filter)) {
+        next.delete(filter);
+        if (next.size === 0) next.add("All");
+      } else {
+        next.add(filter);
+      }
       return next;
     });
   };
@@ -169,12 +173,13 @@ export function EventsScreen({ className }: EventsScreenProps) {
 
   const filteredAndSorted = useMemo(() => {
     let list = [...events];
-    if (activeQuickFilters.size > 0) {
+    if (activeQuickFilters.size > 0 && !activeQuickFilters.has("All")) {
       list = list.filter((event) => {
-        return Array.from(activeQuickFilters).every((f) => {
+        return Array.from(activeQuickFilters).some((f) => {
           if (f === "Today") return isToday(event.start_time);
           if (f === "Free") return !event.ticket_tiers?.length || event.ticket_tiers.every(t => t.price === 0);
-          return true;
+          if (event.category) return event.category.toLowerCase().includes(f.toLowerCase());
+          return false;
         });
       });
     }
