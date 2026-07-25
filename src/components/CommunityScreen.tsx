@@ -1,48 +1,48 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, Zap, FileText, Search, Plus } from "lucide-react";
+import { Users, UserPlus, Search, MessageSquare, UserCheck, ShieldAlert, Sparkles, Store, MapPin } from "lucide-react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import type { Post } from "@/types";
 import { useToast } from "@/hooks/use-toast";
-import { PostCard } from "@/components/PostCard";
-import { CreatePostDialog } from "@/components/CreatePostDialog";
-import { usePosts } from "@/hooks/use-posts";
 import { useFriendshipGlobal } from "@/hooks/use-friendship-global";
 import { useLocation } from "@/contexts/LocationContext";
 import { LocationChip } from "@/components/LocationChip";
+import { Button } from "@/components/ui/button";
 
 const GREEN = "hsl(var(--primary))";
-const CARD = "var(--c-card)";
 const FONT = "var(--font-work-sans)";
 const PACIFICO = "var(--font-jersey25)";
 
-interface CommunityScreenProps {
-  className?: string;
-}
+type MainTab = "friends" | "discover";
+type DiscoverFilter = "all" | "neighbors" | "mutuals" | "sellers";
 
-// Sub-component for rendering user action buttons with global friendship state
+// Helper component for user action buttons with real-time friendship status
 function UserActionButton({
   userId,
   onFriendAction,
 }: {
   userId: string;
-  onFriendAction: (userId: string, action: "add" | "remove" | "accept" | "decline", actionFn: () => Promise<void>) => Promise<void>;
+  onFriendAction?: () => void;
 }) {
   const friendshipHook = useFriendshipGlobal(userId);
   const status = friendshipHook.status;
   const isLoading = friendshipHook.isLoading;
 
+  const handleAction = async (fn: () => Promise<void>) => {
+    await fn();
+    if (onFriendAction) onFriendAction();
+  };
+
   switch (status) {
     case "none":
       return (
         <button
-          onClick={() => onFriendAction(userId, "add", () => friendshipHook.addFriend())}
-          className="rounded-full px-3 py-1 text-[0.6875rem] text-foreground font-bold uppercase disabled:opacity-50"
+          onClick={() => handleAction(friendshipHook.addFriend)}
+          className="rounded-full px-4 py-1.5 text-xs text-foreground font-bold uppercase transition-transform active:scale-95 disabled:opacity-50"
           style={{ background: GREEN, fontFamily: FONT }}
           disabled={isLoading}
         >
@@ -52,8 +52,8 @@ function UserActionButton({
     case "request_sent":
       return (
         <button
-          className="rounded-full px-3 py-1 text-[0.6875rem] text-[#BBBBBB] font-bold uppercase"
-          style={{ border: "0.5px solid #388E3C", fontFamily: FONT }}
+          className="rounded-full px-4 py-1.5 text-xs text-[#BBBBBB] font-bold uppercase"
+          style={{ border: "1px solid #388E3C", fontFamily: FONT }}
           disabled
         >
           Sent
@@ -62,9 +62,9 @@ function UserActionButton({
     case "friends":
       return (
         <button
-          onClick={() => onFriendAction(userId, "remove", () => friendshipHook.removeFriend())}
-          className="rounded-full px-3 py-1 text-[0.6875rem] font-bold uppercase disabled:opacity-50"
-          style={{ border: "0.5px solid rgba(229,57,53,0.4)", color: "#E53935", fontFamily: FONT }}
+          onClick={() => handleAction(friendshipHook.removeFriend)}
+          className="rounded-full px-4 py-1.5 text-xs font-bold uppercase transition-transform active:scale-95 disabled:opacity-50"
+          style={{ border: "1px solid rgba(229,57,53,0.4)", color: "#E53935", fontFamily: FONT }}
           disabled={isLoading}
         >
           {isLoading ? "..." : "Remove"}
@@ -72,502 +72,483 @@ function UserActionButton({
       );
     case "request_received":
       return (
-        <>
+        <div className="flex gap-1.5">
           <button
-            onClick={() => onFriendAction(userId, "accept", () => friendshipHook.acceptRequest())}
-            className="rounded-full px-3 py-1 text-[0.6875rem] text-foreground font-bold uppercase disabled:opacity-50"
+            onClick={() => handleAction(friendshipHook.acceptRequest)}
+            className="rounded-full px-3 py-1 text-xs text-foreground font-bold uppercase transition-transform active:scale-95 disabled:opacity-50"
             style={{ background: GREEN, fontFamily: FONT }}
             disabled={isLoading}
           >
             {isLoading ? "..." : "Accept"}
           </button>
           <button
-            onClick={() => onFriendAction(userId, "decline", () => friendshipHook.declineRequest())}
-            className="rounded-full px-3 py-1 text-[0.6875rem] font-bold uppercase disabled:opacity-50"
-            style={{ border: "0.5px solid rgba(229,57,53,0.4)", color: "#E53935", fontFamily: FONT }}
+            onClick={() => handleAction(friendshipHook.declineRequest)}
+            className="rounded-full px-3 py-1 text-xs font-bold uppercase transition-transform active:scale-95 disabled:opacity-50"
+            style={{ border: "1px solid rgba(229,57,53,0.4)", color: "#E53935", fontFamily: FONT }}
             disabled={isLoading}
           >
             {isLoading ? "..." : "Decline"}
           </button>
-        </>
+        </div>
       );
   }
 }
 
-function fmt(n: number): string {
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
-  return String(n);
-}
-
-function StatCard({
-  icon: Icon,
-  value,
-  label,
-  onClick,
-}: {
-  icon: React.ElementType;
-  value: string | number;
-  label: string;
-  onClick?: () => void;
-}) {
-  return (
-    <div
-      onClick={onClick}
-      className={`flex flex-col items-center text-center p-4 space-y-2 ${
-        onClick ? "cursor-pointer transition-all hover:opacity-80" : ""
-      }`}
-      style={{ background: 'var(--c-card)', borderRadius: 11 }}
-    >
-      <div
-        className="w-10 h-10 rounded-full flex items-center justify-center"
-        style={{ background: "rgba(56,142,60,0.2)" }}
-      >
-        <Icon className="w-5 h-5 text-primary" />
-      </div>
-      <div>
-        <div className="text-xl font-bold text-foreground" style={{ fontFamily: "var(--font-work-sans)" }}>
-          {value}
-        </div>
-        <div
-          className="text-[0.625rem] uppercase tracking-wider"
-          style={{ color: "var(--c-text-muted)", fontFamily: FONT }}
-        >
-          {label}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export function CommunityScreen({ className }: CommunityScreenProps) {
+export function CommunityScreen({ className }: { className?: string }) {
   const { user: currentUser, profile } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const { activeFilter } = useLocation();
-  const filterState = activeFilter?.state;
-  const filterLga = activeFilter?.lga;
-  const filterWard = activeFilter?.ward;
-  const { posts, loading: postsLoading, loadingMore, hasMore, loadMore, createPost, deletePost } = usePosts(activeFilter);
+
+  const [activeTab, setActiveTab] = useState<MainTab>("friends");
+  const [discoverFilter, setDiscoverFilter] = useState<DiscoverFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [showUserSearch, setShowUserSearch] = useState(false);
-  const [users, setUsers] = useState<any[]>([]);
-  const [userSearchLoading, setUserSearchLoading] = useState(false);
-  const [pendingFriendRequests, setPendingFriendRequests] = useState<any[]>([]);
-  const [friendRequestsLoading, setFriendRequestsLoading] = useState(true);
-  const [stats, setStats] = useState({ totalUsers: 0, activeToday: 0, newPosts24h: 0 });
-  const searchRef = useRef<HTMLDivElement>(null);
-  const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
-  const loadMoreRef = useRef(loadMore);
 
-  useEffect(() => {
-    loadMoreRef.current = loadMore;
-  }, [loadMore]);
+  const [friends, setFriends] = useState<any[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<any[]>([]);
+  
+  const [neighbors, setNeighbors] = useState<any[]>([]);
+  const [mutuals, setMutuals] = useState<any[]>([]);
+  const [sellers, setSellers] = useState<any[]>([]);
+  const [allDiscovered, setAllDiscovered] = useState<any[]>([]);
 
-  useEffect(() => {
-    // Don't try to attach until postsLoading has finished — before that
-    // the sentinel div hasn't been rendered into the DOM yet (it only
-    // renders once filteredPosts.length > 0), so
-    // loadMoreSentinelRef.current is still null.
-    if (postsLoading || !hasMore) return;
-    const el = loadMoreSentinelRef.current;
-    if (!el) return;
+  const [loading, setLoading] = useState(true);
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting) {
-          loadMoreRef.current();
-        }
-      },
-      { rootMargin: "600px 0px" }
-    );
-
-    observer.observe(el);
-    return () => observer.disconnect();
-    // posts.length is included so that if the list is ever
-    // cleared/refetched (e.g. filter change resets to a fresh short
-    // list), we re-check that the sentinel is actually mounted and
-    // re-attach if needed.
-  }, [hasMore, postsLoading, posts.length]);
-
-  /* ── Stats ── */
-  useEffect(() => {
+  const fetchData = useCallback(async () => {
     if (!currentUser) return;
-    const fetchStats = async () => {
-      // Count users in the same location
-      let usersQuery = supabase
-        .from("users")
-        .select("id");
-      // Filter neighbors by location
-      if (filterState) {
-        usersQuery = usersQuery.contains('location', { state: filterState });
-      }
-      if (filterLga) {
-        usersQuery = usersQuery.contains('location', { lga: filterLga });
-      }
-      if (filterWard) {
-        usersQuery = usersQuery.contains('location', { ward: filterWard });
-      }
-      const { data: locationUsers } = await usersQuery;
-      const totalUsers = locationUsers?.length || 0;
-      const locationUserIds = new Set(locationUsers?.map(u => u.id) || []);
-
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const { data: activePosters } = await supabase
-        .from("posts")
-        .select("user_id")
-        .gte("timestamp", yesterday.toISOString());
-      const { data: activeCommenters } = await supabase
-        .from("comments")
-        .select("user_id")
-        .gte("timestamp", yesterday.toISOString());
-      const activeUserIds = new Set([
-        ...(activePosters?.map((p) => p.user_id) || []),
-        ...(activeCommenters?.map((c) => c.user_id) || []),
-      ]);
-      
-      let activeTodayCount = 0;
-      activeUserIds.forEach(id => {
-        if (locationUserIds.has(id)) {
-          activeTodayCount++;
-        }
-      });
-
-      let postsQuery = supabase
-        .from("posts")
-        .select("*", { count: "exact", head: true })
-        .gte("timestamp", yesterday.toISOString());
-      if (filterState) {
-        postsQuery = postsQuery.eq('state', filterState);
-      }
-      if (filterLga) {
-        postsQuery = postsQuery.eq('lga', filterLga);
-      }
-      if (filterWard) {
-        postsQuery = postsQuery.eq('ward', filterWard);
-      }
-      const { count: newPosts24h } = await postsQuery;
-      
-      setStats({
-        totalUsers: totalUsers,
-        activeToday: activeTodayCount,
-        newPosts24h: newPosts24h || 0,
-      });
-    };
-    fetchStats();
-  }, [currentUser, filterState, filterLga, filterWard]);
-
-  /* ── Pending Friend Requests ── */
-  useEffect(() => {
-    if (!currentUser) return;
-    const fetch = async () => {
-      setFriendRequestsLoading(true);
-      const { data } = await supabase
+    setLoading(true);
+    try {
+      // 1. Pending friend requests
+      const { data: reqData } = await supabase
         .from("friend_requests")
-        .select(
-          `id, from_user_id, created_at,
-           users!friend_requests_from_user_id_fkey(id, name, avatar_url, bio, location)`
-        )
+        .select(`*, from_user:users!friend_requests_from_user_id_fkey(id, name, avatar_url, location)`)
         .eq("to_user_id", currentUser.id)
         .eq("status", "pending")
         .order("created_at", { ascending: false });
-      setPendingFriendRequests(data || []);
-      setFriendRequestsLoading(false);
-    };
-    fetch();
-  }, [currentUser]);
+      setPendingRequests(reqData || []);
 
-  /* ── Click outside search ── */
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
-        setShowUserSearch(false);
-        setUsers([]);
-      }
-    };
-    if (showUserSearch) document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [showUserSearch]);
+      // 2. Accepted friends (both directions)
+      const [{ data: sentFriends }, { data: receivedFriends }] = await Promise.all([
+        supabase
+          .from("friend_requests")
+          .select(`id, to_user:users!friend_requests_to_user_id_fkey(id, name, avatar_url, location)`)
+          .eq("from_user_id", currentUser.id)
+          .eq("status", "accepted"),
+        supabase
+          .from("friend_requests")
+          .select(`id, from_user:users!friend_requests_from_user_id_fkey(id, name, avatar_url, location)`)
+          .eq("to_user_id", currentUser.id)
+          .eq("status", "accepted"),
+      ]);
 
-  const searchUsers = async (query: string) => {
-    if (!query.trim()) { setUsers([]); setShowUserSearch(false); return; }
-    setUserSearchLoading(true);
-    try {
-      const { data } = await supabase
+      const friendList = [
+        ...(sentFriends || []).map((r: any) => ({ reqId: r.id, user: r.to_user })),
+        ...(receivedFriends || []).map((r: any) => ({ reqId: r.id, user: r.from_user })),
+      ].filter((f) => f.user);
+      setFriends(friendList);
+
+      // 3. Community discovery
+      const targetLocation = activeFilter || profile?.location;
+      let userQuery = supabase
         .from("users")
-        .select("id, name, avatar_url, created_at")
-        .ilike("name", `%${query}%`)
-        .neq("id", currentUser?.id)
-        .limit(10);
-      const usersData = data || [];
-      setUsers(usersData);
-      setShowUserSearch(true);
-    } catch { /* ignore */ } finally {
-      setUserSearchLoading(false);
-    }
-  };
+        .select("id, name, avatar_url, location, friends, discoverable")
+        .neq("id", currentUser.id)
+        .limit(100);
 
-  const handleSearchChange = (value: string) => {
-    setSearchQuery(value);
-    if (value.trim()) searchUsers(value);
-    else { setShowUserSearch(false); setUsers([]); }
-  };
+      if (targetLocation?.state) {
+        userQuery = userQuery.contains("location", { state: targetLocation.state });
+      }
 
-  const handleFriendAction = async (
-    userId: string,
-    action: "add" | "remove" | "accept" | "decline",
-    actionFn: () => Promise<void>
-  ) => {
-    if (!currentUser) return;
-    try {
-      await actionFn();
-      
-      // Update pending requests list if needed
-      if (action === "accept" || action === "decline") {
-        setPendingFriendRequests((p) => p.filter((r) => r.from_user_id !== userId));
+      const { data: userData } = await userQuery;
+
+      const blocked = profile?.blocked_users || [];
+      const myFriendIds = friendList.map((f) => f.user.id);
+
+      const discovered = (userData || [])
+        .filter((u) => !blocked.includes(u.id))
+        .filter((u) => !myFriendIds.includes(u.id))
+        .filter((u) => u.discoverable !== false);
+
+      setAllDiscovered(discovered);
+
+      const nearby = discovered.filter((u) => {
+        if (!targetLocation?.lga) return true;
+        return u.location?.lga === targetLocation.lga;
+      });
+      setNeighbors(nearby);
+
+      const mutual = discovered.filter((u) => {
+        const theirFriends = u.friends || [];
+        return theirFriends.some((fid: string) => myFriendIds.includes(fid));
+      });
+      setMutuals(mutual);
+
+      if (targetLocation?.state) {
+        const { data: postData } = await supabase
+          .from("posts")
+          .select("user_id")
+          .eq("category", "For Sale")
+          .eq("is_sold", false)
+          .eq("state", targetLocation.state)
+          .limit(100);
+
+        if (postData) {
+          const sellerIds = Array.from(new Set(postData.map((p) => p.user_id)));
+          setSellers(discovered.filter((u) => sellerIds.includes(u.id)));
+        }
       }
     } catch (error) {
-      console.error("Error handling friend action:", error);
-      toast({ variant: "destructive", title: "Error", description: "Action failed." });
+      console.error("Error fetching community data:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentUser, activeFilter, profile?.location, profile?.blocked_users]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleMessageFriend = async (friendId: string) => {
+    if (!currentUser) return;
+    try {
+      const { data: existing } = await supabase
+        .from("conversations")
+        .select("id")
+        .eq("type", "friend")
+        .contains("participant_ids", [currentUser.id, friendId])
+        .limit(1)
+        .maybeSingle();
+
+      if (existing) {
+        router.push(`/messages?conversationId=${existing.id}`);
+      } else {
+        const { data: newConv, error } = await supabase
+          .from("conversations")
+          .insert({
+            type: "friend",
+            participant_ids: [currentUser.id, friendId],
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+        if (newConv) router.push(`/messages?conversationId=${newConv.id}`);
+      }
+    } catch (error) {
+      console.error("Error starting chat:", error);
+      toast({ title: "Error", description: "Failed to open conversation.", variant: "destructive" });
     }
   };
 
-  const getLocation = (loc: unknown): string => {
+  const getLocationString = (loc: any): string => {
     if (!loc || typeof loc !== "object") return "";
-    const o = loc as Record<string, unknown>;
-    if (typeof o.lga === "string" && typeof o.state === "string")
-      return `${o.lga}, ${o.state}`;
-    if (typeof o.state === "string") return o.state;
+    if (loc.lga && loc.state) return `${loc.lga}, ${loc.state}`;
+    if (loc.state) return loc.state;
     return "";
   };
 
-  const filteredPosts = useMemo(() => {
-    if (!searchQuery || showUserSearch) return posts;
+  // Search filtering
+  const filteredFriends = useMemo(() => {
+    if (!searchQuery.trim()) return friends;
     const q = searchQuery.toLowerCase();
-    return posts.filter(
-      (p) =>
-        p.text?.toLowerCase().includes(q) ||
-        p.title?.toLowerCase().includes(q) ||
-        p.author_name?.toLowerCase().includes(q)
-    );
-  }, [posts, searchQuery, showUserSearch]);
+    return friends.filter((f) => f.user?.name?.toLowerCase().includes(q));
+  }, [friends, searchQuery]);
+
+  const displayedDiscoverList = useMemo(() => {
+    let list = allDiscovered;
+    if (discoverFilter === "neighbors") list = neighbors;
+    else if (discoverFilter === "mutuals") list = mutuals;
+    else if (discoverFilter === "sellers") list = sellers;
+
+    if (!searchQuery.trim()) return list;
+    const q = searchQuery.toLowerCase();
+    return list.filter((u) => u.name?.toLowerCase().includes(q));
+  }, [allDiscovered, neighbors, mutuals, sellers, discoverFilter, searchQuery]);
 
   return (
-    <div className="min-h-[100dvh] pb-32" style={{ background: "var(--c-bg)" }}>
-      <div className="max-w-2xl mx-auto px-4 pt-6 space-y-8">
+    <div className={`min-h-[100dvh] pb-32 ${className || ""}`} style={{ background: "var(--c-bg)" }}>
+      <div className="max-w-2xl mx-auto px-4 pt-6 space-y-6">
 
         {/* ── Header ── */}
         <header className="space-y-1">
           <div className="flex items-center justify-between">
-            <h1 className="text-[1.25rem] text-foreground" style={{ fontFamily: PACIFICO }}>
+            <h1 className="text-[1.35rem] text-foreground font-bold" style={{ fontFamily: PACIFICO }}>
               Community
             </h1>
             <LocationChip />
           </div>
-          <p className="text-[0.75rem]" style={{ fontFamily: FONT, fontStyle: "italic", fontWeight: 300, color: "var(--c-text-muted)" }}>
-            Connecting neighbors, one story at a time.
+          <p className="text-xs text-muted-foreground" style={{ fontFamily: FONT }}>
+            Connect with your neighbors and manage your friends list
           </p>
         </header>
 
-        {/* ── Search ── */}
-        <div className="relative" ref={searchRef}>
-          <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "var(--c-text-muted)" }} />
-          <input
-            type="text"
-            placeholder="Search for neighbors or posts..."
-            value={searchQuery}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            className="w-full rounded-full px-6 pl-11 py-4 text-sm text-foreground outline-none focus:ring-1 focus:ring-primary/50"
-            style={{
-              background: "var(--c-card2)",
-              border: "0.5px solid #388E3C",
-              fontFamily: FONT,
-            }}
-          />
-
-          {/* User search results dropdown */}
-          {showUserSearch && users.length > 0 && (
-            <div
-              className="absolute top-full mt-2 w-full z-20 overflow-hidden"
-              style={{ background: 'var(--c-card)', borderRadius: 11, border: "0.5px solid var(--c-border)" }}
-            >
-              {userSearchLoading ? (
-                <div className="p-4 space-y-3">
-                  {[1, 2].map((i) => (
-                    <div key={i} className="flex items-center gap-3">
-                      <Skeleton className="w-10 h-10 rounded-full" style={{ background: "var(--c-card2)" }} />
-                      <Skeleton className="h-4 w-32" style={{ background: "var(--c-card2)" }} />
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                users.map((u) => (
-                  <div
-                    key={u.id}
-                    onClick={() => router.push(`/profile/${u.id}`)}
-                    className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-accent/50 transition-colors"
-                    style={{ borderBottom: "0.5px solid var(--c-border)" }}
-                  >
-                    <Avatar className="w-10 h-10 flex-shrink-0">
-                      <AvatarImage src={u.avatar_url} />
-                      <AvatarFallback style={{ background: GREEN, color: "#fff", fontFamily: FONT, fontWeight: 700 }}>
-                        {u.name?.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-foreground text-[0.8125rem] truncate" style={{ fontFamily: FONT, fontWeight: 600 }}>
-                        {u.name}
-                      </p>
-                    </div>
-                    <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                      <UserActionButton userId={u.id} onFriendAction={handleFriendAction} />
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
+        {/* ── Top Tabs (Friends | Discover) ── */}
+        <div className="flex rounded-full p-1 border border-border bg-[var(--c-card2)]">
+          <button
+            onClick={() => setActiveTab("friends")}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full text-xs font-semibold transition-all ${
+              activeTab === "friends"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+            style={{ fontFamily: FONT }}
+          >
+            <Users className="w-4 h-4" />
+            Friends ({friends.length})
+            {pendingRequests.length > 0 && (
+              <span className="ml-1 bg-red-500 text-white text-[10px] px-1.5 py-0.2 rounded-full">
+                {pendingRequests.length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab("discover")}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full text-xs font-semibold transition-all ${
+              activeTab === "discover"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+            style={{ fontFamily: FONT }}
+          >
+            <UserPlus className="w-4 h-4" />
+            Discover
+          </button>
         </div>
 
-  {/* ── Stats Row ── */}
-  <div className="grid grid-cols-3 gap-3">
-    <StatCard 
-      icon={Users} 
-      value={fmt(stats.totalUsers)} 
-      label="Neighbors"
-    />
-    <StatCard icon={Zap} value={fmt(stats.activeToday)} label="Active Today" />
-    <StatCard icon={FileText} value={fmt(stats.newPosts24h)} label="New Posts" />
-  </div>
+        {/* ── Search Bar ── */}
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder={activeTab === "friends" ? "Search friends..." : "Search neighbors..."}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full rounded-full px-4 pl-10 py-3 text-xs text-foreground bg-[var(--c-card)] border border-border outline-none focus:ring-1 focus:ring-primary"
+            style={{ fontFamily: FONT }}
+          />
+        </div>
 
-        {/* ── Friend Requests ── */}
-        {(pendingFriendRequests.length > 0 || friendRequestsLoading) && (
-          <section className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-foreground font-semibold text-lg" style={{ fontFamily: "var(--font-jersey25)" }}>
-                Friend Requests
-              </h2>
-              <button
-                className="text-[0.6875rem] font-bold uppercase tracking-widest text-primary"
-                style={{ fontFamily: FONT }}
-                onClick={() => router.push('/notifications')}
-              >
-                View All
-              </button>
-            </div>
-            <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide">
-              {friendRequestsLoading
-                ? [1, 2].map((i) => (
-                    <div
-                      key={i}
-                      className="min-w-[180px] flex flex-col items-center p-4 space-y-3"
-                      style={{ background: "var(--c-card)", borderRadius: 11 }}
-                    >
-                      <Skeleton className="w-16 h-16 rounded-full" style={{ background: "var(--c-card2)" }} />
-                      <Skeleton className="h-4 w-24" style={{ background: "var(--c-card2)" }} />
-                      <Skeleton className="h-8 w-full rounded-full" style={{ background: "var(--c-card2)" }} />
-                    </div>
-                  ))
-                : pendingFriendRequests.map((req) => {
-                    const sender = req.users;
+        {/* ── Content Body ── */}
+        {loading ? (
+          <div className="space-y-3 py-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex items-center gap-3 p-3 rounded-2xl bg-[var(--c-card)] border border-border">
+                <Skeleton className="w-12 h-12 rounded-full" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-3 w-20" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : activeTab === "friends" ? (
+          /* ── FRIENDS TAB ── */
+          <div className="space-y-6">
+
+            {/* Pending Friend Requests */}
+            {pendingRequests.length > 0 && (
+              <section className="space-y-3">
+                <h2 className="text-sm font-bold text-foreground tracking-wide uppercase" style={{ fontFamily: FONT }}>
+                  Friend Requests ({pendingRequests.length})
+                </h2>
+                <div className="space-y-2">
+                  {pendingRequests.map((req) => {
+                    const sender = req.from_user;
                     if (!sender) return null;
-                    const loc = getLocation(sender.location);
+                    const loc = getLocationString(sender.location);
                     return (
                       <div
                         key={req.id}
-                        className="min-w-[180px] flex flex-col items-center p-4 space-y-3 flex-shrink-0"
-                        style={{ background: "var(--c-card)", borderRadius: 11 }}
+                        className="flex items-center gap-3 p-3 rounded-2xl bg-[var(--c-card)] border border-border"
                       >
                         <Avatar
-                          className="w-16 h-16 cursor-pointer"
+                          className="w-12 h-12 cursor-pointer"
                           onClick={() => router.push(`/profile/${sender.id}`)}
                         >
                           <AvatarImage src={sender.avatar_url} />
-                          <AvatarFallback
-                            style={{ background: GREEN, color: "#fff", fontFamily: FONT, fontWeight: 700, fontSize: 22 }}
-                          >
+                          <AvatarFallback style={{ background: GREEN, color: "#fff", fontWeight: 700 }}>
                             {sender.name?.charAt(0).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
-                        <div className="text-center">
-                          <p className="text-foreground text-sm font-semibold" style={{ fontFamily: "var(--font-work-sans)" }}>
+                        <div className="flex-1 min-w-0">
+                          <p
+                            className="text-sm font-semibold text-foreground truncate cursor-pointer hover:underline"
+                            onClick={() => router.push(`/profile/${sender.id}`)}
+                            style={{ fontFamily: FONT }}
+                          >
                             {sender.name}
                           </p>
                           {loc && (
-                            <p className="text-[0.625rem]" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
+                            <p className="text-xs text-muted-foreground truncate" style={{ fontFamily: FONT }}>
                               {loc}
                             </p>
                           )}
                         </div>
-                        <div className="flex gap-2 w-full">
-                          <UserActionButton userId={sender.id} onFriendAction={handleFriendAction} />
+                        <UserActionButton userId={sender.id} onFriendAction={fetchData} />
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
+            {/* Friends List */}
+            <section className="space-y-3">
+              <h2 className="text-sm font-bold text-foreground tracking-wide uppercase" style={{ fontFamily: FONT }}>
+                My Friends ({filteredFriends.length})
+              </h2>
+
+              {filteredFriends.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center bg-[var(--c-card)] rounded-3xl border border-border p-6">
+                  <Users className="w-10 h-10 text-muted-foreground mb-3 opacity-40" />
+                  <h3 className="text-sm font-semibold text-foreground mb-1" style={{ fontFamily: FONT }}>
+                    No friends found
+                  </h3>
+                  <p className="text-xs text-muted-foreground max-w-xs mb-4" style={{ fontFamily: FONT }}>
+                    {searchQuery ? "No matching friends for your search." : "Discover neighbors around you and build your local network!"}
+                  </p>
+                  {!searchQuery && (
+                    <Button size="sm" onClick={() => setActiveTab("discover")} className="rounded-full">
+                      Discover Neighbors
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {filteredFriends.map((friend) => {
+                    const u = friend.user;
+                    if (!u) return null;
+                    const loc = getLocationString(u.location);
+                    return (
+                      <div
+                        key={friend.reqId}
+                        className="flex items-center gap-3 p-3 rounded-2xl bg-[var(--c-card)] border border-border transition-all hover:border-primary/40"
+                      >
+                        <Avatar
+                          className="w-12 h-12 cursor-pointer"
+                          onClick={() => router.push(`/profile/${u.id}`)}
+                        >
+                          <AvatarImage src={u.avatar_url} />
+                          <AvatarFallback style={{ background: GREEN, color: "#fff", fontWeight: 700 }}>
+                            {u.name?.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p
+                            className="text-sm font-semibold text-foreground truncate cursor-pointer hover:underline"
+                            onClick={() => router.push(`/profile/${u.id}`)}
+                            style={{ fontFamily: FONT }}
+                          >
+                            {u.name}
+                          </p>
+                          {loc && (
+                            <p className="text-xs text-muted-foreground truncate" style={{ fontFamily: FONT }}>
+                              {loc}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleMessageFriend(u.id)}
+                            className="p-2 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                            title="Message Friend"
+                          >
+                            <MessageSquare className="w-4 h-4" />
+                          </button>
+                          <UserActionButton userId={u.id} onFriendAction={fetchData} />
                         </div>
                       </div>
                     );
                   })}
-            </div>
-          </section>
-        )}
-
-        {/* ── Recent Updates Feed ── */}
-        <section className="space-y-4">
-          <h2 className="text-foreground font-semibold text-lg" style={{ fontFamily: "var(--font-jersey25)" }}>
-            Recent Updates
-          </h2>
-
-          {postsLoading ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-40 w-full rounded-[11px]" style={{ background: CARD }} />
-              ))}
-            </div>
-          ) : filteredPosts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div
-                className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
-                style={{ background: CARD }}
-              >
-                <FileText className="w-8 h-8 text-primary" style={{ opacity: 0.5 }} />
-              </div>
-              <h3 className="text-foreground text-lg mb-2" style={{ fontFamily: PACIFICO }}>
-                No posts yet
-              </h3>
-              <p className="text-[0.8125rem]" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
-                Be the first to share something with your neighbors!
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {filteredPosts.map((post) => (
-                <PostCard key={post.id} post={post} onDelete={deletePost} onCreatePost={createPost} />
-              ))}
-
-              {hasMore && !searchQuery && (
-                <div ref={loadMoreSentinelRef} className="flex justify-center py-4">
-                  {loadingMore && (
-                    <span className="text-[0.8125rem] font-medium" style={{ color: "var(--c-text-muted)" }}>
-                      Loading more...
-                    </span>
-                  )}
                 </div>
               )}
+            </section>
+          </div>
+        ) : (
+          /* ── DISCOVER TAB ── */
+          <div className="space-y-4">
+            {/* Sub-Filters */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+              {[
+                { key: "all", label: "All Neighbors", icon: Users },
+                { key: "neighbors", label: "Nearby", icon: MapPin },
+                { key: "mutuals", label: "Mutuals", icon: Sparkles },
+                { key: "sellers", label: "Sellers", icon: Store },
+              ].map((f) => {
+                const Icon = f.icon;
+                const active = discoverFilter === f.key;
+                return (
+                  <button
+                    key={f.key}
+                    onClick={() => setDiscoverFilter(f.key as DiscoverFilter)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+                      active
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-[var(--c-card)] text-muted-foreground border border-border hover:text-foreground"
+                    }`}
+                    style={{ fontFamily: FONT }}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    {f.label}
+                  </button>
+                );
+              })}
             </div>
-          )}
-        </section>
-      </div>
 
-      {/* ── FAB ── */}
-      <CreatePostDialog createPost={createPost}>
-        <button
-          className="fixed bottom-20 right-4 w-14 h-14 rounded-full flex items-center justify-center z-40 transition-transform active:scale-90"
-          style={{
-            background: GREEN,
-            boxShadow: "0 20px 40px rgba(0,0,0,0.4)",
-          }}
-        >
-          <Plus className="w-7 h-7 text-foreground" />
-        </button>
-      </CreatePostDialog>
+            {/* Discovered Users List */}
+            {displayedDiscoverList.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center bg-[var(--c-card)] rounded-3xl border border-border p-6">
+                <UserPlus className="w-10 h-10 text-muted-foreground mb-3 opacity-40" />
+                <h3 className="text-sm font-semibold text-foreground mb-1" style={{ fontFamily: FONT }}>
+                  No neighbors found
+                </h3>
+                <p className="text-xs text-muted-foreground max-w-xs" style={{ fontFamily: FONT }}>
+                  {searchQuery
+                    ? "No neighbors matching your query."
+                    : "No discoverable users found in this category right now."}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {displayedDiscoverList.map((u) => {
+                  const loc = getLocationString(u.location);
+                  return (
+                    <div
+                      key={u.id}
+                      className="flex items-center gap-3 p-3 rounded-2xl bg-[var(--c-card)] border border-border transition-all hover:border-primary/40"
+                    >
+                      <Avatar
+                        className="w-12 h-12 cursor-pointer"
+                        onClick={() => router.push(`/profile/${u.id}`)}
+                      >
+                        <AvatarImage src={u.avatar_url} />
+                        <AvatarFallback style={{ background: GREEN, color: "#fff", fontWeight: 700 }}>
+                          {u.name?.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p
+                          className="text-sm font-semibold text-foreground truncate cursor-pointer hover:underline"
+                          onClick={() => router.push(`/profile/${u.id}`)}
+                          style={{ fontFamily: FONT }}
+                        >
+                          {u.name}
+                        </p>
+                        {loc && (
+                          <p className="text-xs text-muted-foreground truncate" style={{ fontFamily: FONT }}>
+                            {loc}
+                          </p>
+                        )}
+                      </div>
+                      <UserActionButton userId={u.id} onFriendAction={fetchData} />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
