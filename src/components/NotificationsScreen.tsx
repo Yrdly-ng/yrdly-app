@@ -134,13 +134,18 @@ function NotificationCard({
         return;
       }
 
-      const { error: rpcError } = await supabase.rpc("accept_friend_request", {
-        req_id: req.id,
-      });
+      await supabase.from("friend_requests").update({ status: "accepted", updated_at: new Date().toISOString() }).eq("id", req.id);
 
-      if (rpcError) {
-        throw rpcError;
-      }
+      const [{ data: meData }, { data: themData }] = await Promise.all([
+        supabase.from("users").select("friends").eq("id", toUserId).single(),
+        supabase.from("users").select("friends").eq("id", fromUserId).single(),
+      ]);
+      const myFriends = Array.from(new Set([...(meData?.friends || []), fromUserId]));
+      const theirFriends = Array.from(new Set([...(themData?.friends || []), toUserId]));
+      await Promise.all([
+        supabase.from("users").update({ friends: myFriends }).eq("id", toUserId),
+        supabase.from("users").update({ friends: theirFriends }).eq("id", fromUserId),
+      ]);
 
       // Refresh global friendship context so profile buttons update everywhere
       if (fromUserId) await refreshUserStatus(fromUserId);

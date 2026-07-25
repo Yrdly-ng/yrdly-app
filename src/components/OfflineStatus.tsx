@@ -39,15 +39,8 @@ export function OfflineStatus() {
     }
   }, [showSuccessMessage]);
 
-  // Show success message when all actions are synced
-  useEffect(() => {
-    if (isOnline && !hasOfflineActions && !isConnecting) {
-      setShowSuccessMessage(true);
-    }
-  }, [isOnline, hasOfflineActions, isConnecting]);
-
-  if (isOnline && !hasOfflineActions && !showSuccessMessage && !isSlow) {
-    return null; // Don't show anything when online, fast, and no pending actions
+  if (isOnline) {
+    return null; // Never render banner when online
   }
 
   return (

@@ -106,7 +106,7 @@ export function MainLayout({ children }: MainLayoutProps) {
       try {
         const { data, error } = await supabase
           .from("conversations")
-          .select("id, type, participant_ids, context, last_message_timestamp")
+          .select("id, type, participant_ids, context, last_message_timestamp, deleted_by")
           .contains("participant_ids", [user.id]);
 
         if (error) return;
@@ -114,6 +114,7 @@ export function MainLayout({ children }: MainLayoutProps) {
         let unreadChatsCount = 0;
 
         for (const conv of data || []) {
+          if (conv.deleted_by?.includes(user.id)) continue;
           const readReceiptStr = conv.context?.read_receipts?.[user.id];
           const readReceiptDate = readReceiptStr
             ? new Date(readReceiptStr).getTime()

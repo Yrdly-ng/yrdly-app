@@ -199,10 +199,20 @@ function NotificationItem({ notification, onMarkAsRead, onDelete, onClose }: {
               return;
             }
 
-            const { error: rpcError } = await supabase.rpc("accept_friend_request", {
-              req_id: requestData.id,
-            });
-            if (rpcError) throw rpcError;
+            // Update friend_requests table
+            await supabase.from("friend_requests").update({ status: "accepted", updated_at: new Date().toISOString() }).eq("id", requestData.id);
+
+            // Update users.friends array for both users
+            const [{ data: meData }, { data: themData }] = await Promise.all([
+              supabase.from("users").select("friends").eq("id", toUserId).single(),
+              supabase.from("users").select("friends").eq("id", senderId).single(),
+            ]);
+            const myFriends = Array.from(new Set([...(meData?.friends || []), senderId]));
+            const theirFriends = Array.from(new Set([...(themData?.friends || []), toUserId]));
+            await Promise.all([
+              supabase.from("users").update({ friends: myFriends }).eq("id", toUserId),
+              supabase.from("users").update({ friends: theirFriends }).eq("id", senderId),
+            ]);
 
             try {
               const { NotificationTriggers } = await import('@/lib/notification-triggers');

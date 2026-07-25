@@ -5,12 +5,14 @@ import { useAuth } from "@/hooks/use-supabase-auth";
 import { supabase } from "@/lib/supabase";
 import { StorageService } from "@/lib/storage-service";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, ImagePlus, VideoIcon, Send, MessageCircle, Loader2, Download, X, MoreVertical } from "lucide-react";
+import { ArrowLeft, ImagePlus, VideoIcon, Send, MessageCircle, Loader2, Download, X, MoreVertical, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { ActivityIndicator } from "@/components/ActivityIndicator";
 import { useTypingDetection } from "@/hooks/use-typing-detection";
 import type { User } from "@/types";
 import Image from "next/image";
+import { useToast } from "@/hooks/use-toast";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 const GREEN = "hsl(var(--primary))";
 const CARD = "var(--c-card)";
@@ -71,6 +73,45 @@ function getActivityStatus(lastSeen: string | null | undefined): string {
 export function ConversationScreen({ conversationId }: ConversationScreenProps) {
   const { user } = useAuth();
   const router = useRouter();
+  const { toast } = useToast();
+
+  const handleDeleteMessageForMe = async (msgId: string) => {
+    if (!user) return;
+    try {
+      const target = messages.find((m) => m.id === msgId);
+      if (!target) return;
+      const newDeletedBy = Array.from(new Set([...((target as any).deleted_by || []), user.id]));
+      await supabase.from("messages").update({ deleted_by: newDeletedBy }).eq("id", msgId);
+      setMessages((prev) => prev.filter((m) => m.id !== msgId));
+      toast({ title: "Message deleted for you" });
+    } catch (e) {
+      toast({ title: "Error deleting message", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteMessageForEveryone = async (msgId: string) => {
+    if (!user) return;
+    try {
+      await supabase.from("messages").delete().eq("id", msgId);
+      setMessages((prev) => prev.filter((m) => m.id !== msgId));
+      toast({ title: "Message deleted for everyone" });
+    } catch (e) {
+      toast({ title: "Error deleting message", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteConversation = async () => {
+    if (!user || !conversation) return;
+    try {
+      const { data: currentData } = await supabase.from("conversations").select("deleted_by").eq("id", conversation.id).single();
+      const newDeletedBy = Array.from(new Set([...(currentData?.deleted_by || []), user.id]));
+      await supabase.from("conversations").update({ deleted_by: newDeletedBy }).eq("id", conversation.id);
+      toast({ title: "Conversation deleted" });
+      router.push("/messages");
+    } catch (e) {
+      toast({ title: "Error deleting conversation", variant: "destructive" });
+    }
+  };
 
   const [conversation, setConversation] = useState<ConversationRow | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -134,7 +175,8 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
         .from("messages").select("*")
         .eq("conversation_id", conversation.id)
         .order("created_at", { ascending: true });
-      setMessages(data || []);
+      const visible = (data || []).filter((m: any) => !m.deleted_by?.includes(user?.id || ''));
+      setMessages(visible);
       setLoading(false);
     };
     fetch();
@@ -402,6 +444,14 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
               Report User
             </button>
             <button 
+              className="w-full text-left px-4 py-3 text-sm hover:bg-red-500/10 transition-colors text-red-500 flex items-center gap-2"
+              style={{ fontFamily: FONT }}
+              onClick={handleDeleteConversation}
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete Conversation
+            </button>
+            <button 
               className="w-full text-left px-4 py-3 text-sm hover:bg-red-500/10 transition-colors text-red-500"
               style={{ fontFamily: FONT }}
               onClick={async () => {
@@ -502,7 +552,7 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
                     </span>
                   </div>
                 )}
-                <div className={`flex items-end gap-3 max-w-[85%] ${isOwn ? "self-end flex-row-reverse" : "self-start"}`}>
+                <div className={`flex items-end gap-3 max-w-[85%] group ${isOwn ? "self-end flex-row-reverse" : "self-start"}`}>
                   {!isOwn && (
                     <Avatar className="w-8 h-8 flex-shrink-0">
                       <AvatarImage src={sender?.avatar_url} />
@@ -511,6 +561,25 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
                       </AvatarFallback>
                     </Avatar>
                   )}
+
+                  {/* Message Options Dropdown */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-foreground rounded-full transition-opacity self-center">
+                        <MoreVertical className="w-3.5 h-3.5" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align={isOwn ? "end" : "start"} className="w-44 bg-card border-border">
+                      <DropdownMenuItem onClick={() => handleDeleteMessageForMe(msg.id)} className="text-destructive focus:text-destructive cursor-pointer">
+                        <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete for me
+                      </DropdownMenuItem>
+                      {isOwn && ((Date.now() - new Date(msg.created_at).getTime()) / 60000) <= 15 && (
+                        <DropdownMenuItem onClick={() => handleDeleteMessageForEveryone(msg.id)} className="text-destructive focus:text-destructive cursor-pointer">
+                          <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete for everyone
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   <div className="flex flex-col gap-1">
                     {(msg.image_url || (msg.media_type === 'image' && msg.media_url)) && (
                       <div className="relative group rounded-[10px] overflow-hidden border cursor-pointer" style={{ borderColor: "var(--c-border)", maxWidth: 280 }} onClick={() => setFullscreenImage(msg.image_url || msg.media_url!)}>

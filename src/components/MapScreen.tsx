@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Image from 'next/image';
-import { Search, Navigation, Calendar, Briefcase, Users, MapPin, Plus, Locate, Layers } from 'lucide-react';
+import { Search, Navigation, Calendar, Briefcase, Users, MapPin, Plus, Locate, Layers, ArrowLeft } from 'lucide-react';
 import { Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -406,6 +406,22 @@ export function MapScreen({ className }: MapScreenProps) {
       <div className="absolute top-4 left-4 right-4 z-10 space-y-2.5">
         {/* Search row */}
         <div className="flex items-center gap-2">
+          {/* Back button */}
+          <button
+            onClick={() => {
+              if (typeof window !== 'undefined' && window.history.length > 2) {
+                router.back();
+              } else {
+                router.push('/home');
+              }
+            }}
+            className="flex items-center justify-center w-11 h-11 rounded-2xl shadow-2xl flex-shrink-0 transition-all hover:scale-105 active:scale-95"
+            style={{ background: 'rgba(13,17,23,0.92)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--c-text)' }}
+            aria-label="Go Back"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+
           <div
             className="flex flex-1 items-center gap-3 rounded-2xl px-5 py-3 shadow-2xl"
             style={{ background: 'rgba(13,17,23,0.92)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.1)' }}

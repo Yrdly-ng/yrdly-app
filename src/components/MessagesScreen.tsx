@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, MessageCircle, Edit, Loader2 } from "lucide-react";
+import { Search, MessageCircle, Edit, Loader2, Trash2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
@@ -94,8 +94,10 @@ export function MessagesScreen() {
 
         if (error) { console.error(error); return; }
 
+        const activeRows = (data || []).filter((conv: any) => !conv.deleted_by?.includes(user.id));
+
         const withCounts = await Promise.all(
-          (data || []).map(async (conv) => {
+          activeRows.map(async (conv) => {
             const readReceiptStr = conv.context?.read_receipts?.[user.id];
             const readReceiptDate = readReceiptStr ? new Date(readReceiptStr).getTime() : 0;
             const lastMsgDate = conv.last_message_timestamp ? new Date(conv.last_message_timestamp).getTime() : 0;
@@ -218,6 +220,21 @@ export function MessagesScreen() {
     marketplace: conversations.filter((c) => c.type === "marketplace").reduce((s, c) => s + c.unreadCount, 0),
     businesses: conversations.filter((c) => c.type === "business").reduce((s, c) => s + c.unreadCount, 0),
   }), [conversations]);
+
+  const handleDeleteConversation = async (convId: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user) return;
+    try {
+      const { data: currentData } = await supabase.from('conversations').select('deleted_by').eq('id', convId).single();
+      const newDeletedBy = Array.from(new Set([...(currentData?.deleted_by || []), user.id]));
+      await supabase.from('conversations').update({ deleted_by: newDeletedBy }).eq('id', convId);
+      setConversations(prev => prev.filter(c => c.id !== convId));
+      toast({ title: "Conversation deleted" });
+    } catch (err) {
+      toast({ title: "Failed to delete conversation", variant: "destructive" });
+    }
+  };
 
   const TABS: { key: Tab; label: string }[] = [
     { key: "all", label: "All" },
@@ -410,7 +427,7 @@ export function MessagesScreen() {
             return (
               <Link key={conv.id} href={`/messages/${conv.id}`}>
                 <div
-                  className="flex items-center gap-3 p-4 transition-colors"
+                  className="group flex items-center gap-3 p-4 transition-colors"
                   style={{
                     background: 'var(--c-card)',
                     borderRadius: 11,
@@ -465,10 +482,19 @@ export function MessagesScreen() {
                     </p>
                   </div>
 
-                  {/* Unread dot */}
-                  {unread && (
-                    <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: GREEN }} />
-                  )}
+                  {/* Actions & Unread */}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button
+                      onClick={(e) => handleDeleteConversation(conv.id, e)}
+                      className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-destructive/15 text-muted-foreground hover:text-destructive transition-all"
+                      title="Delete Conversation"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                    {unread && (
+                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: GREEN }} />
+                    )}
+                  </div>
                 </div>
               </Link>
             );
