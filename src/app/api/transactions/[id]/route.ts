@@ -70,12 +70,53 @@ export async function GET(
       .eq('id', transaction.seller_id)
       .single();
 
-    // Fetch related item data
-    const { data: item } = await supabaseAdmin
-      .from('posts')
-      .select('id, title, text, description, image_urls, price')
-      .eq('id', transaction.item_id)
-      .single();
+    // Fetch related item data (check catalog_items first, then posts)
+    let itemData: any = null;
+    if (transaction.item_id) {
+      const { data: catItem } = await supabaseAdmin
+        .from('catalog_items')
+        .select('id, title, description, images, price')
+        .eq('id', transaction.item_id)
+        .maybeSingle();
+
+      if (catItem) {
+        const imgs = Array.isArray(catItem.images)
+          ? catItem.images
+          : typeof catItem.images === 'string'
+          ? [catItem.images]
+          : [];
+        itemData = {
+          id: catItem.id,
+          title: catItem.title || 'Item',
+          description: catItem.description,
+          image_urls: imgs,
+          images: imgs,
+          price: catItem.price,
+        };
+      } else {
+        const { data: postItem } = await supabaseAdmin
+          .from('posts')
+          .select('id, title, text, description, image_urls, image_url, price')
+          .eq('id', transaction.item_id)
+          .maybeSingle();
+
+        if (postItem) {
+          const imgs = Array.isArray(postItem.image_urls)
+            ? postItem.image_urls
+            : postItem.image_url
+            ? [postItem.image_url]
+            : [];
+          itemData = {
+            id: postItem.id,
+            title: postItem.title || postItem.text || 'Item',
+            description: postItem.description,
+            image_urls: imgs,
+            images: imgs,
+            price: postItem.price,
+          };
+        }
+      }
+    }
 
     console.log(`[TransactionAPI] Successfully fetched transaction ${transactionId} for user ${user.id}`);
 
@@ -83,7 +124,7 @@ export async function GET(
       ...transaction,
       buyer: buyer || { id: transaction.buyer_id, name: 'Unknown', email: '' },
       seller: seller || { id: transaction.seller_id, name: 'Unknown', email: '' },
-      item: item || { id: transaction.item_id, title: 'Unknown', price: 0 },
+      item: itemData || { id: transaction.item_id, title: 'Item', price: transaction.amount || 0 },
     });
   } catch (error) {
     console.error('[TransactionAPI] Error fetching transaction:', error);

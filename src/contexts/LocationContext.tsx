@@ -1,7 +1,8 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/hooks/use-supabase-auth";
+
 
 export interface LocationFilter {
   state?: string;
@@ -47,9 +48,14 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
 
   const [activeFilter, setActiveFilterRaw] = useState<LocationFilter | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const hasInitializedRef = useRef(false);
+
 
   // Restore persisted filter on mount, or fallback to user profile location
+  // Only runs once — we don't re-run when profile loads to avoid overwriting manual selections
   useEffect(() => {
+    if (hasInitializedRef.current) return;
+    hasInitializedRef.current = true;
     try {
       const savedData = localStorage.getItem(GLOBAL_FILTER_STORAGE_KEY);
       if (savedData) {
@@ -60,7 +66,7 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
           setActiveFilterRaw(parsed);
         }
       } else if (hasLocation) {
-        // Default to user's LGA if no filter has ever been set
+        // Default to user's LGA if no filter has ever been manually set
         setActiveFilterRaw({ state: userState, lga: userLga });
       }
     } catch {
