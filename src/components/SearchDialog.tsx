@@ -84,7 +84,7 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
         });
 
         // Businesses — scoped to user's state
-        let bizQuery = supabase.from('businesses').select('*').or(`name.ilike.%${q}%,description.ilike.%${q}%,category.ilike.%${q}%`);
+        let bizQuery = supabase.from('businesses').select('*').eq('is_active', true).or(`name.ilike.%${q}%,description.ilike.%${q}%,category.ilike.%${q}%`);
         if (userState) bizQuery = bizQuery.eq('state', userState);
         const { data: businesses } = await bizQuery.limit(5);
         (businesses || []).forEach(b => found.push({ type: 'business', data: b as Business }));

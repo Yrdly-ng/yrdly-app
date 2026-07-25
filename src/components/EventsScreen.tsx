@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils";
 import { useLocation } from "@/contexts/LocationContext";
 import { LocationChip } from "@/components/LocationChip";
 import { EventCreatorOnboarding } from "@/components/events/EventCreatorOnboarding";
+import { AttendeeAvatars } from "@/components/AttendeeAvatars";
 import { TiltCard } from "@/components/ui/TiltCard";
 import { Magnetic } from "@/components/ui/Magnetic";
 import { RevealOnScroll } from "@/components/ui/RevealOnScroll";
@@ -597,22 +598,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
                         : "Free"}
                     </span>
                     {event.attendee_count && event.attendee_count > 0 ? (
-                      <div className="flex items-center gap-1.5">
-                        <div className="flex -space-x-2">
-                          {Array.from({ length: Math.min(3, event.attendee_count) }).map((_, i) => (
-                            <div
-                              key={i}
-                              className="w-5 h-5 rounded-full border-2 border-[var(--c-card)] flex items-center justify-center text-[0.5rem] font-sans font-bold text-primary-foreground"
-                              style={{ background: "hsl(var(--primary))" }}
-                            >
-                              {String.fromCharCode(65 + i)}
-                            </div>
-                          ))}
-                        </div>
-                        <span className="font-sans text-[0.6875rem] text-muted-foreground">
-                          {event.attendee_count > 3 ? `+${event.attendee_count - 3} going` : "going"}
-                        </span>
-                      </div>
+                      <AttendeeAvatars totalCount={event.attendee_count} maxVisible={4} />
                     ) : (
                       <span className="font-sans text-[0.6875rem] text-muted-foreground">Be the first to join</span>
                     )}
