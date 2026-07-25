@@ -34,14 +34,25 @@ export function EventCreatorOnboarding({ isOpen, onClose }: EventCreatorOnboardi
     setEventType(null);
     const check = async () => {
       setCheckingPayout(true);
-      const { data } = await supabase
-        .from("seller_accounts")
-        .select("id, verification_status")
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .eq("is_primary", true)
-        .maybeSingle();
-      setHasPayout(!!data && data.verification_status === "verified");
+      const [{ data: userData }, { data: sellerData }] = await Promise.all([
+        supabase
+          .from("users")
+          .select("verified_seller")
+          .eq("id", user.id)
+          .single(),
+        supabase
+          .from("seller_accounts")
+          .select("id, verification_status")
+          .eq("user_id", user.id)
+          .eq("is_active", true)
+          .maybeSingle(),
+      ]);
+
+      const isVerified = 
+        !!userData?.verified_seller || 
+        (!!sellerData && sellerData.verification_status === "verified");
+
+      setHasPayout(isVerified);
       setCheckingPayout(false);
     };
     check();

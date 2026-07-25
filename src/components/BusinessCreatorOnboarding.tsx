@@ -30,15 +30,23 @@ export function BusinessCreatorOnboarding({ isOpen, onClose, onContinue }: Busin
     setStep("checking");
 
     const checkSellerStatus = async () => {
-      const { data } = await supabase
-        .from("seller_accounts")
-        .select("id, verification_status")
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .eq("is_primary", true)
-        .maybeSingle();
+      const [{ data: userData }, { data: sellerData }] = await Promise.all([
+        supabase
+          .from("users")
+          .select("verified_seller")
+          .eq("id", user.id)
+          .single(),
+        supabase
+          .from("seller_accounts")
+          .select("id, verification_status")
+          .eq("user_id", user.id)
+          .eq("is_active", true)
+          .maybeSingle(),
+      ]);
 
-      const isVerified = !!data && data.verification_status === "verified";
+      const isVerified = 
+        !!userData?.verified_seller || 
+        (!!sellerData && sellerData.verification_status === "verified");
 
       if (isVerified) {
         setStep("choose_type");
