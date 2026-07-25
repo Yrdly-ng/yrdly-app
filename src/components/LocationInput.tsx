@@ -98,7 +98,7 @@ export function LocationInput({ name, control, defaultValue }: LocationInputProp
         )}
       />
       {showSuggestions && (
-        <div className="absolute z-10 w-full mt-1 bg-background border border-border rounded-md shadow-lg">
+        <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-md shadow-lg">
           {isPlacePredictionsLoading ? (
             <div className="p-2 space-y-2">
               <Skeleton className="h-4 w-full" />

@@ -6,7 +6,7 @@ import Image from "next/image";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Heart,
-  MessageCircle,
+  MessageCircleMore,
   Share2,
   MapPin,
   Calendar,
@@ -185,7 +185,7 @@ function EngagementRow({
           onClick={onComment}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-full hover:bg-[var(--c-card2)] transition-colors duration-150"
         >
-          <MessageCircle className="w-5 h-5 text-muted-foreground" />
+          <MessageCircleMore className="w-5 h-5 text-muted-foreground" />
           <span className="text-[0.75rem] font-medium text-muted-foreground" style={{ fontFamily: FONT_RALEWAY }}>
             {fmt(commentCount)}
           </span>

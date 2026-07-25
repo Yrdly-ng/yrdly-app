@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   ChevronLeft,
   Heart,
-  MessageCircle,
+  MessageCircleMore,
   Share2,
   MoreHorizontal,
   Trash2,
@@ -306,7 +306,7 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
             <span className="font-sans font-light italic text-xs text-foreground">{formatCount(likes)}</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <MessageCircle className="w-5 h-5 text-foreground" />
+            <MessageCircleMore className="w-5 h-5 text-foreground" />
             <span className="font-sans font-light text-xs text-foreground">{formatCount(commentCount)}</span>
           </div>
           <button onClick={handleShare} className="p-1 rounded hover:bg-accent">

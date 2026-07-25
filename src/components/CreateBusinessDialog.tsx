@@ -36,11 +36,12 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 const inputBase =
-  "bg-background border border-primary text-foreground placeholder:text-muted-foreground placeholder:italic font-sans text-xs focus-visible:ring-primary focus-visible:ring-offset-0";
+  "bg-background border border-primary text-foreground placeholder:text-muted-foreground placeholder:italic font-sans text-[16px] md:text-sm focus-visible:ring-primary focus-visible:ring-offset-0";
 const labelClass = "font-sans font-semibold text-xs text-foreground";
 const pointerClass = "w-2 h-2 border-b border-l border-primary rounded-bl-md flex-shrink-0 mt-1.5";
 
 const WEEK_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
+const CATEGORIES = ['Food & Drinks', 'Retail', 'Services', 'Tech', 'Health', 'Fashion', 'Beauty', 'Entertainment', 'Other'];
 
 function formatTime12h(time24: string): string {
   if (!time24) return "";
@@ -392,7 +393,24 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
                     <FormLabel className={labelClass}>Category</FormLabel>
                   </div>
                   <FormControl>
-                    <Input placeholder="e.g Cafe, Beauty, Retail" className={cn(inputBase, "rounded-full h-10")} {...field} />
+                    <div className="flex flex-wrap gap-2">
+                      {CATEGORIES.map((cat) => (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => field.onChange(cat)}
+                          className={cn(
+                            "px-4 py-2 rounded-full text-xs font-semibold font-sans transition-colors",
+                            field.value === cat
+                              ? "text-foreground"
+                              : "text-muted-foreground bg-transparent border border-primary/40"
+                          )}
+                          style={field.value === cat ? { background: "hsl(var(--primary))" } : undefined}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
                   </FormControl>
                   <FormMessage className="text-red-400 text-xs" />
                 </FormItem>
@@ -461,7 +479,7 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
                         type="tel"
                         inputMode="numeric"
                         placeholder="8012345678"
-                        className="flex-1 h-full px-3 bg-transparent text-xs text-foreground placeholder:text-muted-foreground placeholder:italic focus:outline-none"
+                        className="flex-1 h-full px-3 bg-transparent text-[16px] md:text-sm text-foreground placeholder:text-muted-foreground placeholder:italic focus:outline-none"
                         value={field.value?.startsWith("+234") ? field.value.slice(4) : field.value || ""}
                         onChange={(e) => {
                           const digits = e.target.value.replace(/\D/g, "");
@@ -516,23 +534,23 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
                       </div>
 
                       {/* Time range */}
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1">
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 min-w-0">
                           <label className="text-[0.6875rem] text-muted-foreground font-sans block mb-1">Opens at</label>
                           <input
                             type="time"
                             value={openTime}
                             onChange={(e) => setOpenTime(e.target.value)}
-                            className="w-full h-10 px-3 rounded-full border border-primary bg-background text-xs text-foreground focus:outline-none"
+                            className="w-full h-10 px-2 text-center rounded-full border border-primary bg-background text-[16px] md:text-sm text-foreground focus:outline-none"
                           />
                         </div>
-                        <div className="flex-1">
+                        <div className="flex-1 min-w-0">
                           <label className="text-[0.6875rem] text-muted-foreground font-sans block mb-1">Closes at</label>
                           <input
                             type="time"
                             value={closeTime}
                             onChange={(e) => setCloseTime(e.target.value)}
-                            className="w-full h-10 px-3 rounded-full border border-primary bg-background text-xs text-foreground focus:outline-none"
+                            className="w-full h-10 px-2 text-center rounded-full border border-primary bg-background text-[16px] md:text-sm text-foreground focus:outline-none"
                           />
                         </div>
                       </div>

@@ -24,13 +24,14 @@ import {
     Heart,
     Trash2,
     Edit2,
-    MessageCircle,
+    MessageCircleMore,
     MapPin,
     Image as ImageIcon,
     Smile,
     Flag,
     Share,
     ChevronDown,
+    CheckCircle2,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-supabase-auth';
 import { useToast } from '@/hooks/use-toast';
@@ -58,6 +59,7 @@ interface Comment {
     parentId?: string | null;
     likeCount: number;
     isLikedByMe: boolean;
+    verifiedSeller?: boolean;
 }
 
 interface CommentSectionProps {
@@ -140,7 +142,7 @@ export function CommentSection({
         const fetch = async () => {
             const { data, error } = await supabase
                 .from('comments')
-                .select('*')
+                .select('*, user:users!comments_user_id_fkey(verified_seller)')
                 .eq('post_id', postId)
                 .order('timestamp', { ascending: true });
             if (!error && data) {
@@ -166,6 +168,7 @@ export function CommentSection({
                     parentId: c.parent_id,
                     likeCount: c.like_count || 0,
                     isLikedByMe: userLikes.has(c.id),
+                    verifiedSeller: c.user?.verified_seller || false,
                 }));
                 setComments(mapped);
                 setLikedComments(new Set(userLikes));
@@ -344,11 +347,14 @@ export function CommentSection({
                 <div className="flex-1 min-w-0 pb-1">
                     {/* Header + Text */}
                     <div className="mb-0.5">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
                             <span className="text-[0.875rem] font-bold text-foreground leading-tight truncate">
                                 {comment.authorName}
                             </span>
-                            <span className="text-[0.75rem] text-muted-foreground font-light leading-tight whitespace-nowrap">
+                            {comment.verifiedSeller && (
+                                <CheckCircle2 className="w-3.5 h-3.5 text-primary fill-primary/20 flex-shrink-0" />
+                            )}
+                            <span className="text-[0.75rem] text-muted-foreground font-light leading-tight whitespace-nowrap ml-0.5">
                                 {timeAgoStr(comment.timestamp)}
                             </span>
                         </div>
@@ -389,7 +395,7 @@ export function CommentSection({
                             onClick={() => setReplyingTo(comment.id)}
                             className="flex items-center gap-1.5 group"
                         >
-                            <MessageCircle className="w-3.5 h-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
+                            <MessageCircleMore className="w-3.5 h-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
                             {replyCount > 0 && <span className="text-xs font-medium text-muted-foreground group-hover:text-primary transition-colors">{fmt(replyCount)}</span>}
                         </button>
 
@@ -631,7 +637,7 @@ export function CommentSection({
             <div className="px-4 pb-4 space-y-3 overflow-y-auto flex-1" style={{ maxHeight: 'min(60vh, 400px)' }}>
                 {sortedParentComments.length === 0 ? (
                     <div className="py-8 text-center flex flex-col items-center gap-2">
-                        <MessageCircle className="w-10 h-10 text-muted-foreground" />
+                        <MessageCircleMore className="w-10 h-10 text-muted-foreground" />
                         <p className="text-[0.8125rem] text-muted-foreground" style={{ fontFamily: FONT_RALEWAY }}>No comments yet.</p>
                         <p className="text-[0.75rem] text-muted-foreground" style={{ fontFamily: FONT_RALEWAY }}>Be the first to comment!</p>
                     </div>

@@ -20,7 +20,7 @@ export const usePlaces = () => {
     clearSuggestions,
   } = usePlacesAutocomplete({
     requestOptions: {
-      /* Define search scope here */
+      componentRestrictions: { country: "ng" },
     },
     debounce: 300,
   });
