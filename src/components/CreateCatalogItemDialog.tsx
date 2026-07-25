@@ -72,6 +72,10 @@ const getFormSchema = (existingImageCount: number) =>
     ),
     category: z.string().min(1, "Category is required."),
     in_stock: z.boolean().default(true),
+    quantity: z.preprocess(
+      (val) => (val === "" || val === null || val === undefined ? 1 : Number(val)),
+      z.number().min(0, "Stock quantity cannot be negative.")
+    ),
     image: z
       .any()
       .refine(
@@ -201,6 +205,16 @@ function FormBody({
               </FormItem>
             )} />
 
+            <FormField control={form.control} name="quantity" render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-muted-foreground">Stock Quantity</FormLabel>
+                <FormControl>
+                  <Input type="number" min="0" placeholder="5" className="bg-background border-border h-12 rounded-xl text-base" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+
             <FormItem>
               <FormLabel className="text-muted-foreground">Images (Max 4 — shown as a slideshow)</FormLabel>
               <label className="flex items-center gap-3 w-full bg-background border border-border h-12 rounded-xl px-4 cursor-pointer hover:bg-accent transition">
@@ -326,6 +340,7 @@ const CreateCatalogItemDialogComponent = ({
       price: "" as any,
       category: "General",
       in_stock: true,
+      quantity: 5,
       image: undefined,
     },
   });
@@ -342,6 +357,7 @@ const CreateCatalogItemDialogComponent = ({
             price: itemToEdit.price,
             category: itemToEdit.category || "General",
             in_stock: itemToEdit.in_stock ?? true,
+            quantity: itemToEdit.quantity ?? 5,
             image: itemToEdit.images || [],
           });
         } else if (!isEditMode) {
@@ -351,6 +367,7 @@ const CreateCatalogItemDialogComponent = ({
             price: "",
             category: "General",
             in_stock: true,
+            quantity: 5,
             image: undefined,
           });
         }

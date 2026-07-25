@@ -161,23 +161,33 @@ export function CommunityScreen({ className }: { className?: string }) {
 
       const { data: userData } = await userQuery;
 
+      // Also query pending sent requests so sent request recipients are excluded from Discover list
+      const { data: pendingSent } = await supabase
+        .from("friend_requests")
+        .select("to_user_id")
+        .eq("from_user_id", currentUser.id)
+        .eq("status", "pending");
+
+      const pendingSentTargetIds = (pendingSent || []).map((r: any) => r.to_user_id);
+
       const blocked = profile?.blocked_users || [];
       const myFriendIds = friendList.map((f) => f.user.id);
 
       const discovered = (userData || [])
-        .filter((u) => !blocked.includes(u.id))
-        .filter((u) => !myFriendIds.includes(u.id))
-        .filter((u) => u.discoverable !== false);
+        .filter((u: any) => !blocked.includes(u.id))
+        .filter((u: any) => !myFriendIds.includes(u.id))
+        .filter((u: any) => !pendingSentTargetIds.includes(u.id))
+        .filter((u: any) => u.discoverable !== false);
 
       setAllDiscovered(discovered);
 
-      const nearby = discovered.filter((u) => {
+      const nearby = discovered.filter((u: any) => {
         if (!targetLocation?.lga) return true;
         return u.location?.lga === targetLocation.lga;
       });
       setNeighbors(nearby);
 
-      const mutual = discovered.filter((u) => {
+      const mutual = discovered.filter((u: any) => {
         const theirFriends = u.friends || [];
         return theirFriends.some((fid: string) => myFriendIds.includes(fid));
       });
@@ -194,7 +204,7 @@ export function CommunityScreen({ className }: { className?: string }) {
 
         if (postData) {
           const sellerIds = Array.from(new Set(postData.map((p) => p.user_id)));
-          setSellers(discovered.filter((u) => sellerIds.includes(u.id)));
+          setSellers(discovered.filter((u: any) => sellerIds.includes(u.id)));
         }
       }
     } catch (error) {
