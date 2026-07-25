@@ -89,7 +89,11 @@ export default function CatalogItemPage() {
   };
 
   const handleBack = () => {
-    router.push(`/businesses/${businessId}`);
+    if (window.history.length > 2) {
+      window.history.back();
+    } else {
+      router.push(`/businesses/${businessId}`);
+    }
   };
 
   if (loading) {

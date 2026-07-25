@@ -129,9 +129,7 @@ export default function BusinessDetailPage() {
     <BusinessDetailScreen
       business={business}
       onBack={() => {
-        if (window.history.length > 2) {
-          window.history.back();
-        } else if (business?.category) {
+        if (business?.category) {
           router.push(`/businesses?category=${encodeURIComponent(business.category)}`);
         } else {
           router.push('/businesses');

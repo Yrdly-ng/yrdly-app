@@ -192,7 +192,11 @@ export default function ItemChatPage() {
   }, [business, catalogItem, user, businessId, itemId]);
 
   const handleBack = () => {
-    router.push(`/businesses/${businessId}/catalog/${itemId}`);
+    if (window.history.length > 2) {
+      window.history.back();
+    } else {
+      router.push(`/businesses/${businessId}/catalog/${itemId}`);
+    }
   };
 
   if (loading) {

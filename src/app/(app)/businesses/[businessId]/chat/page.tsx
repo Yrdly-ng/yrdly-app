@@ -67,7 +67,11 @@ export default function BusinessChatPage() {
   }, [businessId]);
 
   const handleBack = () => {
-    router.push(`/businesses/${businessId}`);
+    if (window.history.length > 2) {
+      window.history.back();
+    } else {
+      router.push(`/businesses/${businessId}`);
+    }
   };
 
   // Create or get conversation entry for business chat
