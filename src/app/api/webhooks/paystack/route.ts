@@ -116,13 +116,38 @@ export async function POST(request: NextRequest) {
       // ── Mark item as sold ─────────────────────────────
       if (txRow.item_id) {
         if (txRow.item_type === 'catalog_item') {
-          await supabaseAdmin
-            .from('catalog_items')
-            .update({
-              in_stock: false,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', txRow.item_id);
+          try {
+            const { data: catItem } = await supabaseAdmin
+              .from('catalog_items')
+              .select('id, quantity, in_stock')
+              .eq('id', txRow.item_id)
+              .maybeSingle();
+
+            if (catItem) {
+              const currentQty = typeof catItem.quantity === 'number' ? catItem.quantity : 1;
+              const newQty = Math.max(0, currentQty - 1);
+              const inStock = newQty > 0;
+
+              await supabaseAdmin
+                .from('catalog_items')
+                .update({
+                  quantity: newQty,
+                  in_stock: inStock,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq('id', txRow.item_id);
+            } else {
+              await supabaseAdmin
+                .from('catalog_items')
+                .update({
+                  in_stock: false,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq('id', txRow.item_id);
+            }
+          } catch (e) {
+            console.error('[Webhook] Error updating catalog stock:', e);
+          }
         } else {
           await supabaseAdmin
             .from('posts')
