@@ -35,35 +35,63 @@ export function FriendshipProvider({ children }: { children: React.ReactNode }) 
       if (!user || targetUserId === user.id) return;
 
       try {
-        // Check friends array first
+        // 1. Check users.friends array first
         const [{ data: me }, { data: them }] = await Promise.all([
           supabase.from("users").select("friends").eq("id", user.id).single(),
           supabase.from("users").select("friends").eq("id", targetUserId).single()
         ]);
 
-        if (me?.friends?.includes(targetUserId) || them?.friends?.includes(user.id)) {
-          // Sync them if they are out of sync (optional, but for now just showing as friends)
+        const meHasThem = me?.friends?.includes(targetUserId);
+        const themHasMe = them?.friends?.includes(user.id);
+
+        if (meHasThem || themHasMe) {
           updateStatus(targetUserId, "friends");
+
+          // Auto-heal if one direction is out of sync
+          if (!meHasThem && user.id) {
+            const myFriends = Array.from(new Set([...(me?.friends || []), targetUserId]));
+            await supabase.from("users").update({ friends: myFriends }).eq("id", user.id);
+          }
+          if (!themHasMe && targetUserId) {
+            const theirFriends = Array.from(new Set([...(them?.friends || []), user.id]));
+            await supabase.from("users").update({ friends: theirFriends }).eq("id", targetUserId);
+          }
           return;
         }
 
-        // Check pending requests
+        // 2. Check friend_requests table for accepted or pending status
         const { data: requests } = await supabase
           .from("friend_requests")
           .select("id, from_user_id, to_user_id, status")
-          .eq("status", "pending")
           .or(
             `and(from_user_id.eq.${user.id},to_user_id.eq.${targetUserId}),and(from_user_id.eq.${targetUserId},to_user_id.eq.${user.id})`
           );
 
         if (requests && requests.length > 0) {
           const req = requests[0];
-          const status: FriendshipStatus =
-            req.from_user_id === user.id ? "request_sent" : "request_received";
-          updateStatus(targetUserId, status);
-        } else {
-          updateStatus(targetUserId, "none");
+
+          if (req.status === "accepted") {
+            updateStatus(targetUserId, "friends");
+
+            // Auto-heal users.friends array for both
+            const myFriends = Array.from(new Set([...(me?.friends || []), targetUserId]));
+            const theirFriends = Array.from(new Set([...(them?.friends || []), user.id]));
+            await Promise.all([
+              supabase.from("users").update({ friends: myFriends }).eq("id", user.id),
+              supabase.from("users").update({ friends: theirFriends }).eq("id", targetUserId),
+            ]);
+            return;
+          }
+
+          if (req.status === "pending") {
+            const status: FriendshipStatus =
+              req.from_user_id === user.id ? "request_sent" : "request_received";
+            updateStatus(targetUserId, status);
+            return;
+          }
         }
+
+        updateStatus(targetUserId, "none");
       } catch (error) {
         console.error("Error refreshing friendship status:", error);
       }
