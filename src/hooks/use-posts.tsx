@@ -467,6 +467,7 @@ export const usePosts = (filter?: LocationFilter | null) => {
               lga: bizLocation?.lga || null,
               ward: bizLocation?.ward || null,
               admin_location: bizLocation ? { state: bizLocation.state, lga: bizLocation.lga, ward: bizLocation.ward } : null,
+              is_active: true,
             }),
         }
 

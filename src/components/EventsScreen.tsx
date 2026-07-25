@@ -598,7 +598,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
                         : "Free"}
                     </span>
                     {event.attendee_count && event.attendee_count > 0 ? (
-                      <AttendeeAvatars totalCount={event.attendee_count} maxVisible={4} />
+                      <AttendeeAvatars attendees={event.attendees} totalCount={event.attendee_count} maxVisible={4} />
                     ) : (
                       <span className="font-sans text-[0.6875rem] text-muted-foreground">Be the first to join</span>
                     )}

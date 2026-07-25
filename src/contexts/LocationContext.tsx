@@ -54,24 +54,13 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
       const savedData = localStorage.getItem(GLOBAL_FILTER_STORAGE_KEY);
       if (savedData) {
         const parsed = JSON.parse(savedData);
-        
-        // Handle migration from old format where the filter itself was saved directly
-        // and new format where it is { filter, timestamp }
-        if (parsed.timestamp && parsed.hasOwnProperty('filter')) {
-          const isExpired = Date.now() - parsed.timestamp > EXPIRATION_TIME_MS;
-          if (isExpired) {
-            localStorage.removeItem(GLOBAL_FILTER_STORAGE_KEY);
-            if (hasLocation) setActiveFilterRaw({ state: userState, lga: userLga });
-          } else {
-            setActiveFilterRaw(parsed.filter);
-          }
+        if (parsed && parsed.hasOwnProperty('filter')) {
+          setActiveFilterRaw(parsed.filter);
         } else {
-          // Old format detected - clear it to enforce home reset
-          localStorage.removeItem(GLOBAL_FILTER_STORAGE_KEY);
-          if (hasLocation) setActiveFilterRaw({ state: userState, lga: userLga });
+          setActiveFilterRaw(parsed);
         }
       } else if (hasLocation) {
-        // Default to user's LGA if no filter is set
+        // Default to user's LGA if no filter has ever been set
         setActiveFilterRaw({ state: userState, lga: userLga });
       }
     } catch {

@@ -17,6 +17,7 @@ import { useAuth } from "@/hooks/use-supabase-auth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import { getEventById } from "@/lib/event-service";
+import { AttendeeAvatars } from "@/components/AttendeeAvatars";
 import type { Event, TicketTier } from "@/types/events";
 
 function formatDate(iso: string) {
@@ -341,7 +342,7 @@ export default function EventDetailPage() {
           )}
 
           <div className="flex items-center gap-3 text-muted-foreground">
-            <Users className="w-5 h-5 flex-shrink-0 text-primary" />
+            <AttendeeAvatars attendees={event.attendees} totalCount={event.attendee_count} maxVisible={4} />
             <p className="font-sans text-sm">{event.attendee_count} attending</p>
           </div>
         </div>
@@ -379,6 +380,8 @@ export default function EventDetailPage() {
             <div className="space-y-3">
               {tiers.filter(t => t.is_visible).map((tier) => {
                 const soldOut = tier.capacity !== null && tier.sold >= tier.capacity;
+                const remaining = tier.capacity !== null ? Math.max(0, tier.capacity - tier.sold) : null;
+                const isLimited = remaining !== null && remaining > 0 && tier.capacity !== null && remaining <= tier.capacity * 0.4;
                 return (
                   <div
                     key={tier.id}
@@ -388,6 +391,11 @@ export default function EventDetailPage() {
                       <p className="font-sans font-bold text-sm text-foreground">{tier.name}</p>
                       {tier.description && (
                         <p className="font-sans text-xs text-muted-foreground mt-0.5 truncate">{tier.description}</p>
+                      )}
+                      {isLimited && (
+                        <p className="font-sans text-xs font-semibold text-amber-500 mt-1 flex items-center gap-1">
+                          <span>⚡</span> Limited tickets available
+                        </p>
                       )}
                       {tier.capacity !== null && (
                         <p className="font-sans text-xs text-muted-foreground mt-1">

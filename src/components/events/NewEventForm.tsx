@@ -272,8 +272,8 @@ export function NewEventForm() {
                     </FormItem>
                   )} />
                   {fields.length > 1 && (
-                    <button type="button" onClick={() => remove(index)} className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Trash2 className="w-3 h-3" />
+                    <button type="button" onClick={() => remove(index)} className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center transition-colors shadow-sm">
+                      <Trash2 className="w-3 h-3 text-white" />
                     </button>
                   )}
                 </div>

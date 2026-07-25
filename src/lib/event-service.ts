@@ -37,7 +37,82 @@ export async function getPublishedEvents(opts?: {
 
   const { data, error } = await query;
   if (error) throw error;
-  return (data || []).map(enrichEventTiers);
+  const events = (data || []).map(enrichEventTiers);
+
+  if (events.length > 0) {
+    const eventIds = events.map(e => e.id);
+    try {
+      const { data: ticketsData } = await supabase
+        .from('tickets')
+        .select('event_id, buyer:users(id, name, avatar_url)')
+        .in('event_id', eventIds)
+        .eq('status', 'PAID')
+        .limit(100);
+
+      if (ticketsData) {
+        const attendeesByEvent: Record<string, Array<{ id: string; name?: string; avatar_url?: string }>> = {};
+        const seenByEvent: Record<string, Set<string>> = {};
+
+        for (const t of ticketsData) {
+          const eid = (t as any).event_id;
+          const buyer = (t as any).buyer;
+          if (eid && buyer && buyer.id) {
+            if (!attendeesByEvent[eid]) attendeesByEvent[eid] = [];
+            if (!seenByEvent[eid]) seenByEvent[eid] = new Set();
+
+            if (!seenByEvent[eid].has(buyer.id) && attendeesByEvent[eid].length < 5) {
+              seenByEvent[eid].add(buyer.id);
+              attendeesByEvent[eid].push({
+                id: buyer.id,
+                name: buyer.name,
+                avatar_url: buyer.avatar_url,
+              });
+            }
+          }
+        }
+
+        events.forEach(e => {
+          e.attendees = attendeesByEvent[e.id] || [];
+        });
+      }
+    } catch (e) {
+      console.warn('Failed to batch fetch attendees:', e);
+    }
+  }
+
+  return events;
+}
+
+export async function getEventAttendees(eventId: string, limit: number = 5) {
+  try {
+    const { data } = await supabase
+      .from('tickets')
+      .select('buyer:users(id, name, avatar_url)')
+      .eq('event_id', eventId)
+      .eq('status', 'PAID')
+      .limit(limit * 3);
+
+    if (!data) return [];
+    
+    const seen = new Set<string>();
+    const attendees: Array<{ id: string; name?: string; avatar_url?: string }> = [];
+    for (const item of data) {
+      const buyer = (item as any).buyer;
+      if (buyer && buyer.id && !seen.has(buyer.id)) {
+        seen.add(buyer.id);
+        attendees.push({
+          id: buyer.id,
+          name: buyer.name,
+          avatar_url: buyer.avatar_url,
+        });
+        if (attendees.length >= limit) break;
+      }
+    }
+    return attendees;
+  } catch (err) {
+    console.warn('Error fetching event attendees:', err);
+    return [];
+  }
 }
 
 export async function getEventById(id: string): Promise<Event | null> {
@@ -52,7 +127,11 @@ export async function getEventById(id: string): Promise<Event | null> {
     .single();
 
   if (error) return null;
-  return enrichEventTiers(data);
+  const event = enrichEventTiers(data);
+  if (event) {
+    event.attendees = await getEventAttendees(id, 5);
+  }
+  return event;
 }
 
 export async function getOrganizerEvents(organizerId: string): Promise<Event[]> {

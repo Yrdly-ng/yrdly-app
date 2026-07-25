@@ -4,11 +4,13 @@ import { BusinessDetailScreen } from "@/components/BusinessDetailScreen";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/hooks/use-supabase-auth";
 import type { Business } from "@/types";
 
 export default function BusinessDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { user } = useAuth();
   const businessId = params.businessId as string;
   const [business, setBusiness] = useState<Business | null>(null);
   const [loading, setLoading] = useState(true);
@@ -31,6 +33,14 @@ export default function BusinessDetailPage() {
         }
 
         if (businessData) {
+          const isOwner = user?.id === businessData.owner_id;
+          const isArchivedOrInactive = businessData.is_active === false || businessData.is_archived === true || businessData.status === 'archived';
+
+          if (isArchivedOrInactive && !isOwner) {
+            setBusiness(null);
+            setLoading(false);
+            return;
+          }
           // Then fetch the owner data separately
           let ownerData = null;
           if (businessData.owner_id) {

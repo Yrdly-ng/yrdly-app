@@ -44,6 +44,7 @@ export interface Event {
     avatar_url?: string;
   };
   ticket_tiers?: TicketTier[];
+  attendees?: { id?: string; name?: string; avatar_url?: string }[];
 }
 
 export interface TicketTier {
