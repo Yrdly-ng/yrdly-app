@@ -46,6 +46,7 @@ export interface CatalogItem {
   images: string[];
   category: string;
   in_stock: boolean;
+  quantity?: number;
   created_at?: string;
   updated_at?: string;
 }

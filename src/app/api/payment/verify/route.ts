@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
       console.log(`[PaymentVerify] Successfully updated transaction ${txRef} to PAID`);
     }
 
-    // ── Mark item as sold ──────────────────────────────────
+    // ── Mark item as sold / Update Catalog Stock ────────────
     if (txRow.item_id) {
       const { error: saleError } = await supabaseAdmin
         .from('posts')
@@ -150,9 +150,35 @@ export async function POST(request: NextRequest) {
         .eq('id', txRow.item_id);
 
       if (saleError) {
-        console.error(`[PaymentVerify] Failed to mark item ${txRow.item_id} as sold:`, saleError);
-      } else {
-        console.log(`[PaymentVerify] Item ${txRow.item_id} marked as sold`);
+        console.error(`[PaymentVerify] Note: Item ${txRow.item_id} not in posts table:`, saleError);
+      }
+
+      // Decrement catalog item stock if catalog item
+      try {
+        const { data: catItem } = await supabaseAdmin
+          .from('catalog_items')
+          .select('id, quantity, in_stock')
+          .eq('id', txRow.item_id)
+          .maybeSingle();
+
+        if (catItem) {
+          const currentQty = typeof catItem.quantity === 'number' ? catItem.quantity : 1;
+          const newQty = Math.max(0, currentQty - 1);
+          const inStock = newQty > 0;
+
+          await supabaseAdmin
+            .from('catalog_items')
+            .update({
+              quantity: newQty,
+              in_stock: inStock,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', txRow.item_id);
+
+          console.log(`[PaymentVerify] Catalog item ${txRow.item_id} stock decremented to ${newQty}`);
+        }
+      } catch (catErr) {
+        console.error(`[PaymentVerify] Error updating catalog stock:`, catErr);
       }
     }
 

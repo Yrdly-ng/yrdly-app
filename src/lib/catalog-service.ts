@@ -14,6 +14,7 @@ export class CatalogService {
       price: number;
       category?: string;
       in_stock?: boolean;
+      quantity?: number;
     },
     imageFiles?: FileList
   ): Promise<string> {
@@ -54,7 +55,8 @@ export class CatalogService {
               price: itemData.price,
               category: itemData.category || 'General',
               images: imageUrls,
-              in_stock: itemData.in_stock ?? true,
+              in_stock: (itemData.quantity !== undefined ? itemData.quantity > 0 : true) && (itemData.in_stock ?? true),
+              quantity: itemData.quantity ?? 1,
             })
             .select('id')
             .single();
@@ -88,6 +90,7 @@ export class CatalogService {
       price: number;
       category: string;
       in_stock: boolean;
+      quantity: number;
     }>,
     newImageFiles?: FileList,
     existingImages?: string[]
