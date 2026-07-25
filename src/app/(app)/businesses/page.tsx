@@ -19,22 +19,24 @@ const HEADING_FONT = "var(--font-jersey25)";
    (e.g. "cafe") resolve to something sensible instead of a random
    business's own photo. */
 const CATEGORY_IMAGE_RULES: { keywords: string[]; image: string }[] = [
-  { keywords: ["food", "drink", "cafe", "coffee", "restaurant", "bakery", "kitchen"], image: "/categories/food-drinks.svg" },
-  { keywords: ["retail", "shop", "store", "market"], image: "/categories/retail.svg" },
-  { keywords: ["service"], image: "/categories/services.svg" },
-  { keywords: ["tech", "electronics", "gadget", "computer"], image: "/categories/tech.svg" },
-  { keywords: ["health", "fitness", "gym", "wellness", "clinic", "pharmacy"], image: "/categories/health.svg" },
-  { keywords: ["fashion", "apparel", "clothing", "wear"], image: "/categories/fashion.svg" },
-  { keywords: ["beauty", "salon", "spa", "cosmetic", "hair", "makeup"], image: "/categories/beauty.svg" },
-  { keywords: ["entertainment", "event", "music", "game", "sport"], image: "/categories/entertainment.svg" },
+  { keywords: ["food", "drink", "cafe", "coffee", "restaurant", "bakery", "kitchen"], image: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=800&q=80&auto=format&fit=crop" },
+  { keywords: ["retail", "shop", "store", "market"], image: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&q=80&auto=format&fit=crop" },
+  { keywords: ["service"], image: "https://images.unsplash.com/photo-1504148455328-c376907d081c?w=800&q=80&auto=format&fit=crop" },
+  { keywords: ["tech", "electronics", "gadget", "computer"], image: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&q=80&auto=format&fit=crop" },
+  { keywords: ["health", "fitness", "gym", "wellness", "clinic", "pharmacy"], image: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80&auto=format&fit=crop" },
+  { keywords: ["fashion", "apparel", "clothing", "wear"], image: "https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=800&q=80&auto=format&fit=crop" },
+  { keywords: ["beauty", "salon", "spa", "cosmetic", "hair", "makeup"], image: "https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=800&q=80&auto=format&fit=crop" },
+  { keywords: ["entertainment", "event", "music", "game", "sport"], image: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&q=80&auto=format&fit=crop" },
 ];
+
+const OTHER_CATEGORY_IMAGE = "/categories/other.svg";
 
 function getCategoryImage(category: string): string {
   const normalized = category.toLowerCase();
   const match = CATEGORY_IMAGE_RULES.find((rule) =>
     rule.keywords.some((keyword) => normalized.includes(keyword))
   );
-  return match ? match.image : "/categories/other.svg";
+  return match ? match.image : OTHER_CATEGORY_IMAGE;
 }
 
 interface CategoryTile {
