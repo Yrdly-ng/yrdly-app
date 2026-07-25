@@ -418,6 +418,7 @@ const CreateCatalogItemDialogComponent = ({
             price: values.price,
             category: values.category,
             in_stock: values.in_stock,
+            quantity: values.quantity,
           },
           validImageFiles,
           existingImages
@@ -432,6 +433,7 @@ const CreateCatalogItemDialogComponent = ({
             price: values.price,
             category: values.category,
             in_stock: values.in_stock,
+            quantity: values.quantity,
           },
           validImageFiles
         );
