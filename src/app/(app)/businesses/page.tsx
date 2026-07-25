@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { ArrowLeft, Search, Star, MapPin, X, Plus, BadgeCheck } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -20,11 +20,13 @@ interface CategoryTile {
   image: string | null;
 }
 
-export default function BusinessesPage() {
+function BusinessesContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const activeCategory = searchParams.get("category") || null;
+
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
@@ -54,8 +56,7 @@ export default function BusinessesPage() {
     fetchBusinesses();
   }, []);
 
-  // Group businesses into category tiles, using the most recent
-  // business's image in that category as the tile's cover photo.
+  // Group businesses into category tiles
   const categoryTiles = useMemo<CategoryTile[]>(() => {
     const map = new Map<string, CategoryTile>();
 
@@ -98,16 +99,22 @@ export default function BusinessesPage() {
 
   const showingList = activeCategory !== null || searchQuery.trim().length > 0;
 
+  const handleSelectCategory = (cat: string) => {
+    router.push(`/businesses?category=${encodeURIComponent(cat)}`);
+  };
+
+  const handleClearCategory = () => {
+    setSearchQuery("");
+    router.push("/businesses");
+  };
+
   return (
     <div className="min-h-[100dvh] pb-10" style={{ background: "var(--c-bg)" }}>
       {/* Header */}
       <div className="sticky top-0 z-10 px-4 pt-4 pb-3 backdrop-blur-md" style={{ background: "var(--c-bg)cc" }}>
         {showingList && (
           <button
-            onClick={() => {
-              setActiveCategory(null);
-              setSearchQuery("");
-            }}
+            onClick={handleClearCategory}
             className="flex items-center gap-2 text-sm mb-3 transition-opacity hover:opacity-70 text-primary-light"
             style={{ fontFamily: FONT }}
           >
@@ -158,7 +165,7 @@ export default function BusinessesPage() {
             onOpen={(id) => router.push(`/businesses/${id}`)}
           />
         ) : (
-          <CategoryGrid tiles={categoryTiles} onSelect={setActiveCategory} />
+          <CategoryGrid tiles={categoryTiles} onSelect={handleSelectCategory} />
         )}
       </div>
 
@@ -181,13 +188,27 @@ export default function BusinessesPage() {
         onContinue={() => setCreateOpen(true)}
       />
 
-      {/* Actual create form, opened after onboarding completes */}
+      {/* Actual create form */}
       <CreateBusinessDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
         onCreated={() => fetchBusinesses()}
       />
     </div>
+  );
+}
+
+export default function BusinessesPage() {
+  return (
+    <Suspense fallback={
+      <div className="p-4 grid grid-cols-2 gap-3.5">
+        {[1, 2, 3, 4].map((i) => (
+          <Skeleton key={i} className="h-44 w-full rounded-2xl" />
+        ))}
+      </div>
+    }>
+      <BusinessesContent />
+    </Suspense>
   );
 }
 
