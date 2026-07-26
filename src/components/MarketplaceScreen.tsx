@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Search, Plus, Edit, Trash2, MessageCircle, ShoppingBag } from "lucide-react";
+import { Search, Plus, Edit, Trash2, MessageCircle, ShoppingBag, BadgeCheck } from "lucide-react";
 import { CreateItemDialog } from "@/components/CreateItemDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -77,7 +77,7 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
       try {
         let query = supabase
           .from("posts")
-          .select(`*, user:users!posts_user_id_fkey(id, name, avatar_url)`)
+          .select(`*, user:users!posts_user_id_fkey(id, name, avatar_url, verified_seller)`)
           .eq("category", "For Sale")
           .eq("is_sold", false);
 
@@ -444,10 +444,13 @@ function MarketplaceCard({
             )}
           </div>
           <span
-            className="text-[0.6875rem] truncate"
+            className="text-[0.6875rem] truncate flex items-center gap-1"
             style={{ color: "#94A3B8", fontFamily: "var(--font-work-sans)" }}
           >
             {item.user?.name || "Unknown Seller"}
+            {item.user?.verified_seller && (
+              <BadgeCheck className="w-3.5 h-3.5 text-[#82DB7E] fill-[#82DB7E]/20 shrink-0" />
+            )}
           </span>
           <span
             className="text-[0.625rem] ml-auto flex-shrink-0"

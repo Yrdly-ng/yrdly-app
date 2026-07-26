@@ -6,7 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   CalendarDays, MapPin, Clock, Users, Ticket, ArrowLeft,
-  Share2, Globe, ChevronLeft, ChevronRight, Loader2, CheckCircle2, AlertCircle
+  Share2, Globe, ChevronLeft, ChevronRight, Loader2, CheckCircle2, AlertCircle, BadgeCheck
 } from "lucide-react";
 import { ImageSwiper } from "@/components/ImageSwiper";
 import { Button } from "@/components/ui/button";
@@ -359,7 +359,12 @@ export default function EventDetailPage() {
           </Avatar>
           <div>
             <p className="font-sans text-xs text-muted-foreground">Organised by</p>
-            <p className="font-sans font-semibold text-sm text-foreground">{(event.organizer as any)?.name || "Organizer"}</p>
+            <p className="font-sans font-semibold text-sm text-foreground flex items-center gap-1">
+              {(event.organizer as any)?.name || "Organizer"}
+              {((event.organizer as any)?.verified_seller || (event.organizer as any)?.is_verified) && (
+                <BadgeCheck className="w-4 h-4 text-[#82DB7E] fill-[#82DB7E]/20 shrink-0" />
+              )}
+            </p>
           </div>
         </div>
 

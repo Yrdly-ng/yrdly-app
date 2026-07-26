@@ -113,6 +113,8 @@ export interface Post {
     name: string;
     avatar_url?: string;
     created_at?: string;
+    verified_seller?: boolean;
+    is_verified?: boolean;
   };
 }
 
@@ -134,6 +136,8 @@ export interface User {
   email?: string;
   avatar_url?: string;
   bio?: string;
+  verified_seller?: boolean;
+  is_verified?: boolean;
   location?: {
     state?: string;
     lga?: string;

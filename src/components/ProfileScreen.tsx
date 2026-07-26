@@ -353,7 +353,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
           <h1 className="mt-6 text-2xl text-foreground font-extrabold tracking-tight flex items-center justify-center gap-1.5" style={{ fontFamily: RALEWAY }}>
             {name}
             {(isVerifiedUser || isVerifiedSeller) && (
-              <BadgeCheck className={`w-6 h-6 ${isVerifiedSeller ? 'text-white fill-yellow-500' : 'text-white fill-[#82DB7E]'}`} />
+              <BadgeCheck className="w-6 h-6 text-[#82DB7E] fill-[#82DB7E]/20 shrink-0" />
             )}
           </h1>
           {username && (

@@ -11,6 +11,7 @@ import {
   Plus,
   Heart,
   ArrowUpRight,
+  BadgeCheck,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -522,8 +523,11 @@ export function EventsScreen({ className }: EventsScreenProps) {
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-sans font-bold text-sm text-foreground">
+                        <p className="font-sans font-bold text-sm text-foreground flex items-center gap-1">
                           {(event.organizer as any)?.name}
+                          {((event.organizer as any)?.verified_seller || (event.organizer as any)?.is_verified) && (
+                            <BadgeCheck className="w-4 h-4 text-[#82DB7E] fill-[#82DB7E]/20 shrink-0" />
+                          )}
                         </p>
                         <p className="font-sans text-[0.6875rem] text-muted-foreground">
                           {timeAgo(event.created_at ? new Date(event.created_at) : null)}

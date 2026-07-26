@@ -32,6 +32,7 @@ import {
     Share,
     ChevronDown,
     CheckCircle2,
+    BadgeCheck,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-supabase-auth';
 import { useToast } from '@/hooks/use-toast';
@@ -352,7 +353,7 @@ export function CommentSection({
                                 {comment.authorName}
                             </span>
                             {comment.verifiedSeller && (
-                                <CheckCircle2 className="w-3.5 h-3.5 text-primary fill-primary/20 flex-shrink-0" />
+                                <BadgeCheck className="w-3.5 h-3.5 text-[#82DB7E] fill-[#82DB7E]/20 flex-shrink-0" />
                             )}
                             <span className="text-[0.75rem] text-muted-foreground font-light leading-tight whitespace-nowrap ml-0.5">
                                 {timeAgoStr(comment.timestamp)}

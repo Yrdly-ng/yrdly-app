@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, Star, MapPin, Clock, Phone, MessageCircle, Share2, Heart, ShoppingCart } from "lucide-react";
+import { ArrowLeft, Star, MapPin, Clock, Phone, MessageCircle, Share2, Heart, ShoppingCart, BadgeCheck } from "lucide-react";
 import type { Business, CatalogItem } from "@/types";
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-supabase-auth";
@@ -168,7 +168,12 @@ export function CatalogItemScreen({
               <AvatarFallback>{business.name[0]}</AvatarFallback>
             </Avatar>
             <div className="flex-1">
-              <h3 className="font-semibold text-foreground">{business.name}</h3>
+              <h3 className="font-semibold text-foreground flex items-center gap-1">
+                {business.name}
+                {((business as any).verified_seller || (business as any).is_verified) && (
+                  <BadgeCheck className="w-4 h-4 text-[#82DB7E] fill-[#82DB7E]/20 shrink-0" />
+                )}
+              </h3>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
                 <span>{business.rating?.toFixed(1) || "0.0"}</span>
