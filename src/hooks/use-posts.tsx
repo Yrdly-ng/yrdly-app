@@ -40,7 +40,8 @@ export const usePosts = (filter?: LocationFilter | null) => {
           id,
           name,
           avatar_url,
-          created_at
+          created_at,
+          verified_seller
         )
       `);
 
@@ -396,7 +397,7 @@ export const usePosts = (filter?: LocationFilter | null) => {
               .from('posts')
               .update(finalPostData)
               .eq('id', postIdToUpdate)
-              .select(`*, user:users!posts_user_id_fkey(id, name, avatar_url, created_at)`)
+              .select(`*, user:users!posts_user_id_fkey(id, name, avatar_url, created_at, verified_seller)`)
               .single();
             
             if (error) throw error;
@@ -412,7 +413,7 @@ export const usePosts = (filter?: LocationFilter | null) => {
                 comment_count: 0,
                 liked_by: [],
               })
-              .select(`*, user:users!posts_user_id_fkey(id, name, avatar_url, created_at)`)
+              .select(`*, user:users!posts_user_id_fkey(id, name, avatar_url, created_at, verified_seller)`)
               .single();
             
             if (error) throw error;
