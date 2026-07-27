@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   ArrowLeft, MapPin, Calendar, Users, MessageCircle, ShoppingBag,
   Briefcase, CalendarDays, Clock, Heart, MoreHorizontal, UserMinus,
-  Ticket, Package, ChevronRight, TrendingUp, Shield, Check, X, BadgeCheck, Star
+  Ticket, Package, ChevronRight, TrendingUp, Shield, Check, X, BadgeCheck, Star, Play
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { supabase } from "@/lib/supabase";
@@ -667,51 +667,63 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
         {/* Posts tab */}
         {activeTab === "posts" && (
             userPosts.length > 0 ? (
-              <div className="bento-section space-y-4">
-                {/* Large feature card for first post */}
-                {userPosts[0] && (
-                  <div
-                    className="relative overflow-hidden cursor-pointer group rounded-[11px]"
-                    style={{ background: SURFACE }}
-                    onClick={() => router.push(`/posts/${userPosts[0].id}`)}
-                  >
-                    {userPosts[0].image_url && (
-                      <div className="relative overflow-hidden" style={{ aspectRatio: '4/3' }}>
-                        <Image src={userPosts[0].image_url} alt={userPosts[0].text || "Post"} fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover transition-transform duration-500 group-hover:scale-105" />
-                        <div className="absolute inset-0" style={{ background: "linear-gradient(to top, var(--c-bg) 0%, transparent 60%)" }} />
-                        <div className="absolute bottom-4 left-4 right-4">
-                          <span className="text-[0.625rem] font-bold uppercase tracking-widest px-2 py-0.5 rounded"
-                            style={{ background: "rgba(110,223,81,0.1)", color: "#6edf51" }}>Article</span>
-                          <h4 className="text-foreground font-bold mt-1 text-lg leading-tight">{userPosts[0].text}</h4>
-                        </div>
-                      </div>
-                    )}
-                    {!userPosts[0].image_url && (
-                      <div className="p-5">
-                        <p className="text-foreground text-sm" style={{ fontFamily: FONT }}>{userPosts[0].text}</p>
-                        <div className="flex items-center gap-3 mt-3 text-xs" style={{ color: "var(--c-text-muted)" }}>
-                          <span className="flex items-center gap-1"><Heart className="w-3 h-3" />{userPosts[0].liked_by?.length || 0}</span>
-                          <span>{new Date(userPosts[0].timestamp).toLocaleDateString()}</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-                {/* Grid for rest */}
-                <div className="grid grid-cols-2 gap-4">
-                  {userPosts.slice(1).map((post) => (
+              <div className="bento-section">
+                {/* Masonry for all posts — CSS columns so cards never inherit a neighbor's height */}
+                <div className="columns-2 gap-4">
+                  {userPosts.map((post) => {
+                    const thumbUrl = post.image_url || post.image_urls?.[0] || null;
+                    const hasVideo = !!post.video_url;
+                    const hasMedia = !!(thumbUrl || hasVideo);
+                    return (
                     <div
                       key={post.id}
-                      className="p-4 rounded-[11px] cursor-pointer"
+                      className="rounded-[11px] cursor-pointer overflow-hidden mb-4 break-inside-avoid"
                       style={{ background: SURFACE }}
                       onClick={() => router.push(`/posts/${post.id}`)}
                     >
-                      <p className="text-foreground text-xs line-clamp-3" style={{ fontFamily: FONT }}>{post.text || post.title}</p>
-                      <div className="flex items-center gap-2 mt-2 text-[0.625rem]" style={{ color: "var(--c-text-muted)" }}>
-                        <Heart className="w-3 h-3" />{post.liked_by?.length || 0}
-                      </div>
+                      {hasMedia && (
+                        <div className="relative w-full" style={{ aspectRatio: '1/1' }}>
+                          {hasVideo ? (
+                            <video
+                              src={post.video_url!.includes('#t=') ? post.video_url! : `${post.video_url}#t=0.001`}
+                              muted
+                              playsInline
+                              preload="metadata"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <Image src={thumbUrl!} alt={post.text || "Post"} fill sizes="(max-width: 768px) 50vw, 25vw" className="object-cover" />
+                          )}
+                          {hasVideo && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                              <div className="w-8 h-8 rounded-full bg-black/50 flex items-center justify-center">
+                                <Play className="w-4 h-4 text-white" fill="white" />
+                              </div>
+                            </div>
+                          )}
+                          {(post.image_urls?.length || 0) > 1 && (
+                            <span className="absolute top-1.5 right-1.5 text-[0.6rem] font-semibold px-1.5 py-0.5 rounded-full bg-black/50 text-white">
+                              +{(post.image_urls?.length || 1) - 1}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      {(hasMedia ? !!post.text : true) && (
+                        <div className={hasMedia ? "px-4 py-3" : "p-4"}>
+                          <p className="text-foreground text-xs line-clamp-3" style={{ fontFamily: FONT }}>{post.text || post.title}</p>
+                          <div className="flex items-center gap-2 mt-2 text-[0.625rem]" style={{ color: "var(--c-text-muted)" }}>
+                            <Heart className="w-3 h-3" />{post.liked_by?.length || 0}
+                          </div>
+                        </div>
+                      )}
+                      {hasMedia && !post.text && (
+                        <div className="px-4 py-3 flex items-center gap-2 text-[0.625rem]" style={{ color: "var(--c-text-muted)" }}>
+                          <Heart className="w-3 h-3" />{post.liked_by?.length || 0}
+                        </div>
+                      )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ) : (

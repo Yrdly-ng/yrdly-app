@@ -13,7 +13,6 @@ import { PostCard } from "@/components/PostCard";
 import { LocationChip } from "@/components/LocationChip";
 import { EventCreatorOnboarding } from "@/components/events/EventCreatorOnboarding";
 import { MarketplaceCreatorOnboarding } from "@/components/marketplace/MarketplaceCreatorOnboarding";
-import { Magnetic } from "@/components/ui/Magnetic";
 
 
 
@@ -156,34 +155,24 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
 
           {/* Action buttons - horizontally scrollable on small screens */}
           <div className="flex items-center gap-2 overflow-x-auto pb-0.5 scrollbar-hide">
-            <CreatePostDialog createPost={createPost}>
-              <Magnetic
-                className="flex items-center gap-2 rounded-full px-4 py-2 text-[0.9rem] font-semibold text-[#0369A1] bg-[#E0F2FE] border border-[#BAE6FD] shadow-sm hover:bg-[#BAE6FD] dark:text-sky-300 dark:bg-slate-800/80 dark:border-sky-900/50 dark:hover:bg-slate-700/80 dark:shadow-[0_0_12px_rgba(56,189,248,0.15)]"
-                style={{ fontFamily: FONT_RALEWAY }}
-              >
-                <PhotoGradient />
-                Photo
-              </Magnetic>
-            </CreatePostDialog>
-
-            <Magnetic
+            <button
               onClick={() => setMarketplaceOnboardingOpen(true)}
-              className="flex items-center gap-2 rounded-full px-4 py-2 text-[0.9rem] font-semibold text-[#15803D] bg-[#DCFCE7] border border-[#BBF7D0] shadow-sm hover:bg-[#BBF7D0] dark:text-emerald-300 dark:bg-slate-800/80 dark:border-emerald-900/50 dark:hover:bg-slate-700/80 dark:shadow-[0_0_12px_rgba(52,211,153,0.15)]"
-              style={{ fontFamily: FONT_RALEWAY }}
+              className="flex items-center gap-2 rounded-full px-4 py-2 text-[0.9rem] font-semibold text-[#15803D] bg-[#DCFCE7] border border-[#BBF7D0] dark:text-emerald-300 dark:bg-slate-800/80 dark:border-emerald-900/50 transition-none"
+              style={{ fontFamily: FONT_RALEWAY, transform: "none" }}
             >
               <HandshakeGradient />
               Sell
-            </Magnetic>
+            </button>
 
 
-            <Magnetic
+            <button
               onClick={() => setOnboardingOpen(true)}
-              className="flex items-center gap-2 rounded-full px-4 py-2 text-[0.9rem] font-semibold whitespace-nowrap text-[#7E22CE] bg-[#F3E8FF] border border-[#E9D5FF] shadow-sm hover:bg-[#E9D5FF] dark:text-purple-300 dark:bg-slate-800/80 dark:border-purple-900/50 dark:hover:bg-slate-700/80 dark:shadow-[0_0_12px_rgba(192,132,252,0.15)]"
-              style={{ fontFamily: FONT_RALEWAY }}
+              className="flex items-center gap-2 rounded-full px-4 py-2 text-[0.9rem] font-semibold whitespace-nowrap text-[#7E22CE] bg-[#F3E8FF] border border-[#E9D5FF] dark:text-purple-300 dark:bg-slate-800/80 dark:border-purple-900/50 transition-none"
+              style={{ fontFamily: FONT_RALEWAY, transform: "none" }}
             >
               <TicketGradient />
               Event
-            </Magnetic>
+            </button>
 
           </div>
         </div>
