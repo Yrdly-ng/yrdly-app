@@ -359,7 +359,7 @@ function BusinessList({
                 {biz.name}
               </h3>
               {biz.verified_seller && (
-                <BadgeCheck className="w-4 h-4 text-yellow-500 fill-yellow-500/10 shrink-0" />
+                <BadgeCheck className="w-4 h-4 text-yellow-500 fill-yellow-500/20 shrink-0" />
               )}
             </div>
             <p className="text-xs text-muted-foreground truncate" style={{ fontFamily: FONT }}>

@@ -110,8 +110,8 @@ function NotificationItem({ notification, onMarkAsRead, onDelete, onClose }: {
       case 'event_reminder':
       case 'event_cancelled':
       case 'event_updated': {
-        const eventId = notification.related_id || notification.data?.eventId;
-        router.push(eventId ? `/events` : '/events');
+        const eventId = notification.related_id || notification.data?.eventId || notification.data?.event_id;
+        router.push(eventId ? `/events/${eventId}` : '/events');
         break;
       }
       case 'marketplace_item_sold':

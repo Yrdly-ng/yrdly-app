@@ -404,33 +404,9 @@ export class NotificationTriggers {
 
   /**
    * Trigger notification when someone views a user's profile
+   * Profile view notifications are disabled.
    */
-  static async onProfileView(viewedUserId: string, viewerId: string) {
-    try {
-      // Only notify if it's not the user viewing their own profile
-      if (viewedUserId !== viewerId) {
-        // Get viewer's name
-        const { data: viewerData } = await supabase
-          .from('users')
-          .select('name')
-          .eq('id', viewerId)
-          .single();
-
-        if (viewerData) {
-          await NotificationService.createNotification({
-            userId: viewedUserId,
-            type: 'profile_view',
-            senderId: viewerId,
-            relatedId: viewerId,
-            relatedType: 'user',
-            title: 'Profile View',
-            message: `${viewerData.name} viewed your profile`,
-            data: { viewerName: viewerData.name }
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Error creating profile view notification:', error);
-    }
+  static async onProfileView(_viewedUserId: string, _viewerId: string) {
+    // Profile view notifications intentionally disabled
   }
 }

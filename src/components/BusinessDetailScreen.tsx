@@ -337,7 +337,7 @@ export function BusinessDetailScreen({
             <div className="flex-1">
               <h1 className="text-2xl font-bold text-foreground flex items-center gap-1.5">
                 {business.name}
-                <BadgeCheck className="w-6 h-6 text-yellow-500 fill-yellow-500/10" />
+                <BadgeCheck className="w-6 h-6 text-yellow-500 fill-yellow-500/20 shrink-0" />
               </h1>
               <Badge variant="outline" className="mt-1">
                 {business.category}

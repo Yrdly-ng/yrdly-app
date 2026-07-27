@@ -199,9 +199,28 @@ function NotificationCard({
         break;
       }
       case "event_invite":
-      case "event_reminder": {
-        const eid = notification.related_id || notification.data?.post_id;
+      case "event_reminder":
+      case "event_cancelled":
+      case "event_updated": {
+        const eid = notification.related_id || notification.data?.eventId || notification.data?.event_id;
         router.push(eid ? `/events/${eid}` : "/events");
+        break;
+      }
+      case "business_review_received": {
+        const bizId = notification.data?.businessId || notification.related_id;
+        router.push(bizId ? `/businesses/${bizId}` : "/businesses");
+        break;
+      }
+      case "payment_successful":
+      case "item_shipped":
+      case "delivery_confirmed":
+      case "funds_released":
+      case "dispute_opened":
+      case "dispute_resolved":
+      case "payout_processed":
+      case "payout_failed": {
+        const txId = notification.related_id || notification.data?.transactionId;
+        router.push(txId ? `/transactions/${txId}` : "/marketplace");
         break;
       }
       default:
