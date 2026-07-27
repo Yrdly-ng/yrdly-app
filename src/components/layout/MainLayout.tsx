@@ -220,7 +220,7 @@ export function MainLayout({ children }: MainLayoutProps) {
             {isMapPage ? (
               <div className="w-full h-[100dvh]">{children}</div>
             ) : isChatPage ? (
-              <div className="w-full h-full lg:h-[calc(100vh-120px)]">
+              <div className="w-full h-full">
                 {children}
               </div>
             ) : (

@@ -241,6 +241,32 @@ export class StorageService {
     }
   }
 
+  // Upload a comment sticker (photo turned into a small sticker attached to a comment)
+  static async uploadCommentSticker(
+    postId: string,
+    file: File
+  ): Promise<{ url: string | null; error: any }> {
+    try {
+      const safeName = file.name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9._-]/g, '');
+      const fileName = `${Date.now()}_${safeName}`;
+      const path = `${postId}/${fileName}`;
+
+      const { data, error } = await this.uploadFile('comment-stickers', path, file, {
+        cacheControl: '604800',
+      });
+
+      if (error) {
+        return { url: null, error };
+      }
+
+      const publicUrl = this.getPublicUrl('comment-stickers', path);
+      return { url: publicUrl, error: null };
+    } catch (error) {
+      console.error('Upload comment sticker error:', error);
+      return { url: null, error };
+    }
+  }
+
   // Upload chat image
   static async uploadChatImage(
     conversationId: string,
@@ -421,4 +447,3 @@ export class StorageService {
     }
   }
 }
-

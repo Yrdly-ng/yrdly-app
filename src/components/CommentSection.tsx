@@ -25,8 +25,6 @@ import {
     Trash2,
     Edit2,
     MessageCircleMore,
-    MapPin,
-    Image as ImageIcon,
     Smile,
     Flag,
     Share,
@@ -62,6 +60,14 @@ interface Comment {
     isLikedByMe: boolean;
     verifiedSeller?: boolean;
 }
+
+const QUICK_EMOJIS = [
+    '😀', '😂', '🥹', '😍', '😎', '🤔', '😢', '😡',
+    '👍', '👎', '🙏', '👏', '🔥', '💯', '🎉', '❤️',
+    '😭', '😅', '🤣', '😳', '🥺', '😴', '🤝', '💀',
+];
+
+const REPORT_REASONS = ['Spam', 'Harassment or bullying', 'Hate speech', 'Inappropriate content', 'Other'];
 
 interface CommentSectionProps {
     postId: string;
@@ -129,6 +135,8 @@ export function CommentSection({
     const [sortMode, setSortMode] = useState<'top' | 'latest'>('latest');
     const [sortMenuOpen, setSortMenuOpen] = useState(false);
     const [authTimeout, setAuthTimeout] = useState(false);
+    const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+    const [reportTarget, setReportTarget] = useState<string | null>(null);
 
     useEffect(() => {
         const t = setTimeout(() => { if (loading) setAuthTimeout(true); }, 5000);
@@ -217,6 +225,7 @@ export function CommentSection({
         if (!currentUser || !userDetails || !newComment.trim()) return;
         const text = newComment.trim();
         const parentId = replyingTo;
+
         const optimistic: Comment = {
             id: `temp-${Date.now()}`,
             userId: currentUser.id,
@@ -247,6 +256,37 @@ export function CommentSection({
             toast({ variant: 'destructive', title: 'Error', description: 'Could not post comment.' });
         }
     }, [currentUser, userDetails, newComment, postId, replyingTo, toast, onCommentCountChange]);
+
+    const insertEmoji = useCallback((emoji: string) => {
+        const el = inputRef.current as unknown as HTMLTextAreaElement | null;
+        if (el && typeof el.selectionStart === 'number') {
+            const start = el.selectionStart;
+            const end = el.selectionEnd ?? start;
+            setNewComment(prev => prev.slice(0, start) + emoji + prev.slice(end));
+            setTimeout(() => { el.focus(); el.selectionStart = el.selectionEnd = start + emoji.length; }, 0);
+        } else {
+            setNewComment(prev => prev + emoji);
+        }
+        setShowEmojiPicker(false);
+    }, []);
+
+    const handleReportComment = useCallback(async (commentId: string, reason: string) => {
+        if (!currentUser) return;
+        try {
+            const { error } = await supabase.from('comment_reports').insert({
+                comment_id: commentId,
+                post_id: postId,
+                reporter_id: currentUser.id,
+                reason,
+            });
+            if (error) throw error;
+            setComments(prev => prev.filter(c => c.id !== commentId));
+            setReportTarget(null);
+            toast({ title: 'Comment reported', description: "Thanks, we'll review it." });
+        } catch {
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not submit report.' });
+        }
+    }, [currentUser, postId, toast]);
 
     const handleLikeComment = useCallback(async (commentId: string) => {
         if (!currentUser) return;
@@ -375,9 +415,13 @@ export function CommentSection({
                                 <button type="button" onClick={() => setEditingComment(null)} className="text-xs text-muted-foreground">Cancel</button>
                             </form>
                         ) : (
-                            <p className="text-[0.875rem] font-normal text-foreground leading-[1.3] mt-0.5 break-words whitespace-pre-wrap">
-                                {comment.text}
-                            </p>
+                            <>
+                                {comment.text && (
+                                    <p className="text-[0.875rem] font-normal text-foreground leading-[1.3] mt-0.5 break-words whitespace-pre-wrap">
+                                        {comment.text}
+                                    </p>
+                                )}
+                            </>
                         )}
                     </div>
 
@@ -440,6 +484,22 @@ export function CommentSection({
                                 </AlertDialogContent>
                             </AlertDialog>
                         )}
+
+                        {/* Other users' comment menu: Report */}
+                        {currentUser?.id !== comment.userId && (
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <button className="text-muted-foreground hover:text-foreground ml-auto">
+                                        <MoreHorizontal className="h-4 w-4" />
+                                    </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="bg-card border-border rounded-2xl shadow-xl min-w-[150px] p-1.5">
+                                    <DropdownMenuItem onClick={() => setReportTarget(comment.id)} className="text-red-400 focus:text-red-400 focus:bg-red-500/10 rounded-xl cursor-pointer py-2 px-3 text-sm font-medium">
+                                        <Flag className="mr-2 h-4 w-4" /> Report
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        )}
                     </div>
 
                     {/* View Replies — shown for ANY comment with replies, at any depth, like Instagram */}
@@ -466,7 +526,7 @@ export function CommentSection({
                 </div>
             </motion.div>
         );
-    }, [repliesByParent, expandedReplies, likedComments, bookmarkedComments, currentUser, handleLikeComment, toggleBookmark, handleDeleteComment, toggleReplies, editingComment, editText]);
+    }, [repliesByParent, expandedReplies, likedComments, bookmarkedComments, currentUser, handleLikeComment, toggleBookmark, handleDeleteComment, toggleReplies, editingComment, editText]); // setReportTarget is a stable setState fn, safe to omit
 
     /* ── guards ─────────────────────────────────────────────────── */
     if (isAuthLoading) return <div className="p-4 text-center text-muted-foreground text-sm" style={{ fontFamily: FONT_RALEWAY }}>Loading comments…</div>;
@@ -545,20 +605,31 @@ export function CommentSection({
                 </div>
 
                 {/* Icon toolbar + pill Reply button, flush left like X */}
-                <div className="flex items-center justify-between mt-2">
+                <div className="flex items-center justify-between mt-2 relative">
                     <div className="flex items-center gap-1">
-                        <button type="button" className="p-1.5 rounded-full text-primary hover:bg-primary/10 transition-colors">
-                            <ImageIcon className="w-[1.125rem] h-[1.125rem]" />
-                        </button>
-                        <button type="button" className="p-1.5 rounded-full text-primary hover:bg-primary/10 transition-colors">
-                            <Smile className="w-[1.125rem] h-[1.125rem]" />
-                        </button>
-                        <button type="button" className="p-1.5 rounded-full text-primary hover:bg-primary/10 transition-colors">
-                            <MapPin className="w-[1.125rem] h-[1.125rem]" />
-                        </button>
-                        <button type="button" className="p-1.5 rounded-full text-primary hover:bg-primary/10 transition-colors">
-                            <Flag className="w-[1.125rem] h-[1.125rem]" />
-                        </button>
+                        <div className="relative">
+                            <button
+                                type="button"
+                                onClick={() => setShowEmojiPicker(v => !v)}
+                                className="p-1.5 rounded-full text-primary hover:bg-primary/10 transition-colors"
+                            >
+                                <Smile className="w-[1.125rem] h-[1.125rem]" />
+                            </button>
+                            {showEmojiPicker && (
+                                <div className="absolute bottom-9 left-0 z-20 grid grid-cols-8 gap-1 p-2 bg-card border border-border rounded-2xl shadow-xl w-[15.5rem]">
+                                    {QUICK_EMOJIS.map(emoji => (
+                                        <button
+                                            key={emoji}
+                                            type="button"
+                                            onClick={() => insertEmoji(emoji)}
+                                            className="text-lg leading-none p-1 rounded-lg hover:bg-accent"
+                                        >
+                                            {emoji}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
                     <button
                         type="submit"
@@ -570,6 +641,33 @@ export function CommentSection({
                 </div>
             </form>
         </div>
+    );
+
+    /* ── report reason dialog (shared by both variants) ─────────── */
+    const reportDialog = (
+        <AlertDialog open={!!reportTarget} onOpenChange={(open) => { if (!open) setReportTarget(null); }}>
+            <AlertDialogContent className="bg-card border-border text-foreground rounded-[24px] max-w-[400px]">
+                <AlertDialogHeader className="text-center">
+                    <AlertDialogTitle>Report comment</AlertDialogTitle>
+                    <AlertDialogDescription>Why are you reporting this?</AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="flex flex-col gap-2 mt-2">
+                    {REPORT_REASONS.map(reason => (
+                        <button
+                            key={reason}
+                            type="button"
+                            onClick={() => reportTarget && handleReportComment(reportTarget, reason)}
+                            className="w-full text-left px-4 py-3 rounded-[14px] border border-border hover:bg-accent text-sm font-medium transition-colors"
+                        >
+                            {reason}
+                        </button>
+                    ))}
+                </div>
+                <AlertDialogFooter className="mt-2">
+                    <AlertDialogCancel className="w-full mt-0 bg-transparent hover:bg-accent text-foreground border border-border rounded-[14px] h-12 font-semibold">Cancel</AlertDialogCancel>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     );
 
     /* ── DEFAULT variant: the standalone popup / sheet ─────────── */
@@ -627,6 +725,7 @@ export function CommentSection({
                 <div className="sticky bottom-0 w-full backdrop-blur-md bg-background/80 border-t border-border/50 p-3 z-10 flex-shrink-0">
                     {inputBox}
                 </div>
+                {reportDialog}
             </div>
         );
     }
@@ -651,6 +750,7 @@ export function CommentSection({
             <div className="sticky bottom-0 w-full backdrop-blur-md bg-background/80 border-t border-border/50 p-3 z-10">
                 {inputBox}
             </div>
+            {reportDialog}
         </div>
     );
 }

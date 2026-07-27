@@ -11,7 +11,7 @@ import { useToast } from './use-toast';
 
 import { LocationFilter } from '@/contexts/LocationContext';
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
 
 export const usePosts = (filter?: LocationFilter | null) => {
   const { user, profile } = useAuth();

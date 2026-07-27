@@ -54,7 +54,6 @@ import { CommentSection } from "./CommentSection";
 import { timeAgo, formatPrice } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { ImageSwiper } from "./ImageSwiper";
-import { TiltCard } from "./ui/TiltCard";
 
 /* ─── design tokens ─────────────────────────────────────────────── */
 const CARD_BG = "var(--c-card)";
@@ -97,8 +96,8 @@ function ImageCollage({
 
   if (urls.length === 1) {
     return (
-      <TiltCard
-        className="w-full cursor-pointer overflow-hidden"
+      <div
+        className="w-full cursor-pointer overflow-hidden relative"
         style={{ borderRadius: 12, aspectRatio: "4/5", maxHeight: 480 }}
         onClick={() => onImageClick(0)}
       >
@@ -109,26 +108,26 @@ function ImageCollage({
           className="object-cover post-media-image"
           sizes="(max-width: 640px) 100vw, 626px"
         />
-      </TiltCard>
+      </div>
     );
   }
 
   // 2 images: equal side-by-side at fixed height
   if (urls.length === 2) {
     return (
-      <TiltCard className="grid grid-cols-2 gap-0.5 overflow-hidden" style={{ borderRadius: 12, aspectRatio: "4/5", maxHeight: 480 }} maxTilt={4}>
+      <div className="grid grid-cols-2 gap-0.5 overflow-hidden relative" style={{ borderRadius: 12, aspectRatio: "4/5", maxHeight: 480 }}>
         {urls.map((u, i) => (
           <div key={i} className="relative cursor-pointer h-full" onClick={() => onImageClick(i)}>
             <Image src={u} alt="" fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover post-media-image" />
           </div>
         ))}
-      </TiltCard>
+      </div>
     );
   }
 
   // 3+: 1 tall left + 2 right stacked (Nextdoor style)
   return (
-    <TiltCard className="grid grid-cols-2 gap-0.5 overflow-hidden" style={{ borderRadius: 12, aspectRatio: "4/5", maxHeight: 480 }} maxTilt={4}>
+    <div className="grid grid-cols-2 gap-0.5 overflow-hidden relative" style={{ borderRadius: 12, aspectRatio: "4/5", maxHeight: 480 }}>
       <div className="relative row-span-2 cursor-pointer h-full" onClick={() => onImageClick(0)}>
         <Image src={urls[0]} alt="" fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover post-media-image" />
       </div>
@@ -143,7 +142,7 @@ function ImageCollage({
           </div>
         )}
       </div>
-    </TiltCard>
+    </div>
   );
 }
 

@@ -384,18 +384,24 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
   return (
     <div className="flex flex-col h-full" style={{ background: BG }}>
       {/* ── Header ── */}
-      <header className="flex items-center px-4 py-3 flex-shrink-0 relative"
-        style={{ background: 'var(--c-card)', boxShadow: "0 2px 8px rgba(0,0,0,0.3)" }}>
-        <button onClick={() => router.push("/messages")} className="mr-3 p-2 rounded-full transition-colors"
+      <header className="flex items-center px-4 py-3 flex-shrink-0 relative backdrop-blur-xl"
+        style={{
+          background: 'color-mix(in srgb, var(--c-card) 88%, transparent)',
+          borderBottom: "1px solid var(--c-border)",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.12)",
+        }}>
+        <button onClick={() => router.push("/messages")} className="mr-2 p-2 rounded-full transition-all duration-200 hover:scale-105"
           style={{ color: "var(--c-text)" }}
-          onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.opacity = "0.8")}
+          onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--c-card2)")}
           onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}>
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <div className="relative cursor-pointer" onClick={() => router.push(`/profile/${otherParticipant.id}`)}>
-          <Avatar className="w-12 h-12">
+        <div className="relative cursor-pointer group" onClick={() => router.push(`/profile/${otherParticipant.id}`)}>
+          <div className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity blur-md"
+            style={{ background: GREEN }} />
+          <Avatar className="w-12 h-12 relative transition-transform group-hover:scale-105" style={{ boxShadow: "0 2px 10px rgba(0,0,0,0.25)" }}>
             <AvatarImage src={otherParticipant.avatar_url} alt={otherParticipant.name} />
-            <AvatarFallback style={{ background: GREEN, color: "#fff", fontFamily: FONT, fontWeight: 700 }}>
+            <AvatarFallback style={{ background: `linear-gradient(135deg, ${GREEN}, #1b5e20)`, color: "#fff", fontFamily: FONT, fontWeight: 700 }}>
               {otherParticipant.name?.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
@@ -404,10 +410,13 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
           </div>
         </div>
         <div className="ml-3 flex-1 min-w-0">
-          <h1 className="text-[1rem] font-bold text-foreground truncate" style={{ fontFamily: "var(--font-jersey25)" }}>
+          <h1 className="text-[1rem] font-bold text-foreground truncate tracking-wide" style={{ fontFamily: "var(--font-jersey25)" }}>
             {otherParticipant.name}
           </h1>
-          <p className="text-[0.75rem]" style={{ fontFamily: FONT, color: "var(--c-text-muted)" }}>
+          <p className="text-[0.75rem] flex items-center gap-1.5" style={{ fontFamily: FONT, color: "var(--c-text-muted)" }}>
+            {activityStatus.toLowerCase().includes("active") && (
+              <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: "#4CAF50", boxShadow: "0 0 6px #4CAF50" }} />
+            )}
             {activityStatus}
           </p>
         </div>
@@ -513,9 +522,20 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
       {/* ── Messages ── */}
       <main className="flex-1 overflow-y-auto px-4 py-6 space-y-4" style={{ background: BG }}>
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <MessageCircle className="w-12 h-12 mb-3 text-primary" style={{ opacity: 0.4 }} />
-            <p className="text-foreground text-sm" style={{ fontFamily: FONT }}>No messages yet. Say hello!</p>
+          <div className="flex flex-col items-center justify-center h-full py-16 text-center gap-4">
+            <div className="relative">
+              <div className="absolute inset-0 rounded-full blur-2xl opacity-30" style={{ background: GREEN }} />
+              <div className="relative w-20 h-20 rounded-full flex items-center justify-center"
+                style={{ background: "var(--c-card2)", border: "1px solid var(--c-border)" }}>
+                <MessageCircle className="w-8 h-8" style={{ color: GREEN }} />
+              </div>
+            </div>
+            <div>
+              <p className="text-foreground text-sm font-semibold" style={{ fontFamily: FONT }}>No messages yet</p>
+              <p className="text-[0.8rem] mt-1" style={{ fontFamily: FONT, color: "var(--c-text-muted)" }}>
+                Say hello to {otherParticipant.name?.split(" ")[0]} 👋
+              </p>
+            </div>
           </div>
         ) : (
           messages.map((msg, index) => {
@@ -619,8 +639,9 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
                       <div
                         className="px-4 py-3 text-foreground text-[0.8125rem] leading-relaxed"
                         style={{
-                          background: isOwn ? GREEN : CARD,
+                          background: isOwn ? `linear-gradient(135deg, ${GREEN}, #2e7d32)` : CARD,
                           borderRadius: isOwn ? "20px 20px 4px 20px" : "20px 20px 20px 4px",
+                          boxShadow: isOwn ? "0 2px 10px rgba(56,142,60,0.35)" : "0 1px 6px rgba(0,0,0,0.15)",
                           fontFamily: FONT,
                         }}
                       >
@@ -658,7 +679,12 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
       </main>
 
       {/* ── Input ── */}
-      <footer className="flex-shrink-0 p-4 pb-8" style={{ background: 'var(--c-card)', borderTop: "0.5px solid var(--c-border)" }}>
+      <footer className="flex-shrink-0 p-4 pb-8 backdrop-blur-xl"
+        style={{
+          background: 'color-mix(in srgb, var(--c-card) 88%, transparent)',
+          borderTop: "1px solid var(--c-border)",
+          boxShadow: "0 -4px 20px rgba(0,0,0,0.10)",
+        }}>
         {/* Image preview */}
         {imagePreview && (
           <div className="relative mb-3 inline-block">
@@ -681,16 +707,18 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
         )}
         <form onSubmit={handleSend} className="flex items-center gap-3">
           <button type="button" onClick={() => fileInputRef.current?.click()}
-            className="p-2 rounded-full flex-shrink-0 transition-colors text-primary"
-            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.opacity = "0.8")}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}>
-            <ImagePlus className="w-6 h-6" />
+            className="p-2.5 rounded-full flex-shrink-0 transition-all duration-200 hover:scale-105 text-primary"
+            style={{ background: "var(--c-card2)" }}
+            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "color-mix(in srgb, var(--primary) 15%, var(--c-card2))")}
+            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--c-card2)")}>
+            <ImagePlus className="w-5 h-5" />
           </button>
           <button type="button" onClick={() => videoInputRef.current?.click()}
-            className="p-2 rounded-full flex-shrink-0 transition-colors text-primary"
-            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.opacity = "0.8")}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}>
-            <VideoIcon className="w-6 h-6" />
+            className="p-2.5 rounded-full flex-shrink-0 transition-all duration-200 hover:scale-105 text-primary"
+            style={{ background: "var(--c-card2)" }}
+            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "color-mix(in srgb, var(--primary) 15%, var(--c-card2))")}
+            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--c-card2)")}>
+            <VideoIcon className="w-5 h-5" />
           </button>
           <div className="flex-1 relative">
             <input
@@ -700,16 +728,16 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
               onChange={(e) => { setNewMessage(e.target.value); handleTyping(); }}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSend(e as any); } }}
               disabled={sending}
-              className="w-full rounded-full px-5 py-3 text-base md:text-[0.875rem] text-foreground outline-none focus:ring-1 focus:ring-primary"
-              style={{ background: "var(--c-card2)", fontFamily: FONT, caretColor: GREEN }}
+              className="w-full rounded-full px-5 py-3 text-base md:text-[0.875rem] text-foreground outline-none transition-shadow focus:ring-2 focus:ring-primary/50"
+              style={{ background: "var(--c-card2)", border: "1px solid var(--c-border)", fontFamily: FONT, caretColor: GREEN }}
             />
           </div>
           <button
             type="submit"
             disabled={(!newMessage.trim() && !selectedFile && !videoFile) || sending}
-            className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-transform active:scale-95 shadow-lg"
-            style={{ background: GREEN }}>
-            {sending ? <Loader2 className="w-5 h-5 text-foreground animate-spin" /> : <Send className="w-5 h-5 text-foreground" />}
+            className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-200 active:scale-95 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
+            style={{ background: `linear-gradient(135deg, ${GREEN}, #2e7d32)`, boxShadow: "0 4px 14px rgba(56,142,60,0.4)" }}>
+            {sending ? <Loader2 className="w-5 h-5 text-white animate-spin" /> : <Send className="w-5 h-5 text-white" />}
           </button>
         </form>
         <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />
