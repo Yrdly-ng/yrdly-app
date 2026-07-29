@@ -4,6 +4,18 @@ import type { NextRequest } from 'next/server';
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Geo-restriction: Restrict account creation to Nigeria ('NG')
+  const isSignupPath = pathname === '/signup' || pathname.startsWith('/onboarding') || pathname.startsWith('/api/auth/signup');
+  if (isSignupPath) {
+    const country = request.headers.get('x-vercel-ip-country') || request.headers.get('cf-ipcountry');
+    if (country && country.toUpperCase() !== 'NG') {
+      return NextResponse.json(
+        { error: 'Account creation is currently only available to users located in Nigeria.' },
+        { status: 403 }
+      );
+    }
+  }
+
   // Nextdoor-style handoff: redirect the app's /login page back to the marketing site
   if (pathname === '/login' || pathname === '/signup') {
     const marketingUrl = process.env.NEXT_PUBLIC_MARKETING_URL || 'https://yrdly.ng';
