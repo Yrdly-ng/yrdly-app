@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 
-// @ts-ignore
+
 import './globals.css';
 import { cn } from '@/lib/utils';
 import { Toaster } from '@/components/ui/toaster';
@@ -62,11 +62,11 @@ export default function RootLayout({
               </Suspense>
               {children}
             </AuthProvider>
-          <Toaster />
-          <Analytics />
-          <SpeedInsights />
-          <ZohoDeskScript />
-        </ThemeProvider>
+            <Toaster />
+            <Analytics />
+            <SpeedInsights />
+            <ZohoDeskScript />
+          </ThemeProvider>
         </PostHogProvider>
       </body>
     </html>
