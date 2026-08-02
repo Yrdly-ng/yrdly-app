@@ -13,6 +13,7 @@ import { Suspense } from 'react';
 import PostHogPageView from '@/components/providers/PostHogPageView';
 import { PostHogProvider } from '@/components/providers/PostHogProvider';
 import { AmbientBackground } from '@/components/ui/AmbientBackground';
+import { ZohoDeskScript } from '@/components/ZohoDeskScript';
 
 export const metadata: Metadata = {
   title: 'Yrdly - Your Neighborhood Network',
@@ -64,29 +65,7 @@ export default function RootLayout({
           <Toaster />
           <Analytics />
           <SpeedInsights />
-
-          {process.env.NODE_ENV === 'production' && (
-            <>
-              <Script id="zohodeskasap" strategy="lazyOnload">
-                {`
-                  window.ZohoDeskAsapReady=function(s){var e=window.ZohoDeskAsap__asyncalls=window.ZohoDeskAsap__asyncalls||[];window.ZohoDeskAsapReadyStatus?(s&&e.push(s),e.forEach(s=>s&&s()),window.ZohoDeskAsap__asyncalls=null):s&&e.push(s)};
-                  window.ZohoDeskAsapReady(function() {
-                    if (window.ZohoDeskAsap) {
-                      window.ZohoDeskAsap.invoke('hide', 'launcher');
-                    }
-                  });
-                `}
-              </Script>
-              <Script 
-                id="zohodeskasapscript" 
-                strategy="lazyOnload" 
-                src="https://desk.zoho.com/portal/api/web/asapApp/1369927000000404854?orgId=925875390" 
-                onError={(e) => {
-                  console.warn('Zoho Desk ASAP script failed to load:', e);
-                }}
-              />
-            </>
-          )}
+          <ZohoDeskScript />
         </ThemeProvider>
         </PostHogProvider>
       </body>
