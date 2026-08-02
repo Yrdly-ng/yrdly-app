@@ -335,55 +335,30 @@ export class DisputeService {
    */
   static async getDisputesByStatus(status: string, page: number = 1, limit: number = 20): Promise<{ data: DisputeData[], count: number }> {
     try {
-      const from = (page - 1) * limit;
-      const to = from + limit - 1;
+      const { data: { session } } = await supabase.auth.getSession();
+      const params = new URLSearchParams({
+        status: status || 'all',
+        page: page.toString(),
+        limit: limit.toString(),
+      });
 
-      let query = supabase
-        .from('disputes')
-        .select(`
-          *,
-          transaction:escrow_transactions(
-            id,
-            amount,
-            buyer_id,
-            seller_id,
-            status,
-            item:posts(
-              id,
-              title,
-              text,
-              image_urls
-            ),
-            buyer:users(
-              id,
-              name,
-              avatar_url
-            ),
-            seller:users(
-              id,
-              name,
-              avatar_url
-            )
-          )
-        `, { count: 'exact' })
-        .order('created_at', { ascending: false })
-        .range(from, to);
+      const response = await fetch(`/api/admin/disputes?${params.toString()}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {})
+        }
+      });
 
-      if (status && status !== 'all') {
-        query = query.eq('status', status);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to fetch admin disputes');
       }
 
-      const { data, error, count } = await query;
-
-      if (error) {
-        console.error('Error fetching disputes by status:', error);
-        throw error;
-      }
-
-      return { data: data || [], count: count || 0 };
+      const result = await response.json();
+      return { data: result.data || [], count: result.count || 0 };
     } catch (error) {
       console.error('Failed to get disputes by status:', error);
-      throw new Error('Failed to get disputes by status');
+      throw error;
     }
   }
 
