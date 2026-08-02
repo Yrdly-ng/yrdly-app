@@ -46,12 +46,12 @@ export async function GET(request: NextRequest) {
             text,
             image_urls
           ),
-          buyer:users(
+          buyer:users!buyer_id(
             id,
             name,
             avatar_url
           ),
-          seller:users(
+          seller:users!seller_id(
             id,
             name,
             avatar_url
