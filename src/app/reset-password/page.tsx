@@ -29,9 +29,26 @@ export default function ResetPasswordPage() {
   const router = useRouter();
 
   useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const hash = window.location.hash;
+    const searchErr = searchParams.get('error_description');
+    let hashErr = null;
+
+    if (hash && hash.includes('error_description=')) {
+      try {
+        const raw = hash.split('error_description=')[1].split('&')[0];
+        hashErr = decodeURIComponent(raw.replace(/\+/g, ' '));
+      } catch (e) {}
+    }
+
+    const detectedError = searchErr || hashErr;
+    if (detectedError) {
+      setError(detectedError);
+      return;
+    }
+
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event !== 'PASSWORD_RECOVERY') {
-        // If they just opened this without a token, redirect
         if (!session) {
           router.replace('/login');
         }
@@ -130,9 +147,18 @@ export default function ResetPasswordPage() {
         ) : (
           <>
             {error && (
-              <Alert className="mb-4 border-red-500/50 bg-red-500/10 text-red-200 w-full">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
+              <div className="w-full mb-4">
+                <Alert className="border-red-500/50 bg-red-500/10 text-red-200 w-full mb-3">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+                <Button
+                  type="button"
+                  onClick={() => router.push('/forgot-password')}
+                  className="w-full bg-purple-600 hover:bg-purple-700 text-white rounded-full py-2.5 text-sm font-medium"
+                >
+                  Request New Password Link
+                </Button>
+              </div>
             )}
 
             <form onSubmit={handleSubmit} className="w-full space-y-5">

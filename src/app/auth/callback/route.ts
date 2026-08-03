@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase-server';
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
+  const next = requestUrl.searchParams.get('next') || '/home';
 
   if (code) {
     const supabase = await createClient();
@@ -20,7 +21,7 @@ export async function GET(request: Request) {
   const { data: { session } } = await supabase.auth.getSession();
 
   if (session) {
-    return NextResponse.redirect(`${requestUrl.origin}/home`);
+    return NextResponse.redirect(`${requestUrl.origin}${next}`);
   }
 
   // Fallback to login if no session is established
