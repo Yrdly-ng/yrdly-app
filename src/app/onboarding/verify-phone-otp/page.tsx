@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { SceneBg, GlassCard, PrimaryBtn, BackBtn } from '@/components/onboarding/primitives';
 
-export default function VerifyPhoneOtpPage() {
+function VerifyPhoneOtpContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const phone = searchParams.get('phone') || '';
@@ -102,5 +102,13 @@ export default function VerifyPhoneOtpPage() {
         </GlassCard>
       </div>
     </div>
+  );
+}
+
+export default function VerifyPhoneOtpPage() {
+  return (
+    <React.Suspense fallback={<div className="min-h-[100dvh] bg-[#050505]" />}>
+      <VerifyPhoneOtpContent />
+    </React.Suspense>
   );
 }

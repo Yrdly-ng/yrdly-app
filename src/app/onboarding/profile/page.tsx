@@ -11,7 +11,7 @@ import { Camera, MapPin, Navigation, ShieldCheck, AlertTriangle } from 'lucide-r
 
 const SUGGESTIONS = ['Victoria Island, Lagos', 'Lekki Phase 1, Lagos', 'Surulere, Lagos', 'Ikeja GRA, Lagos'];
 
-export default function OnboardingProfilePage() {
+function OnboardingProfileContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const phoneSkipped = searchParams.get('phoneSkipped') === 'true';
@@ -258,5 +258,13 @@ export default function OnboardingProfilePage() {
         </GlassCard>
       </div>
     </div>
+  );
+}
+
+export default function OnboardingProfilePage() {
+  return (
+    <React.Suspense fallback={<div className="min-h-[100dvh] bg-[#050505]" />}>
+      <OnboardingProfileContent />
+    </React.Suspense>
   );
 }
