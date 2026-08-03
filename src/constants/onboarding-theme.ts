@@ -1,0 +1,25 @@
+export const ONBOARDING_THEME = {
+  colors: {
+    G: '#82DB7E',
+    GLOW: 'rgba(130,219,126,0.26)',
+    DARK: '#050505',
+    PRIMARY_SURFACE: '#111111',
+    GLASS_BG: 'rgba(8,8,8,0.74)',
+    GLASS_BORDER: 'rgba(255,255,255,0.09)',
+    SURFACE: 'rgba(255,255,255,0.055)',
+    LABEL: 'rgba(255,255,255,0.38)',
+    MUTED: 'rgba(255,255,255,0.55)',
+    TEXT_PRIMARY: '#FFFFFF',
+    TEXT_SECONDARY: '#A0A0A0',
+    DANGER: '#FF5C5C',
+    WARNING: '#FFB648',
+    DIVIDER: 'rgba(255,255,255,0.09)',
+  },
+  radii: {
+    button: 20,
+    card: 24,
+    glassCard: 32,
+    input: 18,
+    profile: 9999,
+  },
+};

@@ -235,6 +235,10 @@ export class AuthService {
   // Update user profile
   static async updateUserProfile(userId: string, updates: Partial<AuthUser>) {
     try {
+      if (updates.username) {
+        updates.username = updates.username.replace(/^@/, '').trim().toLowerCase();
+      }
+
       const { error } = await supabase
         .from('users')
         .update(updates)
@@ -244,6 +248,39 @@ export class AuthService {
     } catch (error) {
       console.error('Update user profile error:', error);
       throw error;
+    }
+  }
+
+  // Check if account can be safely deleted without pending transactions/disputes
+  static async canDeleteAccount(userId: string): Promise<{ canDelete: boolean; reason?: string }> {
+    try {
+      // Check for pending escrow transactions
+      const { data: pendingTx } = await supabase
+        .from('transactions')
+        .select('id')
+        .or(`buyer_id.eq.${userId},seller_id.eq.${userId}`)
+        .eq('status', 'pending_escrow')
+        .limit(1);
+
+      if (pendingTx && pendingTx.length > 0) {
+        return { canDelete: false, reason: 'You have active escrow transactions in progress. Please complete or cancel them before deleting your account.' };
+      }
+
+      // Check for open disputes
+      const { data: openDisputes } = await supabase
+        .from('disputes')
+        .select('id')
+        .or(`buyer_id.eq.${userId},seller_id.eq.${userId}`)
+        .eq('status', 'open')
+        .limit(1);
+
+      if (openDisputes && openDisputes.length > 0) {
+        return { canDelete: false, reason: 'You have open marketplace disputes. Please resolve all open disputes before deleting your account.' };
+      }
+
+      return { canDelete: true };
+    } catch (e) {
+      return { canDelete: true };
     }
   }
 

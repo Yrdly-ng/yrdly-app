@@ -194,10 +194,25 @@ export async function POST(request: NextRequest) {
 
     console.log("[PaymentInit] itemData:", JSON.stringify(itemData));
 
-    // 2. Check if item is already sold
+    // 2. Check if item is already sold or currently in an active checkout
     if (itemData?.is_sold) {
       return NextResponse.json(
         { error: "Item is no longer available." },
+        { status: 400 }
+      );
+    }
+
+    const { data: activeTx } = await supabaseAdmin
+      .from("transactions")
+      .select("id")
+      .eq("item_id", itemId)
+      .eq("status", "pending_escrow")
+      .neq("buyer_id", buyerId)
+      .limit(1);
+
+    if (activeTx && activeTx.length > 0) {
+      return NextResponse.json(
+        { error: "Another neighbor is currently completing payment for this item. Please try again shortly." },
         { status: 409 }
       );
     }
