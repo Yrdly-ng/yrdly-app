@@ -112,10 +112,10 @@ export function GlassInput({
   );
 }
 
-export function PrimaryBtn({ label, onClick, icon, disabled, loading }: { label: string; onClick: () => void; icon?: React.ReactNode; disabled?: boolean; loading?: boolean }) {
+export function PrimaryBtn({ label, onClick, icon, disabled, loading, type = 'button' }: { label: string; onClick?: () => void; icon?: React.ReactNode; disabled?: boolean; loading?: boolean; type?: 'button' | 'submit' }) {
   return (
     <button
-      type="button"
+      type={type}
       onClick={onClick}
       disabled={disabled || loading}
       className={cn(
@@ -124,7 +124,7 @@ export function PrimaryBtn({ label, onClick, icon, disabled, loading }: { label:
       )}
     >
       {icon}
-      <span>{loading ? 'Saving...' : label}</span>
+      <span>{loading ? 'Processing...' : label}</span>
     </button>
   );
 }

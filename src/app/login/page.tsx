@@ -179,8 +179,8 @@ export default function LoginPage() {
 
             <div className="pt-2">
               <PrimaryBtn
+                type="submit"
                 label={isSignUp ? 'Create Account' : 'Sign In'}
-                onClick={() => {}}
                 loading={loading}
               />
             </div>
