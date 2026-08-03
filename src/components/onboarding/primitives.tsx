@@ -232,3 +232,13 @@ export function StepBar({ step, total, label }: { step: number; total: number; l
     </div>
   );
 }
+
+export function Divider({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3 my-1">
+      <div className="flex-1 h-px bg-white/10" />
+      <span className="text-[10px] font-black uppercase tracking-widest text-white/38">{label}</span>
+      <div className="flex-1 h-px bg-white/10" />
+    </div>
+  );
+}
