@@ -88,8 +88,7 @@ export default function OnboardingProfilePage() {
         address: '',
       },
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile?.id]);
+  }, [profile]);
 
   // Get the current username value and debounce it
   const usernameValue = form.watch('username');
@@ -161,7 +160,7 @@ export default function OnboardingProfilePage() {
       let query = supabase
         .from('users')
         .select('username')
-        .eq('username', username)
+        .ilike('username', username)
         .limit(1);
       
       if (user?.id) {

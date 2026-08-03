@@ -344,6 +344,29 @@ export default function LoginPage() {
             />
           </div>
 
+          {isSignUp && (
+            <div className="flex flex-wrap items-center gap-2 pt-1 pb-1">
+              {[
+                { label: '8+ Chars', met: password.length >= 8 },
+                { label: 'ABC', met: /[A-Z]/.test(password) },
+                { label: '123', met: /[0-9]/.test(password) },
+                { label: '#@$', met: /[^A-Za-z0-9]/.test(password) },
+              ].map((req, idx) => (
+                <div
+                  key={idx}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 transition-all ${
+                    req.met
+                      ? 'bg-[#82DB7E]/20 text-[#82DB7E] border border-[#82DB7E]/40'
+                      : 'bg-white/5 text-muted-foreground border border-white/10'
+                  }`}
+                >
+                  <span>{req.met ? '✓' : '○'}</span>
+                  <span>{req.label}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
           {!isSignUp && (
             <div className="flex flex-wrap items-center justify-between gap-2">
               <label className="flex items-center gap-2 cursor-pointer group min-w-0">
