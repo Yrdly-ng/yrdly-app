@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { useOnboarding } from "@/hooks/use-onboarding";
 import { onboardingAnalytics } from "@/lib/onboarding-analytics";
-import { ArrowLeft, ArrowRight, Check, Sparkles, Globe, ShoppingBag, Users, Zap } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /* ─────────────────────────────────────────────
@@ -57,7 +58,7 @@ export default function OnboardingTourPage() {
   const handleNext = async () => {
     if (isLast) {
       try {
-        onboardingAnalytics.trackTourCompleted(SLIDES.length, SLIDES.length);
+        onboardingAnalytics.trackTourCompleted();
         await completeTour();
       } catch {}
       router.push("/home");
@@ -65,7 +66,7 @@ export default function OnboardingTourPage() {
       setDirection(1);
       setIsVisible(false);
       setTimeout(() => {
-        setStep(prev => prev + 1);
+        setStep((s) => s + 1);
         setIsVisible(true);
       }, 300);
     }
@@ -76,7 +77,7 @@ export default function OnboardingTourPage() {
       setDirection(-1);
       setIsVisible(false);
       setTimeout(() => {
-        setStep(prev => prev - 1);
+        setStep((s) => s - 1);
         setIsVisible(true);
       }, 300);
     }
@@ -91,7 +92,6 @@ export default function OnboardingTourPage() {
   };
 
   const slide = SLIDES[step];
-  const Icon = slide.icon;
 
   return (
     <div className="min-h-[100dvh] relative flex flex-col items-center justify-between overflow-hidden px-6 py-12 bg-background" style={{ fontFamily: "var(--font-work-sans)" }}>
@@ -100,7 +100,7 @@ export default function OnboardingTourPage() {
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div 
           className="absolute top-[-10%] right-[-10%] w-[60%] h-[60%] rounded-full blur-[120px] opacity-20 transition-all duration-1000"
-          style={{ background: `radial-gradient(circle, ${slide.accent} 0%, transparent 70%)` }}
+          style={{ background: "radial-gradient(circle, #82DB7E 0%, transparent 70%)" }}
         />
         <div 
           className="absolute bottom-[-10%] left-[-10%] w-[60%] h-[60%] rounded-full blur-[120px] opacity-10 transition-all duration-1000"
@@ -152,16 +152,19 @@ export default function OnboardingTourPage() {
           {/* Image Container */}
           <div className="relative mb-8">
             <div className="w-64 h-64 mx-auto rounded-[36px] overflow-hidden relative border border-white/10 shadow-2xl">
-              <img
+              <Image
                 src={slide.image}
                 alt={slide.title}
+                width={256}
+                height={256}
                 className="w-full h-full object-cover"
+                priority
               />
             </div>
           </div>
 
           <h1 
-            className="text-4xl md:text-5xl font-black text-foreground mb-6 leading-tight"
+            className="text-4xl md:text-5xl font-black text-foreground mb-6 leading-tight whitespace-pre-line"
             style={{ letterSpacing: "-0.03em" }}
           >
             {slide.title}
@@ -172,27 +175,17 @@ export default function OnboardingTourPage() {
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="w-full max-w-lg relative z-20">
+      {/* Bottom Controls */}
+      <div className="w-full max-w-lg relative z-20 flex flex-col gap-4">
         <button
           onClick={handleNext}
-          className="w-full h-18 rounded-[28px] flex items-center justify-center text-primary-foreground font-black text-lg transition-all active:scale-[0.98] group overflow-hidden relative"
-          style={{ 
-            background: "hsl(var(--primary))",
-            boxShadow: "0 20px 40px -10px rgba(56,142,60,0.4)"
-          }}
+          className="w-full h-16 rounded-[28px] bg-[#82DB7E] text-[#050505] font-black text-lg flex items-center justify-center gap-3 shadow-[0_8px_30px_rgb(130,219,126,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all"
         >
-          <div className="absolute inset-0 bg-background/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
-          <span className="relative z-10 flex items-center gap-3">
-            {isLast ? "Begin Journey" : "Continue"}
-            <ArrowRight className={cn("w-5 h-5 transition-transform duration-300", !isLast && "group-hover:translate-x-1")} />
-          </span>
+          <span>{slide.cta}</span>
+          <ArrowRight className="w-5 h-5" />
         </button>
-        
-        <p className="text-center mt-6 text-[0.625rem] uppercase tracking-[0.3em] font-black text-muted-foreground/40">
-          Step {step + 1} of {SLIDES.length} • Yrdly Resident Portal
-        </p>
       </div>
+
     </div>
   );
 }
