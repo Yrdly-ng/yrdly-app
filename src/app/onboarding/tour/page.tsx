@@ -58,7 +58,7 @@ export default function OnboardingTourPage() {
   const handleNext = async () => {
     if (isLast) {
       try {
-        onboardingAnalytics.trackTourCompleted();
+        onboardingAnalytics.trackTourCompleted(4, 4);
         await completeTour();
       } catch {}
       router.push("/home");
