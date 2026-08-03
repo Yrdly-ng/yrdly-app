@@ -106,7 +106,7 @@ export default function OnboardingProfilePage() {
         username: cleanHandle,
         bio: bio.trim(),
         avatar_url: avatarUrl,
-        location: location.trim() || 'Victoria Island, Lagos',
+        location: { city: location.trim() || 'Victoria Island', state: 'Lagos' } as any,
         onboarding_status: 'completed',
         profile_completed: false,
       });

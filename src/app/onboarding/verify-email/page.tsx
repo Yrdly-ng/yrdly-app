@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { SceneBg, GlassCard, PrimaryBtn, BackBtn } from '@/components/onboarding/primitives';
 import { supabase } from '@/lib/supabase';
 
-export default function VerifyEmailPage() {
+function VerifyEmailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get('email') || '';
@@ -144,5 +144,13 @@ export default function VerifyEmailPage() {
         </GlassCard>
       </div>
     </div>
+  );
+}
+
+export default function VerifyEmailPage() {
+  return (
+    <React.Suspense fallback={<div className="min-h-[100dvh] bg-[#050505]" />}>
+      <VerifyEmailContent />
+    </React.Suspense>
   );
 }
