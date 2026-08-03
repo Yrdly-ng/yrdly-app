@@ -183,11 +183,11 @@ export class TicketService {
     try {
       await supabaseAdmin.from('notifications').insert({
         user_id: buyer_id,
-        type: 'event_reminder',
+        type: 'ticket_confirmed',
         title: `🎟️ Ticket Confirmed!`,
         message: `Your ${quantity}x ${tier.name} ticket(s) for "${event.title}" is ready. Check My Tickets.`,
-        related_id: event_id,
-        related_type: 'event',
+        related_id: insertedTickets[0].id,
+        related_type: 'ticket',
         data: { ticket_id: insertedTickets[0].id, event_id, ticket_code: insertedTickets[0].ticket_code },
       });
     } catch (e) {

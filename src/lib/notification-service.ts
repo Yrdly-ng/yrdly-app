@@ -30,6 +30,10 @@ export type NotificationType =
   | 'event_reminder'
   | 'event_cancelled'
   | 'event_updated'
+  | 'ticket'
+  | 'ticket_purchase'
+  | 'ticket_confirmed'
+  | 'event_rsvp'
   | 'marketplace_item_sold'
   | 'marketplace_item_interest'
   | 'marketplace_message'
@@ -820,6 +824,11 @@ function getNotificationUrl(type: NotificationType, relatedId?: string | null): 
     case 'event_cancelled':
     case 'event_updated':
       return '/events';
+    case 'ticket':
+    case 'ticket_purchase':
+    case 'ticket_confirmed':
+    case 'event_rsvp':
+      return '/my-tickets';
     case 'marketplace_item_sold':
     case 'marketplace_item_interest':
     case 'marketplace_message':
