@@ -11,7 +11,11 @@ import Image from 'next/image';
 import { Loader2, Mail, Eye, EyeOff, AlertTriangle } from 'lucide-react';
 import { AUTH_CONSTANTS, ERROR_MESSAGES } from '@/lib/constants';
 import { ErrorMessageFormatter } from '@/lib/error-messages';
+import { AuthService } from '@/lib/auth-service';
 import posthog from 'posthog-js';
+
+const isPasswordStrong = (pwd: string) =>
+  pwd.length >= 8 && /[A-Z]/.test(pwd) && /[0-9]/.test(pwd) && /[^A-Za-z0-9]/.test(pwd);
 
 // Design tokens from Figma
 const colors = {
@@ -96,7 +100,22 @@ export default function LoginPage() {
           setLoading(false);
           return;
         }
-        const { user: newUser, error: err } = await signUp(email, password, name, username.toLowerCase());
+
+        if (!isPasswordStrong(password)) {
+          setError('Password must be at least 8 characters long and include an uppercase letter, a number, and a special symbol (@$!%*?&).');
+          setLoading(false);
+          return;
+        }
+
+        const cleanUsername = username.replace(/^@/, '').trim().toLowerCase();
+        const isAvailable = await AuthService.checkUsernameAvailability(cleanUsername);
+        if (!isAvailable) {
+          setError(`The username @${cleanUsername} is already taken. Please choose another.`);
+          setLoading(false);
+          return;
+        }
+
+        const { user: newUser, error: err } = await signUp(email, password, name, cleanUsername);
         if (err) setError(err.message);
         else if (newUser) {
           posthog.identify(newUser.id, { email: newUser.email, name });

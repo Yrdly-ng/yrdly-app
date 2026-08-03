@@ -12,36 +12,32 @@ import { cn } from "@/lib/utils";
  ───────────────────────────────────────────── */
 const SLIDES = [
   {
-    id: "loop",
-    title: "Vibrant Community",
-    body: "Experience your neighborhood like never before. Real stories, real people, real connections.",
-    icon: Globe,
-    gradient: "from-primary to-[#82DB7E]",
-    accent: "hsl(var(--primary))"
+    id: "belong",
+    title: "Welcome to Your\nNeighbourhood",
+    body: "Stay connected with the people, places, and conversations that make your neighbourhood feel like home.",
+    image: "/images/onboarding/slide1.jpg",
+    cta: "Continue",
   },
   {
-    id: "trade",
-    title: "Marketplace Magic",
-    body: "Securely trade items with trusted neighbors. No shipping, no stress, just local value.",
-    icon: ShoppingBag,
-    gradient: "from-[#82DB7E] to-[#4da24e]",
-    accent: "#82DB7E"
+    id: "discover",
+    title: "Everything You Need,\nClose to Home",
+    body: "Discover trusted neighbours, support local businesses, and find great deals just around the corner.",
+    image: "/images/onboarding/slide2.jpg",
+    cta: "Continue",
   },
   {
-    id: "business",
-    title: "Local Excellence",
-    body: "Support the gems in your backyard. Discover businesses that make your street special.",
-    icon: Sparkles,
-    gradient: "from-[#4da24e] to-primary",
-    accent: "#4da24e"
+    id: "experience",
+    title: "Something's Always\nHappening Nearby",
+    body: "From community gatherings to weekend markets, there's always something worth showing up for.",
+    image: "/images/onboarding/slide3.jpg",
+    cta: "Continue",
   },
   {
     id: "connect",
-    title: "Digital Handshake",
-    body: "Build a network of trust. Connect with verified neighbors and grow your local influence.",
-    icon: Zap,
-    gradient: "from-primary to-[#82DB7E]",
-    accent: "hsl(var(--primary))"
+    title: "Meet the People\nAround You",
+    body: "Build meaningful relationships with the people who live, work and create around you.",
+    image: "/images/onboarding/slide4.jpg",
+    cta: "Welcome Home",
   },
 ] as const;
 
@@ -153,27 +149,14 @@ export default function OnboardingTourPage() {
               : `opacity-0 ${direction > 0 ? "translate-y-10 scale-95" : "-translate-y-10 scale-105"}`
           )}
         >
-          {/* Illustration Container */}
-          <div className="relative mb-12">
-            <div 
-              className="w-48 h-48 mx-auto rounded-[56px] flex items-center justify-center relative group"
-              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid var(--c-border)" }}
-            >
-              <div className="absolute inset-0 bg-primary blur-3xl opacity-10 group-hover:opacity-20 transition-opacity rounded-full" />
-              <div 
-                className="w-32 h-32 rounded-[40px] flex items-center justify-center relative overflow-hidden"
-                style={{ background: `linear-gradient(135deg, ${slide.accent}22, ${slide.accent}00)` }}
-              >
-                <Icon className="w-16 h-16 text-foreground relative z-10 drop-shadow-2xl" strokeWidth={1.5} />
-              </div>
-              
-              {/* Decorative elements */}
-              <div className="absolute -top-4 -right-4 w-12 h-12 rounded-2xl bg-[var(--c-card)] backdrop-blur-md border border-[var(--c-border)] flex items-center justify-center animate-bounce" style={{ animationDuration: '3s' }}>
-                <Sparkles className="w-5 h-5 text-primary" />
-              </div>
-              <div className="absolute -bottom-2 -left-6 w-10 h-10 rounded-xl bg-primary/10 backdrop-blur-md border border-primary/20 flex items-center justify-center animate-pulse">
-                <Check className="w-4 h-4 text-primary" />
-              </div>
+          {/* Image Container */}
+          <div className="relative mb-8">
+            <div className="w-64 h-64 mx-auto rounded-[36px] overflow-hidden relative border border-white/10 shadow-2xl">
+              <img
+                src={slide.image}
+                alt={slide.title}
+                className="w-full h-full object-cover"
+              />
             </div>
           </div>
 
