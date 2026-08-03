@@ -88,6 +88,7 @@ export default function OnboardingProfilePage() {
         address: '',
       },
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile]);
 
   // Get the current username value and debounce it

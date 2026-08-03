@@ -13,6 +13,7 @@ import { AUTH_CONSTANTS, ERROR_MESSAGES } from '@/lib/constants';
 import { ErrorMessageFormatter } from '@/lib/error-messages';
 import { AuthService } from '@/lib/auth-service';
 import posthog from 'posthog-js';
+import { supabase } from '@/lib/supabase';
 
 const isPasswordStrong = (pwd: string) =>
   pwd.length >= 8 && /[A-Z]/.test(pwd) && /[0-9]/.test(pwd) && /[^A-Za-z0-9]/.test(pwd);
@@ -116,8 +117,16 @@ export default function LoginPage() {
         }
 
         const { user: newUser, error: err } = await signUp(email, password, name, cleanUsername);
-        if (err) setError(err.message);
-        else if (newUser) {
+        if (err) {
+          if (err.message.toLowerCase().includes('already registered') || err.message.toLowerCase().includes('already in use')) {
+            try {
+              await supabase.auth.resend({ type: 'signup', email });
+            } catch {}
+            router.push(`/onboarding/verify-email?email=${encodeURIComponent(email)}`);
+            return;
+          }
+          setError(err.message);
+        } else if (newUser) {
           posthog.identify(newUser.id, { email: newUser.email, name });
           posthog.capture('user_signed_up', { method: 'email' });
           setLoginAttempts(0);
@@ -128,6 +137,13 @@ export default function LoginPage() {
       } else {
         const { user: signedUser, error: err } = await signIn(email, password);
         if (err) {
+          if (err.message.toLowerCase().includes('email not confirmed') || err.message.toLowerCase().includes('unconfirmed')) {
+            try {
+              await supabase.auth.resend({ type: 'signup', email });
+            } catch {}
+            router.push(`/onboarding/verify-email?email=${encodeURIComponent(email)}`);
+            return;
+          }
           const newAttempts = loginAttempts + 1;
           setLoginAttempts(newAttempts);
           if (newAttempts >= AUTH_CONSTANTS.MAX_LOGIN_ATTEMPTS) {
