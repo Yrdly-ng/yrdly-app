@@ -15,7 +15,8 @@
     "build:webpack": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:wipe": "node scripts/wipe-database.js"
   },
   "dependencies": {
     "@googlemaps/markerclusterer": "^2.6.2",
