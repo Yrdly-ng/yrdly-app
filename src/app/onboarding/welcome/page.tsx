@@ -3,14 +3,26 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Logo, SceneBg, PrimaryBtn, SecondaryBtn } from '@/components/onboarding/primitives';
+import { useAuth } from '@/hooks/use-supabase-auth';
 
 export default function WelcomePage() {
   const router = useRouter();
+  const { user, profile, loading } = useAuth();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!loading && user) {
+      if (profile?.profile_completed) {
+        router.replace('/home');
+      } else {
+        router.replace('/onboarding/profile');
+      }
+    }
+  }, [user, profile, loading, router]);
 
   return (
     <div className="min-h-[100dvh] relative flex flex-col justify-between overflow-hidden bg-[#050505] font-sans">

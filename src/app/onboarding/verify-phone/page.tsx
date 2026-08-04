@@ -18,7 +18,7 @@ export default function VerifyPhonePage() {
         <button
           type="button"
           onClick={() => router.push('/onboarding/profile?phoneSkipped=true')}
-          className="text-sm font-medium text-white/38 hover:text-white transition-colors"
+          className="px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-bold text-white hover:bg-white/20 transition-all shadow-md"
         >
           Skip for now
         </button>

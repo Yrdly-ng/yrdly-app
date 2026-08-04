@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Logo,
@@ -22,7 +22,7 @@ const isPasswordStrong = (pwd: string) =>
 
 export default function LoginPage() {
   const router = useRouter();
-  const { signIn, signUp, signInWithGoogle } = useAuth();
+  const { user, profile, loading: authLoading, signIn, signUp, signInWithGoogle } = useAuth();
 
   const [isSignUp, setIsSignUp] = useState(false);
   const [name, setName] = useState('');
@@ -32,6 +32,16 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      if (profile?.profile_completed) {
+        router.replace('/home');
+      } else {
+        router.replace('/onboarding/profile');
+      }
+    }
+  }, [user, profile, authLoading, router]);
 
   const handleGoogle = async () => {
     setError('');

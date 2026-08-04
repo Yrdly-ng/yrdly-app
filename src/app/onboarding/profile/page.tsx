@@ -11,6 +11,36 @@ import { Camera, MapPin, Navigation, ShieldCheck, AlertTriangle } from 'lucide-r
 
 const SUGGESTIONS = ['Victoria Island, Lagos', 'Lekki Phase 1, Lagos', 'Surulere, Lagos', 'Ikeja GRA, Lagos'];
 
+const ALL_NEIGHBOURHOODS = [
+  'Victoria Island, Eti-Osa, Lagos',
+  'Lekki Phase 1, Eti-Osa, Lagos',
+  'Ikeja GRA, Ikeja, Lagos',
+  'Surulere, Surulere, Lagos',
+  'Yaba, Shomolu, Lagos',
+  'Ikoyi, Eti-Osa, Lagos',
+  'Gbagada, Kosofe, Lagos',
+  'Ajah, Eti-Osa, Lagos',
+  'Maryland, Ikeja, Lagos',
+  'Festac Town, Amuwo-Odofin, Lagos',
+  'Alimosho, Alimosho, Lagos',
+  'Magodo, Kosofe, Lagos',
+  'Opebi, Ikeja, Lagos',
+  'Allen Avenue, Ikeja, Lagos',
+  'Maitama, Abuja (FCT)',
+  'Wuse II, Abuja (FCT)',
+  'Gwarinpa, Abuja (FCT)',
+  'Asokoro, Abuja (FCT)',
+  'Jabi, Abuja (FCT)',
+  'Port Harcourt City, Rivers',
+  'Enugu North, Enugu',
+  'Ibadan North, Oyo',
+  'Benin City, Edo',
+  'Calabar Municipal, Cross River',
+  'Abeokuta South, Ogun',
+  'Kaduna North, Kaduna',
+  'Kano Municipal, Kano',
+];
+
 function OnboardingProfileContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -166,7 +196,7 @@ function OnboardingProfileContent() {
                     <Camera className="w-4 h-4" />
                   </div>
                 </label>
-                <span className="text-xs text-white/38 mt-2">Tap to add photo</span>
+                <span className="text-xs text-white/70 font-semibold mt-2">Tap to add photo</span>
               </div>
 
               {usernameErr && (
@@ -187,9 +217,9 @@ function OnboardingProfileContent() {
                   value={bio}
                   onChange={e => setBio(e.target.value.slice(0, 140))}
                   rows={3}
-                  className="w-full p-4 rounded-[18px] bg-white/[0.055] border border-white/10 text-white text-base placeholder:text-white/38 focus:outline-none focus:border-[#82DB7E]/60 focus:ring-1 focus:ring-[#82DB7E]/30 resize-none"
+                  className="w-full p-4 rounded-[18px] bg-white/[0.07] border border-white/15 text-white text-base placeholder:text-white/60 focus:outline-none focus:border-[#82DB7E]/80 focus:ring-1 focus:ring-[#82DB7E]/50 resize-none"
                 />
-                <span className="absolute bottom-3 right-4 text-xs text-white/38 font-medium">
+                <span className="absolute bottom-3 right-4 text-xs text-white/70 font-bold">
                   {bio.length}/140
                 </span>
               </div>
@@ -200,39 +230,70 @@ function OnboardingProfileContent() {
             <>
               <div className="flex flex-col gap-1 text-left">
                 <h2 className="text-2xl font-black text-white">Where do you live?</h2>
-                <p className="text-sm font-normal text-white/55">
+                <p className="text-sm font-normal text-white/70">
                   We use your general area to show local posts, events & marketplace items
                 </p>
               </div>
 
-              <GlassInput
-                placeholder="Search district or neighbourhood..."
-                value={location}
-                onChange={v => { setLocation(v); setSelectedLoc(false); }}
-                icon={<MapPin className="w-4 h-4" />}
-              />
+              <div className="relative flex flex-col gap-2">
+                <GlassInput
+                  placeholder="Search district or neighbourhood..."
+                  value={location}
+                  onChange={v => { setLocation(v); setSelectedLoc(false); }}
+                  icon={<MapPin className="w-4 h-4" />}
+                />
+
+                {/* Realtime Autocomplete Dropdown List */}
+                {location.trim().length > 0 && !selectedLoc && (
+                  <div className="w-full bg-[#141414] border border-white/15 rounded-[18px] p-2 flex flex-col gap-1 max-h-48 overflow-y-auto shadow-2xl z-20">
+                    {ALL_NEIGHBOURHOODS.filter(item =>
+                      item.toLowerCase().includes(location.toLowerCase())
+                    ).slice(0, 6).map(match => (
+                      <button
+                        key={match}
+                        type="button"
+                        onClick={() => { setLocation(match); setSelectedLoc(true); }}
+                        className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-left text-sm font-medium text-white hover:bg-[#82DB7E]/15 hover:text-[#82DB7E] transition-all"
+                      >
+                        <MapPin className="w-3.5 h-3.5 text-[#82DB7E]" />
+                        <span>{match}</span>
+                      </button>
+                    ))}
+                    {ALL_NEIGHBOURHOODS.filter(item => item.toLowerCase().includes(location.toLowerCase())).length === 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedLoc(true)}
+                        className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-left text-sm font-medium text-[#82DB7E]"
+                      >
+                        <MapPin className="w-3.5 h-3.5" />
+                        <span>Use &quot;{location}&quot;</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
 
               <button
                 type="button"
                 onClick={handleUseGPS}
                 disabled={locLoading}
-                className="w-full h-12 rounded-[18px] bg-white/[0.055] border border-white/10 text-white font-medium text-sm flex items-center justify-center gap-2 hover:bg-white/10 transition-all active:scale-98"
+                className="w-full h-12 rounded-[18px] bg-white/[0.08] border border-white/15 text-white font-semibold text-sm flex items-center justify-center gap-2 hover:bg-white/15 transition-all active:scale-98"
               >
                 <Navigation className="w-4 h-4 text-[#82DB7E]" />
                 <span>{locLoading ? 'Locating...' : 'Use Current Location (GPS)'}</span>
               </button>
 
               {/* Suggestions */}
-              {!selectedLoc && (
+              {!selectedLoc && location.trim().length === 0 && (
                 <div className="flex flex-col gap-2">
-                  <span className="text-xs font-semibold text-white/38 uppercase tracking-wider">Popular Areas</span>
+                  <span className="text-xs font-extrabold text-white/70 uppercase tracking-wider">Popular Areas</span>
                   <div className="flex flex-wrap gap-2">
                     {SUGGESTIONS.map(s => (
                       <button
                         key={s}
                         type="button"
                         onClick={() => { setLocation(s); setSelectedLoc(true); }}
-                        className="px-3.5 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs font-medium text-white/80 hover:bg-white/10 transition-all"
+                        className="px-3.5 py-2 rounded-xl bg-white/[0.06] border border-white/10 text-xs font-semibold text-white hover:bg-white/15 transition-all"
                       >
                         {s}
                       </button>

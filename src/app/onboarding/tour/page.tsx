@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { SceneBg, ProgressPills, PrimaryBtn } from '@/components/onboarding/primitives';
+import { useAuth } from '@/hooks/use-supabase-auth';
 
 const SLIDES = [
   {
@@ -33,15 +34,25 @@ const SLIDES = [
 
 export default function TourPage() {
   const router = useRouter();
+  const { user, profile } = useAuth();
   const [idx, setIdx] = useState(0);
   const currentSlide = SLIDES[idx];
   const isLast = idx === SLIDES.length - 1;
+
+  const handleDestination = () => {
+    if (user) {
+      if (profile?.profile_completed) router.replace('/home');
+      else router.replace('/onboarding/profile');
+    } else {
+      router.push('/login');
+    }
+  };
 
   const advance = () => {
     if (!isLast) {
       setIdx(prev => prev + 1);
     } else {
-      router.push('/login');
+      handleDestination();
     }
   };
 
@@ -55,8 +66,8 @@ export default function TourPage() {
         {!isLast && (
           <button
             type="button"
-            onClick={() => router.push('/login')}
-            className="text-sm font-medium text-white/38 hover:text-white transition-colors"
+            onClick={handleDestination}
+            className="px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-bold text-white hover:bg-white/20 transition-all shadow-md"
           >
             Skip
           </button>
