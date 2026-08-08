@@ -22,6 +22,7 @@ import { X, Paperclip, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
+import { LocationInput, LocationValue } from "./LocationInput";
 
 // ── Design tokens ──────────────────────────────────────────────
 const BG       = "var(--c-bg)";
@@ -47,6 +48,7 @@ const getFormSchema = (hasExistingImages: boolean) =>
     text:       z.string().min(1, "Text can't be empty.").max(500),
     imageFiles: z.any().optional(),
     category:   z.enum(["General", "Event", "For Sale", "Business"]).default("General"),
+    location:   z.any().optional(),
   }).superRefine((data, ctx) => {
     const isSpecialCategory = data.category === "Event" || data.category === "For Sale";
     const hasNewImages = data.imageFiles && data.imageFiles.length > 0;
@@ -107,7 +109,7 @@ function PostForm({
   const text = form.watch("text") as string;
   const { toast } = useToast();
   const [fetchingLocation, setFetchingLocation] = React.useState(false);
-  const [locationTag, setLocationTag] = React.useState<string | null>(null);
+  const [showLocationInput, setShowLocationInput] = React.useState(false);
   const [videoDuration, setVideoDuration] = React.useState<string | null>(null);
   const [videoPreviewUrl, setVideoPreviewUrl] = React.useState<string | null>(null);
 
@@ -149,13 +151,16 @@ function PostForm({
 
 
   const handleLocation = async () => {
-    if (locationTag) {
-      // Tapping again while a tag is already attached just removes it
-      setLocationTag(null);
+    const loc = form.getValues("location");
+    if (loc || showLocationInput) {
+      // Tapping again while active removes it or hides input
+      form.setValue("location", undefined);
+      setShowLocationInput(false);
       return;
     }
     if (!navigator.geolocation) {
-      toast({ title: "Location not supported", description: "Your browser doesn't support geolocation.", variant: "destructive" });
+      toast({ title: "Location not supported", description: "Your browser doesn't support geolocation. Please search manually.", variant: "destructive" });
+      setShowLocationInput(true);
       return;
     }
     setFetchingLocation(true);
@@ -171,10 +176,11 @@ function PostForm({
           const locationText = data.display_name
             ? data.display_name.split(',').slice(0, 3).join(',').trim()
             : `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
-          // Attach as a tag instead of writing straight into the post body
-          setLocationTag(locationText);
+          
+          form.setValue("location", { address: locationText, geopoint: { latitude, longitude } }, { shouldValidate: true, shouldDirty: true });
         } catch {
-          toast({ title: "Location error", description: "Could not fetch your address. Please try again.", variant: "destructive" });
+          toast({ title: "Location error", description: "Could not fetch your address. Please try searching manually.", variant: "destructive" });
+          setShowLocationInput(true);
         } finally {
           setFetchingLocation(false);
         }
@@ -182,9 +188,10 @@ function PostForm({
       (err) => {
         setFetchingLocation(false);
         const msg = err.code === 1
-          ? "Location access denied. Please allow location in your browser settings."
-          : "Could not get your location. Please try again.";
+          ? "Location access denied. Please allow location in your browser settings or search manually."
+          : "Could not get your location. Please try searching manually.";
         toast({ title: "Location unavailable", description: msg, variant: "destructive" });
+        setShowLocationInput(true);
       },
       { timeout: 10000, maximumAge: 60000 }
     );
@@ -193,10 +200,11 @@ function PostForm({
   return (
     <form
       onSubmit={form.handleSubmit((values: any) => {
-        if (locationTag) {
+        if (values.location && values.location.address) {
           const currentText = values.text || "";
           const separator = currentText && !currentText.endsWith("\n") ? "\n" : "";
-          onSubmit({ ...values, text: `${currentText}${separator}📍 ${locationTag}` });
+          // Submit the actual text + location display tag, and include the whole values object (which now has location)
+          onSubmit({ ...values, text: `${currentText}${separator}📍 ${values.location.address}` });
         } else {
           onSubmit(values);
         }
@@ -305,18 +313,27 @@ function PostForm({
           </div>
         )}
 
-        {/* ── Location tag (chip) — attached to the post, not inserted into the text ── */}
-        {locationTag && (
+        {/* ── Location Input / Tag ── */}
+        {showLocationInput ? (
+          <div className="mt-2 w-full px-1">
+            <div className={cn("[&_input]:bg-background [&_input]:border-primary [&_input]:rounded-full [&_input]:text-foreground [&_input]:placeholder:text-muted-foreground [&_input]:h-10")}>
+              <LocationInput name="location" control={form.control} />
+            </div>
+          </div>
+        ) : form.watch("location")?.address ? (
           <div className="flex items-center gap-1.5 mt-2 w-fit max-w-full">
             <span
               className="flex items-center gap-1.5 rounded-full pl-3 pr-2 py-1.5 text-[0.8rem] font-medium max-w-full"
               style={{ background: "rgba(34,197,94,0.12)", color: GREEN, fontFamily: FONT_RL }}
             >
               <LocationIcon />
-              <span className="truncate max-w-[220px]">{locationTag}</span>
+              <span className="truncate max-w-[220px]">{form.watch("location").address}</span>
               <button
                 type="button"
-                onClick={() => setLocationTag(null)}
+                onClick={() => {
+                  form.setValue("location", undefined);
+                  setShowLocationInput(false);
+                }}
                 aria-label="Remove location tag"
                 className="flex-shrink-0 hover:opacity-70 transition-opacity"
               >
@@ -324,7 +341,7 @@ function PostForm({
               </button>
             </span>
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* ── Divider ── */}
@@ -376,11 +393,11 @@ function PostForm({
             onClick={handleLocation}
             disabled={fetchingLocation}
             className="hover:opacity-70 transition-opacity disabled:opacity-50"
-            aria-label={locationTag ? "Remove location tag" : "Tag your location"}
+            aria-label={form.watch("location")?.address || showLocationInput ? "Remove location" : "Tag your location"}
           >
             {fetchingLocation
               ? <Loader2 size={22} color={GREEN} strokeWidth={2} className="animate-spin" />
-              : <LocationIcon filled={!!locationTag} />}
+              : <LocationIcon filled={!!form.watch("location")?.address || showLocationInput} />}
           </button>
         </div>
 
@@ -444,7 +461,10 @@ const CreatePostDialogComponent = ({
   const handleOpenChange = useCallback((next: boolean) => {
     if (externalOpen === undefined) setInternalOpen(next);
     onOpenChange?.(next);
-    if (!next) { form.reset(); setVideoFile(null); }
+    if (!next) { 
+      form.reset(); 
+      setVideoFile(null); 
+    }
   }, [onOpenChange, externalOpen, form]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {

@@ -4,14 +4,16 @@
  *
  * Strategy:
  *  1. Google Maps REST Geocoding API → reliable for State + LGA in urban areas.
- *  2. Ward: Google never returns ward data for Nigeria, so we use the local
- *     wards.json dataset (8,800+ entries with lat/lng) and find the nearest
- *     ward via haversine distance within the matched State+LGA.
- *  3. If Google can't resolve an LGA we fall back to the nearest LGA from
- *     the wards dataset.
+ *  2. Check against canonical lga_wards using normalized string matching.
+ *  3. Find the nearest ward within the matched State+LGA via haversine distance.
+ *  4. If unmatched or outside Nigeria, return explicit status.
+ *
+ * NOTE (Optimization): Fetching 8,800 rows client-side is a heavy payload.
+ * A server-side PostGIS RPC (`resolve_location`) is planned as a 
+ * post-submission optimization to handle normalization and distance matching.
  */
 
-// ── Types ───────────────────────────────────────────────────────
+import { supabase } from '@/lib/supabase';
 
 export interface ResolvedLocation {
   state: string;
@@ -22,15 +24,8 @@ export interface ResolvedLocation {
   lng: number;
 }
 
-interface WardEntry {
-  State: string;
-  LGA: string;
-  Ward: string;
-  Latitude: number;
-  Longitude: number;
-}
-
-// ── Haversine helper (km) ───────────────────────────────────────
+export const OUTSIDE_NIGERIA = "outside_nigeria";
+export const UNMATCHED_LOCATION = "unmatched_location";
 
 function haversine(
   lat1: number,
@@ -48,124 +43,61 @@ function haversine(
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-export const OUTSIDE_NIGERIA = "outside_nigeria";
+let lgaWardsCache: any[] = [];
 
-// ── Normalisation helper ────────────────────────────────────────
-// Google might return "Eti-Osa Local Government Area" while our dataset has
-// "Eti-Osa". Strip suffixes and normalise whitespace/hyphens for matching.
-
-function normaliseName(name: string): string {
-  return name
-    .replace(/ Local Government Area$/i, "")
-    .replace(/ LGA$/i, "")
-    .replace(/ State$/i, "")
-    .trim()
-    .toLowerCase()
-    .replace(/[- ]+/g, ""); // "Eti-Osa" & "Eti Osa" → "etiosa"
+async function getLgaWards(supabase: any): Promise<any[]> {
+  if (lgaWardsCache.length > 0) return lgaWardsCache;
+  const { data, error } = await supabase.from('lga_wards').select('state, lga, ward, latitude, longitude');
+  if (error || !data) {
+    console.error('Failed to fetch lga_wards', error);
+    return [];
+  }
+  lgaWardsCache = data || [];
+  return lgaWardsCache;
 }
 
-// ── Lazy-loaded wards dataset ───────────────────────────────────
-
-let wardsCache: WardEntry[] | null = null;
-
-async function getWards(): Promise<WardEntry[]> {
-  if (wardsCache) return wardsCache;
-  const mod = await import("@/data/wards.json");
-  wardsCache = mod.default as WardEntry[];
-  return wardsCache;
-}
-
-// ── Find nearest ward from the local dataset ────────────────────
-
-async function findNearestWard(
+async function matchLocationAgainstDatabase(
+  supabase: any,
   lat: number,
-  lng: number,
-  state?: string,
-  lga?: string,
-): Promise<{ state: string; lga: string; ward: string; distance: number }> {
-  const wards = await getWards();
+  lng: number
+): Promise<{ state: string; lga: string; ward: string } | null> {
+  const wards = await getLgaWards(supabase);
+  if (!wards.length) return null;
 
-  // Start with the tightest possible scope
-  let candidates = wards;
-  if (state && lga) {
-    const ns = normaliseName(state);
-    const nl = normaliseName(lga);
-    const filtered = wards.filter(
-      (w) => normaliseName(w.State) === ns && normaliseName(w.LGA) === nl,
-    );
-    if (filtered.length > 0) candidates = filtered;
-  }
-  if (candidates === wards && state) {
-    const ns = normaliseName(state);
-    const filtered = wards.filter((w) => normaliseName(w.State) === ns);
-    if (filtered.length > 0) candidates = filtered;
-  }
-
-  let best = candidates[0];
+  // Find closest ward via Haversine nationwide
+  let bestWard = wards[0];
   let bestDist = Infinity;
 
-  for (const w of candidates) {
-    const d = haversine(lat, lng, w.Latitude, w.Longitude);
-    if (d < bestDist) {
-      bestDist = d;
-      best = w;
+  for (const w of wards) {
+    if (w.latitude != null && w.longitude != null) {
+      const d = haversine(lat, lng, Number(w.latitude), Number(w.longitude));
+      if (d < bestDist) {
+        bestDist = d;
+        bestWard = w;
+      }
     }
   }
 
-  return { state: best.State, lga: best.LGA, ward: best.Ward, distance: bestDist };
+  // Only return unmatched if the closest ward is unreasonably far (e.g., > 50km)
+  if (bestDist > 50) return null;
+
+  return {
+    state: bestWard.state,
+    lga: bestWard.lga,
+    ward: bestWard.ward,
+  };
 }
-
-// ── LGA fuzzy match against our dataset ─────────────────────────
-// Google might return "Eti-Osa" but our lgas.json has "Eti Osa" (or vice
-// versa). We try to find the canonical form.
-
-let lgasCache: Record<string, string[]> | null = null;
-
-async function getLgas(): Promise<Record<string, string[]>> {
-  if (lgasCache) return lgasCache;
-  const mod = await import("@/data/lgas.json");
-  lgasCache = mod.default as Record<string, string[]>;
-  return lgasCache;
-}
-
-async function matchLga(state: string, googleLga: string): Promise<string> {
-  const lgas = await getLgas();
-  const stateKey = Object.keys(lgas).find(
-    (k) => normaliseName(k) === normaliseName(state),
-  );
-  if (!stateKey) return googleLga; // can't match state, return Google's answer
-
-  const stateLgas = lgas[stateKey];
-  // Exact match first
-  const exact = stateLgas.find((l) => l === googleLga);
-  if (exact) return exact;
-  // Normalised match
-  const norm = normaliseName(googleLga);
-  const fuzzy = stateLgas.find((l) => normaliseName(l) === norm);
-  return fuzzy || googleLga;
-}
-
-async function matchState(googleState: string): Promise<string> {
-  const lgas = await getLgas();
-  const stateKey = Object.keys(lgas).find(
-    (k) => normaliseName(k) === normaliseName(googleState),
-  );
-  return stateKey || googleState;
-}
-
-// ── Public: reverse-geocode coordinates ─────────────────────────
 
 export async function reverseGeocode(
   lat: number,
   lng: number,
-): Promise<ResolvedLocation | { status: typeof OUTSIDE_NIGERIA }> {
+): Promise<ResolvedLocation | { status: typeof OUTSIDE_NIGERIA | typeof UNMATCHED_LOCATION }> {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
   let googleState = "";
   let googleLga = "";
   let displayAddress = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
 
-  // Step 1 — Google REST Geocoding API
   if (apiKey) {
     try {
       const res = await fetch(
@@ -187,18 +119,13 @@ export async function reverseGeocode(
               comp.types.includes("administrative_area_level_1") &&
               !googleState
             ) {
-              googleState = comp.long_name
-                .replace(/ State$/i, "")
-                .trim();
+              googleState = comp.long_name;
             }
             if (
               comp.types.includes("administrative_area_level_2") &&
               !googleLga
             ) {
-              googleLga = comp.long_name
-                .replace(/ Local Government Area$/i, "")
-                .replace(/ LGA$/i, "")
-                .trim();
+              googleLga = comp.long_name;
             }
           }
         }
@@ -208,30 +135,17 @@ export async function reverseGeocode(
         }
       }
     } catch {
-      // Google API failed — fall through to dataset fallback
+      // Google API failed — fail normally below due to unmatched
     }
   }
 
-  // Step 2 — Normalise against our canonical dataset
-  if (googleState) {
-    googleState = await matchState(googleState);
-  }
-  if (googleState && googleLga) {
-    googleLga = await matchLga(googleState, googleLga);
-  }
-
-  // Step 3 — Ward lookup (always from our dataset)
-  const nearest = await findNearestWard(lat, lng, googleState, googleLga);
-
-  // If Google couldn't resolve state or LGA, use the dataset's answer
-  const finalState = googleState || nearest.state;
-  const finalLga = googleLga || nearest.lga;
-  const finalWard = nearest.ward;
+  const matched = await matchLocationAgainstDatabase(supabase, lat, lng);
+  if (!matched) return { status: UNMATCHED_LOCATION };
 
   return {
-    state: finalState,
-    lga: finalLga,
-    ward: finalWard,
+    state: matched.state,
+    lga: matched.lga,
+    ward: matched.ward,
     displayAddress,
     lat,
     lng,

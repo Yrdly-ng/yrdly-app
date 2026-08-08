@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { CreateBusinessDialog } from "@/components/CreateBusinessDialog";
 import { BusinessCreatorOnboarding } from "@/components/BusinessCreatorOnboarding";
+import { useLocation } from "@/contexts/LocationContext";
 import type { Business } from "@/types";
 
 const FONT = "var(--font-work-sans)";
@@ -56,12 +57,23 @@ function BusinessesContent() {
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
 
+  const { activeFilter } = useLocation();
+  const filterState = activeFilter?.state;
+  const filterLga = activeFilter?.lga;
+  const filterWard = activeFilter?.ward;
+
   const fetchBusinesses = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("businesses")
         .select("*")
         .order("created_at", { ascending: false });
+
+      if (filterState) query = query.eq("state", filterState);
+      if (filterLga) query = query.eq("lga", filterLga);
+      if (filterWard) query = query.eq("ward", filterWard);
+
+      const { data, error } = await query;
 
       if (error) {
         console.error("Error fetching businesses:", error);
@@ -107,7 +119,7 @@ function BusinessesContent() {
 
   useEffect(() => {
     fetchBusinesses();
-  }, []);
+  }, [filterState, filterLga, filterWard]);
 
   // Group businesses into category tiles
   const categoryTiles = useMemo<CategoryTile[]>(() => {

@@ -7,6 +7,7 @@ import { UserActivityService } from '@/lib/user-activity-service';
 
 import { Post, Business } from '@/types';
 import { useToast } from './use-toast';
+import { reverseGeocode, UNMATCHED_LOCATION } from '@/lib/geocoding-service';
 
 
 import { LocationFilter } from '@/contexts/LocationContext';
@@ -363,15 +364,33 @@ export const usePosts = (filter?: LocationFilter | null) => {
           videoThumbnailUrl = thumbnailDataUrl;
         }
 
-        // Clean up the data to remove undefined values and exclude imageFiles
+        // Clean up the data to remove undefined values and exclude imageFiles and location
         const cleanedPostData = Object.fromEntries(
           Object.entries(postData).filter(([key, value]) => 
-            value !== undefined && key !== 'imageFiles'
+            value !== undefined && key !== 'imageFiles' && key !== 'location'
           )
         );
 
         // Auto-stamp the creator's location from their profile
         const userLocation = profile.location as { state?: string; lga?: string; ward?: string } | undefined;
+
+        // Derive geopoint from event_location (Events) or location (General/For Sale)
+        const evtGeopoint = (postData as any).event_location?.geopoint || (postData as any).location?.geopoint as { latitude: number; longitude: number } | undefined;
+        const locationGeom = evtGeopoint
+          ? `POINT(${evtGeopoint.longitude} ${evtGeopoint.latitude})`
+          : null;
+          
+        let resolvedLga = userLocation?.lga || null;
+        let resolvedWard = userLocation?.ward || null;
+        let resolvedState = userLocation?.state || null;
+        if (evtGeopoint) {
+          const geo = await reverseGeocode(evtGeopoint.latitude, evtGeopoint.longitude);
+          if (geo && !('status' in geo) && 'lga' in geo) {
+            resolvedLga = geo.lga;
+            resolvedWard = geo.ward;
+            resolvedState = geo.state;
+          }
+        }
 
         const finalPostData = {
           ...cleanedPostData,
@@ -385,11 +404,13 @@ export const usePosts = (filter?: LocationFilter | null) => {
           category: postData.category || 'General',
           // Location stamping — only set on new posts, preserve on edits
           ...(postIdToUpdate ? { updated_at: new Date().toISOString() } : {
-            state: userLocation?.state || null,
-            lga: userLocation?.lga || null,
-            ward: userLocation?.ward || null,
+            state: resolvedState,
+            lga: resolvedLga,
+            ward: resolvedWard,
             author_location: userLocation ? { state: userLocation.state, lga: userLocation.lga, ward: userLocation.ward } : null,
           }),
+          // Write location_geom from event_location geopoint when available
+          ...(locationGeom ? { location_geom: locationGeom } : {}),
         };
 
         if (postIdToUpdate) {
@@ -458,16 +479,36 @@ export const usePosts = (filter?: LocationFilter | null) => {
         // Auto-stamp the creator's location from their profile
         const bizLocation = profile?.location as { state?: string; lga?: string; ward?: string } | undefined;
 
+        // Extract geopoint from the location JSONB (set by LocationInput via Google Places)
+        const bizGeopoint = businessData.location?.geopoint;
+        const locationGeom = bizGeopoint
+          ? `POINT(${bizGeopoint.longitude} ${bizGeopoint.latitude})`
+          : null;
+
+        // Resolve canonical lga/ward from geopoint if available, fall back to profile
+        let resolvedLga = bizLocation?.lga || null;
+        let resolvedWard = bizLocation?.ward || null;
+        let resolvedState = bizLocation?.state || null;
+        if (bizGeopoint) {
+          const geo = await reverseGeocode(bizGeopoint.latitude, bizGeopoint.longitude);
+          if (geo && !('status' in geo) && 'lga' in geo) {
+            resolvedLga = geo.lga;
+            resolvedWard = geo.ward;
+            resolvedState = geo.state;
+          }
+        }
+
         const finalBusinessData = {
             ...businessData,
             owner_id: user.id,
             image_urls: imageUrls,
+            lga: resolvedLga,
+            ward: resolvedWard,
+            ...(locationGeom ? { location_geom: locationGeom } : {}),
             // Location stamping — only set on new businesses, preserve on edits
             ...(businessIdToUpdate ? {} : {
-              state: bizLocation?.state || null,
-              lga: bizLocation?.lga || null,
-              ward: bizLocation?.ward || null,
-              admin_location: bizLocation ? { state: bizLocation.state, lga: bizLocation.lga, ward: bizLocation.ward } : null,
+              state: resolvedState,
+              admin_location: bizLocation ? { state: resolvedState, lga: resolvedLga, ward: resolvedWard } : null,
               is_active: true,
             }),
         }
