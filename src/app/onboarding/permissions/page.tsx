@@ -20,7 +20,7 @@ export default function PermissionsPage() {
     } catch {
       // Profile completion fallback
     }
-    router.replace('/home');
+    router.replace('/onboarding/welcome');
   };
 
   const togglePermission = async (key: keyof typeof perms) => {

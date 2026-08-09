@@ -4,25 +4,29 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Logo, SceneBg, PrimaryBtn, SecondaryBtn } from '@/components/onboarding/primitives';
 import { useAuth } from '@/hooks/use-supabase-auth';
+import { useOnboarding } from '@/hooks/use-onboarding';
 
 export default function WelcomePage() {
   const router = useRouter();
   const { user, profile, loading } = useAuth();
+  const { completeWelcome } = useOnboarding();
   const [mounted, setMounted] = useState(false);
+  const [isProceeding, setIsProceeding] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  useEffect(() => {
-    if (!loading && user) {
-      if (profile?.profile_completed) {
-        router.replace('/home');
-      } else {
-        router.replace('/onboarding/profile');
-      }
+  const handleGetStarted = async () => {
+    setIsProceeding(true);
+    try {
+      await completeWelcome();
+      router.push('/onboarding/tour');
+    } catch (e) {
+      console.error(e);
+      setIsProceeding(false);
     }
-  }, [user, profile, loading, router]);
+  };
 
   return (
     <div className="min-h-[100dvh] relative flex flex-col justify-between overflow-hidden bg-[#050505] font-sans">
@@ -37,7 +41,7 @@ export default function WelcomePage() {
       </div>
 
       <div className="relative z-10 p-6 max-w-md w-full mx-auto flex flex-col gap-3 pb-8">
-        <PrimaryBtn label="Get Started" onClick={() => router.push('/onboarding/tour')} />
+        <PrimaryBtn label="Get Started" onClick={handleGetStarted} loading={isProceeding} />
         <SecondaryBtn label="Already have an account? Sign in" onClick={() => router.push('/login')} />
       </div>
     </div>
