@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { SceneBg, ProgressPills, PrimaryBtn } from '@/components/onboarding/primitives';
 import { useAuth } from '@/hooks/use-supabase-auth';
+import { useOnboarding } from '@/hooks/use-onboarding';
 
 const SLIDES = [
   {
@@ -35,16 +36,29 @@ const SLIDES = [
 export default function TourPage() {
   const router = useRouter();
   const { user, profile } = useAuth();
+  const { completeTour } = useOnboarding();
   const [idx, setIdx] = useState(0);
   const currentSlide = SLIDES[idx];
   const isLast = idx === SLIDES.length - 1;
+  const [loading, setLoading] = useState(false);
 
-  const handleDestination = () => {
-    if (user) {
-      if (profile?.profile_completed) router.replace('/home');
-      else router.replace('/onboarding/profile');
-    } else {
-      router.push('/login');
+  const handleDestination = async () => {
+    if (loading) return;
+    setLoading(true);
+    try {
+      if (user) {
+        if (profile?.profile_completed) {
+          await completeTour();
+          router.replace('/home');
+        } else {
+          router.replace('/onboarding/profile');
+        }
+      } else {
+        router.push('/login');
+      }
+    } catch (e) {
+      console.error(e);
+      setLoading(false);
     }
   };
 
@@ -67,7 +81,8 @@ export default function TourPage() {
           <button
             type="button"
             onClick={handleDestination}
-            className="px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-bold text-white hover:bg-white/20 transition-all shadow-md"
+            disabled={loading}
+            className="px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-bold text-white hover:bg-white/20 disabled:opacity-50 transition-all shadow-md"
           >
             Skip
           </button>
@@ -85,7 +100,7 @@ export default function TourPage() {
           {currentSlide.description}
         </p>
         <div className="pt-2">
-          <PrimaryBtn label={currentSlide.cta} onClick={advance} />
+          <PrimaryBtn label={loading ? "Loading..." : currentSlide.cta} onClick={advance} disabled={loading} />
         </div>
       </div>
     </div>

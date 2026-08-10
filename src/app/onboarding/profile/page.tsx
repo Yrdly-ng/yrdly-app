@@ -138,12 +138,12 @@ function OnboardingProfileContent() {
         avatar_url: avatarUrl,
         location: { city: location.trim() || 'Victoria Island', state: 'Lagos' } as any,
         onboarding_status: 'completed',
-        profile_completed: false,
+        profile_completed: true,
       });
 
-      router.push('/onboarding/permissions');
+      router.replace('/onboarding/welcome');
     } catch {
-      router.push('/onboarding/permissions');
+      router.replace('/onboarding/welcome');
     } finally {
       setLoading(false);
     }
