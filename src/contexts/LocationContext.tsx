@@ -36,10 +36,9 @@ interface PersistedFilter {
 export function LocationProvider({ children }: { children: React.ReactNode }) {
   const { profile } = useAuth();
 
-  const profileLocation = profile?.location as any;
-  const userState = profileLocation?.state || null;
-  const userLga = profileLocation?.lga || null;
-  const userWard = profileLocation?.ward || null;
+  const userState = profile?.home_state || undefined;
+  const userLga   = profile?.home_lga   || undefined;
+  const userWard  = profile?.home_ward  || undefined;
   const hasLocation = !!userState;
 
   const userProfileLocation: LocationFilter | null = hasLocation 

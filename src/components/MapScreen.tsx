@@ -7,6 +7,7 @@ import { Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/use-supabase-auth';
+import { useLocation } from '@/contexts/LocationContext';
 
 import { Drawer, DrawerContent, DrawerTitle, DrawerDescription } from '@/components/ui/drawer';
 import { Drawer as VaulDrawer } from 'vaul';
@@ -109,6 +110,7 @@ interface MapScreenProps { className?: string }
 
 export function MapScreen({ className }: MapScreenProps) {
   const { user, profile } = useAuth();
+  const { activeFilter } = useLocation();
   const router = useRouter();
   const map = useMap();
   
@@ -143,33 +145,37 @@ export function MapScreen({ className }: MapScreenProps) {
       const found: MarkerData[] = [];
       const extract = (loc: any): { lat: number; lng: number; address: string } | null => {
         if (!loc) return null;
-        if (loc.geopoint) return { lat: loc.geopoint.latitude, lng: loc.geopoint.longitude, address: loc.address || '' };
-        if (loc.latitude && loc.longitude) return { lat: loc.latitude, lng: loc.longitude, address: loc.address || '' };
         if (loc.lat && loc.lng) return { lat: loc.lat, lng: loc.lng, address: loc.address || '' };
         return null;
       };
 
-      const userState = profile?.location?.state;
+      const filterState = activeFilter?.state || profile?.home_state;
+      const filterLga   = activeFilter?.lga   || profile?.home_lga;
 
-      // Fetch Events
-      const { data: evts } = await supabase.from('events')
+      // Fetch Events — filtered by activeFilter
+      let evtQuery = supabase.from('events')
         .select('*')
         .eq('status', 'PUBLISHED')
         .or(`end_time.gte.${new Date().toISOString()},start_time.gte.${new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()}`)
         .not('lat', 'is', null)
         .not('lng', 'is', null);
+      if (filterState) evtQuery = evtQuery.eq('state', filterState);
+      if (filterLga)   evtQuery = evtQuery.eq('lga', filterLga);
+      const { data: evts } = await evtQuery;
       (evts || []).forEach(e => {
         if (e.lat && e.lng) {
           found.push({ id: e.id, type: 'event', position: { lat: Number(e.lat), lng: Number(e.lng) }, title: e.title, address: e.location_address || 'Location TBD', description: e.description, date: e.start_time, attendees: e.attendee_count || 0, image: e.cover_image_url });
         }
       });
 
-      // Fetch Businesses
-      let bizsQuery = supabase.from('businesses').select('*').eq('is_active', true).not('location', 'is', null);
-      const { data: bizs } = await bizsQuery;
+      // Fetch Businesses — try lat/lng first, fall back to location JSON
+      const { data: bizs } = await supabase.from('businesses').select('*').eq('is_active', true);
       (bizs || []).forEach(b => {
-        const loc = extract(b.location);
-        if (loc) found.push({ id: b.id, type: 'business', position: loc, title: b.name, address: loc.address || 'Local Business', description: b.description, category: b.category, image: b.image_urls?.[0] });
+        const lat = b.lat ?? b.location?.lat ?? b.location?.latitude;
+        const lng = b.lng ?? b.location?.lng ?? b.location?.longitude;
+        if (lat && lng) {
+          found.push({ id: b.id, type: 'business', position: { lat: Number(lat), lng: Number(lng) }, title: b.name, address: b.location?.address || 'Local Business', description: b.description, category: b.category, image: b.image_urls?.[0] });
+        }
       });
 
       // Fetch Friends
@@ -181,20 +187,26 @@ export function MapScreen({ className }: MapScreenProps) {
         });
       }
 
-      // Fetch Marketplace
-      let postsQuery = supabase.from('posts').select('*').in('category', ['For Sale', 'General']).eq('is_sold', false).not('event_location', 'is', null);
-      if (userState) postsQuery = postsQuery.eq('state', userState);
+      // Fetch Marketplace — use canonical lat/lng columns
+      let postsQuery = supabase.from('posts').select('*')
+        .in('category', ['For Sale', 'General'])
+        .eq('is_sold', false)
+        .not('lat', 'is', null)
+        .not('lng', 'is', null);
+      if (filterState) postsQuery = postsQuery.eq('state', filterState);
+      if (filterLga)   postsQuery = postsQuery.eq('lga', filterLga);
       const { data: items } = await postsQuery;
       (items || []).forEach(p => {
-        const loc = extract(typeof p.event_location === 'string' ? null : p.event_location);
-        if (loc) found.push({ id: p.id, type: 'marketplace', position: applyJitter(loc.lat, loc.lng), title: p.title || p.text, address: loc.address || 'Nearby', description: p.text, price: p.price, image: p.image_urls?.[0] });
+        if (p.lat && p.lng) {
+          found.push({ id: p.id, type: 'marketplace', position: applyJitter(Number(p.lat), Number(p.lng)), title: p.title || p.text, address: p.location_address || 'Nearby', description: p.text, price: p.price, image: p.image_urls?.[0] });
+        }
       });
 
       setMarkers(found);
       setLoading(false);
     };
     load();
-  }, [user?.id, profile?.location?.state]);
+  }, [user?.id, activeFilter?.state, activeFilter?.lga, profile?.home_state]);
 
   const filtered = useMemo(() => markers.filter(m => {
     const matchTab = activeTab === 'all' || m.type === activeTab.replace('businesses', 'business').replace('events', 'event');

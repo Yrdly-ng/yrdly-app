@@ -36,6 +36,13 @@ export interface AuthUser {
   onboarding_completed_at?: string;
   tour_completed?: boolean;
   welcome_message_sent?: boolean;
+  // Canonical home location columns (matches mobile schema)
+  home_state?: string | null;
+  home_lga?: string | null;
+  home_ward?: string | null;
+  home_lat?: number | null;
+  home_lng?: number | null;
+  home_location_geom?: string | null;
   created_at?: string;
   updated_at?: string;
 }

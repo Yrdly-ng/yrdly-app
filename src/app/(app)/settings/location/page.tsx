@@ -115,11 +115,9 @@ export default function LocationSettingsPage() {
     setSaving(true);
     try {
       await updateProfile({
-        location: {
-          state: selectedState,
-          lga: selectedLga,
-          ward: selectedWard || undefined,
-        },
+        home_state: selectedState,
+        home_lga: selectedLga,
+        home_ward: selectedWard || null,
       });
 
       if (migrateListings && profile?.id) {

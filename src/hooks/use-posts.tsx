@@ -371,18 +371,17 @@ export const usePosts = (filter?: LocationFilter | null) => {
           )
         );
 
-        // Auto-stamp the creator's location from their profile
-        const userLocation = profile.location as { state?: string; lga?: string; ward?: string } | undefined;
+        // Auto-stamp the creator's location from their canonical home_* columns
+        let resolvedState = profile.home_state || null;
+        let resolvedLga   = profile.home_lga   || null;
+        let resolvedWard  = profile.home_ward  || null;
 
-        // Derive geopoint from event_location (Events) or location (General/For Sale)
-        const evtGeopoint = (postData as any).event_location?.geopoint || (postData as any).location?.geopoint as { latitude: number; longitude: number } | undefined;
+        // Derive geopoint from event_location for event posts (overrides home location)
+        const evtGeopoint = (postData as any).event_location?.geopoint as { latitude: number; longitude: number } | undefined;
         const locationGeom = evtGeopoint
           ? `POINT(${evtGeopoint.longitude} ${evtGeopoint.latitude})`
           : null;
-          
-        let resolvedLga = userLocation?.lga || null;
-        let resolvedWard = userLocation?.ward || null;
-        let resolvedState = userLocation?.state || null;
+
         if (evtGeopoint) {
           const geo = await reverseGeocode(evtGeopoint.latitude, evtGeopoint.longitude);
           if (geo && !('status' in geo) && 'lga' in geo) {
@@ -407,7 +406,7 @@ export const usePosts = (filter?: LocationFilter | null) => {
             state: resolvedState,
             lga: resolvedLga,
             ward: resolvedWard,
-            author_location: userLocation ? { state: userLocation.state, lga: userLocation.lga, ward: userLocation.ward } : null,
+            author_location: { state: resolvedState, lga: resolvedLga, ward: resolvedWard },
           }),
           // Write location_geom from event_location geopoint when available
           ...(locationGeom ? { location_geom: locationGeom } : {}),

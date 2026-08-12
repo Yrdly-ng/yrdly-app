@@ -1,45 +1,17 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { SceneBg, GlassCard, GlassInput, StepBar, PrimaryBtn } from '@/components/onboarding/primitives';
 import { AuthService } from '@/lib/auth-service';
 import { useAuth } from '@/hooks/use-supabase-auth';
 import { supabase } from '@/lib/supabase';
-import { Camera, MapPin, Navigation, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { useGpsLocation } from '@/hooks/use-gps-location';
+import { Camera, MapPin, Navigation, ShieldCheck, AlertTriangle, Loader2 } from 'lucide-react';
 
-const SUGGESTIONS = ['Victoria Island, Lagos', 'Lekki Phase 1, Lagos', 'Surulere, Lagos', 'Ikeja GRA, Lagos'];
 
-const ALL_NEIGHBOURHOODS = [
-  'Victoria Island, Eti-Osa, Lagos',
-  'Lekki Phase 1, Eti-Osa, Lagos',
-  'Ikeja GRA, Ikeja, Lagos',
-  'Surulere, Surulere, Lagos',
-  'Yaba, Shomolu, Lagos',
-  'Ikoyi, Eti-Osa, Lagos',
-  'Gbagada, Kosofe, Lagos',
-  'Ajah, Eti-Osa, Lagos',
-  'Maryland, Ikeja, Lagos',
-  'Festac Town, Amuwo-Odofin, Lagos',
-  'Alimosho, Alimosho, Lagos',
-  'Magodo, Kosofe, Lagos',
-  'Opebi, Ikeja, Lagos',
-  'Allen Avenue, Ikeja, Lagos',
-  'Maitama, Abuja (FCT)',
-  'Wuse II, Abuja (FCT)',
-  'Gwarinpa, Abuja (FCT)',
-  'Asokoro, Abuja (FCT)',
-  'Jabi, Abuja (FCT)',
-  'Port Harcourt City, Rivers',
-  'Enugu North, Enugu',
-  'Ibadan North, Oyo',
-  'Benin City, Edo',
-  'Calabar Municipal, Cross River',
-  'Abeokuta South, Ogun',
-  'Kaduna North, Kaduna',
-  'Kano Municipal, Kano',
-];
+interface ResolvedWard { state: string; lga: string; ward: string; label: string; }
 
 function OnboardingProfileContent() {
   const router = useRouter();
@@ -47,6 +19,7 @@ function OnboardingProfileContent() {
   const phoneSkipped = searchParams.get('phoneSkipped') === 'true';
   const { user } = useAuth();
   const [step, setStep] = useState<1 | 2>(1);
+  const gps = useGpsLocation();
 
   // Step 1 State
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
@@ -56,10 +29,14 @@ function OnboardingProfileContent() {
   const [usernameErr, setUsernameErr] = useState('');
 
   // Step 2 State
-  const [location, setLocation] = useState('');
-  const [selectedLoc, setSelectedLoc] = useState(false);
-  const [locLoading, setLocLoading] = useState(false);
+  const [locQuery, setLocQuery] = useState('');
+  const [locSuggestions, setLocSuggestions] = useState<ResolvedWard[]>([]);
+  const [locSearching, setLocSearching] = useState(false);
+  const [selectedLoc, setSelectedLoc] = useState<ResolvedWard | null>(null);
+  const [locError, setLocError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (user?.user_metadata?.username) {
@@ -75,26 +52,42 @@ function OnboardingProfileContent() {
     }
   };
 
-  const handleUseGPS = async () => {
-    setLocLoading(true);
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        () => {
-          setLocation('Victoria Island, Lagos');
-          setSelectedLoc(true);
-          setLocLoading(false);
-        },
-        () => {
-          setLocation('Victoria Island, Lagos');
-          setSelectedLoc(true);
-          setLocLoading(false);
-        }
-      );
-    } else {
-      setLocation('Victoria Island, Lagos');
-      setSelectedLoc(true);
-      setLocLoading(false);
+  // Auto-fill from GPS result when it arrives
+  useEffect(() => {
+    if (gps.status === 'success' && gps.location) {
+      const { state, lga, ward, displayAddress } = gps.location;
+      const resolved: ResolvedWard = { state, lga, ward, label: `${ward}, ${lga}, ${state}` };
+      setSelectedLoc(resolved);
+      setLocQuery(displayAddress || resolved.label);
+    } else if (gps.status === 'denied' || gps.status === 'error' || gps.status === 'timeout') {
+      setLocError(gps.error || 'Could not detect location. Please select manually.');
     }
+  }, [gps.status, gps.location, gps.error]);
+
+  // Debounced live search against lga_wards table
+  const handleLocQuery = (v: string) => {
+    setLocQuery(v);
+    setSelectedLoc(null);
+    setLocError('');
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!v.trim()) { setLocSuggestions([]); return; }
+    debounceRef.current = setTimeout(async () => {
+      setLocSearching(true);
+      const { data } = await supabase
+        .from('lga_wards')
+        .select('ward_name, lga_name, state_name')
+        .or(`ward_name.ilike.%${v}%,lga_name.ilike.%${v}%,state_name.ilike.%${v}%`)
+        .limit(8);
+      setLocSuggestions(
+        (data || []).map((r: any) => ({
+          state: r.state_name,
+          lga: r.lga_name,
+          ward: r.ward_name,
+          label: `${r.ward_name}, ${r.lga_name}, ${r.state_name}`,
+        }))
+      );
+      setLocSearching(false);
+    }, 300);
   };
 
   const handleStep1Next = async () => {
@@ -112,7 +105,9 @@ function OnboardingProfileContent() {
 
   const handleComplete = async () => {
     if (!user) return;
+    if (!selectedLoc) { setLocError('Please choose your neighbourhood to continue.'); return; }
     setLoading(true);
+    setSaveError('');
 
     try {
       let avatarUrl = user.user_metadata?.avatar_url || null;
@@ -131,19 +126,26 @@ function OnboardingProfileContent() {
       }
 
       const cleanHandle = handle.replace(/^@/, '').trim().toLowerCase() || user.email?.split('@')[0];
+      const lat = gps.location?.lat ?? null;
+      const lng = gps.location?.lng ?? null;
 
       await AuthService.updateUserProfile(user.id, {
         username: cleanHandle,
         bio: bio.trim(),
         avatar_url: avatarUrl,
-        location: { city: location.trim() || 'Victoria Island', state: 'Lagos' } as any,
+        home_state: selectedLoc.state,
+        home_lga: selectedLoc.lga,
+        home_ward: selectedLoc.ward,
+        home_lat: lat,
+        home_lng: lng,
+        ...(lat && lng ? { home_location_geom: `POINT(${lng} ${lat})` } : {}),
         onboarding_status: 'completed',
         profile_completed: true,
-      });
+      } as any);
 
       router.replace('/onboarding/welcome');
-    } catch {
-      router.replace('/onboarding/welcome');
+    } catch (err: any) {
+      setSaveError(err?.message || 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -231,74 +233,59 @@ function OnboardingProfileContent() {
               <div className="flex flex-col gap-1 text-left">
                 <h2 className="text-2xl font-black text-white">Where do you live?</h2>
                 <p className="text-sm font-normal text-white/70">
-                  We use your general area to show local posts, events & marketplace items
+                  We use your general area to show local posts, events &amp; marketplace items
                 </p>
               </div>
 
               <div className="relative flex flex-col gap-2">
                 <GlassInput
-                  placeholder="Search district or neighbourhood..."
-                  value={location}
-                  onChange={v => { setLocation(v); setSelectedLoc(false); }}
-                  icon={<MapPin className="w-4 h-4" />}
+                  placeholder="Search ward, LGA or state..."
+                  value={locQuery}
+                  onChange={handleLocQuery}
+                  icon={locSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
                 />
 
-                {/* Realtime Autocomplete Dropdown List */}
-                {location.trim().length > 0 && !selectedLoc && (
+                {/* Live autocomplete dropdown */}
+                {locSuggestions.length > 0 && !selectedLoc && (
                   <div className="w-full bg-[#141414] border border-white/15 rounded-[18px] p-2 flex flex-col gap-1 max-h-48 overflow-y-auto shadow-2xl z-20">
-                    {ALL_NEIGHBOURHOODS.filter(item =>
-                      item.toLowerCase().includes(location.toLowerCase())
-                    ).slice(0, 6).map(match => (
+                    {locSuggestions.map(s => (
                       <button
-                        key={match}
+                        key={s.label}
                         type="button"
-                        onClick={() => { setLocation(match); setSelectedLoc(true); }}
+                        onClick={() => { setSelectedLoc(s); setLocQuery(s.label); setLocSuggestions([]); }}
                         className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-left text-sm font-medium text-white hover:bg-[#82DB7E]/15 hover:text-[#82DB7E] transition-all"
                       >
                         <MapPin className="w-3.5 h-3.5 text-[#82DB7E]" />
-                        <span>{match}</span>
+                        <span>{s.label}</span>
                       </button>
                     ))}
-                    {ALL_NEIGHBOURHOODS.filter(item => item.toLowerCase().includes(location.toLowerCase())).length === 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setSelectedLoc(true)}
-                        className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-left text-sm font-medium text-[#82DB7E]"
-                      >
-                        <MapPin className="w-3.5 h-3.5" />
-                        <span>Use &quot;{location}&quot;</span>
-                      </button>
-                    )}
                   </div>
                 )}
               </div>
 
               <button
                 type="button"
-                onClick={handleUseGPS}
-                disabled={locLoading}
-                className="w-full h-12 rounded-[18px] bg-white/[0.08] border border-white/15 text-white font-semibold text-sm flex items-center justify-center gap-2 hover:bg-white/15 transition-all active:scale-98"
+                onClick={gps.detectLocation}
+                disabled={gps.status === 'requesting' || gps.status === 'geocoding'}
+                className="w-full h-12 rounded-[18px] bg-white/[0.08] border border-white/15 text-white font-semibold text-sm flex items-center justify-center gap-2 hover:bg-white/15 transition-all active:scale-98 disabled:opacity-60"
               >
-                <Navigation className="w-4 h-4 text-[#82DB7E]" />
-                <span>{locLoading ? 'Locating...' : 'Use Current Location (GPS)'}</span>
+                {gps.status === 'requesting' || gps.status === 'geocoding' ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-[#82DB7E]" />
+                ) : (
+                  <Navigation className="w-4 h-4 text-[#82DB7E]" />
+                )}
+                <span>
+                  {gps.status === 'requesting' ? 'Requesting permission...' :
+                   gps.status === 'geocoding' ? 'Resolving location...' :
+                   gps.status === 'success' ? 'Location detected ✓' :
+                   'Use Current Location (GPS)'}
+                </span>
               </button>
 
-              {/* Suggestions */}
-              {!selectedLoc && location.trim().length === 0 && (
-                <div className="flex flex-col gap-2">
-                  <span className="text-xs font-extrabold text-white/70 uppercase tracking-wider">Popular Areas</span>
-                  <div className="flex flex-wrap gap-2">
-                    {SUGGESTIONS.map(s => (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => { setLocation(s); setSelectedLoc(true); }}
-                        className="px-3.5 py-2 rounded-xl bg-white/[0.06] border border-white/10 text-xs font-semibold text-white hover:bg-white/15 transition-all"
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
+              {(locError || saveError) && (
+                <div className="flex items-center gap-2 p-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-semibold">
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                  <span>{locError || saveError}</span>
                 </div>
               )}
 
@@ -311,7 +298,7 @@ function OnboardingProfileContent() {
               <PrimaryBtn
                 label="Complete Setup & Join"
                 onClick={handleComplete}
-                disabled={!location.trim()}
+                disabled={!selectedLoc}
                 loading={loading}
               />
             </>
