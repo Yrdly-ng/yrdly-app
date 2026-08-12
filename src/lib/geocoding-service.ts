@@ -47,12 +47,28 @@ let lgaWardsCache: any[] = [];
 
 async function getLgaWards(supabase: any): Promise<any[]> {
   if (lgaWardsCache.length > 0) return lgaWardsCache;
-  const { data, error } = await supabase.from('lga_wards').select('state, lga, ward, latitude, longitude');
-  if (error || !data) {
-    console.error('Failed to fetch lga_wards', error);
-    return [];
+  
+  let allWards: any[] = [];
+  let page = 0;
+  let hasMore = true;
+  
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from('lga_wards')
+      .select('state, lga, ward, latitude, longitude')
+      .range(page * 1000, (page + 1) * 1000 - 1);
+      
+    if (error || !data) {
+      console.error('Failed to fetch lga_wards', error);
+      break;
+    }
+    
+    allWards = allWards.concat(data);
+    if (data.length < 1000) hasMore = false;
+    page++;
   }
-  lgaWardsCache = data || [];
+  
+  lgaWardsCache = allWards;
   return lgaWardsCache;
 }
 
