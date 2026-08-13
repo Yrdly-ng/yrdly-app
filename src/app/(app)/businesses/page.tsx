@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { CreateBusinessDialog } from "@/components/CreateBusinessDialog";
 import { BusinessCreatorOnboarding } from "@/components/BusinessCreatorOnboarding";
 import { useLocation } from "@/contexts/LocationContext";
+import { useAuth } from "@/hooks/use-supabase-auth";
 import type { Business } from "@/types";
 
 const FONT = "var(--font-work-sans)";
@@ -48,6 +49,7 @@ interface CategoryTile {
 
 function BusinessesContent() {
   const router = useRouter();
+  const { profile } = useAuth();
   const searchParams = useSearchParams();
   const activeCategory = searchParams.get("category") || null;
 
@@ -172,6 +174,14 @@ function BusinessesContent() {
     router.push("/businesses");
   };
 
+  const handleCreateBusiness = () => {
+    if (!profile?.phone_verified) {
+      router.push("/verify-phone");
+      return;
+    }
+    setOnboardingOpen(true);
+  };
+
   return (
     <div className="min-h-[100dvh] pb-10" style={{ background: "var(--c-bg)" }}>
       {/* Header */}
@@ -222,7 +232,7 @@ function BusinessesContent() {
             ))}
           </div>
         ) : businesses.length === 0 ? (
-          <EmptyState onAddBusiness={() => setOnboardingOpen(true)} />
+          <EmptyState onAddBusiness={handleCreateBusiness} />
         ) : showingList ? (
           <BusinessList
             businesses={visibleBusinesses}
@@ -239,7 +249,7 @@ function BusinessesContent() {
           size="lg"
           className="rounded-full h-12 w-12 sm:h-14 sm:w-14 shadow-lg p-0"
           style={{ background: "hsl(var(--primary))" }}
-          onClick={() => setOnboardingOpen(true)}
+          onClick={handleCreateBusiness}
         >
           <Plus className="h-6 w-6 text-foreground" />
         </Button>

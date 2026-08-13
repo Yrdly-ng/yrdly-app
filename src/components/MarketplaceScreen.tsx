@@ -22,7 +22,7 @@ interface MarketplaceScreenProps {
 }
 
 export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceScreenProps) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { activeFilter } = useLocation();
   const filterState = activeFilter?.state;
   const filterLga = activeFilter?.lga;
@@ -50,6 +50,14 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
   const handleEditItem = (item: PostType) => {
     setEditingItem(item);
     setIsEditDialogOpen(true);
+  };
+
+  const handleCreateItem = () => {
+    if (!profile?.phone_verified) {
+      router.push("/verify-phone");
+      return;
+    }
+    setOnboardingOpen(true);
   };
 
   const handleDeleteItem = async (itemId: string) => {
@@ -260,7 +268,7 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
       {/* FAB — list an item */}
       <div className="fixed bottom-20 right-4 z-20 pb-[env(safe-area-inset-bottom)]">
         <button
-          onClick={() => setOnboardingOpen(true)}
+          onClick={handleCreateItem}
           className="w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
           style={{ background: "hsl(var(--primary))" }}
         >

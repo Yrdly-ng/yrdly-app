@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { usePosts } from "@/hooks/use-posts";
@@ -74,11 +75,28 @@ interface HomeScreenProps {
 
 export function HomeScreen({ onViewProfile }: HomeScreenProps) {
   const { user, profile } = useAuth();
+  const router = useRouter();
   const { activeFilter } = useLocation();
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [marketplaceOnboardingOpen, setMarketplaceOnboardingOpen] = useState(false);
   const [isCreateItemOpen, setIsCreateItemOpen] = useState(false);
   const { posts, loading, loadingMore, hasMore, loadMore, deletePost, createPost } = usePosts(activeFilter);
+
+  const handleSellClick = () => {
+    if (!profile?.phone_verified) {
+      router.push("/verify-phone");
+      return;
+    }
+    setMarketplaceOnboardingOpen(true);
+  };
+
+  const handleEventClick = () => {
+    if (!profile?.phone_verified) {
+      router.push("/verify-phone");
+      return;
+    }
+    setOnboardingOpen(true);
+  };
 
   // Auto-load the next page when the sentinel scrolls into view.
   // We keep loadMore in a ref so the observer doesn't get torn down
@@ -156,7 +174,7 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
           {/* Action buttons - horizontally scrollable on small screens */}
           <div className="flex items-center gap-2 overflow-x-auto pb-0.5 scrollbar-hide">
             <button
-              onClick={() => setMarketplaceOnboardingOpen(true)}
+              onClick={handleSellClick}
               className="flex items-center gap-2 rounded-full px-4 py-2 text-[0.9rem] font-semibold text-[#15803D] bg-[#DCFCE7] border border-[#BBF7D0] dark:text-emerald-300 dark:bg-slate-800/80 dark:border-emerald-900/50 transition-none"
               style={{ fontFamily: FONT_RALEWAY, transform: "none" }}
             >
@@ -166,7 +184,7 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
 
 
             <button
-              onClick={() => setOnboardingOpen(true)}
+              onClick={handleEventClick}
               className="flex items-center gap-2 rounded-full px-4 py-2 text-[0.9rem] font-semibold whitespace-nowrap text-[#7E22CE] bg-[#F3E8FF] border border-[#E9D5FF] dark:text-purple-300 dark:bg-slate-800/80 dark:border-purple-900/50 transition-none"
               style={{ fontFamily: FONT_RALEWAY, transform: "none" }}
             >

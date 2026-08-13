@@ -301,9 +301,9 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
   const bio = (displayProfile as any)?.bio;
   const interests = (displayProfile as any)?.interests as string[] | undefined;
   const avatarUrl = (displayProfile as any)?.avatar_url || (displayUser as any)?.avatar_url;
-  const locationStr = (displayProfile as any)?.location?.state && (displayProfile as any)?.location?.lga
-    ? `${(displayProfile as any).location.state}, ${(displayProfile as any).location.lga}`
-    : (displayProfile as any)?.location?.state || "";
+  const locationStr = (displayProfile as any)?.home_state && (displayProfile as any)?.home_lga
+    ? `${(displayProfile as any).home_state}, ${(displayProfile as any).home_lga}`
+    : (displayProfile as any)?.home_state || (displayProfile as any)?.location?.state || "";
   const joinedDate = new Date((displayUser as any)?.created_at || Date.now()).toLocaleDateString("en-US", { month: "short", year: "numeric" });
   const isVerifiedUser = !!(displayProfile as any)?.is_verified;
   const isVerifiedSeller = !!(displayProfile as any)?.verified_seller;

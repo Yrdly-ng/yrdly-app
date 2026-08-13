@@ -5,7 +5,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
-import { ArrowLeft, Building2, CheckCircle, AlertCircle, Loader2, Sparkles } from "lucide-react";
+import { ArrowLeft, Building2, AlertCircle, Loader2, Sparkles, Check, ChevronsUpDown, CheckCircle } from "lucide-react";
+import { BankLogo } from "@/components/BankLogo";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 
 /* ── Design tokens ─────────────────────────────────── */
 const BG     = "var(--c-bg)";
@@ -15,36 +18,6 @@ const GREEN  = "hsl(var(--primary))";
 const GREEN_L = "#82DB7E";
 const MUTED  = "var(--c-text-muted)";
 const DIM    = "var(--c-text-muted)";
-
-const NIGERIAN_BANKS = [
-  { code: "044", name: "Access Bank" },
-  { code: "023", name: "Citibank Nigeria" },
-  { code: "063", name: "Diamond Bank" },
-  { code: "050", name: "Ecobank Nigeria" },
-  { code: "084", name: "Enterprise Bank" },
-  { code: "070", name: "Fidelity Bank" },
-  { code: "011", name: "First Bank of Nigeria" },
-  { code: "214", name: "First City Monument Bank" },
-  { code: "058", name: "Guaranty Trust Bank" },
-  { code: "030", name: "Heritage Bank" },
-  { code: "301", name: "Jaiz Bank" },
-  { code: "082", name: "Keystone Bank" },
-  { code: "526", name: "Parallex Bank" },
-  { code: "076", name: "Polaris Bank" },
-  { code: "101", name: "Providus Bank" },
-  { code: "221", name: "Stanbic IBTC Bank" },
-  { code: "068", name: "Standard Chartered" },
-  { code: "232", name: "Sterling Bank" },
-  { code: "100", name: "Suntrust Bank" },
-  { code: "032", name: "Union Bank of Nigeria" },
-  { code: "033", name: "United Bank for Africa" },
-  { code: "215", name: "Unity Bank" },
-  { code: "035", name: "Wema Bank" },
-  { code: "057", name: "Zenith Bank" },
-  { code: "100004", name: "OPay" },
-  { code: "100033", name: "PalmPay" },
-  { code: "090267", name: "Kuda Microfinance Bank" },
-];
 
 interface ExistingAccount {
   accountName: string;
@@ -69,6 +42,7 @@ interface FailedPayout {
   const { user } = useAuth();
   const { toast } = useToast();
 
+  const [banks, setBanks]               = useState<{name: string; code: string}[]>([]);
   const [bankCode, setBankCode]         = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [accountName, setAccountName]   = useState("");
@@ -78,15 +52,36 @@ interface FailedPayout {
   const [showForm, setShowForm]         = useState(false);
   const [failedPayouts, setFailedPayouts] = useState<FailedPayout[]>([]);
   const [retryingId, setRetryingId]     = useState<string | null>(null);
+  const [openBankSelect, setOpenBankSelect] = useState(false);
 
-  // Fetch existing account on mount
+  // Fetch data on mount
   useEffect(() => {
-    async function fetchAccount() {
+    async function fetchData() {
       if (!user) return;
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const [sessionRes, banksRes] = await Promise.all([
+          supabase.auth.getSession(),
+          fetch("https://api.paystack.co/bank?currency=NGN").catch(err => {
+            console.error("Paystack fetch error:", err);
+            return null;
+          })
+        ]);
+
+        if (!banksRes) {
+          toast({ title: "Network Error", description: "Failed to connect to Paystack to fetch banks.", variant: "destructive" });
+        } else if (banksRes.ok) {
+          const banksData = await banksRes.json();
+          if (banksData.status) {
+            setBanks(banksData.data);
+          } else {
+            toast({ title: "Bank List Error", description: banksData.message || "Failed to load banks.", variant: "destructive" });
+          }
+        } else {
+          toast({ title: "API Error", description: "Could not fetch bank list from Paystack.", variant: "destructive" });
+        }
+
         const res = await fetch("/api/seller/setup-account", {
-          headers: { Authorization: `Bearer ${session?.access_token}` },
+          headers: { Authorization: `Bearer ${sessionRes.data.session?.access_token}` },
         });
         const data = await res.json();
         if (data.account) {
@@ -104,7 +99,7 @@ interface FailedPayout {
         setFetching(false);
       }
     }
-    fetchAccount();
+    fetchData();
   }, [user]);
 
   const handleSubmit = useCallback(async () => {
@@ -171,7 +166,7 @@ interface FailedPayout {
   };
 
   const getBankName = (code: string) =>
-    NIGERIAN_BANKS.find((b) => b.code === code)?.name || code;
+    banks.find((b) => b.code === code)?.name || code;
 
   // Auto-resolve account name
   useEffect(() => {
@@ -336,9 +331,7 @@ interface FailedPayout {
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20">
-                  <CheckCircle className="w-6 h-6 text-primary" />
-                </div>
+                <BankLogo code={existing.bankCode} name={getBankName(existing.bankCode)} size={48} />
                 <div>
                   <h3 className="font-black text-foreground">Bank Linked</h3>
                   <p className="text-xs font-bold text-primary uppercase tracking-widest">Verified Account</p>
@@ -400,23 +393,55 @@ interface FailedPayout {
                 <label className="text-[0.625rem] uppercase tracking-[0.2em] font-black text-muted-foreground ml-1">
                   Select Bank
                 </label>
-                <div className="relative">
-                  <select
-                    value={bankCode}
-                    onChange={(e) => setBankCode(e.target.value)}
-                    className="w-full h-14 rounded-2xl p-4 text-base bg-background/5 border border-border focus:border-primary/50 focus:outline-none transition-all appearance-none cursor-pointer text-foreground font-medium"
-                  >
-                    <option value="" className="bg-card">Choose institution...</option>
-                    {NIGERIAN_BANKS.map((bank) => (
-                      <option key={bank.code} value={bank.code} className="bg-card">
-                        {bank.name}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-40">
-                    <ArrowLeft className="w-4 h-4 rotate-[270deg]" />
-                  </div>
-                </div>
+                <Popover open={openBankSelect} onOpenChange={setOpenBankSelect}>
+                  <PopoverTrigger asChild>
+                    <button
+                      className="w-full h-14 rounded-2xl px-4 text-base bg-background/5 border border-border focus:border-primary/50 transition-all font-medium flex items-center justify-between outline-none"
+                      role="combobox"
+                    >
+                      {bankCode ? (
+                        <div className="flex items-center gap-3">
+                          <BankLogo code={bankCode} name={getBankName(bankCode)} size={24} />
+                          <span className="truncate">{getBankName(bankCode)}</span>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">Choose institution...</span>
+                      )}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search bank..." className="h-11" />
+                      <CommandList className="max-h-[300px]">
+                        <CommandEmpty>No bank found.</CommandEmpty>
+                        <CommandGroup>
+                          {banks.map((bank) => (
+                            <CommandItem
+                              key={bank.code}
+                              value={bank.name}
+                              onSelect={() => {
+                                setBankCode(bank.code);
+                                setOpenBankSelect(false);
+                              }}
+                              className="py-3 cursor-pointer"
+                            >
+                              <Check
+                                className={`mr-2 h-4 w-4 shrink-0 ${
+                                  bankCode === bank.code ? "opacity-100" : "opacity-0"
+                                }`}
+                              />
+                              <div className="flex items-center gap-3">
+                                <BankLogo code={bank.code} name={bank.name} size={24} />
+                                <span>{bank.name}</span>
+                              </div>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               {/* Account number */}

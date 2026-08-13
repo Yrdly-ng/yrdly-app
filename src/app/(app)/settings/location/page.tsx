@@ -34,17 +34,17 @@ export default function LocationSettingsPage() {
     | undefined;
 
   const [selectedState, setSelectedState] = useState(
-    profileLocation?.state || ""
+    profile?.home_state || profile?.location?.state || ""
   );
-  const [selectedLga, setSelectedLga] = useState(profileLocation?.lga || "");
+  const [selectedLga, setSelectedLga] = useState(profile?.home_lga || profile?.location?.lga || "");
   const [selectedWard, setSelectedWard] = useState(
-    profileLocation?.ward || ""
+    profile?.home_ward || profile?.location?.ward || ""
   );
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [showMigrationPrompt, setShowMigrationPrompt] = useState(false);
   const [activeListingsCount, setActiveListingsCount] = useState(0);
-  const [showManualLocation, setShowManualLocation] = useState(!profileLocation?.state);
+  const [showManualLocation, setShowManualLocation] = useState(!profile?.home_state && !profile?.location?.state);
   const [manualReason, setManualReason] = useState<string>("");
 
   // Load LGAs when state is set on mount
@@ -78,9 +78,9 @@ export default function LocationSettingsPage() {
   };
 
   const hasChanges =
-    selectedState !== (profileLocation?.state || "") ||
-    selectedLga !== (profileLocation?.lga || "") ||
-    selectedWard !== (profileLocation?.ward || "");
+    selectedState !== (profile?.home_state || profile?.location?.state || "") ||
+    selectedLga !== (profile?.home_lga || profile?.location?.lga || "") ||
+    selectedWard !== (profile?.home_ward || profile?.location?.ward || "");
 
   const canSave = selectedState && selectedLga && hasChanges;
 

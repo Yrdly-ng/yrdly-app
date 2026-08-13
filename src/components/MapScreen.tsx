@@ -182,8 +182,19 @@ export function MapScreen({ className }: MapScreenProps) {
       if (user?.id) {
         const { data: frds } = await supabase.rpc('get_friends_locations', { user_id: user.id });
         (frds || []).forEach((f: any) => {
-          const loc = extract(f.location);
-          if (loc) found.push({ id: f.friend_id, type: 'friend', position: applyJitter(loc.lat, loc.lng), title: f.friend_name, address: loc.address || 'Nearby', avatar_url: f.friend_avatar_url, last_seen: f.last_seen });
+          const lat = f.home_lat ?? f.location?.lat ?? f.location?.latitude;
+          const lng = f.home_lng ?? f.location?.lng ?? f.location?.longitude;
+          if (lat && lng) {
+            found.push({
+              id: f.friend_id,
+              type: 'friend',
+              position: applyJitter(Number(lat), Number(lng)),
+              title: f.friend_name,
+              address: f.home_address || f.location?.address || 'Nearby',
+              avatar_url: f.friend_avatar_url,
+              last_seen: f.last_seen
+            });
+          }
         });
       }
 

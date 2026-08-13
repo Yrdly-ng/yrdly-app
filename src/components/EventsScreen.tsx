@@ -103,7 +103,7 @@ function isToday(d: string | null | undefined): boolean {
 
 
 export function EventsScreen({ className }: EventsScreenProps) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
   const { activeFilter } = useLocation();
@@ -136,6 +136,14 @@ export function EventsScreen({ className }: EventsScreenProps) {
       else next.add(eventId);
       return next;
     });
+  };
+
+  const handleCreateEvent = () => {
+    if (!profile?.phone_verified) {
+      router.push("/verify-phone");
+      return;
+    }
+    setOnboardingOpen(true);
   };
 
   useEffect(() => {
@@ -622,7 +630,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
           size="lg"
           className="rounded-full h-12 w-12 sm:h-14 sm:w-14 shadow-lg p-0"
           style={{ background: "hsl(var(--primary))" }}
-          onClick={() => setOnboardingOpen(true)}
+          onClick={handleCreateEvent}
         >
           <Plus className="h-6 w-6 text-foreground" />
         </Button>
