@@ -3,11 +3,37 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { SceneBg, GlassCard, GlassInput, PrimaryBtn, BackBtn } from '@/components/onboarding/primitives';
-import { ShieldCheck, ChevronDown } from 'lucide-react';
+import { ShieldCheck, ChevronDown, AlertCircle } from 'lucide-react';
+import { useAuth } from '@/hooks/use-supabase-auth';
 
 export default function VerifyPhonePage() {
   const router = useRouter();
   const [phone, setPhone] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const { sendPhoneOtp } = useAuth();
+
+  const handleSendOtp = async () => {
+    if (phone.length < 10) return;
+    
+    setLoading(true);
+    setError('');
+    
+    try {
+      const fullPhone = `+234${phone}`;
+      const { pinId, error: otpError } = await sendPhoneOtp(fullPhone);
+      
+      if (otpError) {
+        setError(otpError);
+      } else if (pinId) {
+        router.push(`/onboarding/verify-phone-otp?phone=${encodeURIComponent(phone)}&pinId=${encodeURIComponent(pinId)}`);
+      }
+    } catch (err: any) {
+      setError(err.message || 'An unexpected error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-[100dvh] relative flex flex-col justify-between overflow-y-auto bg-[#050505] font-sans pb-10">
@@ -57,10 +83,17 @@ export default function VerifyPhonePage() {
             <span>Your number is never shared publicly with other users.</span>
           </div>
 
+          {error && (
+            <div className="flex items-start gap-2.5 p-3.5 mt-2 rounded-2xl bg-red-500/10 border border-red-500/20 text-xs text-red-400">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span>{error}</span>
+            </div>
+          )}
+
           <PrimaryBtn
-            label="Send Verification Code"
-            onClick={() => router.push(`/onboarding/verify-phone-otp?phone=${encodeURIComponent(phone)}`)}
-            disabled={phone.length < 10}
+            label={loading ? "Sending..." : "Send Verification Code"}
+            onClick={handleSendOtp}
+            disabled={phone.length < 10 || loading}
           />
         </GlassCard>
       </div>

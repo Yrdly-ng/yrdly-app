@@ -3,13 +3,22 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { SceneBg, GlassCard, PrimaryBtn, BackBtn } from '@/components/onboarding/primitives';
+import { AlertCircle } from 'lucide-react';
+import { useAuth } from '@/hooks/use-supabase-auth';
 
 function VerifyPhoneOtpContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const phone = searchParams.get('phone') || '';
+  const initialPinId = searchParams.get('pinId') || '';
+  
+  const [pinId, setPinId] = useState(initialPinId);
   const [digits, setDigits] = useState(['', '', '', '', '', '']);
   const [countdown, setCountdown] = useState(45);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  
+  const { verifyPhoneOtp, sendPhoneOtp } = useAuth();
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
@@ -33,17 +42,62 @@ function VerifyPhoneOtpContent() {
     }
   };
 
-  const handleVerify = () => {
-    router.push('/onboarding/profile');
+  const handleVerify = async () => {
+    if (digits.some(d => d === '') || loading) return;
+    
+    setLoading(true);
+    setError('');
+    
+    try {
+      const otp = digits.join('');
+      const { verified, error: verifyError } = await verifyPhoneOtp(pinId, otp);
+      
+      if (verifyError) {
+        setError(verifyError);
+        setDigits(['', '', '', '', '', '']); // Clear input on error
+        inputRefs.current[0]?.focus();
+      } else if (verified) {
+        router.push('/onboarding/profile');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Verification failed');
+      setDigits(['', '', '', '', '', '']); // Clear input on error
+      inputRefs.current[0]?.focus();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (countdown > 0 || loading) return;
+    
+    setLoading(true);
+    setError('');
+    
+    try {
+      const fullPhone = `+234${phone}`;
+      const { pinId: newPinId, error: resendError } = await sendPhoneOtp(fullPhone);
+      
+      if (resendError) {
+        setError(resendError);
+      } else if (newPinId) {
+        setPinId(newPinId);
+        setCountdown(45); // Reset countdown
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to resend code');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const filled = digits.every(d => d !== '');
 
   useEffect(() => {
-    if (filled) {
+    if (filled && !loading && !error) {
       handleVerify();
     }
-  }, [digits]);
+  }, [filled]);
 
   return (
     <div className="min-h-[100dvh] relative flex flex-col justify-between overflow-y-auto bg-[#050505] font-sans pb-10">
@@ -75,26 +129,34 @@ function VerifyPhoneOtpContent() {
                 value={d}
                 onChange={e => handleDigit(i, e.target.value)}
                 onKeyDown={e => handleKeyDown(i, e)}
+                disabled={loading}
                 className={`w-12 h-14 text-center text-xl font-bold rounded-[14px] border transition-all focus:outline-none ${
                   d ? 'bg-[#82DB7E]/10 border-[#82DB7E]/50 text-white' : 'bg-white/[0.055] border-white/10 text-white'
-                }`}
+                } ${loading ? 'opacity-50' : ''}`}
               />
             ))}
           </div>
 
+          {error && (
+            <div className="flex items-start gap-2.5 p-3.5 mb-2 rounded-2xl bg-red-500/10 border border-red-500/20 text-xs text-red-400">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span>{error}</span>
+            </div>
+          )}
+
           <PrimaryBtn
-            label="Verify & Continue"
+            label={loading ? "Verifying..." : "Verify & Continue"}
             onClick={handleVerify}
-            disabled={!filled}
+            disabled={!filled || loading}
           />
 
           <div className="flex items-center justify-between text-xs text-white/38 pt-2">
             <span>Didn&apos;t receive SMS?</span>
             <button
               type="button"
-              onClick={countdown === 0 ? () => setCountdown(45) : undefined}
-              disabled={countdown > 0}
-              className={`font-semibold transition-colors ${countdown > 0 ? 'text-white/38 cursor-not-allowed' : 'text-[#82DB7E] hover:underline'}`}
+              onClick={handleResend}
+              disabled={countdown > 0 || loading}
+              className={`font-semibold transition-colors ${countdown > 0 || loading ? 'text-white/38 cursor-not-allowed' : 'text-[#82DB7E] hover:underline'}`}
             >
               {countdown > 0 ? `Resend SMS in 0:${String(countdown).padStart(2, '0')}` : 'Resend Code'}
             </button>
