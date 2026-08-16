@@ -37,7 +37,7 @@ export class ModerationAdminService {
 
   static async moderateContent(queueId: string, action: 'approve' | 'reject') {
     const { data, error } = await supabase.functions.invoke('admin-moderate', {
-      body: { queueId, action },
+      body: { queue_id: queueId, decision: action === 'approve' ? 'approved' : 'rejected' },
     });
 
     if (error) throw error;
