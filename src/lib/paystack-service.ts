@@ -249,4 +249,79 @@ export class PaystackService {
       return { valid: false };
     }
   }
+
+  /**
+   * Create a subaccount for a seller to enable split payments.
+   */
+  static async createSubaccount(params: {
+    businessName: string;
+    bankCode: string;
+    accountNumber: string;
+    percentageCharge: number;
+  }): Promise<{ success: boolean; subaccountCode?: string; error?: string }> {
+    try {
+      const response = await paystackRequest<{
+        status: boolean;
+        data?: { subaccount_code: string };
+        message?: string;
+      }>('/subaccount', {
+        method: 'POST',
+        body: JSON.stringify({
+          business_name: params.businessName,
+          settlement_bank: params.bankCode,
+          account_number: params.accountNumber,
+          percentage_charge: params.percentageCharge,
+          settlement_schedule: 'manual',
+        }),
+      });
+
+      if (response.status && response.data?.subaccount_code) {
+        return { success: true, subaccountCode: response.data.subaccount_code };
+      }
+
+      return { success: false, error: response.message || 'Failed to create subaccount' };
+    } catch (error: any) {
+      console.error('[PaystackService] createSubaccount error:', error);
+      return { success: false, error: error?.message || 'Unknown subaccount error' };
+    }
+  }
+
+  /**
+   * Update a subaccount for a seller.
+   */
+  static async updateSubaccount(
+    subaccountCode: string,
+    params: {
+      businessName: string;
+      bankCode: string;
+      accountNumber: string;
+      percentageCharge: number;
+    }
+  ): Promise<{ success: boolean; subaccountCode?: string; error?: string }> {
+    try {
+      const response = await paystackRequest<{
+        status: boolean;
+        data?: { subaccount_code: string };
+        message?: string;
+      }>(`/subaccount/${subaccountCode}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          business_name: params.businessName,
+          settlement_bank: params.bankCode,
+          account_number: params.accountNumber,
+          percentage_charge: params.percentageCharge,
+          settlement_schedule: 'manual',
+        }),
+      });
+
+      if (response.status && response.data?.subaccount_code) {
+        return { success: true, subaccountCode: response.data.subaccount_code };
+      }
+
+      return { success: false, error: response.message || 'Failed to update subaccount' };
+    } catch (error: any) {
+      console.error('[PaystackService] updateSubaccount error:', error);
+      return { success: false, error: error?.message || 'Unknown subaccount update error' };
+    }
+  }
 }

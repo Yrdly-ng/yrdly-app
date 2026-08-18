@@ -3,6 +3,7 @@ import { getAuthenticatedUser } from "@/lib/supabase-server";
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { createClient } from '@supabase/supabase-js';
 import { PaystackService } from '@/lib/paystack-service';
+import { MARKETPLACE_CONSTANTS } from '@/lib/constants';
 
 /**
  * Normalises a name string for fuzzy comparison:
@@ -96,22 +97,54 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let subaccountId: string | null = null; // We don't create Paystack subaccounts here yet
-
-    // ── Deactivate any existing accounts ──────────────────
-    // If this is an account update (not initial setup), mark the change time
+    // ── Check Existing Accounts ───────────────────────────
     const { data: existingAccounts } = await supabaseAdmin
       .from('seller_accounts')
-      .select('id')
+      .select('id, paystack_subaccount_id')
       .eq('user_id', user.id)
       .eq('is_active', true);
 
     const isUpdate = existingAccounts && existingAccounts.length > 0;
+    const existingSubaccountId = isUpdate ? existingAccounts[0].paystack_subaccount_id : null;
 
-    await supabaseAdmin
-      .from('seller_accounts')
-      .update({ is_primary: false, is_active: false, updated_at: new Date().toISOString() })
-      .eq('user_id', user.id);
+    // ── Create or Update Paystack Subaccount ──────────────
+    const subaccountPayload = {
+      businessName: accountName,
+      bankCode: bankCode,
+      accountNumber: accountNumber,
+      percentageCharge: Math.round(MARKETPLACE_CONSTANTS.COMMISSION_RATE * 100),
+    };
+
+    let subaccountId: string | null = null;
+    if (existingSubaccountId) {
+      const updateResult = await PaystackService.updateSubaccount(existingSubaccountId, subaccountPayload);
+      if (!updateResult.success) {
+        console.error('[AccountSetup] Subaccount update failed:', updateResult.error);
+        return NextResponse.json(
+          { error: 'Failed to update payment subaccount. Please try again.' },
+          { status: 502 }
+        );
+      }
+      subaccountId = existingSubaccountId;
+    } else {
+      const createResult = await PaystackService.createSubaccount(subaccountPayload);
+      if (!createResult.success || !createResult.subaccountCode) {
+        console.error('[AccountSetup] Subaccount creation failed:', createResult.error);
+        return NextResponse.json(
+          { error: 'Failed to create payment subaccount. Please try again.' },
+          { status: 502 }
+        );
+      }
+      subaccountId = createResult.subaccountCode;
+    }
+
+    // ── Deactivate any existing accounts ──────────────────
+    if (isUpdate) {
+      await supabaseAdmin
+        .from('seller_accounts')
+        .update({ is_primary: false, is_active: false, updated_at: new Date().toISOString() })
+        .eq('user_id', user.id);
+    }
 
     // ── Store in seller_accounts ───────────────────────────
     // For initial setup: no account_updated_at (allows immediate selling)
@@ -134,6 +167,8 @@ export async function POST(request: NextRequest) {
         account_updated_at: isUpdate ? now : null,
         created_at: now,
         updated_at: now,
+        paystack_subaccount_id: subaccountId,
+        paystack_subaccount_status: 'pending',
       });
 
     if (insertError) {
