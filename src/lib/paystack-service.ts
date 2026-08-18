@@ -44,6 +44,7 @@ export interface PaymentInitiationData {
   itemTitle: string;
   sellerName: string;
   callbackUrl?: string;
+  subaccount?: string;
   metadata?: Record<string, any>;
 }
 
@@ -66,29 +67,35 @@ export class PaystackService {
   static async initializePayment(data: PaymentInitiationData): Promise<string> {
     const callback_url = data.callbackUrl || `${process.env.NEXT_PUBLIC_APP_URL}/payment/verify?tx_ref=${data.transactionId}`;
 
+    const payload: any = {
+      reference: data.transactionId,
+      amount: Math.round(data.amount * 100), // convert NGN → kobo
+      email: data.buyerEmail,
+      currency: 'NGN',
+      callback_url,
+      channels: ['card', 'bank', 'ussd', 'bank_transfer'],
+      metadata: {
+        ...data.metadata,
+        buyer_name: data.buyerName,
+        item_title: data.itemTitle,
+        seller_name: data.sellerName,
+        transaction_id: data.transactionId,
+        custom_fields: [
+          { display_name: 'Item', variable_name: 'item_title', value: data.itemTitle },
+          { display_name: 'Seller', variable_name: 'seller_name', value: data.sellerName },
+        ],
+      },
+    };
+
+    if (data.subaccount) {
+      payload.subaccount = data.subaccount;
+    }
+
     const response = await paystackRequest<{ status: boolean; data: { authorization_url: string } }>(
       '/transaction/initialize',
       {
         method: 'POST',
-        body: JSON.stringify({
-          reference: data.transactionId,
-          amount: Math.round(data.amount * 100), // convert NGN → kobo
-          email: data.buyerEmail,
-          currency: 'NGN',
-          callback_url,
-          channels: ['card', 'bank', 'ussd', 'bank_transfer'],
-          metadata: {
-            ...data.metadata,
-            buyer_name: data.buyerName,
-            item_title: data.itemTitle,
-            seller_name: data.sellerName,
-            transaction_id: data.transactionId,
-            custom_fields: [
-              { display_name: 'Item', variable_name: 'item_title', value: data.itemTitle },
-              { display_name: 'Seller', variable_name: 'seller_name', value: data.sellerName },
-            ],
-          },
-        }),
+        body: JSON.stringify(payload),
       }
     );
 

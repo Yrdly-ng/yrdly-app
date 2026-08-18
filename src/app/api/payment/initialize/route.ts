@@ -235,7 +235,7 @@ export async function POST(request: NextRequest) {
     // ── Look up seller's payout account ──────────────────
     const { data: sellerAccount, error: sellerAccountError } = await supabaseAdmin
       .from("seller_accounts")
-      .select("verification_status, account_updated_at, updated_at")
+      .select("verification_status, account_updated_at, updated_at, paystack_subaccount_id")
       .eq("user_id", sellerId)
       .eq("is_active", true)
       .single();
@@ -330,6 +330,10 @@ export async function POST(request: NextRequest) {
     // Seller payout triggered after buyer confirms receipt.
     let paymentLink: string | undefined = undefined;
     if (totalAmount > 0) {
+      if (!sellerAccount?.paystack_subaccount_id) {
+        console.warn(`[PaymentInit] Fallback: Seller ${sellerId} has no paystack_subaccount_id, initializing transaction without split routing.`);
+      }
+
       try {
         paymentLink = await PaystackService.initializePayment({
           transactionId,
@@ -338,7 +342,8 @@ export async function POST(request: NextRequest) {
           buyerName,
           itemTitle,
           sellerName,
-          callbackUrl: callbackUrl || `${origin}/payment/verify?tx_ref=${transactionId}`
+          callbackUrl: callbackUrl || `${origin}/payment/verify?tx_ref=${transactionId}`,
+          subaccount: sellerAccount?.paystack_subaccount_id || undefined,
         });
       } catch (paystackError: any) {
         console.error("Paystack error:", paystackError);
