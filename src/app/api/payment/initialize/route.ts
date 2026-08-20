@@ -340,7 +340,8 @@ export async function POST(request: NextRequest) {
 
     if (totalAmount > 0 && process.env.PAYMENT_PROVIDER === 'payluk') {
       txPayload.payment_provider = 'payluk';
-      txPayload.payluk_tx_ref = paylukPaymentToken;
+      txPayload.payluk_tx_ref = paylukPaymentToken;     // PY_... token (used by claimFunds, webhook)
+      txPayload.payluk_escrow_id = paylukEscrowId;      // raw data.id (used by confirmDelivery)
     }
 
     const { data: txData, error: txError } = await supabaseAdmin
