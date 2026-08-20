@@ -111,8 +111,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'PHONE_VERIFICATION_REQUIRED' }, { status: 409 });
     }
 
-    // Payluk returns "Insufficient balance" (or similar) when the wallet is short.
-    if (msg.toLowerCase().includes('insufficient') || msg.toLowerCase().includes('balance')) {
+    // Payluk returns exactly "Insufficient balance" when the wallet is short.
+    if (msg.toLowerCase().includes('insufficient balance')) {
       return NextResponse.json({ error: 'INSUFFICIENT_BALANCE' }, { status: 402 });
     }
 
