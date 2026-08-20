@@ -246,9 +246,10 @@ export async function POST(request: NextRequest) {
       console.error("[PaymentInit] Error fetching seller account for", sellerId, ":", sellerAccountError);
     }
 
-    // ── Task 2: Block payouts to unverified accounts ──────
-    // Skip this check if the item is free since no money is exchanged
-    if (totalAmount > 0) {
+    // ── Task 2 & 3: Block payouts to unverified accounts & apply cooling off ──────
+    // Skip these checks if the item is free (no money exchanged)
+    // Also skip if using Payluk, since Payluk handles its own wallets and KYC
+    if (totalAmount > 0 && process.env.PAYMENT_PROVIDER !== 'payluk') {
       if (!sellerAccount || sellerAccount.verification_status !== "verified") {
         
         return NextResponse.json(
@@ -265,24 +266,21 @@ export async function POST(request: NextRequest) {
           { status: 402 }
         );
       }
-    }
 
-    // ── Task 3: 24-hour cooling-off after account change ──
-    // Only apply the 24-hour hold if account_updated_at is explicitly set
-    // (i.e., for existing accounts that changed their payout details).
-    // New accounts have account_updated_at = null and can sell immediately.
-    if (sellerAccount?.account_updated_at) {
-      const updatedTime = new Date(sellerAccount.account_updated_at).getTime();
-      const hoursSinceUpdate = (Date.now() - updatedTime) / (1000 * 60 * 60);
-      if (hoursSinceUpdate < 24) {
-        const hoursLeft = Math.ceil(24 - hoursSinceUpdate);
-        return NextResponse.json(
-          {
-            error: `The seller recently updated their payout account. For security, payouts are held for 24 hours after an account change. Please try again in ${hoursLeft} hour(s).`,
-            code: "COOLING_OFF_PERIOD",
-          },
-          { status: 402 }
-        );
+      // Only apply the 24-hour hold if account_updated_at is explicitly set
+      if (sellerAccount?.account_updated_at) {
+        const updatedTime = new Date(sellerAccount.account_updated_at).getTime();
+        const hoursSinceUpdate = (Date.now() - updatedTime) / (1000 * 60 * 60);
+        if (hoursSinceUpdate < 24) {
+          const hoursLeft = Math.ceil(24 - hoursSinceUpdate);
+          return NextResponse.json(
+            {
+              error: `The seller recently updated their payout account. For security, payouts are held for 24 hours after an account change. Please try again in ${hoursLeft} hour(s).`,
+              code: "COOLING_OFF_PERIOD",
+            },
+            { status: 402 }
+          );
+        }
       }
     }
 

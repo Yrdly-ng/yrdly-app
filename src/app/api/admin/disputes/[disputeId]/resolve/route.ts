@@ -118,6 +118,21 @@ export async function POST(
       })
       .eq('id', transaction.id);
 
+    // If refunded/cancelled, restock the item so it can be re-listed
+    if (newStatus === 'cancelled' && transaction.item_id) {
+      if (transaction.item_type === 'catalog_item') {
+        await supabaseAdmin
+          .from('catalog_items')
+          .update({ in_stock: true, updated_at: new Date().toISOString() })
+          .eq('id', transaction.item_id);
+      } else {
+        await supabaseAdmin
+          .from('posts')
+          .update({ is_sold: false, sold_to_user_id: null, transaction_id: null })
+          .eq('id', transaction.item_id);
+      }
+    }
+
     // 6. Notifications
     try {
       const itemTitle = 'Item'; // Best effort fallback
