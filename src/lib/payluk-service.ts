@@ -374,6 +374,25 @@ export class PaylukService {
   }
 
   /**
+   * DELETE /v1/escrow/delete/{paymentToken}
+   * Cancels/deletes an escrow that is in AWAITING_PAYMENT state.
+   * Requires customerId of the seller.
+   */
+  static async deleteEscrow(
+    customerId: string,
+    paymentToken: string
+  ): Promise<PaylukEscrow> {
+    const response = await paylukRequest<PaylukEscrow>(
+      `/v1/escrow/delete/${paymentToken}`,
+      {
+        method: 'DELETE',
+        customerId,
+      }
+    );
+    return response.data;
+  }
+
+  /**
    * POST /v1/payment/virtual-account
    * Generates a virtual account for a merchant customer.
    * Nigerian customers only. BVN on file -> dedicated permanent account;

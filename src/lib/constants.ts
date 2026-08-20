@@ -86,7 +86,7 @@ export const MARKETPLACE_CONSTANTS = {
 
 // Events & Ticketing
 export const EVENT_CONSTANTS = {
-  COMMISSION_RATE: 0.05,  // 5% platform commission on ticket sales
+  COMMISSION_RATE: 0.03,  // 3% platform commission on ticket sales
   AUTO_RELEASE_HOURS: 24, // Hours after event ends before payout is released
   CURRENCY: 'NGN',
   MIN_TICKET_PRICE: 100,  // Minimum paid ticket price in NGN

@@ -289,11 +289,12 @@ export async function POST(request: NextRequest) {
     // ── Payluk Pre-Insert (Escrow Creation) ───────────────
     let paylukPaymentToken: string | undefined = undefined;
     let paylukEscrowId: string | undefined = undefined;
+    let sellerPaylukId: string | undefined = undefined;
 
     if (totalAmount > 0 && process.env.PAYMENT_PROVIDER === 'payluk') {
       try {
         await ensurePaylukCustomer(buyerId);
-        const sellerPaylukId = await ensurePaylukCustomer(sellerId);
+        sellerPaylukId = await ensurePaylukCustomer(sellerId);
         
         const paylukEscrow = await PaylukService.createEscrow(sellerPaylukId, {
           amount: totalAmount,
@@ -352,6 +353,16 @@ export async function POST(request: NextRequest) {
 
     if (txError) {
       console.error("Escrow transaction error:", txError);
+      
+      if (paylukPaymentToken && sellerPaylukId) {
+        try {
+          await PaylukService.deleteEscrow(sellerPaylukId, paylukPaymentToken);
+          console.log(`[PaymentInit] Cleaned up orphaned Payluk escrow: ${paylukPaymentToken}`);
+        } catch (cleanupErr: any) {
+          console.error(`[PaymentInit] FATAL: Failed to clean up orphaned Payluk escrow ${paylukPaymentToken}:`, cleanupErr?.message);
+        }
+      }
+
       return NextResponse.json(
         { error: "Failed to create transaction" },
         { status: 500 }
