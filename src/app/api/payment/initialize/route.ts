@@ -438,6 +438,7 @@ export async function POST(request: NextRequest) {
       success: true,
       paymentLink,
       transactionId,
+      totalAmount,
       ...(process.env.PAYMENT_PROVIDER === 'payluk' && {
         paylukPaymentToken,
         paylukEscrowId,
