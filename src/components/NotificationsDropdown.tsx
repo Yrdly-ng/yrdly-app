@@ -11,10 +11,6 @@ import { useFriendshipContext } from "@/contexts/FriendshipContext";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNowStrict } from 'date-fns';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-const Sentry = {
-  startSpan: async (opts: any, cb: (span: any) => Promise<any>) => cb({ setAttribute: () => {} }),
-  captureException: (e: any) => console.error(e)
-};
 
 const GREEN = "hsl(var(--primary))";
 const GREEN_LIGHT = "#82DB7E";
@@ -155,9 +151,6 @@ function NotificationItem({ notification, onMarkAsRead, onDelete, onClose }: {
   const handleAction = async (action: string) => {
     if (action === 'accept_friend') {
       try {
-        await Sentry.startSpan(
-          { op: "http.client", name: "NotificationsDropdown: Accept Friend" },
-          async (span) => {
             const toUserId = notification.user_id || currentUser?.id || "";
             let senderId = notification.from_user_id || "";
             if (!senderId && toUserId) {
@@ -170,8 +163,7 @@ function NotificationItem({ notification, onMarkAsRead, onDelete, onClose }: {
                 .limit(1);
               if (pending && pending.length >= 1) senderId = pending[0].from_user_id;
             }
-            span.setAttribute("fromUserId", senderId || "");
-            span.setAttribute("toUserId", toUserId);
+
             if (!senderId || !toUserId) throw new Error("Missing user identifiers");
 
             const { data: currentUserDataCheck } = await supabase.from('users').select('friends').eq('id', toUserId).single();
@@ -224,17 +216,12 @@ function NotificationItem({ notification, onMarkAsRead, onDelete, onClose }: {
 
             await onMarkAsRead(notification.id);
             toast({ title: "Friend request accepted!" });
-          }
-        );
       } catch (error: any) {
-        Sentry.captureException(error);
+        console.error(error);
         toast({ variant: "destructive", title: "Error", description: error?.message || "Failed" });
       }
     } else if (action === 'decline_friend') {
       try {
-        await Sentry.startSpan(
-          { op: "http.client", name: "NotificationsDropdown: Decline Friend" },
-          async (span) => {
             const toUserId = notification.user_id || currentUser?.id || "";
             let senderId = notification.from_user_id || "";
             if (!senderId && toUserId) {
@@ -247,8 +234,7 @@ function NotificationItem({ notification, onMarkAsRead, onDelete, onClose }: {
                 .limit(1);
               if (pending && pending.length >= 1) senderId = pending[0].from_user_id;
             }
-            span.setAttribute("fromUserId", senderId || "");
-            span.setAttribute("toUserId", toUserId);
+
             if (!senderId || !toUserId) throw new Error("Missing identifiers");
 
             const { error } = await supabase.from('friend_requests').delete().eq('from_user_id', senderId).eq('to_user_id', toUserId).eq('status', 'pending');
@@ -257,10 +243,8 @@ function NotificationItem({ notification, onMarkAsRead, onDelete, onClose }: {
             if (senderId) await refreshUserStatus(senderId);
             await onMarkAsRead(notification.id);
             toast({ title: "Friend request declined." });
-          }
-        );
       } catch (error: any) {
-        Sentry.captureException(error);
+        console.error(error);
         toast({ variant: "destructive", title: "Error", description: error?.message || "Failed" });
       }
     } else if (action === 'reply_message') {

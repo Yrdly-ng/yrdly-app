@@ -5,7 +5,6 @@ import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { trackComponentError } from '@/lib/sentry';
 
 interface Props {
   children: ReactNode;
@@ -48,8 +47,7 @@ export class ErrorBoundary extends Component<Props, State> {
       console.error('ErrorBoundary caught an error:', error, errorInfo);
     }
 
-    // Track error with Sentry
-    trackComponentError(error, {
+    console.error('Component Error:', error, {
       component: 'ErrorBoundary',
       props: {
         hasCustomFallback: !!this.props.fallback,
@@ -137,8 +135,7 @@ export function useErrorHandler() {
       console.error('Error caught by useErrorHandler:', error, errorInfo);
     }
     
-    // Track error with Sentry
-    trackComponentError(error, {
+    console.error('Component Error:', error, {
       component: 'useErrorHandler',
       props: {
         errorInfo,

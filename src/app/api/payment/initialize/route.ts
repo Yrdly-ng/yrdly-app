@@ -5,6 +5,8 @@ import { MARKETPLACE_CONSTANTS } from "@/lib/constants";
 import { getAuthenticatedUser } from "@/lib/supabase-server";
 import { getPostHogClient } from "@/lib/posthog-server";
 import { PaystackService } from "@/lib/paystack-service";
+import { PaylukService } from "@/lib/payluk-service";
+import { ensurePaylukCustomer } from "@/lib/payluk-onboarding";
 
 // Rate limiting constants
 const RATE_LIMIT_MAX = 10;
@@ -248,14 +250,6 @@ export async function POST(request: NextRequest) {
     // Skip this check if the item is free since no money is exchanged
     if (totalAmount > 0) {
       if (!sellerAccount || sellerAccount.verification_status !== "verified") {
-        try {
-          require('fs').writeFileSync('/Users/macbook/Development/projects/yrdly-app/debug-payment.json', JSON.stringify({
-            sellerId,
-            sellerAccount,
-            sellerAccountError,
-            itemData
-          }, null, 2));
-        } catch(e) {}
         
         return NextResponse.json(
           {
@@ -292,23 +286,66 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // ── Payluk Pre-Insert (Escrow Creation) ───────────────
+    let paylukPaymentToken: string | undefined = undefined;
+    let paylukEscrowId: string | undefined = undefined;
+
+    if (totalAmount > 0 && process.env.PAYMENT_PROVIDER === 'payluk') {
+      try {
+        await ensurePaylukCustomer(buyerId);
+        const sellerPaylukId = await ensurePaylukCustomer(sellerId);
+        
+        const paylukEscrow = await PaylukService.createEscrow(sellerPaylukId, {
+          amount: totalAmount,
+          purpose: itemData.title,
+          whoPays: 'seller',
+        });
+        
+        paylukPaymentToken = paylukEscrow.paymentToken;
+        paylukEscrowId = paylukEscrow.id;
+      } catch (paylukError: any) {
+        console.error("Payluk createEscrow error:", paylukError);
+        
+        const errMsg = paylukError?.message || "";
+        if (errMsg.includes('must have a verified phone number')) {
+           const isBuyer = errMsg.includes(buyerId);
+           return NextResponse.json(
+             { error: isBuyer ? 'PHONE_VERIFICATION_REQUIRED' : 'SELLER_PHONE_UNVERIFIED' },
+             { status: 409 }
+           );
+        }
+
+        return NextResponse.json(
+          { error: paylukError?.message || "Failed to initialize Payluk escrow" },
+          { status: 502 }
+        );
+      }
+    }
+
+    const txPayload: any = {
+      item_id: itemId,
+      buyer_id: buyerId,
+      seller_id: sellerId,
+      amount: authorizedPrice,
+      commission,
+      total_amount: totalAmount,
+      seller_amount: authorizedPrice - commission, // seller receives price minus platform fee
+      status: EscrowStatus.PENDING,
+      payment_method: PaymentMethod.CARD,
+      delivery_details: { option: DeliveryOption.FACE_TO_FACE },
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      item_type: itemType, // Keep track of the item type in escrow_transactions
+    };
+
+    if (totalAmount > 0 && process.env.PAYMENT_PROVIDER === 'payluk') {
+      txPayload.payment_provider = 'payluk';
+      txPayload.payluk_tx_ref = paylukPaymentToken;
+    }
+
     const { data: txData, error: txError } = await supabaseAdmin
       .from("escrow_transactions")
-      .insert({
-        item_id: itemId,
-        buyer_id: buyerId,
-        seller_id: sellerId,
-        amount: authorizedPrice,
-        commission,
-        total_amount: totalAmount,
-        seller_amount: authorizedPrice - commission, // seller receives price minus platform fee
-        status: EscrowStatus.PENDING,
-        payment_method: PaymentMethod.CARD,
-        delivery_details: { option: DeliveryOption.FACE_TO_FACE },
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        item_type: itemType, // Keep track of the item type in escrow_transactions
-      })
+      .insert(txPayload)
       .select("id")
       .single();
 
@@ -329,7 +366,7 @@ export async function POST(request: NextRequest) {
     // Full amount collected into platform account and held in escrow.
     // Seller payout triggered after buyer confirms receipt.
     let paymentLink: string | undefined = undefined;
-    if (totalAmount > 0) {
+    if (totalAmount > 0 && process.env.PAYMENT_PROVIDER !== 'payluk') {
       if (!sellerAccount?.paystack_subaccount_id) {
         console.warn(`[PaymentInit] Fallback: Seller ${sellerId} has no paystack_subaccount_id, initializing transaction without split routing.`);
       }
@@ -401,6 +438,10 @@ export async function POST(request: NextRequest) {
       success: true,
       paymentLink,
       transactionId,
+      ...(process.env.PAYMENT_PROVIDER === 'payluk' && {
+        paylukPaymentToken,
+        paylukEscrowId,
+      }),
     });
   } catch (error) {
     console.error("Payment initialization error:", error);

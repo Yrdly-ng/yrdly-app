@@ -1,0 +1,96 @@
+# Payluk API
+
+> Merchant API for escrow payment links, milestones, disputes and payments on Payluk.
+
+## Docs
+
+- [Introduction](https://docs.payluk.ng/introduction.md): Accept escrow-protected payments with a single API call.
+- [Onboarding](https://docs.payluk.ng/onboarding.md): Create an account, verify your business and get merchant API access.
+- [Quickstart](https://docs.payluk.ng/quickstart.md): Create your first escrow payment link and walk it through to settlement.
+- [Authentication](https://docs.payluk.ng/authentication.md): Secret keys, environments, and the customer-id header.
+- [How it works (end-to-end)](https://docs.payluk.ng/concepts/how-it-works.md): Every endpoint a merchant calls, in order, to take a standard or milestone payment from creation to settlement.
+- [Multi-quantity escrows (totalQuantity)](https://docs.payluk.ng/concepts/multi-quantity-escrows.md): How one escrow link with totalQuantity > 1 mints a separate escrow per buyer, so the same link can be sold many times.
+- [Escrow lifecycle](https://docs.payluk.ng/concepts/escrow-lifecycle.md): How an escrow moves from creation to settlement, and what state and status mean.
+- [Milestone escrows](https://docs.payluk.ng/concepts/milestone-escrows.md): Fund a project upfront and release it in stages as each milestone is confirmed.
+- [Vault escrows](https://docs.payluk.ng/concepts/vault-escrows.md): Pool stakes from two or more customers and pay the whole pot to the winner you declare.
+- [Merchant customers](https://docs.payluk.ng/concepts/merchant-customers.md): Onboard the buyers and sellers that transact under your merchant account.
+- [Dispute resolution](https://docs.payluk.ng/concepts/dispute-resolution.md): How disputes are raised between your customers and how you, the merchant, resolve them and disburse the held funds.
+- [Fees & settlement](https://docs.payluk.ng/concepts/fees-and-settlement.md): How fees are split, when they're charged, and how funds settle.
+- [Escrow webhooks](https://docs.payluk.ng/concepts/webhooks.md): Get notified at your callback URL every time an escrow changes state, so you never have to poll.
+- [Set up testnet cNGN (BSC)](https://docs.payluk.ng/guides/testnet-cngn-setup.md): Add the testnet cNGN token to MetaMask on the BSC Testnet, claim faucet tokens, and whitelist your address so you can test crypto deposits on Payluk.
+- [Errors](https://docs.payluk.ng/essentials/errors.md): How Payluk reports errors and what each status code means.
+- [Pagination](https://docs.payluk.ng/essentials/pagination.md): How list endpoints paginate results.
+- [Status reference](https://docs.payluk.ng/essentials/status-reference.md): Every enumerated value used across escrows, milestones and payments.
+- [Inline Checkout SDK](https://docs.payluk.ng/sdk/introduction.md): Launch an escrow checkout widget from your web app with a publishable key.
+- [JavaScript / TypeScript](https://docs.payluk.ng/sdk/javascript.md): Initialize the SDK once, then call pay() to open the checkout widget.
+- [React](https://docs.payluk.ng/sdk/react.md): Use the useEscrowCheckout hook or the drop-in EscrowCheckoutButton.
+- [Error handling](https://docs.payluk.ng/sdk/errors.md): Catch EscrowCheckoutError and branch on its code.
+- [SDK reference](https://docs.payluk.ng/sdk/reference.md): Every export, type and default in payluk-escrow-inline-checkout.
+- [Onboard customers overview](https://docs.payluk.ng/api-reference/merchant-customers/overview.md): Create and manage the buyers and sellers that transact under your merchant account.
+- [Create merchant customer](https://docs.payluk.ng/api-reference/merchant-customers/create-merchant-customer.md): Creates a customer (buyer/seller) under your merchant account. Requires the API key to belong to a merchant super-admin account.
+- [List merchant customers](https://docs.payluk.ng/api-reference/merchant-customers/list-merchant-customers.md): Lists your customers, newest first.
+- [Get merchant customer](https://docs.payluk.ng/api-reference/merchant-customers/get-merchant-customer.md)
+- [Update customer](https://docs.payluk.ng/api-reference/merchant-customers/update-customer.md): Corrects a customer's profile details. Only `firstname`, `lastname` and `email` are editable; `phone` and `bvn` carry verification state and change through their own flows.
+- [Update customer permissions](https://docs.payluk.ng/api-reference/merchant-customers/update-customer-permissions.md)
+- [Block customer](https://docs.payluk.ng/api-reference/merchant-customers/block-customer.md)
+- [Unblock customer](https://docs.payluk.ng/api-reference/merchant-customers/unblock-customer.md)
+- [Get customer wallet](https://docs.payluk.ng/api-reference/merchant-customers/get-customer-wallet.md): Returns the wallet balances for a specific merchant customer. Requires the `customer-id` header.
+- [Catalog (categories) overview](https://docs.payluk.ng/api-reference/categories/overview.md): Optional product categories you can attach to escrows to organise your catalog.
+- [Create category](https://docs.payluk.ng/api-reference/categories/create-category.md): Creates an escrow category. Sent as `multipart/form-data` so a cover image can be attached.
+- [Update category](https://docs.payluk.ng/api-reference/categories/update-category.md)
+- [List categories](https://docs.payluk.ng/api-reference/categories/list-categories.md)
+- [Get category by ID](https://docs.payluk.ng/api-reference/categories/get-category-by-id.md)
+- [Update category position](https://docs.payluk.ng/api-reference/categories/update-category-position.md)
+- [Delete category](https://docs.payluk.ng/api-reference/categories/delete-category.md)
+- [Escrow overview](https://docs.payluk.ng/api-reference/escrow/overview.md): Create and manage standard (single-payment) escrow links, and how the seller gets paid.
+- [Create escrow](https://docs.payluk.ng/api-reference/escrow/create-escrow.md): Generates a standard escrow payment link. Sent as `multipart/form-data` so up to 5 images can be attached under `imageUrl`. The seller is the authenticated key owner. Merchants cannot create an escrow for themselves via the API. Requires the `customer-id` header.
+- [Edit escrow](https://docs.payluk.ng/api-reference/escrow/edit-escrow.md): Editable only while the escrow is `AWAITING_PAYMENT`, and only by the seller. New images are appended to the existing ones.
+- [Update additional fee](https://docs.payluk.ng/api-reference/escrow/update-additional-fee.md): Sets your own charge (a delivery fee, handling, or similar) on top of one of your **standard** escrows. Every escrow starts at `additionalFee: 0`.
+- [Delete escrow](https://docs.payluk.ng/api-reference/escrow/delete-escrow.md): Deletes an escrow. Allowed only while `AWAITING_PAYMENT` and only by the seller.
+- [Verify payment token](https://docs.payluk.ng/api-reference/escrow/verify-payment-token.md): Resolves an escrow by its payment token. Used by a buyer to inspect a payment link before paying.
+- [Claim funds](https://docs.payluk.ng/api-reference/escrow/claim-funds.md): Seller requests release of funds. Allowed only when the escrow is `OPENED` and the delivery window has elapsed.
+- [List escrow transactions](https://docs.payluk.ng/api-reference/escrow/list-escrow-transactions.md): Paginated list of the authenticated user's escrows, filtered by `type` (sales or buy).
+- [Milestone escrow overview](https://docs.payluk.ng/api-reference/milestone-escrow/overview.md): Fund a project in full upfront and release it in stages as each milestone is confirmed.
+- [Create milestone escrow](https://docs.payluk.ng/api-reference/milestone-escrow/create-milestone-escrow.md): Creates a milestone escrow (JSON body, no file upload). Rules: at least 2 milestones, every milestone amount is a positive integer, and the **sum of milestone amounts must equal `amount`**. Requires the `customer-id` header.
+- [Edit milestone escrow](https://docs.payluk.ng/api-reference/milestone-escrow/edit-milestone-escrow.md): Replaces the details and the full milestone set of a milestone escrow (JSON body, no file upload). Editable only while the escrow is still `AWAITING_PAYMENT`, and only by the seller that created it. The same rules as creation apply: at least 2 milestones, every milestone amount is a positive integer…
+- [Convert standard escrow to milestone](https://docs.payluk.ng/api-reference/milestone-escrow/convert-to-milestone.md): Converts an existing **standard** escrow into a milestone escrow by splitting its amount into milestones (JSON body, no file upload). Supply `amount` to set a new escrow amount, or omit it to keep the current one; either way the **sum of milestone amounts must equal the target amount**, and there mu…
+- [Get milestones](https://docs.payluk.ng/api-reference/milestone-escrow/get-milestones.md): Returns the milestone list for an escrow, by payment token. Returns an empty array for standard (non-milestone) escrows.
+- [Confirm milestone](https://docs.payluk.ng/api-reference/milestone-escrow/confirm-milestone.md): Buyer approves one milestone; its full amount is released to the seller's main balance. If the milestone was created with a `customerId`, the funds are released to that customer's main balance instead. Requires the escrow to be funded (`OPENED`) and the caller to be the buyer. The escrow completes a…
+- [Vault escrow overview](https://docs.payluk.ng/api-reference/vault-escrow/overview.md): Pool stakes from two or more of your customers and pay the whole pot to the winner you declare.
+- [Create vault escrow](https://docs.payluk.ng/api-reference/vault-escrow/create-vault-escrow.md): Creates a **funded** vault escrow in one call. Every participant must be a customer of the merchant with the stake available in their **main balance**; each stake is locked into the participant's own **escrow balance** immediately (all-or-nothing: if any stake cannot be locked, everything is rolled…
+- [Declare vault winner](https://docs.payluk.ng/api-reference/vault-escrow/declare-vault-winner.md): The merchant names the winning participant. Every stake is released from the participants' escrow balances and the **whole pot minus the platform fee** is credited to the winner's main balance. The escrow closes as `COMPLETED`. There is no dispute flow; the merchant is expected to have verified the…
+- [Cancel vault escrow](https://docs.payluk.ng/api-reference/vault-escrow/cancel-vault-escrow.md): Cancels an open vault. Each participant gets their stake back to their main balance **minus their pro-rata share of the platform fee**; the fee is collected whether the vault completes or is cancelled. The escrow closes as `REFUNDED`. Merchant-only: do **not** send the `customer-id` header.
+- [Get vault escrow](https://docs.payluk.ng/api-reference/vault-escrow/get-vault-escrow.md): Returns the vault escrow with its participants and (once declared) the winner. Merchant-only: do **not** send the `customer-id` header.
+- [Payments overview](https://docs.payluk.ng/api-reference/payments/overview.md): Fund escrows and wallets, generate virtual accounts, and verify references and bank details.
+- [Pay escrow (buy)](https://docs.payluk.ng/api-reference/payments/pay-escrow-buy.md): Fund an escrow (works for standard and milestone escrows; a milestone escrow is funded in full here). The amount charged is the escrow amount plus the buyer's fee share **plus the escrow's `additionalFee`** if you have set one (see [Update additional fee](/api-reference/escrow/update-additional-fee)…
+- [Create payment intent](https://docs.payluk.ng/api-reference/payments/create-payment-intent.md): Creates a payment intent for a merchant customer. Set `transactionType` to one of:
+- [Verify payment](https://docs.payluk.ng/api-reference/payments/verify-payment.md): **Submits a previously created payment intent for processing.** Payment uses a deliberate two-step flow for security: [Create payment intent](/api-reference/payments/create-payment-intent) only stages the transaction (no money moves), and this endpoint is what actually executes it: debiting the wall…
+- [Generate virtual account](https://docs.payluk.ng/api-reference/payments/generate-virtual-account.md): Generates a virtual account for a merchant customer (`merchant_user` role only). Requires the `customer-id` header.
+- [Top up virtual account (staging only)](https://docs.payluk.ng/api-reference/payments/top-up-virtual-account-staging-only.md): Test helper available only on the staging environment. Tops up a customer's wallet once per day. Requires the `customer-id` header.
+- [Get payment history](https://docs.payluk.ng/api-reference/payments/get-payment-history.md): Returns the authenticated merchant customer's transaction history: money in and out across deposits, withdrawals, transfers, wallet transfers, and escrow payments. Each entry carries the amount, fee, status, type, and the type-specific detail object (`withdrawalDetails`, `walletDetails`, `escrowDeta…
+- [Get bank list](https://docs.payluk.ng/api-reference/payments/get-bank-list.md): Returns the banks you can pay out to, with the bank codes that [Verify account number](/api-reference/payments/verify-account-number) and `withdrawalDetails.bankCode` on [Create payment intent](/api-reference/payments/create-payment-intent) expect.
+- [Verify account number](https://docs.payluk.ng/api-reference/payments/verify-account-number.md): Resolves the account name on a bank account, so you can show the customer who they are about to pay before you create the withdrawal.
+- [Verify phone number](https://docs.payluk.ng/api-reference/payments/verify-phone-number.md): Verify a phone number belongs to one of your merchant customers.
+- [Get master wallet address](https://docs.payluk.ng/api-reference/payments/get-master-wallet-address.md): Returns the Payluk deposit (master) wallet address a customer should send **cNGN** to in order to fund their wallet with crypto. Tokens must be sent as **BEP-20** on the **Binance Smart Chain (BSC)** network; sending any other token, or using any other chain, will result in lost funds.
+- [Release & resolve (disputes) overview](https://docs.payluk.ng/api-reference/disputes/overview.md): Confirm delivery to release funds, raise disputes, and resolve them as the merchant.
+- [Buyer confirm payment (standard)](https://docs.payluk.ng/api-reference/disputes/buyer-confirm-payment-standard.md): Buyer confirms delivery on a standard escrow; releases the full amount to the seller and completes the escrow. Requires the `customer-id` header (the buyer).
+- [Submit dispute](https://docs.payluk.ng/api-reference/disputes/submit-dispute.md): Open or reply to a dispute. Escrow must be `OPENED`. **Only the buyer can open a dispute**; the seller can only respond once the buyer has raised one, after which the merchant resolves it. **Milestone escrows cannot be disputed**; only standard escrows are eligible. Requires the `customer-id` header…
+- [List my disputes](https://docs.payluk.ng/api-reference/disputes/list-my-disputes.md): Returns disputes for a specific customer. Requires the `customer-id` header.
+- [Get dispute by escrow ID](https://docs.payluk.ng/api-reference/disputes/get-dispute-by-escrow-id.md)
+- [List all customers' disputes](https://docs.payluk.ng/api-reference/disputes/list-all-customers-disputes.md): Merchant-wide dispute feed. Must **not** send a `customer-id` header.
+- [Get escrow feeds](https://docs.payluk.ng/api-reference/disputes/get-escrow-feeds.md): Merchant-wide feed of all customers' escrows. Must **not** send a `customer-id` header.
+- [Resolve dispute](https://docs.payluk.ng/api-reference/disputes/resolve-dispute.md): Merchant resolves a dispute: `COMPLETED` releases to the seller; `REFUNDED` returns funds to the buyer; `SPLIT` divides the held funds between them in amounts you name. Must **not** send a `customer-id` header; the escrow must belong to one of the merchant's customers. Sent as `multipart/form-data`.
+- [Debit cards overview](https://docs.payluk.ng/api-reference/debit-cards/overview.md): List and remove the saved debit cards a merchant customer can reuse for payments.
+- [List customer debit cards](https://docs.payluk.ng/api-reference/debit-cards/list-customer-debit-cards.md): Requires the merchant to have the save-debit-cards feature enabled. Requires the `customer-id` header.
+- [Remove customer debit card](https://docs.payluk.ng/api-reference/debit-cards/remove-customer-debit-card.md)
+- [Crypto whitelist overview](https://docs.payluk.ng/api-reference/crypto-whitelist/overview.md): Manage the crypto addresses a customer is allowed to deposit from.
+- [List whitelisted addresses](https://docs.payluk.ng/api-reference/crypto-whitelist/list-whitelisted-addresses.md)
+- [Add whitelisted address](https://docs.payluk.ng/api-reference/crypto-whitelist/add-whitelisted-address.md)
+- [Remove whitelisted address](https://docs.payluk.ng/api-reference/crypto-whitelist/remove-whitelisted-address.md)
+- [Misc overview](https://docs.payluk.ng/api-reference/misc/overview.md): Reference lookups used across the rest of the API.
+- [Get countries](https://docs.payluk.ng/api-reference/misc/get-countries.md)
+- [Changelog](https://docs.payluk.ng/changelog.md): New features, improvements, and fixes to the Payluk merchant API.
+
+## OpenAPI Specs
+
+- [openapi](https://docs.payluk.ng/openapi.json)

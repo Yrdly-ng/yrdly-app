@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import * as Sentry from '@/lib/sentry';
+
 import { NotificationService } from './notification-service';
 import { EscrowStatus } from '@/types/escrow';
 
@@ -48,7 +48,7 @@ export class ReviewService {
 
       return { canReview: true };
     } catch (error) {
-      Sentry.captureException(error);
+
       console.error('Error checking review eligibility:', error);
       return { canReview: false, reason: 'Error checking eligibility' };
     }
@@ -64,12 +64,7 @@ export class ReviewService {
     rating: number,
     comment?: string
   ): Promise<string> {
-    return Sentry.startSpan(
-      {
-        op: 'review.submit',
-        name: 'Submit Business Review',
-      },
-      async () => {
+    return await (async () => {
         try {
           // Validate rating
           if (rating < 1 || rating > 5) {
@@ -134,20 +129,16 @@ export class ReviewService {
             // Don't throw error - review is still created
           }
 
-          Sentry.logger.info('Review submitted successfully', {
-            reviewId: data.id,
-            businessId,
-            rating,
-          });
+
 
           return data.id;
         } catch (error) {
-          Sentry.captureException(error);
+
           console.error('Error submitting review:', error);
           throw new Error('Failed to submit review');
         }
       }
-    );
+    )();
   }
 
   /**
@@ -160,12 +151,7 @@ export class ReviewService {
     rating: number,
     comment?: string
   ): Promise<string> {
-    return Sentry.startSpan(
-      {
-        op: 'review.submit_general',
-        name: 'Submit General Business Review',
-      },
-      async () => {
+    return await (async () => {
         try {
           if (rating < 1 || rating > 5) {
             throw new Error('Rating must be between 1 and 5');
@@ -227,20 +213,16 @@ export class ReviewService {
             console.error('Failed to send review notification:', notificationError);
           }
 
-          Sentry.logger.info('General review submitted successfully', {
-            reviewId: data.id,
-            businessId,
-            rating,
-          });
+
 
           return data.id;
         } catch (error) {
-          Sentry.captureException(error);
+
           console.error('Error submitting general review:', error);
           throw error instanceof Error ? error : new Error('Failed to submit review');
         }
       }
-    );
+    )();
   }
 
   /**
@@ -262,7 +244,7 @@ export class ReviewService {
 
       return !!data;
     } catch (error) {
-      Sentry.captureException(error);
+
       console.error('Error checking existing review:', error);
       return false;
     }
@@ -305,13 +287,9 @@ export class ReviewService {
         })
         .eq('id', businessId);
 
-      Sentry.logger.info('Business rating updated', {
-        businessId,
-        averageRating,
-        reviewCount: reviews.length,
-      });
+
     } catch (error) {
-      Sentry.captureException(error);
+
       console.error('Error updating business rating:', error);
       throw new Error('Failed to update business rating');
     }
@@ -339,7 +317,7 @@ export class ReviewService {
 
       return data || null;
     } catch (error) {
-      Sentry.captureException(error);
+
       console.error('Error fetching user review:', error);
       return null;
     }
@@ -367,7 +345,7 @@ export class ReviewService {
 
       return data || [];
     } catch (error) {
-      Sentry.captureException(error);
+
       console.error('Error fetching business reviews:', error);
       return [];
     }

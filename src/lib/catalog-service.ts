@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 import type { CatalogItem } from '@/types';
-import * as Sentry from '@/lib/sentry';
+
 
 export class CatalogService {
   /**
@@ -18,12 +18,7 @@ export class CatalogService {
     },
     imageFiles?: FileList
   ): Promise<string> {
-    return Sentry.startSpan(
-      {
-        op: 'catalog.create',
-        name: 'Create Catalog Item',
-      },
-      async () => {
+    return await (async () => {
         try {
           // Verify business ownership
           const { data: business, error: businessError } = await supabase
@@ -63,19 +58,16 @@ export class CatalogService {
 
           if (error) throw error;
 
-          Sentry.logger.info('Catalog item created successfully', {
-            itemId: data.id,
-            businessId,
-          });
+
 
           return data.id;
         } catch (error) {
-          Sentry.captureException(error);
+
           console.error('Error creating catalog item:', error);
           throw new Error('Failed to create catalog item');
         }
       }
-    );
+    )();
   }
 
   /**
@@ -95,12 +87,7 @@ export class CatalogService {
     newImageFiles?: FileList,
     existingImages?: string[]
   ): Promise<void> {
-    return Sentry.startSpan(
-      {
-        op: 'catalog.update',
-        name: 'Update Catalog Item',
-      },
-      async () => {
+    return await (async () => {
         try {
           // Verify business ownership
           const { data: business, error: businessError } = await supabase
@@ -140,29 +127,21 @@ export class CatalogService {
 
           if (error) throw error;
 
-          Sentry.logger.info('Catalog item updated successfully', {
-            itemId,
-            businessId,
-          });
+
         } catch (error) {
-          Sentry.captureException(error);
+
           console.error('Error updating catalog item:', error);
           throw new Error('Failed to update catalog item');
         }
       }
-    );
+    )();
   }
 
   /**
    * Delete a catalog item
    */
   static async deleteCatalogItem(itemId: string, businessId: string): Promise<void> {
-    return Sentry.startSpan(
-      {
-        op: 'catalog.delete',
-        name: 'Delete Catalog Item',
-      },
-      async () => {
+    return await (async () => {
         try {
           // Verify business ownership
           const { data: business, error: businessError } = await supabase
@@ -200,29 +179,21 @@ export class CatalogService {
             await this.deleteImages(item.images);
           }
 
-          Sentry.logger.info('Catalog item deleted successfully', {
-            itemId,
-            businessId,
-          });
+
         } catch (error) {
-          Sentry.captureException(error);
+
           console.error('Error deleting catalog item:', error);
           throw new Error('Failed to delete catalog item');
         }
       }
-    );
+    )();
   }
 
   /**
    * Toggle stock status of a catalog item
    */
   static async toggleStockStatus(itemId: string, businessId: string, inStock: boolean): Promise<void> {
-    return Sentry.startSpan(
-      {
-        op: 'catalog.toggle_stock',
-        name: 'Toggle Stock Status',
-      },
-      async () => {
+    return await (async () => {
         try {
           // Verify business ownership
           const { data: business, error: businessError } = await supabase
@@ -250,18 +221,14 @@ export class CatalogService {
 
           if (error) throw error;
 
-          Sentry.logger.info('Catalog item stock status updated', {
-            itemId,
-            businessId,
-            inStock,
-          });
+
         } catch (error) {
-          Sentry.captureException(error);
+
           console.error('Error toggling stock status:', error);
           throw new Error('Failed to update stock status');
         }
       }
-    );
+    )();
   }
 
   /**
@@ -279,7 +246,7 @@ export class CatalogService {
 
       return data as CatalogItem[];
     } catch (error) {
-      Sentry.captureException(error);
+
       console.error('Error fetching catalog items:', error);
       throw new Error('Failed to fetch catalog items');
     }

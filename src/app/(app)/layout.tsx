@@ -15,7 +15,6 @@ import { OfflineStatus } from '@/components/OfflineStatus';
 import { OnboardingGuard } from '@/components/OnboardingGuard';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { useActivityTracking } from '@/hooks/use-activity-tracking';
-import { setUserContext, clearUserContext, trackUserAction } from '@/lib/sentry';
 import { FriendshipProvider } from '@/contexts/FriendshipContext';
 import { LocationProvider } from '@/contexts/LocationContext';
 
@@ -27,27 +26,7 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
   // Initialize activity tracking
   useActivityTracking();
 
-  // Set user context for Sentry
-  useEffect(() => {
-    if (user && profile) {
-      setUserContext({
-        id: user.id,
-        email: user.email,
-        name: profile.name,
-        avatar_url: profile.avatar_url,
-      });
 
-      // Track user login
-      trackUserAction('user_logged_in', {
-        userId: user.id,
-        userEmail: user.email,
-      });
-    } else if (!loading && !user) {
-      // Clear user context on logout
-      clearUserContext();
-      trackUserAction('user_logged_out');
-    }
-  }, [user, profile, loading]);
 
   useEffect(() => {
     if (!loading && !user) {
