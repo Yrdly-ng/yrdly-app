@@ -47,7 +47,13 @@ export async function ensurePaylukCustomer(userId: string): Promise<string> {
       `[PaylukOnboarding] User ${userId} must have a verified phone number before Payluk onboarding.`
     );
   }
-  const phone = user.phone;
+  
+  let phone = user.phone;
+  if (phone.startsWith('234') && phone.length === 13) {
+    phone = '0' + phone.substring(3);
+  } else if (phone.startsWith('+234') && phone.length === 14) {
+    phone = '0' + phone.substring(4);
+  }
 
   // 3. Call Payluk API
   const customer = await PaylukService.createCustomer({
