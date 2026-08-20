@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { PaystackService } from '@/lib/paystack-service';
 import { PayoutService } from '@/lib/payout-service';
 import { NotificationService } from '@/lib/notification-service';
+import { PaylukService } from '@/lib/payluk-service';
 
 export async function POST(
   request: Request,
@@ -47,21 +48,49 @@ export async function POST(
       return NextResponse.json({ error: 'Transaction is already closed' }, { status: 400 });
     }
 
-    // 3. Process Payments (Refund Buyer)
-    if (refundAmount > 0 && transaction.payment_reference) {
-      const refundSuccess = await PaystackService.refundTransaction(transaction.payment_reference, refundAmount);
-      if (!refundSuccess) {
-        return NextResponse.json({ error: 'Failed to process refund with Paystack' }, { status: 500 });
+    // 3 & 4. Process Payments
+    if (transaction.payment_provider === 'payluk') {
+      if (!transaction.payluk_escrow_id) {
+        return NextResponse.json({ error: 'Missing Payluk escrow ID on transaction' }, { status: 400 });
       }
-    }
 
-    // 4. Process Payments (Payout Seller)
-    if (sellerAmount > 0) {
+      let status: 'COMPLETED' | 'REFUNDED' | 'SPLIT';
+      if (refundAmount > 0 && sellerAmount > 0) {
+        status = 'SPLIT';
+      } else if (refundAmount > 0) {
+        status = 'REFUNDED';
+      } else {
+        status = 'COMPLETED';
+      }
+
       try {
-        await PayoutService.manualPayout(transaction.seller_id, sellerAmount, user.id);
-      } catch (payoutError) {
-        console.error('Failed to initiate seller payout:', payoutError);
-        return NextResponse.json({ error: 'Failed to initiate seller payout' }, { status: 500 });
+        await PaylukService.resolveDispute(transaction.payluk_escrow_id, {
+          resolution,
+          status,
+          sellerAmount: sellerAmount > 0 ? sellerAmount : undefined,
+          buyerAmount: refundAmount > 0 ? refundAmount : undefined,
+        });
+      } catch (paylukError: any) {
+        console.error('Failed to resolve dispute with Payluk:', paylukError);
+        return NextResponse.json({ error: `Failed to resolve dispute with Payluk: ${paylukError.message}` }, { status: 500 });
+      }
+    } else {
+      // Legacy / Paystack behavior (Refund Buyer)
+      if (refundAmount > 0 && transaction.payment_reference) {
+        const refundSuccess = await PaystackService.refundTransaction(transaction.payment_reference, refundAmount);
+        if (!refundSuccess) {
+          return NextResponse.json({ error: 'Failed to process refund with Paystack' }, { status: 500 });
+        }
+      }
+
+      // Legacy / Paystack behavior (Payout Seller)
+      if (sellerAmount > 0) {
+        try {
+          await PayoutService.manualPayout(transaction.seller_id, sellerAmount, user.id);
+        } catch (payoutError) {
+          console.error('Failed to initiate seller payout:', payoutError);
+          return NextResponse.json({ error: 'Failed to initiate seller payout' }, { status: 500 });
+        }
       }
     }
 
