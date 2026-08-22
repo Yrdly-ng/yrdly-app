@@ -207,12 +207,13 @@ export class PaylukService {
     lastname: string;
     email: string;
     phone: string;
-    countryId: string;
+    countryId?: string;
     bvn?: string;
   }): Promise<PaylukCustomer> {
+    const { countryId, ...requestParams } = params;
     const response = await paylukRequest<PaylukCustomer>('/v1/customer/create', {
       method: 'POST',
-      body: JSON.stringify(params),
+      body: JSON.stringify(requestParams),
     });
     return response.data;
   }

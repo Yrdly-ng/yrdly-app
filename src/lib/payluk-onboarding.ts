@@ -66,7 +66,6 @@ export async function ensurePaylukCustomer(userId: string): Promise<string> {
     lastname,
     email,
     phone,
-    countryId: '665f1b2c9a1e4d0012ab3c40', // Nigeria, fetched from get-countries.md
     // bvn is explicitly omitted as described in the doc header
   });
 
