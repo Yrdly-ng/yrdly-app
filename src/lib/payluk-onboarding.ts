@@ -53,6 +53,11 @@ export async function ensurePaylukCustomer(userId: string): Promise<string> {
     phone = '0' + phone.substring(3);
   } else if (phone.startsWith('+234') && phone.length === 14) {
     phone = '0' + phone.substring(4);
+  } else {
+    phone = phone.replace(/\D/g, '');
+    if (phone.length > 11) phone = phone.substring(phone.length - 11);
+    if (phone.length < 11) phone = phone.padStart(11, '0');
+    if (!phone.startsWith('0')) phone = '0' + phone.substring(1);
   }
 
   // 3. Call Payluk API

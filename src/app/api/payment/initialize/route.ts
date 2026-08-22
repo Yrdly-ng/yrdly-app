@@ -4,7 +4,6 @@ import { DeliveryOption, PaymentMethod, EscrowStatus } from "@/types/escrow";
 import { MARKETPLACE_CONSTANTS } from "@/lib/constants";
 import { getAuthenticatedUser } from "@/lib/supabase-server";
 import { getPostHogClient } from "@/lib/posthog-server";
-import { PaystackService } from "@/lib/paystack-service";
 import { PaylukService } from "@/lib/payluk-service";
 import { ensurePaylukCustomer } from "@/lib/payluk-onboarding";
 
@@ -82,10 +81,6 @@ export async function POST(request: NextRequest) {
       sellerId,
       price,
       buyerEmail,
-      buyerName,
-      itemTitle,
-      sellerName,
-      callbackUrl,
       itemType = 'post',
     } = body as {
       itemId: string;
@@ -93,10 +88,6 @@ export async function POST(request: NextRequest) {
       sellerId: string;
       price: number;
       buyerEmail: string;
-      buyerName: string;
-      itemTitle: string;
-      sellerName: string;
-      callbackUrl?: string;
       itemType?: 'post' | 'catalog_item';
     };
 
@@ -234,62 +225,12 @@ export async function POST(request: NextRequest) {
     const commission = Math.round(authorizedPrice * MARKETPLACE_CONSTANTS.COMMISSION_RATE);
     const totalAmount = authorizedPrice;
 
-    // ── Look up seller's payout account ──────────────────
-    const { data: sellerAccount, error: sellerAccountError } = await supabaseAdmin
-      .from("seller_accounts")
-      .select("verification_status, account_updated_at, updated_at, paystack_subaccount_id")
-      .eq("user_id", sellerId)
-      .eq("is_active", true)
-      .single();
-
-    if (sellerAccountError) {
-      console.error("[PaymentInit] Error fetching seller account for", sellerId, ":", sellerAccountError);
-    }
-
-    // ── Task 2 & 3: Block payouts to unverified accounts & apply cooling off ──────
-    // Skip these checks if the item is free (no money exchanged)
-    // Also skip if using Payluk, since Payluk handles its own wallets and KYC
-    if (totalAmount > 0 && process.env.PAYMENT_PROVIDER !== 'payluk') {
-      if (!sellerAccount || sellerAccount.verification_status !== "verified") {
-        
-        return NextResponse.json(
-          {
-            error:
-              "The seller has not yet verified their payout account. Payment cannot proceed until their account is verified.",
-            code: "SELLER_UNVERIFIED",
-            debug: {
-              sellerId,
-              sellerAccount,
-              sellerAccountError,
-            }
-          },
-          { status: 402 }
-        );
-      }
-
-      // Only apply the 24-hour hold if account_updated_at is explicitly set
-      if (sellerAccount?.account_updated_at) {
-        const updatedTime = new Date(sellerAccount.account_updated_at).getTime();
-        const hoursSinceUpdate = (Date.now() - updatedTime) / (1000 * 60 * 60);
-        if (hoursSinceUpdate < 24) {
-          const hoursLeft = Math.ceil(24 - hoursSinceUpdate);
-          return NextResponse.json(
-            {
-              error: `The seller recently updated their payout account. For security, payouts are held for 24 hours after an account change. Please try again in ${hoursLeft} hour(s).`,
-              code: "COOLING_OFF_PERIOD",
-            },
-            { status: 402 }
-          );
-        }
-      }
-    }
-
     // ── Payluk Pre-Insert (Escrow Creation) ───────────────
     let paylukPaymentToken: string | undefined = undefined;
     let paylukEscrowId: string | undefined = undefined;
     let sellerPaylukId: string | undefined = undefined;
 
-    if (totalAmount > 0 && process.env.PAYMENT_PROVIDER === 'payluk') {
+    if (totalAmount > 0) {
       try {
         await ensurePaylukCustomer(buyerId);
         sellerPaylukId = await ensurePaylukCustomer(sellerId);
@@ -337,7 +278,7 @@ export async function POST(request: NextRequest) {
       item_type: itemType, // Keep track of the item type in escrow_transactions
     };
 
-    if (totalAmount > 0 && process.env.PAYMENT_PROVIDER === 'payluk') {
+    if (totalAmount > 0) {
       txPayload.payment_provider = 'payluk';
       txPayload.payluk_tx_ref = paylukPaymentToken;     // PY_... token (used by claimFunds, webhook)
       txPayload.payluk_escrow_id = paylukEscrowId;      // raw data.id (used by confirmDelivery)
@@ -369,37 +310,9 @@ export async function POST(request: NextRequest) {
 
     const transactionId = txData.id;
 
-    // Get request origin to ensure we redirect back to the correct host (localhost vs production)
-    const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
-    
-    // ── Initialise Paystack payment ───────────────────────
-    // Full amount collected into platform account and held in escrow.
-    // Seller payout triggered after buyer confirms receipt.
     let paymentLink: string | undefined = undefined;
-    if (totalAmount > 0 && process.env.PAYMENT_PROVIDER !== 'payluk') {
-      if (!sellerAccount?.paystack_subaccount_id) {
-        console.warn(`[PaymentInit] Fallback: Seller ${sellerId} has no paystack_subaccount_id, initializing transaction without split routing.`);
-      }
-
-      try {
-        paymentLink = await PaystackService.initializePayment({
-          transactionId,
-          amount: totalAmount,
-          buyerEmail,
-          buyerName,
-          itemTitle,
-          sellerName,
-          callbackUrl: callbackUrl || `${origin}/payment/verify?tx_ref=${transactionId}`,
-          subaccount: sellerAccount?.paystack_subaccount_id || undefined,
-        });
-      } catch (paystackError: any) {
-        console.error("Paystack error:", paystackError);
-        return NextResponse.json(
-          { error: paystackError?.message || "Failed to initialize payment" },
-          { status: 502 }
-        );
-      }
-    } else {
+    
+    if (totalAmount === 0) {
       // Free item, bypass Paystack and mark as PAID immediately
       await supabaseAdmin
         .from('escrow_transactions')
@@ -449,10 +362,8 @@ export async function POST(request: NextRequest) {
       paymentLink,
       transactionId,
       totalAmount,
-      ...(process.env.PAYMENT_PROVIDER === 'payluk' && {
-        paylukPaymentToken,
-        paylukEscrowId,
-      }),
+      paylukPaymentToken,
+      paylukEscrowId,
     });
   } catch (error) {
     console.error("Payment initialization error:", error);
