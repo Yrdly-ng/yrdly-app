@@ -219,6 +219,48 @@ export class PaylukService {
   }
 
   /**
+   * GET /v1/customers?phone=...
+   * Looks up a customer by phone number. If multiple matches are found, it uses the provided email to disambiguate.
+   * Throws an error if ambiguity cannot be resolved. Returns null if not found.
+   */
+  static async getCustomerByPhone(phone: string, email?: string): Promise<PaylukCustomer | null> {
+    try {
+      const response = await paylukRequest<{
+        pagination: any;
+        data: PaylukCustomer[];
+      }>(`/v1/customers?phone=${encodeURIComponent(phone)}`, {
+        method: 'GET',
+      });
+      
+      const matches = response.data?.data || [];
+      
+      if (matches.length === 0) {
+        return null;
+      }
+      
+      if (email) {
+        const exactMatches = matches.filter(c => c.email.toLowerCase() === email.toLowerCase());
+        if (exactMatches.length === 1) {
+          return exactMatches[0];
+        }
+        throw new Error(`Found ${matches.length} customers with phone ${phone}, and ${exactMatches.length} with email ${email}. Cannot disambiguate safely.`);
+      }
+      
+      if (matches.length === 1) {
+        return matches[0];
+      }
+      
+      throw new Error(`Found ${matches.length} customers with phone ${phone} and no email provided for disambiguation.`);
+    } catch (error: any) {
+      if (error.message.includes('Cannot disambiguate safely') || error.message.includes('no email provided')) {
+        throw error;
+      }
+      console.warn(`[PaylukService] getCustomerByPhone failed for ${phone}:`, error?.message);
+      return null;
+    }
+  }
+
+  /**
    * POST /v1/escrow/create  (multipart/form-data)
    * Generates a standard escrow payment link.
    * The seller is identified by customerId (customer-id header).

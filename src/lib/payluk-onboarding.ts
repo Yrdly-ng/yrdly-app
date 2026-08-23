@@ -72,23 +72,39 @@ export async function ensurePaylukCustomer(userId: string): Promise<string> {
   }
 
   // 3. Call Payluk API
-  const customer = await PaylukService.createCustomer({
-    firstname,
-    lastname,
-    email,
-    phone,
-    // bvn is explicitly omitted as described in the doc header
-  });
+  let customerId = '';
+  try {
+    const customer = await PaylukService.createCustomer({
+      firstname,
+      lastname,
+      email,
+      phone,
+      // bvn is explicitly omitted as described in the doc header
+    });
+    customerId = customer.customerId;
+  } catch (err: any) {
+    if (err.message?.includes('already exists under this merchant')) {
+      const existingCustomer = await PaylukService.getCustomerByPhone(phone, email);
+      if (!existingCustomer) {
+        throw new Error(
+          `[PaylukOnboarding] Customer already exists, but lookup by phone failed for ${phone}`
+        );
+      }
+      customerId = existingCustomer.customerId;
+    } else {
+      throw err;
+    }
+  }
 
   // 4. Save to database
   const { error: updateError } = await supabaseAdmin
     .from('users')
-    .update({ payluk_customer_id: customer.customerId })
+    .update({ payluk_customer_id: customerId })
     .eq('id', userId);
 
   if (updateError) {
     throw new Error(`[PaylukOnboarding] Failed to save Payluk customer ID: ${updateError.message}`);
   }
 
-  return customer.customerId;
+  return customerId;
 }
