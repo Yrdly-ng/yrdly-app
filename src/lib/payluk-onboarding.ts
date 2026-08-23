@@ -15,14 +15,25 @@ import { PaylukService } from './payluk-service';
  * 3. Omitting it safely falls back to temporary accounts or the Payluk Test Bank.
  */
 export async function ensurePaylukCustomer(userId: string): Promise<string> {
-  const { data: user, error } = await supabaseAdmin
+  let { data: user, error } = await supabaseAdmin
     .from('users')
     .select('payluk_customer_id, name, legal_name, email, phone')
     .eq('id', userId)
-    .single();
+    .maybeSingle();
 
   if (error || !user) {
-    throw new Error(`[PaylukOnboarding] Failed to fetch user ${userId}: ${error?.message || 'User not found'}`);
+    // Fallback to auth.users
+    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.getUserById(userId);
+    if (authError || !authUser?.user) {
+      throw new Error(`[PaylukOnboarding] Failed to fetch user ${userId}: ${error?.message || 'User not found in public or auth'}`);
+    }
+    user = {
+      payluk_customer_id: null,
+      name: authUser.user.user_metadata?.name || 'Unknown',
+      legal_name: null,
+      email: authUser.user.email,
+      phone: authUser.user.phone || authUser.user.user_metadata?.phone
+    };
   }
 
   // 1. Return immediately if already onboarded
