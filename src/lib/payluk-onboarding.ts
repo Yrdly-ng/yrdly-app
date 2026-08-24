@@ -51,8 +51,6 @@ export async function ensurePaylukCustomer(userId: string): Promise<string> {
   // If the user only has a single-word name, fallback to 'User' since lastname is required
   const lastname = nameParts.length > 1 ? nameParts.slice(1).join(' ') : 'User';
 
-  const email = user.email || `${userId}@placeholder.yrdly.com`;
-
   if (!user.phone) {
     throw new Error(
       `[PaylukOnboarding] User ${userId} must have a verified phone number before Payluk onboarding.`
@@ -71,42 +69,64 @@ export async function ensurePaylukCustomer(userId: string): Promise<string> {
     if (!phone.startsWith('0')) phone = '0' + phone.substring(1);
   }
 
+  // Use a platform-controlled email for Payluk customer creation.
+  // We deliberately avoid the user's real email because:
+  // 1. The Payluk merchant admin account may share the same email as a user,
+  //    and Payluk refuses to create a "customer" with the same email as the admin.
+  // 2. This guarantees uniqueness across all users regardless of their real email.
+  const paylukEmail = `user-${userId}@users.yrdly.ng`;
+
   // 3. Call Payluk API
+  // Two-attempt strategy:
+  //   Attempt 1: with phone — normal path.
+  //   Attempt 2: without phone — handles the edge case where the user's phone
+  //              is already registered as the Payluk merchant admin phone, which
+  //              Payluk refuses to register again as a customer phone. Without a
+  //              phone the customer is still valid; phone verification is separate.
   let customerId = '';
-  try {
-    const customer = await PaylukService.createCustomer({
-      firstname,
-      lastname,
-      email,
-      phone,
-      // bvn is explicitly omitted as described in the doc header
-    });
-    customerId = customer.customerId;
-  } catch (err: any) {
-    if (err.message?.includes('already exists under this merchant')) {
-      // Step 1: try phone lookup
-      let existingCustomer = await PaylukService.getCustomerByPhone(phone, email);
+  const createAttempts: Array<{ phone?: string }> = [{ phone }, {}];
 
-      // Step 2: phone lookup failed — try email lookup
-      if (!existingCustomer) {
-        console.log(`[PaylukOnboarding] Phone lookup failed for ${phone}, trying email: ${email}`);
-        existingCustomer = await PaylukService.getCustomerByEmail(email);
+  for (const extra of createAttempts) {
+    try {
+      const customer = await PaylukService.createCustomer({
+        firstname,
+        lastname,
+        email: paylukEmail,
+        ...extra,
+      });
+      customerId = customer.customerId;
+      break; // success
+    } catch (err: any) {
+      if (!err.message?.includes('already exists under this merchant')) {
+        throw err; // unrelated error — surface immediately
       }
 
-      // Step 3: email also failed — scan all customers manually
+      // "already exists" — try to recover the existing customer ID
+      let existingCustomer = await PaylukService.getCustomerByPhone(phone);
+
       if (!existingCustomer) {
-        console.log(`[PaylukOnboarding] Email lookup failed for ${email}, scanning all customers for phone: ${phone}`);
-        existingCustomer = await PaylukService.findCustomerByPhoneOrEmailScan(phone, email);
+        console.log(`[PaylukOnboarding] Phone lookup failed for ${phone}, trying platform email: ${paylukEmail}`);
+        existingCustomer = await PaylukService.getCustomerByEmail(paylukEmail);
       }
 
       if (!existingCustomer) {
+        console.log(`[PaylukOnboarding] Email lookup failed, scanning all customers for phone: ${phone}`);
+        existingCustomer = await PaylukService.findCustomerByPhoneOrEmailScan(phone, paylukEmail);
+      }
+
+      if (existingCustomer) {
+        customerId = existingCustomer.customerId;
+        break;
+      }
+
+      // Recovery failed — continue to next attempt (phone-omitted) if available
+      if (extra.phone === undefined) {
+        // Already tried without phone and still failed
         throw new Error(
           `[PaylukOnboarding] Customer already exists, but lookup by phone failed for ${phone}`
         );
       }
-      customerId = existingCustomer.customerId;
-    } else {
-      throw err;
+      console.log(`[PaylukOnboarding] Retrying customer creation without phone for ${phone}`);
     }
   }
 
