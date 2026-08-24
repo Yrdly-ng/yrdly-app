@@ -206,7 +206,7 @@ export class PaylukService {
     firstname: string;
     lastname: string;
     email: string;
-    phone: string;
+    phone?: string;
     countryId?: string;
     bvn?: string;
   }): Promise<PaylukCustomer> {
