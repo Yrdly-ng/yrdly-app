@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
   //    does not supply this value and cannot influence which escrow gets paid.
   const { data: tx, error: txFetchError } = await supabaseAdmin
     .from('escrow_transactions')
-    .select('id, buyer_id, total_amount, status, payluk_tx_ref')
+    .select('id, buyer_id, total_amount, status, payluk_tx_ref, payluk_escrow_id')
     .eq('id', transactionId)
     .single();
 
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
   }
 
-  if (!tx.payluk_tx_ref) {
+  if (!tx.payluk_escrow_id) {
     return NextResponse.json({ error: 'Transaction has no associated Payluk escrow' }, { status: 409 });
   }
 
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
     await PaylukService.payEscrow(customerId, {
       amount: tx.total_amount,
       reference: transactionId, // our internal ID doubles as the unique payment reference
-      escrowId: tx.payluk_tx_ref,
+      escrowId: tx.payluk_escrow_id,
       gateway: 'wallet',
     });
 
