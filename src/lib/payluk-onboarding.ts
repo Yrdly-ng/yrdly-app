@@ -102,7 +102,14 @@ export async function ensurePaylukCustomer(userId: string): Promise<string> {
       }
 
       // "already exists" — try to recover the existing customer ID
-      let existingCustomer = await PaylukService.getCustomerByPhone(phone);
+      let existingCustomer = await PaylukService.getCustomerByPhone(phone, paylukEmail);
+
+      // Also try international format — Payluk may have stored the phone as 234XXXXXXXXX
+      if (!existingCustomer && phone.startsWith('0') && phone.length === 11) {
+        const intlPhone = '234' + phone.substring(1);
+        console.log(`[PaylukOnboarding] Trying international phone format: ${intlPhone}`);
+        existingCustomer = await PaylukService.getCustomerByPhone(intlPhone, paylukEmail);
+      }
 
       if (!existingCustomer) {
         console.log(`[PaylukOnboarding] Phone lookup failed for ${phone}, trying platform email: ${paylukEmail}`);

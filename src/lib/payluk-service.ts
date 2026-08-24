@@ -301,8 +301,12 @@ export class PaylukService {
         }>(`/v1/customers?limit=50&page=${page}`, { method: 'GET' });
 
         const customers = response.data?.data || [];
+        // Normalize both phones to the last 10 significant digits so that
+        // local format (07026146243) matches international format (2347026146243).
+        const normalizePhone = (p: string) => p.replace(/\D/g, '').slice(-10);
+        const searchPhone10 = normalizePhone(phone);
         const found = customers.find(c =>
-          c.phone === phone ||
+          (c.phone && normalizePhone(c.phone) === searchPhone10) ||
           c.email.toLowerCase() === email.toLowerCase()
         );
         if (found) return found;
