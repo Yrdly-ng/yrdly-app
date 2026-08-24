@@ -261,6 +261,63 @@ export class PaylukService {
   }
 
   /**
+   * GET /v1/customers?email=...
+   * Looks up a customer by email address. Returns null if not found.
+   */
+  static async getCustomerByEmail(email: string): Promise<PaylukCustomer | null> {
+    try {
+      const response = await paylukRequest<{
+        pagination: any;
+        data: PaylukCustomer[];
+      }>(`/v1/customers?email=${encodeURIComponent(email)}`, {
+        method: 'GET',
+      });
+
+      const matches = response.data?.data || [];
+      if (matches.length === 0) return null;
+      if (matches.length === 1) return matches[0];
+
+      // Multiple matches — return the one with exact email
+      const exact = matches.find(c => c.email.toLowerCase() === email.toLowerCase());
+      return exact ?? null;
+    } catch (error: any) {
+      console.warn(`[PaylukService] getCustomerByEmail failed for ${email}:`, error?.message);
+      return null;
+    }
+  }
+
+  /**
+   * Fallback: pages through GET /v1/customers and manually searches for a
+   * customer matching either phone or email. Used when Payluk's search API
+   * returns empty despite the customer existing (staging bug workaround).
+   */
+  static async findCustomerByPhoneOrEmailScan(phone: string, email: string): Promise<PaylukCustomer | null> {
+    try {
+      let page = 1;
+      while (true) {
+        const response = await paylukRequest<{
+          pagination: { count: number; pages: number; isLastPage: boolean; nextPage: number | null };
+          data: PaylukCustomer[];
+        }>(`/v1/customers?limit=50&page=${page}`, { method: 'GET' });
+
+        const customers = response.data?.data || [];
+        const found = customers.find(c =>
+          c.phone === phone ||
+          c.email.toLowerCase() === email.toLowerCase()
+        );
+        if (found) return found;
+
+        if (response.data?.pagination?.isLastPage || customers.length === 0) break;
+        page++;
+      }
+      return null;
+    } catch (error: any) {
+      console.warn(`[PaylukService] findCustomerByPhoneOrEmailScan failed:`, error?.message);
+      return null;
+    }
+  }
+
+  /**
    * POST /v1/escrow/create  (multipart/form-data)
    * Generates a standard escrow payment link.
    * The seller is identified by customerId (customer-id header).

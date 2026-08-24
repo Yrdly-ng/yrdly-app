@@ -84,7 +84,21 @@ export async function ensurePaylukCustomer(userId: string): Promise<string> {
     customerId = customer.customerId;
   } catch (err: any) {
     if (err.message?.includes('already exists under this merchant')) {
-      const existingCustomer = await PaylukService.getCustomerByPhone(phone, email);
+      // Step 1: try phone lookup
+      let existingCustomer = await PaylukService.getCustomerByPhone(phone, email);
+
+      // Step 2: phone lookup failed — try email lookup
+      if (!existingCustomer) {
+        console.log(`[PaylukOnboarding] Phone lookup failed for ${phone}, trying email: ${email}`);
+        existingCustomer = await PaylukService.getCustomerByEmail(email);
+      }
+
+      // Step 3: email also failed — scan all customers manually
+      if (!existingCustomer) {
+        console.log(`[PaylukOnboarding] Email lookup failed for ${email}, scanning all customers for phone: ${phone}`);
+        existingCustomer = await PaylukService.findCustomerByPhoneOrEmailScan(phone, email);
+      }
+
       if (!existingCustomer) {
         throw new Error(
           `[PaylukOnboarding] Customer already exists, but lookup by phone failed for ${phone}`
