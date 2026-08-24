@@ -41,6 +41,8 @@ export async function POST(request: NextRequest) {
   // 1. Pull the transaction row — total_amount and payluk_tx_ref are stored at creation time.
   //    payluk_tx_ref is used as the escrow ID for the Payluk call; the client
   //    does not supply this value and cannot influence which escrow gets paid.
+  console.log('[pay-escrow] transactionId:', transactionId, 'caller:', user.id);
+
   const { data: tx, error: txFetchError } = await supabaseAdmin
     .from('escrow_transactions')
     .select('id, buyer_id, total_amount, status, payluk_tx_ref, payluk_escrow_id')
@@ -48,8 +50,11 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (txFetchError || !tx) {
+    console.log('[pay-escrow] transaction not found. error:', txFetchError?.message);
     return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
   }
+
+  console.log('[pay-escrow] tx row:', JSON.stringify({ id: tx.id, status: tx.status, total_amount: tx.total_amount, payluk_tx_ref: tx.payluk_tx_ref, payluk_escrow_id: tx.payluk_escrow_id }));
 
   if (!tx.payluk_escrow_id) {
     return NextResponse.json({ error: 'Transaction has no associated Payluk escrow' }, { status: 409 });
@@ -67,6 +72,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const customerId = await ensurePaylukCustomer(user.id);
+    console.log('[pay-escrow] buyer customerId:', customerId, 'calling payEscrow with escrowId:', tx.payluk_escrow_id, 'amount:', tx.total_amount);
 
     // 4. Call Payluk — both amount and escrowId come from the database row,
     //    never from client input.
@@ -76,6 +82,7 @@ export async function POST(request: NextRequest) {
       escrowId: tx.payluk_escrow_id,
       gateway: 'wallet',
     });
+    console.log('[pay-escrow] Payluk payEscrow succeeded');
 
     // 5. Update transaction status to PAID.
     //    IMPORTANT: Payluk has already debited the buyer's wallet by this point.
