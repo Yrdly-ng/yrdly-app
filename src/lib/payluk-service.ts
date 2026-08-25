@@ -387,6 +387,52 @@ export class PaylukService {
   }
 
   /**
+   * Scans all customers to find one matching by firstname + lastname.
+   * Last-resort recovery when phone and email have both changed since the
+   * customer was originally created on Payluk.
+   */
+  static async findCustomerByNameScan(firstname: string, lastname: string): Promise<PaylukCustomer | null> {
+    try {
+      let page = 1;
+      const allCustomers: PaylukCustomer[] = [];
+
+      while (true) {
+        const response = await paylukRequest<{
+          pagination: { count: number; pages: number; isLastPage: boolean; nextPage: number | null };
+          data: PaylukCustomer[];
+        }>(`/v1/customers?limit=50&page=${page}`, { method: 'GET' });
+
+        const customers = response.data?.data || [];
+        allCustomers.push(...customers);
+
+        if (response.data?.pagination?.isLastPage || customers.length === 0) break;
+        page++;
+      }
+
+      const nameMatches = allCustomers.filter(
+        c =>
+          c.firstname.toLowerCase() === firstname.toLowerCase() &&
+          c.lastname.toLowerCase() === lastname.toLowerCase()
+      );
+
+      if (nameMatches.length === 1) {
+        console.log(`[PaylukService] findCustomerByNameScan: found ${nameMatches[0].customerId} for ${firstname} ${lastname}`);
+        return nameMatches[0];
+      }
+
+      if (nameMatches.length > 1) {
+        console.warn(`[PaylukService] findCustomerByNameScan: found ${nameMatches.length} customers matching name ${firstname} ${lastname}. Cannot disambiguate.`);
+        return null;
+      }
+
+      return null;
+    } catch (error: any) {
+      console.warn(`[PaylukService] findCustomerByNameScan failed:`, error?.message);
+      return null;
+    }
+  }
+
+  /**
    * POST /v1/escrow/create  (multipart/form-data)
    * Generates a standard escrow payment link.
    * The seller is identified by customerId (customer-id header).

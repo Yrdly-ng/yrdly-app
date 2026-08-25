@@ -118,6 +118,13 @@ export async function ensurePaylukCustomer(userId: string): Promise<string> {
       existingCustomer = await PaylukService.findCustomerByPhoneOrEmailScan(phone, email);
     }
 
+    // Last resort: match by name. This handles the case where a customer was
+    // previously created with a placeholder email and a different phone number.
+    if (!existingCustomer) {
+      console.log(`[PaylukOnboarding] Scan failed, trying name-based recovery for: ${firstname} ${lastname}`);
+      existingCustomer = await PaylukService.findCustomerByNameScan(firstname, lastname);
+    }
+
     if (existingCustomer) {
       customerId = existingCustomer.customerId;
     } else {
