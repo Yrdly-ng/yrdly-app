@@ -263,6 +263,7 @@ export class PaylukService {
   /**
    * GET /v1/customers?email=...
    * Looks up a customer by email address. Returns null if not found.
+   * Throws an error if multiple customers match the exact email address.
    */
   static async getCustomerByEmail(email: string): Promise<PaylukCustomer | null> {
     try {
@@ -275,12 +276,20 @@ export class PaylukService {
 
       const matches = response.data?.data || [];
       if (matches.length === 0) return null;
-      if (matches.length === 1) return matches[0];
 
-      // Multiple matches — return the one with exact email
-      const exact = matches.find(c => c.email.toLowerCase() === email.toLowerCase());
-      return exact ?? null;
+      const exactMatches = matches.filter(c => c.email.toLowerCase() === email.toLowerCase());
+      if (exactMatches.length === 1) {
+        return exactMatches[0];
+      }
+      if (exactMatches.length === 0) {
+        return null;
+      }
+
+      throw new Error(`Found ${exactMatches.length} customers matching email ${email}. Cannot disambiguate safely.`);
     } catch (error: any) {
+      if (error.message.includes('Cannot disambiguate safely')) {
+        throw error;
+      }
       console.warn(`[PaylukService] getCustomerByEmail failed for ${email}:`, error?.message);
       return null;
     }
@@ -290,10 +299,15 @@ export class PaylukService {
    * Fallback: pages through GET /v1/customers and manually searches for a
    * customer matching either phone or email. Used when Payluk's search API
    * returns empty despite the customer existing (staging bug workaround).
+   *
+   * Scans all pages to ensure no customer is missed, and enforces email disambiguation
+   * and ambiguity checks before accepting a match.
    */
-  static async findCustomerByPhoneOrEmailScan(phone: string, email: string): Promise<PaylukCustomer | null> {
+  static async findCustomerByPhoneOrEmailScan(phone: string, email?: string): Promise<PaylukCustomer | null> {
     try {
       let page = 1;
+      const allCustomers: PaylukCustomer[] = [];
+
       while (true) {
         const response = await paylukRequest<{
           pagination: { count: number; pages: number; isLastPage: boolean; nextPage: number | null };
@@ -301,21 +315,59 @@ export class PaylukService {
         }>(`/v1/customers?limit=50&page=${page}`, { method: 'GET' });
 
         const customers = response.data?.data || [];
-        // Normalize both phones to the last 10 significant digits so that
-        // local format (07026146243) matches international format (2347026146243).
-        const normalizePhone = (p: string) => p.replace(/\D/g, '').slice(-10);
-        const searchPhone10 = normalizePhone(phone);
-        const found = customers.find(c =>
-          (c.phone && normalizePhone(c.phone) === searchPhone10) ||
-          c.email.toLowerCase() === email.toLowerCase()
-        );
-        if (found) return found;
+        allCustomers.push(...customers);
 
         if (response.data?.pagination?.isLastPage || customers.length === 0) break;
         page++;
       }
-      return null;
+
+      const normalizePhone = (p: string) => p.replace(/\D/g, '').slice(-10);
+      const searchPhone10 = normalizePhone(phone);
+
+      const phoneMatches = allCustomers.filter(
+        c => c.phone && normalizePhone(c.phone) === searchPhone10
+      );
+
+      const emailMatches = email
+        ? allCustomers.filter(c => c.email.toLowerCase() === email.toLowerCase())
+        : [];
+
+      // 1. If we have exact email match(es)
+      if (emailMatches.length > 0) {
+        if (emailMatches.length === 1) {
+          // Verify it doesn't conflict with a different phone match
+          if (
+            phoneMatches.length > 0 &&
+            !phoneMatches.some(p => p.customerId === emailMatches[0].customerId)
+          ) {
+            throw new Error(
+              `Found customer ${emailMatches[0].customerId} matching email ${email}, but phone ${phone} matched a different customer ${phoneMatches[0].customerId}. Cannot disambiguate safely.`
+            );
+          }
+          return emailMatches[0];
+        }
+        throw new Error(
+          `Found ${emailMatches.length} customers matching email ${email} during scan. Cannot disambiguate safely.`
+        );
+      }
+
+      // 2. If no email match, evaluate phone matches
+      if (phoneMatches.length === 0) {
+        return null;
+      }
+
+      if (phoneMatches.length === 1) {
+        return phoneMatches[0];
+      }
+
+      // Multiple phone matches and no email match to resolve them
+      throw new Error(
+        `Found ${phoneMatches.length} customers matching phone ${phone} during scan, and no email match for ${email} to disambiguate.`
+      );
     } catch (error: any) {
+      if (error.message.includes('Cannot disambiguate safely') || error.message.includes('matched a different customer')) {
+        throw error;
+      }
       console.warn(`[PaylukService] findCustomerByPhoneOrEmailScan failed:`, error?.message);
       return null;
     }

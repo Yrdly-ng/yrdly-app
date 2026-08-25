@@ -69,12 +69,7 @@ export async function ensurePaylukCustomer(userId: string): Promise<string> {
     if (!phone.startsWith('0')) phone = '0' + phone.substring(1);
   }
 
-  // Use a platform-controlled email for Payluk customer creation.
-  // We deliberately avoid the user's real email because:
-  // 1. The Payluk merchant admin account may share the same email as a user,
-  //    and Payluk refuses to create a "customer" with the same email as the admin.
-  // 2. This guarantees uniqueness across all users regardless of their real email.
-  const paylukEmail = `user-${userId}@users.yrdly.ng`;
+  const email = user.email || `${userId}@placeholder.yrdly.com`;
 
   // 3. Call Payluk API
   let customerId = '';
@@ -82,7 +77,7 @@ export async function ensurePaylukCustomer(userId: string): Promise<string> {
     const customer = await PaylukService.createCustomer({
       firstname,
       lastname,
-      email: paylukEmail,
+      email,
       phone,
     });
     customerId = customer.customerId;
@@ -92,23 +87,23 @@ export async function ensurePaylukCustomer(userId: string): Promise<string> {
     }
 
     // "already exists" — try to recover the existing customer ID
-    let existingCustomer = await PaylukService.getCustomerByPhone(phone, paylukEmail);
+    let existingCustomer = await PaylukService.getCustomerByPhone(phone, email);
 
     // Also try international format — Payluk may have stored the phone as 234XXXXXXXXX
     if (!existingCustomer && phone.startsWith('0') && phone.length === 11) {
       const intlPhone = '234' + phone.substring(1);
       console.log(`[PaylukOnboarding] Trying international phone format: ${intlPhone}`);
-      existingCustomer = await PaylukService.getCustomerByPhone(intlPhone, paylukEmail);
+      existingCustomer = await PaylukService.getCustomerByPhone(intlPhone, email);
     }
 
     if (!existingCustomer) {
-      console.log(`[PaylukOnboarding] Phone lookup failed for ${phone}, trying platform email: ${paylukEmail}`);
-      existingCustomer = await PaylukService.getCustomerByEmail(paylukEmail);
+      console.log(`[PaylukOnboarding] Phone lookup failed for ${phone}, trying email: ${email}`);
+      existingCustomer = await PaylukService.getCustomerByEmail(email);
     }
 
     if (!existingCustomer) {
       console.log(`[PaylukOnboarding] Email lookup failed, scanning all customers for phone: ${phone}`);
-      existingCustomer = await PaylukService.findCustomerByPhoneOrEmailScan(phone, paylukEmail);
+      existingCustomer = await PaylukService.findCustomerByPhoneOrEmailScan(phone, email);
     }
 
     if (existingCustomer) {
