@@ -36,9 +36,21 @@ export async function ensurePaylukCustomer(userId: string): Promise<string> {
     };
   }
 
-  // 1. Return immediately if already onboarded
+  // 1. If already onboarded, verify the stored ID is still valid on Payluk
   if (user.payluk_customer_id) {
-    return user.payluk_customer_id;
+    try {
+      await PaylukService.getCustomerById(user.payluk_customer_id);
+      return user.payluk_customer_id; // confirmed valid
+    } catch (verifyErr: any) {
+      console.warn(
+        `[PaylukOnboarding] Stored payluk_customer_id ${user.payluk_customer_id} is stale or invalid for user ${userId}: ${verifyErr?.message}. Re-creating...`
+      );
+      // Clear the stale ID so we fall through to re-creation
+      await supabaseAdmin
+        .from('users')
+        .update({ payluk_customer_id: null })
+        .eq('id', userId);
+    }
   }
 
   // 2. Prepare customer data

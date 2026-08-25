@@ -261,6 +261,19 @@ export class PaylukService {
   }
 
   /**
+   * GET /v1/customer/:id
+   * Fetches a single customer by their Payluk customer ID.
+   * Throws if the customer doesn't exist (used to verify stored IDs).
+   */
+  static async getCustomerById(customerId: string): Promise<PaylukCustomer> {
+    const response = await paylukRequest<PaylukCustomer>(
+      `/v1/customer/${encodeURIComponent(customerId)}`,
+      { method: 'GET' }
+    );
+    return response.data;
+  }
+
+  /**
    * GET /v1/customers?email=...
    * Looks up a customer by email address. Returns null if not found.
    * Throws an error if multiple customers match the exact email address.
