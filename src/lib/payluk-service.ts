@@ -386,8 +386,8 @@ export class PaylukService {
       purpose: string;
       whoPays: PaylukWhoPays;
       description?: string;
-      maxDelivery?: number;
-      deliveryTimeline?: 'minutes' | 'hours' | 'days';
+      maxDelivery: number;
+      deliveryTimeline: 'minutes' | 'hours' | 'days';
       totalQuantity?: number;
       categoryId?: string;
     }
