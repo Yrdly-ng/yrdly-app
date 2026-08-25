@@ -239,6 +239,8 @@ export async function POST(request: NextRequest) {
           amount: totalAmount,
           purpose: itemData.title,
           whoPays: 'seller',
+          maxDelivery: 7,
+          deliveryTimeline: 'days',
         });
         
         paylukPaymentToken = paylukEscrow.paymentToken;
