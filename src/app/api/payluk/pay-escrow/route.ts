@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
 
   const { data: tx, error: txFetchError } = await supabaseAdmin
     .from('escrow_transactions')
-    .select('id, buyer_id, total_amount, status, payluk_tx_ref, payluk_escrow_id')
+    .select('id, buyer_id, total_amount, status, payluk_tx_ref, payluk_escrow_id, item_id, item_type')
     .eq('id', transactionId)
     .single();
 
@@ -108,6 +108,26 @@ export async function POST(request: NextRequest) {
         { error: 'PAYMENT_RECORDED_FAILED', paylukSucceeded: true },
         { status: 500 }
       );
+    }
+
+    if (tx.item_type === 'catalog_item') {
+      await supabaseAdmin
+        .from('catalog_items')
+        .update({ 
+          in_stock: false, 
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', tx.item_id);
+    } else {
+      await supabaseAdmin
+        .from('posts')
+        .update({ 
+          is_sold: true, 
+          sold_to_user_id: tx.buyer_id,
+          sold_at: new Date().toISOString(),
+          transaction_id: transactionId,
+        })
+        .eq('id', tx.item_id);
     }
 
     return NextResponse.json({ success: true });
