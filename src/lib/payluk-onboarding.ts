@@ -94,44 +94,56 @@ export async function ensurePaylukCustomer(userId: string): Promise<string> {
     });
     customerId = customer.customerId;
   } catch (err: any) {
-    if (!err.message?.includes('already exists under this merchant')) {
-      throw err; // unrelated error — surface immediately
-    }
-
-    // "already exists" — try to recover the existing customer ID
-    let existingCustomer = await PaylukService.getCustomerByPhone(phone, email);
-
-    // Also try international format — Payluk may have stored the phone as 234XXXXXXXXX
-    if (!existingCustomer && phone.startsWith('0') && phone.length === 11) {
-      const intlPhone = '234' + phone.substring(1);
-      console.log(`[PaylukOnboarding] Trying international phone format: ${intlPhone}`);
-      existingCustomer = await PaylukService.getCustomerByPhone(intlPhone, email);
-    }
-
-    if (!existingCustomer) {
-      console.log(`[PaylukOnboarding] Phone lookup failed for ${phone}, trying email: ${email}`);
-      existingCustomer = await PaylukService.getCustomerByEmail(email);
-    }
-
-    if (!existingCustomer) {
-      console.log(`[PaylukOnboarding] Email lookup failed, scanning all customers for phone: ${phone}`);
-      existingCustomer = await PaylukService.findCustomerByPhoneOrEmailScan(phone, email);
-    }
-
-    // Last resort: match by name. This handles the case where a customer was
-    // previously created with a placeholder email and a different phone number.
-    if (!existingCustomer) {
-      console.log(`[PaylukOnboarding] Scan failed, trying name-based recovery for: ${firstname} ${lastname}`);
-      existingCustomer = await PaylukService.findCustomerByNameScan(firstname, lastname);
-    }
-
-    if (existingCustomer) {
-      customerId = existingCustomer.customerId;
+    // 1. Try extracting customerId directly from Payluk's error message (e.g., "registered to one of your customers (customerId: 6a905b7d4224347a5745b83c)")
+    const match = err.message?.match(/customerId:\s*([a-f0-9]{24})/i);
+    if (match && match[1]) {
+      console.log(`[PaylukOnboarding] Extracted existing customerId ${match[1]} directly from Payluk error message.`);
+      customerId = match[1];
     } else {
-      // Recovery failed — throw immediately.
-      throw new Error(
-        `[PaylukOnboarding] Customer already exists, but lookup by phone failed for ${phone}`
-      );
+      const isAlreadyExistsError =
+        err.message?.includes('already exists') ||
+        err.message?.includes('already registered') ||
+        err.message?.includes('registered to one of your customers');
+
+      if (!isAlreadyExistsError) {
+        throw err; // unrelated error — surface immediately
+      }
+
+      // "already exists" — try to recover the existing customer ID
+      let existingCustomer = await PaylukService.getCustomerByPhone(phone, email);
+
+      // Also try international format — Payluk may have stored the phone as 234XXXXXXXXX
+      if (!existingCustomer && phone.startsWith('0') && phone.length === 11) {
+        const intlPhone = '234' + phone.substring(1);
+        console.log(`[PaylukOnboarding] Trying international phone format: ${intlPhone}`);
+        existingCustomer = await PaylukService.getCustomerByPhone(intlPhone, email);
+      }
+
+      if (!existingCustomer) {
+        console.log(`[PaylukOnboarding] Phone lookup failed for ${phone}, trying email: ${email}`);
+        existingCustomer = await PaylukService.getCustomerByEmail(email);
+      }
+
+      if (!existingCustomer) {
+        console.log(`[PaylukOnboarding] Email lookup failed, scanning all customers for phone: ${phone}`);
+        existingCustomer = await PaylukService.findCustomerByPhoneOrEmailScan(phone, email);
+      }
+
+      // Last resort: match by name. This handles the case where a customer was
+      // previously created with a placeholder email and a different phone number.
+      if (!existingCustomer) {
+        console.log(`[PaylukOnboarding] Scan failed, trying name-based recovery for: ${firstname} ${lastname}`);
+        existingCustomer = await PaylukService.findCustomerByNameScan(firstname, lastname);
+      }
+
+      if (existingCustomer) {
+        customerId = existingCustomer.customerId;
+      } else {
+        // Recovery failed — throw immediately.
+        throw new Error(
+          `[PaylukOnboarding] Customer already exists, but lookup by phone failed for ${phone}`
+        );
+      }
     }
   }
 

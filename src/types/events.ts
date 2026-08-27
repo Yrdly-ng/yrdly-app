@@ -16,6 +16,8 @@ export interface Event {
   description: string | null;
   category: string;
   cover_image_url: string | null;
+  image_urls?: string[] | null;
+  video_urls?: string[] | null;
   location_address: string | null;
   location_online: boolean;
   online_link: string | null;

@@ -80,6 +80,7 @@ export async function POST(request: NextRequest) {
         description,
         category: category || 'General',
         cover_image_url: coverImageUrl,
+        image_urls: imageUrls && imageUrls.length > 0 ? imageUrls : (coverImageUrl ? [coverImageUrl] : []),
         location_address: locationAddress,
         location_online: locationOnline || false,
         online_link: onlineLink,
