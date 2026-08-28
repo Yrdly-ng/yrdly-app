@@ -44,7 +44,9 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { bankCode, accountNumber, accountName } = body;
+    const bankCode = body.bankCode || body.bank_code;
+    const accountNumber = body.accountNumber || body.account_number;
+    const accountName = body.accountName || body.account_name;
 
     if (!bankCode || !accountNumber || !accountName) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
