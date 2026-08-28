@@ -23,15 +23,25 @@ const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
  */
 export async function POST(request: NextRequest) {
   try {
-    // ── Rate Limiting ────────────────────────────────────────────────────────
-    const ip = request.headers.get("x-forwarded-for") || "unknown";
+    // ── Authenticate the caller ───────────────────────────────────────────────
+    const { data: { user }, error: authError } = await getAuthenticatedUser(request);
+
+    if (!user || authError) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    // ── Rate Limiting (keyed by user_id, not IP) ──────────────────────────────
+    // IP-based limiting breaks on shared carrier NAT (common with Nigerian mobile networks)
     const endpoint = "/api/payment/initialize";
     const now = new Date();
 
     const { data: rlData } = await supabaseAdmin
       .from('rate_limits')
       .select('*')
-      .eq('ip_address', ip)
+      .eq('ip_address', user.id)
       .eq('endpoint', endpoint)
       .single();
 
@@ -44,34 +54,24 @@ export async function POST(request: NextRequest) {
         await supabaseAdmin
           .from('rate_limits')
           .update({ request_count: rlData.request_count + 1 })
-          .eq('ip_address', ip)
+          .eq('ip_address', user.id)
           .eq('endpoint', endpoint);
       } else {
         await supabaseAdmin
           .from('rate_limits')
           .update({ request_count: 1, window_start: now.toISOString() })
-          .eq('ip_address', ip)
+          .eq('ip_address', user.id)
           .eq('endpoint', endpoint);
       }
     } else {
       await supabaseAdmin
         .from('rate_limits')
         .insert({
-          ip_address: ip,
+          ip_address: user.id,
           endpoint: endpoint,
           request_count: 1,
           window_start: now.toISOString()
         });
-    }
-
-    // ── Authenticate the caller ───────────────────────────────────────────────
-    const { data: { user }, error: authError } = await getAuthenticatedUser(request);
-
-    if (!user || authError) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
     }
 
     const body = await request.json();
