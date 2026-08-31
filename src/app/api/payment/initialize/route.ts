@@ -5,7 +5,7 @@ import { MARKETPLACE_CONSTANTS } from "@/lib/constants";
 import { getAuthenticatedUser } from "@/lib/supabase-server";
 import { getPostHogClient } from "@/lib/posthog-server";
 import { PaylukService } from "@/lib/payluk-service";
-import { ensurePaylukCustomer } from "@/lib/payluk-onboarding";
+import { getPaylukCustomerId } from "@/lib/payluk-onboarding";
 
 // Rate limiting constants
 const RATE_LIMIT_MAX = 10;
@@ -232,8 +232,8 @@ export async function POST(request: NextRequest) {
 
     if (totalAmount > 0) {
       try {
-        await ensurePaylukCustomer(buyerId);
-        sellerPaylukId = await ensurePaylukCustomer(sellerId);
+        await getPaylukCustomerId(buyerId);
+        sellerPaylukId = await getPaylukCustomerId(sellerId);
         
         const paylukEscrow = await PaylukService.createEscrow(sellerPaylukId, {
           amount: totalAmount,

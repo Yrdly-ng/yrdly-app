@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/supabase-server';
-import { ensurePaylukCustomer } from '@/lib/payluk-onboarding';
+import { getPaylukCustomerId } from '@/lib/payluk-onboarding';
 import { PaylukService } from '@/lib/payluk-service';
 
 /**
@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const customerId = await ensurePaylukCustomer(user.id);
+    const customerId = await getPaylukCustomerId(user.id);
     const account = await PaylukService.generateVirtualAccount(customerId);
     return NextResponse.json(account);
   } catch (err: any) {

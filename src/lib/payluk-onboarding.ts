@@ -74,6 +74,15 @@ export async function ensurePaylukCustomer(userId: string): Promise<string> {
       await PaylukService.getCustomerById(user.payluk_customer_id);
       return user.payluk_customer_id; // confirmed valid
     } catch (verifyErr: any) {
+      const isNotFound = verifyErr?.message?.includes('HTTP 404') || verifyErr?.message?.includes('not found');
+      
+      if (!isNotFound) {
+        // If Payluk is down or rate-limited (429/5xx), DO NOT clear the ID or try to recreate it.
+        // That would just cause a cascade of 429s on the create endpoint.
+        console.error(`[PaylukOnboarding] Payluk verify error for ${userId} (not a 404, throwing):`, verifyErr?.message);
+        throw verifyErr;
+      }
+
       console.warn(
         `[PaylukOnboarding] Stored payluk_customer_id ${user.payluk_customer_id} is stale or invalid for user ${userId}: ${verifyErr?.message}. Re-creating...`
       );

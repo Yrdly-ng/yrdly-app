@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { ensurePaylukCustomer } from '@/lib/payluk-onboarding';
+import { getPaylukCustomerId } from '@/lib/payluk-onboarding';
 import { PaylukService } from '@/lib/payluk-service';
 import { EscrowStatus } from '@/types/escrow';
 
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const customerId = await ensurePaylukCustomer(user.id);
+    const customerId = await getPaylukCustomerId(user.id);
     console.log('[pay-escrow] buyer customerId:', customerId, 'calling payEscrow with escrowId:', tx.payluk_escrow_id, 'amount:', tx.total_amount);
 
     // 4. Call Payluk — both amount and escrowId come from the database row,

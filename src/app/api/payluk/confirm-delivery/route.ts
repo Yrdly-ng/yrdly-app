@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { ensurePaylukCustomer } from '@/lib/payluk-onboarding';
+import { getPaylukCustomerId } from '@/lib/payluk-onboarding';
 import { PaylukService } from '@/lib/payluk-service';
 import { EscrowStatus } from '@/types/escrow';
 
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
   // 6. Resolve the buyer's Payluk customer ID.
   let buyerPaylukId: string;
   try {
-    buyerPaylukId = await ensurePaylukCustomer(user.id);
+    buyerPaylukId = await getPaylukCustomerId(user.id);
   } catch (e: any) {
     const msg: string = e?.message ?? '';
     if (msg === 'PHONE_VERIFICATION_REQUIRED') {
