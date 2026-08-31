@@ -62,8 +62,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, alreadyCompleted: true });
   }
 
-  // 5. Validate the transaction is in a confirmable state (PAID = buyer funded the escrow).
-  if (tx.status !== EscrowStatus.PAID) {
+  // 5. Validate the transaction is in a confirmable state (PAID, SHIPPED, or DELIVERED).
+  if (![EscrowStatus.PAID, EscrowStatus.SHIPPED, EscrowStatus.DELIVERED].includes(tx.status as EscrowStatus)) {
     return NextResponse.json(
       { error: `Transaction cannot be confirmed in state: ${tx.status}` },
       { status: 400 }
@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
       updated_at: new Date().toISOString(),
     })
     .eq('id', transactionId)
-    .eq('status', EscrowStatus.PAID); // optimistic-lock: skip if already updated by concurrent webhook
+    .in('status', [EscrowStatus.PAID, EscrowStatus.SHIPPED, EscrowStatus.DELIVERED]); // optimistic-lock: skip if already updated by concurrent webhook
 
   if (updateError) {
     console.error(
