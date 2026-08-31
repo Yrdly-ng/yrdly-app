@@ -53,10 +53,23 @@ async function paylukRequest<T>(
     headers,
   });
 
-  const data: PaylukEnvelope<T> = await res.json();
+  let data: PaylukEnvelope<T>;
+  let rawBody: string | undefined;
+  try {
+    rawBody = await res.text();
+    data = JSON.parse(rawBody) as PaylukEnvelope<T>;
+  } catch {
+    throw new Error(
+      `[Payluk] ${fetchOptions.method || 'GET'} ${endpoint} — HTTP ${res.status}: non-JSON response body: ${rawBody?.slice(0, 200)}`
+    );
+  }
 
   if (!res.ok) {
-    throw new Error(data.message || `Payluk API error: ${res.status}`);
+    const errMsg = data.message || data.status?.toString() || 'Payluk API error';
+    throw new Error(
+      `[Payluk] ${fetchOptions.method || 'GET'} ${endpoint} — HTTP ${res.status}` +
+      ` (Payluk status: ${data.status}): ${errMsg} | body: ${rawBody?.slice(0, 400)}`
+    );
   }
 
   return data;
@@ -85,10 +98,23 @@ async function paylukFormRequest<T>(
     headers,
   });
 
-  const data: PaylukEnvelope<T> = await res.json();
+  let data: PaylukEnvelope<T>;
+  let rawBody: string | undefined;
+  try {
+    rawBody = await res.text();
+    data = JSON.parse(rawBody) as PaylukEnvelope<T>;
+  } catch {
+    throw new Error(
+      `[Payluk] ${options.method || 'POST'} ${endpoint} — HTTP ${res.status}: non-JSON response body: ${rawBody?.slice(0, 200)}`
+    );
+  }
 
   if (!res.ok) {
-    throw new Error(data.message || `Payluk API error: ${res.status}`);
+    const errMsg = data.message || data.status?.toString() || 'Payluk API error';
+    throw new Error(
+      `[Payluk] ${options.method || 'POST'} ${endpoint} — HTTP ${res.status}` +
+      ` (Payluk status: ${data.status}): ${errMsg} | body: ${rawBody?.slice(0, 400)}`
+    );
   }
 
   return data;

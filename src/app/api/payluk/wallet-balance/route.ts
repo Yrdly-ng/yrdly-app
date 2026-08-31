@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/supabase-server';
-import { ensurePaylukCustomer } from '@/lib/payluk-onboarding';
+import { getPaylukCustomerId } from '@/lib/payluk-onboarding';
 import { PaylukService } from '@/lib/payluk-service';
 
 /**
@@ -14,14 +14,15 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const customerId = await ensurePaylukCustomer(user.id);
+    const customerId = await getPaylukCustomerId(user.id);
     const wallet = await PaylukService.getWallet(customerId);
     return NextResponse.json({ mainBalance: wallet.mainBalance, currency: wallet.currency });
   } catch (err: any) {
-    const msg: string = err?.message ?? 'Failed to fetch wallet balance';
+    console.error('[wallet-balance] Error fetching wallet:', err?.message ?? err);
+    const msg: string = err?.message ?? '';
     if (msg.includes('must have a verified phone number')) {
       return NextResponse.json({ error: 'PHONE_VERIFICATION_REQUIRED' }, { status: 409 });
     }
-    return NextResponse.json({ error: msg }, { status: 502 });
+    return NextResponse.json({ error: 'Unable to fetch wallet balance' }, { status: 502 });
   }
 }

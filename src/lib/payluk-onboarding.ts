@@ -2,6 +2,38 @@ import { supabaseAdmin } from './supabase-admin';
 import { PaylukService } from './payluk-service';
 
 /**
+ * Lightweight read: returns the stored payluk_customer_id for a user
+ * without making any Payluk API calls. Falls back to ensurePaylukCustomer
+ * (full onboarding ladder) only when no ID is stored in the database.
+ *
+ * Use this from read-only routes (e.g. wallet-balance) where the customer
+ * is expected to already exist. The full ladder in ensurePaylukCustomer is
+ * reserved for routes that may legitimately create a new customer
+ * (virtual-account, payment/initialize).
+ */
+export async function getPaylukCustomerId(userId: string): Promise<string> {
+  const { data: user, error } = await supabaseAdmin
+    .from('users')
+    .select('payluk_customer_id')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (!error && user?.payluk_customer_id) {
+    // Fast path: stored ID exists — return immediately, zero Payluk API calls.
+    return user.payluk_customer_id;
+  }
+
+  // Slow path: no stored ID — run the full onboarding ladder.
+  // This should only be hit on first use; warn so it's visible in monitoring.
+  console.warn(
+    `[PaylukOnboarding] getPaylukCustomerId: no stored ID for user ${userId}, ` +
+    `falling back to full ensurePaylukCustomer. Investigate why onboarding ` +
+    `did not complete for this user.`
+  );
+  return ensurePaylukCustomer(userId);
+}
+
+/**
  * Ensures a user has a Payluk customer profile.
  * - If `payluk_customer_id` is already set, returns it immediately.
  * - Otherwise, parses the user's name, creates a Payluk customer using the Nigeria countryId,
