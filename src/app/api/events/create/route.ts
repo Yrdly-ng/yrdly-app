@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
         end_time: endTime,
         timezone: timezone || 'Africa/Lagos',
         status,
-        visibility: visibility || 'PUBLIC',
+        visibility: visibility ? (visibility.toUpperCase() === 'PRIVATE' ? 'UNLISTED' : visibility.toUpperCase()) : 'PUBLIC',
         payout_mode: 'POST_EVENT',
         payment_subaccount_id: sa?.paystack_subaccount_id || null,
         published_at: publish ? now : null,
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
 
     if (eventError) {
       console.error('Event create error:', eventError);
-      return NextResponse.json({ error: 'Failed to create event' }, { status: 500 });
+      return NextResponse.json({ error: 'Failed to create event: ' + eventError.message, details: eventError }, { status: 500 });
     }
 
     // ── Create ticket tiers ───────────────────────────────
@@ -148,8 +148,10 @@ export async function POST(request: NextRequest) {
           comment_count: 0,
           liked_by: [],
           attendees: [],
+          visibility: visibility ? (visibility.toUpperCase() === 'PRIVATE' ? 'UNLISTED' : visibility.toUpperCase()) : 'PUBLIC',
         });
       } catch (postError) {
+
         console.error('Failed to create linked post:', postError);
         // Non-critical, continue
       }
