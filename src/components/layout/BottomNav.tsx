@@ -18,7 +18,7 @@ interface BottomNavProps {
 export function BottomNav({ navItems, pathname }: BottomNavProps) {
   return (
     <nav 
-      className="fixed bottom-0 left-0 right-0 z-50 flex md:hidden items-center justify-around bg-[var(--c-card)]/95 backdrop-blur-md border-t border-[var(--c-border)] pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_32px_rgba(0,0,0,0.08)] [transform:translateZ(0)] [will-change:transform]"
+      className="fixed bottom-0 left-0 right-0 z-50 flex md:hidden items-center justify-around bg-[var(--c-card)]/95 backdrop-blur-md border-t border-[var(--c-border)] pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_32px_rgba(0,0,0,0.08)] [transform:translateZ(0)] [will-change:transform] animate-fade-in motion-snappy"
       style={{
         WebkitBackfaceVisibility: 'hidden',
         backfaceVisibility: 'hidden',

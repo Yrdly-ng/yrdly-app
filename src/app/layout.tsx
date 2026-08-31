@@ -38,11 +38,13 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
         <link
-          href="https://fonts.googleapis.com/css2?family=Jersey+25&family=Raleway:wght@300;400;500;600;700&family=Work+Sans:wght@300;400;500;600;700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
           rel="stylesheet"
         />
+        <style dangerouslySetInnerHTML={{__html: `
+          body { font-feature-settings: "cv11", "ss01"; }
+        `}} />
       </head>
 
       <body className={cn('font-body antialiased min-h-[100dvh] bg-background')}>

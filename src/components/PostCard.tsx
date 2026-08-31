@@ -56,11 +56,8 @@ import { useRouter } from "next/navigation";
 import { ImageSwiper } from "./ImageSwiper";
 
 /* ─── design tokens ─────────────────────────────────────────────── */
-const CARD_BG = "var(--c-card)";
 const BG = "var(--c-bg)";
 const GREEN = "hsl(var(--primary))";
-const FONT_RALEWAY = "var(--font-raleway)";
-const FONT_PACIFICO = "var(--font-jersey25)";
 
 function fmt(n: number) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -168,7 +165,7 @@ function EngagementRow({
         {/* Likes */}
         <button
           onClick={onLike}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full hover:bg-[var(--c-card2)] transition-colors duration-150"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full motion-snappy hover:bg-[var(--c-card2)] hover:scale-[0.97] active:scale-[0.95]"
         >
           <Heart
             className={`w-5 h-5 ${isLiked ? "text-[#ED1111]" : "text-muted-foreground"}`}
@@ -176,24 +173,24 @@ function EngagementRow({
               fill: isLiked ? "#ED1111" : "transparent",
             }}
           />
-          <span className="text-[0.75rem] font-medium text-muted-foreground" style={{ fontFamily: FONT_RALEWAY }}>
+          <span className="text-[0.75rem] font-medium text-muted-foreground">
             {fmt(likes)}
           </span>
         </button>
         {/* Comments */}
         <button
           onClick={onComment}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full hover:bg-[var(--c-card2)] transition-colors duration-150"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full motion-snappy hover:bg-[var(--c-card2)] hover:scale-[0.97] active:scale-[0.95]"
         >
           <MessageCircleMore className="w-5 h-5 text-muted-foreground" />
-          <span className="text-[0.75rem] font-medium text-muted-foreground" style={{ fontFamily: FONT_RALEWAY }}>
+          <span className="text-[0.75rem] font-medium text-muted-foreground">
             {fmt(commentCount)}
           </span>
         </button>
         {/* Share */}
         <button
           onClick={onShare}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full hover:bg-[var(--c-card2)] transition-colors duration-150"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full motion-snappy hover:bg-[var(--c-card2)] hover:scale-[0.97] active:scale-[0.95]"
         >
           <Share2 className="w-5 h-5 text-muted-foreground" />
         </button>
@@ -833,8 +830,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
   return (
     <>
       <div
-        className="w-full overflow-hidden cursor-pointer bg-[var(--c-card)] rounded-[1.25rem] border border-[var(--c-border)] shadow-[0_2px_8px_rgba(0,0,0,0.05)] mb-4 transition-shadow duration-200 hover:shadow-[0_6px_20px_rgba(0,0,0,0.08)]"
-        style={{ background: CARD_BG }}
+        className="yrdly-card w-full mb-4 cursor-pointer motion-snappy hover:shadow-[var(--shadow-md)]"
         onClick={handleCardClick}
       >
         {cardContent}
