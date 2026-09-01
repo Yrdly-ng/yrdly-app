@@ -165,8 +165,11 @@ export function BusinessesScreen({ backTarget = "/businesses" }: { backTarget?: 
 
   const showingList = activeCategory !== null || searchQuery.trim().length > 0;
 
+  const buildHref = (extra: string) =>
+    backTarget.includes("?") ? `${backTarget}&${extra}` : `${backTarget}?${extra}`;
+
   const handleSelectCategory = (cat: string) => {
-    router.push(`${backTarget}?category=${encodeURIComponent(cat)}`);
+    router.push(buildHref(`category=${encodeURIComponent(cat)}`));
   };
 
   const handleClearCategory = () => {

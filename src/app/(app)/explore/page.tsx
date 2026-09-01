@@ -74,7 +74,7 @@ function ExploreContent() {
               ))}
             </div>
           }>
-            <BusinessesScreen backTarget="/explore" />
+            <BusinessesScreen backTarget="/explore?tab=businesses" />
           </Suspense>
         );
       default:
