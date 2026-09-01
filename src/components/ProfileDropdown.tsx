@@ -1,7 +1,7 @@
 "use client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { User, Settings, LogOut } from "lucide-react";
+import { User, Settings, Bookmark, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { AuthService } from "@/lib/auth-service";
@@ -40,6 +40,11 @@ export function ProfileDropdown({ onClose }: ProfileDropdownProps) {
       label: "Profile",
       icon: User,
       onClick: () => navigate("/profile"),
+    },
+    {
+      label: "Saved Posts",
+      icon: Bookmark,
+      onClick: () => navigate("/bookmarks"),
     },
     {
       label: "Settings",

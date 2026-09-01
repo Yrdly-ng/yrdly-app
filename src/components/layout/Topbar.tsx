@@ -2,7 +2,7 @@
 
 import type { MouseEventHandler, ComponentType } from "react";
 import { Button } from "@/components/ui/button";
-import { MagnifyingGlass, MapPin, ChatCircle, Bell } from "@phosphor-icons/react";
+import { MagnifyingGlass, MapPin, ChatCircle, Bell, Plus } from "@phosphor-icons/react";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
@@ -11,6 +11,7 @@ interface TopbarNavItem {
   href: string;
   label: string;
   icon: ComponentType<{ size?: number; weight?: "fill" | "regular"; className?: string }>;
+  matchPaths?: string[];
 }
 
 interface TopbarProps {
@@ -19,6 +20,7 @@ interface TopbarProps {
   onSearch: MouseEventHandler<HTMLButtonElement>;
   onNotifications: MouseEventHandler<HTMLButtonElement>;
   onProfile: MouseEventHandler<HTMLButtonElement>;
+  onCreate?: () => void;
   profile?: {
     avatar_url?: string;
     name?: string;
@@ -34,6 +36,7 @@ export function Topbar({
   onSearch,
   onNotifications,
   onProfile,
+  onCreate,
   profile,
   title = "Home",
   navItems = [],
@@ -59,10 +62,11 @@ export function Topbar({
         {/* Desktop nav — replaces the old left sidebar */}
         {navItems.length > 0 && (
           <nav className="hidden lg:flex items-center gap-1 flex-shrink-0">
-            {navItems.map(({ href, label, icon: Icon }) => {
+            {navItems.map(({ href, label, icon: Icon, matchPaths }) => {
               const active =
                 pathname === href ||
-                (href !== "/home" && pathname.startsWith(href));
+                (href !== "/home" && pathname.startsWith(href)) ||
+                matchPaths?.some((p) => pathname === p || pathname.startsWith(p + "/"));
               return (
                 <Link
                   key={href}
@@ -172,6 +176,23 @@ export function Topbar({
               Notifications
             </span>
           </div>
+
+          {onCreate && (
+            <div className="group/tip relative">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="w-9 h-9 md:w-10 md:h-10 flex items-center justify-center text-white border border-[var(--c-border)] rounded-full transition-all duration-150 hover:opacity-90 active:scale-95"
+                style={{ background: "var(--primary)" }}
+                onClick={onCreate}
+              >
+                <Plus weight="bold" className="w-4 h-4 md:w-5 md:h-5" />
+              </Button>
+              <span className="hidden md:block pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 whitespace-nowrap rounded-md bg-[var(--c-text)] px-2 py-1 text-[0.7rem] font-medium text-[var(--c-card)] opacity-0 scale-95 group-hover/tip:opacity-100 group-hover/tip:scale-100 transition-all duration-150 z-10">
+                Create
+              </span>
+            </div>
+          )}
 
           <Button
             variant="ghost"

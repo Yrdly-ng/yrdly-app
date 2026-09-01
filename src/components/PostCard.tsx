@@ -8,6 +8,7 @@ import {
   Heart,
   MessageCircleMore,
   Share2,
+  Bookmark,
   MapPin,
   Calendar,
   MoreHorizontal,
@@ -51,7 +52,7 @@ import { CreatePostDialog } from "./CreatePostDialog";
 import { CreateEventDialog } from "./CreateEventDialog";
 import { useToast } from "@/hooks/use-toast";
 import { CommentSection } from "./CommentSection";
-import { timeAgo, formatPrice } from "@/lib/utils";
+import { timeAgo, formatPrice, cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { ImageSwiper } from "./ImageSwiper";
 
@@ -151,6 +152,8 @@ function EngagementRow({
   onLike,
   onComment,
   onShare,
+  isBookmarked,
+  onBookmark,
 }: {
   likes: number;
   commentCount: number;
@@ -158,6 +161,8 @@ function EngagementRow({
   onLike: () => void;
   onComment: () => void;
   onShare: () => void;
+  isBookmarked: boolean;
+  onBookmark: () => void;
 }) {
   return (
     <div className="flex items-center justify-between pt-3 border-t border-[var(--c-border)]">
@@ -194,6 +199,20 @@ function EngagementRow({
         >
           <Share2 className="w-5 h-5 text-muted-foreground" />
         </button>
+        {/* Bookmark */}
+        <button
+          onClick={onBookmark}
+          aria-label={isBookmarked ? "Remove bookmark" : "Bookmark post"}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full motion-snappy hover:bg-[var(--c-card2)] hover:scale-[0.97] active:scale-[0.95]"
+        >
+          <Bookmark
+            className={cn(
+              "w-5 h-5 transition-colors",
+              isBookmarked ? "text-primary" : "text-muted-foreground"
+            )}
+            style={{ fill: isBookmarked ? "currentColor" : "transparent" }}
+          />
+        </button>
       </div>
     </div>
   );
@@ -216,6 +235,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
   const [likes, setLikes] = useState(post.liked_by?.length || 0);
   const [commentCount, setCommentCount] = useState(post.comment_count || 0);
   const [isLiked, setIsLiked] = useState(false);
+  const [isBookmarked, setIsBookmarked] = useState(false);
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [isImageSwiperOpen, setIsImageSwiperOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -346,6 +366,45 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
       }).subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [post.id, post.liked_by, post.comment_count, currentUser]);
+
+  /* ── bookmark state ── */
+  useEffect(() => {
+    if (!currentUser || !post.id) return;
+    supabase
+      .from("post_bookmarks")
+      .select("id")
+      .eq("post_id", post.id)
+      .eq("user_id", currentUser.id)
+      .maybeSingle()
+      .then(({ data }) => setIsBookmarked(!!data));
+  }, [currentUser, post.id]);
+
+  const handleBookmarkToggle = async () => {
+    if (!currentUser || !post.id) return;
+    const newBookmarked = !isBookmarked;
+    setIsBookmarked(newBookmarked);
+
+    if (newBookmarked) {
+      const { error } = await supabase
+        .from("post_bookmarks")
+        .insert({ post_id: post.id, user_id: currentUser.id });
+      if (error) {
+        setIsBookmarked(false);
+        if (error.code !== "23505") {
+          toast({ variant: "destructive", title: "Error", description: "Could not save post." });
+        }
+      }
+    } else {
+      const { error } = await supabase
+        .from("post_bookmarks")
+        .delete()
+        .match({ post_id: post.id, user_id: currentUser.id });
+      if (error) {
+        setIsBookmarked(true);
+        toast({ variant: "destructive", title: "Error", description: "Could not remove bookmark." });
+      }
+    }
+  };
 
   const handleLike = async () => {
     if (!currentUser || !post.id) return;
@@ -820,6 +879,8 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
             onLike={handleLike}
             onComment={() => setIsCommentsOpen(true)}
             onShare={handleShare}
+            isBookmarked={isBookmarked}
+            onBookmark={handleBookmarkToggle}
           />
         </div>
       </>

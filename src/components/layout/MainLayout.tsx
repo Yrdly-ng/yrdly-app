@@ -1,13 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   House,
-  Users,
-  Briefcase,
-  Calendar,
-  Buildings,
+  Compass,
+  ChatCircle,
+  User,
 } from "@phosphor-icons/react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { ProfileDropdown } from "@/components/ProfileDropdown";
@@ -16,7 +15,12 @@ import { SearchDialog } from "@/components/SearchDialog";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
+import { AlertService, type Alert } from "@/lib/alert-service";
+import { Warning, X, Siren } from "@phosphor-icons/react";
 import { CreatePostDialog } from "@/components/CreatePostDialog";
+import { CreateMenuOverlay } from "@/components/CreateMenuOverlay";
+import { CreateItemDialog } from "@/components/CreateItemDialog";
+import { CreateEventDialog } from "@/components/CreateEventDialog";
 import { usePosts } from "@/hooks/use-posts";
 import { Topbar } from "./Topbar";
 import { BottomNav } from "./BottomNav";
@@ -27,19 +31,19 @@ interface MainLayoutProps {
 
 const navItems = [
   { href: "/home", label: "Home", icon: House },
-  { href: "/community", label: "Community", icon: Users },
-  { href: "/marketplace", label: "Market", icon: Briefcase },
-  { href: "/events", label: "Events", icon: Calendar },
-  { href: "/businesses", label: "Business", icon: Buildings },
+  {
+    href: "/explore",
+    label: "Explore",
+    icon: Compass,
+    matchPaths: ["/explore", "/marketplace", "/events", "/businesses"],
+  },
+  { href: "/messages", label: "Messages", icon: ChatCircle },
+  { href: "/profile", label: "Profile", icon: User },
 ];
-
-// Mobile bottom bar keeps the primary tabs within thumb reach
-const bottomNavItems = navItems.filter((item) =>
-  ["/home", "/community", "/marketplace", "/events", "/businesses"].includes(item.href)
-);
 
 export function MainLayout({ children }: MainLayoutProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, profile } = useAuth();
   const { createPost } = usePosts();
 
@@ -47,8 +51,13 @@ export function MainLayout({ children }: MainLayoutProps) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [postDialogOpen, setPostDialogOpen] = useState(false);
+  const [createMenuOpen, setCreateMenuOpen] = useState(false);
+  const [listingDialogOpen, setListingDialogOpen] = useState(false);
+  const [eventDialogOpen, setEventDialogOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+  const [urgentAlert, setUrgentAlert] = useState<Alert | null>(null);
+  const [urgentAlertDismissed, setUrgentAlertDismissed] = useState(false);
 
   const isChatPage =
     (pathname.startsWith("/messages/") && pathname !== "/messages") ||
@@ -58,7 +67,10 @@ export function MainLayout({ children }: MainLayoutProps) {
   const currentNavItem = navItems.find(
     (item) =>
       pathname === item.href ||
-      (item.href !== "/home" && pathname.startsWith(item.href))
+      (item.href !== "/home" && pathname.startsWith(item.href)) ||
+      (item as { matchPaths?: string[] }).matchPaths?.some((p) =>
+        pathname === p || pathname.startsWith(p + "/")
+      )
   );
   const pageTitle = currentNavItem?.label || "Home";
 
@@ -184,6 +196,51 @@ export function MainLayout({ children }: MainLayoutProps) {
     };
   }, [user]);
 
+  /* ── Urgent safety alert banner (port of mobile AlertBanner overlay) ── */
+  useEffect(() => {
+    if (!user) return;
+
+    const checkUrgentAlert = async () => {
+      const alert = await AlertService.getActiveAlert();
+      setUrgentAlert(alert);
+      setUrgentAlertDismissed(() => {
+        if (!alert || typeof window === "undefined") return false;
+        try {
+          return window.sessionStorage.getItem(`yrdly_alert_dismissed_${alert.id}`) === "1";
+        } catch {
+          return false;
+        }
+      });
+    };
+
+    checkUrgentAlert();
+
+    const ch = supabase
+      .channel("safety_alerts_urgent")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "safety_alerts" },
+        checkUrgentAlert
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [user]);
+
+  const dismissUrgentAlert = () => {
+    if (urgentAlert && typeof window !== "undefined") {
+      try {
+        window.sessionStorage.setItem(`yrdly_alert_dismissed_${urgentAlert.id}`, "1");
+      } catch {}
+    }
+    setUrgentAlertDismissed(true);
+  };
+
+  const showUrgentBanner =
+    !isChatPage && !isMapPage && !!urgentAlert && !urgentAlertDismissed;
+
   return (
     <>
       {!isChatPage && !isMapPage && (
@@ -193,6 +250,7 @@ export function MainLayout({ children }: MainLayoutProps) {
           onSearch={() => setShowSearch(true)}
           onNotifications={() => setShowNotifications(!showNotifications)}
           onProfile={() => setShowProfile(!showProfile)}
+          onCreate={() => setCreateMenuOpen(true)}
           profile={profile}
           title={pageTitle}
           navItems={navItems}
@@ -216,6 +274,40 @@ export function MainLayout({ children }: MainLayoutProps) {
             !isChatPage && !isMapPage ? "pb-20 md:pb-4" : ""
           )}
         >
+          {showUrgentBanner && urgentAlert && (
+            <div
+              className="sticky top-[64px] md:top-[84px] z-40 flex items-start gap-3 px-4 py-3 rounded-2xl mb-3 shadow-lg"
+              style={{
+                background: "rgba(239,68,68,0.10)",
+                border: "1px solid rgba(239,68,68,0.3)",
+                borderLeft: "3px solid #ef4444",
+                backdropFilter: "blur(20px)",
+                WebkitBackdropFilter: "blur(20px)",
+              }}
+            >
+              <Siren size={20} weight="fill" color="#ef4444" className="flex-shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <button
+                  onClick={() => router.push("/alerts")}
+                  className="block text-left text-[0.9375rem] font-bold text-foreground leading-snug hover:underline"
+                >
+                  {urgentAlert.title}
+                </button>
+                <p className="text-[0.8125rem] text-[var(--c-text-muted)] leading-snug mt-0.5 line-clamp-2">
+                  {urgentAlert.area ? `${urgentAlert.area} · ` : ""}
+                  {urgentAlert.description}
+                </p>
+              </div>
+              <button
+                onClick={dismissUrgentAlert}
+                aria-label="Dismiss alert"
+                className="flex-shrink-0 flex items-center justify-center w-7 h-7 rounded-full text-[var(--c-text-muted)] hover:bg-black/10 transition-colors"
+              >
+                <X size={14} weight="bold" />
+              </button>
+            </div>
+          )}
+
           <ErrorBoundary>
             {isMapPage ? (
               <div className="w-full h-[100dvh]">{children}</div>
@@ -234,7 +326,11 @@ export function MainLayout({ children }: MainLayoutProps) {
       </div>
 
       {!isChatPage && !isMapPage && (
-        <BottomNav navItems={bottomNavItems} pathname={pathname} />
+        <BottomNav
+          navItems={navItems}
+          pathname={pathname}
+          onCreateMenu={() => setCreateMenuOpen(true)}
+        />
       )}
 
       {showProfile && (
@@ -252,6 +348,24 @@ export function MainLayout({ children }: MainLayoutProps) {
         createPost={createPost}
         open={postDialogOpen}
         onOpenChange={setPostDialogOpen}
+      />
+
+      <CreateMenuOverlay
+        open={createMenuOpen}
+        onClose={() => setCreateMenuOpen(false)}
+        onPost={() => setPostDialogOpen(true)}
+        onListing={() => setListingDialogOpen(true)}
+        onEvent={() => setEventDialogOpen(true)}
+      />
+
+      <CreateItemDialog
+        open={listingDialogOpen}
+        onOpenChange={setListingDialogOpen}
+      />
+
+      <CreateEventDialog
+        open={eventDialogOpen}
+        onOpenChange={setEventDialogOpen}
       />
     </>
   );

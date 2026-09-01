@@ -361,3 +361,31 @@ div[id*="launcher"] {
     transform: none !important;
   }
 }
+
+/* ── Skeleton shimmer (mobile parity) ── */
+@keyframes yrdly-shimmer-sweep {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.yrdly-skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.35) 50%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+  animation: yrdly-shimmer-sweep 1.6s infinite;
+  will-change: transform;
+}
+
+.dark .yrdly-skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    transparent 100%
+  );
+}
