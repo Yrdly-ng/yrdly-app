@@ -9,9 +9,6 @@ import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { ThemeProvider } from "@/components/ThemeProvider";
 import Script from "next/script";
-import { Suspense } from 'react';
-import PostHogPageView from '@/components/providers/PostHogPageView';
-import { PostHogProvider } from '@/components/providers/PostHogProvider';
 import { AmbientBackground } from '@/components/ui/AmbientBackground';
 import { ZohoDeskScript } from '@/components/ZohoDeskScript';
 
@@ -49,27 +46,22 @@ export default function RootLayout({
 
       <body className={cn('font-body antialiased min-h-[100dvh] bg-background')}>
         <AmbientBackground />
-        <PostHogProvider>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="light"
-            themes={['light', 'dark']}
-            enableSystem={true}
-            disableTransitionOnChange
-            storageKey="yrdly-theme"
-          >
-            <AuthProvider>
-              <Suspense fallback={null}>
-                <PostHogPageView />
-              </Suspense>
-              {children}
-            </AuthProvider>
-            <Toaster />
-            <Analytics />
-            <SpeedInsights />
-            <ZohoDeskScript />
-          </ThemeProvider>
-        </PostHogProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          themes={['light', 'dark']}
+          enableSystem={true}
+          disableTransitionOnChange
+          storageKey="yrdly-theme"
+        >
+          <AuthProvider>
+            {children}
+          </AuthProvider>
+          <Toaster />
+          <Analytics />
+          <SpeedInsights />
+          <ZohoDeskScript />
+        </ThemeProvider>
       </body>
     </html>
   );
