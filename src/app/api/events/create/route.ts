@@ -77,9 +77,6 @@ export async function POST(request: NextRequest) {
         status,
         visibility: visibility || 'PUBLIC',
         published_at: publishedAt,
-        attendee_count: 0,
-        share_count: 0,
-        moderation_status: 'approved',
       })
       .select('id')
       .single();
