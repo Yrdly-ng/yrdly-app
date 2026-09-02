@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
       locationAddress, locationOnline, onlineLink,
       lat, lng, ward, lga, state,
       startTime, endTime, visibility, publish,
+      status: reqStatus,
       ticketTiers,
     } = body;
 
@@ -51,8 +52,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const status = publish ? 'PUBLISHED' : 'DRAFT';
-    const publishedAt = publish ? new Date().toISOString() : null;
+    let status = reqStatus;
+    if (!status) {
+      status = publish ? 'PUBLISHED' : 'DRAFT';
+    }
+
+    let moderationStatus = 'approved';
+    if (status === 'PENDING_MODERATION' || status === 'PENDING') {
+      status = 'DRAFT';
+      moderationStatus = 'pending';
+    }
+
+    const publishedAt = (status === 'PUBLISHED') ? new Date().toISOString() : null;
 
     const { data: newEvent, error: eventError } = await supabaseAdmin
       .from('events')
@@ -76,9 +87,10 @@ export async function POST(request: NextRequest) {
         end_time: endTime,
         timezone: 'Africa/Lagos',
         status,
-        visibility: visibility || 'PUBLIC',
+        visibility: visibility ? visibility.toUpperCase() : 'PUBLIC',
         payout_mode: 'POST_EVENT',
         published_at: publishedAt,
+        moderation_status: moderationStatus,
       })
       .select('id')
       .single();
