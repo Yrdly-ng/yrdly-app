@@ -13,7 +13,7 @@ import { DisputeService, DisputeEvidence } from '@/lib/dispute-service';
 import { StorageService } from '@/lib/storage-service';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-supabase-auth';
-import posthog from 'posthog-js';
+import posthog from '@/lib/posthog';
 
 interface OpenDisputeDialogProps {
   transactionId: string;

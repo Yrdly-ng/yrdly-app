@@ -16,7 +16,7 @@ import { Star } from "lucide-react";
 import { ReviewService } from "@/lib/review-service";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-supabase-auth";
-import posthog from "posthog-js";
+import posthog from "@/lib/posthog";
 
 interface SubmitReviewDialogProps {
   businessId: string;

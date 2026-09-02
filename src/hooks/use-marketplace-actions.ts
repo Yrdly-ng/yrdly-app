@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/use-supabase-auth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import type { Post as PostType } from "@/types";
-import posthog from "posthog-js";
+import posthog from "@/lib/posthog";
 
 export function useMarketplaceActions() {
   const router = useRouter();

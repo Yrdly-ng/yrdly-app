@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { CheckCircle, XCircle, Loader2, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/lib/supabase';
-import posthog from 'posthog-js';
+import posthog from '@/lib/posthog';
 
 export default function PaymentVerificationPage() {
   const router = useRouter();
