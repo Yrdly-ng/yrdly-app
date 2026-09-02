@@ -74,8 +74,10 @@ export async function POST(request: NextRequest) {
         state: state || null,
         start_time: startTime,
         end_time: endTime,
+        timezone: 'Africa/Lagos',
         status,
         visibility: visibility || 'PUBLIC',
+        payout_mode: 'POST_EVENT',
         published_at: publishedAt,
       })
       .select('id')
