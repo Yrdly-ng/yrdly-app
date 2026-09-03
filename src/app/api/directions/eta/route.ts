@@ -35,7 +35,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // ── Rate limiting (keyed by user_id, reuses rate_limits table) ───────────
+    // ── Rate limiting ──────────────────────────────────────────────────────────
+    // Note: We intentionally write user.id into the 'ip_address' column here 
+    // because the rate_limits table lacks a user_id column. This is safe and 
+    // will not collide with IP-keyed rows from other routes because the query 
+    // is scoped by the 'endpoint' column.
     const now = new Date();
     const { data: rlData } = await supabaseAdmin
       .from('rate_limits')
