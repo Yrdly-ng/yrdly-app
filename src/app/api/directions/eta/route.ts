@@ -17,6 +17,7 @@ interface ETAResponse {
   duration_seconds: number;
   duration_in_traffic_seconds: number;
   distance_meters: number;
+  overview_polyline?: string;
 }
 
 // Google Directions API statuses that are the caller's fault
@@ -145,6 +146,7 @@ export async function POST(request: NextRequest) {
       duration_seconds: leg.duration?.value ?? 0,
       duration_in_traffic_seconds: leg.duration_in_traffic?.value ?? leg.duration?.value ?? 0,
       distance_meters: leg.distance?.value ?? 0,
+      overview_polyline: googleData.routes?.[0]?.overview_polyline?.points ?? '',
     };
 
     return NextResponse.json(result);
