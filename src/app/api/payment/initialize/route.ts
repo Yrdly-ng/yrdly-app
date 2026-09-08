@@ -293,9 +293,9 @@ export async function POST(request: NextRequest) {
       transactionId = txData.id;
     }
 
-    // ── STEP 2: Atomic CAS Claim for Escrow Creation (Same-Buyer Protection) ──
-    // Only ONE request atomically transitions pending -> creating_escrow.
-    // Concurrent requests by the same buyer observe 0 updated rows and do NOT call Payluk!
+    // ── STEP 2: Atomic CAS Claim for Escrow Creation (Strict PENDING -> CREATING_ESCROW) ──
+    // Only ONE request atomically transitions PENDING -> creating_escrow.
+    // Parallel requests fail the claim (0 rows updated) and DO NOT call Payluk!
     let paylukPaymentToken: string | undefined = undefined;
     let paylukEscrowId: string | undefined = undefined;
     let sellerPaylukId: string | undefined = undefined;
@@ -309,16 +309,16 @@ export async function POST(request: NextRequest) {
           updated_at: new Date().toISOString(),
         })
         .eq("id", transactionId)
-        .in("status", [EscrowStatus.PENDING, 'creating_escrow'])
+        .eq("status", EscrowStatus.PENDING)
         .is("payluk_escrow_id", null)
         .select("id")
         .single();
 
       if (claimErr || !claimedTx) {
-        console.log(`[PaymentInit] Escrow creation claim failed for tx ${transactionId}. Fetching current state...`);
+        console.log(`[PaymentInit] Escrow creation claim failed for tx ${transactionId}. Inspecting current state...`);
         const { data: currentTx } = await supabaseAdmin
           .from("escrow_transactions")
-          .select("id, status, payluk_tx_ref, payluk_escrow_id, total_amount")
+          .select("id, status, payluk_tx_ref, payluk_escrow_id, total_amount, creating_escrow_started_at, updated_at")
           .eq("id", transactionId)
           .single();
 
@@ -333,8 +333,53 @@ export async function POST(request: NextRequest) {
         }
 
         if (currentTx?.status === 'creating_escrow') {
+          const lockTimestamp = currentTx.creating_escrow_started_at || currentTx.updated_at;
+          const lockAgeMs = Date.now() - new Date(lockTimestamp).getTime();
+          const LOCK_TIMEOUT_MS = 60 * 1000; // 60 seconds
+
+          if (lockAgeMs < LOCK_TIMEOUT_MS) {
+            return NextResponse.json(
+              { error: "ESCROW_CREATION_IN_PROGRESS", message: "Escrow creation is currently in progress. Please try again shortly." },
+              { status: 409 }
+            );
+          }
+
+          // ── STALE ESCROW CREATION LOCK DETECTED (Age >= 60 seconds) ──
+          // Perform ATOMIC STALE-LOCK CLAIM: creating_escrow -> reconciling
+          // Only ONE request wins the reconciling claim!
+          console.warn(`[PaymentInit] Stale escrow creation lock detected (age: ${Math.round(lockAgeMs / 1000)}s). Claiming atomic reconciliation lock...`);
+
+          const { data: reconcilingTx, error: reconcileClaimErr } = await supabaseAdmin
+            .from("escrow_transactions")
+            .update({
+              status: 'reconciling',
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", transactionId)
+            .eq("status", "creating_escrow")
+            .is("payluk_escrow_id", null)
+            .select("id")
+            .single();
+
+          if (reconcileClaimErr || !reconcilingTx) {
+            return NextResponse.json(
+              { error: "RECONCILIATION_IN_PROGRESS", message: "Another request is reconciling this stale escrow creation lock." },
+              { status: 409 }
+            );
+          }
+
+          // Winner of atomic reconciling claim cancels the stale unfulfilled transaction row
+          console.warn(`[PaymentInit] Cancelling stale unfulfilled escrow creation reservation tx ${transactionId}...`);
+          await supabaseAdmin
+            .from("escrow_transactions")
+            .update({
+              status: EscrowStatus.CANCELLED,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", transactionId);
+
           return NextResponse.json(
-            { error: "ESCROW_CREATION_IN_PROGRESS", message: "Escrow creation is currently in progress. Please try again shortly." },
+            { error: "STALE_ESCROW_CANCELLED", message: "Stale escrow creation timed out and was cancelled. Please try initializing checkout again." },
             { status: 409 }
           );
         }

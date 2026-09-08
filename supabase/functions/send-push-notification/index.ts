@@ -40,22 +40,26 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    // Fetch the push token and preferences for this user
-    const { data: userData, error: userError } = await supabaseAdmin
+    // Fetch notification preferences for this user from users table
+    const { data: userData } = await supabaseAdmin
       .from('users')
-      .select('push_token, notification_settings')
+      .select('notification_settings')
       .eq('id', userId)
       .single();
 
-    if (userError || !userData?.push_token) {
-      console.log(`No push token found for user ${userId}:`, userError?.message);
+    // Fetch all active device push tokens for this user from user_push_tokens table
+    const { data: tokenRows, error: tokenError } = await supabaseAdmin
+      .from('user_push_tokens')
+      .select('push_token')
+      .eq('user_id', userId);
+
+    if (tokenError || !tokenRows || tokenRows.length === 0) {
+      console.log(`No push tokens found for user ${userId}:`, tokenError?.message);
       return new Response(JSON.stringify({ success: false, reason: 'no_token' }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    const pushToken = userData.push_token;
 
     // Enforce notification preferences
     if (type && userData?.notification_settings) {
@@ -90,23 +94,24 @@ serve(async (req) => {
         }
       } else {
         // Unmapped types fall through to default-send.
-        // This covers two distinct cases:
-        // 1. Genuinely no-toggle-exists-yet types (e.g. business_review_received, catalog_item_out_of_stock)
-        // 2. Intentionally always-sent critical types (e.g. welcome, system_announcement)
       }
     }
 
-    // Validate it's a real Expo push token
-    if (!pushToken.startsWith('ExponentPushToken[') && !pushToken.startsWith('ExpoPushToken[')) {
-      console.log(`Invalid push token format for user ${userId}: ${pushToken}`);
+    // Filter valid Expo push tokens
+    const validTokens = tokenRows
+      .map((r) => r.push_token)
+      .filter((t) => t.startsWith('ExponentPushToken[') || t.startsWith('ExpoPushToken['));
+
+    if (validTokens.length === 0) {
+      console.log(`No valid push token format found for user ${userId}`);
       return new Response(JSON.stringify({ success: false, reason: 'invalid_token_format' }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Send via Expo Push Notification Service
-    const expoPayload = {
+    // Construct batch payload (array of push messages matching validTokens order)
+    const expoPayloads = validTokens.map((pushToken) => ({
       to: pushToken,
       title: payload.title,
       body: payload.body,
@@ -118,8 +123,9 @@ serve(async (req) => {
       },
       channelId: 'default',
       priority: 'high',
-    };
+    }));
 
+    // Send batch via Expo Push Notification Service
     const expoResponse = await fetch('https://exp.host/--/api/v2/push/send', {
       method: 'POST',
       headers: {
@@ -127,27 +133,28 @@ serve(async (req) => {
         'Content-Type': 'application/json',
         'Accept-Encoding': 'gzip, deflate',
       },
-      body: JSON.stringify(expoPayload),
+      body: JSON.stringify(expoPayloads),
     });
 
     const expoResult = await expoResponse.json();
     console.log('Expo push result:', JSON.stringify(expoResult));
 
-    // Check for token errors and clean up invalid tokens
-    if (expoResult?.data?.status === 'error') {
-      const details = expoResult.data.details;
-      if (details?.error === 'DeviceNotRegistered') {
-        // Token is no longer valid — clear it so we stop sending to it
-        console.log(`Clearing invalid push token for user ${userId}`);
-        await supabaseAdmin
-          .from('users')
-          .update({ push_token: null })
-          .eq('id', userId);
+    // Match batch ticket responses back to validTokens by array index
+    // Expo returns an array of ticket objects in the exact order of the submitted payload array
+    if (Array.isArray(expoResult?.data)) {
+      for (let i = 0; i < expoResult.data.length; i++) {
+        const ticket = expoResult.data[i];
+        if (ticket?.status === 'error' && ticket?.details?.error === 'DeviceNotRegistered') {
+          const failedToken = validTokens[i];
+          if (failedToken) {
+            console.log(`Deleting invalid push token row for user ${userId}: ${failedToken}`);
+            await supabaseAdmin
+              .from('user_push_tokens')
+              .delete()
+              .eq('push_token', failedToken);
+          }
+        }
       }
-      return new Response(JSON.stringify({ success: false, reason: details?.error }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
     }
 
     return new Response(JSON.stringify({ success: true, result: expoResult }), {
