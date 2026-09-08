@@ -202,23 +202,29 @@ export async function POST(request: NextRequest) {
       .in("status", [EscrowStatus.PENDING, EscrowStatus.PAID, EscrowStatus.SHIPPED, EscrowStatus.DELIVERED, EscrowStatus.COMPLETED, EscrowStatus.DISPUTED])
       .order("created_at", { ascending: false });
 
+    let existingTxToResume: any = null;
+
     if (activeTx && activeTx.length > 0) {
       const existingTx = activeTx[0];
       if (existingTx.buyer_id === buyerId && existingTx.status === EscrowStatus.PENDING) {
-        // Idempotency: Same buyer retrying or resuming checkout for their own pending transaction
-        return NextResponse.json({
-          success: true,
-          transactionId: existingTx.id,
-          totalAmount: existingTx.total_amount,
-          paylukPaymentToken: existingTx.payluk_tx_ref,
-          paylukEscrowId: existingTx.payluk_escrow_id,
-        });
+        if (existingTx.payluk_escrow_id && existingTx.payluk_tx_ref) {
+          // Idempotency: Same buyer retrying or resuming checkout for their own pending transaction with Payluk escrow ready
+          return NextResponse.json({
+            success: true,
+            transactionId: existingTx.id,
+            totalAmount: existingTx.total_amount,
+            paylukPaymentToken: existingTx.payluk_tx_ref,
+            paylukEscrowId: existingTx.payluk_escrow_id,
+          });
+        }
+        // Same buyer has a reserved DB row but missing Payluk details (e.g. previous crash)
+        existingTxToResume = existingTx;
+      } else {
+        return NextResponse.json(
+          { error: "Another neighbor is currently completing payment for this item. Please try again shortly." },
+          { status: 409 }
+        );
       }
-
-      return NextResponse.json(
-        { error: "Another neighbor is currently completing payment for this item. Please try again shortly." },
-        { status: 409 }
-      );
     }
 
     // 3. Check if user is buying their own item (using selected user_id)
@@ -236,12 +242,110 @@ export async function POST(request: NextRequest) {
     const commission = Math.round(authorizedPrice * MARKETPLACE_CONSTANTS.COMMISSION_RATE);
     const totalAmount = authorizedPrice;
 
-    // ── Payluk Pre-Insert (Escrow Creation) ───────────────
+    // ── STEP 1: DB Reservation FIRST (Before external Payluk call) ──
+    // Inserting into escrow_transactions first enforces single-buyer reservation at the DB layer
+    // via unique partial index idx_escrow_transactions_single_active_post.
+    // Zero external Payluk calls occur for losing concurrent requests!
+    let transactionId: string;
+
+    if (existingTxToResume) {
+      transactionId = existingTxToResume.id;
+    } else {
+      const txPayload: any = {
+        item_id: itemId,
+        buyer_id: buyerId,
+        seller_id: sellerId,
+        amount: authorizedPrice,
+        commission,
+        total_amount: totalAmount,
+        seller_amount: authorizedPrice - commission,
+        status: EscrowStatus.PENDING,
+        payment_method: PaymentMethod.CARD,
+        delivery_details: { option: DeliveryOption.FACE_TO_FACE },
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        item_type: itemType,
+      };
+
+      const { data: txData, error: txError } = await supabaseAdmin
+        .from("escrow_transactions")
+        .insert(txPayload)
+        .select("id")
+        .single();
+
+      if (txError) {
+        console.error("[PaymentInit] Escrow reservation insert error:", txError);
+        
+        // 23505 = PostgreSQL Unique Violation (idx_escrow_transactions_single_active_post)
+        if (txError.code === '23505' || txError.message?.includes('idx_escrow_transactions_single_active_post')) {
+          return NextResponse.json(
+            { error: "Another neighbor is currently completing payment for this item. Please try again shortly." },
+            { status: 409 }
+          );
+        }
+
+        return NextResponse.json(
+          { error: "Failed to create transaction reservation" },
+          { status: 500 }
+        );
+      }
+
+      transactionId = txData.id;
+    }
+
+    // ── STEP 2: Atomic CAS Claim for Escrow Creation (Same-Buyer Protection) ──
+    // Only ONE request atomically transitions pending -> creating_escrow.
+    // Concurrent requests by the same buyer observe 0 updated rows and do NOT call Payluk!
     let paylukPaymentToken: string | undefined = undefined;
     let paylukEscrowId: string | undefined = undefined;
     let sellerPaylukId: string | undefined = undefined;
 
     if (totalAmount > 0) {
+      const { data: claimedTx, error: claimErr } = await supabaseAdmin
+        .from("escrow_transactions")
+        .update({
+          status: 'creating_escrow',
+          creating_escrow_started_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", transactionId)
+        .in("status", [EscrowStatus.PENDING, 'creating_escrow'])
+        .is("payluk_escrow_id", null)
+        .select("id")
+        .single();
+
+      if (claimErr || !claimedTx) {
+        console.log(`[PaymentInit] Escrow creation claim failed for tx ${transactionId}. Fetching current state...`);
+        const { data: currentTx } = await supabaseAdmin
+          .from("escrow_transactions")
+          .select("id, status, payluk_tx_ref, payluk_escrow_id, total_amount")
+          .eq("id", transactionId)
+          .single();
+
+        if (currentTx?.payluk_escrow_id && currentTx?.payluk_tx_ref) {
+          return NextResponse.json({
+            success: true,
+            transactionId: currentTx.id,
+            totalAmount: currentTx.total_amount,
+            paylukPaymentToken: currentTx.payluk_tx_ref,
+            paylukEscrowId: currentTx.payluk_escrow_id,
+          });
+        }
+
+        if (currentTx?.status === 'creating_escrow') {
+          return NextResponse.json(
+            { error: "ESCROW_CREATION_IN_PROGRESS", message: "Escrow creation is currently in progress. Please try again shortly." },
+            { status: 409 }
+          );
+        }
+
+        return NextResponse.json(
+          { error: "Transaction is not in a valid state for escrow creation", status: currentTx?.status || 'unknown' },
+          { status: 400 }
+        );
+      }
+
+      // Winner of the atomic claim proceeds to call PaylukService.createEscrow()
       try {
         await getPaylukCustomerId(buyerId);
         sellerPaylukId = await getPaylukCustomerId(sellerId);
@@ -257,8 +361,17 @@ export async function POST(request: NextRequest) {
         paylukPaymentToken = paylukEscrow.paymentToken;
         paylukEscrowId = paylukEscrow.id;
       } catch (paylukError: any) {
-        console.error("Payluk createEscrow error:", paylukError);
+        console.error("[PaymentInit] Payluk createEscrow error:", paylukError);
         
+        // Cancel the reserved local transaction so the item is freed
+        await supabaseAdmin
+          .from("escrow_transactions")
+          .update({
+            status: EscrowStatus.CANCELLED,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", transactionId);
+
         const errMsg = paylukError?.message || "";
         if (errMsg.includes('must have a verified phone number')) {
            const isBuyer = errMsg.includes(buyerId);
@@ -275,56 +388,24 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const txPayload: any = {
-      item_id: itemId,
-      buyer_id: buyerId,
-      seller_id: sellerId,
-      amount: authorizedPrice,
-      commission,
-      total_amount: totalAmount,
-      seller_amount: authorizedPrice - commission, // seller receives price minus platform fee
-      status: EscrowStatus.PENDING,
-      payment_method: PaymentMethod.CARD,
-      delivery_details: { option: DeliveryOption.FACE_TO_FACE },
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      item_type: itemType, // Keep track of the item type in escrow_transactions
-    };
+    // ── STEP 3: Update local reservation with Payluk details & reset status to PENDING ──
+    if (totalAmount > 0 && paylukPaymentToken && paylukEscrowId) {
+      const { error: updateErr } = await supabaseAdmin
+        .from("escrow_transactions")
+        .update({
+          status: EscrowStatus.PENDING,
+          payment_provider: 'payluk',
+          payluk_tx_ref: paylukPaymentToken,
+          payluk_escrow_id: paylukEscrowId,
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", transactionId);
 
-    if (totalAmount > 0) {
-      txPayload.payment_provider = 'payluk';
-      txPayload.payluk_tx_ref = paylukPaymentToken;     // PY_... token (used by claimFunds, webhook)
-      txPayload.payluk_escrow_id = paylukEscrowId;      // raw data.id (used by confirmDelivery)
-    }
-
-    const { data: txData, error: txError } = await supabaseAdmin
-      .from("escrow_transactions")
-      .insert(txPayload)
-      .select("id")
-      .single();
-
-    if (txError) {
-      console.error("Escrow transaction error:", txError);
-      
-      if (paylukPaymentToken && sellerPaylukId) {
-        try {
-          await PaylukService.deleteEscrow(sellerPaylukId, paylukPaymentToken);
-          console.log(`[PaymentInit] Cleaned up orphaned Payluk escrow: ${paylukPaymentToken}`);
-        } catch (cleanupErr: any) {
-          console.error(`[PaymentInit] FATAL: Failed to clean up orphaned Payluk escrow ${paylukPaymentToken}:`, cleanupErr?.message);
-        }
+      if (updateErr) {
+        console.error("[PaymentInit] Error updating tx with Payluk details:", updateErr);
       }
-
-      return NextResponse.json(
-        { error: "Failed to create transaction" },
-        { status: 500 }
-      );
     }
 
-    const transactionId = txData.id;
-
-    let paymentLink: string | undefined = undefined;
-    
     if (totalAmount === 0) {
       // Free item, bypass Paystack and mark as PAID immediately
       await supabaseAdmin
@@ -370,9 +451,9 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Return initialized escrow transaction details
     return NextResponse.json({
       success: true,
-      paymentLink,
       transactionId,
       totalAmount,
       paylukPaymentToken,

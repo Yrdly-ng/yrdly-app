@@ -540,6 +540,25 @@ export class PaylukService {
   }
 
   /**
+   * GET /v1/escrow/{escrowId}
+   * Retrieves status and details of an existing escrow.
+   * Requires customerId of buyer or seller.
+   */
+  static async getEscrowDetails(
+    customerId: string,
+    escrowId: string
+  ): Promise<PaylukEscrow> {
+    const response = await paylukRequest<PaylukEscrow>(
+      `/v1/escrow/${escrowId}`,
+      {
+        method: 'GET',
+        customerId,
+      }
+    );
+    return response.data;
+  }
+
+  /**
    * POST /v1/escrow/confirm-payment/{escrowId}
    * Buyer confirms delivery on a standard escrow.
    * Releases the full amount to the seller; escrow closes as COMPLETED.
