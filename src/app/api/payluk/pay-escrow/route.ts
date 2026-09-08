@@ -65,9 +65,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  // 3. Guard against double-payment.
+  // 3. Guard against double-payment: Return success if already paid (idempotent result)
   if (tx.status === EscrowStatus.PAID) {
-    return NextResponse.json({ error: 'Transaction already paid' }, { status: 409 });
+    return NextResponse.json({ success: true, message: 'Transaction already paid' });
   }
 
   try {
@@ -76,18 +76,25 @@ export async function POST(request: NextRequest) {
 
     // 4. Call Payluk — both amount and escrowId come from the database row,
     //    never from client input.
-    await PaylukService.payEscrow(customerId, {
-      amount: tx.total_amount,
-      reference: transactionId, // our internal ID doubles as the unique payment reference
-      escrowId: tx.payluk_escrow_id,
-      gateway: 'wallet',
-    });
-    console.log('[pay-escrow] Payluk payEscrow succeeded');
+    try {
+      await PaylukService.payEscrow(customerId, {
+        amount: tx.total_amount,
+        reference: transactionId, // our internal ID doubles as the unique payment reference
+        escrowId: tx.payluk_escrow_id,
+        gateway: 'wallet',
+      });
+      console.log('[pay-escrow] Payluk payEscrow succeeded');
+    } catch (payError: any) {
+      const payMsg = (payError?.message || '').toLowerCase();
+      // Handle idempotency: If Payluk reports the escrow was already paid/funded on their side, proceed to reconcile
+      if (payMsg.includes('already paid') || payMsg.includes('already funded') || payMsg.includes('already completed') || payMsg.includes('duplicate reference')) {
+        console.log('[pay-escrow] Payluk reports escrow already paid/funded. Reconciling local state...');
+      } else {
+        throw payError;
+      }
+    }
 
     // 5. Update transaction status to PAID.
-    //    IMPORTANT: Payluk has already debited the buyer's wallet by this point.
-    //    If this update fails, funds have moved but our record is inconsistent —
-    //    this requires manual reconciliation. Log loudly; do not silently succeed.
     const { error: updateError } = await supabaseAdmin
       .from('escrow_transactions')
       .update({
@@ -102,8 +109,6 @@ export async function POST(request: NextRequest) {
         `[pay-escrow] RECONCILIATION REQUIRED: Payluk payment succeeded but DB update failed. ` +
         `transactionId=${transactionId} payluk_tx_ref=${tx.payluk_tx_ref} error=${updateError.message}`
       );
-      // Return 500 — the payment succeeded on Payluk's side but our state is inconsistent.
-      // Mobile should surface this as "payment processed, please contact support" rather than retrying.
       return NextResponse.json(
         { error: 'PAYMENT_RECORDED_FAILED', paylukSucceeded: true },
         { status: 500 }

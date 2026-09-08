@@ -196,14 +196,25 @@ export async function POST(request: NextRequest) {
     }
 
     const { data: activeTx } = await supabaseAdmin
-      .from("transactions")
-      .select("id")
+      .from("escrow_transactions")
+      .select("id, buyer_id, status, payluk_tx_ref, payluk_escrow_id, total_amount")
       .eq("item_id", itemId)
-      .eq("status", "pending_escrow")
-      .neq("buyer_id", buyerId)
-      .limit(1);
+      .in("status", [EscrowStatus.PENDING, EscrowStatus.PAID, EscrowStatus.SHIPPED, EscrowStatus.DELIVERED, EscrowStatus.COMPLETED, EscrowStatus.DISPUTED])
+      .order("created_at", { ascending: false });
 
     if (activeTx && activeTx.length > 0) {
+      const existingTx = activeTx[0];
+      if (existingTx.buyer_id === buyerId && existingTx.status === EscrowStatus.PENDING) {
+        // Idempotency: Same buyer retrying or resuming checkout for their own pending transaction
+        return NextResponse.json({
+          success: true,
+          transactionId: existingTx.id,
+          totalAmount: existingTx.total_amount,
+          paylukPaymentToken: existingTx.payluk_tx_ref,
+          paylukEscrowId: existingTx.payluk_escrow_id,
+        });
+      }
+
       return NextResponse.json(
         { error: "Another neighbor is currently completing payment for this item. Please try again shortly." },
         { status: 409 }
