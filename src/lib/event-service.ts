@@ -126,7 +126,50 @@ export async function getEventById(id: string): Promise<Event | null> {
     .eq('id', id)
     .single();
 
-  if (error) return null;
+  if (error || !data) {
+    // Check if this is a legacy event stored in the posts table
+    const { data: postData } = await supabase
+      .from('posts')
+      .select('*, organizer:users!posts_user_id_fkey(id, name, avatar_url)')
+      .eq('id', id)
+      .eq('category', 'Event')
+      .single();
+
+    if (postData) {
+      return {
+        id: postData.id,
+        organizer_id: postData.user_id,
+        title: postData.title || postData.text?.slice(0, 50) || 'Untitled Event',
+        description: postData.text || '',
+        cover_image_url: postData.media_url || postData.image_url || null,
+        image_urls: postData.image_urls || (postData.media_url ? [postData.media_url] : []),
+        event_type: postData.is_online ? 'ONLINE' : 'PHYSICAL',
+        category: postData.event_category || 'Community',
+        start_time: postData.event_date || postData.created_at,
+        end_time: postData.event_end_time || postData.event_date || postData.created_at,
+        timezone: 'WAT',
+        location_name: postData.event_location || postData.location || null,
+        location_address: postData.event_address || postData.location || null,
+        location_geom: null,
+        is_online: postData.is_online || false,
+        online_link: postData.online_link || null,
+        state: postData.state || 'Lagos',
+        lga: postData.lga || 'Ikeja',
+        ward: postData.ward || null,
+        status: 'PUBLISHED',
+        is_archived: false,
+        moderation_status: 'approved',
+        created_at: postData.created_at,
+        updated_at: postData.updated_at || postData.created_at,
+        organizer: postData.organizer || { id: postData.user_id, name: 'Organizer' },
+        ticket_tiers: [],
+        attendees: [],
+      } as unknown as Event;
+    }
+
+    return null;
+  }
+
   const event = enrichEventTiers(data);
   if (event) {
     event.attendees = await getEventAttendees(id, 5);
