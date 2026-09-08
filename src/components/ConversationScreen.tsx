@@ -301,6 +301,7 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
         last_message_text: newMessage.trim() || (videoUrl ? "🎬 Video" : imageUrl ? "📷 Photo" : ""),
         last_message_timestamp: new Date().toISOString(),
         last_message_sender_id: user.id,
+        deleted_by: [],
       }).eq("id", conversation.id);
 
       const others = conversation.participant_ids.filter((id) => id !== user.id);
