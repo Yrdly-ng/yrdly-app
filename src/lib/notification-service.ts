@@ -123,7 +123,7 @@ export class NotificationService {
             title: params.title,
             body: pushMessage,
             data: params.data,
-            url: getNotificationUrl(params.type, params.relatedId),
+            url: getNotificationUrl(params.type, params.relatedId, params.data),
             type: params.type
           });
         } catch (pushError) {
@@ -165,7 +165,7 @@ export class NotificationService {
           title: params.title,
           body: params.message,
           data: params.data,
-          url: getNotificationUrl(params.type, params.relatedId),
+          url: getNotificationUrl(params.type, params.relatedId, params.data),
           type: params.type
         });
       } catch (pushError) {
@@ -806,7 +806,11 @@ export class NotificationService {
 /**
  * Get notification URL based on type and related ID
  */
-function getNotificationUrl(type: NotificationType, relatedId?: string | null): string {
+function getNotificationUrl(
+  type: NotificationType,
+  relatedId?: string | null,
+  data?: Record<string, any> | null
+): string {
   switch (type) {
     case 'friend_request':
     case 'friend_request_accepted':
@@ -823,7 +827,7 @@ function getNotificationUrl(type: NotificationType, relatedId?: string | null): 
     case 'event_reminder':
     case 'event_cancelled':
     case 'event_updated':
-      return '/events';
+      return relatedId ? `/events/${relatedId}` : '/events';
     case 'ticket':
     case 'ticket_purchase':
     case 'ticket_confirmed':
@@ -833,6 +837,11 @@ function getNotificationUrl(type: NotificationType, relatedId?: string | null): 
     case 'marketplace_item_interest':
     case 'marketplace_message':
       return '/marketplace';
+    case 'catalog_item_inquiry':
+    case 'catalog_item_out_of_stock':
+      return relatedId ? `/businesses/catalog/${relatedId}` : '/home';
+    case 'business_review_received':
+      return data?.businessId ? `/businesses/${data.businessId}` : '/home';
     case 'payment_successful':
     case 'item_shipped':
     case 'delivery_confirmed':
