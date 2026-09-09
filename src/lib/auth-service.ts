@@ -20,6 +20,8 @@ export interface AuthUser {
   blocked_users?: string[];
   interests?: string[];
   shareLocation?: boolean;
+  share_location?: boolean;
+  discoverable?: boolean;
   notification_settings?: {
     friendRequests: boolean;
     messages: boolean;
