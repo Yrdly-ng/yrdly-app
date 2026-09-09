@@ -9,19 +9,20 @@ import { BusinessesScreen } from "@/components/BusinessesScreen";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMarketplaceActions } from "@/hooks/use-marketplace-actions";
 import { AlertService } from "@/lib/alert-service";
-import { Compass, Storefront, CalendarBlank, Buildings, Siren } from "@phosphor-icons/react";
+import { Search, SlidersHorizontal, Compass, ShoppingBag, Calendar, Briefcase } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const FONT = "var(--font-work-sans)";
-const HEADING_FONT = "var(--font-jersey25)";
+const RALEWAY = "var(--font-raleway)";
+const GREEN = "hsl(var(--primary))";
 
 type ExploreTab = "discover" | "marketplace" | "events" | "businesses";
 
-const TABS: { key: ExploreTab; label: string; icon: typeof Compass }[] = [
+const TABS: { key: ExploreTab; label: string; icon: any }[] = [
   { key: "discover", label: "Discover", icon: Compass },
-  { key: "marketplace", label: "Marketplace", icon: Storefront },
-  { key: "events", label: "Events", icon: CalendarBlank },
-  { key: "businesses", label: "Businesses", icon: Buildings },
+  { key: "marketplace", label: "Marketplace", icon: ShoppingBag },
+  { key: "events", label: "Events", icon: Calendar },
+  { key: "businesses", label: "Business", icon: Briefcase },
 ];
 
 function MarketplaceTab() {
@@ -83,67 +84,50 @@ function ExploreContent() {
   }, [activeTab]);
 
   return (
-    <div className="pb-6">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-3 pt-1 pb-3">
-        <div className="min-w-0">
-          <h1 className="text-3xl text-foreground leading-tight" style={{ fontFamily: HEADING_FONT }}>
-            Explore
-          </h1>
-          <p className="text-sm truncate" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
-            People, market, events and businesses near you
-          </p>
-        </div>
+    <div className="pb-28 max-w-2xl mx-auto px-4 pt-4 min-h-[100dvh]" style={{ background: "var(--c-bg)" }}>
+      {/* ── Header Bar ── */}
+      <div className="flex items-center justify-between pb-3 mb-2">
+        <h1 className="text-xl font-extrabold text-foreground" style={{ fontFamily: RALEWAY }}>
+          Explore
+        </h1>
+
         {activeAlerts > 0 && (
           <button
             onClick={() => router.push("/alerts")}
-            className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[0.7rem] font-bold"
-            style={{
-              background: "rgba(239,68,68,0.12)",
-              border: "1px solid rgba(239,68,68,0.25)",
-              color: "#ef4444",
-              fontFamily: FONT,
-            }}
+            className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-500/10 text-red-500 border border-red-500/20"
           >
-            <Siren size={14} weight="bold" />
-            {activeAlerts} {activeAlerts === 1 ? "ALERT" : "ALERTS"}
+            <span>{activeAlerts} Active Safety Alert{activeAlerts > 1 ? "s" : ""}</span>
           </button>
         )}
       </div>
 
-      {/* Tab strip */}
-      <div
-        className="sticky top-[64px] md:top-[84px] z-20 -mx-3 sm:-mx-4 md:-mx-6 px-3 sm:px-4 md:px-6 py-2.5 backdrop-blur-md"
-        style={{ background: "color-mix(in srgb, var(--c-bg) 92%, transparent)" }}
-      >
-        <div
-          className="flex items-center gap-1 p-1 rounded-full overflow-x-auto"
-          style={{ background: "var(--c-card2)", border: "0.5px solid var(--c-border)" }}
-        >
-          {TABS.map(({ key, label, icon: Icon }) => {
-            const active = key === activeTab;
-            return (
-              <button
-                key={key}
-                onClick={() => selectTab(key)}
-                className={cn(
-                  "flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-full text-[0.8rem] font-semibold whitespace-nowrap transition-all duration-150",
-                  active
-                    ? "bg-[var(--primary)] text-white shadow-sm"
-                    : "text-[var(--c-text-muted)] hover:text-[var(--foreground)]"
-                )}
-                style={{ fontFamily: FONT }}
-              >
-                <Icon size={15} weight={active ? "fill" : "regular"} />
-                <span className="hidden min-[420px]:inline">{label}</span>
-              </button>
-            );
-          })}
-        </div>
+      {/* ── Top Filter Tabs (Mobile Parity) ── */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-4 scrollbar-hide">
+        {TABS.map(({ key, label, icon: Icon }) => {
+          const isActive = activeTab === key;
+          return (
+            <button
+              key={key}
+              onClick={() => selectTab(key)}
+              className="flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-xs font-bold transition-all shrink-0"
+              style={{
+                background: isActive ? GREEN : "var(--c-card)",
+                color: isActive ? "#000" : "var(--c-text-muted)",
+                border: isActive ? "none" : "1px solid var(--c-border)",
+                fontFamily: FONT,
+              }}
+            >
+              <Icon className="w-3.5 h-3.5" />
+              {label}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Active tab content */}
-      <div className="pt-2">{tabContent}</div>
+      {/* ── Main Tab Content ── */}
+      <div>
+        {tabContent}
+      </div>
     </div>
   );
 }
@@ -151,10 +135,12 @@ function ExploreContent() {
 export default function ExplorePage() {
   return (
     <Suspense fallback={
-      <div className="space-y-4 pt-2">
-        <Skeleton className="h-10 w-40 rounded-lg" />
-        <Skeleton className="h-12 w-full rounded-full" />
-        <Skeleton className="h-72 w-full rounded-[1.5rem]" />
+      <div className="max-w-2xl mx-auto p-4 space-y-4">
+        <Skeleton className="h-10 w-full rounded-full" />
+        <div className="grid grid-cols-2 gap-4">
+          <Skeleton className="h-48 rounded-xl" />
+          <Skeleton className="h-48 rounded-xl" />
+        </div>
       </div>
     }>
       <ExploreContent />
