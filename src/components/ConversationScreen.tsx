@@ -500,12 +500,14 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
           style={{ background: "var(--c-card2)", borderColor: "var(--c-border)" }}
         >
           {conversation.item_image && (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img 
-              src={conversation.item_image} 
-              alt={conversation.item_title} 
-              className="w-12 h-12 rounded-lg object-cover" 
-            />
+            <div className="relative w-12 h-12 rounded-lg overflow-hidden shrink-0">
+              <Image 
+                src={conversation.item_image} 
+                alt={conversation.item_title || "Item"} 
+                fill
+                className="object-cover" 
+              />
+            </div>
           )}
           <div className="flex-1 min-w-0">
             <h3 className="text-[0.875rem] font-semibold text-foreground truncate" style={{ fontFamily: FONT }}>
@@ -770,6 +772,7 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
               <X className="w-6 h-6" />
             </button>
           </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img 
             src={fullscreenImage} 
             alt="Fullscreen" 

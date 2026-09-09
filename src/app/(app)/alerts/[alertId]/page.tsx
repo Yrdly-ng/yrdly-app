@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Image from "next/image";
 import { ArrowLeft, AlertTriangle, ShieldCheck, MapPin, Calendar, Share2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
@@ -194,8 +195,8 @@ export default function AlertDetailPage() {
         </div>
 
         {alert.image_url && (
-          <div className="rounded-2xl overflow-hidden border border-border/40">
-            <img src={alert.image_url} alt="Alert image" className="w-full max-h-96 object-cover" />
+          <div className="relative h-80 rounded-2xl overflow-hidden border border-border/40">
+            <Image src={alert.image_url} alt="Alert image" fill className="object-cover" />
           </div>
         )}
       </main>

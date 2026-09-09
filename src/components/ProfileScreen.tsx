@@ -18,6 +18,8 @@ import { useToast } from "@/hooks/use-toast";
 import { shortenAddress } from "@/lib/utils";
 import { ActivityIndicator } from "@/components/ActivityIndicator";
 import Image from "next/image";
+import { ProfileQuickAccess } from "./ProfileQuickAccess";
+import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { useFriendshipGlobal } from "@/hooks/use-friendship-global";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -360,7 +362,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
           <h1 className="mt-6 text-2xl text-foreground font-extrabold tracking-tight flex items-center justify-center gap-1.5" style={{ fontFamily: RALEWAY }}>
             {name}
             {(isVerifiedUser || isVerifiedSeller) && (
-              <BadgeCheck className="w-6 h-6 text-[#82DB7E] fill-[#82DB7E]/20 shrink-0" />
+              <VerifiedBadge size={22} type={isVerifiedSeller ? 'seller' : 'user'} />
             )}
           </h1>
           {username && (
@@ -629,6 +631,12 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
           </div>
         </div>
       </div>
+
+      {actualIsOwnProfile && (
+        <ProfileQuickAccess
+          onOpenStore={() => router.push('/marketplace')}
+        />
+      )}
 
       {actualIsOwnProfile && (
         <section className="rounded-[11px] overflow-hidden" style={{ background: SURFACE }}>

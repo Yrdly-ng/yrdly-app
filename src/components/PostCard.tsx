@@ -50,8 +50,9 @@ import {
 } from "@/components/ui/sheet";
 import { CreatePostDialog } from "./CreatePostDialog";
 import { CreateEventDialog } from "./CreateEventDialog";
+import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { useToast } from "@/hooks/use-toast";
-import { CommentSection } from "./CommentSection";
+import { CommentSection } from "@/components/CommentSection";
 import { timeAgo, formatPrice, cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { ImageSwiper } from "./ImageSwiper";
@@ -164,16 +165,26 @@ function EngagementRow({
   isBookmarked: boolean;
   onBookmark: () => void;
 }) {
+  const [animating, setAnimating] = useState(false);
+
+  const handleLike = () => {
+    setAnimating(true);
+    setTimeout(() => setAnimating(false), 350);
+    onLike();
+  };
+
   return (
     <div className="flex items-center justify-between pt-3 border-t border-[var(--c-border)]">
       <div className="flex items-center gap-1">
         {/* Likes */}
         <button
-          onClick={onLike}
+          onClick={handleLike}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-full motion-snappy hover:bg-[var(--c-card2)] hover:scale-[0.97] active:scale-[0.95]"
         >
           <Heart
-            className={`w-5 h-5 ${isLiked ? "text-[#ED1111]" : "text-muted-foreground"}`}
+            className={`w-5 h-5 ${isLiked ? "text-[#ED1111]" : "text-muted-foreground"} ${
+              animating ? "animate-heart-pop" : ""
+            }`}
             style={{
               fill: isLiked ? "#ED1111" : "transparent",
             }}
@@ -592,7 +603,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
               <button onClick={openProfile} className="flex items-center gap-1">
                 <span className="font-sans font-bold text-[0.875rem] text-foreground hover:underline">{author?.name || "Anonymous"}</span>
                 {(author?.verified_seller || (post.user as any)?.verified_seller) && (
-                  <BadgeCheck className="w-4 h-4 text-[#82DB7E] fill-[#82DB7E]/20 shrink-0" />
+                  <VerifiedBadge size={16} type="seller" />
                 )}
               </button>
               <span className="text-muted-foreground text-[0.6875rem]">•</span>

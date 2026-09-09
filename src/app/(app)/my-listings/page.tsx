@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { ArrowLeft, Plus, Edit, Trash2, CheckCircle2, ShoppingBag, AlertCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/use-supabase-auth";
@@ -158,7 +159,7 @@ export default function MyListingsPage() {
                 <div>
                   <div className="relative aspect-video bg-muted overflow-hidden">
                     {item.image_url ? (
-                      <img src={item.image_url} alt={item.title} className="w-full h-full object-cover" />
+                      <Image src={item.image_url} alt={item.title || "Listing"} fill className="object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
                         No Image

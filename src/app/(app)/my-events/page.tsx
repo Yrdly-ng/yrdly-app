@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { ArrowLeft, Plus, Calendar, MapPin, Users, QrCode, Settings } from "lucide-react";
 import { getOrganizerEvents } from "@/lib/event-service";
 import { useAuth } from "@/hooks/use-supabase-auth";
@@ -112,9 +113,9 @@ export default function MyEventsPage() {
                 className="rounded-2xl bg-card border border-border/40 p-4 space-y-4 shadow-sm"
               >
                 <div className="flex gap-4">
-                  <div className="w-24 h-24 rounded-xl bg-muted overflow-hidden shrink-0">
+                  <div className="relative w-24 h-24 rounded-xl bg-muted overflow-hidden shrink-0">
                     {evt.cover_image || evt.image_url ? (
-                      <img src={evt.cover_image || evt.image_url} alt={evt.title} className="w-full h-full object-cover" />
+                      <Image src={evt.cover_image || evt.image_url} alt={evt.title || "Event"} fill className="object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
                         No Image

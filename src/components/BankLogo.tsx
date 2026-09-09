@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { useBankLogos } from "@/hooks/use-bank-logos";
 
 export function BankLogo({ code, name, size = 24 }: { code: string; name: string; size?: number }) {
@@ -6,11 +7,12 @@ export function BankLogo({ code, name, size = 24 }: { code: string; name: string
   
   if (logoUrl) {
     return (
-      <img 
+      <Image 
         src={logoUrl} 
         alt={name} 
         width={size} 
         height={size} 
+        unoptimized
         className="rounded-full object-cover border border-border bg-card shrink-0" 
       />
     );

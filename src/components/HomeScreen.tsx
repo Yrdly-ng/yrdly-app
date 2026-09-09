@@ -11,6 +11,7 @@ import { EmptyFeed } from "@/components/EmptyFeed";
 import { CreatePostDialog } from "@/components/CreatePostDialog";
 import { CreateItemDialog } from "@/components/CreateItemDialog";
 import { PostCard } from "@/components/PostCard";
+import { PostSkeleton } from "@/components/PostSkeleton";
 import { LocationChip } from "@/components/LocationChip";
 import { EventCreatorOnboarding } from "@/components/events/EventCreatorOnboarding";
 import { MarketplaceCreatorOnboarding } from "@/components/marketplace/MarketplaceCreatorOnboarding";
@@ -220,7 +221,7 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
       {loading ? (
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-72 w-full rounded-[1.5rem] shadow-sm" style={{ background: "var(--c-card)" }} />
+            <PostSkeleton key={i} />
           ))}
         </div>
       ) : posts.length > 0 ? (

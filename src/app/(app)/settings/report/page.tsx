@@ -234,6 +234,7 @@ export default function ReportIssuePage() {
 
             {imagePreview ? (
               <div className="relative w-full h-40 rounded-xl overflow-hidden border border-border/60 group">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
                 <button
                   type="button"
