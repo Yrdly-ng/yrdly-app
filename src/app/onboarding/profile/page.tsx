@@ -10,6 +10,9 @@ import { supabase } from '@/lib/supabase';
 import { useGpsLocation } from '@/hooks/use-gps-location';
 import { Camera, MapPin, Navigation, AlertTriangle, Loader2, Heart, ArrowLeft, ArrowRight } from 'lucide-react';
 import POPULAR_INTERESTS from '@/data/interests.json';
+import LGAS_DATA_RAW from '@/data/lgas.json';
+
+const LGAS_DATA: Record<string, string[]> = LGAS_DATA_RAW;
 
 interface ResolvedWard { state: string; lga: string; ward: string; label: string; }
 
@@ -72,23 +75,52 @@ function OnboardingProfileContent() {
     setSelectedLoc(null);
     setLocError('');
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (!v.trim()) { setLocSuggestions([]); return; }
+    if (!v.trim() || v.trim().length < 2) {
+      setLocSuggestions([]);
+      return;
+    }
+
+    // 1. Instant local offline search
+    const vLower = v.toLowerCase();
+    const localMatches: ResolvedWard[] = [];
+    Object.entries(LGAS_DATA).forEach(([st, lgas]) => {
+      if (st.toLowerCase().includes(vLower)) {
+        lgas.slice(0, 4).forEach((lga) => {
+          localMatches.push({ state: st, lga, ward: '', label: `${lga}, ${st} State` });
+        });
+      } else {
+        lgas.forEach((lga) => {
+          if (lga.toLowerCase().includes(vLower)) {
+            localMatches.push({ state: st, lga, ward: '', label: `${lga}, ${st} State` });
+          }
+        });
+      }
+    });
+    setLocSuggestions(localMatches.slice(0, 8));
+
+    // 2. DB search enrichment
     debounceRef.current = setTimeout(async () => {
       setLocSearching(true);
-      const { data } = await supabase
-        .from('lga_wards')
-        .select('ward_name, lga_name, state_name')
-        .or(`ward_name.ilike.%${v}%,lga_name.ilike.%${v}%,state_name.ilike.%${v}%`)
-        .limit(8);
-      setLocSuggestions(
-        (data || []).map((r: any) => ({
-          state: r.state_name,
-          lga: r.lga_name,
-          ward: r.ward_name,
-          label: `${r.ward_name}, ${r.lga_name}, ${r.state_name}`,
-        }))
-      );
-      setLocSearching(false);
+      try {
+        const { data } = await supabase
+          .from('lga_wards')
+          .select('ward_name, lga_name, state_name')
+          .or(`ward_name.ilike.%${v}%,lga_name.ilike.%${v}%,state_name.ilike.%${v}%`)
+          .limit(8);
+
+        if (data && data.length > 0) {
+          setLocSuggestions(
+            data.map((r: any) => ({
+              state: r.state_name,
+              lga: r.lga_name,
+              ward: r.ward_name,
+              label: `${r.ward_name}, ${r.lga_name}, ${r.state_name}`,
+            }))
+          );
+        }
+      } catch {} finally {
+        setLocSearching(false);
+      }
     }, 300);
   };
 
@@ -222,6 +254,26 @@ function OnboardingProfileContent() {
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40">
                       {locSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
                     </div>
+
+                    {/* Location Suggestions Floating Dropdown */}
+                    {locSuggestions.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-[#161a16] border border-white/20 rounded-2xl overflow-hidden max-h-56 overflow-y-auto shadow-2xl">
+                        {locSuggestions.map((item, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => {
+                              setSelectedLoc(item);
+                              setLocQuery(item.label);
+                              setLocSuggestions([]);
+                            }}
+                            className="w-full text-left px-4 py-3 text-xs font-medium text-white/90 hover:bg-emerald-500/20 hover:text-white transition-colors border-b border-white/5 last:border-0"
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {/* GPS Auto-detect Button */}
@@ -235,26 +287,6 @@ function OnboardingProfileContent() {
                   </button>
 
                   {locError && <p className="text-xs text-red-400 font-medium pt-1">{locError}</p>}
-
-                  {/* Location Suggestions List */}
-                  {locSuggestions.length > 0 && (
-                    <div className="mt-2 bg-[#121212] border border-white/10 rounded-2xl overflow-hidden max-h-48 overflow-y-auto">
-                      {locSuggestions.map((item, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => {
-                            setSelectedLoc(item);
-                            setLocQuery(item.label);
-                            setLocSuggestions([]);
-                          }}
-                          className="w-full text-left px-4 py-2.5 text-xs text-white/80 hover:bg-white/10 transition-colors border-b border-white/5 last:border-0"
-                        >
-                          {item.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
 
                   {selectedLoc && (
                     <div className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
