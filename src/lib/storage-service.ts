@@ -446,4 +446,21 @@ export class StorageService {
       return { url: null, error };
     }
   }
+
+  // Upload a report image
+  static async uploadReportImage(
+    userId: string,
+    file: File
+  ): Promise<{ url: string | null; error: any }> {
+    try {
+      const fileExt = file.name.split('.').pop() || 'jpg';
+      const filePath = `reports/${userId}/${Date.now()}.${fileExt}`;
+      const { data, error } = await this.uploadFile('reports', filePath, file);
+      if (error) return { url: null, error };
+      return { url: this.getPublicUrl('reports', data.path), error: null };
+    } catch (error) {
+      console.error('Report image upload error:', error);
+      return { url: null, error };
+    }
+  }
 }

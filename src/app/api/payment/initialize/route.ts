@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     const { data: rlData } = await supabaseAdmin
       .from('rate_limits')
       .select('*')
-      .eq('ip_address', user.id)
+      .eq('user_id', user.id)
       .eq('endpoint', endpoint)
       .single();
 
@@ -54,20 +54,20 @@ export async function POST(request: NextRequest) {
         await supabaseAdmin
           .from('rate_limits')
           .update({ request_count: rlData.request_count + 1 })
-          .eq('ip_address', user.id)
+          .eq('user_id', user.id)
           .eq('endpoint', endpoint);
       } else {
         await supabaseAdmin
           .from('rate_limits')
           .update({ request_count: 1, window_start: now.toISOString() })
-          .eq('ip_address', user.id)
+          .eq('user_id', user.id)
           .eq('endpoint', endpoint);
       }
     } else {
       await supabaseAdmin
         .from('rate_limits')
         .insert({
-          ip_address: user.id,
+          user_id: user.id,
           endpoint: endpoint,
           request_count: 1,
           window_start: now.toISOString()

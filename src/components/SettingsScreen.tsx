@@ -12,6 +12,7 @@ import {
   Bell,
   Mail,
   HelpCircle,
+  Flag,
   FileText,
   ChevronRight,
   Pencil,
@@ -361,18 +362,13 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
           <SectionLabel>Support</SectionLabel>
           <NavRow
             icon={HelpCircle}
-            label="Help & Support"
-            onClick={() => {
-              // Try to open Zoho Desk ASAP widget if it exists
-              if (typeof window !== "undefined" && (window as any).ZohoDeskAsap) {
-                (window as any).ZohoDeskAsap.invoke('open');
-              } else {
-                toast({
-                  title: "Support",
-                  description: "Support widget is still loading. Please try again in a moment.",
-                });
-              }
-            }}
+            label="Help Center"
+            onClick={() => router.push("/settings/help")}
+          />
+          <NavRow
+            icon={Flag}
+            label="Report an Issue"
+            onClick={() => router.push("/settings/report")}
           />
           <NavRow
             icon={FileText}

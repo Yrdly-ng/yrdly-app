@@ -10,7 +10,6 @@ import { SpeedInsights } from '@vercel/speed-insights/next';
 import { ThemeProvider } from "@/components/ThemeProvider";
 import Script from "next/script";
 import { AmbientBackground } from '@/components/ui/AmbientBackground';
-import { ZohoDeskScript } from '@/components/ZohoDeskScript';
 
 export const metadata: Metadata = {
   title: 'Yrdly - Your Neighborhood Network',
@@ -60,7 +59,6 @@ export default function RootLayout({
           <Toaster />
           <Analytics />
           <SpeedInsights />
-          <ZohoDeskScript />
         </ThemeProvider>
       </body>
     </html>

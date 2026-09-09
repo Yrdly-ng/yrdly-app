@@ -37,15 +37,12 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Rate limiting ──────────────────────────────────────────────────────────
-    // Note: We intentionally write user.id into the 'ip_address' column here 
-    // because the rate_limits table lacks a user_id column. This is safe and 
-    // will not collide with IP-keyed rows from other routes because the query 
-    // is scoped by the 'endpoint' column.
+    // Keyed by user_id to prevent NAT collisions on mobile carrier networks.
     const now = new Date();
     const { data: rlData } = await supabaseAdmin
       .from('rate_limits')
       .select('*')
-      .eq('ip_address', user.id)
+      .eq('user_id', user.id)
       .eq('endpoint', ENDPOINT)
       .single();
 
@@ -58,18 +55,18 @@ export async function POST(request: NextRequest) {
         await supabaseAdmin
           .from('rate_limits')
           .update({ request_count: rlData.request_count + 1 })
-          .eq('ip_address', user.id)
+          .eq('user_id', user.id)
           .eq('endpoint', ENDPOINT);
       } else {
         await supabaseAdmin
           .from('rate_limits')
           .update({ request_count: 1, window_start: now.toISOString() })
-          .eq('ip_address', user.id)
+          .eq('user_id', user.id)
           .eq('endpoint', ENDPOINT);
       }
     } else {
       await supabaseAdmin.from('rate_limits').insert({
-        ip_address: user.id,
+        user_id: user.id,
         endpoint: ENDPOINT,
         request_count: 1,
         window_start: now.toISOString(),
