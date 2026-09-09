@@ -427,7 +427,9 @@ const CreateEventDialogComponent = memo(function CreateEventDialog({ children, o
   if (isMobile) {
     return (
       <Sheet open={open} onOpenChange={handleOpenChange}>
-        <SheetTrigger asChild>{children ? children : <Trigger />}</SheetTrigger>
+        {externalOpen === undefined && (
+          <SheetTrigger asChild>{children ? children : <Trigger />}</SheetTrigger>
+        )}
         <SheetContent side="bottom" className="p-0 flex flex-col max-h-[92dvh] rounded-t-[32px] border border-border bg-card text-foreground overflow-hidden" style={{ zIndex: 110 }} hideClose>
           {headerBlock}
           <div className="flex-1 flex flex-col min-h-0 overflow-y-auto" style={{ paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom))" }}>

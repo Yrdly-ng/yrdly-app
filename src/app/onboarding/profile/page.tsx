@@ -304,7 +304,6 @@ function OnboardingProfileContent() {
         home_ward: selectedLoc.ward,
         home_lat: lat,
         home_lng: lng,
-        ...(lat && lng ? { home_location_geom: `POINT(${lng} ${lat})` } : {}),
         onboarding_status: 'completed',
         profile_completed: true,
       } as any);

@@ -242,15 +242,18 @@ export class AuthService {
   }
 
   // Update user profile
-  static async updateUserProfile(userId: string, updates: Partial<AuthUser>) {
+  static async updateUserProfile(userId: string, updates: Partial<AuthUser> & Record<string, any>) {
     try {
-      if (updates.username) {
-        updates.username = updates.username.replace(/^@/, '').trim().toLowerCase();
+      const cleanUpdates = { ...updates };
+      delete cleanUpdates.home_location_geom;
+
+      if (cleanUpdates.username) {
+        cleanUpdates.username = cleanUpdates.username.replace(/^@/, '').trim().toLowerCase();
       }
 
       const { error } = await supabase
         .from('users')
-        .update(updates)
+        .update(cleanUpdates)
         .eq('id', userId);
 
       if (error) throw error;
