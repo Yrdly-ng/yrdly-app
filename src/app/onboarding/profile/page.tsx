@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { SceneBg, GlassCard, GlassInput, StepBar, PrimaryBtn } from '@/components/onboarding/primitives';
@@ -8,8 +8,8 @@ import { AuthService } from '@/lib/auth-service';
 import { useAuth } from '@/hooks/use-supabase-auth';
 import { supabase } from '@/lib/supabase';
 import { useGpsLocation } from '@/hooks/use-gps-location';
-import { Camera, MapPin, Navigation, ShieldCheck, AlertTriangle, Loader2 } from 'lucide-react';
-
+import { Camera, MapPin, Navigation, AlertTriangle, Loader2, Heart, ArrowLeft, ArrowRight } from 'lucide-react';
+import POPULAR_INTERESTS from '@/data/interests.json';
 
 interface ResolvedWard { state: string; lga: string; ward: string; label: string; }
 
@@ -21,22 +21,26 @@ function OnboardingProfileContent() {
   const [step, setStep] = useState<1 | 2>(1);
   const gps = useGpsLocation();
 
-  // Step 1 State
-  const [avatarUri, setAvatarUri] = useState<string | null>(null);
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  // Step 1 State: Identity & Location
   const [handle, setHandle] = useState('');
-  const [bio, setBio] = useState('');
   const [usernameErr, setUsernameErr] = useState('');
-
-  // Step 2 State
   const [locQuery, setLocQuery] = useState('');
   const [locSuggestions, setLocSuggestions] = useState<ResolvedWard[]>([]);
   const [locSearching, setLocSearching] = useState(false);
   const [selectedLoc, setSelectedLoc] = useState<ResolvedWard | null>(null);
   const [locError, setLocError] = useState('');
+
+  // Step 2 State: Personalization & Interests
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [bio, setBio] = useState('');
+  const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
+
   const [loading, setLoading] = useState(false);
   const [saveError, setSaveError] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const FEATURED_INTERESTS = POPULAR_INTERESTS.slice(0, 24);
 
   useEffect(() => {
     if (user?.user_metadata?.username) {
@@ -52,7 +56,6 @@ function OnboardingProfileContent() {
     }
   };
 
-  // Auto-fill from GPS result when it arrives
   useEffect(() => {
     if (gps.status === 'success' && gps.location) {
       const { state, lga, ward, displayAddress } = gps.location;
@@ -64,7 +67,6 @@ function OnboardingProfileContent() {
     }
   }, [gps.status, gps.location, gps.error]);
 
-  // Debounced live search against lga_wards table
   const handleLocQuery = (v: string) => {
     setLocQuery(v);
     setSelectedLoc(null);
@@ -90,6 +92,12 @@ function OnboardingProfileContent() {
     }, 300);
   };
 
+  const toggleInterest = (interest: string) => {
+    setSelectedInterests(prev =>
+      prev.includes(interest) ? prev.filter(i => i !== interest) : [...prev, interest]
+    );
+  };
+
   const handleStep1Next = async () => {
     setUsernameErr('');
     const cleanHandle = handle.replace(/^@/, '').trim().toLowerCase();
@@ -100,12 +108,15 @@ function OnboardingProfileContent() {
         return;
       }
     }
+    if (!selectedLoc) {
+      setLocError('Please choose your neighbourhood location to proceed.');
+      return;
+    }
     setStep(2);
   };
 
   const handleComplete = async () => {
-    if (!user) return;
-    if (!selectedLoc) { setLocError('Please choose your neighbourhood to continue.'); return; }
+    if (!user || !selectedLoc) return;
     setLoading(true);
     setSaveError('');
 
@@ -133,6 +144,7 @@ function OnboardingProfileContent() {
         username: cleanHandle,
         bio: bio.trim(),
         avatar_url: avatarUrl,
+        interests: selectedInterests,
         home_state: selectedLoc.state,
         home_lga: selectedLoc.lga,
         home_ward: selectedLoc.ward,
@@ -159,7 +171,7 @@ function OnboardingProfileContent() {
         <StepBar
           step={step}
           total={2}
-          label={step === 1 ? 'Personalize' : 'Your Neighbourhood'}
+          label={step === 1 ? 'Location & Identity' : 'Interests & Profile'}
         />
       </div>
 
@@ -174,15 +186,107 @@ function OnboardingProfileContent() {
 
           {step === 1 ? (
             <>
-              <div className="flex flex-col gap-1 text-left">
-                <h2 className="text-2xl font-black text-white">Set up your profile</h2>
+              <div className="flex flex-col gap-1 text-left mb-4">
+                <h2 className="text-2xl font-black text-white">Your Identity & Area</h2>
                 <p className="text-sm font-normal text-white/55">
-                  Neighbours like knowing who they are talking to
+                  Set up your handle and neighbourhood to connect locally
                 </p>
               </div>
 
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-white/70 tracking-wider uppercase">
+                    USERNAME HANDLE
+                  </label>
+                  <GlassInput
+                    placeholder="e.g. john_doe"
+                    value={handle}
+                    onChange={(v) => setHandle(v)}
+                  />
+                  {usernameErr && <p className="text-xs text-red-400 font-medium">{usernameErr}</p>}
+                </div>
+
+                {/* Location Search */}
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-white/70 tracking-wider uppercase">
+                    YOUR NEIGHBOURHOOD (WARD / LGA)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Search Ward or LGA..."
+                      value={locQuery}
+                      onChange={(e) => handleLocQuery(e.target.value)}
+                      className="w-full h-12 px-4 pr-10 rounded-2xl bg-white/[0.055] border border-white/10 text-white placeholder-white/40 focus:outline-none focus:border-[#82DB7E] text-sm"
+                    />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40">
+                      {locSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
+                    </div>
+                  </div>
+
+                  {/* GPS Auto-detect Button */}
+                  <button
+                    type="button"
+                    onClick={() => gps.detectLocation()}
+                    className="flex items-center gap-2 text-xs font-semibold text-[#82DB7E] hover:underline pt-1"
+                  >
+                    <Navigation className="w-3.5 h-3.5" />
+                    <span>Auto-detect GPS Location</span>
+                  </button>
+
+                  {locError && <p className="text-xs text-red-400 font-medium pt-1">{locError}</p>}
+
+                  {/* Location Suggestions List */}
+                  {locSuggestions.length > 0 && (
+                    <div className="mt-2 bg-[#121212] border border-white/10 rounded-2xl overflow-hidden max-h-48 overflow-y-auto">
+                      {locSuggestions.map((item, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            setSelectedLoc(item);
+                            setLocQuery(item.label);
+                            setLocSuggestions([]);
+                          }}
+                          className="w-full text-left px-4 py-2.5 text-xs text-white/80 hover:bg-white/10 transition-colors border-b border-white/5 last:border-0"
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {selectedLoc && (
+                    <div className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
+                      <MapPin className="w-4 h-4 shrink-0" />
+                      <span className="truncate">{selectedLoc.label}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="pt-4">
+                <PrimaryBtn label="Continue" onClick={handleStep1Next} icon={<ArrowRight className="w-4 h-4" />} />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-2 mb-2">
+                <button
+                  type="button"
+                  onClick={() => setStep(1)}
+                  className="p-1 rounded-full text-white/60 hover:text-white hover:bg-white/10"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+                <h2 className="text-2xl font-black text-white">Personalize Profile</h2>
+              </div>
+              <p className="text-sm font-normal text-white/55 mb-4">
+                Add an avatar, bio, and choose topics you care about
+              </p>
+
               {/* Avatar Photo Picker */}
-              <div className="flex flex-col items-center justify-center my-2">
+              <div className="flex flex-col items-center justify-center my-3">
                 <label className="relative cursor-pointer group">
                   <input type="file" accept="image/*" onChange={handlePickAvatar} className="hidden" />
                   <div className="w-24 h-24 rounded-full bg-white/[0.055] border-2 border-white/10 flex items-center justify-center overflow-hidden transition-all group-hover:border-[#82DB7E]">
@@ -198,109 +302,56 @@ function OnboardingProfileContent() {
                     <Camera className="w-4 h-4" />
                   </div>
                 </label>
-                <span className="text-xs text-white/70 font-semibold mt-2">Tap to add photo</span>
+                <span className="text-xs text-white/50 mt-2 font-medium">Upload profile picture</span>
               </div>
 
-              {usernameErr && (
-                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-semibold">
-                  {usernameErr}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-white/70 tracking-wider uppercase">
+                    SHORT BIO
+                  </label>
+                  <textarea
+                    placeholder="Tell your neighbours a bit about yourself..."
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                    rows={3}
+                    className="w-full px-4 py-3 rounded-2xl bg-white/[0.055] border border-white/10 text-white placeholder-white/40 focus:outline-none focus:border-[#82DB7E] text-sm resize-none"
+                  />
                 </div>
-              )}
 
-              <GlassInput
-                placeholder="Choose handle (e.g. johndoe)"
-                value={handle}
-                onChange={v => setHandle(v.replace(/^@/, ''))}
-              />
-
-              <div className="relative">
-                <textarea
-                  placeholder="Short bio for neighbours (optional)"
-                  value={bio}
-                  onChange={e => setBio(e.target.value.slice(0, 140))}
-                  rows={3}
-                  className="w-full p-4 rounded-[18px] bg-white/[0.07] border border-white/15 text-white text-base placeholder:text-white/60 focus:outline-none focus:border-[#82DB7E]/80 focus:ring-1 focus:ring-[#82DB7E]/50 resize-none"
-                />
-                <span className="absolute bottom-3 right-4 text-xs text-white/70 font-bold">
-                  {bio.length}/140
-                </span>
-              </div>
-
-              <PrimaryBtn label="Next: Choose Neighbourhood →" onClick={handleStep1Next} />
-            </>
-          ) : (
-            <>
-              <div className="flex flex-col gap-1 text-left">
-                <h2 className="text-2xl font-black text-white">Where do you live?</h2>
-                <p className="text-sm font-normal text-white/70">
-                  We use your general area to show local posts, events &amp; marketplace items
-                </p>
-              </div>
-
-              <div className="relative flex flex-col gap-2">
-                <GlassInput
-                  placeholder="Search ward, LGA or state..."
-                  value={locQuery}
-                  onChange={handleLocQuery}
-                  icon={locSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
-                />
-
-                {/* Live autocomplete dropdown */}
-                {locSuggestions.length > 0 && !selectedLoc && (
-                  <div className="w-full bg-[#141414] border border-white/15 rounded-[18px] p-2 flex flex-col gap-1 max-h-48 overflow-y-auto shadow-2xl z-20">
-                    {locSuggestions.map(s => (
-                      <button
-                        key={s.label}
-                        type="button"
-                        onClick={() => { setSelectedLoc(s); setLocQuery(s.label); setLocSuggestions([]); }}
-                        className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-left text-sm font-medium text-white hover:bg-[#82DB7E]/15 hover:text-[#82DB7E] transition-all"
-                      >
-                        <MapPin className="w-3.5 h-3.5 text-[#82DB7E]" />
-                        <span>{s.label}</span>
-                      </button>
-                    ))}
+                {/* Interest Tags */}
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-white/70 tracking-wider uppercase flex items-center gap-1">
+                    <Heart className="w-3.5 h-3.5 text-[#82DB7E]" />
+                    <span>SELECT INTERESTS</span>
+                  </label>
+                  <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto p-1 scrollbar-none">
+                    {FEATURED_INTERESTS.map((interest) => {
+                      const isSelected = selectedInterests.includes(interest);
+                      return (
+                        <button
+                          key={interest}
+                          type="button"
+                          onClick={() => toggleInterest(interest)}
+                          className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                            isSelected
+                              ? 'bg-[#82DB7E] text-[#050505] shadow-md scale-105'
+                              : 'bg-white/10 text-white/70 hover:bg-white/20'
+                          }`}
+                        >
+                          {interest}
+                        </button>
+                      );
+                    })}
                   </div>
-                )}
-              </div>
-
-              <button
-                type="button"
-                onClick={gps.detectLocation}
-                disabled={gps.status === 'requesting' || gps.status === 'geocoding'}
-                className="w-full h-12 rounded-[18px] bg-white/[0.08] border border-white/15 text-white font-semibold text-sm flex items-center justify-center gap-2 hover:bg-white/15 transition-all active:scale-98 disabled:opacity-60"
-              >
-                {gps.status === 'requesting' || gps.status === 'geocoding' ? (
-                  <Loader2 className="w-4 h-4 animate-spin text-[#82DB7E]" />
-                ) : (
-                  <Navigation className="w-4 h-4 text-[#82DB7E]" />
-                )}
-                <span>
-                  {gps.status === 'requesting' ? 'Requesting permission...' :
-                   gps.status === 'geocoding' ? 'Resolving location...' :
-                   gps.status === 'success' ? 'Location detected ✓' :
-                   'Use Current Location (GPS)'}
-                </span>
-              </button>
-
-              {(locError || saveError) && (
-                <div className="flex items-center gap-2 p-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-semibold">
-                  <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                  <span>{locError || saveError}</span>
                 </div>
-              )}
 
-              {/* Privacy Card */}
-              <div className="flex items-start gap-2.5 p-3.5 rounded-2xl bg-white/[0.04] border border-white/[0.08] text-xs text-white/55">
-                <ShieldCheck className="w-4 h-4 text-[#82DB7E] flex-shrink-0 mt-0.5" />
-                <span>Exact house numbers are kept private. Neighbours only see your area.</span>
+                {saveError && <p className="text-xs text-red-400 font-medium">{saveError}</p>}
               </div>
 
-              <PrimaryBtn
-                label="Complete Setup & Join"
-                onClick={handleComplete}
-                disabled={!selectedLoc}
-                loading={loading}
-              />
+              <div className="pt-4">
+                <PrimaryBtn label="Complete Profile" onClick={handleComplete} loading={loading} />
+              </div>
             </>
           )}
         </GlassCard>
@@ -311,8 +362,12 @@ function OnboardingProfileContent() {
 
 export default function OnboardingProfilePage() {
   return (
-    <React.Suspense fallback={<div className="min-h-[100dvh] bg-[#050505]" />}>
+    <Suspense fallback={
+      <div className="min-h-[100dvh] bg-[#050505] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-[#82DB7E] animate-spin" />
+      </div>
+    }>
       <OnboardingProfileContent />
-    </React.Suspense>
+    </Suspense>
   );
 }
