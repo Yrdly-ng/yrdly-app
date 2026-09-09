@@ -8,13 +8,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-
-const FONT = "var(--font-work-sans)";
+import { GlassCard } from "@/components/ui/glass-card";
 
 type SeverityFilter = "all" | AlertSeverity;
 
 const FILTERS: { key: SeverityFilter; label: string; color: string; bg: string }[] = [
-  { key: "all", label: "All", color: "var(--foreground)", bg: "var(--c-card2)" },
+  { key: "all", label: "All", color: "var(--foreground)", bg: "var(--yrdly-glass-bg)" },
   { key: "urgent", label: "Urgent", color: "#ef4444", bg: "rgba(239,68,68,0.12)" },
   { key: "caution", label: "Caution", color: "#f59e0b", bg: "rgba(245,158,11,0.12)" },
   { key: "information", label: "Info", color: "#3b82f6", bg: "rgba(59,130,246,0.10)" },
@@ -83,24 +82,23 @@ export function AlertsScreen() {
   const activeCount = alerts.filter((a) => a.status !== "resolved").length;
 
   return (
-    <div className="pb-6">
+    <div className="pb-6 min-h-[100dvh] bg-[var(--yrdly-dark)] text-foreground font-yrdly-body px-yrdly-md pt-4">
       {/* Header */}
       <div className="flex items-center justify-between gap-3 pt-1 pb-4">
         <div className="min-w-0">
-          <h1 className="text-3xl text-foreground leading-tight" style={{ fontFamily: FONT, fontWeight: 700 }}>
+          <h1 className="text-3xl text-foreground font-bold font-yrdly-display leading-tight">
             Safety Alerts
           </h1>
-          <p className="text-sm truncate" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
+          <p className="text-sm truncate text-[var(--yrdly-label)] font-yrdly-body">
             What&apos;s happening in your neighborhood
           </p>
         </div>
         <span
-          className="flex-shrink-0 px-3 py-1.5 rounded-lg text-[0.6875rem] font-bold"
+          className="flex-shrink-0 px-3 py-1.5 rounded-lg text-[0.6875rem] font-bold font-yrdly-body"
           style={{
             background: "rgba(239,68,68,0.12)",
             border: "1px solid rgba(239,68,68,0.25)",
             color: "#ef4444",
-            fontFamily: FONT,
           }}
         >
           {activeCount} ACTIVE
@@ -108,7 +106,7 @@ export function AlertsScreen() {
       </div>
 
       {/* Severity filter chips */}
-      <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-1">
+      <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-1 scrollbar-hide">
         {FILTERS.map(({ key, label, color, bg }) => {
           const active = key === activeFilter;
           return (
@@ -116,13 +114,12 @@ export function AlertsScreen() {
               key={key}
               onClick={() => setActiveFilter(key)}
               className={cn(
-                "px-4 py-1.5 rounded-full text-[0.8125rem] font-semibold whitespace-nowrap transition-all duration-150 active:scale-95",
-                !active && "border border-[var(--c-border)]"
+                "px-4 py-1.5 rounded-full text-[0.8125rem] font-semibold font-yrdly-body whitespace-nowrap transition-all duration-150 active:scale-95",
+                !active && "border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)]"
               )}
               style={{
-                background: active ? bg : "transparent",
-                color: active ? color : "var(--c-text-muted)",
-                fontFamily: FONT,
+                background: active ? bg : undefined,
+                color: active ? color : "var(--yrdly-label)",
               }}
             >
               {label}
@@ -135,25 +132,26 @@ export function AlertsScreen() {
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-32 w-full rounded-2xl" style={{ background: "var(--c-card)" }} />
+            <GlassCard key={i} className="h-32 w-full rounded-2xl">
+              <Skeleton className="h-full w-full rounded-xl" />
+            </GlassCard>
           ))}
         </div>
       ) : sections.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-24 text-center px-6">
-          <ShieldCheck size={48} weight="light" className="text-[var(--c-text-muted)] mb-4" />
-          <p className="text-base font-medium" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
+        <GlassCard className="flex flex-col items-center justify-center py-24 text-center px-6 rounded-3xl">
+          <ShieldCheck size={48} weight="light" className="text-[var(--yrdly-label)] mb-4" />
+          <p className="text-base font-medium text-[var(--yrdly-label)] font-yrdly-body">
             {activeFilter === "all"
               ? "There are no active alerts in your area."
               : `No ${activeFilter} alerts right now.`}
           </p>
-        </div>
+        </GlassCard>
       ) : (
         <div className="space-y-5">
           {sections.map((section) => (
             <div key={section.title}>
               <p
-                className="text-[0.6875rem] font-bold tracking-[0.08em] mb-2.5"
-                style={{ color: "var(--c-text-muted)", fontFamily: FONT }}
+                className="text-[0.6875rem] font-bold tracking-[0.08em] mb-2.5 text-[var(--yrdly-label)] font-yrdly-display"
               >
                 {section.title}
               </p>
@@ -178,3 +176,4 @@ export function AlertsScreen() {
     </div>
   );
 }
+

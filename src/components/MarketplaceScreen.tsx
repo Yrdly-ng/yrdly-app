@@ -14,7 +14,7 @@ import { useLocation } from "@/contexts/LocationContext";
 import { LocationChip } from "@/components/LocationChip";
 import { MarketplaceCreatorOnboarding } from "@/components/marketplace/MarketplaceCreatorOnboarding";
 import { Magnetic } from "@/components/ui/Magnetic";
-
+import { GlassCard } from "@/components/ui/glass-card";
 
 interface MarketplaceScreenProps {
   onItemClick?: (item: PostType) => void;
@@ -45,7 +45,6 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
     { label: "Health & Beauty", emoji: "🌿", keywords: ["health", "beauty", "skincare", "cosmetic", "primrose", "oil", "cream"] },
     { label: "Electronics", emoji: "💻", keywords: ["electronic", "laptop", "tv", "television", "computer", "gadget", "console"] },
   ];
-
 
   const handleEditItem = (item: PostType) => {
     setEditingItem(item);
@@ -89,7 +88,6 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
           .eq("category", "For Sale")
           .eq("is_sold", false);
 
-        // Apply location filters
         if (filterState) {
           query = query.eq('state', filterState);
         }
@@ -155,7 +153,7 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
     price === 0 ? "FREE" : `₦${price.toLocaleString()}`;
 
   return (
-    <div className="min-h-[100dvh]" style={{ background: "var(--c-bg)" }}>
+    <div className="min-h-[100dvh] bg-[var(--yrdly-dark)] text-foreground font-yrdly-body">
       {/* Location filter */}
       <div className="px-4 pt-4 pb-1">
         <LocationChip />
@@ -164,30 +162,21 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
       <div className="px-4 pt-2 pb-2">
         <div className="relative">
           <Search
-            className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5"
-            style={{ color: "var(--c-text-muted)" }}
+            className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--yrdly-label)]"
           />
           <input
             type="text"
             placeholder="Search for events, items"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-12 pr-4 py-2.5 bg-transparent text-foreground text-base italic font-light rounded-full outline-none placeholder:text-[#BBBBBB]"
-            style={{
-              border: "0.5px solid #388E3C",
-              fontFamily: "var(--font-work-sans)",
-              fontWeight: 300,
-            }}
+            className="w-full pl-12 pr-4 py-2.5 bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] backdrop-blur-md text-foreground text-base font-yrdly-body rounded-full outline-none placeholder:text-[var(--yrdly-label)] focus:ring-1 focus:ring-primary"
           />
         </div>
       </div>
 
       {/* Section title */}
       <div className="px-4 pt-4 pb-3">
-        <h2
-          className="text-lg"
-          style={{ fontFamily: "var(--font-jersey25)", color: "var(--c-text)", fontWeight: 400 }}
-        >
+        <h2 className="text-lg font-bold font-yrdly-display text-foreground">
           Closest to you
         </h2>
       </div>
@@ -200,13 +189,11 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
             <button
               key={cat.label}
               onClick={() => setActiveCategory(cat.label)}
-              className="flex-shrink-0 flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all duration-150 active:scale-[0.97] border"
-              style={{
-                fontFamily: "var(--font-work-sans)",
-                background: active ? "hsl(var(--primary))" : "var(--c-card)",
-                color: active ? "var(--c-bg)" : "var(--c-text-muted)",
-                borderColor: active ? "hsl(var(--primary))" : "var(--c-border)",
-              }}
+              className={`flex-shrink-0 flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold font-yrdly-body transition-all duration-150 active:scale-[0.97] border ${
+                active
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-[var(--yrdly-glass-bg)] text-[var(--yrdly-label)] border-[var(--yrdly-glass-border)]"
+              }`}
             >
               <span>{cat.emoji}</span>
               {cat.label}
@@ -219,11 +206,9 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
       {loading ? (
         <div className="px-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 pb-28">
           {[...Array(8)].map((_, i) => (
-            <Skeleton
-              key={i}
-              className="h-64 w-full rounded-xl"
-              style={{ background: "var(--c-card)" }}
-            />
+            <GlassCard key={i} className="h-64 w-full rounded-xl">
+              <Skeleton className="h-full w-full rounded-lg" />
+            </GlassCard>
           ))}
         </div>
       ) : filteredItems.length > 0 ? (
@@ -244,35 +229,30 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
           ))}
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center py-24 px-4 text-center">
+        <GlassCard className="flex flex-col items-center justify-center py-24 mx-4 px-4 text-center rounded-3xl">
           <div
-            className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
-            style={{ background: "var(--c-card)" }}
+            className="w-16 h-16 rounded-full flex items-center justify-center mb-4 bg-primary/10"
           >
-            <ShoppingBag className="w-8 h-8" style={{ color: "hsl(var(--primary))" }} />
+            <ShoppingBag className="w-8 h-8 text-primary" />
           </div>
-          <h3
-            className="text-xl mb-2"
-            style={{ fontFamily: "var(--font-jersey25)", color: "var(--c-text)" }}
-          >
+          <h3 className="text-xl mb-2 font-bold font-yrdly-display text-foreground">
             {searchTerm ? `No results for "${searchTerm}"` : "Marketplace is empty"}
           </h3>
-          <p className="text-sm" style={{ color: "var(--c-text-muted)", fontFamily: "var(--font-work-sans)" }}>
+          <p className="text-sm text-[var(--yrdly-label)] font-yrdly-body">
             {searchTerm
               ? "Try a different search term."
               : "Be the first to list an item in your neighborhood!"}
           </p>
-        </div>
+        </GlassCard>
       )}
 
       {/* FAB — list an item */}
       <div className="fixed bottom-20 right-4 z-20 pb-[env(safe-area-inset-bottom)]">
         <button
           onClick={handleCreateItem}
-          className="w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
-          style={{ background: "hsl(var(--primary))" }}
+          className="w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-transform hover:scale-105 active:scale-95 bg-primary"
         >
-          <Plus className="w-6 h-6 text-foreground" />
+          <Plus className="w-6 h-6 text-primary-foreground" />
         </button>
       </div>
 
@@ -332,14 +312,13 @@ function MarketplaceCard({
   const imageUrl = !imgError && item.image_urls?.[0] ? item.image_urls[0] : null;
 
   return (
-    <div
-      className="group rounded-xl overflow-hidden flex flex-col transition-transform duration-300 hover:-translate-y-0.5 hover:shadow-2xl cursor-pointer"
-      style={{ background: "var(--c-card)" }}
+    <GlassCard
+      className="group rounded-xl overflow-hidden flex flex-col transition-transform duration-300 hover:-translate-y-0.5 cursor-pointer p-0"
     >
       {/* Image — uniform 1:1 ratio, cropped consistently */}
       <div
-        className="w-full relative flex-shrink-0 overflow-hidden"
-        style={{ aspectRatio: "1 / 1", background: "#1E293B" }}
+        className="w-full relative flex-shrink-0 overflow-hidden bg-[var(--yrdly-dark)]"
+        style={{ aspectRatio: "1 / 1" }}
         onClick={() => onItemClick?.(item)}
       >
         {imageUrl ? (
@@ -354,17 +333,16 @@ function MarketplaceCard({
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <ShoppingBag className="w-10 h-10" style={{ color: "hsl(var(--primary))", opacity: 0.5 }} />
+            <ShoppingBag className="w-10 h-10 text-primary/50" />
           </div>
         )}
       </div>
 
       {/* Info */}
-      <div className="p-2.5 flex flex-col gap-1 flex-1">
+      <div className="p-2.5 flex flex-col gap-1 flex-1 font-yrdly-body">
         {/* Item name — single line, truncated */}
         <p
-          className="text-foreground text-[0.875rem] leading-[17px] truncate"
-          style={{ fontFamily: "var(--font-work-sans)", fontWeight: 600 }}
+          className="text-foreground text-[0.875rem] leading-[17px] truncate font-yrdly-display font-semibold"
           onClick={() => onItemClick?.(item)}
         >
           {item.title || item.text || "Untitled"}
@@ -372,8 +350,7 @@ function MarketplaceCard({
 
         {/* Price */}
         <p
-          className="text-[1.375rem] leading-[28px] font-bold"
-          style={{ fontFamily: "var(--font-work-sans)", color: "hsl(var(--primary))" }}
+          className="text-[1.375rem] leading-[28px] font-bold text-primary font-yrdly-display"
         >
           {formatPrice(item.price || 0)}
         </p>
@@ -384,20 +361,14 @@ function MarketplaceCard({
             <>
               <button
                 onClick={() => onEdit(item)}
-                className="flex-1 flex items-center justify-center gap-1 text-xs py-1.5 rounded-full border transition-colors"
-                style={{
-                  borderColor: "hsl(var(--primary))",
-                  color: "hsl(var(--primary))",
-                  fontFamily: "var(--font-work-sans)",
-                  background: "transparent",
-                }}
+                className="flex-1 flex items-center justify-center gap-1 text-xs py-1.5 rounded-full border border-primary text-primary font-yrdly-body bg-transparent transition-colors"
               >
                 <Edit className="w-3 h-3" />
                 Edit
               </button>
               <button
                 onClick={() => onDelete(item.id)}
-                className="px-2.5 py-1.5 rounded-full border border-red-500 text-red-500 text-xs transition-colors hover:bg-red-500/10"
+                className="px-2.5 py-1.5 rounded-full border border-red-500 text-red-500 text-xs transition-colors hover:bg-red-500/10 font-yrdly-body"
               >
                 <Trash2 className="w-3 h-3" />
               </button>
@@ -406,11 +377,7 @@ function MarketplaceCard({
             <>
               <Magnetic
                 onClick={() => onItemClick?.(item)}
-                className="flex-1 text-xs py-1.5 rounded-full font-semibold transition-colors text-foreground justify-center"
-                style={{
-                  background: "hsl(var(--primary))",
-                  fontFamily: "var(--font-work-sans)",
-                }}
+                className="flex-1 text-xs py-1.5 rounded-full font-semibold transition-colors bg-primary text-primary-foreground justify-center font-yrdly-body"
                 strength={4}
               >
                 {item.price === 0 ? "Claim Free" : "Buy Now"}
@@ -428,16 +395,14 @@ function MarketplaceCard({
 
         {/* Seller — dedicated top border + lighter text for legibility */}
         <button
-          className="flex items-center gap-1.5 mt-1.5 pt-1.5 w-full text-left border-t"
-          style={{ borderColor: "rgba(148,163,184,0.2)" }}
+          className="flex items-center gap-1.5 mt-1.5 pt-1.5 w-full text-left border-t border-[var(--yrdly-glass-border)]"
           onClick={() => {
             const uid = item.user?.id || item.user_id;
             if (uid) onProfileClick(uid);
           }}
         >
           <div
-            className="w-4 h-4 rounded-full flex-shrink-0 flex items-center justify-center text-[0.5625rem] font-bold text-foreground overflow-hidden"
-            style={{ background: "hsl(var(--primary))" }}
+            className="w-4 h-4 rounded-full flex-shrink-0 flex items-center justify-center text-[0.5625rem] font-bold text-black font-yrdly-body overflow-hidden bg-primary"
           >
             {item.user?.avatar_url ? (
               <Image
@@ -452,8 +417,7 @@ function MarketplaceCard({
             )}
           </div>
           <span
-            className="text-[0.6875rem] truncate flex items-center gap-1"
-            style={{ color: "#94A3B8", fontFamily: "var(--font-work-sans)" }}
+            className="text-[0.6875rem] truncate flex items-center gap-1 text-[var(--yrdly-label)] font-yrdly-body"
           >
             {item.user?.name || "Unknown Seller"}
             {item.user?.verified_seller && (
@@ -461,8 +425,7 @@ function MarketplaceCard({
             )}
           </span>
           <span
-            className="text-[0.625rem] ml-auto flex-shrink-0"
-            style={{ color: "#94A3B8", fontFamily: "var(--font-work-sans)" }}
+            className="text-[0.625rem] ml-auto flex-shrink-0 text-[var(--yrdly-label)] font-yrdly-body"
           >
             {new Date(item.timestamp).toLocaleDateString("en-NG", {
               day: "numeric",
@@ -471,6 +434,6 @@ function MarketplaceCard({
           </span>
         </button>
       </div>
-    </div>
+    </GlassCard>
   );
 }

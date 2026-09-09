@@ -20,6 +20,7 @@ import Image from "next/image";
 import { ProfileQuickAccess } from "./ProfileQuickAccess";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { useFriendshipGlobal } from "@/hooks/use-friendship-global";
+import { GlassCard } from "@/components/ui/glass-card";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -29,11 +30,6 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const GREEN = "hsl(var(--primary))";
-const CARD = "var(--c-card)";
-const SURFACE = "var(--c-card)";
-const BG = "var(--c-bg)";
-const FONT = "var(--font-work-sans)";
-const RALEWAY = "var(--font-raleway)";
 
 interface ProfileScreenProps {
   onBack?: () => void;
@@ -53,8 +49,7 @@ const TABS = [
 function TabBar({ active, onChange }: { active: string; onChange: (k: string) => void }) {
   return (
     <div
-      className="flex items-center justify-around p-1 rounded-full border border-[var(--c-border)]"
-      style={{ background: SURFACE }}
+      className="flex items-center justify-around p-1 rounded-full border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] backdrop-blur-md font-yrdly-body"
     >
       {TABS.map(({ key, label }) => {
         const isActive = active === key;
@@ -62,12 +57,11 @@ function TabBar({ active, onChange }: { active: string; onChange: (k: string) =>
           <button
             key={key}
             onClick={() => onChange(key)}
-            className="flex-1 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all text-center"
-            style={{
-              background: isActive ? "var(--c-card2)" : "transparent",
-              color: isActive ? GREEN : "var(--c-text-muted)",
-              fontFamily: FONT,
-            }}
+            className={`flex-1 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all text-center ${
+              isActive
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-[var(--yrdly-label)] hover:text-foreground"
+            }`}
           >
             {label}
           </button>
@@ -81,31 +75,30 @@ function MiniCard({ title, sub, img, badge, onClick }: {
   title: string; sub?: string; img?: string | null; badge?: string; onClick?: () => void;
 }) {
   return (
-    <div
+    <GlassCard
       onClick={onClick}
-      className="flex items-center gap-3 p-3 rounded-[11px] cursor-pointer transition-colors hover:bg-background/5"
-      style={{ background: SURFACE, border: "1px solid var(--c-border)" }}
+      className="flex items-center gap-3 p-3 rounded-[11px] cursor-pointer transition-colors hover:bg-white/5"
     >
-      <div className="w-12 h-12 rounded-[11px] overflow-hidden bg-[var(--c-card2)] flex-shrink-0 relative">
+      <div className="w-12 h-12 rounded-[11px] overflow-hidden bg-[var(--yrdly-glass-bg)] flex-shrink-0 relative">
         {img ? (
           <Image src={img} alt={title} fill className="object-cover" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-primary-light font-bold text-sm">
+          <div className="w-full h-full flex items-center justify-center text-primary font-bold text-sm font-yrdly-display">
             {title.charAt(0)}
           </div>
         )}
         {badge && (
           <span
-            className="absolute bottom-0 right-0 text-[0.55rem] font-bold px-1.5 py-0.5 rounded-tl bg-black/60 text-white"
+            className="absolute bottom-0 right-0 text-[0.55rem] font-bold px-1.5 py-0.5 rounded-tl text-black font-yrdly-body"
             style={{ background: GREEN }}
           >{badge}</span>
         )}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-foreground text-sm font-semibold truncate" style={{ fontFamily: RALEWAY }}>{title}</p>
-        {sub && <p className="text-xs truncate mt-0.5" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>{sub}</p>}
+        <p className="text-foreground text-sm font-semibold truncate font-yrdly-display">{title}</p>
+        {sub && <p className="text-xs truncate mt-0.5 text-[var(--yrdly-label)] font-yrdly-body">{sub}</p>}
       </div>
-    </div>
+    </GlassCard>
   );
 }
 
@@ -264,9 +257,9 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
 
   if (loading) {
     return (
-      <div className="p-4 space-y-5 max-w-2xl mx-auto" style={{ background: BG }}>
-        <Skeleton className="h-64 w-full rounded-[11px]" style={{ background: CARD }} />
-        <Skeleton className="h-20 w-full rounded-[11px]" style={{ background: CARD }} />
+      <div className="p-4 space-y-5 max-w-2xl mx-auto min-h-[100dvh] bg-[var(--yrdly-dark)]">
+        <Skeleton className="h-64 w-full rounded-[11px]" />
+        <Skeleton className="h-20 w-full rounded-[11px]" />
       </div>
     );
   }
@@ -288,27 +281,26 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
   const isVerifiedSeller = !!(displayProfile as any)?.verified_seller;
 
   return (
-    <div className="pb-28 max-w-2xl mx-auto px-4 pt-4 min-h-[100dvh]" style={{ background: BG }}>
+    <div className="pb-28 max-w-2xl mx-auto px-yrdly-md pt-4 min-h-[100dvh] bg-[var(--yrdly-dark)] text-foreground font-yrdly-body">
       {/* ── Top Header ── */}
       <div className="flex items-center justify-between py-2 mb-4">
         {onBack ? (
-          <button onClick={onBack} className="w-9 h-9 rounded-xl flex items-center justify-center border border-white/10" style={{ background: CARD }}>
+          <button onClick={onBack} className="w-9 h-9 rounded-xl flex items-center justify-center border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)]">
             <ArrowLeft className="w-4 h-4 text-foreground" />
           </button>
         ) : <div className="w-9" />}
 
-        <h1 className="text-base font-bold text-foreground" style={{ fontFamily: RALEWAY }}>
+        <h1 className="text-base font-bold text-foreground font-yrdly-display">
           Profile
         </h1>
 
         {actualIsOwnProfile ? (
           <button
             onClick={() => router.push("/settings")}
-            className="w-9 h-9 rounded-xl flex items-center justify-center border border-white/10 transition-colors hover:bg-white/5"
-            style={{ background: CARD }}
+            className="w-9 h-9 rounded-xl flex items-center justify-center border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] transition-colors hover:bg-white/5"
             title="Settings"
           >
-            <Settings className="w-4 h-4 style={{ color: 'var(--c-text-muted)' }}" />
+            <Settings className="w-4 h-4 text-[var(--yrdly-label)]" />
           </button>
         ) : <div className="w-9" />}
       </div>
@@ -318,10 +310,10 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
         <div className="flex items-start gap-4 mb-4">
           {/* Avatar with Camera Icon Overlay */}
           <div className="relative flex-shrink-0">
-            <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-primary/30" style={{ background: CARD }}>
+            <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-primary/30 bg-[var(--yrdly-glass-bg)]">
               <Avatar className="w-full h-full">
                 <AvatarImage src={avatarUrl || "/placeholder.svg"} className="object-cover" />
-                <AvatarFallback style={{ background: GREEN, color: "#000", fontSize: 24, fontFamily: RALEWAY, fontWeight: 800 }}>
+                <AvatarFallback style={{ background: GREEN, color: "#000", fontSize: 24 }} className="font-yrdly-display font-extrabold">
                   {name.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
@@ -341,18 +333,18 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
           {/* Name & Handle */}
           <div className="flex-1 min-w-0 pt-1">
             <div className="flex items-center gap-1.5">
-              <h2 className="text-xl font-bold text-foreground truncate" style={{ fontFamily: RALEWAY }}>
+              <h2 className="text-xl font-bold text-foreground truncate font-yrdly-display">
                 {name}
               </h2>
               {isVerifiedUser && <VerifiedBadge size={16} />}
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5" style={{ fontFamily: FONT }}>
+            <p className="text-xs text-[var(--yrdly-label)] mt-0.5 font-yrdly-body">
               @{username}
             </p>
             {formattedLocation && (
-              <div className="flex items-center gap-1 mt-1.5 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1 mt-1.5 text-xs text-[var(--yrdly-label)]">
                 <MapPin className="w-3 h-3 text-primary" />
-                <span className="truncate" style={{ fontFamily: FONT }}>{formattedLocation}</span>
+                <span className="truncate font-yrdly-body">{formattedLocation}</span>
               </div>
             )}
           </div>
@@ -360,7 +352,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
 
         {/* Bio */}
         {bio && (
-          <p className="text-sm text-foreground/90 leading-relaxed mb-4" style={{ fontFamily: FONT }}>
+          <p className="text-sm text-foreground/90 leading-relaxed mb-4 font-yrdly-body">
             {bio}
           </p>
         )}
@@ -369,8 +361,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
         {actualIsOwnProfile && (
           <button
             onClick={() => router.push("/settings/profile")}
-            className="h-9 px-5 rounded-full border border-[var(--c-border)] text-xs font-semibold transition-colors hover:bg-white/5"
-            style={{ background: SURFACE, color: "var(--c-text-muted)", fontFamily: FONT }}
+            className="h-9 px-5 rounded-full border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] text-xs font-semibold text-[var(--yrdly-label)] font-yrdly-body transition-colors hover:bg-white/5"
           >
             Edit Profile
           </button>
@@ -378,36 +369,36 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
       </section>
 
       {/* ── Stats Bar (3-Column with border dividers) ── */}
-      <div className="flex items-center justify-between py-4 mb-6 border-y border-[var(--c-border)]">
+      <div className="flex items-center justify-between py-4 mb-6 border-y border-[var(--yrdly-glass-border)]">
         <div className="flex-1 text-center">
-          <p className="text-xl font-extrabold text-foreground" style={{ fontFamily: RALEWAY }}>
+          <p className="text-xl font-extrabold text-foreground font-yrdly-display">
             {userPosts.length}
           </p>
-          <p className="text-xs text-muted-foreground mt-0.5" style={{ fontFamily: FONT }}>
+          <p className="text-xs text-[var(--yrdly-label)] mt-0.5 font-yrdly-body">
             Posts
           </p>
         </div>
-        <div className="w-[1px] h-8 bg-[var(--c-border)]" />
+        <div className="w-[1px] h-8 bg-[var(--yrdly-glass-border)]" />
         <button
           className="flex-1 text-center transition-opacity hover:opacity-80"
           onClick={() => router.push(`/network/${targetUser?.id}?mode=followers`)}
         >
-          <p className="text-xl font-extrabold text-foreground" style={{ fontFamily: RALEWAY }}>
+          <p className="text-xl font-extrabold text-foreground font-yrdly-display">
             {stats.followers.toLocaleString()}
           </p>
-          <p className="text-xs text-muted-foreground mt-0.5" style={{ fontFamily: FONT }}>
+          <p className="text-xs text-[var(--yrdly-label)] mt-0.5 font-yrdly-body">
             Followers
           </p>
         </button>
-        <div className="w-[1px] h-8 bg-[var(--c-border)]" />
+        <div className="w-[1px] h-8 bg-[var(--yrdly-glass-border)]" />
         <button
           className="flex-1 text-center transition-opacity hover:opacity-80"
           onClick={() => router.push(`/network/${targetUser?.id}?mode=following`)}
         >
-          <p className="text-xl font-extrabold text-foreground" style={{ fontFamily: RALEWAY }}>
+          <p className="text-xl font-extrabold text-foreground font-yrdly-display">
             {stats.following.toLocaleString()}
           </p>
-          <p className="text-xs text-muted-foreground mt-0.5" style={{ fontFamily: FONT }}>
+          <p className="text-xs text-[var(--yrdly-label)] mt-0.5 font-yrdly-body">
             Following
           </p>
         </button>
@@ -433,10 +424,9 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
                   const thumbUrl = post.image_url || post.image_urls?.[0] || null;
                   const hasVideo = !!post.video_url;
                   return (
-                    <div
+                    <GlassCard
                       key={post.id}
-                      className="rounded-[11px] cursor-pointer overflow-hidden mb-4 break-inside-avoid"
-                      style={{ background: SURFACE }}
+                      className="rounded-[11px] cursor-pointer overflow-hidden mb-4 break-inside-avoid p-0"
                       onClick={() => router.push(`/posts/${post.id}`)}
                     >
                       <div className="relative w-full" style={{ aspectRatio: '1/1' }}>
@@ -459,23 +449,23 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
                           </div>
                         )}
                         {(post.image_urls?.length || 0) > 1 && (
-                          <span className="absolute top-1.5 right-1.5 text-[0.6rem] font-semibold px-1.5 py-0.5 rounded-full bg-black/50 text-white">
+                          <span className="absolute top-1.5 right-1.5 text-[0.6rem] font-semibold px-1.5 py-0.5 rounded-full bg-black/50 text-white font-yrdly-body">
                             +{(post.image_urls?.length || 1) - 1}
                           </span>
                         )}
                       </div>
                       {!!post.text && (
                         <div className="px-4 py-3">
-                          <p className="text-foreground text-xs line-clamp-2" style={{ fontFamily: FONT }}>{post.text}</p>
+                          <p className="text-foreground text-xs line-clamp-2 font-yrdly-body">{post.text}</p>
                         </div>
                       )}
-                    </div>
+                    </GlassCard>
                   );
                 })}
               </div>
             </div>
           ) : (
-            <div className="py-12 text-center text-xs text-muted-foreground" style={{ fontFamily: FONT }}>
+            <div className="py-12 text-center text-xs text-[var(--yrdly-label)] font-yrdly-body">
               No media posts yet
             </div>
           )
@@ -486,24 +476,23 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
           textPosts.length > 0 ? (
             <div className="space-y-3">
               {textPosts.map((post: Post) => (
-                <div
+                <GlassCard
                   key={post.id}
-                  className="p-4 rounded-[11px] cursor-pointer border border-[var(--c-border)]"
-                  style={{ background: SURFACE }}
+                  className="p-4 rounded-[11px] cursor-pointer"
                   onClick={() => router.push(`/posts/${post.id}`)}
                 >
-                  <p className="text-foreground text-sm font-medium line-clamp-4" style={{ fontFamily: FONT }}>{post.text}</p>
-                  <div className="flex items-center justify-between mt-3 text-xs" style={{ color: "var(--c-text-muted)" }}>
-                    <span className="text-[0.65rem] font-bold uppercase tracking-wider">{post.category || "General"}</span>
+                  <p className="text-foreground text-sm font-medium line-clamp-4 font-yrdly-body">{post.text}</p>
+                  <div className="flex items-center justify-between mt-3 text-xs text-[var(--yrdly-label)] font-yrdly-body">
+                    <span className="text-[0.65rem] font-bold uppercase tracking-wider font-yrdly-display">{post.category || "General"}</span>
                     <div className="flex items-center gap-3">
                       <span className="flex items-center gap-1"><Heart className="w-3.5 h-3.5" />{post.liked_by?.length || 0}</span>
                     </div>
                   </div>
-                </div>
+                </GlassCard>
               ))}
             </div>
           ) : (
-            <div className="py-12 text-center text-xs text-muted-foreground" style={{ fontFamily: FONT }}>
+            <div className="py-12 text-center text-xs text-[var(--yrdly-label)] font-yrdly-body">
               No text posts yet
             </div>
           )
@@ -512,7 +501,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
         {/* Saved tab */}
         {activeTab === "saved" && (
           loadingSaved ? (
-            <div className="p-4 text-center text-xs text-muted-foreground">Loading saved bookmarks...</div>
+            <div className="p-4 text-center text-xs text-[var(--yrdly-label)] font-yrdly-body">Loading saved bookmarks...</div>
           ) : savedPosts.length > 0 ? (
             <div className="space-y-3">
               {savedPosts.map((item) => (
@@ -533,7 +522,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
               ))}
             </div>
           ) : (
-            <div className="py-12 text-center text-xs text-muted-foreground" style={{ fontFamily: FONT }}>
+            <div className="py-12 text-center text-xs text-[var(--yrdly-label)] font-yrdly-body">
               No saved items yet
             </div>
           )

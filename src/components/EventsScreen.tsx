@@ -34,6 +34,8 @@ import { TiltCard } from "@/components/ui/TiltCard";
 import { Magnetic } from "@/components/ui/Magnetic";
 import { RevealOnScroll } from "@/components/ui/RevealOnScroll";
 
+import { GlassCard } from "@/components/ui/glass-card";
+
 interface EventsScreenProps {
   className?: string;
 }
@@ -229,7 +231,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
   }
 
   return (
-    <div className={cn("p-3 sm:p-4 md:p-6 space-y-6 md:space-y-8 pb-20 lg:pb-8", className)}>
+    <div className={cn("min-h-[100dvh] bg-[var(--yrdly-dark)] text-foreground font-yrdly-body p-3 sm:p-4 md:p-6 space-y-6 md:space-y-8 pb-20 lg:pb-8", className)}>
       {/* Location filter — its own row, same pattern as Market, so its dropdown is never clipped by a scroll container */}
       <div className="flex items-center">
         <LocationChip />
@@ -243,10 +245,10 @@ export function EventsScreen({ className }: EventsScreenProps) {
               key={filter}
               onClick={() => toggleQuickFilter(filter)}
               className={cn(
-                "flex-shrink-0 px-3 py-1.5 rounded-full font-sans text-xs font-medium transition-all",
+                "flex-shrink-0 px-3.5 py-1.5 rounded-full font-yrdly-body text-xs font-semibold transition-all border",
                 active
-                  ? "bg-primary text-foreground shadow-[0_4px_12px_rgba(92,213,120,0.35)]"
-                  : "border border-border text-foreground hover:bg-accent"
+                  ? "bg-[var(--yrdly-glass-bg)] text-foreground border-[var(--yrdly-glass-border)] shadow-sm font-yrdly-display"
+                  : "bg-transparent border-[var(--yrdly-glass-border)] text-[var(--yrdly-label)] hover:text-foreground"
               )}
             >
               {filter}
@@ -256,21 +258,15 @@ export function EventsScreen({ className }: EventsScreenProps) {
       </div>
       {/* Picked for You */}
       <section className="space-y-3 sm:space-y-4">
-        <h2
-          className="text-lg sm:text-[1.125rem] leading-8 text-foreground"
-          style={{ fontFamily: "var(--font-jersey25)" }}
-        >
+        <h2 className="text-lg sm:text-[1.125rem] leading-8 text-foreground font-yrdly-display font-bold">
           Picked for You
         </h2>
         {pickedForYou.length === 0 ? (
-          <div
-            className="rounded-[28px] h-[220px] sm:h-[280px] md:h-[330px] flex flex-col items-center justify-center gap-3 px-6"
-            style={{ background: "var(--c-card)" }}
-          >
-            <CalendarDays className="w-12 h-12 text-muted-foreground" aria-hidden />
-            <p className="text-muted-foreground font-sans text-sm text-center">No events picked for you yet</p>
-            <p className="text-muted-foreground font-sans text-xs text-center max-w-[240px]">Create an event or check back later for recommendations.</p>
-          </div>
+          <GlassCard className="rounded-[28px] h-[220px] sm:h-[280px] md:h-[330px] flex flex-col items-center justify-center gap-3 px-6 text-center">
+            <CalendarDays className="w-12 h-12 text-[var(--yrdly-label)]" aria-hidden />
+            <p className="text-foreground font-yrdly-display font-bold text-sm">No events picked for you yet</p>
+            <p className="text-[var(--yrdly-label)] font-yrdly-body text-xs max-w-[240px]">Create an event or check back later for recommendations.</p>
+          </GlassCard>
         ) : (
           <>
             <Carousel
@@ -285,7 +281,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
                     className="pl-2 sm:pl-4 basis-[92%] sm:basis-[82%] md:basis-[72%] lg:basis-[68%]"
                   >
                     <TiltCard
-                      className="w-full rounded-[20px] sm:rounded-[24px] overflow-hidden aspect-[820/340] max-h-[300px] sm:max-h-[350px] bg-card"
+                      className="w-full rounded-[20px] sm:rounded-[24px] overflow-hidden aspect-[820/340] max-h-[300px] sm:max-h-[350px] bg-card border border-[var(--yrdly-glass-border)]"
                       maxTilt={5}
                       onClick={() => router.push(`/events/${event.id}`)}
                     >
@@ -299,7 +295,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
                       {/* Category badge */}
                       <div className="absolute top-4 left-4 sm:top-5 sm:left-5 z-10">
                         <span
-                          className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-sans font-semibold text-white"
+                          className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-yrdly-body font-semibold text-white"
                           style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(6px)" }}
                         >
                           {categoryEmoji(event.category)} {event.category || "Event"}
@@ -313,10 +309,10 @@ export function EventsScreen({ className }: EventsScreenProps) {
                         }}
                       />
                       <div className="absolute inset-0 flex flex-col justify-end p-4 sm:p-6 md:p-8">
-                        <h3 className="font-sans font-extrabold text-lg sm:text-[1.4375rem] text-white mb-2 drop-shadow-sm">
+                        <h3 className="font-yrdly-display font-extrabold text-lg sm:text-[1.4375rem] text-white mb-2 drop-shadow-sm">
                           {event.title || "Event"}
                         </h3>
-                        <div className="flex flex-wrap items-center gap-3 text-white/90 text-xs sm:text-[0.8125rem] font-sans">
+                        <div className="flex flex-wrap items-center gap-3 text-white/90 text-xs sm:text-[0.8125rem] font-yrdly-body">
                           <span className="flex items-center gap-1">
                             <CalendarDays className="w-4 h-4" />
                             {formatEventDateTime(event.start_time)}
@@ -350,7 +346,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
                     aria-label={`Slide ${i + 1}`}
                     className={cn(
                       "w-1.5 h-1.5 rounded-full transition",
-                      i === carouselIndex ? "bg-primary" : "bg-[#D9D9D9]"
+                      i === carouselIndex ? "bg-primary" : "bg-[var(--yrdly-glass-border)]"
                     )}
                     onClick={() => carouselApi?.scrollTo(i)}
                   />
@@ -364,15 +360,12 @@ export function EventsScreen({ className }: EventsScreenProps) {
       {/* Events in your Area */}
       <section className="space-y-3 sm:space-y-4">
         <div className="flex items-center justify-between">
-          <h2
-            className="text-lg sm:text-[1.125rem] leading-8 text-foreground"
-            style={{ fontFamily: "var(--font-jersey25)" }}
-          >
+          <h2 className="text-lg sm:text-[1.125rem] leading-8 text-foreground font-yrdly-display font-bold">
             Events in your Area
           </h2>
           <Link
             href="/events"
-            className="font-sans font-medium text-xs text-[#1976D2] hover:underline flex-shrink-0"
+            className="font-yrdly-body font-medium text-xs text-primary hover:underline flex-shrink-0"
           >
             See all
           </Link>
@@ -382,10 +375,9 @@ export function EventsScreen({ className }: EventsScreenProps) {
             const { day, month } = dateChipParts(event.start_time);
             const isSaved = savedEvents.has(event.id);
             return (
-              <div
+              <GlassCard
                 key={event.id}
-                className="rounded-xl overflow-hidden cursor-pointer transition-all duration-300 hover:-translate-y-1"
-                style={{ background: "var(--c-card)", boxShadow: "0 10px 30px rgba(0,0,0,0.06)" }}
+                className="rounded-xl overflow-hidden cursor-pointer transition-all duration-300 hover:-translate-y-1 p-0"
                 onClick={() => router.push(`/events/${event.id}`)}
               >
                 <div className="p-3 flex gap-2">
@@ -397,28 +389,28 @@ export function EventsScreen({ className }: EventsScreenProps) {
                       height={56}
                       className="w-full h-full object-cover"
                     />
-                    <div className="absolute top-0.5 left-0.5 rounded-md px-1 py-0.5 text-center leading-none" style={{ background: "rgba(0,0,0,0.55)" }}>
-                      <div className="text-white font-sans font-bold text-[0.5rem]">{day}</div>
-                      <div className="text-white/80 font-sans text-[0.4rem]">{month}</div>
+                    <div className="absolute top-0.5 left-0.5 rounded-md px-1 py-0.5 text-center leading-none bg-black/60 backdrop-blur-sm">
+                      <div className="text-white font-yrdly-display font-bold text-[0.55rem]">{day}</div>
+                      <div className="text-white/80 font-yrdly-body text-[0.45rem]">{month}</div>
                     </div>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="font-sans font-medium italic text-xs sm:text-[0.8125rem] text-foreground truncate">
+                    <p className="font-yrdly-display font-semibold text-xs sm:text-[0.8125rem] text-foreground truncate">
                       {event.title || "Event"}
                     </p>
-                    <p className="font-sans text-[0.5625rem] sm:text-[0.5625rem] text-foreground mt-0.5">
+                    <p className="font-yrdly-body text-[0.625rem] text-[var(--yrdly-label)] mt-0.5">
                       {formatEventDate(event.start_time)}
                     </p>
-                    <div className="flex items-center gap-1 mt-1 text-muted-foreground">
+                    <div className="flex items-center gap-1 mt-1 text-[var(--yrdly-label)]">
                       <MapPin className="w-3 h-3 flex-shrink-0" />
-                      <span className="font-sans text-[0.5625rem] sm:text-[0.6875rem] truncate">
+                      <span className="font-yrdly-body text-[0.625rem] truncate">
                         {event.location_address || event.description?.slice(0, 30) || "—"}
                       </span>
                     </div>
                   </div>
                   <button
                     aria-label={isSaved ? "Unsave" : "Save"}
-                    className="p-1 h-fit text-muted-foreground hover:text-primary transition-colors"
+                    className="p-1 h-fit text-[var(--yrdly-label)] hover:text-primary transition-colors"
                     onClick={(e) => {
                       e.stopPropagation();
                       toggleSaved(event.id);
@@ -427,19 +419,19 @@ export function EventsScreen({ className }: EventsScreenProps) {
                     <Heart className={cn("w-4 h-4", isSaved && "fill-primary text-primary")} />
                   </button>
                 </div>
-                <div className="px-3 pb-3 pt-0 border-t border-border">
+                <div className="px-3 pb-3 pt-0 border-t border-[var(--yrdly-glass-border)]">
                   {event.attendee_count && event.attendee_count > 0 ? (
-                    <p className="font-sans text-[0.5625rem] text-muted-foreground mb-2 mt-2">
+                    <p className="font-yrdly-body text-[0.625rem] text-[var(--yrdly-label)] mb-2 mt-2">
                       {event.attendee_count === 1 ? "1 person going" : `${event.attendee_count} people going`}
                     </p>
                   ) : (
-                    <p className="font-sans text-[0.5625rem] text-muted-foreground mb-2 mt-2">
+                    <p className="font-yrdly-body text-[0.625rem] text-[var(--yrdly-label)] mb-2 mt-2">
                       Be the first to RSVP
                     </p>
                   )}
                   <Button
                     size="sm"
-                    className="w-full rounded-[15px] font-sans text-[0.6875rem] text-foreground transition-shadow hover:shadow-[0_0_16px_rgba(92,213,120,0.45)]"
+                    className="w-full rounded-[15px] font-yrdly-body text-[0.6875rem] text-foreground transition-shadow hover:shadow-[0_0_16px_rgba(92,213,120,0.45)]"
                     style={{ background: "hsl(var(--primary))" }}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -449,21 +441,22 @@ export function EventsScreen({ className }: EventsScreenProps) {
                     Get Ticket
                   </Button>
                 </div>
-              </div>
+              </GlassCard>
             );
           })}
         </div>
       </section>
 
       {/* Sort buttons - horizontal scroll on mobile */}
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide font-yrdly-body">
         <button
           onClick={() => setSortBy("all")}
           className={cn(
-            "flex items-center gap-1.5 px-3 py-2 rounded-md font-sans text-[0.625rem] sm:text-xs flex-shrink-0 transition-all",
-            sortBy === "all" ? "bg-primary text-foreground shadow-[0_4px_12px_rgba(92,213,120,0.35)]" : "text-foreground"
+            "flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs flex-shrink-0 transition-all border",
+            sortBy === "all"
+              ? "bg-[var(--yrdly-glass-bg)] text-foreground border-[var(--yrdly-glass-border)] font-yrdly-display"
+              : "bg-transparent text-[var(--yrdly-label)] border-[var(--yrdly-glass-border)] hover:text-foreground"
           )}
-          style={sortBy !== "all" ? { boxShadow: "0 2px 8px rgba(0,0,0,0.06)" } : undefined}
         >
           All Events
           <ChevronDown className="w-3 h-3" />
@@ -471,10 +464,11 @@ export function EventsScreen({ className }: EventsScreenProps) {
         <button
           onClick={() => setSortBy("price")}
           className={cn(
-            "flex items-center gap-1.5 px-3 py-2 rounded-md font-sans text-[0.625rem] sm:text-xs flex-shrink-0 transition-all",
-            sortBy === "price" ? "bg-primary text-foreground shadow-[0_4px_12px_rgba(92,213,120,0.35)]" : "text-foreground"
+            "flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs flex-shrink-0 transition-all border",
+            sortBy === "price"
+              ? "bg-[var(--yrdly-glass-bg)] text-foreground border-[var(--yrdly-glass-border)] font-yrdly-display"
+              : "bg-transparent text-[var(--yrdly-label)] border-[var(--yrdly-glass-border)] hover:text-foreground"
           )}
-          style={sortBy !== "price" ? { boxShadow: "0 2px 8px rgba(0,0,0,0.06)" } : undefined}
         >
           Price
           <ChevronDown className="w-3 h-3" />
@@ -482,10 +476,11 @@ export function EventsScreen({ className }: EventsScreenProps) {
         <button
           onClick={() => setSortBy("date")}
           className={cn(
-            "flex items-center gap-1.5 px-3 py-2 rounded-md font-sans text-[0.625rem] sm:text-xs flex-shrink-0 transition-all",
-            sortBy === "date" ? "bg-primary text-foreground shadow-[0_4px_12px_rgba(92,213,120,0.35)]" : "text-foreground"
+            "flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs flex-shrink-0 transition-all border",
+            sortBy === "date"
+              ? "bg-[var(--yrdly-glass-bg)] text-foreground border-[var(--yrdly-glass-border)] font-yrdly-display"
+              : "bg-transparent text-[var(--yrdly-label)] border-[var(--yrdly-glass-border)] hover:text-foreground"
           )}
-          style={sortBy !== "date" ? { boxShadow: "0 2px 8px rgba(0,0,0,0.06)" } : undefined}
         >
           Date
           <ChevronDown className="w-3 h-3" />
@@ -494,21 +489,15 @@ export function EventsScreen({ className }: EventsScreenProps) {
 
       {/* Mainstream Events */}
       <section className="space-y-4">
-        <h2
-          className="text-lg sm:text-[1.125rem] leading-8 text-foreground"
-          style={{ fontFamily: "var(--font-jersey25)" }}
-        >
+        <h2 className="text-lg sm:text-[1.125rem] leading-8 text-foreground font-yrdly-display font-bold">
           Mainstream Events
         </h2>
         {mainstream.length === 0 ? (
-          <div
-            className="rounded-[11px] py-16 px-6 flex flex-col items-center justify-center gap-3"
-            style={{ background: "var(--c-card)" }}
-          >
-            <CalendarDays className="w-14 h-14 text-muted-foreground" aria-hidden />
-            <p className="text-muted-foreground font-sans text-sm text-center">No events yet</p>
-            <p className="text-muted-foreground font-sans text-xs text-center max-w-[280px]">Be the first to create an event in your neighborhood.</p>
-          </div>
+          <GlassCard className="rounded-[11px] py-16 px-6 flex flex-col items-center justify-center gap-3 text-center">
+            <CalendarDays className="w-14 h-14 text-[var(--yrdly-label)]" aria-hidden />
+            <p className="text-foreground font-yrdly-display font-bold text-sm">No events yet</p>
+            <p className="text-[var(--yrdly-label)] font-yrdly-body text-xs max-w-[280px]">Be the first to create an event in your neighborhood.</p>
+          </GlassCard>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {mainstream.map((event, idx) => {
@@ -516,9 +505,8 @@ export function EventsScreen({ className }: EventsScreenProps) {
               const isSaved = savedEvents.has(event.id);
               return (
               <RevealOnScroll key={event.id} delay={(idx % 4) * 60}>
-              <div
-                className="rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 hover:-translate-y-1"
-                style={{ background: "var(--c-card)", boxShadow: "0 10px 30px rgba(0,0,0,0.06)" }}
+              <GlassCard
+                className="rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 hover:-translate-y-1 p-0"
                 onClick={() => router.push(`/events/${event.id}`)}
               >
                 <div className="p-4 sm:p-5">
@@ -526,24 +514,24 @@ export function EventsScreen({ className }: EventsScreenProps) {
                     <div className="flex items-center gap-2 mb-3">
                       <Avatar className="w-8 h-8">
                         <AvatarImage src={(event.organizer as any)?.avatar_url} />
-                        <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                        <AvatarFallback className="bg-primary text-primary-foreground text-xs font-yrdly-display">
                           {(event.organizer as any)?.name?.slice(0, 1) || "U"}
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-sans font-bold text-sm text-foreground flex items-center gap-1">
+                        <p className="font-yrdly-display font-bold text-sm text-foreground flex items-center gap-1">
                           {(event.organizer as any)?.name}
                           {((event.organizer as any)?.verified_seller || (event.organizer as any)?.is_verified) && (
                             <BadgeCheck className="w-4 h-4 text-[#82DB7E] fill-[#82DB7E]/20 shrink-0" />
                           )}
                         </p>
-                        <p className="font-sans text-[0.6875rem] text-muted-foreground">
+                        <p className="font-yrdly-body text-[0.6875rem] text-[var(--yrdly-label)]">
                           {timeAgo(event.created_at ? new Date(event.created_at) : null)}
                         </p>
                       </div>
                     </div>
                   )}
-                  <h3 className="font-sans font-extrabold text-base sm:text-lg text-foreground mb-3">
+                  <h3 className="font-yrdly-display font-extrabold text-base sm:text-lg text-foreground mb-3">
                     {event.title || "Event"}
                   </h3>
                   <div className="relative w-full aspect-[434/262] rounded-[15px] overflow-hidden bg-background mb-4">
@@ -555,16 +543,15 @@ export function EventsScreen({ className }: EventsScreenProps) {
                       sizes="(max-width: 768px) 100vw, 50vw"
                     />
                     {/* Date chip overlay */}
-                    <div className="absolute top-2.5 left-2.5 rounded-lg px-2 py-1 text-center leading-none" style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }}>
-                      <div className="text-white font-sans font-bold text-xs">{day}</div>
-                      <div className="text-white/80 font-sans text-[0.5625rem]">{month}</div>
+                    <div className="absolute top-2.5 left-2.5 rounded-lg px-2 py-1 text-center leading-none bg-black/60 backdrop-blur-md">
+                      <div className="text-white font-yrdly-display font-bold text-xs">{day}</div>
+                      <div className="text-white/80 font-yrdly-body text-[0.5625rem]">{month}</div>
                     </div>
                     {/* Action buttons overlay */}
                     <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5">
                       <button
                         aria-label={isSaved ? "Unsave" : "Save"}
-                        className="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
-                        style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)" }}
+                        className="w-8 h-8 rounded-full flex items-center justify-center transition-colors bg-black/50 backdrop-blur-md"
                         onClick={(e) => {
                           e.stopPropagation();
                           toggleSaved(event.id);
@@ -574,8 +561,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
                       </button>
                       <button
                         aria-label="Share"
-                        className="w-8 h-8 rounded-full flex items-center justify-center"
-                        style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)" }}
+                        className="w-8 h-8 rounded-full flex items-center justify-center bg-black/50 backdrop-blur-md"
                         onClick={(e) => {
                           e.stopPropagation();
                           if (navigator.share) {
@@ -593,18 +579,18 @@ export function EventsScreen({ className }: EventsScreenProps) {
                       </button>
                     </div>
                   </div>
-                  <div className="space-y-2 text-foreground font-sans text-[0.8125rem]">
+                  <div className="space-y-2 text-foreground font-yrdly-body text-[0.8125rem]">
                     <div className="flex items-center gap-2">
-                      <CalendarDays className="w-4 h-4 flex-shrink-0" />
+                      <CalendarDays className="w-4 h-4 flex-shrink-0 text-primary" />
                       {formatEventDateTime(event.start_time)}
                     </div>
-                    <div className="flex items-center gap-2 truncate">
-                      <MapPin className="w-4 h-4 flex-shrink-0" />
+                    <div className="flex items-center gap-2 truncate text-[var(--yrdly-label)]">
+                      <MapPin className="w-4 h-4 flex-shrink-0 text-primary" />
                       {event.location_address || "Online"}
                     </div>
                   </div>
                   <div className="flex items-center justify-between mt-4">
-                    <span className="font-sans font-bold text-xl sm:text-2xl text-primary">
+                    <span className="font-yrdly-display font-bold text-xl sm:text-2xl text-primary">
                       {event.ticket_tiers && event.ticket_tiers.length > 0
                         ? `From ₦${Math.min(...event.ticket_tiers.map(t => t.price)).toLocaleString()}`
                         : "Free"}
@@ -612,11 +598,11 @@ export function EventsScreen({ className }: EventsScreenProps) {
                     {event.attendee_count && event.attendee_count > 0 ? (
                       <AttendeeAvatars attendees={event.attendees} totalCount={event.attendee_count} maxVisible={4} />
                     ) : (
-                      <span className="font-sans text-[0.6875rem] text-muted-foreground">Be the first to join</span>
+                      <span className="font-yrdly-body text-[0.6875rem] text-[var(--yrdly-label)]">Be the first to join</span>
                     )}
                   </div>
                 </div>
-              </div>
+              </GlassCard>
               </RevealOnScroll>
               );
             })}
@@ -628,8 +614,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
       <div className="fixed bottom-20 right-4 z-40 lg:bottom-6">
         <Button
           size="lg"
-          className="rounded-full h-12 w-12 sm:h-14 sm:w-14 shadow-lg p-0"
-          style={{ background: "hsl(var(--primary))" }}
+          className="rounded-full h-12 w-12 sm:h-14 sm:w-14 shadow-lg p-0 bg-primary"
           onClick={handleCreateEvent}
         >
           <Plus className="h-6 w-6 text-foreground" />

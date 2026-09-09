@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-
+import { Raleway, Jersey_25, Pacifico } from 'next/font/google';
 
 import './globals.css';
 import { cn } from '@/lib/utils';
@@ -10,6 +10,24 @@ import { SpeedInsights } from '@vercel/speed-insights/next';
 import { ThemeProvider } from "@/components/ThemeProvider";
 import Script from "next/script";
 import { AmbientBackground } from '@/components/ui/AmbientBackground';
+
+const raleway = Raleway({
+  subsets: ['latin'],
+  variable: '--font-raleway',
+  weight: ['400', '500', '600', '700', '800'],
+});
+
+const jersey25 = Jersey_25({
+  subsets: ['latin'],
+  variable: '--font-jersey25',
+  weight: ['400'],
+});
+
+const pacifico = Pacifico({
+  subsets: ['latin'],
+  variable: '--font-pacifico',
+  weight: ['400'],
+});
 
 export const metadata: Metadata = {
   title: 'Yrdly - Your Neighborhood Network',
@@ -30,7 +48,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={cn(raleway.variable, jersey25.variable, pacifico.variable)} suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />

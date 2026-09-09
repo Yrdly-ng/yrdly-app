@@ -40,8 +40,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-const FONT = "var(--font-work-sans)";
-const RALEWAY = "var(--font-raleway)";
+import { GlassCard } from "@/components/ui/glass-card";
+
 const GREEN = "hsl(var(--primary))";
 
 /* ── Custom Toggle Switch ── */
@@ -82,28 +82,19 @@ function SettingSection({
 }) {
   return (
     <div className="mb-6">
-      <h2
-        className="text-[0.75rem] font-bold uppercase tracking-wider mb-2.5 px-1"
-        style={{ color: "var(--c-text-muted)", fontFamily: FONT }}
-      >
+      <h2 className="text-[0.75rem] font-bold uppercase tracking-wider mb-2.5 px-1 text-[var(--yrdly-label)] font-yrdly-display">
         {title}
       </h2>
-      <div
-        className="rounded-[20px] overflow-hidden border border-[var(--c-border)]"
-        style={{ background: "var(--c-card)" }}
-      >
+      <GlassCard className="rounded-[20px] overflow-hidden p-0">
         {children}
-      </div>
+      </GlassCard>
     </div>
   );
 }
 
 function SettingDivider() {
   return (
-    <div
-      className="h-[1px] ml-16"
-      style={{ background: "var(--c-border)" }}
-    />
+    <div className="h-[1px] ml-16 bg-[var(--yrdly-glass-border)]" />
   );
 }
 
@@ -142,34 +133,27 @@ function SettingRow({
         className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 border ${
           danger
             ? "bg-red-500/10 border-red-500/20 text-red-500"
-            : "bg-white/5 border-white/10 text-foreground"
+            : "bg-[var(--yrdly-glass-bg)] border-[var(--yrdly-glass-border)] text-foreground"
         }`}
       >
         {icon}
       </div>
       <div className="flex-1 min-w-0 pl-3.5 pr-2">
         <p
-          className={`text-sm font-semibold truncate ${
+          className={`text-sm font-bold truncate font-yrdly-display ${
             danger ? "text-red-500" : "text-foreground"
           }`}
-          style={{ fontFamily: RALEWAY }}
         >
           {label}
         </p>
         {sub && (
-          <p
-            className="text-xs truncate mt-0.5"
-            style={{ color: "var(--c-text-muted)", fontFamily: FONT }}
-          >
+          <p className="text-xs truncate mt-0.5 text-[var(--yrdly-label)] font-yrdly-body">
             {sub}
           </p>
         )}
       </div>
       {value && (
-        <span
-          className="text-xs font-semibold px-2 py-1 rounded-md bg-white/5 mr-1"
-          style={{ color: "var(--c-text-muted)", fontFamily: FONT }}
-        >
+        <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] text-[var(--yrdly-label)] font-yrdly-body mr-1">
           {value}
         </span>
       )}
@@ -177,10 +161,7 @@ function SettingRow({
         <Toggle checked={!!toggled} onChange={(v) => onToggle && onToggle(v)} />
       )}
       {!toggle && chevron && (
-        <ChevronRight
-          className="w-4 h-4 flex-shrink-0"
-          style={{ color: "var(--c-text-muted)" }}
-        />
+        <ChevronRight className="w-4 h-4 flex-shrink-0 text-[var(--yrdly-label)]" />
       )}
     </div>
   );
@@ -218,26 +199,16 @@ export function SettingsScreen({ onBack }: { onBack?: () => void }) {
   };
 
   return (
-    <div
-      className="min-h-[100dvh] pb-32"
-      style={{ background: "var(--c-bg)" }}
-    >
+    <div className="min-h-[100dvh] bg-[var(--yrdly-dark)] text-foreground font-yrdly-body pb-32">
       {/* ── Header ── */}
-      <header
-        className="sticky top-0 z-40 flex items-center justify-between px-4 py-3.5 border-b border-[var(--c-border)] backdrop-blur-md"
-        style={{ background: "var(--c-bg)" }}
-      >
+      <header className="sticky top-0 z-40 flex items-center justify-between px-4 py-3.5 border-b border-[var(--yrdly-glass-border)] bg-[var(--yrdly-dark)]/80 backdrop-blur-md">
         <button
           onClick={() => (onBack ? onBack() : router.back())}
-          className="w-9 h-9 rounded-xl flex items-center justify-center border border-white/10 transition-colors hover:bg-white/5"
-          style={{ background: "var(--c-card)" }}
+          className="w-9 h-9 rounded-xl flex items-center justify-center border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] transition-colors hover:bg-white/5"
         >
           <ArrowLeft className="w-4 h-4 text-foreground" />
         </button>
-        <h1
-          className="text-base font-bold text-foreground"
-          style={{ fontFamily: RALEWAY }}
-        >
+        <h1 className="text-base font-bold text-foreground font-yrdly-display">
           Settings
         </h1>
         <div className="w-9" />
@@ -384,25 +355,22 @@ export function SettingsScreen({ onBack }: { onBack?: () => void }) {
         {/* ── Admin Tools (if admin) ── */}
         {isAdmin && (
           <div className="mb-6">
-            <div
-              className="flex items-center gap-3 p-4 rounded-[18px] mb-3 border border-emerald-500/20"
-              style={{ background: "rgba(130,219,126,0.06)" }}
-            >
+            <GlassCard className="flex items-center gap-3 p-4 rounded-[18px] mb-3 border border-emerald-500/20 bg-emerald-500/5">
               <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-emerald-500/10 border border-emerald-500/20 text-emerald-500">
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <div className="flex-1">
-                <p className="font-bold text-emerald-500 text-sm" style={{ fontFamily: RALEWAY }}>
+                <p className="font-bold text-emerald-500 text-sm font-yrdly-display">
                   Admin Portal
                 </p>
-                <p className="text-xs text-muted-foreground" style={{ fontFamily: FONT }}>
+                <p className="text-xs text-[var(--yrdly-label)] font-yrdly-body">
                   You have administrator privileges
                 </p>
               </div>
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-500 border border-emerald-500/25">
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-500 border border-emerald-500/25 font-yrdly-display">
                 ADMIN
               </span>
-            </div>
+            </GlassCard>
             <SettingSection title="Admin Tools">
               <SettingRow
                 icon={<Inbox className="w-4 h-4 text-primary" />}
@@ -449,10 +417,7 @@ export function SettingsScreen({ onBack }: { onBack?: () => void }) {
           />
         </SettingSection>
 
-        <p
-          className="text-center text-xs py-6"
-          style={{ color: "var(--c-text-muted)", fontFamily: FONT }}
-        >
+        <p className="text-center text-xs py-6 text-[var(--yrdly-label)] font-yrdly-body">
           YRDLY v1.01
         </p>
       </div>
@@ -463,32 +428,22 @@ export function SettingsScreen({ onBack }: { onBack?: () => void }) {
           open={showSignOutDialog}
           onOpenChange={setShowSignOutDialog}
         >
-          <AlertDialogContent
-            style={{
-              background: "var(--c-card)",
-              border: "1px solid rgba(130,219,126,0.2)",
-            }}
-          >
+          <AlertDialogContent className="bg-[var(--yrdly-dark)] border border-[var(--yrdly-glass-border)]">
             <AlertDialogHeader>
-              <AlertDialogTitle className="text-foreground">
+              <AlertDialogTitle className="text-foreground font-yrdly-display">
                 Sign Out
               </AlertDialogTitle>
-              <AlertDialogDescription style={{ color: "var(--c-text-muted)" }}>
+              <AlertDialogDescription className="text-[var(--yrdly-label)] font-yrdly-body">
                 Are you sure you want to sign out of your YRDLY account?
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel
-                style={{
-                  background: "var(--c-card)",
-                  border: "1px solid var(--c-border)",
-                  color: "var(--c-text)",
-                }}
-              >
+              <AlertDialogCancel className="bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] text-foreground font-yrdly-body">
                 Cancel
               </AlertDialogCancel>
               <AlertDialogAction
                 style={{ background: "#E53935" }}
+                className="font-yrdly-body"
                 onClick={handleSignOut}
               >
                 Sign Out
@@ -501,24 +456,19 @@ export function SettingsScreen({ onBack }: { onBack?: () => void }) {
       {/* ── Email Support Dialog ── */}
       {showEmailDialog && (
         <AlertDialog open={showEmailDialog} onOpenChange={setShowEmailDialog}>
-          <AlertDialogContent
-            style={{
-              background: "var(--c-card)",
-              border: "1px solid rgba(130,219,126,0.2)",
-            }}
-          >
+          <AlertDialogContent className="bg-[var(--yrdly-dark)] border border-[var(--yrdly-glass-border)]">
             <AlertDialogHeader>
-              <AlertDialogTitle className="text-foreground">
+              <AlertDialogTitle className="text-foreground font-yrdly-display">
                 Change Email
               </AlertDialogTitle>
-              <AlertDialogDescription style={{ color: "var(--c-text-muted)" }}>
+              <AlertDialogDescription className="text-[var(--yrdly-label)] font-yrdly-body">
                 To change your email address, please contact support@yrdly.ng
                 with a valid ID for verification.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogAction
-                style={{ background: GREEN }}
+                className="bg-primary text-foreground font-yrdly-body"
                 onClick={() => setShowEmailDialog(false)}
               >
                 OK

@@ -56,9 +56,9 @@ import { CommentSection } from "@/components/CommentSection";
 import { timeAgo, formatPrice, cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { ImageSwiper } from "./ImageSwiper";
+import { GlassCard } from "@/components/ui/glass-card";
 
 /* ─── design tokens ─────────────────────────────────────────────── */
-const BG = "var(--c-bg)";
 const GREEN = "hsl(var(--primary))";
 
 function fmt(n: number) {
@@ -77,7 +77,7 @@ function CategoryTag({ category }: { category: string }) {
   };
   const style = styles[label] || styles.General;
   return (
-    <span className={`px-3 py-1 rounded-full font-sans font-semibold text-[0.75rem] leading-[14px] border ${style}`}>
+    <span className={`px-3 py-1 rounded-full font-yrdly-body font-semibold text-[0.75rem] leading-[14px] border ${style}`}>
       {label}
     </span>
   );
@@ -96,8 +96,8 @@ function ImageCollage({
   if (urls.length === 1) {
     return (
       <div
-        className="w-full cursor-pointer overflow-hidden relative"
-        style={{ borderRadius: 12, aspectRatio: "4/5", maxHeight: 480 }}
+        className="w-full cursor-pointer overflow-hidden relative rounded-yrdly-md"
+        style={{ aspectRatio: "4/5", maxHeight: 480 }}
         onClick={() => onImageClick(0)}
       >
         <Image
@@ -114,7 +114,7 @@ function ImageCollage({
   // 2 images: equal side-by-side at fixed height
   if (urls.length === 2) {
     return (
-      <div className="grid grid-cols-2 gap-0.5 overflow-hidden relative" style={{ borderRadius: 12, aspectRatio: "4/5", maxHeight: 480 }}>
+      <div className="grid grid-cols-2 gap-0.5 overflow-hidden relative rounded-yrdly-md" style={{ aspectRatio: "4/5", maxHeight: 480 }}>
         {urls.map((u, i) => (
           <div key={i} className="relative cursor-pointer h-full" onClick={() => onImageClick(i)}>
             <Image src={u} alt="" fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover post-media-image" />
@@ -126,7 +126,7 @@ function ImageCollage({
 
   // 3+: 1 tall left + 2 right stacked (Nextdoor style)
   return (
-    <div className="grid grid-cols-2 gap-0.5 overflow-hidden relative" style={{ borderRadius: 12, aspectRatio: "4/5", maxHeight: 480 }}>
+    <div className="grid grid-cols-2 gap-0.5 overflow-hidden relative rounded-yrdly-md" style={{ aspectRatio: "4/5", maxHeight: 480 }}>
       <div className="relative row-span-2 cursor-pointer h-full" onClick={() => onImageClick(0)}>
         <Image src={urls[0]} alt="" fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover post-media-image" />
       </div>
@@ -137,7 +137,7 @@ function ImageCollage({
         <Image src={urls[2]} alt="" fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover post-media-image" />
         {urls.length > 3 && (
           <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-            <span className="text-primary-foreground font-semibold text-base font-sans">+{urls.length - 3}</span>
+            <span className="text-primary-foreground font-semibold text-base font-yrdly-body">+{urls.length - 3}</span>
           </div>
         )}
       </div>
@@ -174,52 +174,52 @@ function EngagementRow({
   };
 
   return (
-    <div className="flex items-center justify-between pt-3 border-t border-[var(--c-border)]">
+    <div className="flex items-center justify-between pt-yrdly-sm border-t border-[var(--yrdly-glass-border)]">
       <div className="flex items-center gap-1">
         {/* Likes */}
         <button
           onClick={handleLike}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full motion-snappy hover:bg-[var(--c-card2)] hover:scale-[0.97] active:scale-[0.95]"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full motion-snappy hover:bg-[var(--yrdly-glass-bg)] hover:scale-[0.97] active:scale-[0.95]"
         >
           <Heart
-            className={`w-5 h-5 ${isLiked ? "text-[#ED1111]" : "text-muted-foreground"} ${
+            className={`w-5 h-5 ${isLiked ? "text-[#ED1111]" : "text-[var(--yrdly-label)]"} ${
               animating ? "animate-heart-pop" : ""
             }`}
             style={{
               fill: isLiked ? "#ED1111" : "transparent",
             }}
           />
-          <span className="text-[0.75rem] font-medium text-muted-foreground">
+          <span className="text-[0.75rem] font-medium text-[var(--yrdly-label)] font-yrdly-body">
             {fmt(likes)}
           </span>
         </button>
         {/* Comments */}
         <button
           onClick={onComment}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full motion-snappy hover:bg-[var(--c-card2)] hover:scale-[0.97] active:scale-[0.95]"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full motion-snappy hover:bg-[var(--yrdly-glass-bg)] hover:scale-[0.97] active:scale-[0.95]"
         >
-          <MessageCircleMore className="w-5 h-5 text-muted-foreground" />
-          <span className="text-[0.75rem] font-medium text-muted-foreground">
+          <MessageCircleMore className="w-5 h-5 text-[var(--yrdly-label)]" />
+          <span className="text-[0.75rem] font-medium text-[var(--yrdly-label)] font-yrdly-body">
             {fmt(commentCount)}
           </span>
         </button>
         {/* Share */}
         <button
           onClick={onShare}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full motion-snappy hover:bg-[var(--c-card2)] hover:scale-[0.97] active:scale-[0.95]"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full motion-snappy hover:bg-[var(--yrdly-glass-bg)] hover:scale-[0.97] active:scale-[0.95]"
         >
-          <Share2 className="w-5 h-5 text-muted-foreground" />
+          <Share2 className="w-5 h-5 text-[var(--yrdly-label)]" />
         </button>
         {/* Bookmark */}
         <button
           onClick={onBookmark}
           aria-label={isBookmarked ? "Remove bookmark" : "Bookmark post"}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full motion-snappy hover:bg-[var(--c-card2)] hover:scale-[0.97] active:scale-[0.95]"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full motion-snappy hover:bg-[var(--yrdly-glass-bg)] hover:scale-[0.97] active:scale-[0.95]"
         >
           <Bookmark
             className={cn(
               "w-5 h-5 transition-colors",
-              isBookmarked ? "text-primary" : "text-muted-foreground"
+              isBookmarked ? "text-primary" : "text-[var(--yrdly-label)]"
             )}
             style={{ fill: isBookmarked ? "currentColor" : "transparent" }}
           />
@@ -257,9 +257,6 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
   const [videoProgress, setVideoProgress] = useState(0);
   const [isVideoMuted, setIsVideoMuted] = useState(true);
   const [isVideoPaused, setIsVideoPaused] = useState(false);
-  // Transient overlay shown when the user taps the left/right edge of the
-  // video to seek — mirrors TikTok/Instagram's flash-then-fade behavior
-  // instead of a permanently-visible button.
   const [seekFlash, setSeekFlash] = useState<"back" | "forward" | null>(null);
   const seekFlashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -270,11 +267,9 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          // If video is playing and scrolls out of view, pause it
           if (!entry.isIntersecting && !videoRef.current?.paused) {
             videoRef.current?.pause();
           } else if (entry.isIntersecting && videoRef.current?.paused && !isVideoPaused) {
-            // Single-playback guarantee: pause all other videos
             document.querySelectorAll('video').forEach(v => {
               if (v !== videoRef.current && !v.paused) v.pause();
             });
@@ -282,7 +277,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
           }
         });
       },
-      { threshold: 0.6 } // Increased threshold so it only plays when mostly in view
+      { threshold: 0.6 }
     );
     
     observer.observe(videoRef.current);
@@ -295,10 +290,6 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
     };
   }, []);
 
-  /* ── video tap zones: left 35% rewinds 5s, right 35% skips 5s,
-     middle 30% toggles play/pause. Works anywhere within each zone,
-     not just on a fixed button — and the seek icon only shows briefly
-     while it happens, instead of sitting on the video permanently. */
   const handleVideoTap = (e: React.MouseEvent<HTMLVideoElement>) => {
     e.stopPropagation();
     const video = videoRef.current;
@@ -439,13 +430,11 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
 
   const handleShare = async () => {
     const url = `${window.location.origin}/posts/${post.id}`;
-    // Derive image URLs at call time (not at definition time)
     const imageUrls = post.image_urls?.length ? post.image_urls : post.image_url ? [post.image_url] : [];
     const imageUrl = imageUrls[0];
 
     if (navigator.share) {
       try {
-        // Attempt to share with an image file if available and supported
         if (imageUrl && navigator.canShare) {
           try {
             const resp = await fetch(imageUrl);
@@ -462,21 +451,15 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
               await navigator.share(shareData);
               return;
             }
-          } catch {
-            // Image fetch failed or files not supported — fall through to text-only share
-          }
+          } catch {}
         }
-        // Text-only share fallback
         await navigator.share({
           title: post.title || "Post on Yrdly",
           text: post.text ? post.text.slice(0, 100) : "",
           url,
         });
-      } catch {
-        // User cancelled share — do nothing
-      }
+      } catch {}
     } else {
-      // Desktop fallback: copy link to clipboard
       try {
         await navigator.clipboard.writeText(url);
         toast({ title: "Link copied!", description: "Post link copied to clipboard." });
@@ -580,40 +563,40 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
 
   /* ── post header ── */
   const PostHeader = (
-    <div className="flex items-start justify-between gap-2 px-4 pt-4 pb-3">
+    <div className="flex items-start justify-between gap-2 px-yrdly-md pt-yrdly-md pb-yrdly-sm">
       <div className="flex items-center gap-3 min-w-0">
         {loadingAuthor ? (
-          <Skeleton className="w-10 h-10 rounded-full flex-shrink-0" style={{ background: "var(--c-card2)" }} />
+          <Skeleton className="w-10 h-10 rounded-full flex-shrink-0 bg-[var(--yrdly-glass-bg)]" />
         ) : (
           <button onClick={openProfile} className="flex-shrink-0">
             <Avatar className="h-10 w-10">
               <AvatarImage src={author?.avatar_url} />
-              <AvatarFallback className="text-xs text-foreground" style={{ background: GREEN }}>{author?.name?.charAt(0) || "?"}</AvatarFallback>
+              <AvatarFallback className="text-xs text-foreground font-yrdly-body" style={{ background: GREEN }}>{author?.name?.charAt(0) || "?"}</AvatarFallback>
             </Avatar>
           </button>
         )}
         {loadingAuthor ? (
           <div className="space-y-1">
-            <Skeleton className="h-3 w-24" style={{ background: "var(--c-card2)" }} />
-            <Skeleton className="h-2 w-16" style={{ background: "var(--c-card2)" }} />
+            <Skeleton className="h-3 w-24 bg-[var(--yrdly-glass-bg)]" />
+            <Skeleton className="h-2 w-16 bg-[var(--yrdly-glass-bg)]" />
           </div>
         ) : (
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
               <button onClick={openProfile} className="flex items-center gap-1">
-                <span className="font-sans font-bold text-[0.875rem] text-foreground hover:underline">{author?.name || "Anonymous"}</span>
+                <span className="font-yrdly-display font-bold text-[0.875rem] text-foreground hover:underline">{author?.name || "Anonymous"}</span>
                 {(author?.verified_seller || (post.user as any)?.verified_seller) && (
                   <VerifiedBadge size={16} type="seller" />
                 )}
               </button>
-              <span className="text-muted-foreground text-[0.6875rem]">•</span>
-              <span className="font-sans font-normal text-[0.6875rem] text-muted-foreground">
+              <span className="text-[var(--yrdly-label)] text-[0.6875rem]">•</span>
+              <span className="font-yrdly-body font-normal text-[0.6875rem] text-[var(--yrdly-label)]">
                 {timeAgo(post.timestamp ? new Date(post.timestamp) : null)}
               </span>
               {post.updated_at && (new Date(post.updated_at).getTime() - new Date(post.timestamp).getTime() > 2000) && (
                 <>
-                  <span className="text-muted-foreground text-[0.6875rem]">•</span>
-                  <span className="font-sans font-normal text-[0.6875rem] text-muted-foreground">edited</span>
+                  <span className="text-[var(--yrdly-label)] text-[0.6875rem]">•</span>
+                  <span className="font-yrdly-body font-normal text-[0.6875rem] text-[var(--yrdly-label)]">edited</span>
                 </>
               )}
             </div>
@@ -626,11 +609,11 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
           <AlertDialog>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="p-2 -m-2 rounded hover:bg-accent text-muted-foreground hover:text-foreground">
+                <button className="p-2 -m-2 rounded hover:bg-accent text-[var(--yrdly-label)] hover:text-foreground">
                   <MoreHorizontal className="w-5 h-5" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-card border-border">
+              <DropdownMenuContent align="end" className="bg-card border-border font-yrdly-body">
                 {(() => {
                   const canEdit = (Date.now() - new Date(post.created_at || post.timestamp || Date.now()).getTime()) <= 15 * 60 * 1000;
                   if (!canEdit) return null;
@@ -656,14 +639,14 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
                 </AlertDialogTrigger>
               </DropdownMenuContent>
             </DropdownMenu>
-            <AlertDialogContent className="bg-card border-border">
+            <AlertDialogContent className="bg-card border-border font-yrdly-body">
               <AlertDialogHeader>
-                <AlertDialogTitle>Delete post?</AlertDialogTitle>
-                <AlertDialogDescription>This will permanently delete your post and all its comments.</AlertDialogDescription>
+                <AlertDialogTitle className="font-yrdly-display">Delete post?</AlertDialogTitle>
+                <AlertDialogDescription className="font-yrdly-body">This will permanently delete your post and all its comments.</AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel className="bg-muted border-0">Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
+                <AlertDialogCancel className="bg-muted border-0 font-yrdly-body">Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700 font-yrdly-body">Delete</AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
@@ -681,42 +664,42 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
         {PostHeader}
         {/* Title above image */}
         {(post.title || post.text) && (
-          <p className="px-4 pb-2 font-sans font-bold text-[1.125rem] text-foreground leading-[21px]">
+          <p className="px-yrdly-md pb-yrdly-xs font-yrdly-display font-bold text-[1.125rem] text-foreground leading-[21px]">
             {post.title || post.text?.split("\n")[0]}
           </p>
         )}
         {/* image */}
         {urls.length > 0 && (
-          <div className="px-3 pb-3">
+          <div className="px-yrdly-sm pb-yrdly-sm">
             <ImageCollage urls={urls} onImageClick={handleImageClick} />
           </div>
         )}
         {/* Description text */}
         {post.text && post.title && (
-          <p className="px-4 pb-2 font-sans font-normal text-[0.8125rem] text-muted-foreground leading-[15px]">{post.text}</p>
+          <p className="px-yrdly-md pb-yrdly-xs font-yrdly-body font-normal text-[0.8125rem] text-[var(--yrdly-label)] leading-[15px]">{post.text}</p>
         )}
         {/* Event meta */}
-        <div className="px-4 pb-3 space-y-2">
+        <div className="px-yrdly-md pb-yrdly-sm space-y-2 font-yrdly-body">
           {post.event_date && (
-            <div className="flex items-center gap-2 text-muted-foreground">
+            <div className="flex items-center gap-2 text-[var(--yrdly-label)]">
               <Calendar className="w-5 h-5 flex-shrink-0" />
-              <span className="font-sans font-normal text-[0.8125rem]">{getEventDate()}</span>
+              <span className="font-yrdly-body font-normal text-[0.8125rem]">{getEventDate()}</span>
             </div>
           )}
           {post.event_location && (
-            <div className="flex items-center gap-2 text-muted-foreground">
+            <div className="flex items-center gap-2 text-[var(--yrdly-label)]">
               <MapPin className="w-5 h-5 flex-shrink-0" />
-              <span className="font-sans font-normal text-[0.8125rem]">{getLocation(post.event_location)}</span>
+              <span className="font-yrdly-body font-normal text-[0.8125rem]">{getLocation(post.event_location)}</span>
             </div>
           )}
         </div>
         {/* Price + share */}
         {post.price != null && post.price > 0 && (
-          <div className="flex items-center justify-between px-4 pb-3">
-            <span className="font-sans font-bold text-[1.5rem] leading-[28px] text-primary">
+          <div className="flex items-center justify-between px-yrdly-md pb-yrdly-sm">
+            <span className="font-yrdly-display font-bold text-[1.5rem] leading-[28px] text-primary">
               {formatPrice(post.price)}
             </span>
-            <button onClick={handleShare} className="text-muted-foreground hover:text-foreground">
+            <button onClick={handleShare} className="text-[var(--yrdly-label)] hover:text-foreground">
               <Share2 className="w-5 h-5" />
             </button>
           </div>
@@ -730,42 +713,41 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
       <>
         {PostHeader}
         {/* Item name */}
-        <p className="px-4 pb-2 font-sans font-semibold text-[1.125rem] text-foreground leading-[21px]">{itemTitle}</p>
+        <p className="px-yrdly-md pb-yrdly-xs font-yrdly-display font-semibold text-[1.125rem] text-foreground leading-[21px]">{itemTitle}</p>
         {/* image */}
         {urls.length > 0 && (
-          <div className="px-3 pb-3">
-            <div className="relative w-full overflow-hidden" style={{ borderRadius: 12, aspectRatio: "4/5", maxHeight: 480 }}>
+          <div className="px-yrdly-sm pb-yrdly-sm">
+            <div className="relative w-full overflow-hidden rounded-yrdly-md" style={{ aspectRatio: "4/5", maxHeight: 480 }}>
               <Image src={urls[0]} alt="" fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover post-media-image" />
             </div>
           </div>
         )}
         {/* Price */}
-        <p className="px-4 pb-1 font-sans font-bold text-[1.5rem] leading-[28px] text-primary">
+        <p className="px-yrdly-md pb-1 font-yrdly-display font-bold text-[1.5rem] leading-[28px] text-primary">
           {post.price ? formatPrice(post.price) : "Free"}
         </p>
         {/* Description / subtitle */}
         {desc && (
-          <p className="px-4 pb-3 font-sans font-normal text-[0.8125rem] text-muted-foreground leading-[15px]">{desc}</p>
+          <p className="px-yrdly-md pb-yrdly-sm font-yrdly-body font-normal text-[0.8125rem] text-[var(--yrdly-label)] leading-[15px]">{desc}</p>
         )}
         {/* Message seller */}
-        <div className="flex items-center justify-between px-4 pb-3 gap-2">
+        <div className="flex items-center justify-between px-yrdly-md pb-yrdly-sm gap-2">
           <div
-            className="flex-1 flex items-center rounded-full overflow-hidden h-10 gap-2 px-4"
-            style={{ background: BG, border: `0.5px solid ${GREEN}` }}
+            className="flex-1 flex items-center rounded-full overflow-hidden h-10 gap-2 px-4 border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] backdrop-blur-md"
           >
             <Avatar className="h-6 w-6 flex-shrink-0">
               <AvatarImage src={author?.avatar_url} />
-              <AvatarFallback className="text-[0.5625rem] text-foreground" style={{ background: GREEN }}>{author?.name?.charAt(0)}</AvatarFallback>
+              <AvatarFallback className="text-[0.5625rem] text-foreground font-yrdly-body" style={{ background: GREEN }}>{author?.name?.charAt(0)}</AvatarFallback>
             </Avatar>
             <button
               onClick={handleMessageSeller}
-              className="flex-1 text-left font-sans italic font-extralight text-[0.625rem] text-muted-foreground"
+              className="flex-1 text-left font-yrdly-body italic font-extralight text-[0.625rem] text-[var(--yrdly-label)]"
             >
               {currentUser?.id === author?.id ? "Your listing" : "Send seller a message"}
             </button>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={handleShare} className="text-muted-foreground hover:text-foreground">
+            <button onClick={handleShare} className="text-[var(--yrdly-label)] hover:text-foreground">
               <Share2 className="w-5 h-5" />
             </button>
           </div>
@@ -784,13 +766,13 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
         {PostHeader}
         {/* Body text */}
         {text && (
-          <div className="px-4 pb-3">
-            <p className="font-sans font-normal text-[0.8125rem] leading-[15px] text-foreground whitespace-pre-wrap">
+          <div className="px-yrdly-md pb-yrdly-sm">
+            <p className="font-yrdly-body font-normal text-[0.8125rem] leading-[15px] text-foreground whitespace-pre-wrap">
               {displayText}
               {shouldTruncate && (
                 <button
                   onClick={(e) => { e.stopPropagation(); setIsTextExpanded(!isTextExpanded); }}
-                  className="ml-1 font-sans font-medium text-[0.75rem] text-muted-foreground hover:text-primary"
+                  className="ml-1 font-yrdly-body font-medium text-[0.75rem] text-[var(--yrdly-label)] hover:text-primary"
                 >
                   {isTextExpanded ? "see less" : "see more"}
                 </button>
@@ -800,14 +782,14 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
         )}
         {/* Images */}
         {urls.length > 0 && (
-          <div className="px-3 pb-3">
+          <div className="px-yrdly-sm pb-yrdly-sm">
             <ImageCollage urls={urls} onImageClick={handleImageClick} />
           </div>
         )}
         {/* Video player */}
         {post.video_url && (
-          <div className="px-3 pb-3">
-            <div className="relative rounded-xl overflow-hidden bg-black">
+          <div className="px-yrdly-sm pb-yrdly-sm">
+            <div className="relative rounded-yrdly-md overflow-hidden bg-black">
               <video
                 ref={videoRef}
                 src={post.video_url.includes('#t=') ? post.video_url : `${post.video_url}#t=0.001`}
@@ -819,7 +801,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
                 preload="metadata"
                 poster={post.video_thumbnail_url ?? undefined}
                 className="w-full object-cover post-media-image"
-                style={{ borderRadius: 12, aspectRatio: "4/5", maxHeight: 480 }}
+                style={{ aspectRatio: "4/5", maxHeight: 480 }}
                 onTimeUpdate={() => {
                   if (videoRef.current) {
                     const progress = (videoRef.current.currentTime / videoRef.current.duration) * 100;
@@ -829,7 +811,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
                 onClick={handleVideoTap}
               />
 
-              {/* Tap-to-pause overlay icon — mirrors Instagram's center play/pause flash */}
+              {/* Tap-to-pause overlay icon */}
               {isVideoPaused && !seekFlash && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <div className="bg-black/40 rounded-full p-3">
@@ -838,8 +820,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
                 </div>
               )}
 
-              {/* Seek flash — briefly appears where the user tapped, then fades.
-                  No permanent buttons sitting on the video. */}
+              {/* Seek flash */}
               {seekFlash && (
                 <div
                   className={`absolute inset-y-0 ${seekFlash === "back" ? "left-0" : "right-0"} w-1/3 flex items-center justify-center pointer-events-none`}
@@ -850,12 +831,12 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
                     ) : (
                       <RotateCw className="w-5 h-5 text-white" />
                     )}
-                    <span className="text-[0.625rem] font-medium text-white">5s</span>
+                    <span className="text-[0.625rem] font-medium text-white font-yrdly-body">5s</span>
                   </div>
                 </div>
               )}
 
-              {/* Mute / unmute — Instagram-style mini speaker, bottom-right */}
+              {/* Mute / unmute */}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -882,7 +863,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
           </div>
         )}
         {/* Engagement */}
-        <div className="px-4 pb-4 pt-3">
+        <div className="px-yrdly-md pb-yrdly-md pt-yrdly-xs">
           <EngagementRow
             likes={likes}
             commentCount={commentCount}
@@ -898,21 +879,20 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
     );
   }
 
-
   return (
     <>
-      <div
-        className="yrdly-card w-full mb-4 cursor-pointer motion-snappy hover:shadow-[var(--shadow-md)]"
+      <GlassCard
+        className="w-full mb-4 cursor-pointer motion-snappy p-0 overflow-hidden"
         onClick={handleCardClick}
       >
         {cardContent}
-      </div>
+      </GlassCard>
 
       {/* Comments Sheet */}
       <Sheet open={isCommentsOpen} onOpenChange={setIsCommentsOpen}>
-        <SheetContent side="bottom" className="p-0 flex flex-col rounded-t-2xl border-0" style={{ background: BG, maxHeight: "90vh" }}>
-          <SheetHeader className="px-4 py-3 border-b border-border flex-shrink-0">
-            <SheetTitle className="text-center text-foreground font-sans">Comments</SheetTitle>
+        <SheetContent side="bottom" className="p-0 flex flex-col rounded-t-2xl border-0 bg-[var(--yrdly-dark)] text-foreground" style={{ maxHeight: "90vh" }}>
+          <SheetHeader className="px-yrdly-md py-yrdly-sm border-b border-[var(--yrdly-glass-border)] flex-shrink-0">
+            <SheetTitle className="text-center text-foreground font-yrdly-display">Comments</SheetTitle>
           </SheetHeader>
           <CommentSection
             postId={post.id}
