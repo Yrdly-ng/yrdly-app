@@ -11,10 +11,25 @@ import { useGpsLocation } from '@/hooks/use-gps-location';
 import { Camera, MapPin, Navigation, AlertTriangle, Loader2, Heart, ArrowLeft, ArrowRight } from 'lucide-react';
 import POPULAR_INTERESTS from '@/data/interests.json';
 import LGAS_DATA_RAW from '@/data/lgas.json';
+import STATES_DATA_RAW from '@/data/states.json';
+import WARDS_DATA_RAW from '@/data/wards.json';
+
+import { usePlaces } from '@/hooks/use-places-autocomplete';
 
 const LGAS_DATA: Record<string, string[]> = LGAS_DATA_RAW;
+const STATES_DATA: string[] = STATES_DATA_RAW.filter(Boolean).sort();
+const WARDS_DATA = WARDS_DATA_RAW as Array<{ State: string; LGA: string; Ward: string; Latitude?: number; Longitude?: number }>;
 
-interface ResolvedWard { state: string; lga: string; ward: string; label: string; }
+interface ResolvedWard {
+  state: string;
+  lga: string;
+  ward: string;
+  label: string;
+  place_id?: string;
+  lat?: number;
+  lng?: number;
+  isGooglePlace?: boolean;
+}
 
 function OnboardingProfileContent() {
   const router = useRouter();
@@ -23,6 +38,7 @@ function OnboardingProfileContent() {
   const { user } = useAuth();
   const [step, setStep] = useState<1 | 2>(1);
   const gps = useGpsLocation();
+  const places = usePlaces();
 
   // Step 1 State: Identity & Location
   const [handle, setHandle] = useState('');
@@ -32,6 +48,11 @@ function OnboardingProfileContent() {
   const [locSearching, setLocSearching] = useState(false);
   const [selectedLoc, setSelectedLoc] = useState<ResolvedWard | null>(null);
   const [locError, setLocError] = useState('');
+
+  // Manual Selectors State
+  const [showManualPick, setShowManualPick] = useState(false);
+  const [manualState, setManualState] = useState('');
+  const [manualLga, setManualLga] = useState('');
 
   // Step 2 State: Personalization & Interests
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
@@ -61,67 +82,145 @@ function OnboardingProfileContent() {
 
   useEffect(() => {
     if (gps.status === 'success' && gps.location) {
-      const { state, lga, ward, displayAddress } = gps.location;
-      const resolved: ResolvedWard = { state, lga, ward, label: `${ward}, ${lga}, ${state}` };
+      const { state, lga, ward, displayAddress, lat, lng } = gps.location;
+      const resolved: ResolvedWard = { state, lga, ward, label: `${ward}, ${lga}, ${state}`, lat, lng };
       setSelectedLoc(resolved);
       setLocQuery(displayAddress || resolved.label);
+      setLocError('');
     } else if (gps.status === 'denied' || gps.status === 'error' || gps.status === 'timeout') {
-      setLocError(gps.error || 'Could not detect location. Please select manually.');
+      setLocError(gps.error || 'Could not detect location. Please search or select manually.');
     }
   }, [gps.status, gps.location, gps.error]);
 
   const handleLocQuery = (v: string) => {
     setLocQuery(v);
-    setSelectedLoc(null);
     setLocError('');
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (!v.trim() || v.trim().length < 2) {
       setLocSuggestions([]);
+      places.clearSuggestions();
       return;
     }
 
-    // 1. Instant local offline search
-    const vLower = v.toLowerCase();
-    const localMatches: ResolvedWard[] = [];
-    Object.entries(LGAS_DATA).forEach(([st, lgas]) => {
-      if (st.toLowerCase().includes(vLower)) {
-        lgas.slice(0, 4).forEach((lga) => {
-          localMatches.push({ state: st, lga, ward: '', label: `${lga}, ${st} State` });
-        });
-      } else {
+    if (places.ready) {
+      places.getPlacePredictions(v);
+    }
+    setLocSearching(true);
+
+    debounceRef.current = setTimeout(() => {
+      const q = v.trim().toLowerCase();
+      const scoredMap = new Map<string, { resolved: ResolvedWard; score: number }>();
+
+      // 1. Search Wards Dataset (8,800+ wards with State, LGA, Ward)
+      for (let i = 0; i < WARDS_DATA.length; i++) {
+        const item = WARDS_DATA[i];
+        const wardLower = (item.Ward || '').toLowerCase();
+        const lgaLower = (item.LGA || '').toLowerCase();
+        const stateLower = (item.State || '').toLowerCase();
+
+        let score = 0;
+
+        if (wardLower === q) score = 1000;
+        else if (lgaLower === q) score = 900;
+        else if (wardLower.startsWith(q)) score = 800;
+        else if (lgaLower.startsWith(q)) score = 700;
+        else if (wardLower.includes(q)) score = 600;
+        else if (lgaLower.includes(q)) score = 500;
+        else if (stateLower === q || stateLower.startsWith(q)) score = 300;
+        else if (stateLower.includes(q)) score = 100;
+
+        if (score > 0) {
+          const label = item.Ward ? `${item.Ward}, ${item.LGA}, ${item.State}` : `${item.LGA}, ${item.State} State`;
+          const existing = scoredMap.get(label);
+          if (!existing || existing.score < score) {
+            scoredMap.set(label, {
+              resolved: {
+                state: item.State,
+                lga: item.LGA,
+                ward: item.Ward || '',
+                label,
+                lat: item.Latitude,
+                lng: item.Longitude,
+              },
+              score,
+            });
+          }
+        }
+      }
+
+      // 2. Search LGA/State Dataset
+      Object.entries(LGAS_DATA).forEach(([st, lgas]) => {
+        const stLower = st.toLowerCase();
         lgas.forEach((lga) => {
-          if (lga.toLowerCase().includes(vLower)) {
-            localMatches.push({ state: st, lga, ward: '', label: `${lga}, ${st} State` });
+          const lgaLower = lga.toLowerCase();
+          let score = 0;
+          if (lgaLower === q) score = 950;
+          else if (lgaLower.startsWith(q)) score = 750;
+          else if (lgaLower.includes(q)) score = 450;
+          else if (stLower === q || stLower.startsWith(q)) score = 250;
+          else if (stLower.includes(q)) score = 80;
+
+          if (score > 0) {
+            const label = `${lga}, ${st} State`;
+            const existing = scoredMap.get(label);
+            if (!existing || existing.score < score) {
+              scoredMap.set(label, {
+                resolved: { state: st, lga, ward: '', label },
+                score,
+              });
+            }
           }
         });
-      }
-    });
-    setLocSuggestions(localMatches.slice(0, 8));
+      });
 
-    // 2. DB search enrichment
-    debounceRef.current = setTimeout(async () => {
+      const localSorted = Array.from(scoredMap.values())
+        .sort((a, b) => b.score - a.score)
+        .map((entry) => entry.resolved)
+        .slice(0, 6);
+
+      const googleResults: ResolvedWard[] = (places.placePredictions || []).slice(0, 4).map((p) => ({
+        state: '',
+        lga: '',
+        ward: '',
+        label: p.description,
+        place_id: p.place_id,
+        isGooglePlace: true,
+      }));
+
+      setLocSuggestions([...googleResults, ...localSorted]);
+      setLocSearching(false);
+    }, 200);
+  };
+
+  const handleSelectLocSuggestion = async (item: ResolvedWard) => {
+    setLocSuggestions([]);
+    places.clearSuggestions();
+    setLocError('');
+
+    if (item.isGooglePlace && item.place_id) {
       setLocSearching(true);
       try {
-        const { data } = await supabase
-          .from('lga_wards')
-          .select('ward_name, lga_name, state_name')
-          .or(`ward_name.ilike.%${v}%,lga_name.ilike.%${v}%,state_name.ilike.%${v}%`)
-          .limit(8);
-
-        if (data && data.length > 0) {
-          setLocSuggestions(
-            data.map((r: any) => ({
-              state: r.state_name,
-              lga: r.lga_name,
-              ward: r.ward_name,
-              label: `${r.ward_name}, ${r.lga_name}, ${r.state_name}`,
-            }))
-          );
-        }
-      } catch {} finally {
+        const details = await places.getPlaceDetails(item.place_id);
+        const resolved: ResolvedWard = {
+          state: details.state || 'Lagos',
+          lga: details.lga || 'Ikeja',
+          ward: details.ward || '',
+          label: details.address || item.label,
+          lat: details.geopoint?.latitude,
+          lng: details.geopoint?.longitude,
+        };
+        setSelectedLoc(resolved);
+        setLocQuery(resolved.label);
+      } catch {
+        setSelectedLoc(item);
+        setLocQuery(item.label);
+      } finally {
         setLocSearching(false);
       }
-    }, 300);
+    } else {
+      setSelectedLoc(item);
+      setLocQuery(item.label);
+    }
   };
 
   const toggleInterest = (interest: string) => {
@@ -140,7 +239,30 @@ function OnboardingProfileContent() {
         return;
       }
     }
-    if (!selectedLoc) {
+
+    let activeLoc = selectedLoc;
+    if (!activeLoc && locQuery.trim()) {
+      if (locSuggestions.length > 0) {
+        activeLoc = locSuggestions[0];
+        await handleSelectLocSuggestion(activeLoc);
+      } else {
+        const q = locQuery.trim().toLowerCase();
+        const wardMatch = WARDS_DATA.find(
+          (w) =>
+            w.Ward?.toLowerCase() === q ||
+            w.LGA?.toLowerCase() === q ||
+            `${w.Ward}, ${w.LGA}, ${w.State}`.toLowerCase().includes(q)
+        );
+        if (wardMatch) {
+          const label = `${wardMatch.Ward}, ${wardMatch.LGA}, ${wardMatch.State}`;
+          activeLoc = { state: wardMatch.State, lga: wardMatch.LGA, ward: wardMatch.Ward, label, lat: wardMatch.Latitude, lng: wardMatch.Longitude };
+          setSelectedLoc(activeLoc);
+          setLocQuery(label);
+        }
+      }
+    }
+
+    if (!activeLoc) {
       setLocError('Please choose your neighbourhood location to proceed.');
       return;
     }
@@ -169,8 +291,8 @@ function OnboardingProfileContent() {
       }
 
       const cleanHandle = handle.replace(/^@/, '').trim().toLowerCase() || user.email?.split('@')[0];
-      const lat = gps.location?.lat ?? null;
-      const lng = gps.location?.lng ?? null;
+      const lat = selectedLoc.lat ?? gps.location?.lat ?? null;
+      const lng = selectedLoc.lng ?? gps.location?.lng ?? null;
 
       await AuthService.updateUserProfile(user.id, {
         username: cleanHandle,
@@ -249,6 +371,14 @@ function OnboardingProfileContent() {
                       placeholder="Search Ward or LGA..."
                       value={locQuery}
                       onChange={(e) => handleLocQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          if (locSuggestions.length > 0) {
+                            handleSelectLocSuggestion(locSuggestions[0]);
+                          }
+                        }
+                      }}
                       className="w-full h-12 px-4 pr-10 rounded-2xl bg-white/[0.055] border border-white/10 text-white placeholder-white/40 focus:outline-none focus:border-[#82DB7E] text-sm"
                     />
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40">
@@ -257,41 +387,126 @@ function OnboardingProfileContent() {
 
                     {/* Location Suggestions Floating Dropdown */}
                     {locSuggestions.length > 0 && (
-                      <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-[#161a16] border border-white/20 rounded-2xl overflow-hidden max-h-56 overflow-y-auto shadow-2xl">
+                      <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-[#161a16] border border-white/20 rounded-2xl overflow-hidden max-h-60 overflow-y-auto shadow-2xl backdrop-blur-xl">
                         {locSuggestions.map((item, idx) => (
                           <button
                             key={idx}
                             type="button"
-                            onClick={() => {
-                              setSelectedLoc(item);
-                              setLocQuery(item.label);
-                              setLocSuggestions([]);
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              handleSelectLocSuggestion(item);
                             }}
-                            className="w-full text-left px-4 py-3 text-xs font-medium text-white/90 hover:bg-emerald-500/20 hover:text-white transition-colors border-b border-white/5 last:border-0"
+                            onClick={() => {
+                              handleSelectLocSuggestion(item);
+                            }}
+                            className="w-full text-left px-4 py-3 text-xs font-medium text-white/90 hover:bg-[#82DB7E]/20 hover:text-white transition-colors border-b border-white/5 last:border-0 flex items-center justify-between group"
                           >
-                            {item.label}
+                            <div className="flex items-center gap-2 min-w-0 pr-2">
+                              <MapPin className="w-3.5 h-3.5 text-[#82DB7E] shrink-0" />
+                              <span className="truncate">{item.label}</span>
+                            </div>
+                            {item.isGooglePlace ? (
+                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 group-hover:bg-blue-500/30 shrink-0">
+                                Google Place
+                              </span>
+                            ) : item.ward ? (
+                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/10 text-white/70 group-hover:bg-[#82DB7E]/30 group-hover:text-[#82DB7E] shrink-0">
+                                Ward
+                              </span>
+                            ) : null}
                           </button>
                         ))}
                       </div>
                     )}
                   </div>
 
-                  {/* GPS Auto-detect Button */}
-                  <button
-                    type="button"
-                    onClick={() => gps.detectLocation()}
-                    className="flex items-center gap-2 text-xs font-semibold text-[#82DB7E] hover:underline pt-1"
-                  >
-                    <Navigation className="w-3.5 h-3.5" />
-                    <span>Auto-detect GPS Location</span>
-                  </button>
+                  {/* GPS & Manual Toggle Buttons */}
+                  <div className="flex items-center justify-between pt-1">
+                    <button
+                      type="button"
+                      onClick={() => gps.detectLocation()}
+                      disabled={gps.status === 'requesting' || gps.status === 'geocoding'}
+                      className="flex items-center gap-1.5 text-xs font-semibold text-[#82DB7E] hover:underline disabled:opacity-50"
+                    >
+                      {gps.status === 'requesting' || gps.status === 'geocoding' ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Navigation className="w-3.5 h-3.5" />
+                      )}
+                      <span>
+                        {gps.status === 'requesting' || gps.status === 'geocoding'
+                          ? 'Detecting GPS...'
+                          : 'Auto-detect GPS Location'}
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowManualPick(!showManualPick)}
+                      className="text-xs font-medium text-white/60 hover:text-white underline"
+                    >
+                      {showManualPick ? 'Hide manual picker' : 'Or select State & LGA'}
+                    </button>
+                  </div>
+
+                  {showManualPick && (
+                    <div className="space-y-3 pt-3 border-t border-white/10 mt-2 bg-white/[0.03] p-3 rounded-2xl">
+                      <div>
+                        <label className="text-[0.6875rem] font-bold text-white/60 uppercase tracking-wider block mb-1">
+                          Select State
+                        </label>
+                        <select
+                          value={manualState}
+                          onChange={(e) => {
+                            const st = e.target.value;
+                            setManualState(st);
+                            setManualLga('');
+                            if (!st) { setSelectedLoc(null); }
+                          }}
+                          className="w-full h-11 px-3 rounded-xl bg-[#161a16] border border-white/20 text-white text-xs focus:outline-none focus:border-[#82DB7E]"
+                        >
+                          <option value="">-- Choose State --</option>
+                          {STATES_DATA.map((st) => (
+                            <option key={st} value={st} className="bg-[#161a16] text-white">{st}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {manualState && (
+                        <div>
+                          <label className="text-[0.6875rem] font-bold text-white/60 uppercase tracking-wider block mb-1">
+                            Select LGA
+                          </label>
+                          <select
+                            value={manualLga}
+                            onChange={(e) => {
+                              const lga = e.target.value;
+                              setManualLga(lga);
+                              if (lga) {
+                                const label = `${lga}, ${manualState} State`;
+                                setSelectedLoc({ state: manualState, lga, ward: '', label });
+                                setLocQuery(label);
+                                setLocError('');
+                              }
+                            }}
+                            className="w-full h-11 px-3 rounded-xl bg-[#161a16] border border-white/20 text-white text-xs focus:outline-none focus:border-[#82DB7E]"
+                          >
+                            <option value="">-- Choose Local Government --</option>
+                            {(LGAS_DATA[manualState] || []).map((lga) => (
+                              <option key={lga} value={lga} className="bg-[#161a16] text-white">{lga}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {locError && <p className="text-xs text-red-400 font-medium pt-1">{locError}</p>}
 
                   {selectedLoc && (
                     <div className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
                       <MapPin className="w-4 h-4 shrink-0" />
-                      <span className="truncate">{selectedLoc.label}</span>
+                      <span className="truncate">Selected: {selectedLoc.label}</span>
                     </div>
                   )}
                 </div>
