@@ -187,13 +187,15 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
       const { data: userData } = await supabase.from("users").select("*, friends").eq("id", targetUser.id).single();
       if (userData) setProfileData(userData);
 
-      const [postsRes, itemsRes, bizRes, eventsRes, eventsCountRes, reviewsRes] = await Promise.all([
+      const [postsRes, itemsRes, bizRes, eventsRes, eventsCountRes, reviewsRes, followersRes, followingRes] = await Promise.all([
         supabase.from("posts").select("*").eq("user_id", targetUser.id).eq("category", "General").order("timestamp", { ascending: false }).limit(10),
         supabase.from("posts").select("*").eq("user_id", targetUser.id).eq("category", "For Sale").order("timestamp", { ascending: false }).limit(10),
         supabase.from("businesses").select("*").eq("owner_id", targetUser.id).order("created_at", { ascending: false }).limit(10),
         supabase.from("events").select("*").eq("organizer_id", targetUser.id).order("created_at", { ascending: false }).limit(10),
         supabase.from("events").select("id").eq("organizer_id", targetUser.id),
         supabase.from("user_reviews").select("*, buyer:buyer_id(id, name, avatar_url)").eq("seller_id", targetUser.id).order("created_at", { ascending: false }),
+        supabase.from("followers").select("id", { count: "exact", head: true }).eq("following_id", targetUser.id),
+        supabase.from("followers").select("id", { count: "exact", head: true }).eq("follower_id", targetUser.id),
       ]);
 
       if (currentUser?.id && targetUser.id !== currentUser.id) {
@@ -206,7 +208,12 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
       setUserBusinesses(bizRes.data || []);
       setUserEvents(eventsRes.data || []);
       setUserReviews(reviewsRes.data || []);
-      setStats(prev => ({ ...prev, friends: userData?.friends?.length || 0, events: eventsCountRes.data?.length || 0 }));
+      setStats({
+        friends: userData?.friends?.length || 0,
+        events: eventsCountRes.data?.length || 0,
+        followers: followersRes.count || 0,
+        following: followingRes.count || 0,
+      });
       setLoading(false);
       
       // Trigger profile view notification if viewing someone else's profile
@@ -565,7 +572,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
 
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <button
           className="flex items-center gap-3 p-4 text-left rounded-[11px] transition-colors min-w-0"
           style={{ background: SURFACE }}
@@ -578,6 +585,34 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
           <div className="min-w-0 flex-1">
             <p className="text-2xl font-bold text-foreground truncate">{stats.friends.toLocaleString()}</p>
             <p className="text-[0.625rem] font-bold uppercase tracking-tighter truncate" style={{ color: "var(--c-text-muted)" }}>Connections</p>
+          </div>
+        </button>
+        <button
+          className="flex items-center gap-3 p-4 text-left rounded-[11px] transition-colors min-w-0"
+          style={{ background: SURFACE }}
+          onClick={() => router.push(`/network/${targetUser?.id}?mode=followers`)}
+        >
+          <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+            style={{ background: "rgba(56,142,60,0.2)" }}>
+            <Users className="w-5 h-5 text-primary-light" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-2xl font-bold text-foreground truncate">{stats.followers.toLocaleString()}</p>
+            <p className="text-[0.625rem] font-bold uppercase tracking-tighter truncate" style={{ color: "var(--c-text-muted)" }}>Followers</p>
+          </div>
+        </button>
+        <button
+          className="flex items-center gap-3 p-4 text-left rounded-[11px] transition-colors min-w-0"
+          style={{ background: SURFACE }}
+          onClick={() => router.push(`/network/${targetUser?.id}?mode=following`)}
+        >
+          <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+            style={{ background: "rgba(56,142,60,0.2)" }}>
+            <Users className="w-5 h-5 text-primary-light" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-2xl font-bold text-foreground truncate">{stats.following.toLocaleString()}</p>
+            <p className="text-[0.625rem] font-bold uppercase tracking-tighter truncate" style={{ color: "var(--c-text-muted)" }}>Following</p>
           </div>
         </button>
         <div

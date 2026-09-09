@@ -18,6 +18,11 @@ import {
   Pencil,
   Wallet,
   ArrowLeft,
+  Share2,
+  ShieldAlert,
+  DollarSign,
+  ShoppingBag,
+  Calendar,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useTheme } from "@/components/ThemeProvider";
@@ -298,13 +303,28 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
           />
         </div>
 
-        {/* ── Marketplace ── */}
+        {/* ── Marketplace & Activities ── */}
         <div className="space-y-3">
-          <SectionLabel>Marketplace</SectionLabel>
+          <SectionLabel>Marketplace & Activities</SectionLabel>
+          <NavRow
+            icon={DollarSign}
+            label="Payout Dashboard & Balance"
+            onClick={() => router.push("/settings/payouts")}
+          />
           <NavRow
             icon={Wallet}
-            label="Payout Settings"
+            label="Payout Bank Details"
             onClick={() => router.push("/profile/payout-settings")}
+          />
+          <NavRow
+            icon={ShoppingBag}
+            label="My Listings"
+            onClick={() => router.push("/my-listings")}
+          />
+          <NavRow
+            icon={Calendar}
+            label="My Events"
+            onClick={() => router.push("/my-events")}
           />
         </div>
         {/* ── Privacy ── */}
@@ -357,9 +377,26 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
           </div>
         </div>
 
-        {/* ── Support ── */}
+        {/* ── Support & Community ── */}
         <div className="space-y-3">
-          <SectionLabel>Support</SectionLabel>
+          <SectionLabel>Support & Community</SectionLabel>
+          <NavRow
+            icon={Share2}
+            label="Invite Friends"
+            onClick={() => router.push("/settings/invite")}
+          />
+          <NavRow
+            icon={FileText}
+            label="Community Guidelines"
+            onClick={() => router.push("/settings/guidelines")}
+          />
+          {(profile as any)?.is_admin && (
+            <NavRow
+              icon={ShieldAlert}
+              label="Safety Alerts Queue (Admin)"
+              onClick={() => router.push("/settings/safety")}
+            />
+          )}
           <NavRow
             icon={HelpCircle}
             label="Help Center"
