@@ -652,5 +652,12 @@ export const usePosts = (filter?: LocationFilter | null) => {
     }
   }, []);
 
-  return { posts, loading, loadingMore, hasMore, loadMore, createPost, createBusiness, deletePost, deleteBusiness, refreshPosts };
+  const optimisticUpdatePost = useCallback(
+    (postId: string, updates: Partial<Post>) => {
+      setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, ...updates } : p)));
+    },
+    []
+  );
+
+  return { posts, loading, loadingMore, hasMore, loadMore, createPost, createBusiness, deletePost, deleteBusiness, refreshPosts, optimisticUpdatePost };
 };
