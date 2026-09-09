@@ -15,11 +15,11 @@ import { Button } from '@/components/ui/button';
 import Supercluster from 'supercluster';
 import { cn } from '@/lib/utils';
 
-type FilterTab = 'all' | 'events' | 'businesses' | 'marketplace';
+type FilterTab = 'all' | 'marketplace' | 'friends' | 'events' | 'businesses' | 'posts';
 
 type MarkerData = {
   id: string;
-  type: 'event' | 'business' | 'friend' | 'marketplace';
+  type: 'event' | 'business' | 'friend' | 'marketplace' | 'post';
   position: { lat: number; lng: number };
   title: string;
   address: string;

@@ -15,6 +15,7 @@ import { PostSkeleton } from "@/components/PostSkeleton";
 import { LocationChip } from "@/components/LocationChip";
 import { EventCreatorOnboarding } from "@/components/events/EventCreatorOnboarding";
 import { MarketplaceCreatorOnboarding } from "@/components/marketplace/MarketplaceCreatorOnboarding";
+import Image from "next/image";
 
 
 
@@ -145,56 +146,57 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
       </div>
 
 
-      {/* ── Post Bar ── */}
-      <div
-        className="overflow-hidden rounded-[1.25rem] border border-[var(--c-border)] bg-[var(--c-card)]"
-      >
-
-        <div className="p-4">
-          {/* Input row */}
-          <div className="flex items-center gap-3">
-            <Avatar className="w-10 h-10 flex-shrink-0">
-              <AvatarImage src={profile?.avatar_url || ""} />
-              <AvatarFallback className="text-sm text-white font-semibold" style={{ background: GREEN }}>
-                {profile?.name?.charAt(0) || "U"}
-              </AvatarFallback>
-            </Avatar>
-            <CreatePostDialog createPost={createPost}>
-              <button
-                className="flex-1 h-12 rounded-full text-left px-4 font-sans font-medium text-[0.95rem] text-muted-foreground bg-[var(--background)] hover:bg-[var(--c-card2)] hover:text-[var(--c-text)] border border-[var(--c-border)] transition-all duration-150"
-                style={{ fontFamily: FONT_RALEWAY }}
-              >
-                What&apos;s on your mind?
-              </button>
-            </CreatePostDialog>
+      {/* ── Quick Post Box (Mobile Parity) ── */}
+      <CreatePostDialog createPost={createPost}>
+        <div
+          className="flex items-center gap-3 p-3 rounded-[24px] border border-[var(--c-border)] cursor-pointer transition-all hover:bg-white/5"
+          style={{ background: "var(--c-card)" }}
+        >
+          <div
+            className="w-10 h-10 rounded-full border-2 overflow-hidden flex-shrink-0 flex items-center justify-center"
+            style={{ borderColor: GREEN, background: "var(--c-card2)" }}
+          >
+            {profile?.avatar_url ? (
+              <Image src={profile.avatar_url} alt={profile.name || "User"} width={40} height={40} className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-sm font-bold text-primary" style={{ fontFamily: FONT_RALEWAY }}>
+                {profile?.name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || "U"}
+              </span>
+            )}
           </div>
 
-          {/* Divider */}
-          <div className="my-3" style={{ borderTop: "0.5px solid var(--c-border)" }} />
+          <span className="flex-1 text-sm text-muted-foreground truncate" style={{ fontFamily: "var(--font-work-sans)" }}>
+            What&apos;s happening in your neighbourhood?
+          </span>
 
-          {/* Action buttons - horizontally scrollable on small screens */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-0.5 scrollbar-hide">
-            <button
-              onClick={handleSellClick}
-              className="flex items-center gap-2 rounded-full px-4 py-2 text-[0.9rem] font-semibold text-[#15803D] bg-[#DCFCE7] border border-[#BBF7D0] dark:text-emerald-300 dark:bg-slate-800/80 dark:border-emerald-900/50 transition-none"
-              style={{ fontFamily: FONT_RALEWAY, transform: "none" }}
-            >
-              <HandshakeGradient />
-              Sell
-            </button>
-
-
-            <button
-              onClick={handleEventClick}
-              className="flex items-center gap-2 rounded-full px-4 py-2 text-[0.9rem] font-semibold whitespace-nowrap text-[#7E22CE] bg-[#F3E8FF] border border-[#E9D5FF] dark:text-purple-300 dark:bg-slate-800/80 dark:border-purple-900/50 transition-none"
-              style={{ fontFamily: FONT_RALEWAY, transform: "none" }}
-            >
-              <TicketGradient />
-              Event
-            </button>
-
-          </div>
+          <button
+            className="h-8 px-4 rounded-full font-bold text-xs text-black shrink-0 transition-transform active:scale-95"
+            style={{ background: GREEN, fontFamily: FONT_RALEWAY }}
+          >
+            Post
+          </button>
         </div>
+      </CreatePostDialog>
+
+      {/* ── Action Buttons Row ── */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+        <button
+          onClick={handleSellClick}
+          className="flex items-center gap-2 rounded-full px-4 py-2 text-[0.875rem] font-bold text-[#15803D] bg-[#DCFCE7] border border-[#BBF7D0] dark:text-emerald-300 dark:bg-slate-800/80 dark:border-emerald-900/50 transition-transform active:scale-95"
+          style={{ fontFamily: FONT_RALEWAY }}
+        >
+          <HandshakeGradient />
+          Sell
+        </button>
+
+        <button
+          onClick={handleEventClick}
+          className="flex items-center gap-2 rounded-full px-4 py-2 text-[0.875rem] font-bold whitespace-nowrap text-[#7E22CE] bg-[#F3E8FF] border border-[#E9D5FF] dark:text-purple-300 dark:bg-slate-800/80 dark:border-purple-900/50 transition-transform active:scale-95"
+          style={{ fontFamily: FONT_RALEWAY }}
+        >
+          <TicketGradient />
+          Event
+        </button>
       </div>
 
       {/* Event Creator Onboarding */}
