@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef as reactUseRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef as reactUseRef } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ArrowLeft, MapPin, Calendar, Users, MessageCircle, ShoppingBag,
   Briefcase, CalendarDays, Clock, Heart, MoreHorizontal, UserMinus,
-  Ticket, Package, ChevronRight, TrendingUp, Shield, Check, X, BadgeCheck, Star, Play
+  Ticket, Package, ChevronRight, TrendingUp, Shield, Check, X, BadgeCheck, Star, Play, Bookmark
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { supabase } from "@/lib/supabase";
@@ -49,10 +49,8 @@ interface ProfileScreenProps {
 // ─── Tab pill bar ────────────────────────────────────────────────────────────
 const TABS = [
   { key: "posts", label: "Posts" },
-  { key: "items", label: "Items" },
-  { key: "businesses", label: "Business" },
-  { key: "events", label: "Events" },
-  { key: "reviews", label: "Reviews" },
+  { key: "texts", label: "Texts" },
+  { key: "saved", label: "Saved" },
 ];
 
 function TabBar({ active, onChange }: { active: string; onChange: (k: string) => void }) {
@@ -141,6 +139,10 @@ function MiniCard({ title, sub, img, badge, onClick }: { title: string; sub?: st
   );
 }
 
+function isMediaPost(p: any): boolean {
+  return !!p.image_url || !!(p.image_urls && p.image_urls.length > 0) || !!p.video_url || !!(p.video_urls && p.video_urls.length > 0);
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId, targetUser: externalTargetUser }: ProfileScreenProps) {
   const router = useRouter();
@@ -149,6 +151,8 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
 
   const [profileData, setProfileData] = useState<any>(null);
   const [userPosts, setUserPosts] = useState<Post[]>([]);
+  const [savedPosts, setSavedPosts] = useState<any[]>([]);
+  const [loadingSaved, setLoadingSaved] = useState(false);
   const [userItems, setUserItems] = useState<any[]>([]);
   const [userBusinesses, setUserBusinesses] = useState<any[]>([]);
   const [userEvents, setUserEvents] = useState<any[]>([]);
@@ -168,6 +172,64 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
   const targetProfile = externalTargetUser ? null : (user ? null : currentProfile);
   const isExternalProfile = !!targetUserId && targetUserId !== currentUser?.id;
   const actualIsOwnProfile = isOwnProfile !== undefined ? isOwnProfile : !isExternalProfile;
+
+  const mediaPosts = useMemo(() => userPosts.filter(isMediaPost), [userPosts]);
+  const textPosts  = useMemo(() => userPosts.filter((p) => !isMediaPost(p)), [userPosts]);
+
+  const fetchSavedPosts = useCallback(async () => {
+    if (!targetUser) return;
+    setLoadingSaved(true);
+    try {
+      const [postRes, eventRes, businessRes] = await Promise.all([
+        supabase.from('post_bookmarks').select('post_id, created_at, posts(*)').eq('user_id', targetUser.id),
+        supabase.from('event_bookmarks').select('event_id, created_at, events(*)').eq('user_id', targetUser.id),
+        supabase.from('business_favorites').select('business_id, created_at, businesses(*)').eq('user_id', targetUser.id),
+      ]);
+
+      const extractedPosts = (postRes.data || [])
+        .filter((item: any) => item.posts != null && item.posts.moderation_status !== 'rejected')
+        .map((item: any) => ({ ...item.posts, bookmark_created_at: item.created_at }));
+
+      const extractedEvents = (eventRes.data || [])
+        .filter((item: any) => item.events != null)
+        .map((item: any) => ({
+          id: item.events.id,
+          text: item.events.title,
+          title: item.events.title,
+          image_urls: item.events.image_urls?.length ? item.events.image_urls : item.events.cover_image_url ? [item.events.cover_image_url] : [],
+          category: 'Event',
+          event_link: `/events/${item.events.id}`,
+          bookmark_created_at: item.created_at,
+        }));
+
+      const extractedBusinesses = (businessRes.data || [])
+        .filter((item: any) => item.businesses != null)
+        .map((item: any) => ({
+          id: item.businesses.id,
+          text: item.businesses.name,
+          title: item.businesses.name,
+          image_urls: item.businesses.logo || item.businesses.cover_image || item.businesses.image_urls?.[0] ? [item.businesses.logo || item.businesses.cover_image || item.businesses.image_urls?.[0]] : [],
+          category: 'Business',
+          event_link: `/businesses/${item.businesses.id}`,
+          bookmark_created_at: item.created_at,
+        }));
+
+      const combined = [...extractedPosts, ...extractedEvents, ...extractedBusinesses].sort(
+        (a, b) => new Date(b.bookmark_created_at).getTime() - new Date(a.bookmark_created_at).getTime()
+      );
+      setSavedPosts(combined);
+    } catch (e) {
+      console.error('Error fetching saved items:', e);
+    } finally {
+      setLoadingSaved(false);
+    }
+  }, [targetUser]);
+
+  useEffect(() => {
+    if (activeTab === "saved") {
+      fetchSavedPosts();
+    }
+  }, [activeTab, fetchSavedPosts]);
 
   // ── Shared friendship hook (only active when viewing another user's profile) ──
   const friendship = useFriendshipGlobal(
@@ -190,7 +252,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
       if (userData) setProfileData(userData);
 
       const [postsRes, itemsRes, bizRes, eventsRes, eventsCountRes, reviewsRes, followersRes, followingRes] = await Promise.all([
-        supabase.from("posts").select("*").eq("user_id", targetUser.id).eq("category", "General").order("timestamp", { ascending: false }).limit(10),
+        supabase.from("posts").select("*").eq("user_id", targetUser.id).order("timestamp", { ascending: false }).limit(20),
         supabase.from("posts").select("*").eq("user_id", targetUser.id).eq("category", "For Sale").order("timestamp", { ascending: false }).limit(10),
         supabase.from("businesses").select("*").eq("owner_id", targetUser.id).order("created_at", { ascending: false }).limit(10),
         supabase.from("events").select("*").eq("organizer_id", targetUser.id).order("created_at", { ascending: false }).limit(10),
@@ -707,155 +769,117 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
       <TabBar active={activeTab} onChange={setActiveTab} />
 
       <div className="mt-5">
-        {/* Posts tab */}
+        {/* Posts tab (Media Posts) */}
         {activeTab === "posts" && (
-            userPosts.length > 0 ? (
-              <div className="bento-section">
-                {/* Masonry for all posts — CSS columns so cards never inherit a neighbor's height */}
-                <div className="columns-2 gap-4">
-                  {userPosts.map((post) => {
-                    const thumbUrl = post.image_url || post.image_urls?.[0] || null;
-                    const hasVideo = !!post.video_url;
-                    const hasMedia = !!(thumbUrl || hasVideo);
-                    return (
+          mediaPosts.length > 0 ? (
+            <div className="bento-section">
+              <div className="columns-2 gap-4">
+                {mediaPosts.map((post: Post) => {
+                  const thumbUrl = post.image_url || post.image_urls?.[0] || null;
+                  const hasVideo = !!post.video_url;
+                  return (
                     <div
                       key={post.id}
                       className="rounded-[11px] cursor-pointer overflow-hidden mb-4 break-inside-avoid"
                       style={{ background: SURFACE }}
                       onClick={() => router.push(`/posts/${post.id}`)}
                     >
-                      {hasMedia && (
-                        <div className="relative w-full" style={{ aspectRatio: '1/1' }}>
-                          {hasVideo ? (
-                            <video
-                              src={post.video_url!.includes('#t=') ? post.video_url! : `${post.video_url}#t=0.001`}
-                              muted
-                              playsInline
-                              preload="metadata"
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <Image src={thumbUrl!} alt={post.text || "Post"} fill sizes="(max-width: 768px) 50vw, 25vw" className="object-cover" />
-                          )}
-                          {hasVideo && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                              <div className="w-8 h-8 rounded-full bg-black/50 flex items-center justify-center">
-                                <Play className="w-4 h-4 text-white" fill="white" />
-                              </div>
+                      <div className="relative w-full" style={{ aspectRatio: '1/1' }}>
+                        {hasVideo ? (
+                          <video
+                            src={post.video_url!.includes('#t=') ? post.video_url! : `${post.video_url}#t=0.001`}
+                            muted
+                            playsInline
+                            preload="metadata"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <Image src={thumbUrl || "/images/onboarding/splash.jpg"} alt={post.text || "Post"} fill sizes="(max-width: 768px) 50vw, 25vw" className="object-cover" />
+                        )}
+                        {hasVideo && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                            <div className="w-8 h-8 rounded-full bg-black/50 flex items-center justify-center">
+                              <Play className="w-4 h-4 text-white" fill="white" />
                             </div>
-                          )}
-                          {(post.image_urls?.length || 0) > 1 && (
-                            <span className="absolute top-1.5 right-1.5 text-[0.6rem] font-semibold px-1.5 py-0.5 rounded-full bg-black/50 text-white">
-                              +{(post.image_urls?.length || 1) - 1}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                      {(hasMedia ? !!post.text : true) && (
-                        <div className={hasMedia ? "px-4 py-3" : "p-4"}>
-                          <p className="text-foreground text-xs line-clamp-3" style={{ fontFamily: FONT }}>{post.text || post.title}</p>
-                          <div className="flex items-center gap-2 mt-2 text-[0.625rem]" style={{ color: "var(--c-text-muted)" }}>
-                            <Heart className="w-3 h-3" />{post.liked_by?.length || 0}
                           </div>
-                        </div>
-                      )}
-                      {hasMedia && !post.text && (
-                        <div className="px-4 py-3 flex items-center gap-2 text-[0.625rem]" style={{ color: "var(--c-text-muted)" }}>
-                          <Heart className="w-3 h-3" />{post.liked_by?.length || 0}
-                        </div>
-                      )}
-                    </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : (
-              <EmptyState icon={<Heart className="w-7 h-7 text-primary-light" style={{ opacity: 0.6 }} />}
-                label="No posts yet" action="Create your first post" onAction={() => router.push("/home")} />
-            )
-          )}
-
-          {/* Items tab */}
-          {activeTab === "items" && (
-            userItems.length > 0 ? (
-              <div className="space-y-3">
-                {userItems.map((item) => (
-                  <MiniCard
-                    key={item.id}
-                    title={item.text || item.title || "Untitled"}
-                    sub={item.price ? `₦${item.price.toLocaleString()}` : item.condition}
-                    img={item.image_urls?.[0] || null}
-                    badge="Sale"
-                    onClick={() => router.push(`/posts/${item.id}`)}
-                  />
-                ))}
-              </div>
-            ) : (
-              <EmptyState icon={<ShoppingBag className="w-7 h-7 text-primary-light" style={{ opacity: 0.6 }} />}
-                label="No items for sale" action="List your first item" onAction={() => router.push("/marketplace")} />
-            )
-          )}
-
-          {/* Businesses tab */}
-          {activeTab === "businesses" && (
-            userBusinesses.length > 0 ? (
-              <div className="space-y-3">
-                {userBusinesses.map((biz) => (
-                  <MiniCard
-                    key={biz.id}
-                    title={biz.name}
-                    sub={biz.category}
-                    img={biz.image_urls?.[0] || null}
-                    badge="Biz"
-                    onClick={() => router.push(`/businesses/${biz.id}`)}
-                  />
-                ))}
-              </div>
-            ) : (
-              <EmptyState icon={<Briefcase className="w-7 h-7 text-primary-light" style={{ opacity: 0.6 }} />}
-                label="No businesses yet" action="Create your business" onAction={() => router.push("/businesses")} />
-            )
-          )}
-
-          {/* Events tab */}
-          {activeTab === "events" && (
-            userEvents.length > 0 ? (
-              <div className="space-y-3">
-                {userEvents.map((event) => (
-                  <div
-                    key={event.id}
-                    className="p-4 rounded-[11px] cursor-pointer"
-                    style={{ background: SURFACE }}
-                    onClick={() => router.push(`/events/${event.id}`)}
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#6edf51" }} />
-                      <span className="text-[0.625rem] font-bold uppercase tracking-widest" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>Event</span>
-                    </div>
-                    <h4 className="text-foreground font-bold text-sm" style={{ fontFamily: RALEWAY }}>
-                      {event.title || "Untitled Event"}
-                    </h4>
-                    {event.start_time && (
-                      <div className="flex items-center gap-1.5 mt-2 text-xs" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
-                        <Calendar className="w-3 h-3" />
-                        {new Date(event.start_time).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
-                        <Clock className="w-3 h-3 ml-2" /> 
-                        {new Date(event.start_time).toLocaleTimeString("en-US", { hour: 'numeric', minute: '2-digit' })}
+                        )}
+                        {(post.image_urls?.length || 0) > 1 && (
+                          <span className="absolute top-1.5 right-1.5 text-[0.6rem] font-semibold px-1.5 py-0.5 rounded-full bg-black/50 text-white">
+                            +{(post.image_urls?.length || 1) - 1}
+                          </span>
+                        )}
                       </div>
-                    )}
-                    {event.attendee_count > 0 && (
-                      <p className="text-xs mt-1 italic" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
-                        {event.attendee_count} participant{event.attendee_count !== 1 ? 's' : ''} joined
-                      </p>
-                    )}
-                  </div>
-                ))}
+                      {!!post.text && (
+                        <div className="px-4 py-3">
+                          <p className="text-foreground text-xs line-clamp-2" style={{ fontFamily: FONT }}>{post.text}</p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-            ) : (
-              <EmptyState icon={<CalendarDays className="w-7 h-7 text-primary-light" style={{ opacity: 0.6 }} />}
-                label="No events posted" action="Create your first event" onAction={() => router.push("/events")} />
-            )
-          )}
+            </div>
+          ) : (
+            <EmptyState icon={<Heart className="w-7 h-7 text-primary-light" style={{ opacity: 0.6 }} />}
+              label="No media posts yet" action="Create a post" onAction={() => router.push("/home")} />
+          )
+        )}
+
+        {/* Texts tab (Text-only Posts) */}
+        {activeTab === "texts" && (
+          textPosts.length > 0 ? (
+            <div className="space-y-3">
+              {textPosts.map((post: Post) => (
+                <div
+                  key={post.id}
+                  className="p-4 rounded-[11px] cursor-pointer border border-[var(--c-border)]"
+                  style={{ background: SURFACE }}
+                  onClick={() => router.push(`/posts/${post.id}`)}
+                >
+                  <p className="text-foreground text-sm font-medium line-clamp-4" style={{ fontFamily: FONT }}>{post.text}</p>
+                  <div className="flex items-center justify-between mt-3 text-xs" style={{ color: "var(--c-text-muted)" }}>
+                    <span className="text-[0.65rem] font-bold uppercase tracking-wider">{post.category || "General"}</span>
+                    <div className="flex items-center gap-3">
+                      <span className="flex items-center gap-1"><Heart className="w-3.5 h-3.5" />{post.liked_by?.length || 0}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState icon={<Heart className="w-7 h-7 text-primary-light" style={{ opacity: 0.6 }} />}
+              label="No text posts yet" action="Write a post" onAction={() => router.push("/home")} />
+          )
+        )}
+
+        {/* Saved tab */}
+        {activeTab === "saved" && (
+          loadingSaved ? (
+            <div className="p-4 text-center text-xs" style={{ color: "var(--c-text-muted)" }}>Loading saved bookmarks...</div>
+          ) : savedPosts.length > 0 ? (
+            <div className="space-y-3">
+              {savedPosts.map((item) => (
+                <MiniCard
+                  key={item.id}
+                  title={item.title || item.text || "Saved Item"}
+                  sub={item.category || "Bookmark"}
+                  img={item.image_url || item.image_urls?.[0] || null}
+                  badge={item.category || "Saved"}
+                  onClick={() => {
+                    if (item.event_link) {
+                      router.push(item.event_link);
+                    } else {
+                      router.push(`/posts/${item.id}`);
+                    }
+                  }}
+                />
+              ))}
+            </div>
+          ) : (
+            <EmptyState icon={<Bookmark className="w-7 h-7 text-primary-light" style={{ opacity: 0.6 }} />}
+              label="No saved items yet" />
+          )
+        )}
           {/* Reviews tab */}
           {activeTab === "reviews" && (
             userReviews.length > 0 ? (

@@ -276,7 +276,14 @@ export function BusinessDetailScreen({
       <div className="relative">
         <div className="relative h-48 bg-gradient-to-br from-primary/20 to-accent/20 overflow-hidden">
           <Image
-            src={business.cover_image || business.image_urls?.[0] || "/placeholder.svg"}
+            src={
+              business.cover_image ||
+              (business as any).cover_url ||
+              (business as any).banner_url ||
+              (business as any).banner ||
+              business.image_urls?.[0] ||
+              "/images/onboarding/splash.jpg"
+            }
             alt={business.name}
             width={400}
             height={192}

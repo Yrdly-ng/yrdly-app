@@ -1,44 +1,50 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   User,
-  MapPin,
+  Mail,
+  ShoppingBag,
+  Wallet,
+  Landmark,
   Lock,
-  ShieldCheck,
+  MapPin,
+  Shield,
   Moon,
   Bell,
-  Mail,
+  UserPlus,
+  BookOpen,
   HelpCircle,
   Flag,
-  FileText,
+  Inbox,
+  AlertTriangle,
+  LogOut,
+  Trash2,
   ChevronRight,
-  Pencil,
-  Wallet,
   ArrowLeft,
-  Share2,
-  ShieldAlert,
-  DollarSign,
-  ShoppingBag,
-  Calendar,
+  ShieldCheck,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useTheme } from "@/components/ThemeProvider";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const FONT = "var(--font-work-sans)";
-const PACIFICO = "var(--font-jersey25)";
+const RALEWAY = "var(--font-raleway)";
 const GREEN = "hsl(var(--primary))";
-const CARD = "var(--c-card)";
 
-interface SettingsScreenProps {
-  onBack?: () => void;
-}
-
-/* ── Custom Toggle ── */
+/* ── Custom Toggle Switch ── */
 function Toggle({
   checked,
   onChange,
@@ -53,10 +59,10 @@ function Toggle({
       aria-checked={checked}
       onClick={() => onChange(!checked)}
       className="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full transition-colors duration-200"
-      style={{ background: checked ? GREEN : "var(--c-card2)" }}
+      style={{ background: checked ? GREEN : "rgba(255,255,255,0.15)" }}
     >
       <span
-        className="pointer-events-none inline-block h-5 w-5 rounded-full bg-background shadow transition-transform duration-200"
+        className="pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transition-transform duration-200"
         style={{
           transform: checked ? "translateX(20px)" : "translateX(2px)",
           marginTop: 2,
@@ -66,378 +72,461 @@ function Toggle({
   );
 }
 
-/* ── Row components ── */
-function NavRow({
-  icon: Icon,
-  label,
-  onClick,
+/* ── Section Wrapper ── */
+function SettingSection({
+  title,
+  children,
 }: {
-  icon: React.ElementType;
-  label: string;
-  onClick: () => void;
+  title: string;
+  children: React.ReactNode;
 }) {
   return (
-    <button
-      onClick={onClick}
-      className="w-full flex items-center justify-between px-4 py-4 transition-colors"
-      style={{ background: 'var(--c-card)', borderRadius: 11 }}
-      onMouseEnter={(e) =>
-        ((e.currentTarget as HTMLElement).style.background = "var(--c-card2)")
-      }
-      onMouseLeave={(e) =>
-        ((e.currentTarget as HTMLElement).style.background = CARD)
-      }
-    >
-      <div className="flex items-center gap-3">
-        <Icon className="w-5 h-5 flex-shrink-0 text-primary" />
-        <span
-          className="text-foreground text-[0.875rem]"
-          style={{ fontFamily: FONT }}
-        >
-          {label}
-        </span>
+    <div className="mb-6">
+      <h2
+        className="text-[0.75rem] font-bold uppercase tracking-wider mb-2.5 px-1"
+        style={{ color: "var(--c-text-muted)", fontFamily: FONT }}
+      >
+        {title}
+      </h2>
+      <div
+        className="rounded-[20px] overflow-hidden border border-[var(--c-border)]"
+        style={{ background: "var(--c-card)" }}
+      >
+        {children}
       </div>
-      <ChevronRight className="w-5 h-5" style={{ color: "#6b7280" }} />
-    </button>
-  );
-}
-
-function ToggleRow({
-  icon: Icon,
-  label,
-  checked,
-  onChange,
-}: {
-  icon: React.ElementType;
-  label: string;
-  checked: boolean;
-  onChange: (v: boolean) => void;
-}) {
-  return (
-    <div
-      className="flex items-center justify-between px-4 py-4"
-      style={{ background: 'var(--c-card)', borderRadius: 11 }}
-    >
-      <div className="flex items-center gap-3">
-        <Icon className="w-5 h-5 flex-shrink-0 text-primary" />
-        <span
-          className="text-foreground text-[0.875rem]"
-          style={{ fontFamily: FONT }}
-        >
-          {label}
-        </span>
-      </div>
-      <Toggle checked={checked} onChange={onChange} />
     </div>
   );
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+function SettingDivider() {
   return (
-    <h2
-      className="text-foreground text-[1rem] px-1"
-      style={{ fontFamily: PACIFICO, fontWeight: 400 }}
-    >
-      {children}
-    </h2>
+    <div
+      className="h-[1px] ml-16"
+      style={{ background: "var(--c-border)" }}
+    />
   );
 }
 
-export function SettingsScreen({ onBack }: SettingsScreenProps) {
+/* ── Setting Row ── */
+function SettingRow({
+  icon,
+  label,
+  sub,
+  value,
+  danger,
+  toggle,
+  toggled,
+  onToggle,
+  chevron = true,
+  onPress,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  sub?: string;
+  value?: string;
+  danger?: boolean;
+  toggle?: boolean;
+  toggled?: boolean;
+  onToggle?: (v: boolean) => void;
+  chevron?: boolean;
+  onPress?: () => void;
+}) {
+  return (
+    <div
+      onClick={onPress}
+      className={`flex items-center px-5 py-4 transition-colors ${
+        onPress || toggle ? "cursor-pointer hover:bg-white/5" : ""
+      }`}
+    >
+      <div
+        className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 border ${
+          danger
+            ? "bg-red-500/10 border-red-500/20 text-red-500"
+            : "bg-white/5 border-white/10 text-foreground"
+        }`}
+      >
+        {icon}
+      </div>
+      <div className="flex-1 min-w-0 pl-3.5 pr-2">
+        <p
+          className={`text-sm font-semibold truncate ${
+            danger ? "text-red-500" : "text-foreground"
+          }`}
+          style={{ fontFamily: RALEWAY }}
+        >
+          {label}
+        </p>
+        {sub && (
+          <p
+            className="text-xs truncate mt-0.5"
+            style={{ color: "var(--c-text-muted)", fontFamily: FONT }}
+          >
+            {sub}
+          </p>
+        )}
+      </div>
+      {value && (
+        <span
+          className="text-xs font-semibold px-2 py-1 rounded-md bg-white/5 mr-1"
+          style={{ color: "var(--c-text-muted)", fontFamily: FONT }}
+        >
+          {value}
+        </span>
+      )}
+      {toggle && (
+        <Toggle checked={!!toggled} onChange={(v) => onToggle && onToggle(v)} />
+      )}
+      {!toggle && chevron && (
+        <ChevronRight
+          className="w-4 h-4 flex-shrink-0"
+          style={{ color: "var(--c-text-muted)" }}
+        />
+      )}
+    </div>
+  );
+}
+
+export function SettingsScreen({ onBack }: { onBack?: () => void }) {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
-  const { user, profile, signOut, updateProfile } = useAuth();
+  const { user, profile, signOut } = useAuth();
   const { toast } = useToast();
 
-  const [privacy, setPrivacy] = useState({
-    locationVisible: profile?.shareLocation ?? false,
-    onlineStatus: true,
-  });
+  const [showSignOutDialog, setShowSignOutDialog] = useState(false);
+  const [showEmailDialog, setShowEmailDialog] = useState(false);
 
-  const [emailReminders, setEmailReminders] = useState(true);
+  const isAdmin =
+    (profile as any)?.is_admin || (profile as any)?.role === "admin";
 
-  useEffect(() => {
-    if (profile) {
-      setPrivacy((prev) => ({
-        ...prev,
-        locationVisible: profile.shareLocation ?? false,
-      }));
-    }
-  }, [profile]);
+  const isDarkMode = theme === "dark";
 
-  // Load email reminder preference from DB
-  useEffect(() => {
-    if (!user) return;
-    supabase
-      .from("users")
-      .select("email_reminders_enabled")
-      .eq("id", user.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data && data.email_reminders_enabled !== null) {
-          setEmailReminders(data.email_reminders_enabled);
-        }
-      });
-  }, [user]);
+  const toggleDarkMode = (value: boolean) => {
+    setTheme(value ? "dark" : "light");
+  };
 
-  const handleLogout = async () => {
+  const handleSignOut = async () => {
     try {
       await signOut();
       router.push("/login");
-    } catch (error) {
-      console.error("Error signing out:", error);
-    }
-  };
-
-  const handleLocationSharingToggle = async (checked: boolean) => {
-    try {
-      await updateProfile({
-        shareLocation: checked,
-        updated_at: new Date().toISOString(),
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to sign out",
       });
-      setPrivacy((prev) => ({ ...prev, locationVisible: checked }));
-    } catch (error) {
-      console.error("Error updating location sharing preference:", error);
     }
   };
-
-  const handleThemeChange = (newTheme: string) => {
-    setTheme(newTheme);
-  };
-
-  const handleEmailRemindersToggle = async (checked: boolean) => {
-    setEmailReminders(checked);
-    if (user) {
-      await supabase
-        .from("users")
-        .update({ email_reminders_enabled: checked })
-        .eq("id", user.id);
-    }
-  };
-
-  const displayName = profile?.name || user?.user_metadata?.name || "User";
-  const email = user?.email || "user@example.com";
-  const avatarUrl = profile?.avatar_url || "/placeholder.svg";
 
   return (
     <div
       className="min-h-[100dvh] pb-32"
       style={{ background: "var(--c-bg)" }}
     >
-      {/* Header — scrolls away with the page, just like the rest of the content */}
+      {/* ── Header ── */}
       <header
-        className="flex items-center justify-between px-6 py-4 border-b border-[var(--c-border)]"
+        className="sticky top-0 z-40 flex items-center justify-between px-4 py-3.5 border-b border-[var(--c-border)] backdrop-blur-md"
         style={{ background: "var(--c-bg)" }}
       >
-        <div className="flex items-center gap-4">
-          <button onClick={() => router.back()} className="w-10 h-10 flex items-center justify-center rounded-full transition-colors hover:bg-accent">
-            <ArrowLeft className="w-5 h-5 text-foreground" style={{ color: "var(--c-text)" }} />
-          </button>
-          <h1 style={{ fontFamily: "var(--font-jersey25)", fontSize: 18, fontWeight: 700, color: "var(--c-text)" }}>Settings</h1>
-        </div>
+        <button
+          onClick={() => (onBack ? onBack() : router.back())}
+          className="w-9 h-9 rounded-xl flex items-center justify-center border border-white/10 transition-colors hover:bg-white/5"
+          style={{ background: "var(--c-card)" }}
+        >
+          <ArrowLeft className="w-4 h-4 text-foreground" />
+        </button>
+        <h1
+          className="text-base font-bold text-foreground"
+          style={{ fontFamily: RALEWAY }}
+        >
+          Settings
+        </h1>
+        <div className="w-9" />
       </header>
 
-      <div className="max-w-2xl mx-auto px-4 pt-8 space-y-8">
+      <div className="max-w-xl mx-auto px-4 pt-6">
+        {/* ── Account & Identity ── */}
+        <SettingSection title="Account & Identity">
+          <SettingRow
+            icon={<User className="w-4 h-4 text-primary" />}
+            label="Edit Profile"
+            sub="Update your name, photo and bio"
+            onPress={() => router.push("/settings/profile")}
+          />
+          <SettingDivider />
+          <SettingRow
+            icon={<span className="text-base leading-none">🇳🇬</span>}
+            label="Phone Number"
+            sub={
+              (profile as any)?.phone_verified
+                ? `${(profile as any)?.phone || "Phone"} · Verified`
+                : "Verify phone number"
+            }
+            onPress={
+              (profile as any)?.phone_verified
+                ? undefined
+                : () => router.push("/verify-phone")
+            }
+            chevron={!(profile as any)?.phone_verified}
+          />
+          <SettingDivider />
+          <SettingRow
+            icon={<Mail className="w-4 h-4 text-primary" />}
+            label="Email Address"
+            sub={user?.email || "No email linked"}
+            onPress={() => setShowEmailDialog(true)}
+          />
+        </SettingSection>
 
-        {/* ── Profile Card ── */}
-        <section
-          className="flex items-center gap-4 p-4"
-          style={{ background: 'var(--c-card)', borderRadius: 11 }}
-        >
-          <Avatar className="w-16 h-16 flex-shrink-0">
-            <AvatarImage src={avatarUrl} alt={displayName} />
-            <AvatarFallback
-              style={{
-                background: GREEN,
-                color: "#fff",
-                fontFamily: FONT,
-                fontWeight: 700,
-                fontSize: 24,
-              }}
+        {/* ── Commerce ── */}
+        <SettingSection title="Commerce">
+          <SettingRow
+            icon={<ShoppingBag className="w-4 h-4 text-primary" />}
+            label="Transactions"
+            sub="Track your orders & marketplace activity"
+            onPress={() => router.push("/transactions")}
+          />
+          <SettingDivider />
+          <SettingRow
+            icon={<Wallet className="w-4 h-4 text-primary" />}
+            label="Payouts"
+            sub="Manage your earnings & balances"
+            onPress={() => router.push("/settings/payouts")}
+          />
+          <SettingDivider />
+          <SettingRow
+            icon={<Landmark className="w-4 h-4 text-primary" />}
+            label="Bank Account"
+            sub="Manage your linked payout account"
+            onPress={() => router.push("/profile/payout-settings")}
+          />
+        </SettingSection>
+
+        {/* ── Privacy & Location ── */}
+        <SettingSection title="Privacy & Location">
+          <SettingRow
+            icon={<Lock className="w-4 h-4 text-primary" />}
+            label="Privacy & Discoverability"
+            sub="Manage location sharing and visibility"
+            onPress={() => router.push("/settings/privacy")}
+          />
+          <SettingDivider />
+          <SettingRow
+            icon={<MapPin className="w-4 h-4 text-primary" />}
+            label="Location"
+            sub="Your neighbourhood & location alerts"
+            onPress={() => router.push("/settings/location")}
+          />
+          <SettingDivider />
+          <SettingRow
+            icon={<Shield className="w-4 h-4 text-primary" />}
+            label="Blocked Users"
+            sub="Manage who can't see or contact you"
+            value={
+              (profile as any)?.blocked_users?.length
+                ? String((profile as any).blocked_users.length)
+                : "0"
+            }
+            onPress={() => router.push("/settings/blocked")}
+          />
+        </SettingSection>
+
+        {/* ── Preferences ── */}
+        <SettingSection title="Preferences">
+          <SettingRow
+            icon={<Moon className="w-4 h-4 text-primary" />}
+            label="Dark Mode"
+            sub="Toggle dark mode theme"
+            toggle
+            toggled={isDarkMode}
+            onToggle={toggleDarkMode}
+          />
+          <SettingDivider />
+          <SettingRow
+            icon={<Bell className="w-4 h-4 text-primary" />}
+            label="Notifications"
+            sub="Choose what you want to hear"
+            onPress={() => router.push("/settings/notifications")}
+          />
+        </SettingSection>
+
+        {/* ── Community & Support ── */}
+        <SettingSection title="Community & Support">
+          <SettingRow
+            icon={<UserPlus className="w-4 h-4 text-primary" />}
+            label="Invite Neighbours"
+            sub="Invite neighbours to join your community"
+            value="Invite"
+            onPress={() => router.push("/settings/invite")}
+          />
+          <SettingDivider />
+          <SettingRow
+            icon={<BookOpen className="w-4 h-4 text-primary" />}
+            label="Neighbourhood Guidelines"
+            sub="What we stand for in every community"
+            onPress={() => router.push("/settings/guidelines")}
+          />
+          <SettingDivider />
+          <SettingRow
+            icon={<HelpCircle className="w-4 h-4 text-primary" />}
+            label="Help Center"
+            sub="FAQs, tutorials and getting support"
+            onPress={() => router.push("/settings/help")}
+          />
+          <SettingDivider />
+          <SettingRow
+            icon={<Flag className="w-4 h-4 text-primary" />}
+            label="Report an Issue"
+            sub="Flag a problem or inappropriate content"
+            onPress={() => router.push("/settings/report")}
+          />
+        </SettingSection>
+
+        {/* ── Admin Tools (if admin) ── */}
+        {isAdmin && (
+          <div className="mb-6">
+            <div
+              className="flex items-center gap-3 p-4 rounded-[18px] mb-3 border border-emerald-500/20"
+              style={{ background: "rgba(130,219,126,0.06)" }}
             >
-              {displayName.charAt(0).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex-1 min-w-0">
-            <h1
-              className="text-foreground text-[0.875rem] truncate"
-              style={{ fontFamily: FONT, fontWeight: 700 }}
-            >
-              {displayName}
-            </h1>
-            <p
-              className="text-[0.75rem] truncate"
-              style={{ fontFamily: FONT, color: "var(--c-text-muted)" }}
-            >
-              {email}
-            </p>
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-emerald-500/10 border border-emerald-500/20 text-emerald-500">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div className="flex-1">
+                <p className="font-bold text-emerald-500 text-sm" style={{ fontFamily: RALEWAY }}>
+                  Admin Portal
+                </p>
+                <p className="text-xs text-muted-foreground" style={{ fontFamily: FONT }}>
+                  You have administrator privileges
+                </p>
+              </div>
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-500 border border-emerald-500/25">
+                ADMIN
+              </span>
+            </div>
+            <SettingSection title="Admin Tools">
+              <SettingRow
+                icon={<Inbox className="w-4 h-4 text-primary" />}
+                label="Dispute Resolution"
+                sub="Review and resolve marketplace disputes"
+                onPress={() => router.push("/admin/disputes")}
+              />
+              <SettingDivider />
+              <SettingRow
+                icon={<Shield className="w-4 h-4 text-primary" />}
+                label="Moderation Queue"
+                sub="Review flagged content and users"
+                onPress={() => router.push("/admin/moderation")}
+              />
+              <SettingDivider />
+              <SettingRow
+                icon={<AlertTriangle className="w-4 h-4 text-primary" />}
+                label="Safety Alerts"
+                sub="Create and manage community safety alerts"
+                onPress={() => router.push("/settings/safety")}
+              />
+            </SettingSection>
           </div>
-          <button
-            onClick={() => router.push("/settings/profile")}
-            className="p-2 rounded-full transition-colors"
-            style={{ background: "var(--c-card2)" }}
-            onMouseEnter={(e) =>
-              ((e.currentTarget as HTMLElement).style.background =
-                "transparent")
-            }
-            onMouseLeave={(e) =>
-              ((e.currentTarget as HTMLElement).style.background = "var(--c-card2)")
-            }
-          >
-            <Pencil className="w-4 h-4 text-primary" />
-          </button>
-        </section>
+        )}
 
         {/* ── Account ── */}
-        <div className="space-y-3">
-          <SectionLabel>Account</SectionLabel>
-          <NavRow
-            icon={User}
-            label="Edit Profile"
-            onClick={() => router.push("/settings/profile")}
+        <SettingSection title="Account">
+          <SettingRow
+            icon={<LogOut className="w-4 h-4 text-red-500" />}
+            label="Sign Out"
+            sub="Log out of your YRDLY account"
+            danger
+            chevron={false}
+            onPress={() => setShowSignOutDialog(true)}
           />
-          <NavRow
-            icon={MapPin}
-            label="Location"
-            onClick={() => router.push("/settings/location")}
+          <SettingDivider />
+          <SettingRow
+            icon={<Trash2 className="w-4 h-4 text-red-500" />}
+            label="Request Account Deletion"
+            sub="We'll process your request within 30 days"
+            danger
+            chevron={false}
+            onPress={() => router.push("/settings/delete-account")}
           />
-        </div>
+        </SettingSection>
 
-        {/* ── Marketplace & Activities ── */}
-        <div className="space-y-3">
-          <SectionLabel>Marketplace & Activities</SectionLabel>
-          <NavRow
-            icon={DollarSign}
-            label="Payout Dashboard & Balance"
-            onClick={() => router.push("/settings/payouts")}
-          />
-          <NavRow
-            icon={Wallet}
-            label="Payout Bank Details"
-            onClick={() => router.push("/profile/payout-settings")}
-          />
-          <NavRow
-            icon={ShoppingBag}
-            label="My Listings"
-            onClick={() => router.push("/my-listings")}
-          />
-          <NavRow
-            icon={Calendar}
-            label="My Events"
-            onClick={() => router.push("/my-events")}
-          />
-        </div>
-        {/* ── Privacy ── */}
-        <div className="space-y-3">
-          <SectionLabel>Privacy</SectionLabel>
-          <ToggleRow
-            icon={MapPin}
-            label="Share Location with Friends"
-            checked={privacy.locationVisible}
-            onChange={handleLocationSharingToggle}
-          />
-          <div
-            className="px-4 pb-2"
-            style={{ color: "var(--c-text-muted)", fontFamily: FONT, fontSize: 12, lineHeight: 1.5 }}
-          >
-            When enabled, mutual friends can see your approximate location on the Yrdly map.
-          </div>
-        </div>
-
-        {/* ── Appearance ── */}
-        <div className="space-y-3">
-          <SectionLabel>Appearance</SectionLabel>
-          <ToggleRow
-            icon={Moon}
-            label="Dark Mode"
-            checked={theme === 'dark'}
-            onChange={(checked) => handleThemeChange(checked ? 'dark' : 'light')}
-          />
-        </div>
-
-        {/* ── Notifications ── */}
-        <div className="space-y-3">
-          <SectionLabel>Notifications</SectionLabel>
-          <NavRow
-            icon={Bell}
-            label="Push Notifications"
-            onClick={() => router.push("/settings/notifications")}
-          />
-          <ToggleRow
-            icon={Mail}
-            label="Email Reminders"
-            checked={emailReminders}
-            onChange={handleEmailRemindersToggle}
-          />
-          <div
-            className="px-4 pb-2"
-            style={{ color: "var(--c-text-muted)", fontFamily: FONT, fontSize: 12, lineHeight: 1.5 }}
-          >
-            Get an email when you have unread messages or notifications after 30 minutes away.
-          </div>
-        </div>
-
-        {/* ── Support & Community ── */}
-        <div className="space-y-3">
-          <SectionLabel>Support & Community</SectionLabel>
-          <NavRow
-            icon={Share2}
-            label="Invite Friends"
-            onClick={() => router.push("/settings/invite")}
-          />
-          <NavRow
-            icon={FileText}
-            label="Community Guidelines"
-            onClick={() => router.push("/settings/guidelines")}
-          />
-          {(profile as any)?.is_admin && (
-            <NavRow
-              icon={ShieldAlert}
-              label="Safety Alerts Queue (Admin)"
-              onClick={() => router.push("/settings/safety")}
-            />
-          )}
-          <NavRow
-            icon={HelpCircle}
-            label="Help Center"
-            onClick={() => router.push("/settings/help")}
-          />
-          <NavRow
-            icon={Flag}
-            label="Report an Issue"
-            onClick={() => router.push("/settings/report")}
-          />
-          <NavRow
-            icon={FileText}
-            label="Privacy Policy"
-            onClick={() => router.push("/legal/privacy")}
-          />
-        </div>
-
-        {/* ── Logout ── */}
-        <div className="pt-8 pb-12 flex justify-center">
-          <button
-            onClick={handleLogout}
-            className="rounded-full px-12 py-3 transition-colors"
-            style={{
-              border: "0.5px solid #E53935",
-              color: "#E53935",
-              fontFamily: FONT,
-              fontWeight: 700,
-              background: "transparent",
-            }}
-            onMouseEnter={(e) =>
-              ((e.currentTarget as HTMLElement).style.background =
-                "rgba(229,57,53,0.1)")
-            }
-            onMouseLeave={(e) =>
-              ((e.currentTarget as HTMLElement).style.background = "transparent")
-            }
-          >
-            Logout
-          </button>
-        </div>
+        <p
+          className="text-center text-xs py-6"
+          style={{ color: "var(--c-text-muted)", fontFamily: FONT }}
+        >
+          YRDLY v1.01
+        </p>
       </div>
+
+      {/* ── Sign Out Dialog ── */}
+      {showSignOutDialog && (
+        <AlertDialog
+          open={showSignOutDialog}
+          onOpenChange={setShowSignOutDialog}
+        >
+          <AlertDialogContent
+            style={{
+              background: "var(--c-card)",
+              border: "1px solid rgba(130,219,126,0.2)",
+            }}
+          >
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-foreground">
+                Sign Out
+              </AlertDialogTitle>
+              <AlertDialogDescription style={{ color: "var(--c-text-muted)" }}>
+                Are you sure you want to sign out of your YRDLY account?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel
+                style={{
+                  background: "var(--c-card)",
+                  border: "1px solid var(--c-border)",
+                  color: "var(--c-text)",
+                }}
+              >
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                style={{ background: "#E53935" }}
+                onClick={handleSignOut}
+              >
+                Sign Out
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+
+      {/* ── Email Support Dialog ── */}
+      {showEmailDialog && (
+        <AlertDialog open={showEmailDialog} onOpenChange={setShowEmailDialog}>
+          <AlertDialogContent
+            style={{
+              background: "var(--c-card)",
+              border: "1px solid rgba(130,219,126,0.2)",
+            }}
+          >
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-foreground">
+                Change Email
+              </AlertDialogTitle>
+              <AlertDialogDescription style={{ color: "var(--c-text-muted)" }}>
+                To change your email address, please contact support@yrdly.ng
+                with a valid ID for verification.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogAction
+                style={{ background: GREEN }}
+                onClick={() => setShowEmailDialog(false)}
+              >
+                OK
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   );
 }
