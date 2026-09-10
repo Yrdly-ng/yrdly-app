@@ -107,39 +107,30 @@ export function BuyButton({
       setOpen(false);
 
       if (data.paylukPaymentToken) {
-        const publicKey = process.env.NEXT_PUBLIC_PAYLUK_PUBLIC_KEY || 'pk_live_6Q6EZJ8f2wBB3zRkNT0tHxEluaEeRzPh';
-        const launchPayluk = () => {
-          if ((window as any).PaylukInlineCheckout) {
-            (window as any).PaylukInlineCheckout.pay({
-              token: data.paylukPaymentToken,
-              publicKey,
-              onSuccess: () => {
+        try {
+          const { initEscrowCheckout, pay } = await import('payluk-escrow-inline-checkout');
+          initEscrowCheckout({
+            publicKey: process.env.NEXT_PUBLIC_PAYLUK_PUBLIC_KEY!,
+          });
+          await pay({
+            paymentToken: data.paylukPaymentToken,
+            reference: data.transactionId,
+            redirectUrl: `${window.location.origin}/transactions/${data.transactionId}`,
+            brand: 'Yrdly',
+            customerId: user.id,
+            callback: (result: any) => {
+              if (result?.status === 'success' || result?.status === 'paid') {
                 toast({ title: "Payment Successful", description: "Your transaction has been processed." });
                 router.push(`/transactions/${data.transactionId}`);
-              },
-              onCancel: () => {
-                toast({ title: "Payment Cancelled" });
-              },
-              onError: (err: any) => {
-                toast({ title: "Payment Error", description: err?.message || "An error occurred during payment.", variant: "destructive" });
-              },
-            });
-          } else {
-            toast({ title: "Error", description: "Payment checkout SDK failed to load.", variant: "destructive" });
-          }
-        };
-
-        if ((window as any).PaylukInlineCheckout) {
-          launchPayluk();
-        } else {
-          const script = document.createElement("script");
-          script.src = "https://cdn.payluk.ng/sdk/v1/payluk-inline.js";
-          script.async = true;
-          script.onload = launchPayluk;
-          script.onerror = () => {
-            toast({ title: "Error", description: "Unable to load Payluk payment script.", variant: "destructive" });
-          };
-          document.body.appendChild(script);
+              }
+            },
+            onClose: () => {
+              toast({ title: "Payment Cancelled", description: "You closed the payment window." });
+            },
+          });
+        } catch (sdkErr: any) {
+          console.error("[BuyButton] Payluk SDK error:", sdkErr);
+          toast({ title: "Payment Error", description: sdkErr?.message || "An error occurred during payment.", variant: "destructive" });
         }
       } else if (data.paymentLink) {
         window.location.href = data.paymentLink;
