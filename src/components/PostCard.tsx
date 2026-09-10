@@ -21,6 +21,8 @@ import {
   Pause,
   Play,
   BadgeCheck,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { supabase } from "@/lib/supabase";
@@ -83,7 +85,7 @@ function CategoryTag({ category }: { category: string }) {
   );
 }
 
-/* ─── image collage (1 tall-left + 2 stacked-right) ────────────── */
+/* ─── interactive inline image swiper for feed posts ────────────── */
 function ImageCollage({
   urls,
   onImageClick,
@@ -91,6 +93,9 @@ function ImageCollage({
   urls: string[];
   onImageClick: (i: number) => void;
 }) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
   if (urls.length === 0) return null;
 
   if (urls.length === 1) {
@@ -111,35 +116,96 @@ function ImageCollage({
     );
   }
 
-  // 2 images: equal side-by-side at fixed height
-  if (urls.length === 2) {
-    return (
-      <div className="grid grid-cols-2 gap-0.5 overflow-hidden relative rounded-yrdly-md" style={{ aspectRatio: "4/5", maxHeight: 480 }}>
-        {urls.map((u, i) => (
-          <div key={i} className="relative cursor-pointer h-full" onClick={() => onImageClick(i)}>
-            <Image src={u} alt="" fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover post-media-image" />
+  const handleScroll = () => {
+    if (!scrollRef.current) return;
+    const { scrollLeft, clientWidth } = scrollRef.current;
+    if (clientWidth > 0) {
+      const idx = Math.round(scrollLeft / clientWidth);
+      setActiveIndex(idx);
+    }
+  };
+
+  const scrollToSlide = (idx: number) => {
+    if (!scrollRef.current) return;
+    const targetIdx = Math.max(0, Math.min(idx, urls.length - 1));
+    const width = scrollRef.current.clientWidth;
+    scrollRef.current.scrollTo({
+      left: targetIdx * width,
+      behavior: "smooth",
+    });
+    setActiveIndex(targetIdx);
+  };
+
+  return (
+    <div
+      className="relative w-full overflow-hidden rounded-yrdly-md group"
+      style={{ aspectRatio: "4/5", maxHeight: 480 }}
+    >
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="flex w-full h-full overflow-x-auto snap-x snap-mandatory scrollbar-hide select-none"
+      >
+        {urls.map((url, i) => (
+          <div
+            key={i}
+            className="relative flex-shrink-0 w-full h-full snap-center cursor-pointer"
+            onClick={() => onImageClick(i)}
+          >
+            <Image
+              src={url}
+              alt={`Post image ${i + 1}`}
+              fill
+              className="object-cover post-media-image"
+              sizes="(max-width: 640px) 100vw, 626px"
+            />
           </div>
         ))}
       </div>
-    );
-  }
 
-  // 3+: 1 tall left + 2 right stacked (Nextdoor style)
-  return (
-    <div className="grid grid-cols-2 gap-0.5 overflow-hidden relative rounded-yrdly-md" style={{ aspectRatio: "4/5", maxHeight: 480 }}>
-      <div className="relative row-span-2 cursor-pointer h-full" onClick={() => onImageClick(0)}>
-        <Image src={urls[0]} alt="" fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover post-media-image" />
+      {/* Prev / Next Chevrons on Desktop Hover */}
+      {activeIndex > 0 && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            scrollToSlide(activeIndex - 1);
+          }}
+          className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-black/80"
+          aria-label="Previous image"
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+      )}
+
+      {activeIndex < urls.length - 1 && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            scrollToSlide(activeIndex + 1);
+          }}
+          className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-black/80"
+          aria-label="Next image"
+        >
+          <ChevronRight className="w-5 h-5" />
+        </button>
+      )}
+
+      {/* Slide Counter Badge */}
+      <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-[10px] font-bold bg-black/60 text-white z-10 pointer-events-none font-yrdly-body">
+        {activeIndex + 1} / {urls.length}
       </div>
-      <div className="relative cursor-pointer" onClick={() => onImageClick(1)}>
-        <Image src={urls[1]} alt="" fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover post-media-image" />
-      </div>
-      <div className="relative cursor-pointer" onClick={() => onImageClick(2)}>
-        <Image src={urls[2]} alt="" fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover post-media-image" />
-        {urls.length > 3 && (
-          <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-            <span className="text-primary-foreground font-semibold text-base font-yrdly-body">+{urls.length - 3}</span>
-          </div>
-        )}
+
+      {/* Dot Indicators */}
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-sm z-10 pointer-events-none">
+        {urls.map((_, i) => (
+          <div
+            key={i}
+            className={cn(
+              "h-1.5 rounded-full transition-all duration-200",
+              i === activeIndex ? "w-4 bg-[#82DB7E]" : "w-1.5 bg-white/60"
+            )}
+          />
+        ))}
       </div>
     </div>
   );

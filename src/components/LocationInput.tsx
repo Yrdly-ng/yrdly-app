@@ -25,7 +25,7 @@ interface LocationInputProps {
 }
 
 export function LocationInput({ name, control, defaultValue }: LocationInputProps) {
-  const { setValue: setFormValue } = useFormContext();
+  const formContext = useFormContext();
   const {
     ready,
     value,
@@ -65,13 +65,17 @@ export function LocationInput({ name, control, defaultValue }: LocationInputProp
     clearSuggestions();
 
     const details = await getPlaceDetails(prediction.place_id);
-    setFormValue(name, details, { shouldValidate: true, shouldDirty: true });
+    if (formContext?.setValue) {
+      formContext.setValue(name, details, { shouldValidate: true, shouldDirty: true });
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newAddress = e.target.value;
     getPlacePredictions(newAddress);
-    setFormValue(name, { address: newAddress }, { shouldValidate: true, shouldDirty: true });
+    if (formContext?.setValue) {
+      formContext.setValue(name, { address: newAddress }, { shouldValidate: true, shouldDirty: true });
+    }
     setShowSuggestions(true);
   };
   

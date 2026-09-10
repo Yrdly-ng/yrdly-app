@@ -62,7 +62,7 @@ export function BottomNav({ navItems, pathname, onCreateMenu }: BottomNavProps) 
         <button
           onClick={onCreateMenu}
           aria-label="Create"
-          className="relative -translate-y-3 flex items-center justify-center w-12 h-12 rounded-full bg-[var(--primary)] text-white shadow-lg shadow-black/20 transition-transform duration-150 active:scale-90"
+          className="relative -translate-y-3 flex items-center justify-center w-12 h-12 rounded-full bg-[#82DB7E] text-black font-extrabold shadow-lg shadow-black/20 transition-transform duration-150 active:scale-90"
         >
           <Plus size={26} weight="bold" />
         </button>

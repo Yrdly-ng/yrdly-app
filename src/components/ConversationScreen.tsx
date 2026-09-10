@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/use-supabase-auth";
 import { supabase } from "@/lib/supabase";
 import { StorageService } from "@/lib/storage-service";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, ImagePlus, VideoIcon, Send, MessageCircle, Loader2, Download, X, MoreVertical, Trash2 } from "lucide-react";
+import { ArrowLeft, ImagePlus, VideoIcon, Send, MessageCircle, Loader2, Download, X, MoreVertical, Trash2, Edit, Copy } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { ActivityIndicator } from "@/components/ActivityIndicator";
 import { useTypingDetection } from "@/hooks/use-typing-detection";
@@ -94,6 +94,18 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
       toast({ title: "Message deleted for everyone" });
     } catch (e) {
       toast({ title: "Error deleting message", variant: "destructive" });
+    }
+  };
+
+  const handleEditMessage = async (msgId: string, newText: string) => {
+    if (!user || !newText.trim()) return;
+    try {
+      const { error } = await supabase.from("messages").update({ text: newText.trim(), content: newText.trim() }).eq("id", msgId);
+      if (error) throw error;
+      setMessages((prev) => prev.map((m) => m.id === msgId ? { ...m, text: newText.trim(), content: newText.trim() } : m));
+      toast({ title: "Message edited" });
+    } catch (e) {
+      toast({ title: "Error editing message", variant: "destructive" });
     }
   };
 
@@ -562,7 +574,26 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
                         <MoreVertical className="w-3.5 h-3.5" />
                       </button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align={isOwn ? "end" : "start"} className="w-44 bg-[var(--yrdly-dark)] border border-[var(--yrdly-glass-border)] text-foreground font-yrdly-body">
+                    <DropdownMenuContent align={isOwn ? "end" : "start"} className="w-48 bg-[var(--yrdly-dark)] border border-[var(--yrdly-glass-border)] text-foreground font-yrdly-body">
+                      {(msg.text || msg.content) && (
+                        <DropdownMenuItem onClick={() => {
+                          navigator.clipboard.writeText(msg.text || msg.content || "");
+                          toast({ title: "Copied to clipboard" });
+                        }} className="cursor-pointer">
+                          <Copy className="w-3.5 h-3.5 mr-2" /> Copy text
+                        </DropdownMenuItem>
+                      )}
+                      {isOwn && (msg.text || msg.content) && (
+                        <DropdownMenuItem onClick={() => {
+                          const val = msg.text || msg.content || "";
+                          const updated = prompt("Edit message:", val);
+                          if (updated && updated.trim() !== val) {
+                            handleEditMessage(msg.id, updated);
+                          }
+                        }} className="cursor-pointer">
+                          <Edit className="w-3.5 h-3.5 mr-2" /> Edit message
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuItem onClick={() => handleDeleteMessageForMe(msg.id)} className="text-red-400 focus:text-red-400 cursor-pointer">
                         <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete for me
                       </DropdownMenuItem>

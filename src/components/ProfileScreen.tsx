@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ActivityIndicator } from "@/components/ActivityIndicator";
 import Image from "next/image";
 import { ProfileQuickAccess } from "./ProfileQuickAccess";
+import { CreateBusinessDialog } from "./CreateBusinessDialog";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { useFriendshipGlobal } from "@/hooks/use-friendship-global";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -125,6 +126,16 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
 
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+  const [isCreateBusinessOpen, setIsCreateBusinessOpen] = useState(false);
+  const [hasBusiness, setHasBusiness] = useState(false);
+
+  useEffect(() => {
+    if (currentUser?.id) {
+      supabase.from("businesses").select("id").eq("owner_id", currentUser.id).then(({ data }) => {
+        if (data && data.length > 0) setHasBusiness(true);
+      });
+    }
+  }, [currentUser?.id]);
 
   const targetUser = externalTargetUser || user || currentUser;
   const targetProfile = externalTargetUser ? null : (user ? null : currentProfile);
@@ -407,7 +418,17 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
       {/* ── Quick Access ── */}
       {actualIsOwnProfile && (
         <div className="mb-6">
-          <ProfileQuickAccess onOpenStore={() => router.push('/marketplace')} />
+          <ProfileQuickAccess
+            hasBusiness={hasBusiness}
+            onOpenStore={() => {
+              if (hasBusiness) {
+                router.push('/businesses');
+              } else {
+                setIsCreateBusinessOpen(true);
+              }
+            }}
+          />
+          <CreateBusinessDialog open={isCreateBusinessOpen} onOpenChange={setIsCreateBusinessOpen} />
         </div>
       )}
 

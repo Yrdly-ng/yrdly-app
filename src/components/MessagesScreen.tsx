@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, MessageSquare, Plus, Trash2, X, ChevronRight, ShoppingBag } from "lucide-react";
@@ -47,6 +47,156 @@ function timeLabel(ts: string): string {
   } catch {
     return "";
   }
+}
+
+function SwipeableConversationItem({
+  item,
+  onDelete,
+}: {
+  item: Conversation;
+  onDelete: (id: string, e: React.MouseEvent) => void;
+}) {
+  const [swipeOffset, setSwipeOffset] = useState(0);
+  const touchStartX = useRef(0);
+  const isSwiping = useRef(false);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    isSwiping.current = true;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isSwiping.current) return;
+    const diff = e.touches[0].clientX - touchStartX.current;
+    if (diff < 0) {
+      setSwipeOffset(Math.max(diff, -80));
+    } else {
+      setSwipeOffset(0);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    isSwiping.current = false;
+    if (swipeOffset < -40) {
+      setSwipeOffset(-70);
+    } else {
+      setSwipeOffset(0);
+    }
+  };
+
+  const isUnread = item.unreadCount > 0;
+
+  return (
+    <div className="relative overflow-hidden group">
+      {/* Red Delete Action underneath on the right */}
+      <div className="absolute inset-y-0 right-0 w-20 bg-red-600 flex items-center justify-center text-white z-0">
+        <button
+          type="button"
+          onClick={(e) => onDelete(item.id, e)}
+          className="w-full h-full flex flex-col items-center justify-center gap-0.5 text-xs font-bold font-yrdly-display"
+        >
+          <Trash2 size={18} />
+          <span>Delete</span>
+        </button>
+      </div>
+
+      <div
+        style={{
+          transform: `translateX(${swipeOffset}px)`,
+          transition: isSwiping.current ? "none" : "transform 200ms ease",
+        }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        className="relative z-10 bg-[var(--yrdly-dark)]"
+      >
+        <Link
+          href={`/messages/${item.id}`}
+          className={cn(
+            "flex items-center gap-3.5 px-5 py-3.5 transition-colors hover:bg-white/5",
+            isUnread && "bg-[#82DB7E]/[0.03]"
+          )}
+        >
+          {/* Avatar */}
+          <div className="relative w-12 h-12 flex-shrink-0">
+            {item.participantAvatar ? (
+              <Image
+                src={item.participantAvatar}
+                alt={item.participantName}
+                width={48}
+                height={48}
+                className="w-12 h-12 rounded-full object-cover"
+                unoptimized
+              />
+            ) : (
+              <div className="w-12 h-12 rounded-full bg-[#82DB7E]/10 flex items-center justify-center font-bold text-lg text-[#82DB7E] font-yrdly-display">
+                {item.participantName.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <div className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-[#82DB7E] border-2 border-[var(--yrdly-dark)]" />
+          </div>
+
+          {/* Details */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2 mb-0.5">
+              <span
+                className={cn(
+                  "text-sm font-semibold truncate text-foreground font-yrdly-display",
+                  isUnread && "font-extrabold"
+                )}
+              >
+                {item.participantName}
+              </span>
+              <span
+                className={cn(
+                  "text-xs font-mono flex-shrink-0",
+                  isUnread ? "text-[#82DB7E] font-bold" : "text-[var(--yrdly-label)]"
+                )}
+              >
+                {timeLabel(item.timestamp)}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between gap-2">
+              <p
+                className={cn(
+                  "text-xs truncate font-yrdly-body",
+                  isUnread ? "text-foreground font-medium" : "text-[var(--yrdly-label)]"
+                )}
+              >
+                {item.lastMessage}
+              </p>
+              {isUnread && (
+                <span
+                  className="px-1.5 py-0.2 min-w-[18px] h-4 rounded-full text-[10px] font-bold flex items-center justify-center text-black flex-shrink-0"
+                  style={{ backgroundColor: GREEN }}
+                >
+                  {item.unreadCount}
+                </span>
+              )}
+            </div>
+
+            {item.context?.itemTitle && (
+              <div className="flex items-center gap-1 mt-1 text-[11px] text-[var(--yrdly-label)]">
+                <ShoppingBag size={11} />
+                <span className="truncate">{item.context.itemTitle}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Delete button on hover */}
+          <button
+            type="button"
+            onClick={(e) => onDelete(item.id, e)}
+            className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-[var(--yrdly-label)] hover:text-red-500 hover:bg-red-500/10 transition-all flex-shrink-0"
+            title="Delete Conversation"
+          >
+            <Trash2 size={16} />
+          </button>
+        </Link>
+      </div>
+    </div>
+  );
 }
 
 export function MessagesScreen() {
@@ -468,97 +618,13 @@ export function MessagesScreen() {
         </div>
       ) : (
         <div className="divide-y divide-surface">
-          {filteredConversations.map((item) => {
-            const isUnread = item.unreadCount > 0;
-
-            return (
-              <Link
-                key={item.id}
-                href={`/messages/${item.id}`}
-                className={cn(
-                  "group flex items-center gap-3.5 px-5 py-3.5 transition-colors hover:bg-white/5",
-                  isUnread && "bg-[#82DB7E]/[0.03]"
-                )}
-              >
-                {/* Avatar */}
-                <div className="relative w-12 h-12 flex-shrink-0">
-                  {item.participantAvatar ? (
-                    <Image
-                      src={item.participantAvatar}
-                      alt={item.participantName}
-                      width={48}
-                      height={48}
-                      className="w-12 h-12 rounded-full object-cover"
-                      unoptimized
-                    />
-                  ) : (
-                    <div className="w-12 h-12 rounded-full bg-[#82DB7E]/10 flex items-center justify-center font-bold text-lg text-[#82DB7E] font-yrdly-display">
-                      {item.participantName.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                  <div className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-[#82DB7E] border-2 border-[var(--yrdly-dark)]" />
-                </div>
-
-                {/* Details */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2 mb-0.5">
-                    <span
-                      className={cn(
-                        "text-sm font-semibold truncate text-foreground font-yrdly-display",
-                        isUnread && "font-extrabold"
-                      )}
-                    >
-                      {item.participantName}
-                    </span>
-                    <span
-                      className={cn(
-                        "text-xs font-mono flex-shrink-0",
-                        isUnread ? "text-[#82DB7E] font-bold" : "text-[var(--yrdly-label)]"
-                      )}
-                    >
-                      {timeLabel(item.timestamp)}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-2">
-                    <p
-                      className={cn(
-                        "text-xs truncate font-yrdly-body",
-                        isUnread ? "text-foreground font-medium" : "text-[var(--yrdly-label)]"
-                      )}
-                    >
-                      {item.lastMessage}
-                    </p>
-                    {isUnread && (
-                      <span
-                        className="px-1.5 py-0.2 min-w-[18px] h-4 rounded-full text-[10px] font-bold flex items-center justify-center text-black flex-shrink-0"
-                        style={{ backgroundColor: GREEN }}
-                      >
-                        {item.unreadCount}
-                      </span>
-                    )}
-                  </div>
-
-                  {item.context?.itemTitle && (
-                    <div className="flex items-center gap-1 mt-1 text-[11px] text-[var(--yrdly-label)]">
-                      <ShoppingBag size={11} />
-                      <span className="truncate">{item.context.itemTitle}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Delete button on hover */}
-                <button
-                  type="button"
-                  onClick={(e) => handleDeleteConversation(item.id, e)}
-                  className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-[var(--yrdly-label)] hover:text-red-500 hover:bg-red-500/10 transition-all flex-shrink-0"
-                  title="Delete Conversation"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </Link>
-            );
-          })}
+          {filteredConversations.map((item) => (
+            <SwipeableConversationItem
+              key={item.id}
+              item={item}
+              onDelete={handleDeleteConversation}
+            />
+          ))}
         </div>
       )}
     </div>

@@ -283,8 +283,8 @@ export function CommunityScreen({ className }: { className?: string }) {
             onClick={() => setActiveTab("discover")}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full text-xs font-extrabold font-yrdly-display transition-all ${
               activeTab === "discover"
-                ? "bg-[var(--primary)] text-black shadow-sm"
-                : "text-[var(--yrdly-text-primary)] hover:text-foreground"
+                ? "bg-[#82DB7E] text-black shadow-sm"
+                : "text-[var(--yrdly-text-secondary)] hover:text-foreground font-medium"
             }`}
           >
             Nearby
@@ -293,12 +293,12 @@ export function CommunityScreen({ className }: { className?: string }) {
             onClick={() => setActiveTab("friends")}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full text-xs font-extrabold font-yrdly-display transition-all ${
               activeTab === "friends"
-                ? "bg-[var(--primary)] text-black shadow-sm"
-                : "text-[var(--yrdly-text-primary)] hover:text-foreground"
+                ? "bg-[#82DB7E] text-black shadow-sm"
+                : "text-[var(--yrdly-text-secondary)] hover:text-foreground font-medium"
             }`}
           >
             My circle
-            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+            <span className="w-2 h-2 rounded-full bg-emerald-600 inline-block" />
             {friends.length > 0 && <span>({friends.length})</span>}
           </button>
         </div>
@@ -373,7 +373,8 @@ export function CommunityScreen({ className }: { className?: string }) {
                     return (
                       <GlassCard
                         key={req.id}
-                        className="flex items-center gap-3 p-3 rounded-2xl"
+                        className="rounded-2xl"
+                        contentClassName="flex items-center justify-between gap-3 p-3.5 w-full"
                       >
                         <Avatar
                           className="w-12 h-12 cursor-pointer"
@@ -435,7 +436,8 @@ export function CommunityScreen({ className }: { className?: string }) {
                     return (
                       <GlassCard
                         key={friend.reqId}
-                        className="flex items-center gap-3 p-3 rounded-2xl transition-all hover:border-primary/40"
+                        className="rounded-2xl transition-all hover:border-primary/40"
+                        contentClassName="flex items-center justify-between gap-3 p-3.5 w-full"
                       >
                         <Avatar
                           className="w-12 h-12 cursor-pointer"
@@ -526,7 +528,8 @@ export function CommunityScreen({ className }: { className?: string }) {
                   return (
                     <GlassCard
                       key={u.id}
-                      className="flex items-center gap-3 p-3 rounded-2xl transition-all hover:border-primary/40"
+                      className="rounded-2xl transition-all hover:border-primary/40"
+                      contentClassName="flex items-center justify-between gap-3 p-3.5 w-full"
                     >
                       <Avatar
                         className="w-12 h-12 cursor-pointer"
