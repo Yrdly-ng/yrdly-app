@@ -117,6 +117,7 @@ export function BuyButton({
             reference: data.transactionId,
             redirectUrl: `${window.location.origin}/transactions/${data.transactionId}`,
             brand: 'Yrdly',
+            customerId: data.buyerPaylukId,
             callback: (result: any) => {
               if (result?.status === 'success' || result?.status === 'paid') {
                 toast({ title: "Payment Successful", description: "Your transaction has been processed." });

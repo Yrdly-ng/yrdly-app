@@ -361,6 +361,7 @@ export async function POST(request: NextRequest) {
     let paylukPaymentToken: string | undefined = undefined;
     let paylukEscrowId: string | undefined = undefined;
     let sellerPaylukId: string | undefined = undefined;
+    let buyerPaylukId: string | undefined = undefined;
 
     if (totalAmount > 0) {
       const { data: claimedTx, error: claimErr } = await supabaseAdmin
@@ -493,7 +494,7 @@ export async function POST(request: NextRequest) {
 
       // Winner of the atomic claim proceeds to call PaylukService.createEscrow()
       try {
-        await getPaylukCustomerId(buyerId);
+        buyerPaylukId = await getPaylukCustomerId(buyerId);
         sellerPaylukId = await getPaylukCustomerId(sellerId);
         
         const paylukEscrow = await PaylukService.createEscrow(sellerPaylukId, {
@@ -604,6 +605,7 @@ export async function POST(request: NextRequest) {
       totalAmount,
       paylukPaymentToken,
       paylukEscrowId,
+      buyerPaylukId,
     });
   } catch (error) {
     console.error("Payment initialization error:", error);
