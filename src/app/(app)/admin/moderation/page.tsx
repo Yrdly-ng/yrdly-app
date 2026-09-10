@@ -106,15 +106,15 @@ export default function AdminModerationPage() {
 
   if (loading && queue.length === 0) {
     return (
-      <div className="min-h-[100dvh] bg-background p-4">
+      <div className="min-h-[100dvh] bg-[var(--yrdly-dark)] text-[var(--yrdly-text-primary)] font-yrdly-body p-4">
         <div className="max-w-6xl mx-auto space-y-6">
           <div>
-            <h1 className="text-2xl font-bold">Moderation Queue</h1>
-            <p className="text-muted-foreground">Review flagged content across Yrdly</p>
+            <h1 className="text-2xl font-bold font-yrdly-display">Moderation Queue</h1>
+            <p className="text-[var(--yrdly-label)]">Review flagged content across Yrdly</p>
           </div>
           <div className="space-y-4">
             {[...Array(5)].map((_, i) => (
-              <Card key={i}>
+              <Card key={i} className="border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)]">
                 <CardContent className="p-6">
                   <div className="flex items-start gap-4">
                     <Skeleton className="h-24 w-24 rounded-lg" />
@@ -134,12 +134,12 @@ export default function AdminModerationPage() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-background p-4">
+    <div className="min-h-[100dvh] bg-[var(--yrdly-dark)] text-[var(--yrdly-text-primary)] font-yrdly-body p-4">
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold">Moderation Queue</h1>
-            <p className="text-muted-foreground">Review flagged content across Yrdly</p>
+            <h1 className="text-2xl font-bold font-yrdly-display">Moderation Queue</h1>
+            <p className="text-[var(--yrdly-label)]">Review flagged content across Yrdly</p>
           </div>
         </div>
 

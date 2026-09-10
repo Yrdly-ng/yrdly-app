@@ -7,8 +7,8 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useToast } from "@/hooks/use-toast";
 
-const FONT = "var(--font-work-sans)";
-const RALEWAY = "var(--font-jersey25)";
+const FONT = "var(--yrdly-font-body)";
+const RALEWAY = "var(--yrdly-font-display)";
 
 export default function SafetyAlertsAdminQueuePage() {
   const router = useRouter();

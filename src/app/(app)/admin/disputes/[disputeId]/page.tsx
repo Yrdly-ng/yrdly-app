@@ -248,10 +248,10 @@ export default function AdminDisputeReviewPage() {
 
   if (loading) {
     return (
-      <div className="min-h-[100dvh] bg-background flex items-center justify-center">
+      <div className="min-h-[100dvh] bg-[var(--yrdly-dark)] font-yrdly-body flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading dispute details...</p>
+          <p className="text-[var(--yrdly-label)]">Loading dispute details...</p>
         </div>
       </div>
     );
@@ -259,12 +259,12 @@ export default function AdminDisputeReviewPage() {
 
   if (!dispute) {
     return (
-      <div className="min-h-[100dvh] bg-background flex items-center justify-center">
-        <Card className="w-full max-w-md">
+      <div className="min-h-[100dvh] bg-[var(--yrdly-dark)] font-yrdly-body flex items-center justify-center p-4">
+        <Card className="w-full max-w-md border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] backdrop-blur-xl shadow-lg">
           <CardContent className="text-center p-6">
-            <AlertTriangle className="h-12 w-12 text-orange-500 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Dispute Not Found</h3>
-            <p className="text-muted-foreground mb-4">
+            <AlertTriangle className="h-12 w-12 text-amber-500 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold font-yrdly-display text-foreground mb-2">Dispute Not Found</h3>
+            <p className="text-[var(--yrdly-label)] mb-4">
               The dispute you&apos;re looking for doesn&apos;t exist.
             </p>
             <Button onClick={() => router.push('/admin/disputes')}>
@@ -281,12 +281,12 @@ export default function AdminDisputeReviewPage() {
 
   if (!transaction) {
     return (
-      <div className="min-h-[100dvh] bg-background flex items-center justify-center">
-        <Card className="w-full max-w-md">
+      <div className="min-h-[100dvh] bg-[var(--yrdly-dark)] font-yrdly-body flex items-center justify-center p-4">
+        <Card className="w-full max-w-md border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] backdrop-blur-xl shadow-lg">
           <CardContent className="text-center p-6">
-            <AlertTriangle className="h-12 w-12 text-orange-500 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Transaction Not Found</h3>
-            <p className="text-muted-foreground mb-4">
+            <AlertTriangle className="h-12 w-12 text-amber-500 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold font-yrdly-display text-foreground mb-2">Transaction Not Found</h3>
+            <p className="text-[var(--yrdly-label)] mb-4">
               The transaction associated with this dispute could not be found.
             </p>
             <Button onClick={() => router.push('/admin/disputes')}>
@@ -299,7 +299,7 @@ export default function AdminDisputeReviewPage() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-background">
+    <div className="min-h-[100dvh] bg-[var(--yrdly-dark)] font-yrdly-body text-foreground">
       <AppHeader 
         title="Dispute Review" 
         onBack={() => {
@@ -315,7 +315,7 @@ export default function AdminDisputeReviewPage() {
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-muted-foreground">Dispute ID: {dispute.id}</p>
+              <p className="text-[var(--yrdly-label)]">Dispute ID: {dispute.id}</p>
             </div>
             {getStatusBadge(dispute.status)}
           </div>
@@ -324,16 +324,16 @@ export default function AdminDisputeReviewPage() {
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
             {/* Item Details */}
-            <Card>
+            <Card className="border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] backdrop-blur-xl shadow-lg">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-2 font-yrdly-display text-foreground text-lg">
+                  <FileText className="h-5 w-5 text-primary" />
                   Item Details
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex gap-4">
-                  <div className="w-20 h-20 relative rounded-lg overflow-hidden">
+                  <div className="w-20 h-20 relative rounded-lg overflow-hidden border border-[var(--yrdly-glass-border)]">
                     <Image
                       src={transaction.item?.image_urls?.[0] || "/placeholder.svg"}
                       alt={transaction.item?.title || transaction.item?.text || "Item"} fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
@@ -341,10 +341,10 @@ export default function AdminDisputeReviewPage() {
                     />
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-semibold">
+                    <h3 className="font-semibold font-yrdly-display text-foreground">
                       {transaction.item?.title || transaction.item?.text || "Untitled Item"}
                     </h3>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-[var(--yrdly-label)]">
                       {transaction.item?.text || "No description available"}
                     </p>
                     <p className="text-lg font-bold text-primary mt-2">
@@ -357,7 +357,7 @@ export default function AdminDisputeReviewPage() {
 
             {/* Evidence Section */}
             <div className="space-y-6">
-              <h2 className="text-xl font-semibold">Evidence</h2>
+              <h2 className="text-xl font-bold font-yrdly-display text-foreground">Evidence</h2>
               {renderEvidence(dispute.buyerEvidence, "Buyer Evidence")}
               {renderEvidence(dispute.sellerEvidence, "Seller Evidence")}
             </div>
@@ -366,40 +366,40 @@ export default function AdminDisputeReviewPage() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Dispute Information */}
-            <Card>
+            <Card className="border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] backdrop-blur-xl shadow-lg">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-2 font-yrdly-display text-foreground text-lg">
+                  <AlertTriangle className="h-5 w-5 text-amber-500" />
                   Dispute Information
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Reason:</span>
-                  <span>{getReasonText(dispute.disputeReason)}</span>
+                  <span className="text-[var(--yrdly-label)]">Reason:</span>
+                  <span className="text-foreground">{getReasonText(dispute.disputeReason)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Opened:</span>
-                  <span>{new Date(dispute.createdAt).toLocaleDateString()}</span>
+                  <span className="text-[var(--yrdly-label)]">Opened:</span>
+                  <span className="text-foreground">{new Date(dispute.createdAt).toLocaleDateString()}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Status:</span>
+                  <span className="text-[var(--yrdly-label)]">Status:</span>
                   {getStatusBadge(dispute.status)}
                 </div>
                 {dispute.resolvedAt && (
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Resolved:</span>
-                    <span>{new Date(dispute.resolvedAt).toLocaleDateString()}</span>
+                    <span className="text-[var(--yrdly-label)]">Resolved:</span>
+                    <span className="text-foreground">{new Date(dispute.resolvedAt).toLocaleDateString()}</span>
                   </div>
                 )}
               </CardContent>
             </Card>
 
             {/* User Information */}
-            <Card>
+            <Card className="border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] backdrop-blur-xl shadow-lg">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-2 font-yrdly-display text-foreground text-lg">
+                  <User className="h-5 w-5 text-primary" />
                   Users Involved
                 </CardTitle>
               </CardHeader>
@@ -407,35 +407,35 @@ export default function AdminDisputeReviewPage() {
                 <div className="flex items-center gap-3">
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={transaction.buyer?.avatar_url || "/placeholder.svg"} />
-                    <AvatarFallback>
+                    <AvatarFallback className="bg-primary/20 text-primary font-bold">
                       {transaction.buyer?.name?.slice(0, 2).toUpperCase() || "B"}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <h4 className="font-medium">Buyer</h4>
-                    <p className="text-sm text-muted-foreground">{transaction.buyer?.name || "Unknown"}</p>
+                    <h4 className="font-medium text-foreground">Buyer</h4>
+                    <p className="text-sm text-[var(--yrdly-label)]">{transaction.buyer?.name || "Unknown"}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={transaction.seller?.avatar_url || "/placeholder.svg"} />
-                    <AvatarFallback>
+                    <AvatarFallback className="bg-primary/20 text-primary font-bold">
                       {transaction.seller?.name?.slice(0, 2).toUpperCase() || "S"}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <h4 className="font-medium">Seller</h4>
-                    <p className="text-sm text-muted-foreground">{transaction.seller?.name || "Unknown"}</p>
+                    <h4 className="font-medium text-foreground">Seller</h4>
+                    <p className="text-sm text-[var(--yrdly-label)]">{transaction.seller?.name || "Unknown"}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             {/* Admin Notes */}
-            <Card>
+            <Card className="border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] backdrop-blur-xl shadow-lg">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MessageCircle className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-2 font-yrdly-display text-foreground text-lg">
+                  <MessageCircle className="h-5 w-5 text-primary" />
                   Admin Notes
                 </CardTitle>
               </CardHeader>
@@ -445,6 +445,7 @@ export default function AdminDisputeReviewPage() {
                   value={adminNotes}
                   onChange={(e) => setAdminNotes(e.target.value)}
                   rows={4}
+                  className="border-[var(--yrdly-glass-border)] bg-background/50 text-foreground"
                 />
                 <Button 
                   onClick={handleSaveNotes}
@@ -460,64 +461,65 @@ export default function AdminDisputeReviewPage() {
 
             {/* Resolution (if not resolved) */}
             {dispute.status !== 'resolved' && dispute.status !== 'closed' && (
-              <Card>
+              <Card className="border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] backdrop-blur-xl shadow-lg">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <CheckCircle className="h-5 w-5" />
+                  <CardTitle className="flex items-center gap-2 font-yrdly-display text-foreground text-lg">
+                    <CheckCircle className="h-5 w-5 text-emerald-500" />
                     Resolve Dispute
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <Label htmlFor="resolution">Resolution *</Label>
+                    <Label htmlFor="resolution" className="text-foreground">Resolution *</Label>
                     <Textarea
                       id="resolution"
                       placeholder="Describe how you're resolving this dispute..."
                       value={resolution}
                       onChange={(e) => setResolution(e.target.value)}
                       rows={3}
+                      className="border-[var(--yrdly-glass-border)] bg-background/50 text-foreground"
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <Label htmlFor="refund">Refund Amount</Label>
+                      <Label htmlFor="refund" className="text-foreground">Refund Amount</Label>
                       <div className="relative">
-                        <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-[var(--yrdly-label)]" />
                         <Input
                           id="refund"
                           type="number"
                           placeholder="0"
                           value={refundAmount}
                           onChange={(e) => setRefundAmount(Number(e.target.value))}
-                          className="pl-10"
+                          className="pl-10 border-[var(--yrdly-glass-border)] bg-background/50 text-foreground"
                         />
                       </div>
                     </div>
                     <div>
-                      <Label htmlFor="seller">Seller Amount</Label>
+                      <Label htmlFor="seller" className="text-foreground">Seller Amount</Label>
                       <div className="relative">
-                        <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-[var(--yrdly-label)]" />
                         <Input
                           id="seller"
                           type="number"
                           placeholder="0"
                           value={sellerAmount}
                           onChange={(e) => setSellerAmount(Number(e.target.value))}
-                          className="pl-10"
+                          className="pl-10 border-[var(--yrdly-glass-border)] bg-background/50 text-foreground"
                         />
                       </div>
                     </div>
                   </div>
 
-                  <div className="p-3 bg-gray-50 rounded-lg">
+                  <div className="p-3 bg-background/50 border border-[var(--yrdly-glass-border)] rounded-lg">
                     <div className="flex justify-between text-sm">
-                      <span>Total Transaction:</span>
-                      <span className="font-medium">₦{totalAmount.toLocaleString()}</span>
+                      <span className="text-[var(--yrdly-label)]">Total Transaction:</span>
+                      <span className="font-medium text-foreground">₦{totalAmount.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span>Refund + Seller:</span>
-                      <span className="font-medium">₦{(refundAmount + sellerAmount).toLocaleString()}</span>
+                      <span className="text-[var(--yrdly-label)]">Refund + Seller:</span>
+                      <span className="font-medium text-foreground">₦{(refundAmount + sellerAmount).toLocaleString()}</span>
                     </div>
                     {refundAmount + sellerAmount !== totalAmount && (
                       <p className="text-xs text-red-500 mt-1">
@@ -540,33 +542,33 @@ export default function AdminDisputeReviewPage() {
 
             {/* Resolution (if resolved) */}
             {dispute.status === 'resolved' && (
-              <Card>
+              <Card className="border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] backdrop-blur-xl shadow-lg">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <CheckCircle className="h-5 w-5 text-green-500" />
+                  <CardTitle className="flex items-center gap-2 font-yrdly-display text-foreground text-lg">
+                    <CheckCircle className="h-5 w-5 text-emerald-500" />
                     Resolution
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <h4 className="font-medium mb-2">Resolution Details</h4>
-                    <p className="text-sm text-muted-foreground">{dispute.resolution}</p>
+                    <h4 className="font-medium text-foreground mb-2">Resolution Details</h4>
+                    <p className="text-sm text-[var(--yrdly-label)]">{dispute.resolution}</p>
                   </div>
                   
                   {(dispute.refundAmount > 0 || dispute.sellerAmount > 0) && (
                     <div className="space-y-2">
                       {dispute.refundAmount > 0 && (
-                        <div className="p-3 bg-green-50 rounded-lg">
-                          <h5 className="font-medium text-green-800">Refund Amount</h5>
-                          <p className="text-lg font-bold text-green-600">
+                        <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
+                          <h5 className="font-medium text-emerald-500">Refund Amount</h5>
+                          <p className="text-lg font-bold text-emerald-500 font-yrdly-display">
                             ₦{dispute.refundAmount.toLocaleString()}
                           </p>
                         </div>
                       )}
                       {dispute.sellerAmount > 0 && (
-                        <div className="p-3 bg-blue-50 rounded-lg">
-                          <h5 className="font-medium text-blue-800">Seller Amount</h5>
-                          <p className="text-lg font-bold text-blue-600">
+                        <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                          <h5 className="font-medium text-blue-500">Seller Amount</h5>
+                          <p className="text-lg font-bold text-blue-500 font-yrdly-display">
                             ₦{dispute.sellerAmount.toLocaleString()}
                           </p>
                         </div>

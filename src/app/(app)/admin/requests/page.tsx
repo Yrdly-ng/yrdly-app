@@ -97,21 +97,21 @@ export default function AdminDeletionRequestsPage() {
   };
 
   return (
-    <div className="container max-w-4xl py-6 space-y-6">
+    <div className="container max-w-4xl py-6 space-y-6 font-yrdly-body text-foreground">
       <div className="flex items-center space-x-3">
         <Button variant="ghost" size="icon" onClick={() => router.back()}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-2xl font-bold tracking-tight">Account Deletion Requests</h1>
+        <h1 className="text-2xl font-bold tracking-tight font-yrdly-display text-foreground">Account Deletion Requests</h1>
       </div>
 
-      <Card>
+      <Card className="border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] backdrop-blur-xl shadow-lg">
         <CardHeader>
-          <CardTitle className="text-lg font-medium flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-yellow-500" />
+          <CardTitle className="text-lg font-medium font-yrdly-display flex items-center gap-2 text-foreground">
+            <AlertTriangle className="h-5 w-5 text-amber-500" />
             Pending Deletion Queue
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-[var(--yrdly-label)]">
             Review and process data deletion requests submitted by users. Contact the user before scrubbing their data.
           </CardDescription>
         </CardHeader>
@@ -119,7 +119,7 @@ export default function AdminDeletionRequestsPage() {
           {loading ? (
             <div className="space-y-4">
               {[1, 2, 3].map(i => (
-                <div key={i} className="flex items-center justify-between py-3 border-b">
+                <div key={i} className="flex items-center justify-between py-3 border-b border-[var(--yrdly-glass-border)]">
                   <div className="flex items-center space-x-3">
                     <Skeleton className="h-10 w-10 rounded-full" />
                     <div className="space-y-1">
@@ -133,12 +133,12 @@ export default function AdminDeletionRequestsPage() {
             </div>
           ) : requests.length === 0 ? (
             <div className="text-center py-12 space-y-2">
-              <CheckCircle className="h-10 w-10 text-green-500 mx-auto" />
-              <p className="font-medium">All caught up!</p>
-              <p className="text-sm text-muted-foreground">There are no pending account deletion requests.</p>
+              <CheckCircle className="h-10 w-10 text-emerald-500 mx-auto" />
+              <p className="font-medium font-yrdly-display text-foreground">All caught up!</p>
+              <p className="text-sm text-[var(--yrdly-label)]">There are no pending account deletion requests.</p>
             </div>
           ) : (
-            <div className="divide-y">
+            <div className="divide-y divide-[var(--yrdly-glass-border)]">
               {requests.map(req => {
                 const initials = req.name ? req.name.charAt(0).toUpperCase() : '?';
                 const isResolving = resolvingId === req.id;
@@ -148,17 +148,17 @@ export default function AdminDeletionRequestsPage() {
                     <div className="flex items-start space-x-3">
                       <Avatar>
                         <AvatarImage src={req.avatar_url || undefined} alt={req.name} />
-                        <AvatarFallback>{initials}</AvatarFallback>
+                        <AvatarFallback className="bg-primary/20 text-primary font-bold">{initials}</AvatarFallback>
                       </Avatar>
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
-                          <p className="font-medium text-sm">{req.name || 'Unknown User'}</p>
-                          <Badge variant="outline" className="text-xs text-yellow-600 border-yellow-500/30 bg-yellow-500/10">
+                          <p className="font-medium text-sm text-foreground">{req.name || 'Unknown User'}</p>
+                          <Badge variant="outline" className="text-xs text-amber-500 border-amber-500/30 bg-amber-500/10">
                             Deletion Requested
                           </Badge>
                         </div>
-                        <p className="text-xs text-muted-foreground">{req.email || req.phone || 'No contact info'}</p>
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground pt-1">
+                        <p className="text-xs text-[var(--yrdly-label)]">{req.email || req.phone || 'No contact info'}</p>
+                        <div className="flex items-center gap-1 text-xs text-[var(--yrdly-label)] pt-1">
                           <Clock className="h-3 w-3" />
                           <span>
                             {req.delete_requested_at
@@ -171,7 +171,7 @@ export default function AdminDeletionRequestsPage() {
 
                     <div className="flex items-center gap-2 shrink-0">
                       {req.email && (
-                        <Button variant="outline" size="sm" asChild>
+                        <Button variant="outline" size="sm" asChild className="border-[var(--yrdly-glass-border)] bg-background/50">
                           <a href={`mailto:${req.email}?subject=Account Deletion Request - YRDLY`}>
                             <Mail className="h-4 w-4 mr-1.5" />
                             Email
@@ -179,7 +179,7 @@ export default function AdminDeletionRequestsPage() {
                         </Button>
                       )}
                       {req.phone && (
-                        <Button variant="outline" size="sm" asChild>
+                        <Button variant="outline" size="sm" asChild className="border-[var(--yrdly-glass-border)] bg-background/50">
                           <a href={`tel:${req.phone}`}>
                             <Phone className="h-4 w-4 mr-1.5" />
                             Call
@@ -192,15 +192,15 @@ export default function AdminDeletionRequestsPage() {
                             {isResolving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Mark Resolved"}
                           </Button>
                         </AlertDialogTrigger>
-                        <AlertDialogContent>
+                        <AlertDialogContent className="border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-dark)] text-foreground">
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Mark as Resolved?</AlertDialogTitle>
-                            <AlertDialogDescription>
+                            <AlertDialogTitle className="font-yrdly-display">Mark as Resolved?</AlertDialogTitle>
+                            <AlertDialogDescription className="text-[var(--yrdly-label)]">
                               This will clear the pending deletion flag for {req.name}. Only proceed after you have scrubbed their data.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogCancel className="border-[var(--yrdly-glass-border)] bg-background/50">Cancel</AlertDialogCancel>
                             <AlertDialogAction onClick={() => handleMarkResolved(req.id)}>
                               Mark Resolved
                             </AlertDialogAction>

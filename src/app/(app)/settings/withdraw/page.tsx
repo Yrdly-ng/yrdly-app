@@ -111,7 +111,7 @@ export default function WithdrawPage() {
 
   if (loading) {
     return (
-      <div className="container max-w-2xl py-6 space-y-6">
+      <div className="container max-w-2xl py-6 space-y-6 font-yrdly-body text-foreground">
         <Skeleton className="h-8 w-40" />
         <Skeleton className="h-48 w-full" />
       </div>
@@ -120,13 +120,13 @@ export default function WithdrawPage() {
 
   if (step === 'success') {
     return (
-      <div className="container max-w-md py-12 text-center space-y-6">
-        <div className="inline-flex p-4 rounded-full bg-green-500/10 text-green-600">
+      <div className="container max-w-md py-12 text-center space-y-6 font-yrdly-body text-foreground">
+        <div className="inline-flex p-4 rounded-full bg-emerald-500/10 text-emerald-500">
           <CheckCircle2 className="h-12 w-12" />
         </div>
         <div className="space-y-2">
-          <h2 className="text-2xl font-bold">Withdrawal Submitted!</h2>
-          <p className="text-muted-foreground text-sm">
+          <h2 className="text-2xl font-bold font-yrdly-display text-foreground">Withdrawal Submitted!</h2>
+          <p className="text-[var(--yrdly-label)] text-sm">
             Your withdrawal of ₦{numAmount.toLocaleString()} has been queued. Funds will be transferred to your registered bank account.
           </p>
         </div>
@@ -138,54 +138,54 @@ export default function WithdrawPage() {
   }
 
   return (
-    <div className="container max-w-2xl py-6 space-y-6">
+    <div className="container max-w-2xl py-6 space-y-6 font-yrdly-body text-foreground">
       <div className="flex items-center space-x-3">
         <Button variant="ghost" size="icon" onClick={() => router.back()}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-2xl font-bold tracking-tight">Withdraw Funds</h1>
+        <h1 className="text-2xl font-bold tracking-tight font-yrdly-display text-foreground">Withdraw Funds</h1>
       </div>
 
-      <Card>
+      <Card className="border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] backdrop-blur-xl shadow-lg">
         <CardHeader>
           <div className="flex items-center space-x-3">
             <div className="p-2 rounded-lg bg-primary/10 text-primary">
               <Wallet className="h-6 w-6" />
             </div>
             <div>
-              <CardTitle>Available Balance</CardTitle>
-              <CardDescription>Withdraw funds to your registered bank account</CardDescription>
+              <CardTitle className="font-yrdly-display text-foreground">Available Balance</CardTitle>
+              <CardDescription className="text-[var(--yrdly-label)]">Withdraw funds to your registered bank account</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="bg-muted/50 p-4 rounded-lg border">
-            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Available For Withdrawal</p>
-            <p className="text-3xl font-extrabold text-foreground mt-1">
+          <div className="bg-background/50 p-4 rounded-lg border border-[var(--yrdly-glass-border)]">
+            <p className="text-xs text-[var(--yrdly-label)] font-medium uppercase tracking-wider">Available For Withdrawal</p>
+            <p className="text-3xl font-extrabold text-foreground font-yrdly-display mt-1">
               ₦{balance.toLocaleString()}
             </p>
           </div>
 
           {!bankInfo ? (
-            <div className="flex items-start space-x-3 p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/5 text-yellow-600">
+            <div className="flex items-start space-x-3 p-4 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-500">
               <AlertCircle className="h-5 w-5 mt-0.5 shrink-0" />
               <div className="space-y-1">
-                <p className="text-sm font-medium">Bank Account Required</p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-sm font-medium text-foreground">Bank Account Required</p>
+                <p className="text-xs text-[var(--yrdly-label)]">
                   You must link a payout bank account before making withdrawals.
                 </p>
-                <Button variant="outline" size="sm" className="mt-2" onClick={() => router.push('/profile/payout-settings')}>
+                <Button variant="outline" size="sm" className="mt-2 border-[var(--yrdly-glass-border)] bg-background/50" onClick={() => router.push('/profile/payout-settings')}>
                   Setup Bank Account
                 </Button>
               </div>
             </div>
           ) : (
-            <div className="flex items-center justify-between p-3 rounded-lg border">
+            <div className="flex items-center justify-between p-3 rounded-lg border border-[var(--yrdly-glass-border)] bg-background/50">
               <div className="flex items-center space-x-3">
-                <Building2 className="h-5 w-5 text-muted-foreground" />
+                <Building2 className="h-5 w-5 text-primary" />
                 <div>
-                  <p className="text-sm font-medium">{bankInfo.bank_name || 'Bank Account'}</p>
-                  <p className="text-xs text-muted-foreground">{bankInfo.account_number} • {bankInfo.account_name}</p>
+                  <p className="text-sm font-medium text-foreground">{bankInfo.bank_name || 'Bank Account'}</p>
+                  <p className="text-xs text-[var(--yrdly-label)]">{bankInfo.account_number} • {bankInfo.account_name}</p>
                 </div>
               </div>
             </div>
@@ -194,7 +194,7 @@ export default function WithdrawPage() {
           {step === 'amount' && bankInfo && (
             <div className="space-y-4 pt-2">
               <div className="space-y-2">
-                <Label htmlFor="withdraw-amount">Amount (₦)</Label>
+                <Label htmlFor="withdraw-amount" className="text-foreground">Amount (₦)</Label>
                 <Input
                   id="withdraw-amount"
                   type="number"
@@ -203,6 +203,7 @@ export default function WithdrawPage() {
                   onChange={(e) => setAmount(e.target.value)}
                   max={balance}
                   min={100}
+                  className="border-[var(--yrdly-glass-border)] bg-background/50 text-foreground"
                 />
               </div>
               <Button
@@ -216,20 +217,20 @@ export default function WithdrawPage() {
           )}
 
           {step === 'confirm' && (
-            <div className="space-y-4 pt-2 border-t">
+            <div className="space-y-4 pt-2 border-t border-[var(--yrdly-glass-border)]">
               <div className="space-y-2">
-                <p className="text-sm font-medium">Confirm Withdrawal Details</p>
-                <div className="flex justify-between text-sm py-1 border-b">
-                  <span className="text-muted-foreground">Amount:</span>
-                  <span className="font-semibold">₦{numAmount.toLocaleString()}</span>
+                <p className="text-sm font-medium text-foreground">Confirm Withdrawal Details</p>
+                <div className="flex justify-between text-sm py-1 border-b border-[var(--yrdly-glass-border)]">
+                  <span className="text-[var(--yrdly-label)]">Amount:</span>
+                  <span className="font-semibold text-foreground">₦{numAmount.toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between text-sm py-1 border-b">
-                  <span className="text-muted-foreground">Payout Bank:</span>
-                  <span>{bankInfo?.bank_name} ({bankInfo?.account_number})</span>
+                <div className="flex justify-between text-sm py-1 border-b border-[var(--yrdly-glass-border)]">
+                  <span className="text-[var(--yrdly-label)]">Payout Bank:</span>
+                  <span className="text-foreground">{bankInfo?.bank_name} ({bankInfo?.account_number})</span>
                 </div>
               </div>
               <div className="flex space-x-3">
-                <Button variant="outline" className="w-1/2" onClick={() => setStep('amount')}>
+                <Button variant="outline" className="w-1/2 border-[var(--yrdly-glass-border)] bg-background/50" onClick={() => setStep('amount')}>
                   Back
                 </Button>
                 <Button className="w-1/2" onClick={handleWithdraw} disabled={confirming}>

@@ -74,21 +74,21 @@ export default function AdminCreateAlertPage() {
   };
 
   return (
-    <div className="container max-w-2xl py-6 space-y-6">
+    <div className="container max-w-2xl py-6 space-y-6 font-yrdly-body text-foreground">
       <div className="flex items-center space-x-3">
         <Button variant="ghost" size="icon" onClick={() => router.back()}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-2xl font-bold tracking-tight">Create Community Broadcast Alert</h1>
+        <h1 className="text-2xl font-bold tracking-tight font-yrdly-display text-foreground">Create Community Broadcast Alert</h1>
       </div>
 
-      <Card>
+      <Card className="border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] backdrop-blur-xl shadow-lg">
         <CardHeader>
-          <CardTitle className="text-lg font-medium flex items-center gap-2">
+          <CardTitle className="text-lg font-medium font-yrdly-display flex items-center gap-2 text-foreground">
             <ShieldAlert className="h-5 w-5 text-red-500" />
             Admin Alert Broadcast
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-[var(--yrdly-label)]">
             Issue a high-priority community safety alert, missing person bulletin, or amber notice across the platform.
           </CardDescription>
         </CardHeader>
@@ -96,9 +96,9 @@ export default function AdminCreateAlertPage() {
           <form onSubmit={handleCreateAlert} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="alert-type">Alert Category</Label>
+                <Label htmlFor="alert-type" className="text-foreground">Alert Category</Label>
                 <Select value={type} onValueChange={(val: any) => setType(val)}>
-                  <SelectTrigger id="alert-type">
+                  <SelectTrigger id="alert-type" className="border-[var(--yrdly-glass-border)] bg-background/50 text-foreground">
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -111,9 +111,9 @@ export default function AdminCreateAlertPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="alert-severity">Severity Level</Label>
+                <Label htmlFor="alert-severity" className="text-foreground">Severity Level</Label>
                 <Select value={severity} onValueChange={(val: any) => setSeverity(val)}>
-                  <SelectTrigger id="alert-severity">
+                  <SelectTrigger id="alert-severity" className="border-[var(--yrdly-glass-border)] bg-background/50 text-foreground">
                     <SelectValue placeholder="Select severity" />
                   </SelectTrigger>
                   <SelectContent>
@@ -126,28 +126,30 @@ export default function AdminCreateAlertPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="alert-title">Headline / Title</Label>
+              <Label htmlFor="alert-title" className="text-foreground">Headline / Title</Label>
               <Input
                 id="alert-title"
                 placeholder="e.g. Flash Flood Warning in Lekki Phase 1"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 required
+                className="border-[var(--yrdly-glass-border)] bg-background/50 text-foreground"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="alert-area">Affected Area / Location</Label>
+              <Label htmlFor="alert-area" className="text-foreground">Affected Area / Location</Label>
               <Input
                 id="alert-area"
                 placeholder="e.g. Ikeja, Lagos"
                 value={areaName}
                 onChange={(e) => setAreaName(e.target.value)}
+                className="border-[var(--yrdly-glass-border)] bg-background/50 text-foreground"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="alert-desc">Alert Description</Label>
+              <Label htmlFor="alert-desc" className="text-foreground">Alert Description</Label>
               <Textarea
                 id="alert-desc"
                 placeholder="Provide detailed information regarding the safety alert..."
@@ -155,16 +157,18 @@ export default function AdminCreateAlertPage() {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 required
+                className="border-[var(--yrdly-glass-border)] bg-background/50 text-foreground"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="alert-action">Recommended Action / Instruction (Optional)</Label>
+              <Label htmlFor="alert-action" className="text-foreground">Recommended Action / Instruction (Optional)</Label>
               <Input
                 id="alert-action"
                 placeholder="e.g. Avoid the coastal road until further notice"
                 value={actionInstruction}
                 onChange={(e) => setActionInstruction(e.target.value)}
+                className="border-[var(--yrdly-glass-border)] bg-background/50 text-foreground"
               />
             </div>
 

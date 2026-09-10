@@ -59,28 +59,28 @@ export default function DeleteAccountPage() {
   };
 
   return (
-    <div className="container max-w-2xl py-6 space-y-6">
+    <div className="container max-w-2xl py-6 space-y-6 font-yrdly-body text-foreground">
       <div className="flex items-center space-x-3">
         <Button variant="ghost" size="icon" onClick={() => router.back()}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-2xl font-bold tracking-tight">Delete Account</h1>
+        <h1 className="text-2xl font-bold tracking-tight font-yrdly-display text-foreground">Delete Account</h1>
       </div>
 
-      <Card className="border-destructive/30 bg-destructive/5">
+      <Card className="border border-destructive/30 bg-[var(--yrdly-glass-bg)] backdrop-blur-xl shadow-lg">
         <CardHeader>
           <div className="flex items-center space-x-3 text-destructive mb-2">
             <div className="p-2 rounded-full bg-destructive/10">
               <AlertTriangle className="h-6 w-6" />
             </div>
-            <CardTitle className="text-xl">Account Deletion Request</CardTitle>
+            <CardTitle className="text-xl font-yrdly-display">Account Deletion Request</CardTitle>
           </div>
-          <CardDescription className="text-base text-foreground/80">
+          <CardDescription className="text-base text-[var(--yrdly-label)]">
             Submitting an account deletion request will schedule your account and all associated data (posts, messages, transaction history) to be permanently deleted from our servers.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-[var(--yrdly-label)]">
             This action is irreversible. For security reasons, the deletion process may take up to 30 days to complete, but you will lose access to your account immediately.
           </p>
 
@@ -91,15 +91,15 @@ export default function DeleteAccountPage() {
                 Request Account Deletion
               </Button>
             </AlertDialogTrigger>
-            <AlertDialogContent>
+            <AlertDialogContent className="border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-dark)] text-foreground font-yrdly-body">
               <AlertDialogHeader>
-                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                <AlertDialogDescription>
+                <AlertDialogTitle className="font-yrdly-display">Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription className="text-[var(--yrdly-label)]">
                   This action cannot be undone. All your data, messages, posts, and transactions will be permanently scheduled for deletion.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogCancel className="border-[var(--yrdly-glass-border)] bg-background/50">Cancel</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={handleDeleteRequest}
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"

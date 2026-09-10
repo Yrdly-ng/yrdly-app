@@ -10,11 +10,11 @@ import { supabase } from "@/lib/supabase";
 import { GpsLocationStep } from "@/components/onboarding/GpsLocationStep";
 import { OUTSIDE_NIGERIA } from "@/lib/geocoding-service";
 
-const FONT = "var(--font-work-sans)";
-const PACIFICO = "var(--font-jersey25)";
+const FONT = "var(--yrdly-font-body)";
+const PACIFICO = "var(--yrdly-font-display)";
 const GREEN = "hsl(var(--primary))";
-const CARD = "var(--c-card)";
-const BG = "var(--c-bg)";
+const CARD = "var(--yrdly-glass-bg)";
+const BG = "var(--yrdly-dark)";
 
 export default function LocationSettingsPage() {
   const router = useRouter();
@@ -144,57 +144,38 @@ export default function LocationSettingsPage() {
   };
 
   return (
-    <div className="min-h-[100dvh] pb-32" style={{ background: BG }}>
+    <div className="min-h-[100dvh] pb-32 bg-[var(--yrdly-dark)] font-yrdly-body text-foreground">
       <div className="max-w-lg mx-auto px-4 pt-6 space-y-6">
         {/* Header */}
         <div className="flex items-center gap-3">
           <button
             onClick={() => router.back()}
-            className="w-10 h-10 flex items-center justify-center rounded-full"
-            style={{ background: CARD }}
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)]"
           >
             <ArrowLeft className="w-5 h-5 text-foreground" />
           </button>
-          <h1
-            className="text-foreground text-[1.25rem]"
-            style={{ fontFamily: PACIFICO }}
-          >
+          <h1 className="text-foreground text-[1.25rem] font-yrdly-display font-bold">
             Location
           </h1>
         </div>
 
         {/* Current location display */}
-        <div
-          className="p-4 rounded-[11px] flex items-center gap-3"
-          style={{ background: CARD }}
-        >
-          <div
-            className="w-10 h-10 rounded-full flex items-center justify-center"
-            style={{ background: "rgba(56,142,60,0.15)" }}
-          >
+        <div className="p-4 rounded-2xl flex items-center gap-3 bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] backdrop-blur-xl shadow-lg">
+          <div className="w-10 h-10 rounded-full flex items-center justify-center bg-primary/20">
             <MapPin className="w-5 h-5 text-primary" />
           </div>
           <div className="flex-1">
-            <p
-              className="text-[0.6875rem] uppercase tracking-wider"
-              style={{ fontFamily: FONT, color: "var(--c-text-muted)" }}
-            >
+            <p className="text-[0.6875rem] uppercase tracking-wider text-[var(--yrdly-label)] font-yrdly-body">
               Current Location
             </p>
-            <p
-              className="text-foreground text-[0.875rem] font-semibold"
-              style={{ fontFamily: FONT }}
-            >
+            <p className="text-foreground text-[0.875rem] font-semibold font-yrdly-body">
               {displayLabel}
             </p>
           </div>
         </div>
 
         {/* Info */}
-        <p
-          className="text-[0.75rem] px-1"
-          style={{ fontFamily: FONT, color: "var(--c-text-muted)", lineHeight: 1.6 }}
-        >
+        <p className="text-[0.75rem] px-1 text-[var(--yrdly-label)] font-yrdly-body leading-relaxed">
           Your location determines which posts, events, marketplace items, and
           neighbors you see. Change it if you&apos;ve moved to a new area.
         </p>
@@ -216,7 +197,7 @@ export default function LocationSettingsPage() {
             }}
           />
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-6 font-yrdly-body">
             {manualReason === OUTSIDE_NIGERIA && (
               <div className="w-full rounded-[24px] bg-primary/10 border border-primary/30 p-4 flex flex-col items-center justify-center space-y-2 text-center animate-in fade-in slide-in-from-top-2 duration-300">
                 <MapPin className="w-6 h-6 text-primary" />
@@ -228,28 +209,20 @@ export default function LocationSettingsPage() {
             
             {/* State selector */}
             <div className="space-y-2">
-              <label
-                className="text-[0.75rem] uppercase tracking-wider px-1"
-                style={{ fontFamily: FONT, color: "var(--c-text-muted)" }}
-              >
+              <label className="text-[0.75rem] uppercase tracking-wider px-1 text-[var(--yrdly-label)] font-yrdly-body">
                 State *
               </label>
               <select
                 value={selectedState}
                 onChange={(e) => handleStateChange(e.target.value)}
                 disabled={locationLoading}
-                className="w-full p-4 rounded-[11px] text-foreground text-[0.875rem] appearance-none outline-none"
-                style={{
-                  background: 'var(--c-card)',
-                  fontFamily: FONT,
-                  border: selectedState ? `1px solid ${GREEN}` : "1px solid #333",
-                }}
+                className="w-full p-4 rounded-xl text-foreground text-[0.875rem] appearance-none outline-none bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] font-yrdly-body"
               >
-                <option value="">Select your state</option>
+                <option value="" className="bg-[var(--yrdly-dark)] text-foreground">Select your state</option>
                 {states
                   .filter((s) => s != null && s !== "")
                   .map((state) => (
-                    <option key={state} value={state}>
+                    <option key={state} value={state} className="bg-[var(--yrdly-dark)] text-foreground">
                       {state}
                     </option>
                   ))}
@@ -258,31 +231,22 @@ export default function LocationSettingsPage() {
 
             {/* LGA selector */}
             <div className="space-y-2">
-              <label
-                className="text-[0.75rem] uppercase tracking-wider px-1"
-                style={{ fontFamily: FONT, color: "var(--c-text-muted)" }}
-              >
+              <label className="text-[0.75rem] uppercase tracking-wider px-1 text-[var(--yrdly-label)] font-yrdly-body">
                 Local Government Area *
               </label>
               <select
                 value={selectedLga}
                 onChange={(e) => handleLgaChange(e.target.value)}
                 disabled={!selectedState || locationLoading}
-                className="w-full p-4 rounded-[11px] text-foreground text-[0.875rem] appearance-none outline-none"
-                style={{
-                  background: 'var(--c-card)',
-                  fontFamily: FONT,
-                  border: selectedLga ? `1px solid ${GREEN}` : "1px solid #333",
-                  opacity: !selectedState ? 0.5 : 1,
-                }}
+                className="w-full p-4 rounded-xl text-foreground text-[0.875rem] appearance-none outline-none bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] font-yrdly-body disabled:opacity-50"
               >
-                <option value="">
+                <option value="" className="bg-[var(--yrdly-dark)] text-foreground">
                   {!selectedState ? "Select state first" : "Select your LGA"}
                 </option>
                 {lgas
                   .filter((l) => l != null && l !== "")
                   .map((lga) => (
-                    <option key={lga} value={lga}>
+                    <option key={lga} value={lga} className="bg-[var(--yrdly-dark)] text-foreground">
                       {lga}
                     </option>
                   ))}
@@ -291,31 +255,22 @@ export default function LocationSettingsPage() {
 
             {/* Ward selector */}
             <div className="space-y-2">
-              <label
-                className="text-[0.75rem] uppercase tracking-wider px-1"
-                style={{ fontFamily: FONT, color: "var(--c-text-muted)" }}
-              >
+              <label className="text-[0.75rem] uppercase tracking-wider px-1 text-[var(--yrdly-label)] font-yrdly-body">
                 Ward (Optional)
               </label>
               <select
                 value={selectedWard}
                 onChange={(e) => handleWardChange(e.target.value)}
                 disabled={!selectedLga || locationLoading}
-                className="w-full p-4 rounded-[11px] text-foreground text-[0.875rem] appearance-none outline-none"
-                style={{
-                  background: 'var(--c-card)',
-                  fontFamily: FONT,
-                  border: selectedWard ? `1px solid ${GREEN}` : "1px solid #333",
-                  opacity: !selectedLga ? 0.5 : 1,
-                }}
+                className="w-full p-4 rounded-xl text-foreground text-[0.875rem] appearance-none outline-none bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] font-yrdly-body disabled:opacity-50"
               >
-                <option value="">
+                <option value="" className="bg-[var(--yrdly-dark)] text-foreground">
                   {!selectedLga ? "Select LGA first" : "Select your ward"}
                 </option>
                 {wards
                   .filter((w) => w != null && w !== "")
                   .map((ward) => (
-                    <option key={ward} value={ward}>
+                    <option key={ward} value={ward} className="bg-[var(--yrdly-dark)] text-foreground">
                       {ward}
                     </option>
                   ))}
@@ -326,7 +281,7 @@ export default function LocationSettingsPage() {
               <button
                 type="button"
                 onClick={() => setShowManualLocation(false)}
-                className="text-sm font-bold transition-colors text-primary"
+                className="text-sm font-bold transition-colors text-primary font-yrdly-body"
               >
                 Use Auto-Detect instead
               </button>
@@ -338,13 +293,7 @@ export default function LocationSettingsPage() {
         <button
           onClick={handleSaveClick}
           disabled={!canSave || saving}
-          className="w-full py-4 rounded-full text-[0.875rem] font-bold transition-all active:scale-[0.98] mt-6"
-          style={{
-            fontFamily: FONT,
-            background: canSave ? GREEN : "#333",
-            color: canSave ? "#fff" : "#666",
-            opacity: saving ? 0.7 : 1,
-          }}
+          className="w-full py-4 rounded-full text-[0.875rem] font-bold transition-all active:scale-[0.98] mt-6 bg-primary text-primary-foreground disabled:opacity-50 font-yrdly-body"
         >
           {saving ? (
             "Saving..."
@@ -361,33 +310,30 @@ export default function LocationSettingsPage() {
         {/* Migration Prompt */}
         {showMigrationPrompt && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="w-full max-w-sm p-6 rounded-[16px] space-y-4 shadow-xl" style={{ background: CARD }}>
-              <h3 className="text-lg font-bold text-foreground">Update Active Listings?</h3>
-              <p className="text-sm" style={{ color: "var(--c-text-muted)" }}>
+            <div className="w-full max-w-sm p-6 rounded-[16px] space-y-4 shadow-xl bg-[var(--yrdly-dark)] border border-[var(--yrdly-glass-border)] text-foreground font-yrdly-body">
+              <h3 className="text-lg font-bold text-foreground font-yrdly-display">Update Active Listings?</h3>
+              <p className="text-sm text-[var(--yrdly-label)]">
                 You have {activeListingsCount} active marketplace {activeListingsCount === 1 ? 'listing' : 'listings'}. Would you like to update their location to your new home area so local buyers can find them?
               </p>
               <div className="flex flex-col gap-2 pt-2">
                 <button
                   onClick={() => finalizeSave(true)}
                   disabled={saving}
-                  className="w-full py-3 rounded-full font-semibold transition-all active:scale-95"
-                  style={{ background: GREEN, color: '#fff' }}
+                  className="w-full py-3 rounded-full font-semibold transition-all active:scale-95 bg-primary text-primary-foreground"
                 >
                   Yes, Update Listings
                 </button>
                 <button
                   onClick={() => finalizeSave(false)}
                   disabled={saving}
-                  className="w-full py-3 rounded-full font-semibold transition-all active:scale-95"
-                  style={{ background: 'transparent', color: '#fff', border: '1px solid #333' }}
+                  className="w-full py-3 rounded-full font-semibold transition-all active:scale-95 bg-background/50 border border-[var(--yrdly-glass-border)] text-foreground"
                 >
                   No, Keep Old Location
                 </button>
                 <button
                   onClick={() => { setShowMigrationPrompt(false); setSaving(false); }}
                   disabled={saving}
-                  className="w-full py-2 text-sm transition-all active:scale-95"
-                  style={{ color: "var(--c-text-muted)" }}
+                  className="w-full py-2 text-sm transition-all active:scale-95 text-[var(--yrdly-label)]"
                 >
                   Cancel
                 </button>

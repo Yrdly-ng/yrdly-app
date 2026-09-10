@@ -83,20 +83,19 @@ export default function EditProfilePage() {
   };
 
   return (
-    <div className="min-h-[100dvh] pb-36" style={{ background: "var(--c-bg)", fontFamily: "var(--font-work-sans)", color: "var(--c-text)" }}>
+    <div className="min-h-[100dvh] pb-36 bg-[var(--yrdly-dark)] font-yrdly-body text-foreground">
 
       {/* Sticky Header */}
       <header
-        className="sticky top-[calc(4rem+env(safe-area-inset-top))] md:top-[calc(84px+env(safe-area-inset-top))] z-40 flex items-center justify-between px-6 py-4"
-        style={{ background: "var(--c-bg)" }}
+        className="sticky top-[calc(4rem+env(safe-area-inset-top))] md:top-[calc(84px+env(safe-area-inset-top))] z-40 flex items-center justify-between px-6 py-4 bg-[var(--yrdly-dark)]/80 backdrop-blur-md border-b border-[var(--yrdly-glass-border)]"
       >
         <div className="flex items-center gap-4">
           <button onClick={() => router.back()} className="w-10 h-10 flex items-center justify-center rounded-full transition-colors hover:bg-accent">
-            <ArrowLeft className="w-5 h-5" style={{ color: "var(--c-text)" }} />
+            <ArrowLeft className="w-5 h-5 text-foreground" />
           </button>
-          <h1 style={{ fontFamily: "var(--font-jersey25)", fontSize: 18, color: "var(--c-text)" }}>Edit Profile</h1>
+          <h1 className="font-yrdly-display text-lg text-foreground font-bold">Edit Profile</h1>
         </div>
-        <span style={{ fontFamily: "Jersey 25, sans-serif", fontSize: 20, color: "#259907" }}>Yrdly</span>
+        <span className="font-yrdly-display text-xl font-extrabold text-primary">Yrdly</span>
       </header>
 
       <main className="max-w-2xl mx-auto px-6 py-8 space-y-12">
@@ -105,63 +104,54 @@ export default function EditProfilePage() {
         <section className="flex flex-col items-center py-4">
           <div className="relative">
             <div className="absolute -inset-2 rounded-full border-2 border-dashed border-primary opacity-60 animate-spin" style={{ animationDuration: "8s" }} />
-            <div className="relative w-24 h-24 rounded-full overflow-hidden border-4" style={{ borderColor: "var(--c-card)" }}>
+            <div className="relative w-24 h-24 rounded-full overflow-hidden border-4 border-[var(--yrdly-glass-border)]">
               <Avatar className="w-full h-full">
                 <AvatarImage src={avatarPreview || avatarUrl} className="object-cover" />
-                <AvatarFallback style={{ background: "hsl(var(--primary))", color: "#fff", fontSize: 32, fontWeight: 700 }}>
+                <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-bold font-yrdly-display">
                   {name?.charAt(0)?.toUpperCase() || "U"}
                 </AvatarFallback>
               </Avatar>
             </div>
             <button
               onClick={() => fileRef.current?.click()}
-              className="absolute bottom-0 right-0 w-8 h-8 rounded-full flex items-center justify-center shadow-lg transition-transform active:scale-90"
-              style={{ background: "#82DB7E", transform: "translate(4px, 4px)" }}
+              className="absolute bottom-0 right-0 w-8 h-8 rounded-full flex items-center justify-center shadow-lg transition-transform active:scale-90 bg-primary text-primary-foreground"
+              style={{ transform: "translate(4px, 4px)" }}
             >
-              <Camera className="w-4 h-4" style={{ color: "#003207" }} />
+              <Camera className="w-4 h-4" />
             </button>
             <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
           </div>
-          <p className="mt-6 text-sm" style={{ color: "var(--c-text-muted)" }}>Change profile photo</p>
+          <p className="mt-6 text-sm text-[var(--yrdly-label)] font-yrdly-body">Change profile photo</p>
         </section>
 
         {/* ── Block 1: Identity ── */}
         <section className="space-y-6">
-          <SectionHeader color="#82DB7E" label="Identity" />
+          <SectionHeader color="hsl(var(--primary))" label="Identity" />
           <div className="space-y-4">
             <Field label="Display Name">
               <input
                 type="text" value={name} onChange={e => setName(e.target.value)}
-                className="w-full rounded-full px-6 py-4 text-sm outline-none transition-all"
-                style={{ background: "var(--c-card2)", color: "var(--c-text)", border: "none" }}
-                onFocus={e => e.target.style.boxShadow = `0 0 0 1px #82DB7E`}
-                onBlur={e => e.target.style.boxShadow = "none"}
+                className="w-full rounded-full px-6 py-4 text-sm outline-none transition-all bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] text-foreground font-yrdly-body focus:border-primary"
               />
             </Field>
             <Field label="Bio">
               <div className="relative">
                 <textarea
                   value={bio} onChange={e => setBio(e.target.value.slice(0, 150))} rows={3}
-                  className="w-full px-6 py-4 text-sm outline-none resize-none transition-all"
-                  style={{ background: "var(--c-card2)", color: "var(--c-text)", border: "none", borderRadius: 11 }}
-                  onFocus={e => e.target.style.boxShadow = `0 0 0 1px #82DB7E`}
-                  onBlur={e => e.target.style.boxShadow = "none"}
+                  className="w-full px-6 py-4 text-sm outline-none resize-none transition-all rounded-2xl bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] text-foreground font-yrdly-body focus:border-primary"
                 />
-                <span className="absolute bottom-3 right-4 text-[0.625rem]" style={{ color: "var(--c-text-muted)" }}>{bio.length}/150</span>
+                <span className="absolute bottom-3 right-4 text-[0.625rem] text-[var(--yrdly-label)]">{bio.length}/150</span>
               </div>
             </Field>
           </div>
         </section>
-
-
 
         {/* ── Save bar ── */}
         <div className="pt-8">
           <button
             onClick={handleSave}
             disabled={saving}
-            className="w-full py-4 rounded-full flex items-center justify-center gap-3 text-foreground font-extrabold uppercase tracking-[0.2em] transition-all active:scale-[0.98] shadow-[0_10px_30px_rgba(56,142,60,0.2)]"
-            style={{ background: "hsl(var(--primary))", fontFamily: "var(--font-work-sans)", opacity: saving ? 0.7 : 1 }}
+            className="w-full py-4 rounded-full flex items-center justify-center gap-3 text-primary-foreground font-extrabold uppercase tracking-[0.2em] transition-all active:scale-[0.98] shadow-lg bg-primary font-yrdly-body disabled:opacity-50"
           >
             {saving ? "Saving…" : "Save Changes"}
             {!saving && (
@@ -178,8 +168,8 @@ export default function EditProfilePage() {
 function SectionHeader({ color, label }: { color: string; label: string }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="w-1 h-6 rounded-full flex-shrink-0" style={{ background: color }} />
-      <h2 className="font-bold uppercase tracking-widest text-lg" style={{ fontFamily: "var(--font-jersey25)", color: color + "cc" }}>{label}</h2>
+      <span className="w-1 h-6 rounded-full flex-shrink-0 bg-primary" />
+      <h2 className="font-bold uppercase tracking-widest text-lg font-yrdly-display text-primary">{label}</h2>
     </div>
   );
 }
@@ -187,7 +177,7 @@ function SectionHeader({ color, label }: { color: string; label: string }) {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-2">
-      <label className="text-xs font-bold uppercase tracking-tighter ml-4" style={{ color: "var(--c-text-muted)" }}>{label}</label>
+      <label className="text-xs font-bold uppercase tracking-tighter ml-4 text-[var(--yrdly-label)] font-yrdly-body">{label}</label>
       {children}
     </div>
   );

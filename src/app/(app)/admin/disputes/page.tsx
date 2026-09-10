@@ -115,16 +115,16 @@ export default function AdminDisputesPage() {
 
   if (loading) {
     return (
-      <div className="min-h-[100dvh] bg-background p-4">
+      <div className="min-h-[100dvh] bg-[var(--yrdly-dark)] p-4 font-yrdly-body">
         <div className="max-w-6xl mx-auto space-y-6">
           <div>
-            <h1 className="text-2xl font-bold">Admin Dispute Dashboard</h1>
-            <p className="text-muted-foreground">Manage and resolve disputes</p>
+            <h1 className="text-2xl font-bold font-yrdly-display text-foreground">Admin Dispute Dashboard</h1>
+            <p className="text-[var(--yrdly-label)]">Manage and resolve disputes</p>
           </div>
           
           <div className="space-y-4">
             {[...Array(5)].map((_, i) => (
-              <Card key={i}>
+              <Card key={i} className="border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] backdrop-blur-xl">
                 <CardContent className="p-6">
                   <div className="flex items-start gap-4">
                     <Skeleton className="h-16 w-16 rounded-lg" />
@@ -145,31 +145,31 @@ export default function AdminDisputesPage() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-background p-4">
+    <div className="min-h-[100dvh] bg-[var(--yrdly-dark)] p-4 font-yrdly-body">
       <div className="max-w-6xl mx-auto space-y-6">
         <div>
-          <h1 className="text-2xl font-bold">Admin Dispute Dashboard</h1>
-          <p className="text-muted-foreground">Manage and resolve disputes</p>
+          <h1 className="text-2xl font-bold font-yrdly-display text-foreground">Admin Dispute Dashboard</h1>
+          <p className="text-[var(--yrdly-label)]">Manage and resolve disputes</p>
         </div>
 
         {/* Filters */}
-        <Card>
+        <Card className="border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] backdrop-blur-xl shadow-lg">
           <CardContent className="p-4">
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-[var(--yrdly-label)]" />
                   <Input
                     placeholder="Search disputes..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 border-[var(--yrdly-glass-border)] bg-background/50 text-foreground"
                   />
                 </div>
               </div>
               <div className="flex gap-2">
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-40">
+                  <SelectTrigger className="w-40 border-[var(--yrdly-glass-border)] bg-background/50 text-foreground">
                     <SelectValue placeholder="Filter by status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -187,11 +187,11 @@ export default function AdminDisputesPage() {
 
         {/* Disputes List */}
         {filteredDisputes.length === 0 ? (
-          <Card>
+          <Card className="border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] backdrop-blur-xl shadow-lg">
             <CardContent className="text-center p-8">
-              <AlertTriangle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No Disputes Found</h3>
-              <p className="text-muted-foreground">
+              <AlertTriangle className="h-12 w-12 text-[var(--yrdly-label)] mx-auto mb-4" />
+              <h3 className="text-lg font-semibold font-yrdly-display text-foreground mb-2">No Disputes Found</h3>
+              <p className="text-[var(--yrdly-label)]">
                 {searchTerm || statusFilter !== 'all' 
                   ? 'No disputes match your current filters.'
                   : 'There are no disputes to review at this time.'
@@ -202,11 +202,11 @@ export default function AdminDisputesPage() {
         ) : (
           <div className="space-y-4">
             {filteredDisputes.map((dispute) => (
-              <Card key={dispute.id} className="overflow-hidden">
+              <Card key={dispute.id} className="overflow-hidden border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] backdrop-blur-xl shadow-lg">
                 <CardContent className="p-6">
                   <div className="flex items-start gap-4">
                     {/* Item Image */}
-                    <div className="w-16 h-16 relative rounded-lg overflow-hidden flex-shrink-0">
+                    <div className="w-16 h-16 relative rounded-lg overflow-hidden flex-shrink-0 border border-[var(--yrdly-glass-border)]">
                       <Image
                         src={dispute.transaction?.item?.image_urls?.[0] || "/placeholder.svg"}
                         alt={dispute.transaction?.item?.title || dispute.transaction?.item?.text || "Item"} fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
@@ -218,10 +218,10 @@ export default function AdminDisputesPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between mb-2">
                         <div>
-                          <h3 className="font-semibold truncate">
+                          <h3 className="font-semibold font-yrdly-display text-foreground truncate">
                             {dispute.transaction?.item?.title || dispute.transaction?.item?.text || "Untitled Item"}
                           </h3>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-[var(--yrdly-label)]">
                             Transaction #{dispute.transactionId.slice(0, 8)} • 
                             ₦{dispute.transaction?.amount?.toLocaleString()}
                           </p>
@@ -230,30 +230,30 @@ export default function AdminDisputesPage() {
                       </div>
 
                       <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-sm">
-                          <AlertTriangle className="h-4 w-4 text-orange-500" />
+                        <div className="flex items-center gap-2 text-sm text-foreground">
+                          <AlertTriangle className="h-4 w-4 text-amber-500" />
                           <span className="font-medium">Reason:</span>
                           <span>{getReasonText(dispute.disputeReason)}</span>
                         </div>
 
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-2 text-sm text-[var(--yrdly-label)]">
                           <Calendar className="h-4 w-4" />
                           <span>Opened {new Date(dispute.createdAt).toLocaleDateString()}</span>
                         </div>
 
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-4 text-sm text-[var(--yrdly-label)]">
                           <div className="flex items-center gap-1">
                             <span>Buyer:</span>
-                            <span className="font-medium">{dispute.transaction?.buyer?.name}</span>
+                            <span className="font-medium text-foreground">{dispute.transaction?.buyer?.name}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <span>Seller:</span>
-                            <span className="font-medium">{dispute.transaction?.seller?.name}</span>
+                            <span className="font-medium text-foreground">{dispute.transaction?.seller?.name}</span>
                           </div>
                         </div>
 
                         {dispute.resolution && (
-                          <div className="mt-2 p-2 bg-gray-50 rounded text-sm">
+                          <div className="mt-2 p-2 bg-background/50 border border-[var(--yrdly-glass-border)] rounded text-sm text-foreground">
                             <span className="font-medium">Resolution:</span>
                             <span className="ml-2">{dispute.resolution}</span>
                           </div>
@@ -281,7 +281,7 @@ export default function AdminDisputesPage() {
         {/* Pagination Controls */}
         {totalCount > limit && (
           <div className="flex justify-between items-center mt-6">
-            <span className="text-sm text-muted-foreground">
+            <span className="text-sm text-[var(--yrdly-label)]">
               Showing {(page - 1) * limit + 1} to {Math.min(page * limit, totalCount)} of {totalCount} disputes
             </span>
             <div className="flex gap-2">
@@ -307,36 +307,36 @@ export default function AdminDisputesPage() {
 
         {/* Summary Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
+          <Card className="border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] backdrop-blur-xl shadow-lg">
             <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-yellow-600">
+              <div className="text-2xl font-bold font-yrdly-display text-amber-500">
                 {disputes.filter(d => d.status === 'open').length}
               </div>
-              <div className="text-sm text-muted-foreground">Open Disputes</div>
+              <div className="text-sm text-[var(--yrdly-label)]">Open Disputes</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] backdrop-blur-xl shadow-lg">
             <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-blue-600">
+              <div className="text-2xl font-bold font-yrdly-display text-blue-500">
                 {disputes.filter(d => d.status === 'under_review').length}
               </div>
-              <div className="text-sm text-muted-foreground">Under Review</div>
+              <div className="text-sm text-[var(--yrdly-label)]">Under Review</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] backdrop-blur-xl shadow-lg">
             <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-green-600">
+              <div className="text-2xl font-bold font-yrdly-display text-emerald-500">
                 {disputes.filter(d => d.status === 'resolved').length}
               </div>
-              <div className="text-sm text-muted-foreground">Resolved</div>
+              <div className="text-sm text-[var(--yrdly-label)]">Resolved</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] backdrop-blur-xl shadow-lg">
             <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-gray-600">
+              <div className="text-2xl font-bold font-yrdly-display text-[var(--yrdly-label)]">
                 {disputes.filter(d => d.status === 'closed').length}
               </div>
-              <div className="text-sm text-muted-foreground">Closed</div>
+              <div className="text-sm text-[var(--yrdly-label)]">Closed</div>
             </CardContent>
           </Card>
         </div>

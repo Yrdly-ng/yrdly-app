@@ -36,18 +36,18 @@ export default function PrivacySettingsPage() {
   };
 
   return (
-    <div className="container max-w-2xl py-6 space-y-6">
+    <div className="container max-w-2xl py-6 space-y-6 min-h-[100dvh] bg-[var(--yrdly-dark)] text-[var(--yrdly-text-primary)] font-yrdly-body">
       <div className="flex items-center space-x-3">
         <Button variant="ghost" size="icon" onClick={() => router.back()}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-2xl font-bold tracking-tight">Privacy & Discoverability</h1>
+        <h1 className="text-2xl font-bold font-yrdly-display tracking-tight text-[var(--yrdly-text-primary)]">Privacy & Discoverability</h1>
         {updating && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground ml-auto" />}
       </div>
 
-      <Card>
+      <Card className="border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] backdrop-blur-xl shadow-lg font-yrdly-body">
         <CardHeader>
-          <CardTitle className="text-lg font-medium flex items-center gap-2">
+          <CardTitle className="text-lg font-yrdly-display font-medium flex items-center gap-2 text-[var(--yrdly-text-primary)]">
             <ShieldCheck className="h-5 w-5 text-muted-foreground" />
             Location & Search Privacy
           </CardTitle>
