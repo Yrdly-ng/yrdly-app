@@ -201,14 +201,41 @@ export async function POST(request: NextRequest) {
       .from("escrow_transactions")
       .select("id, buyer_id, status, payluk_tx_ref, payluk_escrow_id, total_amount, created_at")
       .eq("item_id", itemId)
-      .in("status", [EscrowStatus.PENDING, EscrowStatus.PAID, EscrowStatus.SHIPPED, EscrowStatus.DELIVERED, EscrowStatus.COMPLETED, EscrowStatus.DISPUTED])
+      .in("status", [EscrowStatus.PENDING, EscrowStatus.PAID, EscrowStatus.SHIPPED, EscrowStatus.DELIVERED, EscrowStatus.COMPLETED, EscrowStatus.DISPUTED, 'creating_escrow', 'reconciling'])
       .order("created_at", { ascending: false });
 
     let existingTxToResume: any = null;
 
     if (activeTx && activeTx.length > 0) {
       const existingTx = activeTx[0];
-      if (existingTx.buyer_id === buyerId && existingTx.status === EscrowStatus.PENDING) {
+
+      // ── Handle in-flight 'creating_escrow' or 'reconciling' from a previous attempt ──
+      if (existingTx.buyer_id === buyerId && existingTx.status === 'creating_escrow') {
+        const lockTimestamp = existingTx.created_at;
+        const lockAgeMs = Date.now() - new Date(lockTimestamp).getTime();
+        const LOCK_TIMEOUT_MS = 60 * 1000;
+
+        if (lockAgeMs < LOCK_TIMEOUT_MS) {
+          return NextResponse.json(
+            { error: "ESCROW_CREATION_IN_PROGRESS", message: "Your payment is being set up. Please wait a moment and try again." },
+            { status: 409 }
+          );
+        }
+
+        // Stale creating_escrow — cancel it so a fresh attempt can proceed
+        console.warn(`[PaymentInit] Stale creating_escrow tx ${existingTx.id} (age: ${Math.round(lockAgeMs / 1000)}s). Cancelling...`);
+        await supabaseAdmin
+          .from("escrow_transactions")
+          .update({ status: EscrowStatus.CANCELLED, updated_at: new Date().toISOString() })
+          .eq("id", existingTx.id)
+          .eq("status", "creating_escrow");
+        // Fall through to create a fresh reservation
+      } else if (existingTx.buyer_id === buyerId && existingTx.status === 'reconciling') {
+        return NextResponse.json(
+          { error: "RECONCILIATION_IN_PROGRESS", message: "A previous checkout attempt is being cleaned up. Please try again in a moment." },
+          { status: 409 }
+        );
+      } else if (existingTx.buyer_id === buyerId && existingTx.status === EscrowStatus.PENDING) {
         if (existingTx.payluk_escrow_id && existingTx.payluk_tx_ref) {
           // Idempotency: Same buyer retrying or resuming checkout for their own pending transaction with Payluk escrow ready
           return NextResponse.json({
@@ -221,19 +248,19 @@ export async function POST(request: NextRequest) {
         }
         // Same buyer has a reserved DB row but missing Payluk details (e.g. previous crash)
         existingTxToResume = existingTx;
-      } else if (existingTx.status === EscrowStatus.PENDING) {
+      } else if (existingTx.status === EscrowStatus.PENDING || existingTx.status === 'creating_escrow' || existingTx.status === 'reconciling') {
         // Different buyer — check if the PENDING reservation is stale (abandoned checkout).
         // If older than PENDING_EXPIRY_MS and still unpaid, auto-cancel it so the item is freed.
         const PENDING_EXPIRY_MS = 2 * 60 * 60 * 1000; // 2 hours
         const pendingAgeMs = Date.now() - new Date(existingTx.created_at).getTime();
 
         if (pendingAgeMs >= PENDING_EXPIRY_MS) {
-          // Atomic CAS: only cancel if it's still PENDING (guards against concurrent requests)
+          // Atomic CAS: only cancel if it's still in a pre-paid state
           const { data: cancelledTx } = await supabaseAdmin
             .from("escrow_transactions")
             .update({ status: EscrowStatus.CANCELLED, updated_at: new Date().toISOString() })
             .eq("id", existingTx.id)
-            .eq("status", EscrowStatus.PENDING)
+            .in("status", [EscrowStatus.PENDING, 'creating_escrow'])
             .select("id")
             .single();
 
@@ -245,7 +272,7 @@ export async function POST(request: NextRequest) {
             );
           }
 
-          console.log(`[PaymentInit] Auto-cancelled stale PENDING tx ${existingTx.id} (age: ${Math.round(pendingAgeMs / 60000)}m). Item ${itemId} freed for new buyer.`);
+          console.log(`[PaymentInit] Auto-cancelled stale tx ${existingTx.id} (status: ${existingTx.status}, age: ${Math.round(pendingAgeMs / 60000)}m). Item ${itemId} freed for new buyer.`);
           // Fall through — existingTxToResume stays null, a fresh reservation will be created below
         } else {
           return NextResponse.json(
@@ -430,12 +457,35 @@ export async function POST(request: NextRequest) {
         }
 
         if (currentTx?.status === EscrowStatus.PENDING && !currentTx?.payluk_escrow_id) {
-          console.log(`[PaymentInit] Transaction ${transactionId} is PENDING without Payluk escrow. Proceeding to create Payluk escrow...`);
+          // Race recovered: another request released the lock but didn't create escrow.
+          // Re-attempt the CAS claim before proceeding.
+          console.log(`[PaymentInit] Transaction ${transactionId} is PENDING without Payluk escrow. Re-attempting CAS claim...`);
+          const { data: reClaimedTx, error: reClaimErr } = await supabaseAdmin
+            .from("escrow_transactions")
+            .update({
+              status: 'creating_escrow',
+              creating_escrow_started_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", transactionId)
+            .eq("status", EscrowStatus.PENDING)
+            .is("payluk_escrow_id", null)
+            .select("id")
+            .single();
+
+          if (reClaimErr || !reClaimedTx) {
+            console.error(`[PaymentInit] Re-claim failed for tx ${transactionId}. Another request may have won.`);
+            return NextResponse.json(
+              { error: "ESCROW_CREATION_IN_PROGRESS", message: "Payment setup is in progress. Please wait a moment." },
+              { status: 409 }
+            );
+          }
+          // Re-claim succeeded, fall through to Payluk escrow creation
         } else {
           // Terminal or unknown state — log for ops visibility.
           console.error(`[PaymentInit] Unexpected tx state for escrow creation: ${currentTx?.status} (tx: ${transactionId})`);
           return NextResponse.json(
-            { error: "Transaction is not in a valid state for escrow creation", status: currentTx?.status || 'unknown' },
+            { error: "Failed to initialize payment. Please try again.", detail: "Transaction is not in a valid state for escrow creation", status: currentTx?.status || 'unknown' },
             { status: 400 }
           );
         }
