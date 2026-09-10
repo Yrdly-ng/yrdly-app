@@ -187,19 +187,17 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
   return (
     <div
       className={cn(
-        "w-full rounded-[11px] overflow-hidden",
-        "bg-card text-foreground"
+        "w-full rounded-[16px] overflow-hidden border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] backdrop-blur-xl text-[var(--yrdly-text-primary)] font-yrdly-body shadow-xl"
       )}
     >
       {/* Top bar: back + "Post" */}
       <div
-        className="flex items-center gap-3 px-4 py-3 border-b border-border"
-        style={{ background: "rgba(185,185,185,0.05)" }}
+        className="flex items-center gap-3 px-4 py-3 border-b border-[var(--yrdly-glass-border)] bg-white/[0.03]"
       >
-        <button onClick={handleBack} className="p-1 -ml-1 rounded hover:bg-accent">
+        <button onClick={handleBack} className="p-1 -ml-1 rounded hover:bg-accent text-[var(--yrdly-text-primary)]">
           <ChevronLeft className="w-6 h-6" />
         </button>
-        <span className="font-normal text-sm leading-tight" style={{ fontFamily: "var(--font-work-sans)" }}>
+        <span className="font-yrdly-display font-semibold text-sm leading-tight text-[var(--yrdly-text-primary)]">
           Post
         </span>
       </div>
@@ -208,16 +206,16 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
       <div className="flex items-start justify-between gap-3 px-4 pt-4 pb-2">
         <div className="flex items-center gap-3 min-w-0">
           {loadingAuthor ? (
-            <div className="w-10 h-10 rounded-full bg-background/10 animate-pulse" />
+            <div className="w-10 h-10 rounded-full bg-muted animate-pulse" />
           ) : (
             <Avatar className="h-10 w-10 flex-shrink-0">
               <AvatarImage src={author?.avatar_url} />
-              <AvatarFallback className="bg-primary text-primary-foreground text-sm">{author?.name?.charAt(0) || "?"}</AvatarFallback>
+              <AvatarFallback className="bg-[#82DB7E] text-[#050505] font-yrdly-display text-sm font-bold">{author?.name?.charAt(0) || "?"}</AvatarFallback>
             </Avatar>
           )}
           <div className="min-w-0">
-            <p className="font-sans font-bold text-sm text-foreground truncate">{author?.name || "Anonymous"}</p>
-            <p className="font-sans font-normal text-[0.6875rem] text-muted-foreground">
+            <p className="font-yrdly-display font-bold text-sm text-[var(--yrdly-text-primary)] truncate">{author?.name || "Anonymous"}</p>
+            <p className="font-yrdly-body font-normal text-[0.6875rem] text-[var(--yrdly-label)]">
               {timeAgo(post.timestamp ? new Date(post.timestamp) : null)}
               {post.updated_at && (new Date(post.updated_at).getTime() - new Date(post.timestamp).getTime() > 2000) && " (edited)"}
             </p>

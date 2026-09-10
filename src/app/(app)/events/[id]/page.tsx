@@ -184,7 +184,7 @@ export default function EventDetailPage() {
   const hasMultipleImages = eventImages.length > 1;
 
   return (
-    <div className="min-h-[100dvh] bg-background text-foreground pb-24">
+    <div className="min-h-[100dvh] bg-[var(--yrdly-dark)] text-[var(--yrdly-text-primary)] font-yrdly-body pb-24">
       {/* Hero Carousel */}
       <div className="relative w-full aspect-[16/7] max-h-[420px] bg-card overflow-hidden">
         {eventImages.length > 0 ? (

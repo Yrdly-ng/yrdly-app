@@ -271,7 +271,7 @@ export function BusinessDetailScreen({
     : catalogItems.filter(item => item.in_stock);
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col min-h-full bg-[var(--yrdly-dark)] font-yrdly-body text-[var(--yrdly-text-primary)]">
       {/* Header with cover image */}
       <div className="relative">
         <div className="relative h-48 bg-gradient-to-br from-primary/20 to-accent/20 overflow-hidden">

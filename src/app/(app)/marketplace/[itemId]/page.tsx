@@ -12,13 +12,13 @@ import Image from "next/image";
 import { BuyButton } from "@/components/escrow/BuyButton";
 import { ClaimButton } from "@/components/escrow/ClaimButton";
 
-/* ─── colour tokens matching the Figma ─────────────────────────── */
-const BG = "var(--c-bg)";
-const CARD_BG = "var(--c-card)";
-const GREEN = "hsl(var(--primary))";
-const FADED = "#BBBBBB";
-const FONT_RALEWAY = "var(--font-raleway)";
-const FONT_PACIFICO = "var(--font-jersey25)";
+/* ─── colour tokens matching the yrdly design system ─────────────────────────── */
+const BG = "var(--yrdly-dark)";
+const CARD_BG = "var(--yrdly-glass-bg)";
+const GREEN = "#82DB7E";
+const FADED = "var(--yrdly-label)";
+const FONT_RALEWAY = "var(--yrdly-font-body)";
+const FONT_PACIFICO = "var(--yrdly-font-display)";
 
 export default function MarketplaceItemPage() {
   const params = useParams();
