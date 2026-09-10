@@ -429,12 +429,16 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        // Terminal or unknown state — log for ops visibility.
-        console.error(`[PaymentInit] Unexpected tx state for escrow creation: ${currentTx?.status} (tx: ${transactionId})`);
-        return NextResponse.json(
-          { error: "Transaction is not in a valid state for escrow creation", status: currentTx?.status || 'unknown' },
-          { status: 400 }
-        );
+        if (currentTx?.status === EscrowStatus.PENDING && !currentTx?.payluk_escrow_id) {
+          console.log(`[PaymentInit] Transaction ${transactionId} is PENDING without Payluk escrow. Proceeding to create Payluk escrow...`);
+        } else {
+          // Terminal or unknown state — log for ops visibility.
+          console.error(`[PaymentInit] Unexpected tx state for escrow creation: ${currentTx?.status} (tx: ${transactionId})`);
+          return NextResponse.json(
+            { error: "Transaction is not in a valid state for escrow creation", status: currentTx?.status || 'unknown' },
+            { status: 400 }
+          );
+        }
       }
 
       // Winner of the atomic claim proceeds to call PaylukService.createEscrow()
