@@ -115,7 +115,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-[100dvh] relative flex flex-col justify-between overflow-y-auto bg-[#050505] font-sans pb-10">
+    <div className="min-h-[100dvh] relative flex flex-col justify-between overflow-y-auto bg-[var(--yrdly-dark)] font-yrdly-body pb-10">
       <SceneBg photoId="1571346746462-d4e51c41072f" pos="center 30%" gradientStart="40%" />
 
       <div className="relative z-10 p-6 max-w-md w-full mx-auto flex items-center justify-center pt-8">
@@ -126,10 +126,10 @@ export default function LoginPage() {
         <GlassCard>
           {/* Header */}
           <div className="flex flex-col gap-1 text-left">
-            <h2 className="text-2xl font-black text-white">
+            <h2 className="text-2xl font-yrdly-display font-black text-white">
               {isSignUp ? 'Join your neighbourhood' : 'Welcome back'}
             </h2>
-            <p className="text-sm font-normal text-white/55">
+            <p className="text-sm font-yrdly-body font-normal text-[var(--yrdly-label)]">
               {isSignUp
                 ? 'Create your account — it only takes a moment'
                 : 'Sign in to your neighbourhood'}
@@ -178,7 +178,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="text-white/40 hover:text-white transition-colors"
+                  className="text-[var(--yrdly-label)] hover:text-white transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -203,7 +203,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={handleGoogle}
-              className="flex-1 h-12 rounded-[18px] bg-white/[0.055] border border-white/10 text-white font-medium text-sm flex items-center justify-center gap-2 hover:bg-white/10 transition-all active:scale-98"
+              className="flex-1 h-12 rounded-[18px] bg-white/[0.055] border border-[var(--yrdly-glass-border)] text-white font-yrdly-body font-medium text-sm flex items-center justify-center gap-2 hover:bg-white/10 transition-all active:scale-98"
             >
               <span>Google</span>
             </button>
@@ -214,7 +214,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => { setIsSignUp(!isSignUp); setError(''); }}
-              className="text-xs text-white/38 hover:text-white transition-colors"
+              className="text-xs text-[var(--yrdly-label)] hover:text-white transition-colors font-yrdly-body"
             >
               {isSignUp ? 'Already have an account? ' : "Don't have an account? "}
               <span className="text-[#82DB7E] font-bold">{isSignUp ? 'Sign in' : 'Sign up'}</span>

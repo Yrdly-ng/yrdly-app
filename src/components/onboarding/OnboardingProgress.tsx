@@ -1,8 +1,10 @@
-﻿"use client";
+"use client";
 
 import { useOnboarding } from '@/hooks/use-onboarding';
 import { Progress } from '@/components/ui/progress';
 import { CheckCircle } from 'lucide-react';
+
+import { cn } from '@/lib/utils';
 
 interface OnboardingProgressProps {
   className?: string;
@@ -24,20 +26,14 @@ export function OnboardingProgress({ className = '' }: OnboardingProgressProps) 
 
   return (
     <div 
-      className={`sticky top-0 z-50 ${className}`}
-      style={{ 
-        background: "var(--c-bg)", 
-        borderBottom: "1px solid var(--c-border)",
-        backdropFilter: "blur(20px)",
-        fontFamily: "var(--font-work-sans)"
-      }}
+      className={cn("sticky top-0 z-50 backdrop-blur-xl border-b border-[var(--yrdly-glass-border)] bg-[var(--yrdly-dark)]/90 font-yrdly-body", className)}
     >
       <div className="max-w-md mx-auto px-4 py-3">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium" style={{ color: "#a1a1aa" }}>
+          <span className="text-sm font-medium text-[var(--yrdly-label)]">
             Step {currentStepIndex + 1} of {steps.length}
           </span>
-          <span className="text-sm" style={{ color: "#a1a1aa" }}>
+          <span className="text-sm text-[var(--yrdly-label)]">
             {Math.round(progress)}% Complete
           </span>
         </div>

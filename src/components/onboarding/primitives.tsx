@@ -39,7 +39,7 @@ export function SceneBg({ photoId, pos = 'center', gradientStart = '40%' }: { ph
   const imageSrc = LOCAL_SCENE_IMAGES[photoId] || `/images/onboarding/splash.jpg`;
 
   return (
-    <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 bg-[#050505]">
+    <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 bg-[var(--yrdly-dark)]">
       <Image
         src={imageSrc}
         alt="Background Scene"
@@ -60,7 +60,7 @@ export function GlassCard({ children, className }: { children: React.ReactNode; 
   return (
     <div
       className={cn(
-        "w-full max-w-md mx-auto p-7 md:p-8 rounded-[32px] flex flex-col gap-5 backdrop-blur-xl relative z-10 transition-all border border-white/15 shadow-2xl",
+        "w-full max-w-md mx-auto p-7 md:p-8 rounded-[32px] flex flex-col gap-5 backdrop-blur-xl relative z-10 transition-all border border-[var(--yrdly-glass-border)] shadow-2xl font-yrdly-body",
         className
       )}
       style={{ backgroundColor: 'rgba(12,12,12,0.88)' }}
@@ -93,10 +93,10 @@ export function GlassInput({
     <div
       className={cn(
         "flex items-center px-4 h-14 rounded-[18px] bg-white/[0.07] border transition-all relative",
-        focused ? "border-[#82DB7E]/80 ring-1 ring-[#82DB7E]/50" : "border-white/15"
+        focused ? "border-[#82DB7E]/80 ring-1 ring-[#82DB7E]/50" : "border-[var(--yrdly-glass-border)]"
       )}
     >
-      {icon && <div className="mr-3 text-white/60">{icon}</div>}
+      {icon && <div className="mr-3 text-[var(--yrdly-label)]">{icon}</div>}
       <input
         type={type}
         placeholder={placeholder}
@@ -105,7 +105,7 @@ export function GlassInput({
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         maxLength={maxLength}
-        className="w-full bg-transparent text-white text-base placeholder:text-white/60 focus:outline-none"
+        className="w-full bg-transparent text-white text-base font-yrdly-body placeholder:text-[var(--yrdly-label)] focus:outline-none"
       />
       {right}
     </div>
@@ -119,7 +119,7 @@ export function PrimaryBtn({ label, onClick, icon, disabled, loading, type = 'bu
       onClick={onClick}
       disabled={disabled || loading}
       className={cn(
-        "w-full h-14 rounded-[20px] bg-[#82DB7E] text-[#050505] font-black text-base flex items-center justify-center gap-2 shadow-[0_8px_30px_rgba(130,219,126,0.26)] transition-all active:scale-98 hover:scale-[1.01]",
+        "w-full h-14 rounded-[20px] bg-[#82DB7E] text-[#050505] font-yrdly-display font-black text-base flex items-center justify-center gap-2 shadow-[0_8px_30px_rgba(130,219,126,0.26)] transition-all active:scale-98 hover:scale-[1.01]",
         (disabled || loading) && "opacity-50 cursor-not-allowed shadow-none"
       )}
     >
@@ -134,7 +134,7 @@ export function SecondaryBtn({ label, onClick }: { label: string; onClick: () =>
     <button
       type="button"
       onClick={onClick}
-      className="w-full h-12 rounded-[18px] bg-white/[0.08] border border-white/15 text-white font-semibold text-sm transition-all hover:bg-white/15 active:scale-98"
+      className="w-full h-12 rounded-[18px] bg-white/[0.08] border border-[var(--yrdly-glass-border)] text-white font-yrdly-body font-semibold text-sm transition-all hover:bg-white/15 active:scale-98"
     >
       {label}
     </button>
@@ -164,20 +164,20 @@ export function PasswordStrength({ value }: { value: string }) {
             />
           ))}
         </div>
-        <span className="text-xs font-bold" style={{ color: score > 0 ? colorsList[score] : 'rgba(255,255,255,0.6)' }}>
+        <span className="text-xs font-yrdly-body font-bold" style={{ color: score > 0 ? colorsList[score] : 'var(--yrdly-label)' }}>
           {labels[score]}
         </span>
       </div>
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-1.5 font-yrdly-body">
         {reqs.map(r => (
           <div
             key={r.label}
             className={cn(
               "flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold border transition-all",
-              r.met ? "bg-[#82DB7E]/15 text-[#82DB7E] border-[#82DB7E]/40" : "bg-white/[0.06] text-white/70 border-white/10"
+              r.met ? "bg-[#82DB7E]/15 text-[#82DB7E] border-[#82DB7E]/40" : "bg-white/[0.06] text-white/70 border-[var(--yrdly-glass-border)]"
             )}
           >
-            {r.met ? <CheckCircle className="w-3 h-3 text-[#82DB7E]" /> : <Circle className="w-3 h-3 text-white/50" />}
+            {r.met ? <CheckCircle className="w-3 h-3 text-[#82DB7E]" /> : <Circle className="w-3 h-3 text-[var(--yrdly-label)]" />}
             <span>{r.label}</span>
           </div>
         ))}
@@ -191,7 +191,7 @@ export function BackBtn({ onClick, light }: { onClick: () => void; light?: boole
     <button
       type="button"
       onClick={onClick}
-      className="flex items-center gap-1 text-sm font-bold text-white transition-colors hover:text-white/80"
+      className="flex items-center gap-1 text-sm font-yrdly-body font-bold text-white transition-colors hover:text-white/80"
     >
       <ChevronLeft className="w-4 h-4 text-white" />
       <span>Back</span>
@@ -219,7 +219,7 @@ export function ProgressPills({ total, current }: { total: number; current: numb
 export function StepBar({ step, total, label }: { step: number; total: number; label: string }) {
   return (
     <div className="w-full flex flex-col gap-1.5">
-      <div className="flex items-center justify-between text-xs">
+      <div className="flex items-center justify-between text-xs font-yrdly-display">
         <span className="font-extrabold uppercase tracking-wider text-white">STEP {step} OF {total}</span>
         <span className="font-extrabold text-white">{label}</span>
       </div>
@@ -236,9 +236,9 @@ export function StepBar({ step, total, label }: { step: number; total: number; l
 export function Divider({ label }: { label: string }) {
   return (
     <div className="flex items-center gap-3 my-1">
-      <div className="flex-1 h-px bg-white/15" />
-      <span className="text-[10px] font-black uppercase tracking-widest text-white/70">{label}</span>
-      <div className="flex-1 h-px bg-white/15" />
+      <div className="flex-1 h-px bg-[var(--yrdly-glass-border)]" />
+      <span className="text-[10px] font-yrdly-display font-black uppercase tracking-widest text-[var(--yrdly-label)]">{label}</span>
+      <div className="flex-1 h-px bg-[var(--yrdly-glass-border)]" />
     </div>
   );
 }

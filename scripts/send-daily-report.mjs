@@ -17,6 +17,7 @@ const RECIPIENTS = argRecipients.length ? argRecipients : [
   'feranmioyelowo@gmail.com',
   'vickysalami04@gmail.com',
   'Grimmjow2333@gmail.com',
+  'boluwatifelasisi240@gmail.com',
 ];
 
 const dateStr = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });

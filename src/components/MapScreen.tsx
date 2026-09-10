@@ -238,8 +238,6 @@ export function MapScreen({ className }: MapScreenProps) {
     }
   }, [filtered, supercluster, bounds, zoom]);
 
-  // clusters is now reactive state — no plain const needed
-
   // Filter for dynamic bottom list
   const visibleMarkers = useMemo(() => {
     if (!bounds) return filtered;
@@ -258,7 +256,7 @@ export function MapScreen({ className }: MapScreenProps) {
   const getGradient = (t: string) => t === 'event' ? 'linear-gradient(135deg, #ff4b4b, #b30000)' : t === 'business' ? 'linear-gradient(135deg, #4b9fff, #0044b3)' : t === 'marketplace' ? 'linear-gradient(135deg, #ffc107, #e65100)' : 'linear-gradient(135deg, #4caf50, #1b5e20)';
 
   return (
-    <div className={cn("relative w-full overflow-hidden", className)} style={{ height: '100dvh', background: 'var(--c-bg)' }}>
+    <div className={cn("relative w-full overflow-hidden bg-[var(--yrdly-dark)] text-foreground font-yrdly-body h-[100dvh]", className)}>
       
       {/* ── MAP ── */}
       <Map
@@ -299,7 +297,7 @@ export function MapScreen({ className }: MapScreenProps) {
                   map.panTo({ lat, lng });
                 }}
               >
-                <div className="w-12 h-12 rounded-full flex items-center justify-center text-primary-foreground font-black text-lg border-4 border-[var(--c-card)] shadow-2xl transition-transform hover:scale-110" style={{ background: 'hsl(var(--primary))' }}>
+                <div className="w-12 h-12 rounded-full flex items-center justify-center text-primary-foreground font-yrdly-display font-black text-lg border-4 border-[var(--yrdly-glass-border)] shadow-2xl transition-transform hover:scale-110" style={{ background: 'hsl(var(--primary))' }}>
                   {point_count}
                 </div>
               </AdvancedMarker>
@@ -342,7 +340,7 @@ export function MapScreen({ className }: MapScreenProps) {
 
       {/* ── Detail Modal Drawer ── */}
       <Drawer open={drawerOpen} onOpenChange={(open) => { setDrawerOpen(open); if (!open) setTimeout(() => setSelected(null), 300); }}>
-        <DrawerContent>
+        <DrawerContent className="bg-[var(--yrdly-dark)] border-t border-[var(--yrdly-glass-border)] text-foreground font-yrdly-body">
           <div className="px-6 py-4 pb-8 space-y-5">
             {selected && (
               <>
@@ -358,37 +356,37 @@ export function MapScreen({ className }: MapScreenProps) {
                   ) : null}
                   
                   <div className="flex-1 pt-1">
-                    <span className="text-[0.65rem] font-black uppercase tracking-widest px-2 py-0.5 rounded-sm" style={{ background: `${getPinColor(selected.type)}22`, color: getPinColor(selected.type) }}>
+                    <span className="text-[0.65rem] font-yrdly-display font-black uppercase tracking-widest px-2 py-0.5 rounded-sm" style={{ background: `${getPinColor(selected.type)}22`, color: getPinColor(selected.type) }}>
                       {selected.type === 'event' ? 'Live Event' : selected.type === 'business' ? 'Local Business' : selected.type === 'marketplace' ? 'Marketplace' : 'Friend'}
                     </span>
-                    <DrawerTitle className="text-2xl font-bold mt-2 text-foreground leading-tight" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
+                    <DrawerTitle className="text-2xl font-yrdly-display font-bold mt-2 text-foreground leading-tight">
                       {selected.title}
                     </DrawerTitle>
-                    <DrawerDescription className="mt-1.5 flex items-start gap-1.5 text-sm">
+                    <DrawerDescription className="mt-1.5 flex items-start gap-1.5 text-sm font-yrdly-body text-[var(--yrdly-label)]">
                       <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0 opacity-70" />
                       <span className="line-clamp-2">{selected.address}</span>
                     </DrawerDescription>
                   </div>
                 </div>
 
-                <div className="space-y-2.5 bg-muted/30 p-4 rounded-2xl border border-border/50">
+                <div className="space-y-2.5 bg-[var(--yrdly-glass-bg)] p-4 rounded-2xl border border-[var(--yrdly-glass-border)]">
                   {selected.price !== undefined && (
-                    <p className="text-2xl font-black" style={{ color: getPinColor('marketplace') }}>
+                    <p className="text-2xl font-yrdly-display font-black" style={{ color: getPinColor('marketplace') }}>
                       {selected.price === 0 ? 'Free' : `₦${(selected.price).toLocaleString()}`}
                     </p>
                   )}
                   {selected.description && (
-                    <p className="text-sm text-foreground/80 leading-relaxed">
+                    <p className="text-sm font-yrdly-body text-foreground/80 leading-relaxed">
                       {selected.description}
                     </p>
                   )}
                   {selected.attendees !== undefined && selected.type === 'event' && (
-                    <div className="flex items-center gap-2 text-sm font-medium text-foreground/70">
+                    <div className="flex items-center gap-2 text-sm font-yrdly-body font-medium text-[var(--yrdly-label)]">
                       <Users className="w-4 h-4" /> {selected.attendees} attending
                     </div>
                   )}
                   {selected.date && (
-                    <div className="flex items-center gap-2 text-sm font-medium text-foreground/70">
+                    <div className="flex items-center gap-2 text-sm font-yrdly-body font-medium text-[var(--yrdly-label)]">
                       <Calendar className="w-4 h-4" /> {new Date(selected.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                     </div>
                   )}
@@ -399,12 +397,12 @@ export function MapScreen({ className }: MapScreenProps) {
                     href={`https://www.google.com/maps/dir/?api=1&destination=${selected.position.lat},${selected.position.lng}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex-1 flex h-12 rounded-full font-bold text-sm bg-accent text-accent-foreground hover:bg-accent/80 items-center justify-center gap-2 transition-colors"
+                    className="flex-1 flex h-12 rounded-full font-yrdly-body font-bold text-sm bg-accent text-accent-foreground hover:bg-accent/80 items-center justify-center gap-2 transition-colors"
                   >
                     <Navigation className="w-4 h-4" /> Get Directions
                   </a>
                   <Button 
-                    className="flex-1 h-12 rounded-full font-bold text-sm" 
+                    className="flex-1 h-12 rounded-full font-yrdly-body font-bold text-sm" 
                     style={{ background: getGradient(selected.type), color: 'white' }}
                     onClick={() => { 
                       setDrawerOpen(false); 
@@ -423,10 +421,8 @@ export function MapScreen({ className }: MapScreenProps) {
         </DrawerContent>
       </Drawer>
 
-      {/* ── Header overlay removed ── */}
-
       {/* ── Search + filter overlay ── */}
-      <div className="absolute top-4 left-4 right-4 z-10 space-y-2.5">
+      <div className="absolute top-4 left-4 right-4 z-10 space-y-2.5 font-yrdly-body">
         {/* Search row */}
         <div className="flex items-center gap-2">
           {/* Back button */}
@@ -438,16 +434,14 @@ export function MapScreen({ className }: MapScreenProps) {
                 router.push('/home');
               }
             }}
-            className="flex items-center justify-center w-11 h-11 rounded-2xl shadow-2xl flex-shrink-0 transition-all hover:scale-105 active:scale-95"
-            style={{ background: 'rgba(13,17,23,0.92)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--c-text)' }}
+            className="flex items-center justify-center w-11 h-11 rounded-2xl shadow-2xl flex-shrink-0 transition-all hover:scale-105 active:scale-95 bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] text-foreground"
             aria-label="Go Back"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
 
           <div
-            className="flex flex-1 items-center gap-3 rounded-2xl px-5 py-3 shadow-2xl"
-            style={{ background: 'rgba(13,17,23,0.92)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.1)' }}
+            className="flex flex-1 items-center gap-3 rounded-2xl px-5 py-3 shadow-2xl bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)]"
           >
             <Search className="w-4 h-4 flex-shrink-0" style={{ color: '#82DB7E' }} />
             <input
@@ -455,15 +449,13 @@ export function MapScreen({ className }: MapScreenProps) {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search streets, estates, businesses..."
-              className="flex-1 bg-transparent border-none outline-none text-sm font-medium placeholder:text-muted-foreground/60"
-              style={{ color: 'var(--c-text)', fontFamily: 'Inter, sans-serif' }}
+              className="flex-1 bg-transparent border-none outline-none text-sm font-yrdly-body font-medium text-foreground placeholder:text-[var(--yrdly-label)]"
             />
           </div>
           {/* Near Me */}
           <button
             onClick={() => { if (map && userCoords) { map.panTo(userCoords); map.setZoom(15); } else if (navigator.geolocation) { navigator.geolocation.getCurrentPosition(p => { if (map) { map.panTo({ lat: p.coords.latitude, lng: p.coords.longitude }); map.setZoom(15); } }); } }}
-            className="flex items-center gap-1.5 rounded-2xl px-4 py-3 font-bold text-sm shadow-2xl flex-shrink-0 transition-all hover:scale-105 active:scale-95"
-            style={{ background: 'rgba(13,17,23,0.92)', backdropFilter: 'blur(16px)', border: '1px solid rgba(130,219,126,0.35)', color: '#82DB7E' }}
+            className="flex items-center gap-1.5 rounded-2xl px-4 py-3 font-yrdly-body font-bold text-sm shadow-2xl flex-shrink-0 transition-all hover:scale-105 active:scale-95 bg-[var(--yrdly-glass-bg)] border border-[#82DB7E]/40 text-[#82DB7E]"
           >
             <Locate className="w-4 h-4" />
             <span>Near Me</span>
@@ -476,11 +468,11 @@ export function MapScreen({ className }: MapScreenProps) {
             <button
               key={t.key}
               onClick={() => setActiveTab(t.key)}
-              className="flex-shrink-0 flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold shadow-lg transition-all hover:scale-105 active:scale-95"
+              className="flex-shrink-0 flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-yrdly-body font-bold shadow-lg transition-all hover:scale-105 active:scale-95"
               style={
                 activeTab === t.key
                   ? { background: t.color, color: activeTab === 'all' ? '#00390a' : '#0B0D0B' }
-                  : { background: 'rgba(13,17,23,0.88)', backdropFilter: 'blur(16px)', color: '#ccc', border: '1px solid rgba(255,255,255,0.1)' }
+                  : { background: 'var(--yrdly-glass-bg)', backdropFilter: 'blur(16px)', color: 'var(--yrdly-label)', border: '1px solid var(--yrdly-glass-border)' }
               }
             >
               <span style={{ color: activeTab === t.key ? '#0B0D0B' : t.color }}>{t.icon}</span>
@@ -501,21 +493,20 @@ export function MapScreen({ className }: MapScreenProps) {
 
       {/* ── Area info card (floating bottom-left) ── */}
       <div
-        className="absolute z-20 left-4 rounded-2xl p-4 w-52 shadow-2xl"
-        style={{ bottom: 170, background: 'rgba(13,17,23,0.94)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.08)' }}
+        className="absolute z-20 left-4 rounded-2xl p-4 w-52 shadow-2xl bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] font-yrdly-body bottom-[170px]"
       >
         <div className="flex items-center gap-1.5 mb-1">
           <MapPin className="w-3.5 h-3.5" style={{ color: '#82DB7E' }} />
-          <span className="font-black text-sm text-white">{profile?.location?.state || 'Your Area'}</span>
+          <span className="font-yrdly-display font-black text-sm text-foreground">{profile?.location?.state || 'Your Area'}</span>
         </div>
-        <p className="text-[11px] mb-3" style={{ color: '#8a9bb0' }}>
+        <p className="text-[11px] mb-3 text-[var(--yrdly-label)] font-yrdly-body">
           {markers.filter(m => m.type === 'business').length} businesses
           &nbsp;•&nbsp;
           {markers.filter(m => m.type === 'event').length} events nearby
         </p>
         <button
           onClick={() => router.push('/community' as any)}
-          className="w-full flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-black transition-all hover:opacity-90 active:scale-95"
+          className="w-full flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-yrdly-body font-black transition-all hover:opacity-90 active:scale-95"
           style={{ background: '#82DB7E', color: '#0B0D0B' }}
         >
           View Community
@@ -524,10 +515,10 @@ export function MapScreen({ className }: MapScreenProps) {
       </div>
 
       {/* ── FAB stack (right side) ── */}
-      <div className="absolute right-4 z-20 flex flex-col gap-2.5" style={{ bottom: 170 }}>
+      <div className="absolute right-4 z-20 flex flex-col gap-2.5 bottom-[170px]">
         <button
           onClick={() => router.push('/create' as any)}
-          className="flex items-center gap-2 rounded-full px-4 py-2.5 text-xs font-bold shadow-2xl transition-all hover:scale-105 active:scale-95"
+          className="flex items-center gap-2 rounded-full px-4 py-2.5 text-xs font-yrdly-body font-bold shadow-2xl transition-all hover:scale-105 active:scale-95"
           style={{ background: '#82DB7E', color: '#0B0D0B', border: 'none' }}
         >
           <Plus className="w-4 h-4" />
@@ -537,8 +528,7 @@ export function MapScreen({ className }: MapScreenProps) {
           <a
             href={`https://www.google.com/maps/dir/?api=1&destination=${selected.position.lat},${selected.position.lng}`}
             target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-2 rounded-full px-4 py-2.5 text-xs font-bold shadow-2xl transition-all hover:scale-105 active:scale-95"
-            style={{ background: 'rgba(13,17,23,0.92)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.12)', color: '#ccc' }}
+            className="flex items-center gap-2 rounded-full px-4 py-2.5 text-xs font-yrdly-body font-bold shadow-2xl transition-all hover:scale-105 active:scale-95 bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] text-foreground"
           >
             <Navigation className="w-4 h-4" style={{ color: '#82DB7E' }} />
             Directions
@@ -557,22 +547,21 @@ export function MapScreen({ className }: MapScreenProps) {
       >
         <VaulDrawer.Portal>
           <VaulDrawer.Content 
-            className="fixed inset-x-0 bottom-0 z-30 flex flex-col rounded-t-[24px] border-t border-border/40 shadow-[0_-20px_40px_rgba(0,0,0,0.5)] transition-all"
-            style={{ background: 'rgba(16,20,24,0.85)', backdropFilter: 'blur(20px)' }}
+            className="fixed inset-x-0 bottom-0 z-30 flex flex-col rounded-t-[24px] border-t border-[var(--yrdly-glass-border)] shadow-[0_-20px_40px_rgba(0,0,0,0.5)] transition-all bg-[var(--yrdly-dark)]/90 backdrop-blur-xl font-yrdly-body"
           >
             <div className="w-full flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing">
-              <div className="h-1.5 w-12 rounded-full bg-muted-foreground/30" />
+              <div className="h-1.5 w-12 rounded-full bg-[var(--yrdly-label)]/30" />
             </div>
             
             <div className="px-5 pb-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-lg font-bold text-foreground" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>Nearby Activity</h2>
-                  <p className="text-xs font-medium mt-0.5" style={{ color: '#8a9bb0' }}>
+                  <h2 className="text-lg font-yrdly-display font-bold text-foreground">Nearby Activity</h2>
+                  <p className="text-xs font-yrdly-body font-medium mt-0.5 text-[var(--yrdly-label)]">
                     {visibleMarkers.length} places in this area
                   </p>
                 </div>
-                <button onClick={() => router.push('/home' as any)} className="text-xs font-bold" style={{ color: '#82DB7E' }}>See all ›</button>
+                <button onClick={() => router.push('/home' as any)} className="text-xs font-yrdly-body font-bold" style={{ color: '#82DB7E' }}>See all ›</button>
               </div>
             </div>
 
@@ -585,7 +574,7 @@ export function MapScreen({ className }: MapScreenProps) {
                     setDrawerOpen(true);
                     if (map) { map.panTo(m.position); map.setZoom(16); }
                   }}
-                  className="w-full rounded-2xl p-3.5 flex items-center gap-4 text-left transition-colors hover:bg-accent/50 border border-border/30 bg-card/40 backdrop-blur-md"
+                  className="w-full rounded-2xl p-3.5 flex items-center gap-4 text-left transition-colors hover:bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)]/50 backdrop-blur-md"
                 >
                   <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 relative shadow-sm">
                     {m.image || m.avatar_url
@@ -600,15 +589,15 @@ export function MapScreen({ className }: MapScreenProps) {
                       )
                     }
                   </div>
-                  <div className="flex flex-col flex-1 min-w-0">
-                    <p className="text-[0.6rem] font-bold uppercase tracking-wider mb-0.5" style={{ color: m.type === 'friend' ? '#8B5CF6' : m.type === 'event' ? '#F59E0B' : m.type === 'business' ? '#22c55e' : '#E6A100' }}>
+                  <div className="flex flex-col flex-1 min-w-0 font-yrdly-body">
+                    <p className="text-[0.6rem] font-yrdly-display font-bold uppercase tracking-wider mb-0.5" style={{ color: m.type === 'friend' ? '#8B5CF6' : m.type === 'event' ? '#F59E0B' : m.type === 'business' ? '#22c55e' : '#E6A100' }}>
                       {m.type}
                     </p>
-                    <p className="text-sm font-bold text-foreground truncate">{m.title}</p>
-                    <p className="text-xs truncate mt-0.5" style={{ color: '#8a9bb0' }}>{m.distance || m.address}</p>
+                    <p className="text-sm font-yrdly-display font-bold text-foreground truncate">{m.title}</p>
+                    <p className="text-xs font-yrdly-body truncate mt-0.5 text-[var(--yrdly-label)]">{m.distance || m.address}</p>
                   </div>
                   {m.price !== undefined && (
-                    <div className="font-black text-sm pl-2 flex-shrink-0" style={{ color: getPinColor('marketplace') }}>
+                    <div className="font-yrdly-display font-black text-sm pl-2 flex-shrink-0" style={{ color: getPinColor('marketplace') }}>
                       {m.price === 0 ? 'Free' : `₦${(m.price/1000).toLocaleString()}k`}
                     </div>
                   )}
@@ -616,7 +605,7 @@ export function MapScreen({ className }: MapScreenProps) {
               ))}
 
               {visibleMarkers.length === 0 && !loading && (
-                <div className="flex flex-col items-center justify-center py-10 text-center opacity-70">
+                <div className="flex flex-col items-center justify-center py-10 text-center text-[var(--yrdly-label)] font-yrdly-body">
                   <Navigation className="w-8 h-8 mb-3 opacity-50" />
                   <p className="text-sm font-medium">No places found in this view.</p>
                   <p className="text-xs mt-1">Pan the map to explore more areas.</p>

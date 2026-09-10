@@ -12,6 +12,8 @@ import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
 import { ActivityIndicator } from "@/components/ActivityIndicator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
+import { GlassCard } from "@/components/ui/glass-card";
 
 const GREEN = "hsl(var(--primary))";
 const CARD = "var(--c-card)";
@@ -318,37 +320,33 @@ export function MessagesScreen() {
 
       setIsNewMessageOpen(false);
       router.push(`/messages/${cid}`);
-    } catch (e) {
-      toast({ variant: "destructive", title: "Error", description: "Failed to start chat." });
+    } catch (err) {
+      toast({ title: "Failed to start chat", variant: "destructive" });
     }
   };
 
   return (
-    <div className="min-h-[100dvh] pb-28 max-w-2xl mx-auto px-4 pt-4" style={{ background: "var(--c-bg)" }}>
-      {/* Top Bar */}
-      <div className="flex items-center justify-between pb-3 mb-2">
-        <h1 className="text-xl font-extrabold text-foreground" style={{ fontFamily: RALEWAY }}>
-          Messages
-        </h1>
+    <div className="w-full max-w-[430px] mx-auto min-h-[100dvh] bg-[var(--yrdly-dark)] text-foreground font-yrdly-body px-4 pt-4 pb-24">
+      {/* Top Header */}
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-xl font-bold text-foreground font-yrdly-display">Messages</h1>
         <Dialog open={isNewMessageOpen} onOpenChange={setIsNewMessageOpen}>
           <DialogTrigger asChild>
-            <button
-              className="w-9 h-9 rounded-xl flex items-center justify-center border border-white/10 transition-colors hover:bg-white/5"
-              style={{ background: CARD }}
-              title="New Message"
-            >
+            <button className="w-9 h-9 rounded-full bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] flex items-center justify-center text-foreground hover:bg-white/10 transition-all">
               <Edit className="w-4 h-4 text-primary" />
             </button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md bg-background w-[90%] rounded-xl mx-auto p-0 gap-0 overflow-hidden" style={{ background: "var(--c-bg)" }}>
-            <DialogHeader className="p-4 border-b border-border/20">
-              <DialogTitle style={{ fontFamily: RALEWAY, color: "var(--c-text)" }}>New Message</DialogTitle>
+          <DialogContent className="bg-[var(--yrdly-dark)] border border-[var(--yrdly-glass-border)] text-foreground font-yrdly-body max-w-sm rounded-2xl">
+            <DialogHeader>
+              <DialogTitle className="font-yrdly-display font-bold text-lg">New Message</DialogTitle>
             </DialogHeader>
-            <div className="max-h-[60vh] overflow-y-auto p-2">
+            <div className="py-2 max-h-[300px] overflow-y-auto space-y-1">
               {friendsLoading ? (
-                <div className="flex justify-center p-8"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+                <div className="flex justify-center py-6">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                </div>
               ) : friends.length === 0 ? (
-                <div className="p-8 text-center text-xs" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
+                <div className="p-8 text-center text-xs text-[var(--yrdly-label)] font-yrdly-body">
                   You have no connections to message yet.
                 </div>
               ) : (
@@ -356,16 +354,16 @@ export function MessagesScreen() {
                   <button
                     key={friend.id}
                     onClick={() => handleStartChat(friend.id)}
-                    className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors text-left"
+                    className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors text-left"
                   >
-                    <Avatar className="w-10 h-10 border border-border/10">
+                    <Avatar className="w-10 h-10 border border-[var(--yrdly-glass-border)]">
                       <AvatarImage src={friend.avatar_url || "/placeholder.svg"} />
-                      <AvatarFallback style={{ background: GREEN, color: "#000", fontFamily: RALEWAY, fontWeight: 700 }}>
+                      <AvatarFallback className="bg-primary text-foreground font-bold font-yrdly-display">
                         {friend.name?.charAt(0) || "?"}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 overflow-hidden">
-                      <p className="font-semibold text-sm truncate text-foreground" style={{ fontFamily: RALEWAY }}>{friend.name}</p>
+                      <p className="font-bold text-sm truncate text-foreground font-yrdly-display">{friend.name}</p>
                     </div>
                   </button>
                 ))
@@ -377,14 +375,13 @@ export function MessagesScreen() {
 
       {/* Search Input Bar */}
       <div className="relative mb-4">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--yrdly-label)]" />
         <input
           type="text"
           placeholder="Search messages..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full rounded-full py-2.5 pl-10 pr-4 text-sm text-foreground outline-none border border-[var(--c-border)]"
-          style={{ background: "var(--c-card)", fontFamily: FONT }}
+          className="w-full rounded-full py-2.5 pl-10 pr-4 text-sm text-foreground outline-none border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] placeholder:text-[var(--yrdly-label)] font-yrdly-body"
         />
       </div>
 
@@ -397,23 +394,16 @@ export function MessagesScreen() {
             <button
               key={key}
               onClick={() => setActiveTab(key)}
-              className="relative whitespace-nowrap rounded-full px-4 py-1.5 text-xs font-bold transition-all shrink-0"
-              style={{
-                background: isActive ? GREEN : "var(--c-card)",
-                color: isActive ? "#000" : "var(--c-text-muted)",
-                border: isActive ? "none" : "1px solid var(--c-border)",
-                fontFamily: FONT,
-              }}
+              className={cn(
+                "relative whitespace-nowrap rounded-full px-4 py-1.5 text-xs font-semibold transition-all shrink-0 border",
+                isActive
+                  ? "bg-[var(--yrdly-glass-bg)] text-foreground border-[var(--yrdly-glass-border)] font-yrdly-display"
+                  : "bg-transparent text-[var(--yrdly-label)] border-[var(--yrdly-glass-border)] hover:text-foreground font-yrdly-body"
+              )}
             >
               {label}
               {count > 0 && (
-                <span
-                  className="ml-1.5 px-1.5 py-0.2 text-[10px] rounded-full"
-                  style={{
-                    background: isActive ? "#000" : GREEN,
-                    color: isActive ? "#fff" : "#000",
-                  }}
-                >
+                <span className="ml-1.5 px-1.5 py-0.2 text-[10px] rounded-full bg-primary text-foreground font-bold">
                   {count}
                 </span>
               )}
@@ -426,22 +416,22 @@ export function MessagesScreen() {
       <div className="space-y-2.5">
         {loading ? (
           [...Array(5)].map((_, i) => (
-            <div key={i} className="flex items-center gap-3 p-3.5 rounded-[16px] border border-[var(--c-border)]" style={{ background: CARD }}>
-              <Skeleton className="w-12 h-12 rounded-full" style={{ background: "var(--c-card2)" }} />
+            <GlassCard key={i} className="flex items-center gap-3 p-3.5 rounded-[16px]">
+              <Skeleton className="w-12 h-12 rounded-full" />
               <div className="flex-1 space-y-2">
-                <Skeleton className="h-4 w-32" style={{ background: "var(--c-card2)" }} />
-                <Skeleton className="h-3 w-48" style={{ background: "var(--c-card2)" }} />
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-3 w-48" />
               </div>
-            </div>
+            </GlassCard>
           ))
         ) : filteredConversations.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
+          <GlassCard className="flex flex-col items-center justify-center py-20 text-center rounded-3xl">
             <MessageCircle className="w-12 h-12 mb-3 text-primary opacity-40" />
-            <h3 className="text-foreground text-base font-bold mb-1" style={{ fontFamily: RALEWAY }}>No conversations</h3>
-            <p className="text-xs text-muted-foreground" style={{ fontFamily: FONT }}>
+            <h3 className="text-foreground text-base font-bold mb-1 font-yrdly-display">No conversations</h3>
+            <p className="text-xs text-[var(--yrdly-label)] font-yrdly-body">
               {searchQuery ? "No matching messages found" : "Start chatting with your neighbors"}
             </p>
-          </div>
+          </GlassCard>
         ) : (
           filteredConversations.map((conv) => {
             const isMarketplace = conv.type === "marketplace";
@@ -451,10 +441,7 @@ export function MessagesScreen() {
 
             return (
               <Link key={conv.id} href={`/messages/${conv.id}`}>
-                <div
-                  className="group flex items-center gap-3.5 p-3.5 rounded-[18px] border border-[var(--c-border)] transition-all hover:bg-white/5"
-                  style={{ background: CARD }}
-                >
+                <GlassCard className="group flex items-center gap-3.5 p-3.5 rounded-[18px] transition-all hover:scale-[1.01]">
                   {/* Avatar / Thumbnail */}
                   <div className="relative w-12 h-12 flex-shrink-0">
                     {hasItemContext && conv.context?.itemImage ? (
@@ -462,12 +449,12 @@ export function MessagesScreen() {
                         src={conv.context.itemImage}
                         alt=""
                         width={48} height={48}
-                        className="w-full h-full object-cover rounded-xl"
+                        className="w-full h-full object-cover rounded-xl border border-[var(--yrdly-glass-border)]"
                       />
                     ) : (
                       <Avatar className="w-12 h-12">
                         <AvatarImage src={conv.participantAvatar} className="object-cover" />
-                        <AvatarFallback style={{ background: GREEN, color: "#000", fontFamily: RALEWAY, fontWeight: 700 }}>
+                        <AvatarFallback className="bg-primary text-foreground font-bold font-yrdly-display">
                           {conv.participantName.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
@@ -482,22 +469,24 @@ export function MessagesScreen() {
                   {/* Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-baseline mb-0.5">
-                      <span className="text-foreground text-sm font-bold truncate" style={{ fontFamily: RALEWAY }}>
+                      <span className="text-foreground text-sm font-bold truncate font-yrdly-display">
                         {conv.participantName}
                       </span>
                       <span
-                        className="text-[0.7rem] flex-shrink-0 ml-2"
-                        style={{ color: unread ? GREEN : "var(--c-text-muted)", fontFamily: FONT, fontWeight: unread ? 700 : 400 }}
+                        className={cn(
+                          "text-[0.7rem] flex-shrink-0 ml-2 font-yrdly-body",
+                          unread ? "text-primary font-bold" : "text-[var(--yrdly-label)]"
+                        )}
                       >
                         {timeLabel(conv.timestamp)}
                       </span>
                     </div>
                     {typeof conv.context?.itemPrice === "number" && (
-                      <div className="text-xs font-bold mb-0.5 text-emerald-500" style={{ fontFamily: FONT }}>
+                      <div className="text-xs font-bold mb-0.5 text-primary font-yrdly-display">
                         {conv.context.itemPrice === 0 ? "Free" : `₦${conv.context.itemPrice.toLocaleString()}`}
                       </div>
                     )}
-                    <p className={`text-xs truncate ${unread ? "text-foreground font-semibold" : "text-muted-foreground"}`} style={{ fontFamily: FONT }}>
+                    <p className={cn("text-xs truncate font-yrdly-body", unread ? "text-foreground font-semibold" : "text-[var(--yrdly-label)]")}>
                       {conv.lastMessage}
                     </p>
                   </div>
@@ -506,16 +495,16 @@ export function MessagesScreen() {
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <button
                       onClick={(e) => handleDeleteConversation(conv.id, e)}
-                      className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-red-500/10 text-muted-foreground hover:text-red-500 transition-all"
+                      className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-red-500/10 text-[var(--yrdly-label)] hover:text-red-500 transition-all"
                       title="Delete Conversation"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                     {unread && (
-                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: GREEN }} />
+                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0 bg-primary" />
                     )}
                   </div>
-                </div>
+                </GlassCard>
               </Link>
             );
           })

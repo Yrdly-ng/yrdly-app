@@ -14,10 +14,7 @@ import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
-const GREEN = "hsl(var(--primary))";
-const CARD = "var(--c-card)";
-const BG = "var(--c-bg)";
-const FONT = "var(--font-work-sans)";
+import { GlassCard } from "@/components/ui/glass-card";
 
 interface ConversationRow {
   id: string;
@@ -357,8 +354,8 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
   /* ─── Render ─── */
   if (loading) {
     return (
-      <div className="flex flex-col h-full" style={{ background: BG }}>
-        <div className="h-16 animate-pulse" style={{ background: CARD }} />
+      <div className="flex flex-col h-full bg-[var(--yrdly-dark)] text-foreground font-yrdly-body">
+        <div className="h-16 animate-pulse bg-[var(--yrdly-glass-bg)] border-b border-[var(--yrdly-glass-border)]" />
         <div className="flex-1 flex flex-col gap-4 p-4 mt-6">
           <div className="w-[70%] h-16 bg-muted/20 animate-pulse rounded-[20px] rounded-tl-sm self-start" />
           <div className="w-[60%] h-12 bg-muted/20 animate-pulse rounded-[20px] rounded-tr-sm self-end" />
@@ -370,10 +367,10 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
 
   if (!conversation || !otherParticipant) {
     return (
-      <div className="flex flex-col h-full items-center justify-center" style={{ background: BG }}>
-        <MessageCircle className="w-12 h-12 mb-4 text-primary" style={{ opacity: 0.4 }} />
-        <p className="text-foreground mb-4" style={{ fontFamily: FONT }}>Conversation not found</p>
-        <button onClick={() => router.push("/messages")} className="rounded-full px-6 py-2 text-foreground text-sm" style={{ background: GREEN, fontFamily: FONT }}>
+      <div className="flex flex-col h-full items-center justify-center bg-[var(--yrdly-dark)] text-foreground font-yrdly-body">
+        <MessageCircle className="w-12 h-12 mb-4 text-primary opacity-40" />
+        <p className="text-foreground mb-4 font-yrdly-body">Conversation not found</p>
+        <button onClick={() => router.push("/messages")} className="rounded-full px-6 py-2 text-primary-foreground text-sm bg-primary font-yrdly-body">
           Back to Messages
         </button>
       </div>
@@ -383,68 +380,53 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
   const activityStatus = getActivityStatus((otherParticipant as any).last_seen);
 
   return (
-    <div className="flex flex-col h-full" style={{ background: BG }}>
-      {/* ── Header ── */}
-      <header className="flex items-center px-4 py-3 flex-shrink-0 relative backdrop-blur-xl"
-        style={{
-          background: 'color-mix(in srgb, var(--c-card) 88%, transparent)',
-          borderBottom: "1px solid var(--c-border)",
-          boxShadow: "0 4px 20px rgba(0,0,0,0.12)",
-        }}>
-        <button onClick={() => router.push("/messages")} className="mr-2 p-2 rounded-full transition-all duration-200 hover:scale-105"
-          style={{ color: "var(--c-text)" }}
-          onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--c-card2)")}
-          onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}>
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <div className="relative cursor-pointer group" onClick={() => router.push(`/profile/${otherParticipant.id}`)}>
-          <div className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity blur-md"
-            style={{ background: GREEN }} />
-          <Avatar className="w-12 h-12 relative transition-transform group-hover:scale-105" style={{ boxShadow: "0 2px 10px rgba(0,0,0,0.25)" }}>
-            <AvatarImage src={otherParticipant.avatar_url} alt={otherParticipant.name} />
-            <AvatarFallback style={{ background: `linear-gradient(135deg, ${GREEN}, #1b5e20)`, color: "#fff", fontFamily: FONT, fontWeight: 700 }}>
-              {otherParticipant.name?.charAt(0).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <div className="absolute -bottom-0.5 -right-0.5">
-            <ActivityIndicator userId={otherParticipant.id} size="sm" />
+    <div className="w-full max-w-[430px] mx-auto min-h-[100dvh] bg-[var(--yrdly-dark)] text-foreground font-yrdly-body flex flex-col relative">
+      {/* ── Top Bar ── */}
+      <header className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 bg-[var(--yrdly-dark)]/80 backdrop-blur-md border-b border-[var(--yrdly-glass-border)]">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => router.push("/messages")}
+            className="w-9 h-9 rounded-xl flex items-center justify-center border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] transition-colors hover:bg-white/5"
+          >
+            <ArrowLeft className="w-4 h-4 text-foreground" />
+          </button>
+          <div className="flex items-center gap-2.5">
+            <div className="relative">
+              <Avatar className="w-9 h-9 border border-[var(--yrdly-glass-border)]">
+                <AvatarImage src={otherParticipant.avatar_url} />
+                <AvatarFallback className="bg-primary text-foreground font-bold font-yrdly-display text-xs">
+                  {otherParticipant.name?.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="absolute -bottom-0.5 -right-0.5">
+                <ActivityIndicator userId={otherParticipant.id} size="sm" />
+              </div>
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-foreground font-yrdly-display truncate max-w-[140px]">
+                {otherParticipant.name}
+              </h2>
+              <p className="text-[0.65rem] text-[var(--yrdly-label)] font-yrdly-body">
+                {activityStatus}
+              </p>
+            </div>
           </div>
         </div>
-        <div className="ml-3 flex-1 min-w-0">
-          <h1 className="text-[1rem] font-bold text-foreground truncate tracking-wide" style={{ fontFamily: "var(--font-jersey25)" }}>
-            {otherParticipant.name}
-          </h1>
-          <p className="text-[0.75rem] flex items-center gap-1.5" style={{ fontFamily: FONT, color: "var(--c-text-muted)" }}>
-            {activityStatus.toLowerCase().includes("active") && (
-              <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: "#4CAF50", boxShadow: "0 0 6px #4CAF50" }} />
-            )}
-            {activityStatus}
-          </p>
-        </div>
-        
-        {/* Options Menu */}
-        <div className="relative" tabIndex={0} onBlur={(e) => {
-          if (!e.currentTarget.contains(e.relatedTarget)) {
-            const menu = e.currentTarget.querySelector('.options-menu') as HTMLElement;
-            if (menu) menu.style.display = 'none';
-          }
-        }}>
-          <button 
-            className="p-2 rounded-full transition-colors"
-            style={{ color: "var(--c-text)" }}
+
+        <div className="relative">
+          <button
+            className="w-9 h-9 rounded-xl flex items-center justify-center border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] transition-colors hover:bg-white/5"
             onClick={(e) => {
               const menu = e.currentTarget.nextElementSibling as HTMLElement;
               if (menu) menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
             }}
           >
-            <MoreVertical className="w-5 h-5" />
+            <MoreVertical className="w-4 h-4 text-[var(--yrdly-label)]" />
           </button>
-          
-          <div className="options-menu hidden absolute right-0 top-full mt-2 w-48 rounded-xl shadow-lg border overflow-hidden z-50"
-            style={{ background: 'var(--c-card)', borderColor: 'var(--c-border)' }}>
-            <button 
-              className="w-full text-left px-4 py-3 text-sm hover:bg-black/20 transition-colors"
-              style={{ color: "var(--c-text)", fontFamily: FONT }}
+
+          <GlassCard className="options-menu hidden absolute right-0 top-11 w-48 py-1.5 z-40 rounded-xl p-0 shadow-xl border border-[var(--yrdly-glass-border)]">
+            <button
+              className="w-full text-left px-4 py-2.5 text-xs text-[var(--yrdly-label)] hover:text-foreground hover:bg-white/5 transition-colors font-yrdly-body"
               onClick={async () => {
                 if (confirm('Report this user?')) {
                   alert('User reported successfully.');
@@ -453,19 +435,17 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
             >
               Report User
             </button>
-            <button 
-              className="w-full text-left px-4 py-3 text-sm hover:bg-red-500/10 transition-colors text-red-500 flex items-center gap-2"
-              style={{ fontFamily: FONT }}
+            <button
+              className="w-full text-left px-4 py-2.5 text-xs text-red-500 hover:bg-red-500/10 transition-colors flex items-center gap-2 font-yrdly-body"
               onClick={handleDeleteConversation}
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="w-3.5 h-3.5" />
               Delete Conversation
             </button>
-            <button 
-              className="w-full text-left px-4 py-3 text-sm hover:bg-red-500/10 transition-colors text-red-500"
-              style={{ fontFamily: FONT }}
+            <button
+              className="w-full text-left px-4 py-2.5 text-xs text-red-500 hover:bg-red-500/10 transition-colors font-yrdly-body"
               onClick={async () => {
-                if (confirm('Block this user? You will not receive messages from them.')) {
+                if (confirm('Block this user?')) {
                   try {
                     const { data: profile } = await supabase.from('users').select('blocked_users').eq('id', user!.id).single();
                     if (profile) {
@@ -484,68 +464,60 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
             >
               Block User
             </button>
-          </div>
+          </GlassCard>
         </div>
       </header>
 
       {/* ── Item Context Banner ── */}
       {conversation.item_title && (
-        <div 
-          onClick={() => {
-            if (conversation.item_id) {
-              router.push(`/marketplace/${conversation.item_id}`);
-            }
-          }}
-          className="flex items-center gap-3 p-3 mx-4 mt-3 rounded-[10px] border cursor-pointer transition-colors hover:bg-black/5"
-          style={{ background: "var(--c-card2)", borderColor: "var(--c-border)" }}
-        >
-          {conversation.item_image && (
-            <div className="relative w-12 h-12 rounded-lg overflow-hidden shrink-0">
-              <Image 
-                src={conversation.item_image} 
-                alt={conversation.item_title || "Item"} 
-                fill
-                className="object-cover" 
-              />
-            </div>
-          )}
-          <div className="flex-1 min-w-0">
-            <h3 className="text-[0.875rem] font-semibold text-foreground truncate" style={{ fontFamily: FONT }}>
-              {conversation.item_title}
-            </h3>
-            {typeof conversation.item_price === 'number' && (
-              <p className="text-[0.875rem] font-bold mt-0.5" style={{ color: GREEN, fontFamily: FONT }}>
-                {conversation.item_price === 0 ? 'FREE' : `₦${conversation.item_price.toLocaleString()}`}
-              </p>
+        <div className="px-4 pt-3">
+          <GlassCard
+            onClick={() => {
+              if (conversation.item_id) {
+                router.push(`/marketplace/${conversation.item_id}`);
+              }
+            }}
+            className="flex items-center gap-3 p-3 rounded-2xl cursor-pointer hover:scale-[1.01] transition-all"
+          >
+            {conversation.item_image && (
+              <div className="relative w-12 h-12 rounded-xl overflow-hidden shrink-0 border border-[var(--yrdly-glass-border)]">
+                <Image
+                  src={conversation.item_image}
+                  alt={conversation.item_title || "Item"}
+                  fill
+                  className="object-cover"
+                />
+              </div>
             )}
-          </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-xs font-bold text-foreground truncate font-yrdly-display">
+                {conversation.item_title}
+              </h3>
+              {typeof conversation.item_price === 'number' && (
+                <p className="text-xs font-bold mt-0.5 text-primary font-yrdly-display">
+                  {conversation.item_price === 0 ? 'FREE' : `₦${conversation.item_price.toLocaleString()}`}
+                </p>
+              )}
+            </div>
+          </GlassCard>
         </div>
       )}
 
-      {/* ── Messages ── */}
-      <main className="flex-1 overflow-y-auto px-4 py-6 space-y-4" style={{ background: BG }}>
+      {/* ── Messages List ── */}
+      <main className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full py-16 text-center gap-4">
-            <div className="relative">
-              <div className="absolute inset-0 rounded-full blur-2xl opacity-30" style={{ background: GREEN }} />
-              <div className="relative w-20 h-20 rounded-full flex items-center justify-center"
-                style={{ background: "var(--c-card2)", border: "1px solid var(--c-border)" }}>
-                <MessageCircle className="w-8 h-8" style={{ color: GREEN }} />
-              </div>
-            </div>
-            <div>
-              <p className="text-foreground text-sm font-semibold" style={{ fontFamily: FONT }}>No messages yet</p>
-              <p className="text-[0.8rem] mt-1" style={{ fontFamily: FONT, color: "var(--c-text-muted)" }}>
-                Say hello to {otherParticipant.name?.split(" ")[0]} 👋
-              </p>
-            </div>
-          </div>
+          <GlassCard className="flex flex-col items-center justify-center py-16 text-center rounded-3xl my-8">
+            <MessageCircle className="w-10 h-10 mb-2 text-primary opacity-50" />
+            <p className="text-foreground text-sm font-bold font-yrdly-display">No messages yet</p>
+            <p className="text-xs text-[var(--yrdly-label)] mt-1 font-yrdly-body">
+              Say hello to {otherParticipant.name?.split(" ")[0]} 👋
+            </p>
+          </GlassCard>
         ) : (
           messages.map((msg, index) => {
             const isOwn = msg.sender_id === user?.id;
             const sender = participants[msg.sender_id];
             
-            // Check if we need a date header
             const currentMsgDate = new Date(msg.created_at);
             const prevMsgDate = index > 0 ? new Date(messages[index - 1].created_at) : null;
             const needsDateHeader = !prevMsgDate || currentMsgDate.toDateString() !== prevMsgDate.toDateString();
@@ -568,44 +540,43 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
             return (
               <div key={msg.id} className="flex flex-col">
                 {needsDateHeader && (
-                  <div className="flex justify-center my-4">
-                    <span className="text-[0.625rem] font-bold tracking-widest rounded-full px-3 py-1"
-                      style={{ color: "var(--c-text-muted)", background: "var(--c-card)", fontFamily: FONT }}>
+                  <div className="flex justify-center my-3">
+                    <span className="text-[0.625rem] font-bold tracking-widest rounded-full px-3 py-1 bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] text-[var(--yrdly-label)] font-yrdly-display">
                       {dateText}
                     </span>
                   </div>
                 )}
-                <div className={`flex items-end gap-3 max-w-[85%] group ${isOwn ? "self-end flex-row-reverse" : "self-start"}`}>
+                <div className={`flex items-end gap-2.5 max-w-[85%] group ${isOwn ? "self-end flex-row-reverse" : "self-start"}`}>
                   {!isOwn && (
-                    <Avatar className="w-8 h-8 flex-shrink-0">
+                    <Avatar className="w-7 h-7 flex-shrink-0">
                       <AvatarImage src={sender?.avatar_url} />
-                      <AvatarFallback style={{ background: GREEN, color: "#fff", fontFamily: FONT, fontWeight: 700, fontSize: 12 }}>
+                      <AvatarFallback className="bg-primary text-foreground font-bold font-yrdly-display text-[10px]">
                         {sender?.name?.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                   )}
 
-                  {/* Message Options Dropdown */}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <button className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-foreground rounded-full transition-opacity self-center">
+                      <button className="opacity-0 group-hover:opacity-100 p-1 text-[var(--yrdly-label)] hover:text-foreground rounded-full transition-opacity self-center">
                         <MoreVertical className="w-3.5 h-3.5" />
                       </button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align={isOwn ? "end" : "start"} className="w-44 bg-card border-border">
-                      <DropdownMenuItem onClick={() => handleDeleteMessageForMe(msg.id)} className="text-destructive focus:text-destructive cursor-pointer">
+                    <DropdownMenuContent align={isOwn ? "end" : "start"} className="w-44 bg-[var(--yrdly-dark)] border border-[var(--yrdly-glass-border)] text-foreground font-yrdly-body">
+                      <DropdownMenuItem onClick={() => handleDeleteMessageForMe(msg.id)} className="text-red-400 focus:text-red-400 cursor-pointer">
                         <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete for me
                       </DropdownMenuItem>
                       {isOwn && ((Date.now() - new Date(msg.created_at).getTime()) / 60000) <= 15 && (
-                        <DropdownMenuItem onClick={() => handleDeleteMessageForEveryone(msg.id)} className="text-destructive focus:text-destructive cursor-pointer">
+                        <DropdownMenuItem onClick={() => handleDeleteMessageForEveryone(msg.id)} className="text-red-400 focus:text-red-400 cursor-pointer">
                           <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete for everyone
                         </DropdownMenuItem>
                       )}
                     </DropdownMenuContent>
                   </DropdownMenu>
+
                   <div className="flex flex-col gap-1">
                     {(msg.image_url || (msg.media_type === 'image' && msg.media_url)) && (
-                      <div className="relative group rounded-[10px] overflow-hidden border cursor-pointer" style={{ borderColor: "var(--c-border)", maxWidth: 280 }} onClick={() => setFullscreenImage(msg.image_url || msg.media_url!)}>
+                      <div className="relative group rounded-2xl overflow-hidden border border-[var(--yrdly-glass-border)] cursor-pointer" style={{ maxWidth: 280 }} onClick={() => setFullscreenImage(msg.image_url || msg.media_url!)}>
                         <Image src={msg.image_url || msg.media_url!} alt="Message image" width={280} height={280} className="w-full h-auto object-cover" />
                         <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                           <span className="bg-black/50 text-white p-2 rounded-full backdrop-blur-sm">
@@ -615,13 +586,13 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
                       </div>
                     )}
                     {msg.video_url && (
-                      <div className="rounded-[10px] overflow-hidden relative group" style={{ maxWidth: 280, width: "100%", background: "#000" }}>
+                      <div className="rounded-2xl overflow-hidden relative group border border-[var(--yrdly-glass-border)]" style={{ maxWidth: 280, width: "100%", background: "#000" }}>
                         <video
                           src={msg.video_url.includes('#t=') ? msg.video_url : `${msg.video_url}#t=0.001`}
                           controls
                           playsInline
-                disablePictureInPicture
-                controlsList="nodownload noremoteplayback nopictureinpicture"
+                          disablePictureInPicture
+                          controlsList="nodownload noremoteplayback nopictureinpicture"
                           preload="metadata"
                           className="w-full h-auto"
                           style={{ maxHeight: 360 }}
@@ -640,18 +611,12 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
                     )}
                     {(msg.text || msg.content) && (
                       <div
-                        className="px-4 py-3 text-foreground text-[0.8125rem] leading-relaxed"
-                        style={{
-                          background: isOwn ? `linear-gradient(135deg, ${GREEN}, #2e7d32)` : CARD,
-                          borderRadius: isOwn ? "20px 20px 4px 20px" : "20px 20px 20px 4px",
-                          boxShadow: isOwn ? "0 2px 10px rgba(56,142,60,0.35)" : "0 1px 6px rgba(0,0,0,0.15)",
-                          fontFamily: FONT,
-                        }}
+                        className={`px-4 py-2.5 text-xs leading-relaxed font-yrdly-body ${isOwn ? "bg-primary text-foreground rounded-[20px] rounded-br-[4px] font-semibold" : "bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] text-foreground rounded-[20px] rounded-bl-[4px]"}`}
                       >
                         {msg.text || msg.content}
                       </div>
                     )}
-                    <span className={`text-[0.625rem] ${isOwn ? "text-right mr-1" : "ml-1"}`} style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
+                    <span className={`text-[0.625rem] px-1 font-yrdly-body text-[var(--yrdly-label)] ${isOwn ? "text-right" : "text-left"}`}>
                       {formatTime(msg.created_at)}
                     </span>
                   </div>
@@ -664,17 +629,17 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
         {/* Typing indicator */}
         {otherTypingUsers.length > 0 && (
           <div className="flex items-center gap-2 self-start">
-            <div className="flex items-center gap-2 rounded-full px-3 py-2" style={{ background: "var(--c-card2)" }}>
+            <GlassCard className="flex items-center gap-2 rounded-full px-3 py-2">
               <div className="flex gap-1">
                 {[0, 150, 300].map((delay) => (
-                  <div key={delay} className="w-1.5 h-1.5 rounded-full animate-bounce"
-                    style={{ background: GREEN, animationDelay: `-${delay}ms` }} />
+                  <div key={delay} className="w-1.5 h-1.5 rounded-full animate-bounce bg-primary"
+                    style={{ animationDelay: `-${delay}ms` }} />
                 ))}
               </div>
-              <span className="text-[0.75rem]" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
+              <span className="text-[0.65rem] text-[var(--yrdly-label)] font-yrdly-body">
                 {otherTypingUsers[0]?.user_name} is typing...
               </span>
-            </div>
+            </GlassCard>
           </div>
         )}
 
@@ -731,16 +696,14 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
               onChange={(e) => { setNewMessage(e.target.value); handleTyping(); }}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSend(e as any); } }}
               disabled={sending}
-              className="w-full rounded-full px-5 py-3 text-base md:text-[0.875rem] text-foreground outline-none transition-shadow focus:ring-2 focus:ring-primary/50"
-              style={{ background: "var(--c-card2)", border: "1px solid var(--c-border)", fontFamily: FONT, caretColor: GREEN }}
+              className="w-full rounded-full px-5 py-3 text-base md:text-[0.875rem] text-foreground bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] font-yrdly-body outline-none focus:ring-2 focus:ring-primary/50"
             />
           </div>
           <button
             type="submit"
             disabled={(!newMessage.trim() && !selectedFile && !videoFile) || sending}
-            className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-200 active:scale-95 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
-            style={{ background: `linear-gradient(135deg, ${GREEN}, #2e7d32)`, boxShadow: "0 4px 14px rgba(56,142,60,0.4)" }}>
-            {sending ? <Loader2 className="w-5 h-5 text-white animate-spin" /> : <Send className="w-5 h-5 text-white" />}
+            className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 bg-primary text-primary-foreground transition-all duration-200 active:scale-95 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100 shadow-md">
+            {sending ? <Loader2 className="w-5 h-5 text-primary-foreground animate-spin" /> : <Send className="w-5 h-5 text-primary-foreground" />}
           </button>
         </form>
         <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />

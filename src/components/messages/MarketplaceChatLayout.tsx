@@ -371,12 +371,12 @@ export function MarketplaceChatLayout({
   }, []);
 
   const ChatList = useMemo(() => (
-    <div className="h-full flex flex-col">
-      <div className="p-4 border-b">
-        <h2 className="text-xl font-bold mb-4">Marketplace Chats</h2>
+    <div className="h-full flex flex-col bg-[var(--yrdly-dark)] text-foreground font-yrdly-body">
+      <div className="p-4 border-b border-[var(--yrdly-glass-border)]">
+        <h2 className="text-xl font-yrdly-display font-bold mb-4">Marketplace Chats</h2>
         <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search marketplace chats" className="pl-8" />
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-[var(--yrdly-label)]" />
+          <Input placeholder="Search marketplace chats" className="pl-8 bg-[var(--yrdly-glass-bg)] border-[var(--yrdly-glass-border)] font-yrdly-body text-foreground placeholder:text-[var(--yrdly-label)]" />
         </div>
       </div>
       <ScrollArea className="flex-1">
@@ -394,14 +394,14 @@ export function MarketplaceChatLayout({
               <div
                 key={chat.id}
                 className={cn(
-                  "flex flex-col gap-2 p-4 cursor-pointer hover:bg-muted/50 border-b border-border/50 last:border-0",
-                  selectedChat?.id === chat.id && "bg-muted/50"
+                  "flex flex-col gap-2 p-4 cursor-pointer hover:bg-[var(--yrdly-glass-bg)] border-b border-[var(--yrdly-glass-border)]/50 last:border-0 transition-colors",
+                  selectedChat?.id === chat.id && "bg-[var(--yrdly-glass-bg)]"
                 )}
                 onClick={() => handleChatSelect(chat)}
               >
                 {/* Listing context pill — always visible */}
                 <div className="flex items-center gap-2">
-                  <div className="relative w-8 h-8 rounded-md overflow-hidden flex-shrink-0 border border-border/60">
+                  <div className="relative w-8 h-8 rounded-md overflow-hidden flex-shrink-0 border border-[var(--yrdly-glass-border)]">
                     <Image
                       src={chat.itemImageUrl || '/placeholder-item.jpg'}
                       alt={chat.itemTitle}
@@ -411,13 +411,13 @@ export function MarketplaceChatLayout({
                     />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-muted-foreground truncate">{chat.itemTitle}</p>
+                    <p className="text-xs font-yrdly-body font-medium text-[var(--yrdly-label)] truncate">{chat.itemTitle}</p>
                     {chat.itemPrice ? (
-                      <p className="text-xs font-bold text-primary">
+                      <p className="text-xs font-yrdly-display font-bold text-primary">
                         {new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 }).format(chat.itemPrice)}
                       </p>
                     ) : (
-                      <p className="text-xs text-muted-foreground/60">Free</p>
+                      <p className="text-xs font-yrdly-body text-[var(--yrdly-label)]/60">Free</p>
                     )}
                   </div>
                   {isUnread && <div className="h-2.5 w-2.5 rounded-full bg-primary flex-shrink-0" />}
@@ -428,7 +428,7 @@ export function MarketplaceChatLayout({
                   <div className="relative flex-shrink-0">
                     <Avatar className="h-8 w-8">
                       <AvatarImage src={otherParticipant?.avatar_url} alt={otherParticipant?.name || participantRole} />
-                      <AvatarFallback className="text-xs">
+                      <AvatarFallback className="text-xs font-yrdly-display">
                         {otherParticipant?.name?.charAt(0) || participantRole.charAt(0)}
                       </AvatarFallback>
                     </Avatar>
@@ -437,11 +437,11 @@ export function MarketplaceChatLayout({
                     />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold leading-none mb-0.5">
+                    <p className="text-sm font-yrdly-display font-semibold leading-none mb-0.5">
                       {otherParticipant?.name || `Unknown ${participantRole}`}
-                      <span className="text-xs font-normal text-muted-foreground ml-1.5">· {participantRole}</span>
+                      <span className="text-xs font-yrdly-body font-normal text-[var(--yrdly-label)] ml-1.5">· {participantRole}</span>
                     </p>
-                    <p className={cn("text-xs truncate", isUnread ? "text-foreground font-medium" : "text-muted-foreground")}>
+                    <p className={cn("text-xs font-yrdly-body truncate", isUnread ? "text-foreground font-medium" : "text-[var(--yrdly-label)]")}>
                       {chat.lastMessage?.content || "No messages yet"}
                     </p>
                   </div>
@@ -451,14 +451,14 @@ export function MarketplaceChatLayout({
           })
         ) : (
           <div className="p-4">
-            <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4 text-center bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+            <div className="flex flex-col items-center justify-center h-full text-[var(--yrdly-label)] p-4 text-center bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] rounded-2xl">
               <div className="mb-4 rounded-full bg-primary/10 p-4">
                 <ShoppingBag className="h-10 w-10 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold text-foreground mb-1">
+              <h3 className="text-xl font-yrdly-display font-semibold text-foreground mb-1">
                 No marketplace chats
               </h3>
-              <p className="mb-4 max-w-sm">
+              <p className="mb-4 max-w-sm font-yrdly-body text-sm text-[var(--yrdly-label)]">
                 You don&apos;t have any marketplace chats yet. When buyers contact you about your items, they&apos;ll appear here.
               </p>
             </div>
@@ -471,15 +471,15 @@ export function MarketplaceChatLayout({
   const ChatView = useMemo(() => {
     if (!selectedChat || !buyer) {
       return (
-        <div className="hidden md:flex flex-1 items-center justify-center text-muted-foreground p-8">
-          <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4 text-center bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+        <div className="hidden md:flex flex-1 items-center justify-center text-[var(--yrdly-label)] p-8 bg-[var(--yrdly-dark)] font-yrdly-body">
+          <div className="flex flex-col items-center justify-center h-full text-[var(--yrdly-label)] p-4 text-center bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] rounded-2xl">
             <div className="mb-4 rounded-full bg-primary/10 p-4">
               <ShoppingBag className="h-10 w-10 text-primary" />
             </div>
-            <h3 className="text-xl font-semibold text-foreground mb-1">
+            <h3 className="text-xl font-yrdly-display font-semibold text-foreground mb-1">
               Select a marketplace chat
             </h3>
-            <p className="mb-4 max-w-sm">
+            <p className="mb-4 max-w-sm font-yrdly-body text-sm text-[var(--yrdly-label)]">
               Choose one of your marketplace chats to see the messages.
             </p>
           </div>
@@ -488,8 +488,8 @@ export function MarketplaceChatLayout({
     }
 
     return (
-      <div className="flex flex-col h-full">
-        <div className="border-b">
+      <div className="flex flex-col h-full bg-[var(--yrdly-dark)] text-foreground font-yrdly-body">
+        <div className="border-b border-[var(--yrdly-glass-border)] bg-[var(--yrdly-dark)]">
           <div className="flex items-center gap-4 p-3">
             <Button
               variant="ghost"
@@ -503,22 +503,22 @@ export function MarketplaceChatLayout({
               <div className="relative">
                 <Avatar>
                   <AvatarImage src={buyer.avatar_url} alt={buyer.name} />
-                  <AvatarFallback>{buyer.name.charAt(0)}</AvatarFallback>
+                  <AvatarFallback className="font-yrdly-display">{buyer.name.charAt(0)}</AvatarFallback>
                 </Avatar>
                 <AvatarOnlineIndicator 
                   isOnline={onlineStatuses[buyer.uid] || false} 
                 />
               </div>
               <div>
-                <p className="font-semibold">{buyer.name}</p>
-                <p className="text-sm text-muted-foreground">
+                <p className="font-yrdly-display font-semibold">{buyer.name}</p>
+                <p className="text-sm font-yrdly-body text-[var(--yrdly-label)]">
                   {selectedChat.buyerId === user?.id ? 'Seller' : 'Buyer'}
                 </p>
               </div>
             </div>
           </div>
           <div className="px-3 pb-3">
-            <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg border border-border/40">
+            <div className="flex items-center gap-3 p-3 bg-[var(--yrdly-glass-bg)] rounded-xl border border-[var(--yrdly-glass-border)]">
               <div className="relative w-14 h-14 rounded-lg overflow-hidden flex-shrink-0">
                 <Image 
                   src={selectedChat.itemImageUrl || '/placeholder-item.jpg'} 
@@ -529,14 +529,14 @@ export function MarketplaceChatLayout({
                 />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs text-muted-foreground font-medium mb-0.5">About this listing</p>
-                <p className="font-semibold text-foreground text-sm leading-tight truncate">{selectedChat.itemTitle}</p>
+                <p className="text-xs text-[var(--yrdly-label)] font-yrdly-body font-medium mb-0.5">About this listing</p>
+                <p className="font-yrdly-display font-semibold text-foreground text-sm leading-tight truncate">{selectedChat.itemTitle}</p>
                 {selectedChat.itemPrice ? (
-                  <p className="text-sm font-bold text-primary mt-0.5">
+                  <p className="text-sm font-yrdly-display font-bold text-primary mt-0.5">
                     {new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 }).format(selectedChat.itemPrice)}
                   </p>
                 ) : (
-                  <p className="text-xs text-muted-foreground mt-0.5">Free item</p>
+                  <p className="text-xs font-yrdly-body text-[var(--yrdly-label)] mt-0.5">Free item</p>
                 )}
               </div>
             </div>
@@ -558,8 +558,8 @@ export function MarketplaceChatLayout({
             }}
           />
           {/* Semi-transparent overlay for text readability */}
-          <div className="absolute inset-0 bg-black/10 dark:bg-black/20 pointer-events-none" />
-          <div className="space-y-4 relative z-10">
+          <div className="absolute inset-0 bg-black/40 pointer-events-none" />
+          <div className="space-y-4 relative z-10 font-yrdly-body">
             {messages.map((msg, index) => {
               const showDateSeparator = index === 0 || 
                 (messages[index - 1] && 
@@ -572,7 +572,7 @@ export function MarketplaceChatLayout({
                 <div key={msg.id}>
                   {showDateSeparator && (
                     <div className="flex justify-center my-4">
-                      <div className="bg-muted text-muted-foreground px-3 py-1 rounded-full text-xs font-medium">
+                      <div className="bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] text-[var(--yrdly-label)] px-3 py-1 rounded-full text-xs font-yrdly-body font-medium">
                         {formatMessageDate(msg.timestamp)}
                       </div>
                     </div>
@@ -583,17 +583,17 @@ export function MarketplaceChatLayout({
                     {msg.senderId !== user?.id && (
                       <Avatar className="h-8 w-8">
                         <AvatarImage src={buyer.avatar_url} />
-                        <AvatarFallback>{buyer.name.charAt(0)}</AvatarFallback>
+                        <AvatarFallback className="font-yrdly-display">{buyer.name.charAt(0)}</AvatarFallback>
                       </Avatar>
                     )}
-                    <div className={cn("rounded-lg px-3 py-2 max-w-xs lg:max-w-md break-words", msg.senderId === user?.id ? "bg-primary text-primary-foreground" : "bg-card border")}>
+                    <div className={cn("rounded-2xl px-4 py-2.5 max-w-xs lg:max-w-md break-words text-sm font-yrdly-body shadow-sm", msg.senderId === user?.id ? "bg-primary text-primary-foreground" : "bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] text-foreground")}>
                       {msg.metadata?.imageUrl && (
                         <div className="relative w-48 h-48 mb-2">
                           <Image src={msg.metadata.imageUrl} alt="Chat image" layout="fill" className="rounded-md object-cover" />
                         </div>
                       )}
                       {msg.content && <p>{msg.content}</p>}
-                      <p className={cn("text-xs opacity-70 mt-1", msg.senderId === user?.id ? "text-right" : "text-left")}>
+                      <p className={cn("text-[10px] opacity-70 mt-1 font-yrdly-body", msg.senderId === user?.id ? "text-right" : "text-left")}>
                         {msg.timestamp.toLocaleTimeString([], {
                           hour: "2-digit",
                           minute: "2-digit",
@@ -606,7 +606,7 @@ export function MarketplaceChatLayout({
             })}
           </div>
         </ScrollArea>
-        <div className="p-4 border-t bg-card">
+        <div className="p-4 border-t border-[var(--yrdly-glass-border)] bg-[var(--yrdly-dark)] font-yrdly-body">
           {imagePreview && (
             <div className="relative w-24 h-24 mb-2">
               <Image src={imagePreview} alt="Image preview" layout="fill" className="rounded-md object-cover" />
@@ -618,14 +618,14 @@ export function MarketplaceChatLayout({
           {uploadProgress !== null && <Progress value={uploadProgress} className="mb-2" />}
           <form onSubmit={handleSendMessage} className="flex items-center gap-2">
             <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageSelect} className="hidden" />
-            <Button type="button" variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()}>
+            <Button type="button" variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} className="text-[var(--yrdly-label)] hover:text-foreground">
               <ImagePlus className="h-5 w-5" />
             </Button>
             <Textarea
               placeholder="Type a message..."
               value={newMessage}
               onChange={handleTyping}
-              className="flex-1 resize-none"
+              className="flex-1 resize-none bg-[var(--yrdly-glass-bg)] border-[var(--yrdly-glass-border)] font-yrdly-body text-foreground placeholder:text-[var(--yrdly-label)]"
               rows={1}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
@@ -634,7 +634,7 @@ export function MarketplaceChatLayout({
                 }
               }}
             />
-            <Button type="submit" size="icon" disabled={(!newMessage.trim() && !imageFile) || uploadProgress !== null}>
+            <Button type="submit" size="icon" disabled={(!newMessage.trim() && !imageFile) || uploadProgress !== null} className="bg-primary text-primary-foreground hover:bg-primary/90">
               <SendHorizonal className="h-5 w-5" />
             </Button>
           </form>
@@ -644,13 +644,14 @@ export function MarketplaceChatLayout({
   }, [selectedChat, buyer, handleBackToList, onlineStatuses, messages, user?.id, theme, imagePreview, uploadProgress, handleSendMessage, newMessage, imageFile, handleTyping, removeImagePreview, handleImageSelect, fileInputRef, scrollAreaRef]);
 
   return (
-    <Card className="h-full w-full flex">
-      <div className={cn("w-full md:w-1/3 border-r", { 'hidden md:flex': showChat })}>
+    <div className="h-full w-full flex bg-[var(--yrdly-dark)] text-foreground font-yrdly-body border-0 rounded-none">
+      <div className={cn("w-full md:w-1/3 border-r border-[var(--yrdly-glass-border)]", { 'hidden md:flex': showChat })}>
         {ChatList}
       </div>
       <div className={cn("w-full md:w-2/3", { 'hidden md:flex': !showChat })}>
         {ChatView}
       </div>
-    </Card>
+    </div>
   );
 }
+
