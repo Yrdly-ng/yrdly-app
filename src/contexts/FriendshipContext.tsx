@@ -35,63 +35,33 @@ export function FriendshipProvider({ children }: { children: React.ReactNode }) 
       if (!user || targetUserId === user.id) return;
 
       try {
-        // 1. Check users.friends array first
-        const [{ data: me }, { data: them }] = await Promise.all([
-          supabase.from("users").select("friends").eq("id", user.id).single(),
-          supabase.from("users").select("friends").eq("id", targetUserId).single()
+        const [{ data: iFollowThem }, { data: theyFollowMe }] = await Promise.all([
+          supabase
+            .from("followers")
+            .select("id")
+            .eq("follower_id", user.id)
+            .eq("following_id", targetUserId)
+            .maybeSingle(),
+          supabase
+            .from("followers")
+            .select("id")
+            .eq("follower_id", targetUserId)
+            .eq("following_id", user.id)
+            .maybeSingle(),
         ]);
 
-        const meHasThem = me?.friends?.includes(targetUserId);
-        const themHasMe = them?.friends?.includes(user.id);
+        const followsThem = !!iFollowThem;
+        const followsMe = !!theyFollowMe;
 
-        if (meHasThem || themHasMe) {
+        if (followsThem && followsMe) {
           updateStatus(targetUserId, "friends");
-
-          // Auto-heal if one direction is out of sync
-          if (!meHasThem && user.id) {
-            const myFriends = Array.from(new Set([...(me?.friends || []), targetUserId]));
-            await supabase.from("users").update({ friends: myFriends }).eq("id", user.id);
-          }
-          if (!themHasMe && targetUserId) {
-            const theirFriends = Array.from(new Set([...(them?.friends || []), user.id]));
-            await supabase.from("users").update({ friends: theirFriends }).eq("id", targetUserId);
-          }
-          return;
+        } else if (followsThem) {
+          updateStatus(targetUserId, "request_sent");
+        } else if (followsMe) {
+          updateStatus(targetUserId, "request_received");
+        } else {
+          updateStatus(targetUserId, "none");
         }
-
-        // 2. Check friend_requests table for accepted or pending status
-        const { data: requests } = await supabase
-          .from("friend_requests")
-          .select("id, from_user_id, to_user_id, status")
-          .or(
-            `and(from_user_id.eq.${user.id},to_user_id.eq.${targetUserId}),and(from_user_id.eq.${targetUserId},to_user_id.eq.${user.id})`
-          );
-
-        if (requests && requests.length > 0) {
-          const req = requests[0];
-
-          if (req.status === "accepted") {
-            updateStatus(targetUserId, "friends");
-
-            // Auto-heal users.friends array for both
-            const myFriends = Array.from(new Set([...(me?.friends || []), targetUserId]));
-            const theirFriends = Array.from(new Set([...(them?.friends || []), user.id]));
-            await Promise.all([
-              supabase.from("users").update({ friends: myFriends }).eq("id", user.id),
-              supabase.from("users").update({ friends: theirFriends }).eq("id", targetUserId),
-            ]);
-            return;
-          }
-
-          if (req.status === "pending") {
-            const status: FriendshipStatus =
-              req.from_user_id === user.id ? "request_sent" : "request_received";
-            updateStatus(targetUserId, status);
-            return;
-          }
-        }
-
-        updateStatus(targetUserId, "none");
       } catch (error) {
         console.error("Error refreshing friendship status:", error);
       }
@@ -99,53 +69,51 @@ export function FriendshipProvider({ children }: { children: React.ReactNode }) 
     [user, updateStatus]
   );
 
-  // Subscribe to friend_requests changes.
-  // NOTE: Supabase realtime filters only support simple `column=eq.value` syntax,
-  // NOT `or(...)`. So we create two separate channels — one for sent, one for received.
+  // Subscribe to followers table changes
   useEffect(() => {
     if (!user) return;
 
-    const handleChange = async (payload: { new?: unknown; old?: unknown }) => {
-      const record = (payload.new || payload.old) as { from_user_id: string; to_user_id: string };
+    const handleChange = async (payload: { new?: any; old?: any }) => {
+      const record = payload.new || payload.old;
       if (!record) return;
       const otherUserId =
-        record.from_user_id === user.id ? record.to_user_id : record.from_user_id;
-      await refreshUserStatus(otherUserId);
+        record.follower_id === user.id ? record.following_id : record.follower_id;
+      if (otherUserId) {
+        await refreshUserStatus(otherUserId);
+      }
     };
 
-    // Channel for requests sent BY current user
-    const sentChannel = supabase
-      .channel(`friend_requests_sent:${user.id}`)
+    const followingChannel = supabase
+      .channel(`community_following:${user.id}`)
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
-          table: "friend_requests",
-          filter: `from_user_id=eq.${user.id}`,
+          table: "followers",
+          filter: `follower_id=eq.${user.id}`,
         },
         handleChange
       )
       .subscribe();
 
-    // Channel for requests received BY current user
-    const receivedChannel = supabase
-      .channel(`friend_requests_received:${user.id}`)
+    const followersChannel = supabase
+      .channel(`community_followers:${user.id}`)
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
-          table: "friend_requests",
-          filter: `to_user_id=eq.${user.id}`,
+          table: "followers",
+          filter: `following_id=eq.${user.id}`,
         },
         handleChange
       )
       .subscribe();
 
     return () => {
-      sentChannel.unsubscribe();
-      receivedChannel.unsubscribe();
+      followingChannel.unsubscribe();
+      followersChannel.unsubscribe();
     };
   }, [user, refreshUserStatus]);
 

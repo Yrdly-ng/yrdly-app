@@ -45,45 +45,42 @@ export function useFriendshipGlobal(targetUserId: string | undefined): UseFriend
       setIsLoading(true);
       setError(null);
 
-      // Guard: check if a request already exists in either direction
+      // Check if already following in followers table
       const { data: existing } = await supabase
-        .from("friend_requests")
-        .select("id, from_user_id, status")
-        .or(
-          `and(from_user_id.eq.${user.id},to_user_id.eq.${targetUserId}),` +
-          `and(from_user_id.eq.${targetUserId},to_user_id.eq.${user.id})`
-        )
-        .limit(1);
+        .from("followers")
+        .select("id")
+        .eq("follower_id", user.id)
+        .eq("following_id", targetUserId)
+        .maybeSingle();
 
-      if (existing && existing.length > 0) {
-        const req = existing[0];
-        if (req.status === "pending") {
-          const isIncoming = req.from_user_id === targetUserId;
-          toast({
-            title: isIncoming ? "They already sent you a request" : "Request already sent",
-            description: isIncoming
-              ? "Accept their request from your notifications."
-              : "Your request is pending their response.",
-          });
-          return;
-        } else {
-          // Stale row (e.g. accepted but friend array was out of sync due to old RLS bug)
-          // Clean it up so we can send a fresh request
-          await supabase.from("friend_requests").delete().eq("id", req.id);
-        }
+      if (existing) {
+        toast({
+          title: "Already following",
+          description: "You have already sent a request or followed this user.",
+        });
+        return;
       }
 
-      const { error: insertError } = await supabase.from("friend_requests").insert({
-        from_user_id: user.id,
-        to_user_id: targetUserId,
-        participant_ids: [user.id, targetUserId].sort(),
-        status: "pending",
-        created_at: new Date().toISOString(),
+      const { error: insertError } = await supabase.from("followers").insert({
+        follower_id: user.id,
+        following_id: targetUserId,
       });
 
       if (insertError) throw new Error(insertError.message);
 
-      // Refresh status from context (which will trigger via real-time)
+      // Also insert into friend_requests for legacy backward-compatibility
+      try {
+        await supabase.from("friend_requests").insert({
+          from_user_id: user.id,
+          to_user_id: targetUserId,
+          participant_ids: [user.id, targetUserId].sort(),
+          status: "pending",
+          created_at: new Date().toISOString(),
+        });
+      } catch {
+        // Non-fatal if legacy table errors
+      }
+
       await refreshUserStatus(targetUserId);
 
       toast({
@@ -91,7 +88,6 @@ export function useFriendshipGlobal(targetUserId: string | undefined): UseFriend
         description: "Friend request sent!",
       });
 
-      // Trigger notification
       try {
         const { NotificationTriggers } = await import("@/lib/notification-triggers");
         await NotificationTriggers.onFriendRequestSent(user.id, targetUserId);
@@ -119,37 +115,43 @@ export function useFriendshipGlobal(targetUserId: string | undefined): UseFriend
       setIsLoading(true);
       setError(null);
 
-      const [{ data: meData }, { data: themData }] = await Promise.all([
-        supabase.from("users").select("friends").eq("id", user.id).single(),
-        supabase.from("users").select("friends").eq("id", targetUserId).single(),
+      // Delete both directions from followers table
+      await Promise.all([
+        supabase
+          .from("followers")
+          .delete()
+          .eq("follower_id", user.id)
+          .eq("following_id", targetUserId),
+        supabase
+          .from("followers")
+          .delete()
+          .eq("follower_id", targetUserId)
+          .eq("following_id", user.id),
       ]);
 
-      const updatedMyFriends = (meData?.friends || []).filter(
-        (id: string) => id !== targetUserId
-      );
-      const updatedTheirFriends = (themData?.friends || []).filter(
-        (id: string) => id !== user.id
-      );
-
-      const [res1, res2] = await Promise.all([
-        supabase.from("users").update({ friends: updatedMyFriends }).eq("id", user.id),
-        supabase.from("users").update({ friends: updatedTheirFriends }).eq("id", targetUserId),
-      ]);
-
-      if (res1.error || res2.error) {
-        throw new Error(res1.error?.message || res2.error?.message || "Failed to remove friend");
+      // Legacy cleanup for friend_requests & users.friends
+      try {
+        const [{ data: meData }, { data: themData }] = await Promise.all([
+          supabase.from("users").select("friends").eq("id", user.id).single(),
+          supabase.from("users").select("friends").eq("id", targetUserId).single(),
+        ]);
+        const updatedMyFriends = (meData?.friends || []).filter((id: string) => id !== targetUserId);
+        const updatedTheirFriends = (themData?.friends || []).filter((id: string) => id !== user.id);
+        await Promise.all([
+          supabase.from("users").update({ friends: updatedMyFriends }).eq("id", user.id),
+          supabase.from("users").update({ friends: updatedTheirFriends }).eq("id", targetUserId),
+          supabase
+            .from("friend_requests")
+            .delete()
+            .or(
+              `and(from_user_id.eq.${user.id},to_user_id.eq.${targetUserId}),` +
+              `and(from_user_id.eq.${targetUserId},to_user_id.eq.${user.id})`
+            ),
+        ]);
+      } catch {
+        // Non-fatal
       }
 
-      // Also delete the accepted friend_request row so status resets cleanly
-      await supabase
-        .from("friend_requests")
-        .delete()
-        .or(
-          `and(from_user_id.eq.${user.id},to_user_id.eq.${targetUserId}),` +
-          `and(from_user_id.eq.${targetUserId},to_user_id.eq.${user.id})`
-        );
-
-      // Refresh status
       await refreshUserStatus(targetUserId);
 
       toast({
@@ -178,15 +180,24 @@ export function useFriendshipGlobal(targetUserId: string | undefined): UseFriend
       setError(null);
 
       const { error: deleteError } = await supabase
-        .from("friend_requests")
+        .from("followers")
         .delete()
-        .eq("from_user_id", user.id)
-        .eq("to_user_id", targetUserId)
-        .eq("status", "pending");
+        .eq("follower_id", user.id)
+        .eq("following_id", targetUserId);
 
       if (deleteError) throw new Error(deleteError.message);
 
-      // Refresh status
+      try {
+        await supabase
+          .from("friend_requests")
+          .delete()
+          .eq("from_user_id", user.id)
+          .eq("to_user_id", targetUserId)
+          .eq("status", "pending");
+      } catch {
+        // Non-fatal
+      }
+
       await refreshUserStatus(targetUserId);
 
       toast({
@@ -214,39 +225,38 @@ export function useFriendshipGlobal(targetUserId: string | undefined): UseFriend
       setIsLoading(true);
       setError(null);
 
-      // Update request status
-      const { error: updateError } = await supabase
-        .from("friend_requests")
-        .update({ status: "accepted", updated_at: new Date().toISOString() })
-        .eq("from_user_id", targetUserId)
-        .eq("to_user_id", user.id)
-        .eq("status", "pending");
+      // Insert reciprocal follow row into followers table to create mutual follow (Friends)
+      const { error: insertError } = await supabase.from("followers").insert({
+        follower_id: user.id,
+        following_id: targetUserId,
+      });
 
-      if (updateError) throw new Error(updateError.message);
-
-      // Add to both users' friends arrays
-      const [{ data: meData }, { data: themData }] = await Promise.all([
-        supabase.from("users").select("friends").eq("id", user.id).single(),
-        supabase.from("users").select("friends").eq("id", targetUserId).single(),
-      ]);
-
-      const myFriends = Array.from(
-        new Set([...(meData?.friends || []), targetUserId])
-      );
-      const theirFriends = Array.from(
-        new Set([...(themData?.friends || []), user.id])
-      );
-
-      const [res3, res4] = await Promise.all([
-        supabase.from("users").update({ friends: myFriends }).eq("id", user.id),
-        supabase.from("users").update({ friends: theirFriends }).eq("id", targetUserId),
-      ]);
-
-      if (res3.error || res4.error) {
-        throw new Error(res3.error?.message || res4.error?.message || "Failed to accept request");
+      if (insertError && !insertError.message.includes("duplicate")) {
+        throw new Error(insertError.message);
       }
 
-      // Refresh status
+      // Legacy update for friend_requests & users.friends
+      try {
+        await supabase
+          .from("friend_requests")
+          .update({ status: "accepted", updated_at: new Date().toISOString() })
+          .eq("from_user_id", targetUserId)
+          .eq("to_user_id", user.id);
+
+        const [{ data: meData }, { data: themData }] = await Promise.all([
+          supabase.from("users").select("friends").eq("id", user.id).single(),
+          supabase.from("users").select("friends").eq("id", targetUserId).single(),
+        ]);
+        const myFriends = Array.from(new Set([...(meData?.friends || []), targetUserId]));
+        const theirFriends = Array.from(new Set([...(themData?.friends || []), user.id]));
+        await Promise.all([
+          supabase.from("users").update({ friends: myFriends }).eq("id", user.id),
+          supabase.from("users").update({ friends: theirFriends }).eq("id", targetUserId),
+        ]);
+      } catch {
+        // Non-fatal
+      }
+
       await refreshUserStatus(targetUserId);
 
       toast({
@@ -254,7 +264,6 @@ export function useFriendshipGlobal(targetUserId: string | undefined): UseFriend
         description: "Friend request accepted!",
       });
 
-      // Trigger notification
       try {
         const { NotificationTriggers } = await import("@/lib/notification-triggers");
         await NotificationTriggers.onFriendRequestAccepted(targetUserId, user.id);
@@ -283,14 +292,23 @@ export function useFriendshipGlobal(targetUserId: string | undefined): UseFriend
       setError(null);
 
       const { error: deleteError } = await supabase
-        .from("friend_requests")
+        .from("followers")
         .delete()
-        .eq("from_user_id", targetUserId)
-        .eq("to_user_id", user.id);
+        .eq("follower_id", targetUserId)
+        .eq("following_id", user.id);
 
       if (deleteError) throw new Error(deleteError.message);
 
-      // Refresh status
+      try {
+        await supabase
+          .from("friend_requests")
+          .delete()
+          .eq("from_user_id", targetUserId)
+          .eq("to_user_id", user.id);
+      } catch {
+        // Non-fatal
+      }
+
       await refreshUserStatus(targetUserId);
 
       toast({

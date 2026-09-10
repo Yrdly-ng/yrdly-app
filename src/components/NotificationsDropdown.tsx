@@ -172,39 +172,35 @@ function NotificationItem({ notification, onMarkAsRead, onDelete, onClose }: {
               return;
             }
 
-            const { data: allRequests } = await supabase.from('friend_requests').select('*').eq('from_user_id', senderId).eq('to_user_id', toUserId).order('created_at', { ascending: false }).limit(1);
-            if (!allRequests || allRequests.length === 0) {
-              await onMarkAsRead(notification.id);
-              toast({ title: "Request not found", variant: "destructive" });
-              return;
-            }
+            // Insert into followers table for mutual follow
+            try {
+              await supabase.from("followers").insert({
+                follower_id: toUserId,
+                following_id: senderId,
+              });
+            } catch {}
 
-            const requestData = allRequests[0];
-            if (requestData.status === 'accepted') {
-              await onMarkAsRead(notification.id);
-              toast({ title: "Already friends" });
-              return;
-            }
-            if (requestData.status !== 'pending') {
-              await onMarkAsRead(notification.id);
-              toast({ title: "Request already handled", variant: "destructive" });
-              return;
-            }
+            // Update friend_requests table for legacy compatibility
+            try {
+              const { data: allRequests } = await supabase.from('friend_requests').select('*').eq('from_user_id', senderId).eq('to_user_id', toUserId).order('created_at', { ascending: false }).limit(1);
+              if (allRequests && allRequests.length > 0) {
+                await supabase.from("friend_requests").update({ status: "accepted", updated_at: new Date().toISOString() }).eq("id", allRequests[0].id);
+              }
+            } catch {}
 
-            // Update friend_requests table
-            await supabase.from("friend_requests").update({ status: "accepted", updated_at: new Date().toISOString() }).eq("id", requestData.id);
-
-            // Update users.friends array for both users
-            const [{ data: meData }, { data: themData }] = await Promise.all([
-              supabase.from("users").select("friends").eq("id", toUserId).single(),
-              supabase.from("users").select("friends").eq("id", senderId).single(),
-            ]);
-            const myFriends = Array.from(new Set([...(meData?.friends || []), senderId]));
-            const theirFriends = Array.from(new Set([...(themData?.friends || []), toUserId]));
-            await Promise.all([
-              supabase.from("users").update({ friends: myFriends }).eq("id", toUserId),
-              supabase.from("users").update({ friends: theirFriends }).eq("id", senderId),
-            ]);
+            // Update users.friends array for legacy compatibility
+            try {
+              const [{ data: meData }, { data: themData }] = await Promise.all([
+                supabase.from("users").select("friends").eq("id", toUserId).single(),
+                supabase.from("users").select("friends").eq("id", senderId).single(),
+              ]);
+              const myFriends = Array.from(new Set([...(meData?.friends || []), senderId]));
+              const theirFriends = Array.from(new Set([...(themData?.friends || []), toUserId]));
+              await Promise.all([
+                supabase.from("users").update({ friends: myFriends }).eq("id", toUserId),
+                supabase.from("users").update({ friends: theirFriends }).eq("id", senderId),
+              ]);
+            } catch {}
 
             try {
               const { NotificationTriggers } = await import('@/lib/notification-triggers');
@@ -226,20 +222,20 @@ function NotificationItem({ notification, onMarkAsRead, onDelete, onClose }: {
             let senderId = notification.from_user_id || "";
             if (!senderId && toUserId) {
               const { data: pending } = await supabase
-                .from('friend_requests')
-                .select('id, from_user_id')
-                .eq('to_user_id', toUserId)
-                .eq('status', 'pending')
-                .order('created_at', { ascending: false })
+                .from('followers')
+                .select('follower_id')
+                .eq('following_id', toUserId)
                 .limit(1);
-              if (pending && pending.length >= 1) senderId = pending[0].from_user_id;
+              if (pending && pending.length >= 1) senderId = pending[0].follower_id;
             }
 
             if (!senderId || !toUserId) throw new Error("Missing identifiers");
 
-            const { error } = await supabase.from('friend_requests').delete().eq('from_user_id', senderId).eq('to_user_id', toUserId).eq('status', 'pending');
-            if (error) throw error;
-            // Sync global friendship state so all profile buttons update
+            await supabase.from('followers').delete().eq('follower_id', senderId).eq('following_id', toUserId);
+            try {
+              await supabase.from('friend_requests').delete().eq('from_user_id', senderId).eq('to_user_id', toUserId).eq('status', 'pending');
+            } catch {}
+
             if (senderId) await refreshUserStatus(senderId);
             await onMarkAsRead(notification.id);
             toast({ title: "Friend request declined." });

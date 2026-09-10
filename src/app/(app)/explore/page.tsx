@@ -11,6 +11,7 @@ import { useMarketplaceActions } from "@/hooks/use-marketplace-actions";
 import { AlertService } from "@/lib/alert-service";
 import { Search, SlidersHorizontal, Compass, ShoppingBag, Calendar, Briefcase } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LocationChip } from "@/components/LocationChip";
 
 const FONT = "var(--font-work-sans)";
 const RALEWAY = "var(--font-raleway)";
@@ -87,37 +88,50 @@ function ExploreContent() {
     <div className="pb-28 max-w-2xl mx-auto px-4 pt-4 min-h-[100dvh]" style={{ background: "var(--c-bg)" }}>
       {/* ── Header Bar ── */}
       <div className="flex items-center justify-between pb-3 mb-2">
-        <h1 className="text-xl font-extrabold text-foreground" style={{ fontFamily: RALEWAY }}>
-          Explore
-        </h1>
+        <div>
+          <h1 className="text-2xl font-extrabold text-foreground font-yrdly-display">
+            Explore
+          </h1>
+          <div className="mt-0.5">
+            <LocationChip />
+          </div>
+        </div>
 
-        {activeAlerts > 0 && (
+        <div className="flex items-center gap-2">
+          {activeAlerts > 0 && (
+            <button
+              onClick={() => router.push("/alerts")}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-500/10 text-red-500 border border-red-500/20"
+            >
+              <span>{activeAlerts} Active Alert{activeAlerts > 1 ? "s" : ""}</span>
+            </button>
+          )}
+
           <button
-            onClick={() => router.push("/alerts")}
-            className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-500/10 text-red-500 border border-red-500/20"
+            onClick={() => router.push("/search")}
+            className="p-2.5 rounded-full bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] text-foreground hover:bg-primary/10 transition-colors"
+            aria-label="Search"
           >
-            <span>{activeAlerts} Active Safety Alert{activeAlerts > 1 ? "s" : ""}</span>
+            <Search className="w-4 h-4" />
           </button>
-        )}
+        </div>
       </div>
 
       {/* ── Top Filter Tabs (Mobile Parity) ── */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-4 scrollbar-hide">
-        {TABS.map(({ key, label, icon: Icon }) => {
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide">
+        {TABS.map(({ key, label }) => {
           const isActive = activeTab === key;
           return (
             <button
               key={key}
               onClick={() => selectTab(key)}
-              className="flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-xs font-bold transition-all shrink-0"
+              className="whitespace-nowrap rounded-full px-5 py-2.5 text-xs font-extrabold transition-all shrink-0 font-yrdly-display"
               style={{
-                background: isActive ? GREEN : "var(--c-card)",
-                color: isActive ? "#000" : "var(--c-text-muted)",
-                border: isActive ? "none" : "1px solid var(--c-border)",
-                fontFamily: FONT,
+                background: isActive ? GREEN : "var(--yrdly-glass-bg)",
+                color: isActive ? "#000" : "var(--yrdly-text-primary)",
+                border: isActive ? "none" : "1px solid var(--yrdly-glass-border)",
               }}
             >
-              <Icon className="w-3.5 h-3.5" />
               {label}
             </button>
           );

@@ -105,14 +105,12 @@ function NotificationCard({
 
       if (!fromUserId && toUserId) {
         const { data: pending } = await supabase
-          .from("friend_requests")
-          .select("id, from_user_id")
-          .eq("to_user_id", toUserId)
-          .eq("status", "pending")
-          .order("created_at", { ascending: false })
+          .from("followers")
+          .select("follower_id")
+          .eq("following_id", toUserId)
           .limit(1);
         if (pending && pending.length >= 1) {
-          fromUserId = pending[0].from_user_id;
+          fromUserId = pending[0].follower_id;
         }
       }
 
@@ -121,31 +119,39 @@ function NotificationCard({
         return;
       }
 
-      const { data: req } = await supabase
-        .from("friend_requests")
-        .select("id")
-        .eq("from_user_id", fromUserId)
-        .eq("to_user_id", toUserId)
-        .eq("status", "pending")
-        .maybeSingle();
+      // Insert reciprocal row into followers table to establish mutual follow (Friends)
+      try {
+        await supabase.from("followers").insert({
+          follower_id: toUserId,
+          following_id: fromUserId,
+        });
+      } catch {}
 
-      if (!req) {
-        toast({ title: "Request not found", variant: "destructive" });
-        return;
-      }
+      // Legacy fallback updates
+      try {
+        const { data: req } = await supabase
+          .from("friend_requests")
+          .select("id")
+          .eq("from_user_id", fromUserId)
+          .eq("to_user_id", toUserId)
+          .eq("status", "pending")
+          .maybeSingle();
 
-      await supabase.from("friend_requests").update({ status: "accepted", updated_at: new Date().toISOString() }).eq("id", req.id);
+        if (req) {
+          await supabase.from("friend_requests").update({ status: "accepted", updated_at: new Date().toISOString() }).eq("id", req.id);
+        }
 
-      const [{ data: meData }, { data: themData }] = await Promise.all([
-        supabase.from("users").select("friends").eq("id", toUserId).single(),
-        supabase.from("users").select("friends").eq("id", fromUserId).single(),
-      ]);
-      const myFriends = Array.from(new Set([...(meData?.friends || []), fromUserId]));
-      const theirFriends = Array.from(new Set([...(themData?.friends || []), toUserId]));
-      await Promise.all([
-        supabase.from("users").update({ friends: myFriends }).eq("id", toUserId),
-        supabase.from("users").update({ friends: theirFriends }).eq("id", fromUserId),
-      ]);
+        const [{ data: meData }, { data: themData }] = await Promise.all([
+          supabase.from("users").select("friends").eq("id", toUserId).single(),
+          supabase.from("users").select("friends").eq("id", fromUserId).single(),
+        ]);
+        const myFriends = Array.from(new Set([...(meData?.friends || []), fromUserId]));
+        const theirFriends = Array.from(new Set([...(themData?.friends || []), toUserId]));
+        await Promise.all([
+          supabase.from("users").update({ friends: myFriends }).eq("id", toUserId),
+          supabase.from("users").update({ friends: theirFriends }).eq("id", fromUserId),
+        ]);
+      } catch {}
 
       // Refresh global friendship context so profile buttons update everywhere
       if (fromUserId) await refreshUserStatus(fromUserId);
@@ -161,11 +167,20 @@ function NotificationCard({
     try {
       if (!currentUser || !notification.from_user_id) return;
       await supabase
-        .from("friend_requests")
+        .from("followers")
         .delete()
-        .eq("from_user_id", notification.from_user_id)
-        .eq("to_user_id", currentUser.id)
-        .eq("status", "pending");
+        .eq("follower_id", notification.from_user_id)
+        .eq("following_id", currentUser.id);
+
+      try {
+        await supabase
+          .from("friend_requests")
+          .delete()
+          .eq("from_user_id", notification.from_user_id)
+          .eq("to_user_id", currentUser.id)
+          .eq("status", "pending");
+      } catch {}
+
       // Refresh global friendship context so profile buttons update everywhere
       await refreshUserStatus(notification.from_user_id);
       onMarkAsRead(notification.id);

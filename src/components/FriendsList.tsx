@@ -27,27 +27,15 @@ export function FriendsList({ userId, onBack }: FriendsListProps) {
       try {
         setLoading(true);
         
-        // Get user's friends list from users array
-        const { data: userData } = await supabase
-          .from('users')
-          .select('friends')
-          .eq('id', userId)
-          .single();
+        const [{ data: following }, { data: followersData }] = await Promise.all([
+          supabase.from('followers').select('following_id').eq('follower_id', userId),
+          supabase.from('followers').select('follower_id').eq('following_id', userId),
+        ]);
 
-        const arrayFriendIds: string[] = userData?.friends || [];
-
-        // Also get accepted friend requests
-        const { data: acceptedReqs } = await supabase
-          .from('friend_requests')
-          .select('from_user_id, to_user_id')
-          .eq('status', 'accepted')
-          .or(`from_user_id.eq.${userId},to_user_id.eq.${userId}`);
-
-        const reqFriendIds = (acceptedReqs || []).map(r => 
-          r.from_user_id === userId ? r.to_user_id : r.from_user_id
-        );
-
-        const friendIds = Array.from(new Set([...arrayFriendIds, ...reqFriendIds])).filter(id => id && id !== userId);
+        const followingSet = new Set((following || []).map((f) => f.following_id));
+        const friendIds = (followersData || [])
+          .map((f) => f.follower_id)
+          .filter((id) => followingSet.has(id) && id !== userId);
         
         if (friendIds.length === 0) {
           setFriends([]);

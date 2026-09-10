@@ -41,32 +41,21 @@ function UserActionButton({
       return (
         <button
           onClick={() => handleAction(friendshipHook.addFriend)}
-          className="rounded-full px-4 py-1.5 text-xs text-foreground font-bold uppercase transition-transform active:scale-95 disabled:opacity-50 font-yrdly-body"
-          style={{ background: GREEN }}
+          className="rounded-full px-5 py-1.5 text-xs font-extrabold transition-all active:scale-95 disabled:opacity-50 font-yrdly-display border border-[var(--primary)] text-[var(--primary)] hover:bg-[var(--primary)]/10"
           disabled={isLoading}
         >
-          {isLoading ? "..." : "Add"}
+          {isLoading ? "..." : "Follow"}
         </button>
       );
     case "request_sent":
-      return (
-        <button
-          className="rounded-full px-4 py-1.5 text-xs text-[#BBBBBB] font-bold uppercase font-yrdly-body"
-          style={{ border: "1px solid #388E3C" }}
-          disabled
-        >
-          Sent
-        </button>
-      );
     case "friends":
       return (
         <button
           onClick={() => handleAction(friendshipHook.removeFriend)}
-          className="rounded-full px-4 py-1.5 text-xs font-bold uppercase transition-transform active:scale-95 disabled:opacity-50 font-yrdly-body"
-          style={{ border: "1px solid rgba(229,57,53,0.4)", color: "#E53935" }}
+          className="rounded-full px-5 py-1.5 text-xs font-extrabold transition-all active:scale-95 disabled:opacity-50 font-yrdly-display bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] text-foreground hover:border-red-500/40 hover:text-red-500 flex items-center gap-1"
           disabled={isLoading}
         >
-          {isLoading ? "..." : "Remove"}
+          {isLoading ? "..." : "✓ Following"}
         </button>
       );
     case "request_received":
@@ -74,19 +63,11 @@ function UserActionButton({
         <div className="flex gap-1.5">
           <button
             onClick={() => handleAction(friendshipHook.acceptRequest)}
-            className="rounded-full px-3 py-1 text-xs text-foreground font-bold uppercase transition-transform active:scale-95 disabled:opacity-50 font-yrdly-body"
+            className="rounded-full px-4 py-1.5 text-xs text-black font-extrabold transition-all active:scale-95 disabled:opacity-50 font-yrdly-display"
             style={{ background: GREEN }}
             disabled={isLoading}
           >
             {isLoading ? "..." : "Accept"}
-          </button>
-          <button
-            onClick={() => handleAction(friendshipHook.declineRequest)}
-            className="rounded-full px-3 py-1 text-xs font-bold uppercase transition-transform active:scale-95 disabled:opacity-50 font-yrdly-body"
-            style={{ border: "1px solid rgba(229,57,53,0.4)", color: "#E53935" }}
-            disabled={isLoading}
-          >
-            {isLoading ? "..." : "Decline"}
           </button>
         </div>
       );
@@ -99,7 +80,7 @@ export function CommunityScreen({ className }: { className?: string }) {
   const { toast } = useToast();
   const { activeFilter } = useLocation();
 
-  const [activeTab, setActiveTab] = useState<MainTab>("friends");
+  const [activeTab, setActiveTab] = useState<MainTab>("discover");
   const [discoverFilter, setDiscoverFilter] = useState<DiscoverFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -117,34 +98,48 @@ export function CommunityScreen({ className }: { className?: string }) {
     if (!currentUser) return;
     setLoading(true);
     try {
-      // 1. Pending friend requests
-      const { data: reqData } = await supabase
-        .from("friend_requests")
-        .select(`*, from_user:users!friend_requests_from_user_id_fkey(id, name, avatar_url, location)`)
-        .eq("to_user_id", currentUser.id)
-        .eq("status", "pending")
-        .order("created_at", { ascending: false });
-      setPendingRequests(reqData || []);
-
-      // 2. Accepted friends (both directions)
-      const [{ data: sentFriends }, { data: receivedFriends }] = await Promise.all([
+      // 1. Fetch Following & Followers from followers table
+      const [{ data: followingData }, { data: followersData }] = await Promise.all([
         supabase
-          .from("friend_requests")
-          .select(`id, to_user:users!friend_requests_to_user_id_fkey(id, name, avatar_url, location)`)
-          .eq("from_user_id", currentUser.id)
-          .eq("status", "accepted"),
+          .from("followers")
+          .select("following_id, following:users!followers_following_id_fkey(id, name, avatar_url, location)")
+          .eq("follower_id", currentUser.id),
         supabase
-          .from("friend_requests")
-          .select(`id, from_user:users!friend_requests_from_user_id_fkey(id, name, avatar_url, location)`)
-          .eq("to_user_id", currentUser.id)
-          .eq("status", "accepted"),
+          .from("followers")
+          .select("follower_id, follower:users!followers_follower_id_fkey(id, name, avatar_url, location)")
+          .eq("following_id", currentUser.id),
       ]);
 
-      const friendList = [
-        ...(sentFriends || []).map((r: any) => ({ reqId: r.id, user: r.to_user })),
-        ...(receivedFriends || []).map((r: any) => ({ reqId: r.id, user: r.from_user })),
-      ].filter((f) => f.user);
+      const followingList = followingData || [];
+      const followersList = followersData || [];
+
+      const followingIds = new Set(followingList.map((f: any) => f.following_id));
+      const followerIds = new Set(followersList.map((f: any) => f.follower_id));
+
+      // Mutual Friends
+      const friendList: any[] = [];
+      followingList.forEach((f: any) => {
+        if (followerIds.has(f.following_id) && f.following) {
+          friendList.push({
+            reqId: f.following_id,
+            user: f.following,
+          });
+        }
+      });
+
+      // Incoming Requests (Users following me that I have not followed back)
+      const reqList: any[] = [];
+      followersList.forEach((f: any) => {
+        if (!followingIds.has(f.follower_id) && f.follower) {
+          reqList.push({
+            id: f.follower_id,
+            from_user: f.follower,
+          });
+        }
+      });
+
       setFriends(friendList);
+      setPendingRequests(reqList);
 
       // 3. Community discovery
       const targetLocation = activeFilter || profile?.location;
@@ -160,22 +155,13 @@ export function CommunityScreen({ className }: { className?: string }) {
 
       const { data: userData } = await userQuery;
 
-      // Also query pending sent requests so sent request recipients are excluded from Discover list
-      const { data: pendingSent } = await supabase
-        .from("friend_requests")
-        .select("to_user_id")
-        .eq("from_user_id", currentUser.id)
-        .eq("status", "pending");
-
-      const pendingSentTargetIds = (pendingSent || []).map((r: any) => r.to_user_id);
-
       const blocked = profile?.blocked_users || [];
       const myFriendIds = friendList.map((f) => f.user.id);
 
       const discovered = (userData || [])
         .filter((u: any) => !blocked.includes(u.id))
         .filter((u: any) => !myFriendIds.includes(u.id))
-        .filter((u: any) => !pendingSentTargetIds.includes(u.id))
+        .filter((u: any) => !followingIds.has(u.id))
         .filter((u: any) => u.discoverable !== false);
 
       setAllDiscovered(discovered);
@@ -291,36 +277,58 @@ export function CommunityScreen({ className }: { className?: string }) {
           </p>
         </header>
 
-        {/* ── Top Tabs (Friends | Discover) ── */}
+        {/* ── Sub-Tab Segmented Switcher (Nearby vs My Circle - Mobile Parity) ── */}
         <div className="flex rounded-full p-1 border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] backdrop-blur-md">
           <button
-            onClick={() => setActiveTab("friends")}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full text-xs font-semibold font-yrdly-body transition-all ${
-              activeTab === "friends"
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "text-[var(--yrdly-label)] hover:text-foreground"
+            onClick={() => setActiveTab("discover")}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full text-xs font-extrabold font-yrdly-display transition-all ${
+              activeTab === "discover"
+                ? "bg-[var(--primary)] text-black shadow-sm"
+                : "text-[var(--yrdly-text-primary)] hover:text-foreground"
             }`}
           >
-            <Users className="w-4 h-4" />
-            Friends ({friends.length})
-            {pendingRequests.length > 0 && (
-              <span className="ml-1 bg-red-500 text-white text-[10px] px-1.5 py-0.2 rounded-full font-yrdly-body">
-                {pendingRequests.length}
-              </span>
-            )}
+            Nearby
           </button>
           <button
-            onClick={() => setActiveTab("discover")}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full text-xs font-semibold font-yrdly-body transition-all ${
-              activeTab === "discover"
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "text-[var(--yrdly-label)] hover:text-foreground"
+            onClick={() => setActiveTab("friends")}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full text-xs font-extrabold font-yrdly-display transition-all ${
+              activeTab === "friends"
+                ? "bg-[var(--primary)] text-black shadow-sm"
+                : "text-[var(--yrdly-text-primary)] hover:text-foreground"
             }`}
           >
-            <UserPlus className="w-4 h-4" />
-            Discover
+            My circle
+            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+            {friends.length > 0 && <span>({friends.length})</span>}
           </button>
         </div>
+
+        {/* ── Sub-Filters Chips (When Nearby active) ── */}
+        {activeTab === "discover" && (
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            {[
+              { key: "all", label: "All" },
+              { key: "neighbors", label: "Neighbors" },
+              { key: "mutuals", label: "Mutuals" },
+              { key: "sellers", label: "Sellers" },
+            ].map((f) => {
+              const active = discoverFilter === f.key;
+              return (
+                <button
+                  key={f.key}
+                  onClick={() => setDiscoverFilter(f.key as DiscoverFilter)}
+                  className={`px-4 py-1.5 rounded-full text-xs font-extrabold whitespace-nowrap font-yrdly-display transition-all ${
+                    active
+                      ? "border border-[var(--primary)] text-[var(--primary)] bg-[var(--primary)]/10"
+                      : "bg-[var(--yrdly-glass-bg)] text-[var(--yrdly-text-primary)] border border-[var(--yrdly-glass-border)] hover:border-primary/40"
+                  }`}
+                >
+                  {f.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* ── Search Bar ── */}
         <div className="relative">
@@ -330,7 +338,7 @@ export function CommunityScreen({ className }: { className?: string }) {
             placeholder={activeTab === "friends" ? "Search friends..." : "Search neighbors..."}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-full px-4 pl-10 py-3 text-xs text-foreground font-yrdly-body bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] backdrop-blur-md outline-none focus:ring-1 focus:ring-primary placeholder:text-[var(--yrdly-label)]"
+            className="w-full rounded-full px-4 pl-10 py-2.5 text-xs text-foreground font-yrdly-body bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] backdrop-blur-md outline-none focus:ring-1 focus:ring-primary placeholder:text-[var(--yrdly-label)]"
           />
         </div>
 
@@ -537,8 +545,9 @@ export function CommunityScreen({ className }: { className?: string }) {
                           {u.name}
                         </p>
                         {loc && (
-                          <p className="text-xs text-[var(--yrdly-label)] truncate font-yrdly-body">
-                            {loc}
+                          <p className="flex items-center gap-1 text-xs text-[var(--yrdly-label)] truncate font-yrdly-body mt-0.5">
+                            <MapPin className="w-3 h-3 text-[var(--yrdly-label)] shrink-0" />
+                            <span>{loc}</span>
                           </p>
                         )}
                       </div>
