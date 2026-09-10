@@ -297,6 +297,7 @@ export function MapScreen({ className }: MapScreenProps) {
       
       {/* ── MAP ── */}
       <Map
+        mapId={process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID || "DEMO_MAP_ID"}
         defaultCenter={userCoords ?? NIGERIA_CENTER}
         defaultZoom={userCoords ? 14 : 6}
         gestureHandling="greedy"
