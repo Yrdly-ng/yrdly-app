@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   ChevronLeft,
+  ChevronRight,
   Heart,
   MessageCircleMore,
   Share2,
@@ -65,7 +66,27 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
   const [isLiked, setIsLiked] = useState(false);
   const [isEventEditDialogOpen, setIsEventEditDialogOpen] = useState(false);
   const [isPostEditDialogOpen, setIsPostEditDialogOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const carouselRef = useRef<HTMLDivElement>(null);
   const { createPost } = usePosts();
+
+  const handleScroll = () => {
+    if (!carouselRef.current) return;
+    const el = carouselRef.current;
+    const scrollPos = el.scrollLeft;
+    const width = el.clientWidth;
+    if (width > 0) {
+      const idx = Math.round(scrollPos / width);
+      setActiveIndex(idx);
+    }
+  };
+
+  const scrollToSlide = (idx: number) => {
+    if (!carouselRef.current) return;
+    const width = carouselRef.current.clientWidth;
+    carouselRef.current.scrollTo({ left: width * idx, behavior: "smooth" });
+    setActiveIndex(idx);
+  };
 
   useEffect(() => {
     const fetchAuthor = async () => {
@@ -236,36 +257,77 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
         </p>
       </div>
 
-      {/* Image collage — mirrors PostCard layout */}
+      {/* Image Swiper Carousel — mirrors PostCard layout */}
       {urls.length > 0 && (
         <div className="px-3 pb-4">
           {urls.length === 1 ? (
-            <div className="relative w-full overflow-hidden" style={{ borderRadius: 12, height: 320, maxHeight: 320 }}>
+            <div className="relative w-full overflow-hidden rounded-2xl" style={{ height: 360, maxHeight: 420 }}>
               <Image src={urls[0]} alt="" fill className="object-cover" sizes="(max-width: 640px) 100vw, 626px" />
             </div>
-          ) : urls.length === 2 ? (
-            <div className="grid grid-cols-2 gap-0.5 overflow-hidden" style={{ borderRadius: 12, height: 240 }}>
-              {urls.slice(0, 2).map((u, i) => (
-                <div key={i} className="relative h-full">
-                  <Image src={u} alt="" fill className="object-cover" sizes="50vw" />
-                </div>
-              ))}
-            </div>
           ) : (
-            <div className="grid grid-cols-2 gap-0.5 overflow-hidden" style={{ borderRadius: 12, height: 260 }}>
-              <div className="relative row-span-2 h-full">
-                <Image src={urls[0]} alt="" fill className="object-cover" sizes="50vw" />
-              </div>
-              <div className="relative">
-                <Image src={urls[1]} alt="" fill className="object-cover" sizes="50vw" />
-              </div>
-              <div className="relative">
-                <Image src={urls[2]} alt="" fill className="object-cover" sizes="50vw" />
-                {urls.length > 3 && (
-                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                    <span className="text-primary-foreground font-semibold text-base font-sans">+{urls.length - 3}</span>
+            <div className="relative group w-full overflow-hidden rounded-2xl" style={{ height: 360 }}>
+              <div
+                ref={carouselRef}
+                onScroll={handleScroll}
+                className="flex w-full h-full overflow-x-auto snap-x snap-mandatory scroll-smooth"
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+              >
+                {urls.map((u, i) => (
+                  <div key={i} className="relative w-full h-full flex-shrink-0 snap-start">
+                    <Image
+                      src={u}
+                      alt=""
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 640px) 100vw, 626px"
+                    />
                   </div>
-                )}
+                ))}
+              </div>
+
+              {/* Prev / Next Chevrons */}
+              {activeIndex > 0 && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    scrollToSlide(activeIndex - 1);
+                  }}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-black/80"
+                  aria-label="Previous image"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+              )}
+
+              {activeIndex < urls.length - 1 && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    scrollToSlide(activeIndex + 1);
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-black/80"
+                  aria-label="Next image"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              )}
+
+              {/* Slide Counter Badge */}
+              <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-[10px] font-bold bg-black/60 text-white z-10 pointer-events-none font-yrdly-body">
+                {activeIndex + 1} / {urls.length}
+              </div>
+
+              {/* Dot Indicators */}
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-sm z-10 pointer-events-none">
+                {urls.map((_, i) => (
+                  <div
+                    key={i}
+                    className={cn(
+                      "h-1.5 rounded-full transition-all duration-200",
+                      i === activeIndex ? "w-4 bg-[#82DB7E]" : "w-1.5 bg-white/60"
+                    )}
+                  />
+                ))}
               </div>
             </div>
           )}
