@@ -43,15 +43,15 @@ const applyJitter = (lat: number, lng: number, offset = 0.002) => {
 };
 
 const DARK_MAP_STYLES = [
-  { featureType: "all",           elementType: "geometry",          stylers: [{ color: "var(--c-card)" }] },
-  { featureType: "water",         elementType: "geometry",          stylers: [{ color: "var(--c-bg)" }] },
-  { featureType: "road",          elementType: "geometry",          stylers: [{ color: "var(--c-card2)" }] },
-  { featureType: "road",          elementType: "geometry.stroke",   stylers: [{ color: "var(--c-card)" }] },
-  { featureType: "poi",           elementType: "labels",            stylers: [{ visibility: "off" }] },
-  { featureType: "administrative",elementType: "labels.text.fill",  stylers: [{ color: "var(--c-text-muted)" }] },
-  { featureType: "administrative",elementType: "labels.text.stroke",stylers: [{ color: "var(--c-bg)" }] },
-  { featureType: "landscape",     elementType: "geometry",          stylers: [{ color: "var(--c-bg)" }] },
-  { featureType: "transit",       elementType: "labels",            stylers: [{ visibility: "off" }] },
+  { elementType: 'geometry', stylers: [{ color: '#0d1117' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#8a9bb0' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#0d1117' }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1a2332' }] },
+  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#0d1117' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0d2236' }] },
+  { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#0d1a0f' }] },
+  { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] },
+  { featureType: 'transit', elementType: 'labels', stylers: [{ visibility: 'off' }] },
 ];
 
 const NIGERIA_CENTER = { lat: 9.082, lng: 8.6753 };
@@ -301,7 +301,7 @@ export function MapScreen({ className }: MapScreenProps) {
         defaultZoom={userCoords ? 14 : 6}
         gestureHandling="greedy"
         disableDefaultUI
-        mapId="7bdaf6c131a6958be5380043f"
+        styles={DARK_MAP_STYLES}
         className="w-full h-full absolute inset-0"
       >
         <MapLogicOverlay setBounds={setBounds} setZoom={setZoom} />

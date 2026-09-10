@@ -1,21 +1,14 @@
 import { createBrowserClient } from '@supabase/ssr';
 
 // Supabase configuration
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-if (process.env.NODE_ENV === 'production' && (!supabaseUrl || !supabaseAnonKey)) {
-  throw new Error('[Yrdly] Missing Supabase environment variables. Check your .env.local file.');
-}
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('[Yrdly] Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY');
-}
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder';
 
 const isLocalhost = typeof window !== 'undefined' && 
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
 // Create Supabase client for client-side operations using SSR package to support cookieOptions
-export const supabase = createBrowserClient(supabaseUrl!, supabaseAnonKey!, {
+export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey, {
   cookieOptions: {
     domain: isLocalhost ? undefined : (process.env.NEXT_PUBLIC_COOKIE_DOMAIN || '.yrdly.ng'),
     maxAge: 365 * 24 * 60 * 60,
@@ -30,7 +23,7 @@ export const supabase = createBrowserClient(supabaseUrl!, supabaseAnonKey!, {
   }
 });
 
-// Database types (we'll generate these later)
+// Database types
 export type Database = {
   public: {
     Tables: {
@@ -48,7 +41,6 @@ export type Database = {
           notification_settings: any;
           is_online: boolean;
           last_seen: string | null;
-          // Onboarding fields
           onboarding_status: 'signup' | 'email_verification' | 'profile_setup' | 'welcome' | 'tour' | 'completed';
           profile_completed: boolean;
           onboarding_completed_at: string | null;
@@ -67,4 +59,3 @@ export type Database = {
 
 export type Tables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row'];
 export type Enums<T extends keyof Database['public']['Enums']> = Database['public']['Enums'][T];
-
