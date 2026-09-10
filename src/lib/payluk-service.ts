@@ -493,51 +493,6 @@ export class PaylukService {
     return response.data;
   }
 
-  /**
-   * POST /v1/payment/escrow
-   * Funds an escrow from the buyer's Payluk wallet (or saved card).
-   * amount must equal escrowAmount + buyerFeeShare + additionalFee exactly.
-   * Requires customerId of the buyer.
-   */
-  static async payEscrow(
-    customerId: string,
-    params: {
-      amount: number;
-      reference: string;
-      escrowId: string;
-      gateway?: 'wallet' | 'card';
-      cardId?: string;
-      currency?: string;
-    }
-  ): Promise<{ id: string; status: string; reference: string; escrowDetails: unknown }> {
-    const body: Record<string, unknown> = {
-      amount: params.amount,
-      reference: params.reference,
-      transactionType: 'escrow',
-      gateway: params.gateway || 'wallet',
-      currency: params.currency || 'NGN',
-      escrowDetails: {
-        escrowId: params.escrowId,
-      },
-    };
-
-    if (params.cardId) {
-      body.cardId = params.cardId;
-    }
-
-    const response = await paylukRequest<{
-      id: string;
-      status: string;
-      reference: string;
-      escrowDetails: unknown;
-    }>('/v1/payment/escrow', {
-      method: 'POST',
-      body: JSON.stringify(body),
-      customerId,
-    });
-
-    return response.data;
-  }
 
   /**
    * GET /v1/escrow/{escrowId}
@@ -652,25 +607,6 @@ export class PaylukService {
     return response.data;
   }
 
-  /**
-   * POST /v1/payment/virtual-account
-   * Generates a virtual account for a merchant customer.
-   * Nigerian customers only. BVN on file -> dedicated permanent account;
-   * no BVN -> temporary 24-hour account.
-   * Requires customerId.
-   */
-  static async generateVirtualAccount(
-    customerId: string
-  ): Promise<PaylukVirtualAccount> {
-    const response = await paylukRequest<PaylukVirtualAccount>(
-      '/v1/payment/virtual-account',
-      {
-        method: 'POST',
-        customerId,
-      }
-    );
-    return response.data;
-  }
 
   /**
    * GET /v1/payment/bank-list
@@ -727,29 +663,4 @@ export class PaylukService {
     }
   }
 
-  /**
-   * GET /v1/wallet
-   * Returns the wallet balances for a specific merchant customer.
-   * Requires customerId (set as customer-id header).
-   */
-  static async getWallet(
-    customerId: string
-  ): Promise<{ mainBalance: number; escrowBalance: number; currency: string }> {
-    const response = await paylukRequest<{
-      id: string;
-      mainBalance: number;
-      escrowBalance: number;
-      currency: string;
-      createdAt: string;
-      updatedAt: string;
-    }>('/v1/wallet', {
-      method: 'GET',
-      customerId,
-    });
-    return {
-      mainBalance: response.data.mainBalance,
-      escrowBalance: response.data.escrowBalance,
-      currency: response.data.currency,
-    };
-  }
 }
