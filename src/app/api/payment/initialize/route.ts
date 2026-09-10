@@ -238,12 +238,14 @@ export async function POST(request: NextRequest) {
       } else if (existingTx.buyer_id === buyerId && existingTx.status === EscrowStatus.PENDING) {
         if (existingTx.payluk_escrow_id && existingTx.payluk_tx_ref) {
           // Idempotency: Same buyer retrying or resuming checkout for their own pending transaction with Payluk escrow ready
+          const existingBuyerPaylukId = await getPaylukCustomerId(buyerId);
           return NextResponse.json({
             success: true,
             transactionId: existingTx.id,
             totalAmount: existingTx.total_amount,
             paylukPaymentToken: existingTx.payluk_tx_ref,
             paylukEscrowId: existingTx.payluk_escrow_id,
+            buyerPaylukId: existingBuyerPaylukId,
           });
         }
         // Same buyer has a reserved DB row but missing Payluk details (e.g. previous crash)
