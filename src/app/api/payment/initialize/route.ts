@@ -197,7 +197,7 @@ export async function POST(request: NextRequest) {
 
     const { data: activeTx } = await supabaseAdmin
       .from("escrow_transactions")
-      .select("id, buyer_id, status, payluk_tx_ref, payluk_escrow_id, total_amount")
+      .select("id, buyer_id, status, payluk_tx_ref, payluk_escrow_id, total_amount, created_at")
       .eq("item_id", itemId)
       .in("status", [EscrowStatus.PENDING, EscrowStatus.PAID, EscrowStatus.SHIPPED, EscrowStatus.DELIVERED, EscrowStatus.COMPLETED, EscrowStatus.DISPUTED])
       .order("created_at", { ascending: false });
@@ -219,7 +219,40 @@ export async function POST(request: NextRequest) {
         }
         // Same buyer has a reserved DB row but missing Payluk details (e.g. previous crash)
         existingTxToResume = existingTx;
+      } else if (existingTx.status === EscrowStatus.PENDING) {
+        // Different buyer — check if the PENDING reservation is stale (abandoned checkout).
+        // If older than PENDING_EXPIRY_MS and still unpaid, auto-cancel it so the item is freed.
+        const PENDING_EXPIRY_MS = 2 * 60 * 60 * 1000; // 2 hours
+        const pendingAgeMs = Date.now() - new Date(existingTx.created_at).getTime();
+
+        if (pendingAgeMs >= PENDING_EXPIRY_MS) {
+          // Atomic CAS: only cancel if it's still PENDING (guards against concurrent requests)
+          const { data: cancelledTx } = await supabaseAdmin
+            .from("escrow_transactions")
+            .update({ status: EscrowStatus.CANCELLED, updated_at: new Date().toISOString() })
+            .eq("id", existingTx.id)
+            .eq("status", EscrowStatus.PENDING)
+            .select("id")
+            .single();
+
+          if (!cancelledTx) {
+            // Another request won the cancellation race — tell buyer to retry
+            return NextResponse.json(
+              { error: "Another neighbor is currently completing payment for this item. Please try again shortly." },
+              { status: 409 }
+            );
+          }
+
+          console.log(`[PaymentInit] Auto-cancelled stale PENDING tx ${existingTx.id} (age: ${Math.round(pendingAgeMs / 60000)}m). Item ${itemId} freed for new buyer.`);
+          // Fall through — existingTxToResume stays null, a fresh reservation will be created below
+        } else {
+          return NextResponse.json(
+            { error: "Another neighbor is currently completing payment for this item. Please try again shortly." },
+            { status: 409 }
+          );
+        }
       } else {
+        // Non-PENDING active status (PAID, SHIPPED, etc.) — item is legitimately locked
         return NextResponse.json(
           { error: "Another neighbor is currently completing payment for this item. Please try again shortly." },
           { status: 409 }
