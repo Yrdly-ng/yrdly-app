@@ -1,74 +1,39 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, MessageCircle, Edit, Loader2, Trash2, ArrowLeft } from "lucide-react";
+import { Search, MessageSquare, Plus, Trash2, X, ChevronRight, ShoppingBag } from "lucide-react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
-import { ActivityIndicator } from "@/components/ActivityIndicator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { GlassCard } from "@/components/ui/glass-card";
 
-const GREEN = "hsl(var(--primary))";
-const CARD = "var(--c-card)";
-const SURFACE = "var(--c-card)";
-const FONT = "var(--font-work-sans)";
-const RALEWAY = "var(--font-raleway)";
+const GREEN = "#82DB7E";
+
+type ConvType = "friend" | "marketplace" | "briefcase";
+type FilterTab = "all" | "friends" | "marketplace" | "business";
 
 interface Conversation {
   id: string;
-  type: "friend" | "marketplace" | "business";
+  type: ConvType;
   participantId: string;
   participantName: string;
-  participantAvatar: string;
+  participantAvatar: string | null;
   lastMessage: string;
   timestamp: string;
   unreadCount: number;
-  isOnline: boolean;
   context?: {
     itemId?: string;
     itemTitle?: string;
     itemImage?: string;
     itemPrice?: number;
-    businessId?: string;
-    businessName?: string;
-    businessLogo?: string;
-    catalog_item_id?: string;
   };
-}
-
-type Tab = "all" | "friends" | "marketplace" | "business";
-
-function deduplicateConversations(conversations: Conversation[]): Conversation[] {
-  const seen = new Map<string, Conversation>();
-  for (const conv of conversations) {
-    let key: string;
-    if (conv.type === "business") {
-      const context = conv.context as any;
-      const catalogItemId = context?.catalog_item_id;
-      key = catalogItemId
-        ? `business:${conv.participantId}:catalog:${catalogItemId}`
-        : `business:${conv.participantId}`;
-    } else if (conv.type === "marketplace") {
-      const itemId = conv.context?.itemId || "general";
-      key = `marketplace:${conv.participantId}:item:${itemId}`;
-    } else {
-      key = `friend:${conv.participantId}`;
-    }
-    const existing = seen.get(key);
-    if (!existing) {
-      seen.set(key, conv);
-    } else if (new Date(conv.timestamp) > new Date(existing.timestamp)) {
-      seen.set(key, conv);
-    }
-  }
-  return Array.from(seen.values());
+  deleted_by?: string[];
 }
 
 function timeLabel(ts: string): string {
@@ -76,18 +41,11 @@ function timeLabel(ts: string): string {
     const d = new Date(ts);
     const now = new Date();
     const diffMs = now.getTime() - d.getTime();
-    const diffMins = Math.floor(diffMs / (1000 * 60));
-    const diffHrs = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHrs / 24);
-
-    if (diffMins < 1) return "Just now";
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHrs < 24) return `${diffHrs}h ago`;
-    if (diffDays === 1) return "Yesterday";
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    const diffHrs = diffMs / (1000 * 60 * 60);
+    if (diffHrs < 24) return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
   } catch {
-    return ts;
+    return "";
   }
 }
 
@@ -95,187 +53,205 @@ export function MessagesScreen() {
   const { user, profile } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<Tab>("all");
-  const [searchQuery, setSearchQuery] = useState("");
+
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searching, setSearching] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeFilter, setActiveFilter] = useState<FilterTab>("all");
 
-  // Friends state for New Message dialog
   const [friends, setFriends] = useState<{ id: string; name: string; avatar_url: string }[]>([]);
   const [friendsLoading, setFriendsLoading] = useState(false);
   const [isNewMessageOpen, setIsNewMessageOpen] = useState(false);
 
-  useEffect(() => {
-    if (!user) return;
-    const fetchConversations = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("conversations")
-          .select(`*, messages(id, sender_id, is_read, read_by)`)
-          .contains("participant_ids", [user.id])
-          .order("updated_at", { ascending: false });
-
-        if (error) { console.error(error); return; }
-
-        const activeRows = (data || []).filter((conv: any) => !conv.deleted_by?.includes(user.id));
-
-        const withCounts = await Promise.all(
-          activeRows.map(async (conv) => {
-            const readReceiptStr = conv.context?.read_receipts?.[user.id];
-            const readReceiptDate = readReceiptStr ? new Date(readReceiptStr).getTime() : 0;
-            const lastMsgDate = conv.last_message_timestamp ? new Date(conv.last_message_timestamp).getTime() : 0;
-            const isReadByReceipt = readReceiptDate >= lastMsgDate && lastMsgDate > 0;
-
-            if (conv.type === "marketplace") {
-              const { data: chatMsgs } = await supabase
-                .from("chat_messages")
-                .select("sender_id, created_at, metadata")
-                .eq("chat_id", conv.id)
-                .order("created_at", { ascending: true });
-              const last = chatMsgs?.[chatMsgs.length - 1];
-              if (!last || last.sender_id === user.id || isReadByReceipt) return { ...conv, unread_count: 0 };
-              return { ...conv, unread_count: (chatMsgs || []).filter((m: any) => m.sender_id !== user.id && !m.metadata?.isRead).length || 0 };
-            }
-            const last = conv.messages?.[conv.messages.length - 1];
-            if (!last || last.sender_id === user.id || isReadByReceipt) return { ...conv, unread_count: 0 };
-            const unread = (conv.messages || []).filter(
-              (m: any) => m.sender_id !== user.id && (!m.is_read || !m.read_by?.includes(user.id))
-            ).length;
-            return { ...conv, unread_count: unread || 0 };
-          })
-        );
-
-        const transformed: Conversation[] = withCounts.map((conv) => {
-          const otherId = conv.participant_ids?.find((id: string) => id !== user.id);
-          if (conv.type === "business") {
-            const ctx = conv.context as any;
-            return {
-              id: conv.id, type: "business",
-              participantId: conv.business_id || conv.id,
-              participantName: conv.business_name || "Business",
-              participantAvatar: conv.business_logo || "/placeholder.svg",
-              lastMessage: conv.last_message_text || conv.last_message || "Tap to chat",
-              timestamp: conv.updated_at || conv.created_at,
-              unreadCount: conv.unread_count || 0, isOnline: false,
-              context: {
-                businessId: conv.business_id, businessName: conv.business_name,
-                businessLogo: conv.business_logo, catalog_item_id: ctx?.catalog_item_id,
-                itemId: conv.item_id, itemTitle: conv.item_title,
-                itemImage: conv.item_image, itemPrice: conv.item_price,
-              },
-            };
-          }
-          if (conv.type === "marketplace") {
-            return {
-              id: conv.id, type: "marketplace",
-              participantId: otherId || conv.id, participantName: conv.item_title || "Marketplace",
-              participantAvatar: conv.item_image || "/placeholder.svg",
-              lastMessage: conv.last_message_text || conv.last_message || "Tap to chat",
-              timestamp: conv.updated_at || conv.created_at,
-              unreadCount: conv.unread_count || 0, isOnline: false,
-              context: { itemTitle: conv.item_title, itemImage: conv.item_image, itemPrice: conv.item_price },
-            };
-          }
-          return {
-            id: conv.id, type: "friend",
-            participantId: otherId || conv.id, participantName: "Neighbour",
-            participantAvatar: "/placeholder.svg",
-            lastMessage: conv.last_message_text || conv.last_message || "Tap to chat",
-            timestamp: conv.updated_at || conv.created_at,
-            unreadCount: conv.unread_count || 0, isOnline: false, context: conv.context,
-          };
-        });
-
-        const deduped = deduplicateConversations(transformed);
-        setConversations(deduped);
-
-        // Fetch user profiles for friend and marketplace conversations
-        const friendIds = transformed
-          .filter((c) => c.type !== "business")
-          .map((c) => c.participantId)
-          .filter((id) => id && id !== user.id);
-        if (friendIds.length > 0) {
-          const { data: usersData } = await supabase
-            .from("users").select("id, name, avatar_url").in("id", friendIds);
-          if (usersData) {
-            setConversations((prev) =>
-              prev.map((c) => {
-                if (c.type === "business") return c;
-                const u = usersData.find((u) => u.id === c.participantId);
-                return u ? { ...c, participantName: u.name || c.participantName, participantAvatar: u.avatar_url || c.participantAvatar } : c;
-              })
-            );
-          }
-        }
-        setLoading(false);
-      } catch (e) {
-        console.error(e);
-        setLoading(false);
-      }
-    };
-    fetchConversations();
-
-    const ch = supabase.channel("conversations")
-      .on("postgres_changes", { event: "*", schema: "public", table: "conversations", filter: `participant_ids.cs.{${user.id}}` }, fetchConversations)
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
-  }, [user]);
-
-  const filteredConversations = useMemo(() => {
-    return conversations.filter((c) => {
-      if (profile?.blocked_users && profile.blocked_users.includes(c.participantId)) return false;
-
-      const tabOk =
-        activeTab === "all" ||
-        (activeTab === "friends" && c.type === "friend") ||
-        (activeTab === "marketplace" && c.type === "marketplace") ||
-        (activeTab === "business" && c.type === "business");
-      const searchOk = !searchQuery ||
-        c.participantName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.lastMessage.toLowerCase().includes(searchQuery.toLowerCase());
-      return tabOk && searchOk;
-    });
-  }, [conversations, activeTab, searchQuery, profile?.blocked_users]);
-
-  const unreadCounts = useMemo(() => ({
-    all: conversations.reduce((s, c) => s + c.unreadCount, 0),
-    friends: conversations.filter((c) => c.type === "friend").reduce((s, c) => s + c.unreadCount, 0),
-    marketplace: conversations.filter((c) => c.type === "marketplace").reduce((s, c) => s + c.unreadCount, 0),
-    business: conversations.filter((c) => c.type === "business").reduce((s, c) => s + c.unreadCount, 0),
-  }), [conversations]);
-
-  const handleDeleteConversation = async (convId: string, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!user) return;
-    try {
-      const { data: currentData } = await supabase.from('conversations').select('deleted_by').eq('id', convId).single();
-      const newDeletedBy = Array.from(new Set([...(currentData?.deleted_by || []), user.id]));
-      await supabase.from('conversations').update({ deleted_by: newDeletedBy }).eq('id', convId);
-      setConversations(prev => prev.filter(c => c.id !== convId));
-      toast({ title: "Conversation deleted" });
-    } catch (err) {
-      toast({ title: "Failed to delete conversation", variant: "destructive" });
-    }
-  };
-
-  const TABS: { key: Tab; label: string }[] = [
+  const FILTERS: { key: FilterTab; label: string }[] = [
     { key: "all", label: "All" },
     { key: "friends", label: "Friends" },
     { key: "marketplace", label: "Marketplace" },
     { key: "business", label: "Business" },
   ];
 
-  // Fetch friends when user opens the dialog
+  const fetchConversations = useCallback(async () => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase
+        .from("conversations")
+        .select("*")
+        .contains("participant_ids", [user.id])
+        .order("updated_at", { ascending: false });
+
+      if (error || !data) return;
+
+      const { data: unreadData } = await supabase
+        .from("messages")
+        .select("conversation_id")
+        .eq("is_read", false)
+        .neq("sender_id", user.id)
+        .in(
+          "conversation_id",
+          data.map((c: any) => c.id)
+        );
+
+      const unreadCounts = (unreadData || []).reduce((acc: Record<string, number>, curr: any) => {
+        acc[curr.conversation_id] = (acc[curr.conversation_id] || 0) + 1;
+        return acc;
+      }, {});
+
+      const otherUserIds = Array.from(
+        new Set(
+          data
+            .map((c: any) => c.participant_ids?.find((id: string) => id !== user.id))
+            .filter(Boolean)
+        )
+      ) as string[];
+
+      let usersMap = new Map();
+      if (otherUserIds.length > 0) {
+        const { data: usersData } = await supabase
+          .from("users")
+          .select("id, name, username, avatar_url")
+          .in("id", otherUserIds);
+
+        if (usersData) {
+          usersMap = new Map(usersData.map((u: any) => [u.id, u]));
+        }
+      }
+
+      const formatted: Conversation[] = data
+        .filter((c: any) => !c.deleted_by?.includes(user.id) || (unreadCounts[c.id] || 0) > 0)
+        .map((c: any) => {
+          const otherId = c.participant_ids?.find((id: string) => id !== user.id);
+          const otherUser = usersMap.get(otherId);
+
+          let convType: ConvType = "friend";
+          if (c.type === "marketplace" || (c.item_id && c.type !== "briefcase" && c.type !== "business"))
+            convType = "marketplace";
+          else if (c.type === "briefcase" || c.type === "business" || c.business_id) convType = "briefcase";
+
+          const isBiz = convType === "briefcase" || !!c.business_id;
+          const participantName = isBiz
+            ? c.business_name || c.item_title || otherUser?.name || "Business"
+            : otherUser?.name || c.item_title || "Neighbour";
+          const participantAvatar =
+            isBiz && (c.business_image || c.item_image)
+              ? c.business_image || c.item_image
+              : otherUser?.avatar_url && !otherUser.avatar_url.startsWith("file://")
+              ? otherUser.avatar_url
+              : null;
+
+          return {
+            id: c.id,
+            type: convType,
+            participantId: otherId || "",
+            participantName,
+            participantAvatar,
+            lastMessage: c.last_message_text || c.last_message || "Tap to chat",
+            timestamp: c.updated_at || c.created_at,
+            unreadCount: unreadCounts[c.id] || 0,
+            context:
+              c.item_title || c.item_id || c.business_name
+                ? {
+                    itemId: c.item_id,
+                    itemTitle: c.item_title || c.business_name,
+                    itemImage: c.item_image || c.business_image,
+                    itemPrice: c.item_price,
+                  }
+                : undefined,
+          };
+        });
+
+      setConversations(formatted);
+    } catch (e) {
+      console.error("Fetch conversations error:", e);
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchConversations();
+
+    if (!user) return;
+    const channel = supabase
+      .channel("conversations_realtime_web")
+      .on("postgres_changes", { event: "*", schema: "public", table: "conversations" }, () =>
+        fetchConversations()
+      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () =>
+        fetchConversations()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, fetchConversations]);
+
+  const filteredConversations = useMemo(() => {
+    return conversations.filter((c) => {
+      if (activeFilter === "friends" && c.type !== "friend") return false;
+      if (activeFilter === "marketplace" && c.type !== "marketplace") return false;
+      if (activeFilter === "business" && c.type !== "briefcase") return false;
+
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        return c.participantName.toLowerCase().includes(q) || c.lastMessage.toLowerCase().includes(q);
+      }
+      return true;
+    });
+  }, [conversations, activeFilter, searchQuery]);
+
+  const totalUnread = useMemo(() => {
+    return conversations.reduce((sum, c) => sum + c.unreadCount, 0);
+  }, [conversations]);
+
+  const handleDeleteConversation = async (conversationId: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user) return;
+    if (!confirm("Are you sure you want to delete this conversation? This action cannot be undone.")) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("conversations")
+        .select("deleted_by")
+        .eq("id", conversationId)
+        .single();
+
+      if (error) throw error;
+
+      const currentDeletedBy = data.deleted_by || [];
+      if (!currentDeletedBy.includes(user.id)) {
+        const newDeletedBy = [...currentDeletedBy, user.id];
+        const { error: updateError } = await supabase
+          .from("conversations")
+          .update({ deleted_by: newDeletedBy })
+          .eq("id", conversationId);
+
+        if (updateError) throw updateError;
+
+        setConversations((prev) => prev.filter((c) => c.id !== conversationId));
+        toast({ title: "Conversation deleted" });
+      }
+    } catch (e) {
+      console.error("Failed to delete conversation", e);
+      toast({ title: "Failed to delete conversation", variant: "destructive" });
+    }
+  };
+
+  // Load connections for New Message dialog
   useEffect(() => {
     if (!user || !isNewMessageOpen) return;
     const loadFriends = async () => {
       setFriendsLoading(true);
       try {
-        const { data: userData } = await supabase.from('users').select('friends').eq('id', user.id).single();
+        const { data: userData } = await supabase.from("users").select("friends").eq("id", user.id).single();
         const friendIds = userData?.friends || [];
         if (friendIds.length > 0) {
-          const { data: friendsData } = await supabase.from('users').select('id, name, avatar_url').in('id', friendIds);
+          const { data: friendsData } = await supabase
+            .from("users")
+            .select("id, name, avatar_url")
+            .in("id", friendIds);
           setFriends(friendsData || []);
         } else {
           setFriends([]);
@@ -294,23 +270,23 @@ export function MessagesScreen() {
     try {
       const sortedIds = [user.id, friendId].sort();
       const { data: existingConvs } = await supabase
-        .from('conversations')
-        .select('id, type')
-        .contains('participant_ids', sortedIds);
-      
-      const existing = existingConvs?.find(c => c.type === 'friend');
+        .from("conversations")
+        .select("id, type")
+        .contains("participant_ids", sortedIds);
+
+      const existing = existingConvs?.find((c) => c.type === "friend");
       let cid: string;
 
       if (!existing) {
         const { data: newConv, error } = await supabase
-          .from('conversations')
+          .from("conversations")
           .insert({
             participant_ids: sortedIds,
-            type: 'friend',
+            type: "friend",
             created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
           })
-          .select('id')
+          .select("id")
           .single();
         if (error) throw error;
         cid = newConv.id;
@@ -326,190 +302,265 @@ export function MessagesScreen() {
   };
 
   return (
-    <div className="w-full max-w-[430px] mx-auto min-h-[100dvh] bg-[var(--yrdly-dark)] text-foreground font-yrdly-body px-4 pt-4 pb-24">
-      {/* Top Header */}
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-bold text-foreground font-yrdly-display">Messages</h1>
-        <Dialog open={isNewMessageOpen} onOpenChange={setIsNewMessageOpen}>
-          <DialogTrigger asChild>
-            <button className="w-9 h-9 rounded-full bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] flex items-center justify-center text-foreground hover:bg-white/10 transition-all">
-              <Edit className="w-4 h-4 text-primary" />
-            </button>
-          </DialogTrigger>
-          <DialogContent className="bg-[var(--yrdly-dark)] border border-[var(--yrdly-glass-border)] text-foreground font-yrdly-body max-w-sm rounded-2xl">
-            <DialogHeader>
-              <DialogTitle className="font-yrdly-display font-bold text-lg">New Message</DialogTitle>
-            </DialogHeader>
-            <div className="py-2 max-h-[300px] overflow-y-auto space-y-1">
-              {friendsLoading ? (
-                <div className="flex justify-center py-6">
-                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                </div>
-              ) : friends.length === 0 ? (
-                <div className="p-8 text-center text-xs text-[var(--yrdly-label)] font-yrdly-body">
-                  You have no connections to message yet.
-                </div>
-              ) : (
-                friends.map(friend => (
-                  <button
-                    key={friend.id}
-                    onClick={() => handleStartChat(friend.id)}
-                    className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors text-left"
-                  >
-                    <Avatar className="w-10 h-10 border border-[var(--yrdly-glass-border)]">
-                      <AvatarImage src={friend.avatar_url || "/placeholder.svg"} />
-                      <AvatarFallback className="bg-primary text-foreground font-bold font-yrdly-display">
-                        {friend.name?.charAt(0) || "?"}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 overflow-hidden">
-                      <p className="font-bold text-sm truncate text-foreground font-yrdly-display">{friend.name}</p>
-                    </div>
-                  </button>
-                ))
+    <div className="w-full max-w-2xl mx-auto min-h-[100dvh] bg-[var(--yrdly-dark)] text-foreground font-yrdly-body pb-24">
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between px-5 pt-4 pb-3">
+        {searching ? (
+          <div className="flex items-center gap-3 w-full">
+            <div className="flex-1 flex items-center gap-2 bg-surface border border-[var(--yrdly-glass-border)] rounded-full px-3.5 py-2">
+              <Search className="w-4 h-4 text-[var(--yrdly-label)]" />
+              <input
+                autoFocus
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search messages..."
+                className="w-full bg-transparent outline-none text-sm text-foreground placeholder:text-[var(--yrdly-label)] font-yrdly-body"
+              />
+              {searchQuery.length > 0 && (
+                <button type="button" onClick={() => setSearchQuery("")}>
+                  <X className="w-4 h-4 text-[var(--yrdly-label)]" />
+                </button>
               )}
             </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {/* Search Input Bar */}
-      <div className="relative mb-4">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--yrdly-label)]" />
-        <input
-          type="text"
-          placeholder="Search messages..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full rounded-full py-2.5 pl-10 pr-4 text-sm text-foreground outline-none border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] placeholder:text-[var(--yrdly-label)] font-yrdly-body"
-        />
-      </div>
-
-      {/* Filter Pills */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-4 scrollbar-hide">
-        {TABS.map(({ key, label }) => {
-          const isActive = activeTab === key;
-          const count = unreadCounts[key];
-          return (
             <button
-              key={key}
-              onClick={() => setActiveTab(key)}
-              className={cn(
-                "relative whitespace-nowrap rounded-full px-4 py-1.5 text-xs font-semibold transition-all shrink-0 border",
-                isActive
-                  ? "bg-[var(--yrdly-glass-bg)] text-foreground border-[var(--yrdly-glass-border)] font-yrdly-display"
-                  : "bg-transparent text-[var(--yrdly-label)] border-[var(--yrdly-glass-border)] hover:text-foreground font-yrdly-body"
-              )}
+              type="button"
+              onClick={() => {
+                setSearching(false);
+                setSearchQuery("");
+              }}
+              className="text-sm font-semibold text-[#82DB7E] hover:opacity-80"
             >
-              {label}
-              {count > 0 && (
-                <span className="ml-1.5 px-1.5 py-0.2 text-[10px] rounded-full bg-primary text-foreground font-bold">
-                  {count}
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-2xl font-extrabold text-foreground font-yrdly-display">Messages</h1>
+              {totalUnread > 0 && (
+                <span
+                  className="px-2 py-0.5 rounded-full text-xs font-bold text-black"
+                  style={{ backgroundColor: GREEN }}
+                >
+                  {totalUnread}
                 </span>
               )}
-            </button>
-          );
-        })}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSearching(true)}
+                className="w-9 h-9 rounded-full bg-surface border border-[var(--yrdly-glass-border)] flex items-center justify-center text-foreground hover:bg-white/5 transition-all"
+              >
+                <Search className="w-4 h-4" />
+              </button>
+
+              <Dialog open={isNewMessageOpen} onOpenChange={setIsNewMessageOpen}>
+                <DialogTrigger asChild>
+                  <button
+                    type="button"
+                    className="w-9 h-9 rounded-full flex items-center justify-center text-black font-bold transition-all hover:opacity-90"
+                    style={{ backgroundColor: GREEN }}
+                  >
+                    <Plus className="w-5 h-5" />
+                  </button>
+                </DialogTrigger>
+                <DialogContent className="bg-[var(--yrdly-dark)] border border-[var(--yrdly-glass-border)] text-foreground font-yrdly-body max-w-sm rounded-2xl">
+                  <DialogHeader>
+                    <DialogTitle className="font-yrdly-display font-bold text-lg">New Message</DialogTitle>
+                  </DialogHeader>
+                  <div className="py-2 max-h-[300px] overflow-y-auto space-y-1">
+                    {friendsLoading ? (
+                      <div className="flex justify-center py-6">
+                        <Skeleton className="w-6 h-6 rounded-full" />
+                      </div>
+                    ) : friends.length === 0 ? (
+                      <div className="p-6 text-center text-xs text-[var(--yrdly-label)]">
+                        You have no connections to message yet.
+                      </div>
+                    ) : (
+                      friends.map((friend) => (
+                        <button
+                          key={friend.id}
+                          onClick={() => handleStartChat(friend.id)}
+                          className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors text-left"
+                        >
+                          <Avatar className="w-10 h-10 border border-[var(--yrdly-glass-border)]">
+                            <AvatarImage src={friend.avatar_url || "/placeholder.svg"} />
+                            <AvatarFallback className="bg-primary text-black font-bold font-yrdly-display">
+                              {friend.name?.charAt(0) || "?"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 overflow-hidden">
+                            <p className="font-bold text-sm truncate text-foreground font-yrdly-display">
+                              {friend.name}
+                            </p>
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </>
+        )}
       </div>
 
-      {/* Conversation List */}
-      <div className="space-y-2.5">
-        {loading ? (
-          [...Array(5)].map((_, i) => (
-            <GlassCard key={i} className="flex items-center gap-3 p-3.5 rounded-[16px]">
-              <Skeleton className="w-12 h-12 rounded-full" />
+      {/* ── Filter Pills ── */}
+      {!searching && (
+        <div className="px-5 mb-3">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            {FILTERS.map((item) => {
+              const active = activeFilter === item.key;
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => setActiveFilter(item.key)}
+                  className={cn(
+                    "px-4 py-1.5 rounded-full text-xs font-semibold transition-all border flex-shrink-0",
+                    active
+                      ? "bg-[#82DB7E]/10 border-[#82DB7E]/30 text-[#82DB7E] font-bold"
+                      : "bg-transparent border-[var(--yrdly-glass-border)] text-[var(--yrdly-label)] hover:text-foreground"
+                  )}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Conversations List ── */}
+      {loading ? (
+        <div className="space-y-2 px-5">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="flex items-center gap-3.5 p-3.5 rounded-2xl border border-[var(--yrdly-glass-border)] bg-card">
+              <Skeleton className="w-12 h-12 rounded-full flex-shrink-0" />
               <div className="flex-1 space-y-2">
                 <Skeleton className="h-4 w-32" />
                 <Skeleton className="h-3 w-48" />
               </div>
-            </GlassCard>
-          ))
-        ) : filteredConversations.length === 0 ? (
-          <GlassCard className="flex flex-col items-center justify-center py-20 text-center rounded-3xl">
-            <MessageCircle className="w-12 h-12 mb-3 text-primary opacity-40" />
-            <h3 className="text-foreground text-base font-bold mb-1 font-yrdly-display">No conversations</h3>
-            <p className="text-xs text-[var(--yrdly-label)] font-yrdly-body">
-              {searchQuery ? "No matching messages found" : "Start chatting with your neighbors"}
-            </p>
-          </GlassCard>
-        ) : (
-          filteredConversations.map((conv) => {
-            const isMarketplace = conv.type === "marketplace";
-            const isBusiness = conv.type === "business";
-            const hasItemContext = isMarketplace || isBusiness;
-            const unread = conv.unreadCount > 0;
+            </div>
+          ))}
+        </div>
+      ) : filteredConversations.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-surface border border-[var(--yrdly-glass-border)] flex items-center justify-center mb-4">
+            <MessageSquare className="w-8 h-8 text-[var(--yrdly-label)]" />
+          </div>
+          <h3 className="text-lg font-bold font-yrdly-display text-foreground mb-1">No messages yet</h3>
+          <p className="text-sm text-[var(--yrdly-label)] max-w-xs mb-5">
+            Say hello to someone in your neighbourhood.
+          </p>
+          <button
+            type="button"
+            onClick={() => router.push("/explore")}
+            className="px-6 py-3 rounded-full font-bold text-sm text-black transition-opacity hover:opacity-90"
+            style={{ backgroundColor: GREEN }}
+          >
+            Start a Conversation
+          </button>
+        </div>
+      ) : (
+        <div className="divide-y divide-surface">
+          {filteredConversations.map((item) => {
+            const isUnread = item.unreadCount > 0;
 
             return (
-              <Link key={conv.id} href={`/messages/${conv.id}`}>
-                <GlassCard className="group flex items-center gap-3.5 p-3.5 rounded-[18px] transition-all hover:scale-[1.01]">
-                  {/* Avatar / Thumbnail */}
-                  <div className="relative w-12 h-12 flex-shrink-0">
-                    {hasItemContext && conv.context?.itemImage ? (
-                      <Image
-                        src={conv.context.itemImage}
-                        alt=""
-                        width={48} height={48}
-                        className="w-full h-full object-cover rounded-xl border border-[var(--yrdly-glass-border)]"
-                      />
-                    ) : (
-                      <Avatar className="w-12 h-12">
-                        <AvatarImage src={conv.participantAvatar} className="object-cover" />
-                        <AvatarFallback className="bg-primary text-foreground font-bold font-yrdly-display">
-                          {conv.participantName.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                    )}
-                    {!hasItemContext && (
-                      <div className="absolute -bottom-0.5 -right-0.5">
-                        <ActivityIndicator userId={conv.participantId} size="sm" />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-baseline mb-0.5">
-                      <span className="text-foreground text-sm font-bold truncate font-yrdly-display">
-                        {conv.participantName}
-                      </span>
-                      <span
-                        className={cn(
-                          "text-[0.7rem] flex-shrink-0 ml-2 font-yrdly-body",
-                          unread ? "text-primary font-bold" : "text-[var(--yrdly-label)]"
-                        )}
-                      >
-                        {timeLabel(conv.timestamp)}
-                      </span>
+              <Link
+                key={item.id}
+                href={`/messages/${item.id}`}
+                className={cn(
+                  "group flex items-center gap-3.5 px-5 py-3.5 transition-colors hover:bg-white/5",
+                  isUnread && "bg-[#82DB7E]/[0.03]"
+                )}
+              >
+                {/* Avatar */}
+                <div className="relative w-12 h-12 flex-shrink-0">
+                  {item.participantAvatar ? (
+                    <Image
+                      src={item.participantAvatar}
+                      alt={item.participantName}
+                      width={48}
+                      height={48}
+                      className="w-12 h-12 rounded-full object-cover"
+                      unoptimized
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-[#82DB7E]/10 flex items-center justify-center font-bold text-lg text-[#82DB7E] font-yrdly-display">
+                      {item.participantName.charAt(0).toUpperCase()}
                     </div>
-                    {typeof conv.context?.itemPrice === "number" && (
-                      <div className="text-xs font-bold mb-0.5 text-primary font-yrdly-display">
-                        {conv.context.itemPrice === 0 ? "Free" : `₦${conv.context.itemPrice.toLocaleString()}`}
-                      </div>
-                    )}
-                    <p className={cn("text-xs truncate font-yrdly-body", unread ? "text-foreground font-semibold" : "text-[var(--yrdly-label)]")}>
-                      {conv.lastMessage}
-                    </p>
+                  )}
+                  <div className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-[#82DB7E] border-2 border-[var(--yrdly-dark)]" />
+                </div>
+
+                {/* Details */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2 mb-0.5">
+                    <span
+                      className={cn(
+                        "text-sm font-semibold truncate text-foreground font-yrdly-display",
+                        isUnread && "font-extrabold"
+                      )}
+                    >
+                      {item.participantName}
+                    </span>
+                    <span
+                      className={cn(
+                        "text-xs font-mono flex-shrink-0",
+                        isUnread ? "text-[#82DB7E] font-bold" : "text-[var(--yrdly-label)]"
+                      )}
+                    >
+                      {timeLabel(item.timestamp)}
+                    </span>
                   </div>
 
-                  {/* Actions & Unread */}
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <button
-                      onClick={(e) => handleDeleteConversation(conv.id, e)}
-                      className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-red-500/10 text-[var(--yrdly-label)] hover:text-red-500 transition-all"
-                      title="Delete Conversation"
+                  <div className="flex items-center justify-between gap-2">
+                    <p
+                      className={cn(
+                        "text-xs truncate font-yrdly-body",
+                        isUnread ? "text-foreground font-medium" : "text-[var(--yrdly-label)]"
+                      )}
                     >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                    {unread && (
-                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0 bg-primary" />
+                      {item.lastMessage}
+                    </p>
+                    {isUnread && (
+                      <span
+                        className="px-1.5 py-0.2 min-w-[18px] h-4 rounded-full text-[10px] font-bold flex items-center justify-center text-black flex-shrink-0"
+                        style={{ backgroundColor: GREEN }}
+                      >
+                        {item.unreadCount}
+                      </span>
                     )}
                   </div>
-                </GlassCard>
+
+                  {item.context?.itemTitle && (
+                    <div className="flex items-center gap-1 mt-1 text-[11px] text-[var(--yrdly-label)]">
+                      <ShoppingBag size={11} />
+                      <span className="truncate">{item.context.itemTitle}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Delete button on hover */}
+                <button
+                  type="button"
+                  onClick={(e) => handleDeleteConversation(item.id, e)}
+                  className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-[var(--yrdly-label)] hover:text-red-500 hover:bg-red-500/10 transition-all flex-shrink-0"
+                  title="Delete Conversation"
+                >
+                  <Trash2 size={16} />
+                </button>
               </Link>
             );
-          })
-        )}
-      </div>
+          })}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,49 +1,29 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Bell,
   UserPlus,
-  MessageCircle,
+  MessageSquare,
   Heart,
   Calendar,
-  ShoppingCart,
+  ShoppingBag,
   Check,
   X,
-  ChevronLeft,
+  ArrowLeft,
   Trash2,
+  ShieldAlert,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { supabase } from "@/lib/supabase";
 import { useFriendshipContext } from "@/contexts/FriendshipContext";
 import { useToast } from "@/hooks/use-toast";
-import { formatDistanceToNowStrict } from "date-fns";
 import { useRouter } from "next/navigation";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { cn } from "@/lib/utils";
 
-const GREEN = "hsl(var(--primary))";
-const GREEN_LIGHT = "#82DB7E";
-const CARD = "var(--c-card)";
-const SURFACE = "var(--c-card)";
-const BG = "var(--c-bg)";
-const FONT = "var(--font-work-sans)";
-const PACIFICO = "var(--font-jersey25)";
-
-interface NotificationsScreenProps {
-  className?: string;
-}
+const GREEN = "#82DB7E";
 
 interface Notification {
   id: string;
@@ -59,582 +39,409 @@ interface Notification {
   related_id?: string;
 }
 
-function NotificationIcon({ type }: { type: string }) {
-  const iconClass = "w-5 h-5";
-  switch (type) {
-    case "friend_request":
-    case "friend_request_accepted":
-      return <UserPlus className={[iconClass, "text-primary-light"].filter(Boolean).join(" ")} />;
-    case "message":
-    case "message_reaction":
-      return <MessageCircle className={iconClass} style={{ color: "#60a5fa" }} />;
-    case "post_like":
-      return <Heart className={iconClass} style={{ color: "#f87171" }} />;
-    case "post_comment":
-      return <MessageCircle className={iconClass} style={{ color: "#c084fc" }} />;
-    case "event_invite":
-    case "event_reminder":
-      return <Calendar className={iconClass} style={{ color: "#fb923c" }} />;
-    case "marketplace_item_sold":
-    case "marketplace_item_interest":
-      return <ShoppingCart className={[iconClass, "text-primary-light"].filter(Boolean).join(" ")} />;
-    default:
-      return <Bell className={iconClass} style={{ color: "var(--c-text-muted)" }} />;
+const FILTER_TABS = ["All", "Alerts", "Community", "Unread", "Marketplace", "Events"];
+
+function timeAgo(dateString: string): string {
+  try {
+    const d = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHrs = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHrs / 24);
+
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHrs < 24) return `${diffHrs}h ago`;
+    if (diffDays === 1) return "Yesterday";
+    return `${diffDays}d ago`;
+  } catch {
+    return "";
   }
 }
 
-function NotificationCard({
-  notification,
-  onMarkAsRead,
-  onDelete,
-}: {
-  notification: Notification;
-  onMarkAsRead: (id: string) => void;
-  onDelete: (id: string) => void;
-}) {
-  const { toast } = useToast();
-  const router = useRouter();
-  const { user: currentUser } = useAuth();
-  const { refreshUserStatus } = useFriendshipContext();
-
-  const handleAcceptFriend = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-      const toUserId = currentUser?.id || "";
-      let fromUserId = notification.from_user_id || "";
-
-      if (!fromUserId && toUserId) {
-        const { data: pending } = await supabase
-          .from("followers")
-          .select("follower_id")
-          .eq("following_id", toUserId)
-          .limit(1);
-        if (pending && pending.length >= 1) {
-          fromUserId = pending[0].follower_id;
-        }
-      }
-
-      if (!fromUserId) {
-        toast({ title: "Request not found", variant: "destructive" });
-        return;
-      }
-
-      // Insert reciprocal row into followers table to establish mutual follow (Friends)
-      try {
-        await supabase.from("followers").insert({
-          follower_id: toUserId,
-          following_id: fromUserId,
-        });
-      } catch {}
-
-      // Legacy fallback updates
-      try {
-        const { data: req } = await supabase
-          .from("friend_requests")
-          .select("id")
-          .eq("from_user_id", fromUserId)
-          .eq("to_user_id", toUserId)
-          .eq("status", "pending")
-          .maybeSingle();
-
-        if (req) {
-          await supabase.from("friend_requests").update({ status: "accepted", updated_at: new Date().toISOString() }).eq("id", req.id);
-        }
-
-        const [{ data: meData }, { data: themData }] = await Promise.all([
-          supabase.from("users").select("friends").eq("id", toUserId).single(),
-          supabase.from("users").select("friends").eq("id", fromUserId).single(),
-        ]);
-        const myFriends = Array.from(new Set([...(meData?.friends || []), fromUserId]));
-        const theirFriends = Array.from(new Set([...(themData?.friends || []), toUserId]));
-        await Promise.all([
-          supabase.from("users").update({ friends: myFriends }).eq("id", toUserId),
-          supabase.from("users").update({ friends: theirFriends }).eq("id", fromUserId),
-        ]);
-      } catch {}
-
-      // Refresh global friendship context so profile buttons update everywhere
-      if (fromUserId) await refreshUserStatus(fromUserId);
-      onMarkAsRead(notification.id);
-      toast({ title: "Friend request accepted", description: "You are now friends! 🎉" });
-    } catch {
-      toast({ variant: "destructive", title: "Error", description: "Could not accept request." });
-    }
-  };
-
-  const handleDeclineFriend = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-      if (!currentUser || !notification.from_user_id) return;
-      await supabase
-        .from("followers")
-        .delete()
-        .eq("follower_id", notification.from_user_id)
-        .eq("following_id", currentUser.id);
-
-      try {
-        await supabase
-          .from("friend_requests")
-          .delete()
-          .eq("from_user_id", notification.from_user_id)
-          .eq("to_user_id", currentUser.id)
-          .eq("status", "pending");
-      } catch {}
-
-      // Refresh global friendship context so profile buttons update everywhere
-      await refreshUserStatus(notification.from_user_id);
-      onMarkAsRead(notification.id);
-      toast({ title: "Request declined" });
-    } catch {
-      toast({ variant: "destructive", title: "Error", description: "Could not decline request." });
-    }
-  };
-
-  const handleCardClick = () => {
-    if (!notification.is_read) onMarkAsRead(notification.id);
-    switch (notification.type) {
-      case "friend_request":
-      case "friend_request_accepted":
-      case "friend_request_declined": {
-        const uid = notification.from_user_id || notification.related_id;
-        router.push(uid ? `/profile/${uid}` : "/community");
-        break;
-      }
-      case "message":
-      case "message_reaction": {
-        const cid = notification.related_id || notification.data?.conversation_id;
-        router.push(cid ? `/messages/${cid}` : "/messages");
-        break;
-      }
-      case "post_like":
-      case "post_comment":
-      case "post_share": {
-        const pid = notification.related_id || notification.data?.post_id;
-        router.push(pid ? `/posts/${pid}` : "/home");
-        break;
-      }
-      case "event_invite":
-      case "event_reminder":
-      case "event_cancelled":
-      case "event_updated": {
-        const eid = notification.related_id || notification.data?.eventId || notification.data?.event_id;
-        router.push(eid ? `/events/${eid}` : "/events");
-        break;
-      }
-      case "business_review_received": {
-        const bizId = notification.data?.businessId || notification.related_id;
-        router.push(bizId ? `/businesses/${bizId}` : "/businesses");
-        break;
-      }
-      case "payment_successful":
-      case "item_shipped":
-      case "delivery_confirmed":
-      case "funds_released":
-      case "dispute_opened":
-      case "dispute_resolved":
-      case "payout_processed":
-      case "payout_failed": {
-        const txId = notification.related_id || notification.data?.transactionId;
-        router.push(txId ? `/transactions/${txId}` : "/marketplace");
-        break;
-      }
-      default:
-        router.push("/home");
-    }
-  };
-
-  const isUnread = !notification.is_read;
-  const isFriendRequest = notification.type === "friend_request";
-
-  return (
-    <div
-      className="relative rounded-[11px] overflow-hidden cursor-pointer transition-all active:scale-[0.99]"
-      style={{
-        background: isUnread ? "var(--c-card)" : CARD,
-        border: isUnread
-          ? "0.5px solid rgba(130,219,126,0.3)"
-          : "0.5px solid var(--c-border)",
-      }}
-      onClick={handleCardClick}
-    >
-      {/* Unread indicator stripe */}
-      {isUnread && (
-        <div
-          className="absolute left-0 top-0 bottom-0 w-0.5"
-          style={{ background: GREEN_LIGHT }}
-        />
-      )}
-
-      <div className="flex items-start gap-3 p-4">
-        {/* Avatar or icon */}
-        <div className="flex-shrink-0 relative">
-          {notification.from_user_avatar || notification.from_user_name ? (
-            <Avatar className="w-10 h-10">
-              <AvatarImage src={notification.from_user_avatar} />
-              <AvatarFallback
-                style={{ background: GREEN, color: "#fff", fontFamily: FONT, fontWeight: 700 }}
-              >
-                {notification.from_user_name?.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-          ) : (
-            <div
-              className="w-10 h-10 rounded-full flex items-center justify-center"
-              style={{ background: "rgba(56,142,60,0.15)" }}
-            >
-              <NotificationIcon type={notification.type} />
-            </div>
-          )}
-          {/* Type icon badge on avatar */}
-          {(notification.from_user_avatar || notification.from_user_name) && (
-            <div
-              className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full flex items-center justify-center"
-              style={{ background: "var(--c-card)", border: "1px solid var(--c-bg)" }}
-            >
-              <NotificationIcon type={notification.type} />
-            </div>
-          )}
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          <p
-            className="text-[0.8125rem] text-foreground leading-snug"
-            style={{ fontFamily: FONT, fontWeight: isUnread ? 600 : 400 }}
-          >
-            <span style={{ fontWeight: 700 }}>
-              {notification.from_user_name || notification.title}
-            </span>{" "}
-            {notification.from_user_name ? notification.message : ""}
-          </p>
-          {!notification.from_user_name && (
-            <p className="text-[0.75rem] mt-0.5" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
-              {notification.message}
-            </p>
-          )}
-          <p className="text-[0.6875rem] mt-1" style={{ color: "#566052", fontFamily: FONT }}>
-            {formatDistanceToNowStrict(new Date(notification.created_at), { addSuffix: true })}
-          </p>
-
-          {/* Friend request inline actions */}
-          {isFriendRequest && (
-            <div className="flex gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
-              <button
-                onClick={handleAcceptFriend}
-                className="flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-bold text-foreground transition-all active:scale-95"
-                style={{ background: GREEN, fontFamily: FONT }}
-              >
-                <Check className="w-3.5 h-3.5" />
-                Accept
-              </button>
-              <button
-                onClick={handleDeclineFriend}
-                className="flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-bold transition-all active:scale-95"
-                style={{
-                  background: "rgba(229,57,53,0.12)",
-                  color: "#E53935",
-                  border: "0.5px solid rgba(229,57,53,0.3)",
-                  fontFamily: FONT,
-                }}
-              >
-                <X className="w-3.5 h-3.5" />
-                Decline
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Right side: unread dot + delete */}
-        <div className="flex flex-col items-end gap-2 flex-shrink-0">
-          {isUnread && (
-            <div className="w-2 h-2 rounded-full" style={{ background: GREEN_LIGHT }} />
-          )}
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <button
-                onClick={(e) => e.stopPropagation()}
-                className="p-1 rounded-full transition-colors hover:bg-accent"
-                style={{ color: "#566052" }}
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            </AlertDialogTrigger>
-            <AlertDialogContent
-              style={{ background: 'var(--c-card)', border: "0.5px solid var(--c-border)" }}
-            >
-              <AlertDialogHeader>
-                <AlertDialogTitle className="text-foreground">Delete notification?</AlertDialogTitle>
-                <AlertDialogDescription style={{ color: "var(--c-text-muted)" }}>
-                  This will permanently remove this notification.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel
-                  style={{ background: "var(--c-card)", border: "1px solid var(--c-border)", color: "var(--c-text)" }}
-                >
-                  Cancel
-                </AlertDialogCancel>
-                <AlertDialogAction
-                  style={{ background: "#E53935" }}
-                  onClick={() => onDelete(notification.id)}
-                >
-                  Delete
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-const FILTER_TABS = ["All", "Unread", "Friend Requests", "Messages", "Activity"];
-
-export function NotificationsScreen({ className }: NotificationsScreenProps) {
+export function NotificationsScreen() {
   const { user } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
+  const { refreshUserStatus } = useFriendshipContext();
+
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState("All");
 
-  useEffect(() => {
-    if (!user) return;
+  const fetchNotifications = useCallback(async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    try {
+      const { data, error } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(50);
 
-    const fetchNotifications = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("notifications")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false });
+      if (error || !data) return;
 
-        if (error) return;
-
-        const rawData = data || [];
-        const senderIds = Array.from(new Set(rawData.map(n => n.sender_id || n.data?.from_user_id).filter(Boolean)));
-        let senderMap = new Map();
-        if (senderIds.length > 0) {
-          const { data: senders } = await supabase.from('users').select('id, name, avatar_url').in('id', senderIds);
-          if (senders) senderMap = new Map(senders.map(s => [s.id, s]));
+      const senderIds = Array.from(
+        new Set(data.map((n) => n.sender_id || n.data?.from_user_id).filter(Boolean))
+      );
+      let senderMap = new Map();
+      if (senderIds.length > 0) {
+        const { data: senders } = await supabase
+          .from("users")
+          .select("id, name, avatar_url")
+          .in("id", senderIds);
+        if (senders) {
+          senderMap = new Map(senders.map((s) => [s.id, s]));
         }
-
-        const formatted = rawData.map((notif) => {
-          const sId = notif.sender_id || notif.data?.from_user_id;
-          const sender = sId ? senderMap.get(sId) : null;
-          
-          return {
-            id: notif.id,
-            type: notif.type,
-            title: notif.title,
-            message: notif.message,
-            data: notif.data,
-            is_read: notif.is_read,
-            created_at: notif.created_at,
-            from_user_id: sId,
-            from_user_name: sender?.name || notif.data?.fromUserName || notif.data?.from_user_name,
-            from_user_avatar: sender?.avatar_url || notif.data?.from_user_avatar,
-            related_id: notif.related_id,
-          };
-        }) as Notification[];
-
-        setNotifications(formatted);
-        setLoading(false);
-      } catch {
-        setLoading(false);
       }
-    };
 
+      const formatted = data.map((notif: any) => {
+        const sId = notif.sender_id || notif.data?.from_user_id;
+        const sender = sId ? senderMap.get(sId) : null;
+
+        return {
+          id: notif.id,
+          type: notif.type,
+          title: notif.title,
+          message: notif.message,
+          data: notif.data,
+          is_read: notif.is_read,
+          created_at: notif.created_at,
+          from_user_id: sId,
+          from_user_name: sender?.name || notif.data?.fromUserName || notif.data?.from_user_name,
+          from_user_avatar: sender?.avatar_url || notif.data?.from_user_avatar,
+          related_id: notif.related_id,
+        };
+      }) as Notification[];
+
+      setNotifications(formatted);
+    } catch (e) {
+      console.error("Fetch notifications error:", e);
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
     fetchNotifications();
 
+    if (!user) return;
     const channel = supabase
-      .channel("notifications_screen")
+      .channel("notifications_realtime_web")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
-        (payload) => {
-          if (payload.eventType === "INSERT") {
-            const n = payload.new as any;
-            setNotifications((prev) => [
-              {
-                id: n.id,
-                type: n.type,
-                title: n.title,
-                message: n.message,
-                data: n.data,
-                is_read: n.is_read,
-                created_at: n.created_at,
-                from_user_id: n.sender_id || n.data?.from_user_id,
-                from_user_name: n.data?.fromUserName || n.data?.from_user_name,
-                from_user_avatar: n.data?.from_user_avatar,
-                related_id: n.related_id,
-              },
-              ...prev,
-            ]);
-          } else if (payload.eventType === "UPDATE") {
-            const u = payload.new as any;
-            setNotifications((prev) =>
-              prev.map((n) => (n.id === u.id ? { ...n, is_read: u.is_read } : n))
-            );
-          } else if (payload.eventType === "DELETE") {
-            setNotifications((prev) => prev.filter((n) => n.id !== payload.old.id));
-          }
-        }
+        () => fetchNotifications()
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
-  }, [user]);
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, fetchNotifications]);
+
+  const markAllRead = async () => {
+    if (!user) return;
+    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    await supabase.from("notifications").update({ is_read: true }).eq("user_id", user.id);
+    toast({ title: "All marked as read" });
+  };
 
   const handleMarkAsRead = async (id: string) => {
-    await supabase.from("notifications").update({ is_read: true }).eq("id", id);
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
-    window.dispatchEvent(new Event("notifications_read"));
+    await supabase.from("notifications").update({ is_read: true }).eq("id", id);
   };
 
-  const handleMarkAllRead = async () => {
-    const unreadIds = notifications.filter((n) => !n.is_read).map((n) => n.id);
-    if (unreadIds.length === 0) return;
-    await supabase.from("notifications").update({ is_read: true }).in("id", unreadIds);
-    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
-    toast({ title: "All marked as read" });
-    window.dispatchEvent(new Event("notifications_read"));
-  };
-
-  const handleDelete = async (id: string) => {
-    await supabase.from("notifications").delete().eq("id", id);
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
     setNotifications((prev) => prev.filter((n) => n.id !== id));
+    await supabase.from("notifications").delete().eq("id", id);
+  };
+
+  const handleAcceptFriend = async (notification: Notification, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user) return;
+    try {
+      const fromUserId = notification.from_user_id;
+      if (!fromUserId) return;
+
+      // Reciprocal follow relationship
+      await supabase.from("followers").insert({
+        follower_id: user.id,
+        following_id: fromUserId,
+      });
+
+      await refreshUserStatus(fromUserId);
+      await handleMarkAsRead(notification.id);
+      toast({ title: "Friend request accepted! 🎉" });
+    } catch {
+      toast({ variant: "destructive", title: "Error accepting request." });
+    }
+  };
+
+  const handleDeclineFriend = async (notification: Notification, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user || !notification.from_user_id) return;
+    try {
+      await supabase
+        .from("followers")
+        .delete()
+        .eq("follower_id", notification.from_user_id)
+        .eq("following_id", user.id);
+
+      await refreshUserStatus(notification.from_user_id);
+      await handleMarkAsRead(notification.id);
+      toast({ title: "Request declined" });
+    } catch {
+      toast({ variant: "destructive", title: "Error declining request." });
+    }
+  };
+
+  const handleNotificationClick = (item: Notification) => {
+    if (!item.is_read) handleMarkAsRead(item.id);
+    const t = item.type || "";
+    if (t.includes("event")) {
+      if (item.related_id) router.push(`/events/${item.related_id}`);
+      else router.push("/events");
+    } else if (t.includes("marketplace") || t.includes("escrow")) {
+      if (item.related_id) router.push(`/marketplace/${item.related_id}`);
+      else router.push("/marketplace");
+    } else if (t === "message") {
+      if (item.related_id) router.push(`/messages/${item.related_id}`);
+      else router.push("/messages");
+    } else if (
+      [
+        "payment_successful",
+        "item_shipped",
+        "delivery_confirmed",
+        "funds_released",
+        "dispute_opened",
+        "dispute_resolved",
+        "payout_processed",
+        "payout_failed",
+      ].includes(t)
+    ) {
+      if (item.related_id) router.push(`/transactions/${item.related_id}`);
+      else router.push("/transactions");
+    } else if (["friend_request", "friend_request_accepted", "new_follower"].includes(t)) {
+      const profileId = item.from_user_id || item.related_id;
+      if (profileId) router.push(`/profile/${profileId}`);
+      else router.push("/explore");
+    } else if (t.includes("alert") || t.includes("safety")) {
+      if (item.related_id) router.push(`/admin/create-alert`);
+      else router.push("/explore");
+    } else if (t === "post_comment" || t === "post_like") {
+      if (item.related_id) router.push(`/posts/${item.related_id}`);
+    } else {
+      router.push("/explore");
+    }
   };
 
   const filteredNotifications = useMemo(() => {
-    switch (activeFilter) {
-      case "Unread":
-        return notifications.filter((n) => !n.is_read);
-      case "Friend Requests":
-        return notifications.filter((n) => n.type === "friend_request");
-      case "Messages":
-        return notifications.filter((n) => n.type === "message" || n.type === "message_reaction");
-      case "Activity":
-        return notifications.filter((n) =>
-          ["post_like", "post_comment", "post_share", "event_invite", "event_reminder"].includes(n.type)
+    return notifications.filter((n) => {
+      const t = n.type || "";
+      if (activeFilter === "Unread") return !n.is_read;
+      if (activeFilter === "Alerts") return t.includes("alert") || t.includes("safety");
+      if (activeFilter === "Community")
+        return [
+          "friend_request",
+          "friend_accept",
+          "new_follower",
+          "post_like",
+          "post_comment",
+        ].includes(t);
+      if (activeFilter === "Marketplace")
+        return (
+          t.includes("marketplace") ||
+          t.includes("escrow") ||
+          t.includes("transaction") ||
+          [
+            "payment_successful",
+            "item_shipped",
+            "delivery_confirmed",
+            "funds_released",
+            "dispute_opened",
+            "dispute_resolved",
+            "payout_processed",
+            "payout_failed",
+          ].includes(t)
         );
-      default:
-        return notifications;
-    }
+      if (activeFilter === "Events") return t.includes("event") || t.includes("ticket");
+      return true;
+    });
   }, [notifications, activeFilter]);
 
-  const unreadCount = notifications.filter((n) => !n.is_read).length;
-
   return (
-    <div className="min-h-[100dvh] pb-32" style={{ background: BG }}>
-      <div className="max-w-2xl mx-auto px-4 pt-6 space-y-6">
-        {/* Header */}
-        <header className="flex items-center justify-between">
-          <div>
-            <h1 className="text-[1.25rem] text-foreground" style={{ fontFamily: PACIFICO }}>
-              Notifications
-            </h1>
-            <p
-              className="text-[0.75rem] mt-0.5"
-              style={{ color: "var(--c-text-muted)", fontFamily: FONT, fontStyle: "italic", fontWeight: 300 }}
-            >
-              {unreadCount > 0 ? `${unreadCount} unread` : "All caught up!"}
-            </p>
-          </div>
-          {unreadCount > 0 && (
-            <button
-              onClick={handleMarkAllRead}
-              className="flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition-all active:scale-95 text-primary-light"
-              style={{
-                background: "rgba(56,142,60,0.15)",
-                border: "0.5px solid rgba(130,219,126,0.3)",
-                fontFamily: FONT,
-              }}
-            >
-              <Check className="w-3.5 h-3.5" />
-              Mark all read
-            </button>
-          )}
-        </header>
+    <div className="w-full max-w-2xl mx-auto min-h-[100dvh] bg-[var(--yrdly-dark)] text-foreground font-yrdly-body pb-24">
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between px-5 pt-4 pb-3">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="w-9 h-9 rounded-full bg-surface border border-[var(--yrdly-glass-border)] flex items-center justify-center text-foreground hover:bg-white/5 transition-all"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <h1 className="text-xl font-extrabold text-foreground font-yrdly-display">Notifications</h1>
+        </div>
+        <button
+          type="button"
+          onClick={markAllRead}
+          className="px-3 py-1.5 rounded-xl border border-[var(--yrdly-glass-border)] bg-surface text-xs font-bold text-[#82DB7E] hover:bg-white/5 transition-all"
+        >
+          Mark Read
+        </button>
+      </div>
 
-        {/* Filter tabs */}
-        <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-          {FILTER_TABS.map((tab) => {
-            const isActive = activeFilter === tab;
+      {/* ── Filter Pills ── */}
+      <div className="px-5 mb-3">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          {FILTER_TABS.map((item) => {
+            const active = activeFilter === item;
             return (
               <button
-                key={tab}
-                onClick={() => setActiveFilter(tab)}
-                className="flex-shrink-0 rounded-full px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all"
-                style={
-                  isActive
-                    ? { background: GREEN, color: "#fff", fontFamily: FONT }
-                    : {
-                        background: 'var(--c-card)',
-                        color: "var(--c-text-muted)",
-                        border: "0.5px solid var(--c-border)",
-                        fontFamily: FONT,
-                      }
-                }
-              >
-                {tab}
-                {tab === "Unread" && unreadCount > 0 && (
-                  <span
-                    className="ml-1.5 inline-flex items-center justify-center rounded-full min-w-[16px] h-4 px-1 text-[0.5625rem] font-bold"
-                    style={{ background: GREEN_LIGHT, color: "#003207" }}
-                  >
-                    {unreadCount > 9 ? "9+" : unreadCount}
-                  </span>
+                key={item}
+                type="button"
+                onClick={() => setActiveFilter(item)}
+                className={cn(
+                  "px-4 py-1.5 rounded-full text-xs font-semibold transition-all border flex-shrink-0",
+                  active
+                    ? "bg-[#82DB7E]/10 border-[#82DB7E]/30 text-[#82DB7E] font-bold"
+                    : "bg-transparent border-[var(--yrdly-glass-border)] text-[var(--yrdly-label)] hover:text-foreground"
                 )}
+              >
+                {item}
               </button>
             );
           })}
         </div>
-
-        {/* Notifications list */}
-        {loading ? (
-          <div className="space-y-3">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="flex items-start gap-3 p-4 rounded-[11px]" style={{ background: CARD }}>
-                <Skeleton className="w-10 h-10 rounded-full flex-shrink-0" style={{ background: "var(--c-card2)" }} />
-                <div className="flex-1 space-y-2">
-                  <Skeleton className="h-3 w-3/4" style={{ background: "var(--c-card2)" }} />
-                  <Skeleton className="h-3 w-1/2" style={{ background: "var(--c-card2)" }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : filteredNotifications.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <div
-              className="w-20 h-20 rounded-full flex items-center justify-center mb-5"
-              style={{ background: "rgba(56,142,60,0.1)" }}
-            >
-              <Bell className="w-9 h-9 text-primary-light" style={{ opacity: 0.5 }} />
-            </div>
-            <h2 className="text-foreground text-lg mb-2" style={{ fontFamily: PACIFICO }}>
-              {activeFilter === "All" ? "No notifications yet" : `No ${activeFilter.toLowerCase()}`}
-            </h2>
-            <p className="text-[0.8125rem] text-center max-w-xs" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
-              {activeFilter === "All"
-                ? "You'll see your notifications here."
-                : `You have no ${activeFilter.toLowerCase()} notifications.`}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {filteredNotifications.map((notification) => (
-              <NotificationCard
-                key={notification.id}
-                notification={notification}
-                onMarkAsRead={handleMarkAsRead}
-                onDelete={handleDelete}
-              />
-            ))}
-          </div>
-        )}
       </div>
+
+      {/* ── Notifications List ── */}
+      {loading ? (
+        <div className="space-y-2 px-5">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="flex items-start gap-3.5 p-3.5 rounded-2xl border border-[var(--yrdly-glass-border)] bg-card">
+              <Skeleton className="w-11 h-11 rounded-full flex-shrink-0" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-3 w-56" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : filteredNotifications.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-surface border border-[var(--yrdly-glass-border)] flex items-center justify-center mb-4">
+            <Bell className="w-8 h-8 text-[var(--yrdly-label)]" />
+          </div>
+          <h3 className="text-lg font-bold font-yrdly-display text-foreground mb-1">No notifications</h3>
+          <p className="text-sm text-[var(--yrdly-label)] max-w-xs">
+            You&apos;re all caught up with your neighbourhood updates.
+          </p>
+        </div>
+      ) : (
+        <div className="divide-y divide-surface">
+          {filteredNotifications.map((item) => {
+            const isUnread = !item.is_read;
+            const isFriendRequest = item.type === "friend_request";
+
+            return (
+              <div
+                key={item.id}
+                onClick={() => handleNotificationClick(item)}
+                className={cn(
+                  "group flex items-start gap-3.5 px-5 py-3.5 cursor-pointer transition-colors hover:bg-white/5",
+                  isUnread && "bg-[#82DB7E]/[0.03]"
+                )}
+              >
+                {/* Avatar / Icon */}
+                <div className="relative w-11 h-11 flex-shrink-0">
+                  {item.from_user_avatar ? (
+                    <Avatar className="w-11 h-11">
+                      <AvatarImage src={item.from_user_avatar} />
+                      <AvatarFallback className="bg-[#82DB7E]/10 text-[#82DB7E] font-bold font-yrdly-display">
+                        {item.from_user_name?.charAt(0).toUpperCase() || "N"}
+                      </AvatarFallback>
+                    </Avatar>
+                  ) : (
+                    <div className="w-11 h-11 rounded-full bg-[#82DB7E]/10 border border-[#82DB7E]/20 flex items-center justify-center">
+                      <Bell className="w-5 h-5 text-[#82DB7E]" />
+                    </div>
+                  )}
+                  {isUnread && (
+                    <div className="absolute top-0 right-0 w-2.5 h-2.5 rounded-full bg-[#82DB7E] border-2 border-[var(--yrdly-dark)]" />
+                  )}
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2 mb-0.5">
+                    <span
+                      className={cn(
+                        "text-sm font-semibold truncate text-foreground font-yrdly-display",
+                        isUnread && "font-extrabold"
+                      )}
+                    >
+                      {item.title}
+                    </span>
+                    <span className="text-xs font-mono text-[var(--yrdly-label)] flex-shrink-0">
+                      {timeAgo(item.created_at)}
+                    </span>
+                  </div>
+
+                  <p
+                    className={cn(
+                      "text-xs leading-relaxed font-yrdly-body",
+                      isUnread ? "text-foreground font-medium" : "text-[var(--yrdly-label)]"
+                    )}
+                  >
+                    {item.message}
+                  </p>
+
+                  {/* Friend request actions */}
+                  {isFriendRequest && (
+                    <div className="flex items-center gap-2 mt-3">
+                      <button
+                        type="button"
+                        onClick={(e) => handleAcceptFriend(item, e)}
+                        className="px-4 py-1.5 rounded-full text-xs font-extrabold text-black transition-opacity hover:opacity-90 flex items-center gap-1.5"
+                        style={{ backgroundColor: GREEN }}
+                      >
+                        <Check size={14} />
+                        <span>Accept</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeclineFriend(item, e)}
+                        className="px-4 py-1.5 rounded-full text-xs font-bold text-red-400 bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 transition-colors flex items-center gap-1.5"
+                      >
+                        <X size={14} />
+                        <span>Decline</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Delete button */}
+                <button
+                  type="button"
+                  onClick={(e) => handleDelete(item.id, e)}
+                  className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-[var(--yrdly-label)] hover:text-red-500 hover:bg-red-500/10 transition-all flex-shrink-0"
+                  title="Delete Notification"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
