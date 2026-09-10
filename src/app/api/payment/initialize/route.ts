@@ -386,12 +386,14 @@ export async function POST(request: NextRequest) {
           .single();
 
         if (currentTx?.payluk_escrow_id && currentTx?.payluk_tx_ref) {
+          const existingBuyerPaylukId = await getPaylukCustomerId(buyerId);
           return NextResponse.json({
             success: true,
             transactionId: currentTx.id,
             totalAmount: currentTx.total_amount,
             paylukPaymentToken: currentTx.payluk_tx_ref,
             paylukEscrowId: currentTx.payluk_escrow_id,
+            buyerPaylukId: existingBuyerPaylukId,
           });
         }
 
