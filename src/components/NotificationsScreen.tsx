@@ -76,6 +76,7 @@ export function NotificationsScreen() {
       return;
     }
     try {
+      // 1. Fetch user notifications
       const { data, error } = await supabase
         .from("notifications")
         .select("*")
@@ -83,10 +84,10 @@ export function NotificationsScreen() {
         .order("created_at", { ascending: false })
         .limit(50);
 
-      if (error || !data) return;
+      const notifData = data || [];
 
       const senderIds = Array.from(
-        new Set(data.map((n) => n.sender_id || n.data?.from_user_id).filter(Boolean))
+        new Set(notifData.map((n) => n.sender_id || n.data?.from_user_id).filter(Boolean))
       );
       let senderMap = new Map();
       if (senderIds.length > 0) {
@@ -99,7 +100,7 @@ export function NotificationsScreen() {
         }
       }
 
-      const formatted = data.map((notif: any) => {
+      const formatted = notifData.map((notif: any) => {
         const sId = notif.sender_id || notif.data?.from_user_id;
         const sender = sId ? senderMap.get(sId) : null;
 
@@ -118,7 +119,29 @@ export function NotificationsScreen() {
         };
       }) as Notification[];
 
-      setNotifications(formatted);
+      // 2. Fetch active community safety alerts (matching mobile AlertService)
+      const { data: activeAlerts } = await supabase
+        .from("alerts")
+        .select("*")
+        .eq("is_active", true)
+        .order("created_at", { ascending: false });
+
+      const mappedAlerts = (activeAlerts || []).map((a: any) => ({
+        id: `mapped_alert_${a.id}`,
+        type: "safety_alert",
+        title: a.title || "Community Safety Alert",
+        message: a.description || a.message || "New safety alert in your area.",
+        is_read: false,
+        created_at: a.created_at,
+        related_id: a.id,
+        data: a,
+      })) as Notification[];
+
+      const combined = [...mappedAlerts, ...formatted].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+
+      setNotifications(combined);
     } catch (e) {
       console.error("Fetch notifications error:", e);
     } finally {
@@ -135,6 +158,11 @@ export function NotificationsScreen() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
+        () => fetchNotifications()
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "alerts" },
         () => fetchNotifications()
       )
       .subscribe();
