@@ -172,21 +172,21 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
 
   return (
     <div className="w-full max-w-2xl mx-auto space-y-4 font-yrdly-body pb-24">
-      {/* ── Active Safety Alert Banners ── */}
+      {/* ── Active Safety Alert Banners (Horizontal Swipe Carousel) ── */}
       {activeAlerts.length > 0 && (
-        <div className="space-y-2">
+        <div className="flex overflow-x-auto snap-x snap-mandatory gap-3 pb-2 scrollbar-none">
           {activeAlerts.map((alert) => (
             <div
               key={alert.id}
-              className="flex items-start justify-between gap-3 p-4 rounded-2xl border bg-amber-500/10 border-amber-500/30 text-amber-400"
+              className="snap-center w-[88%] sm:w-[320px] flex-shrink-0 flex items-start justify-between gap-3 p-4 rounded-2xl border bg-amber-500/10 border-amber-500/30 text-amber-400 backdrop-blur-md"
             >
-              <div className="flex items-start gap-3">
+              <div className="flex items-start gap-3 min-w-0 flex-1">
                 <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                <div>
-                  <h4 className="text-xs font-bold font-yrdly-display uppercase tracking-wider">
+                <div className="min-w-0 flex-1">
+                  <h4 className="text-xs font-bold font-yrdly-display uppercase tracking-wider truncate">
                     {alert.title} · <span className="text-[var(--yrdly-label)]">{alert.area_name}</span>
                   </h4>
-                  <p className="text-xs text-foreground mt-0.5 leading-relaxed font-yrdly-body">
+                  <p className="text-xs text-foreground mt-0.5 leading-relaxed font-yrdly-body line-clamp-2">
                     {alert.description}
                   </p>
                 </div>
@@ -197,7 +197,7 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
                   localStorage.setItem(`yrdly_dismissed_alert_${alert.id}`, "true");
                   setActiveAlerts((prev) => prev.filter((a) => a.id !== alert.id));
                 }}
-                className="text-[var(--yrdly-label)] hover:text-foreground p-1"
+                className="text-[var(--yrdly-label)] hover:text-foreground p-1 flex-shrink-0"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -242,27 +242,6 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
           </button>
         </div>
       </CreatePostDialog>
-
-      {/* ── Action Buttons Row ── */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
-        <button
-          type="button"
-          onClick={handleSellClick}
-          className="flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold text-[#15803D] bg-[#DCFCE7] border border-[#BBF7D0] dark:text-emerald-300 dark:bg-slate-800/80 dark:border-emerald-900/50 transition-transform active:scale-95 font-yrdly-display"
-        >
-          <HandshakeIcon />
-          Sell
-        </button>
-
-        <button
-          type="button"
-          onClick={handleEventClick}
-          className="flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold whitespace-nowrap text-[#7E22CE] bg-[#F3E8FF] border border-[#E9D5FF] dark:text-purple-300 dark:bg-slate-800/80 dark:border-purple-900/50 transition-transform active:scale-95 font-yrdly-display"
-        >
-          <TicketIcon />
-          Event
-        </button>
-      </div>
 
       {/* Onboarding Dialogs */}
       <EventCreatorOnboarding isOpen={onboardingOpen} onClose={() => setOnboardingOpen(false)} />

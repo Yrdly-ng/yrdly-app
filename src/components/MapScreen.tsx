@@ -486,45 +486,46 @@ export function MapScreen({ className }: MapScreenProps) {
                 router.push('/home');
               }
             }}
-            className="flex items-center justify-center w-11 h-11 rounded-2xl shadow-2xl flex-shrink-0 transition-all hover:scale-105 active:scale-95 bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] text-foreground"
+            className="flex items-center justify-center w-10 h-10 rounded-full shadow-2xl flex-shrink-0 transition-all hover:scale-105 active:scale-95 bg-[var(--yrdly-dark)]/90 border border-[var(--yrdly-glass-border)] text-foreground backdrop-blur-md"
             aria-label="Go Back"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-4 h-4" />
           </button>
 
           <div
-            className="flex flex-1 items-center gap-3 rounded-2xl px-5 py-3 shadow-2xl bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)]"
+            className="flex flex-1 items-center gap-2.5 rounded-2xl px-4 py-2.5 shadow-2xl bg-[var(--yrdly-dark)]/90 border border-[var(--yrdly-glass-border)] backdrop-blur-md"
           >
-            <Search className="w-4 h-4 flex-shrink-0" style={{ color: '#82DB7E' }} />
+            <Search className="w-4 h-4 flex-shrink-0 text-[#82DB7E]" />
             <input
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search streets, estates, businesses..."
-              className="flex-1 bg-transparent border-none outline-none text-sm font-yrdly-body font-medium text-foreground placeholder:text-[var(--yrdly-label)]"
+              className="flex-1 bg-transparent border-none outline-none text-xs font-yrdly-body font-medium text-foreground placeholder:text-[var(--yrdly-label)]"
             />
           </div>
+
           {/* Near Me */}
           <button
             onClick={() => { if (map && userCoords) { map.panTo(userCoords); map.setZoom(15); } else if (navigator.geolocation) { navigator.geolocation.getCurrentPosition(p => { if (map) { map.panTo({ lat: p.coords.latitude, lng: p.coords.longitude }); map.setZoom(15); } }); } }}
-            className="flex items-center gap-1.5 rounded-2xl px-4 py-3 font-yrdly-body font-bold text-sm shadow-2xl flex-shrink-0 transition-all hover:scale-105 active:scale-95 bg-[var(--yrdly-glass-bg)] border border-[#82DB7E]/40 text-[#82DB7E]"
+            className="flex items-center gap-1.5 rounded-2xl px-3.5 py-2.5 font-yrdly-body font-extrabold text-xs shadow-2xl flex-shrink-0 transition-all hover:scale-105 active:scale-95 bg-[var(--yrdly-dark)]/90 border border-[#82DB7E]/40 text-[#82DB7E] backdrop-blur-md"
           >
-            <Locate className="w-4 h-4" />
+            <Locate className="w-3.5 h-3.5" />
             <span>Near Me</span>
           </button>
         </div>
 
-        {/* Filter chips with icons */}
+        {/* Filter chips */}
         <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
           {TABS.map(t => (
             <button
               key={t.key}
               onClick={() => setActiveTab(t.key)}
-              className="flex-shrink-0 flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-yrdly-body font-bold shadow-lg transition-all hover:scale-105 active:scale-95"
+              className="flex-shrink-0 flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-yrdly-body font-bold shadow-lg transition-all hover:scale-105 active:scale-95"
               style={
                 activeTab === t.key
-                  ? { background: t.color, color: activeTab === 'all' ? '#00390a' : '#0B0D0B' }
-                  : { background: 'var(--yrdly-glass-bg)', backdropFilter: 'blur(16px)', color: 'var(--yrdly-label)', border: '1px solid var(--yrdly-glass-border)' }
+                  ? { background: '#82DB7E', color: '#0B0D0B' }
+                  : { background: 'rgba(13,17,23,0.85)', backdropFilter: 'blur(16px)', color: 'rgba(255,255,255,0.8)', border: '1px solid var(--yrdly-glass-border)' }
               }
             >
               <span style={{ color: activeTab === t.key ? '#0B0D0B' : t.color }}>{t.icon}</span>
@@ -541,15 +542,24 @@ export function MapScreen({ className }: MapScreenProps) {
         </div>
       )}
 
-      <RecenterButton coords={userCoords} />
+      {/* Locate Me Upper Right */}
+      <button
+        onClick={() => { if (map && userCoords) { map.panTo(userCoords); map.setZoom(15); } }}
+        className="absolute top-28 right-4 z-20 flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-yrdly-body font-bold shadow-2xl transition-all hover:scale-105 active:scale-95 bg-[var(--yrdly-dark)]/90 border border-[var(--yrdly-glass-border)] text-foreground backdrop-blur-md"
+      >
+        <Locate className="w-3.5 h-3.5 text-[#82DB7E]" />
+        <span>Locate me</span>
+      </button>
 
-      {/* ── Area info card (floating bottom-left) ── */}
+      {/* ── Area info card (floating bottom-left 1:1 screenshot) ── */}
       <div
-        className="absolute z-20 left-4 rounded-2xl p-4 w-52 shadow-2xl bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] font-yrdly-body bottom-[170px]"
+        className="absolute z-20 left-4 rounded-2xl p-4 w-60 shadow-2xl bg-[var(--yrdly-dark)]/90 border border-[var(--yrdly-glass-border)] font-yrdly-body bottom-[170px] backdrop-blur-md"
       >
         <div className="flex items-center gap-1.5 mb-1">
-          <MapPin className="w-3.5 h-3.5" style={{ color: '#82DB7E' }} />
-          <span className="font-yrdly-display font-black text-sm text-foreground">{profile?.location?.state || 'Your Area'}</span>
+          <MapPin className="w-4 h-4 text-[#82DB7E]" />
+          <span className="font-yrdly-display font-black text-base text-foreground">
+            {activeFilter?.lga || profile?.home_lga || profile?.location?.state || 'Lagos'}
+          </span>
         </div>
         <p className="text-[11px] mb-3 text-[var(--yrdly-label)] font-yrdly-body">
           {markers.filter(m => m.type === 'business').length} businesses
@@ -558,34 +568,29 @@ export function MapScreen({ className }: MapScreenProps) {
         </p>
         <button
           onClick={() => router.push('/community' as any)}
-          className="w-full flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-yrdly-body font-black transition-all hover:opacity-90 active:scale-95"
-          style={{ background: '#82DB7E', color: '#0B0D0B' }}
+          className="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-yrdly-body font-extrabold transition-all hover:opacity-90 active:scale-95 bg-[#82DB7E] text-[#0B0D0B]"
         >
-          View Community
-          <Navigation className="w-3 h-3" />
+          <span>View Community</span>
+          <Navigation className="w-3.5 h-3.5" />
         </button>
       </div>
 
-      {/* ── FAB stack (right side) ── */}
-      <div className="absolute right-4 z-20 flex flex-col gap-2.5 bottom-[170px]">
+      {/* ── Floating Controls Right (1:1 screenshot) ── */}
+      <div className="absolute right-4 z-20 flex flex-col items-end gap-3 bottom-[170px]">
         <button
-          onClick={() => router.push('/create' as any)}
-          className="flex items-center gap-2 rounded-full px-4 py-2.5 text-xs font-yrdly-body font-bold shadow-2xl transition-all hover:scale-105 active:scale-95"
-          style={{ background: '#82DB7E', color: '#0B0D0B', border: 'none' }}
+          onClick={() => setActiveTab(activeTab === 'all' ? 'events' : 'all')}
+          className="w-10 h-10 rounded-full flex items-center justify-center shadow-2xl transition-all hover:scale-105 active:scale-95 bg-[var(--yrdly-dark)]/90 border border-[var(--yrdly-glass-border)] text-foreground backdrop-blur-md"
+          title="Toggle Layers"
+        >
+          <Layers className="w-4 h-4 text-foreground" />
+        </button>
+        <button
+          onClick={() => router.push('/home' as any)}
+          className="flex items-center gap-1.5 rounded-full px-4 py-3 text-xs font-yrdly-body font-extrabold shadow-2xl transition-all hover:scale-105 active:scale-95 bg-[#82DB7E] text-[#0B0D0B]"
         >
           <Plus className="w-4 h-4" />
-          Create Post
+          <span>Create Post</span>
         </button>
-        {selected && (
-          <a
-            href={`https://www.google.com/maps/dir/?api=1&destination=${selected.position.lat},${selected.position.lng}`}
-            target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-2 rounded-full px-4 py-2.5 text-xs font-yrdly-body font-bold shadow-2xl transition-all hover:scale-105 active:scale-95 bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] text-foreground"
-          >
-            <Navigation className="w-4 h-4" style={{ color: '#82DB7E' }} />
-            Directions
-          </a>
-        )}
       </div>
 
       {/* ── Fluid Bottom Sheet (Vaul) ── */}
