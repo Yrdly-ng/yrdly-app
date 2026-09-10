@@ -95,9 +95,10 @@ export function BuyButton({
       const data = await res.json();
 
       if (!res.ok || (!data.paylukPaymentToken && !data.paymentLink)) {
+        console.error("[BuyButton] Payment initialization failed:", res.status, data);
         toast({
-          title: "Error",
-          description: data.error ?? "Failed to initialize payment.",
+          title: "Payment Error",
+          description: data.error || data.message || "Failed to initialize payment.",
           variant: "destructive",
         });
         return;
