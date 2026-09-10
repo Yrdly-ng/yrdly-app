@@ -384,6 +384,18 @@ export async function POST(request: NextRequest) {
           );
         }
 
+        // A stale creating_escrow lock was previously promoted to 'reconciling' by another
+        // request. That reconciling request should have cancelled the tx and freed the item.
+        // Tell the buyer to retry — the next attempt will create a fresh reservation.
+        if (currentTx?.status === 'reconciling') {
+          return NextResponse.json(
+            { error: "RECONCILIATION_IN_PROGRESS", message: "A previous checkout attempt is being cleaned up. Please try again in a moment." },
+            { status: 409 }
+          );
+        }
+
+        // Terminal or unknown state — log for ops visibility.
+        console.error(`[PaymentInit] Unexpected tx state for escrow creation: ${currentTx?.status} (tx: ${transactionId})`);
         return NextResponse.json(
           { error: "Transaction is not in a valid state for escrow creation", status: currentTx?.status || 'unknown' },
           { status: 400 }
