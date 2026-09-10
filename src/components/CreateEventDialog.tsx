@@ -1,440 +1,630 @@
-
 "use client";
 
-import { useForm, UseFormReturn } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Sheet,
   SheetContent,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { PlusCircle, X, Ticket } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { X, Calendar, Image as ImageIcon, Tag, FileText, MapPin, Grid, Ticket, Plus, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { useAuth } from "@/hooks/use-supabase-auth";
-import { useState, useEffect, memo, useCallback, useMemo } from "react";
-import * as React from 'react';
-import { LocationInput, LocationValue } from "./LocationInput";
+import { useState, useEffect, memo, useCallback, useMemo, useRef } from "react";
+import * as React from "react";
+import { LocationInput } from "./LocationInput";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { usePosts } from "@/hooks/use-posts";
 import type { Post } from "@/types";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 
-const inputBase = "bg-background border border-primary text-foreground placeholder:text-muted-foreground placeholder:italic font-sans text-xs focus-visible:ring-primary focus-visible:ring-offset-0";
-const labelClass = "font-sans font-semibold text-xs text-foreground";
-const pointerClass = "w-2 h-2 border-b border-l border-primary rounded-bl-md flex-shrink-0 mt-1.5";
+const GREEN = "#82DB7E";
 
-const BlobImage = memo(({ file, className }: { file: File, className?: string }) => {
+export const EVENT_CATEGORIES = [
+  "Party",
+  "Music",
+  "Sports",
+  "Food",
+  "Networking",
+  "Community",
+  "Education",
+  "Arts",
+  "Tech",
+  "Other",
+];
+
+export interface TicketTierInput {
+  id: string;
+  name: string;
+  price: string;
+  capacity: string;
+}
+
+const BlobImage = memo(({ file, className, alt }: { file: File; className?: string; alt?: string }) => {
   const [url, setUrl] = useState<string>('');
-  
   useEffect(() => {
     const objectUrl = URL.createObjectURL(file);
     setUrl(objectUrl);
     return () => URL.revokeObjectURL(objectUrl);
   }, [file]);
-
   if (!url) return null;
-  // eslint-disable-next-line @next/next/no-img-element
-  return <img src={url} alt="" className={className} />;
+  return <Image src={url} alt={alt || ""} fill className={className} unoptimized />;
 });
 BlobImage.displayName = "BlobImage";
 
-const getFormSchema = (isEditMode: boolean, postToEdit?: Post) => z.object({
-  title: z.string().min(1, "Event title can't be empty.").max(100),
-  description: z.string().min(1, "Event description can't be empty.").max(1000),
-  location: z.custom<LocationValue>().refine(value => value && value.address.length > 0, {
-    message: "Location is required.",
-  }),
-  eventDateTime: z.string().min(1, "Date and time are required."),
-  eventLink: z.union([z.string().url("Please enter a valid URL."), z.literal("")]).optional(),
-  image: z.any().refine((files) => {
-    if (isEditMode && postToEdit?.image_urls?.length) return true;
-    return files && ((typeof FileList !== "undefined" && files instanceof FileList && files.length > 0) || (Array.isArray(files) && files.some(f => typeof f === "string")));
-  }, "An image is required for the event."),
-});
+const getFormSchema = (isEditMode: boolean) =>
+  z.object({
+    title: z.string().min(1, "Event title can't be empty.").max(80),
+    description: z.string().min(1, "Event description is required.").max(1000),
+    eventDate: z.string().min(1, "Date is required."),
+    eventTime: z.string().min(1, "Time is required."),
+    location: z.any().optional(),
+    eventCategory: z.string().default("Community"),
+    isTicketed: z.boolean().default(false),
+    imageFiles: z.any().optional(),
+  });
 
 type CreateEventDialogProps = {
-    children?: React.ReactNode;
-    onOpenChange?: (open: boolean) => void;
-    postToEdit?: Post;
-    open?: boolean; // Add open prop for programmatic control
+  children?: React.ReactNode;
+  onOpenChange?: (open: boolean) => void;
+  postToEdit?: Post;
+  open?: boolean;
+};
+
+// Collapsible ticket card component
+function TicketCard({
+  tier,
+  idx,
+  onChange,
+  onRemove,
+  canRemove,
+}: {
+  tier: TicketTierInput;
+  idx: number;
+  onChange: (t: TicketTierInput) => void;
+  onRemove: () => void;
+  canRemove: boolean;
+}) {
+  const [open, setOpen] = useState(true);
+
+  return (
+    <div className="rounded-xl border border-[var(--yrdly-glass-border)] bg-surface p-3 mb-2.5">
+      <div
+        className="flex items-center justify-between cursor-pointer"
+        onClick={() => setOpen((o) => !o)}
+      >
+        <div className="flex items-center gap-2.5">
+          <div
+            className="w-7 h-7 rounded-lg flex items-center justify-center"
+            style={{ backgroundColor: "rgba(130,219,126,0.15)" }}
+          >
+            <Ticket size={14} style={{ color: GREEN }} />
+          </div>
+          <span className="text-sm font-bold text-foreground">
+            {tier.name || `Ticket ${idx + 1}`}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {!open && (
+            <span className="text-xs font-bold" style={{ color: GREEN }}>
+              {tier.price === "0" || !tier.price ? "Free" : `₦${tier.price}`}
+            </span>
+          )}
+          {canRemove && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemove();
+              }}
+              className="text-red-500 hover:text-red-400 p-1"
+            >
+              <Trash2 size={16} />
+            </button>
+          )}
+          {open ? (
+            <ChevronUp size={16} className="text-[var(--yrdly-label)]" />
+          ) : (
+            <ChevronDown size={16} className="text-[var(--yrdly-label)]" />
+          )}
+        </div>
+      </div>
+
+      {open && (
+        <div className="mt-3 space-y-2.5 pt-2 border-t border-[var(--yrdly-glass-border)]">
+          <input
+            type="text"
+            value={tier.name}
+            onChange={(e) => onChange({ ...tier, name: e.target.value })}
+            placeholder="Ticket name (e.g. VIP)"
+            className="w-full bg-card rounded-lg border border-[var(--yrdly-glass-border)] px-3 py-2 text-xs text-foreground placeholder:text-[var(--yrdly-label)] outline-none"
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[11px] text-[var(--yrdly-label)] mb-1 block">Price (₦)</label>
+              <input
+                type="text"
+                value={tier.price}
+                onChange={(e) => onChange({ ...tier, price: e.target.value.replace(/[^0-9.]/g, "") })}
+                placeholder="0 for Free"
+                className="w-full bg-card rounded-lg border border-[var(--yrdly-glass-border)] px-3 py-2 text-xs text-foreground placeholder:text-[var(--yrdly-label)] outline-none"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] text-[var(--yrdly-label)] mb-1 block">Capacity</label>
+              <input
+                type="text"
+                value={tier.capacity}
+                onChange={(e) => onChange({ ...tier, capacity: e.target.value.replace(/[^0-9]/g, "") })}
+                placeholder="Unlimited"
+                className="w-full bg-card rounded-lg border border-[var(--yrdly-glass-border)] px-3 py-2 text-xs text-foreground placeholder:text-[var(--yrdly-label)] outline-none"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
-const CreateEventDialogComponent = memo(function CreateEventDialog({ children, onOpenChange, postToEdit, open: externalOpen }: CreateEventDialogProps) {
+const CreateEventDialogComponent = memo(function CreateEventDialog({
+  children,
+  onOpenChange,
+  postToEdit,
+  open: externalOpen,
+}: CreateEventDialogProps) {
   const { createPost } = usePosts();
+  const { profile } = useAuth();
   const [internalOpen, setInternalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [removedImageIndexes, setRemovedImageIndexes] = useState<number[]>([]);
   const isMobile = useIsMobile();
   const isEditMode = !!postToEdit;
-  
-  // Use external open prop if provided, otherwise use internal state
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const [ticketTiers, setTicketTiers] = useState<TicketTierInput[]>([
+    { id: "1", name: "General Admission", price: "0", capacity: "" },
+  ]);
+
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
+  const formSchema = useMemo(() => getFormSchema(isEditMode), [isEditMode]);
 
-  // Create form schema once and stabilize it
-  const formSchema = useMemo(() => getFormSchema(isEditMode, postToEdit), [isEditMode, postToEdit]);
-
-  // Create form once and stabilize it - don't recreate on every render
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: "",
       description: "",
-      location: { address: "" },
-      eventDateTime: "",
-      eventLink: "",
-      image: undefined,
+      eventDate: "",
+      eventTime: "",
+      location: undefined,
+      eventCategory: "Community",
+      isTicketed: false,
+      imageFiles: undefined,
     },
   });
 
-  // Stabilize form.reset function to prevent dependency issues
-  const stableFormReset = useCallback((values: any) => {
-    form.reset(values);
-  }, [form]);
+  const title = form.watch("title") as string || "";
+  const description = form.watch("description") as string || "";
+  const eventCategory = form.watch("eventCategory") as string || "Community";
+  const isTicketed = form.watch("isTicketed") as boolean || false;
+  const imageFiles = form.watch("imageFiles") as FileList | undefined;
 
-  // Fix useEffect dependencies - only reset when dialog opens, not on every change
+  const locFromProfile = [profile?.location?.ward, profile?.location?.lga, profile?.location?.state]
+    .filter(Boolean)
+    .join(", ");
+
+  const totalImageCount = (imageFiles ? imageFiles.length : 0) + ((postToEdit?.image_urls?.length || 0) - removedImageIndexes.length);
+  const canPublish = title.trim().length > 0 && totalImageCount > 0 && !loading;
+
+  const handleOpenChange = useCallback(
+    (newOpenState: boolean) => {
+      if (externalOpen !== undefined) {
+        onOpenChange?.(newOpenState);
+      } else {
+        setInternalOpen(newOpenState);
+        onOpenChange?.(newOpenState);
+      }
+      if (!newOpenState) {
+        form.reset();
+        setRemovedImageIndexes([]);
+      }
+    },
+    [onOpenChange, externalOpen, form]
+  );
+
   useEffect(() => {
     if (open) {
-      // Use setTimeout to ensure this runs after the dialog is fully opened
       const timer = setTimeout(() => {
         if (isEditMode && postToEdit) {
-          // Combine date and time for datetime-local input
-          const eventDateTime = postToEdit.event_date && postToEdit.event_time 
-            ? `${postToEdit.event_date}T${postToEdit.event_time}`
-            : '';
-          
-          stableFormReset({
-            title: postToEdit.title,
-            description: postToEdit.text || postToEdit.description || "",
+          form.reset({
+            title: postToEdit.title || postToEdit.text,
+            description: postToEdit.description || postToEdit.text || "",
+            eventDate: postToEdit.event_date || "",
+            eventTime: postToEdit.event_time || "",
             location: postToEdit.event_location,
-            eventDateTime: eventDateTime,
-            eventLink: postToEdit.event_link,
-            image: postToEdit.image_urls || [],
+            eventCategory: postToEdit.category || "Community",
+            isTicketed: false,
+            imageFiles: undefined,
           });
         } else if (!isEditMode) {
-          stableFormReset({
+          form.reset({
             title: "",
             description: "",
-            location: { address: "" },
-            eventDateTime: "",
-            eventLink: "",
-            image: undefined,
+            eventDate: new Date().toISOString().slice(0, 10),
+            eventTime: "18:00",
+            location: undefined,
+            eventCategory: "Community",
+            isTicketed: false,
+            imageFiles: undefined,
           });
         }
       }, 0);
-      
       return () => clearTimeout(timer);
     }
-  }, [open, isEditMode, postToEdit, stableFormReset]); // Include all dependencies
+  }, [open, isEditMode, postToEdit, form]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
-    
-    // Filter out removed images
     let filteredImageUrls: string[] = [];
     if (postToEdit?.image_urls) {
       filteredImageUrls = postToEdit.image_urls.filter((_, index) => !removedImageIndexes.includes(index));
     }
-    
-    // Validate image files
-    let validImageFiles: FileList | undefined;
-    if (values.image && values.image.length > 0) {
-      // Filter out invalid files
-      const validFiles = Array.from(values.image).filter(file => 
-        file && file instanceof File && file.name && file.size > 0
-      );
-      
-      if (validFiles.length > 0) {
-        // Create a new FileList-like object
-        const dataTransfer = new DataTransfer();
-        validFiles.forEach(file => dataTransfer.items.add(file as File));
-        validImageFiles = dataTransfer.files;
-      }
-    }
-    
-    // Parse datetime-local input to separate date and time
-    const eventDateTime = new Date(values.eventDateTime);
-    const eventDate = eventDateTime.toISOString().split('T')[0];
-    const eventTime = eventDateTime.toTimeString().split(' ')[0].substring(0, 5);
-    
+
     const eventData: Partial<Post> = {
-        category: "Event",
-        text: values.description,
-        title: values.title,
-        event_location: values.location,
-        event_date: eventDate,
-        event_time: eventTime,
-        event_link: values.eventLink || undefined,
-        attendees: postToEdit?.attendees || [],
-        image_urls: filteredImageUrls,
+      category: "Event",
+      text: values.description,
+      title: values.title,
+      event_location: values.location,
+      event_date: values.eventDate,
+      event_time: values.eventTime,
+      image_urls: filteredImageUrls,
     };
-    await createPost(eventData, postToEdit?.id, validImageFiles);
+    await createPost(eventData, postToEdit?.id, values.imageFiles);
     setLoading(false);
     handleOpenChange(false);
   }
 
-  const handleOpenChange = useCallback((newOpenState: boolean) => {
-    if (externalOpen !== undefined) {
-      // External control - only call onOpenChange
-      if (onOpenChange) {
-        onOpenChange(newOpenState);
-      }
-    } else {
-      // Internal control - update internal state
-      setInternalOpen(newOpenState);
-      if (onOpenChange) {
-        onOpenChange(newOpenState);
-      }
-    }
-    
-    if (!newOpenState) {
-      form.reset();
-      setRemovedImageIndexes([]);
-    }
-  }, [onOpenChange, externalOpen, form]);
+  const addTier = () => {
+    setTicketTiers((tiers) => [
+      ...tiers,
+      { id: Date.now().toString(), name: "", price: "0", capacity: "" },
+    ]);
+  };
 
-  const finalTitle = isEditMode ? "Edit Event" : "Create Event";
-  const finalDescription = isEditMode ? "Make changes to your event." : "Plan and share your neighborhood event.";
+  const updateTier = (i: number, t: TicketTierInput) => {
+    setTicketTiers((tiers) => {
+      const copy = [...tiers];
+      copy[i] = t;
+      return copy;
+    });
+  };
 
-  type FormValues = z.infer<typeof formSchema>;
+  const removeTier = (i: number) => {
+    setTicketTiers((tiers) => tiers.filter((_, idx) => idx !== i));
+  };
 
-
-
-  const Trigger = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>((props, ref) => {
-    const { profile: userDetails } = useAuth();
-    return (
-        <div ref={ref} {...props} className="flex items-center gap-4 w-full">
-            <Avatar>
-                <AvatarImage src={userDetails?.avatar_url || 'https://placehold.co/100x100.png'}/>
-                <AvatarFallback>{userDetails?.name?.charAt(0) || "U"}</AvatarFallback>
-            </Avatar>
-            <div className="flex-1 text-left text-muted-foreground cursor-pointer hover:bg-muted p-2 rounded-md border border-dashed">
-                Organize an event in your neighborhood?
-            </div>
-             <Button variant="ghost" size="icon"><PlusCircle className="h-6 w-6 text-primary" /></Button>
-        </div>
-    );
-  });
-  Trigger.displayName = "Trigger";
-
-  const headerBlock = (
-    <div className="flex items-start justify-between gap-4 p-5 sm:p-6 pb-2 flex-shrink-0">
-      <div>
-        <h2 className="text-lg font-normal text-muted-foreground" style={{ fontFamily: "var(--font-jersey25)" }}>
-          {finalTitle}
+  const formContent = (
+    <form
+      onSubmit={form.handleSubmit(onSubmit)}
+      className="flex flex-col p-4 sm:p-6 text-foreground font-yrdly-body max-h-[85vh] overflow-y-auto"
+    >
+      {/* ── Top close button ── */}
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-bold font-yrdly-display">
+          {isEditMode ? "Edit Event" : "Create Event"}
         </h2>
-        <p className="font-sans font-light italic text-xs text-foreground mt-0.5">{finalDescription}</p>
-      </div>
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "linear-gradient(118.99deg, #FF0048 17.37%, #7D00D0 85.3%)" }}>
-          <Ticket className="w-5 h-5 text-foreground" />
-        </div>
         <button
           type="button"
           onClick={() => handleOpenChange(false)}
-          className="text-muted-foreground hover:text-foreground transition-colors"
+          className="w-8 h-8 rounded-full bg-surface border border-[var(--yrdly-glass-border)] flex items-center justify-center text-foreground hover:opacity-70 transition-opacity"
+          aria-label="Close"
         >
-          <X className="w-5 h-5" />
+          <X size={18} />
         </button>
       </div>
-    </div>
-  );
 
-  const formContent = (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 min-h-0">
-        <div className="flex-1 overflow-y-auto p-5 sm:p-6 min-h-0">
-          <div className="space-y-4 max-w-4xl mx-auto">
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem className="space-y-1.5">
-                  <div className="flex items-start gap-2">
-                    <div className={pointerClass} />
-                    <FormLabel className={labelClass}>Event Title</FormLabel>
-                  </div>
-                  <FormControl>
-                    <Input placeholder="e.g Neighborhood Block Party" className={cn(inputBase, "rounded-full h-10")} {...field} />
-                  </FormControl>
-                  <FormMessage className="text-red-400 text-xs" />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem className="space-y-1.5">
-                  <div className="flex items-start gap-2">
-                    <div className={pointerClass} />
-                    <FormLabel className={labelClass}>Description</FormLabel>
-                  </div>
-                  <FormControl>
-                    <Textarea placeholder="Tell everyone about your event" className={cn(inputBase, "rounded-xl resize-none min-h-[100px]")} {...field} />
-                  </FormControl>
-                  <FormMessage className="text-red-400 text-xs" />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="location"
-              render={({ field }) => (
-                <FormItem className="space-y-1.5">
-                  <div className="flex items-start gap-2">
-                    <div className={pointerClass} />
-                    <FormLabel className={labelClass}>Location</FormLabel>
-                  </div>
-                  <FormControl>
-                    <div className={cn("[&_input]:bg-background [&_input]:border-primary [&_input]:rounded-full [&_input]:text-foreground [&_input]:placeholder:text-muted-foreground [&_input]:h-10")}>
-                      <LocationInput name={field.name} control={form.control} defaultValue={field.value} />
-                    </div>
-                  </FormControl>
-                  <FormMessage className="text-red-400 text-xs" />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="eventDateTime"
-              render={({ field }) => (
-                <FormItem className="space-y-1.5">
-                  <div className="flex items-start gap-2">
-                    <div className={pointerClass} />
-                    <FormLabel className={labelClass}>Date & Time</FormLabel>
-                  </div>
-                  <FormControl>
-                    <Input type="datetime-local" min={new Date().toISOString().slice(0, 16)} className={cn(inputBase, "rounded-full h-10")} {...field} />
-                  </FormControl>
-                  <FormMessage className="text-red-400 text-xs" />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="eventLink"
-              render={({ field }) => (
-                <FormItem className="space-y-1.5">
-                  <div className="flex items-start gap-2">
-                    <div className={pointerClass} />
-                    <FormLabel className={labelClass}>Event Link</FormLabel>
-                  </div>
-                  <FormControl>
-                    <Input placeholder="Link to tickets or more info" className={cn(inputBase, "rounded-full h-10")} {...field} />
-                  </FormControl>
-                  <FormMessage className="text-red-400 text-xs" />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="image"
-              render={({ field: { onChange, value, ...rest } }) => (
-                <FormItem className="space-y-1.5">
-                  <div className="flex items-start gap-2">
-                    <div className={pointerClass} />
-                    <FormLabel className={labelClass}>Event Image</FormLabel>
-                  </div>
-                  <FormControl>
-                    <label className={cn("flex items-center gap-2 rounded-[5px] border border-primary bg-background px-4 py-3 cursor-pointer text-foreground font-sans text-xs font-semibold italic")}>
-                      <span>Choose Files</span>
-                      <span className="font-normal text-muted-foreground">
-                        {value && value.length > 0 ? `${value.length} file(s)` : "No file chosen"}
-                      </span>
-                      <input type="file" accept="image/*" multiple className="sr-only" onChange={(e) => onChange(e.target.files ?? undefined)} {...rest} />
-                    </label>
-                  </FormControl>
-                  {(value && value.length > 0) || (postToEdit?.image_urls && postToEdit.image_urls.filter((_, i) => !removedImageIndexes.includes(i)).length > 0) ? (
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {postToEdit?.image_urls?.map((url, index) => {
-                        if (removedImageIndexes.includes(index)) return null;
-                        return (
-                          <div key={`url-${index}`} className="relative w-14 h-14 rounded overflow-hidden bg-background flex-shrink-0">
-                            <Image src={url} alt="" width={56} height={56} className="w-full h-full object-cover" />
-                            <button
-                              type="button"
-                              className="absolute top-0 right-0 w-5 h-5 rounded-full flex items-center justify-center bg-[#FF383C] border border-border"
-                              onClick={() => setRemovedImageIndexes((prev) => [...prev, index])}
-                            >
-                              <X className="w-3 h-3 text-foreground" />
-                            </button>
-                          </div>
-                        );
-                      })}
-                      {value && Array.from(value).map((file, index) => (
-                        <div key={`file-${index}`} className="relative w-14 h-14 rounded overflow-hidden bg-background flex-shrink-0">
-                          <BlobImage file={file as File} className="w-full h-full object-cover" />
-                          <button
-                            type="button"
-                            className="absolute top-0 right-0 w-5 h-5 rounded-full flex items-center justify-center bg-[#FF383C] border border-border"
-                            onClick={() => {
-                              const dt = new DataTransfer();
-                              Array.from(value).forEach((f, i) => { if (i !== index) dt.items.add(f as File); });
-                              onChange(dt.files.length ? dt.files : undefined);
-                            }}
-                          >
-                            <X className="w-3 h-3 text-foreground" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-                  <FormMessage className="text-red-400 text-xs" />
-                </FormItem>
-              )}
-            />
-          </div>
-        </div>
-        <div className="p-5 sm:p-6 pt-0 flex-shrink-0">
-          <Button
-            type="submit"
-            className="w-full rounded-full h-12 font-sans font-medium text-sm text-foreground"
-            style={{ background: "hsl(var(--primary))" }}
-            disabled={loading}
+      {/* ── Host card ── */}
+      <div className="rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-3.5 mb-3 flex items-center gap-3">
+        {profile?.avatar_url ? (
+          <Image
+            src={profile.avatar_url}
+            alt={profile?.name || "Host"}
+            width={46}
+            height={46}
+            className="w-11 h-11 rounded-full object-cover flex-shrink-0"
+          />
+        ) : (
+          <div
+            className="w-11 h-11 rounded-full flex items-center justify-center font-extrabold text-lg text-black flex-shrink-0"
+            style={{ backgroundColor: GREEN }}
           >
-            {loading ? (isEditMode ? "Saving..." : "Creating...") : (isEditMode ? "Save Changes" : "Create Event")}
-          </Button>
+            {(profile?.name || "?").charAt(0).toUpperCase()}
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-extrabold text-base text-foreground truncate">
+              {profile?.name || "You"}
+            </span>
+            <div
+              className="flex items-center gap-1 rounded-full px-2.5 py-1 border text-xs font-extrabold"
+              style={{
+                backgroundColor: "rgba(130,219,126,0.12)",
+                borderColor: "rgba(130,219,126,0.4)",
+                color: GREEN,
+              }}
+            >
+              <Calendar size={10} />
+              <span>Event</span>
+            </div>
+          </div>
+          <p className="text-xs text-[var(--yrdly-label)] truncate mt-0.5">
+            {locFromProfile || "No location set"} · <span className="text-[#82DB7E]">Public</span>
+          </p>
         </div>
-      </form>
-    </Form>
+      </div>
+
+      {/* ── Event Cover card ── */}
+      <div className="rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-4 mb-3">
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-1.5">
+            <ImageIcon size={15} style={{ color: GREEN }} />
+            <span className="text-sm font-bold text-foreground">
+              Event Cover <span className="text-red-500">*</span>
+            </span>
+          </div>
+          <span className="text-xs text-[var(--yrdly-label)] font-mono">
+            {totalImageCount}/10
+          </span>
+        </div>
+        <p className="text-xs text-[var(--yrdly-label)] mb-3">Add a cover photo for your event</p>
+
+        {totalImageCount === 0 ? (
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="w-full py-8 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-2 transition-colors"
+            style={{ borderColor: GREEN, backgroundColor: "rgba(130,219,126,0.05)" }}
+          >
+            <ImageIcon size={32} style={{ color: GREEN }} />
+            <span className="text-sm font-bold text-foreground">Add Cover Photo</span>
+            <span className="text-xs text-[var(--yrdly-label)]">JPG, PNG or WebP. Max 10MB</span>
+          </button>
+        ) : (
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {imageFiles && Array.from(imageFiles).map((file, i) => (
+              <div key={i} className="relative w-24 h-24 rounded-xl overflow-hidden flex-shrink-0 border border-[var(--yrdly-glass-border)]">
+                <BlobImage file={file} alt="Cover Preview" className="object-cover w-full h-full" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const dt = new DataTransfer();
+                    for (let j = 0; j < imageFiles.length; j++) {
+                      if (j !== i) dt.items.add(imageFiles[j]);
+                    }
+                    form.setValue("imageFiles", dt.files.length > 0 ? dt.files : undefined, { shouldDirty: true });
+                  }}
+                  className="absolute top-1 right-1 bg-black/70 rounded-full p-1 text-white hover:bg-black"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="w-24 h-24 rounded-xl border border-dashed border-[var(--yrdly-glass-border)] flex flex-col items-center justify-center gap-1 text-[var(--yrdly-label)] hover:text-foreground flex-shrink-0"
+            >
+              <Plus size={20} />
+              <span className="text-xs font-semibold">Add more</span>
+            </button>
+          </div>
+        )}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            const files = e.target.files;
+            if (!files || files.length === 0) return;
+            form.setValue("imageFiles", files, { shouldDirty: true, shouldValidate: true });
+          }}
+        />
+      </div>
+
+      {/* ── Event Title card ── */}
+      <div className="rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-4 mb-3">
+        <div className="flex items-center gap-1.5 mb-2">
+          <Tag size={15} style={{ color: GREEN }} />
+          <label className="text-sm font-bold text-foreground">
+            Event Title <span className="text-red-500">*</span>
+          </label>
+        </div>
+        <input
+          {...form.register("title")}
+          placeholder="e.g. Community Football Tournament"
+          maxLength={80}
+          className="w-full bg-transparent outline-none border-none text-foreground placeholder:text-[var(--yrdly-label)] text-base font-medium py-1"
+        />
+        <p className="text-[11px] text-[var(--yrdly-label)] text-right mt-1 font-mono">
+          {title.length}/80
+        </p>
+      </div>
+
+      {/* ── Event Description card ── */}
+      <div className="rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-4 mb-3">
+        <div className="flex items-center gap-1.5 mb-2">
+          <FileText size={15} style={{ color: GREEN }} />
+          <label className="text-sm font-bold text-foreground">
+            Event Description <span className="text-red-500">*</span>
+          </label>
+        </div>
+        <textarea
+          {...form.register("description")}
+          placeholder="Tell people about your event..."
+          rows={4}
+          maxLength={1000}
+          className="w-full bg-transparent resize-none outline-none border-none text-foreground placeholder:text-[var(--yrdly-label)] text-sm leading-relaxed"
+        />
+        <p className="text-[11px] text-[var(--yrdly-label)] text-right mt-1 font-mono">
+          {description.length}/1000
+        </p>
+      </div>
+
+      {/* ── Date & Time row ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+        <div className="rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-4">
+          <div className="flex items-center gap-1.5 mb-2">
+            <Calendar size={14} style={{ color: GREEN }} />
+            <label className="text-sm font-bold text-foreground">
+              Date <span className="text-red-500">*</span>
+            </label>
+          </div>
+          <input
+            type="date"
+            {...form.register("eventDate")}
+            className="w-full bg-transparent outline-none border-none text-foreground text-sm py-1 font-medium"
+          />
+        </div>
+        <div className="rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-4">
+          <div className="flex items-center gap-1.5 mb-2">
+            <Calendar size={14} style={{ color: GREEN }} />
+            <label className="text-sm font-bold text-foreground">
+              Time <span className="text-red-500">*</span>
+            </label>
+          </div>
+          <input
+            type="time"
+            {...form.register("eventTime")}
+            className="w-full bg-transparent outline-none border-none text-foreground text-sm py-1 font-medium"
+          />
+        </div>
+      </div>
+
+      {/* ── Location card ── */}
+      <div className="rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-4 mb-3">
+        <div className="flex items-center gap-1.5 mb-2">
+          <MapPin size={15} style={{ color: GREEN }} />
+          <label className="text-sm font-bold text-foreground">
+            Location <span className="text-red-500">*</span>
+          </label>
+        </div>
+        <LocationInput name="location" control={form.control} />
+      </div>
+
+      {/* ── Category chips card ── */}
+      <div className="rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-4 mb-3">
+        <div className="flex items-center gap-1.5 mb-3">
+          <Grid size={15} style={{ color: GREEN }} />
+          <label className="text-sm font-bold text-foreground">
+            Category <span className="text-red-500">*</span>
+          </label>
+        </div>
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {EVENT_CATEGORIES.map((cat) => {
+            const active = eventCategory === cat;
+            return (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => form.setValue("eventCategory", cat)}
+                className={cn(
+                  "px-3.5 py-1.5 rounded-full text-xs font-bold transition-all border flex-shrink-0",
+                  active
+                    ? "bg-[#82DB7E] border-[#82DB7E] text-black"
+                    : "bg-surface border-[var(--yrdly-glass-border)] text-[var(--yrdly-label)] hover:text-foreground"
+                )}
+              >
+                {cat}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Ticketed switch card ── */}
+      <div className="rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-4 mb-3 flex items-center justify-between">
+        <div>
+          <p className="text-sm font-bold text-foreground">Is this a ticketed event?</p>
+          <p className="text-xs text-[var(--yrdly-label)]">Charge for entry and manage tickets</p>
+        </div>
+        <input
+          type="checkbox"
+          checked={isTicketed}
+          onChange={(e) => form.setValue("isTicketed", e.target.checked)}
+          className="w-5 h-5 accent-[#82DB7E] cursor-pointer"
+        />
+      </div>
+
+      {/* ── Ticket settings card ── */}
+      <div className="rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-4 mb-4">
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-1.5">
+            <Ticket size={15} style={{ color: GREEN }} />
+            <span className="text-sm font-bold text-foreground">Ticket Settings</span>
+          </div>
+          {isTicketed && (
+            <button
+              type="button"
+              onClick={addTier}
+              className="flex items-center gap-1 text-xs font-bold"
+              style={{ color: GREEN }}
+            >
+              <Plus size={14} />
+              <span>Add Tickets</span>
+            </button>
+          )}
+        </div>
+        <p className="text-xs text-[var(--yrdly-label)] mb-3">Add tickets, pricing and availability</p>
+
+        {ticketTiers.map((tier, i) => (
+          <TicketCard
+            key={tier.id}
+            tier={tier}
+            idx={i}
+            onChange={(t) => updateTier(i, t)}
+            onRemove={() => removeTier(i)}
+            canRemove={ticketTiers.length > 1}
+          />
+        ))}
+      </div>
+
+      {/* ── Submit button ── */}
+      <button
+        type="submit"
+        disabled={!canPublish}
+        className="w-full py-4 rounded-full font-black text-base flex items-center justify-center gap-2.5 transition-all disabled:opacity-50"
+        style={{
+          backgroundColor: canPublish ? GREEN : "rgba(130,219,126,0.4)",
+          color: "#0B0D0B",
+          boxShadow: canPublish ? "0 6px 14px rgba(130,219,126,0.25)" : "none",
+        }}
+      >
+        <Calendar size={18} />
+        <span>{loading ? "Creating Event…" : "Create Event"}</span>
+      </button>
+    </form>
   );
 
   if (isMobile) {
     return (
       <Sheet open={open} onOpenChange={handleOpenChange}>
-        {externalOpen === undefined && (
-          <SheetTrigger asChild>{children ? children : <Trigger />}</SheetTrigger>
-        )}
-        <SheetContent side="bottom" className="p-0 flex flex-col max-h-[92dvh] rounded-t-[32px] border border-border bg-card text-foreground overflow-hidden" style={{ zIndex: 110 }} hideClose>
-          {headerBlock}
-          <div className="flex-1 flex flex-col min-h-0 overflow-y-auto" style={{ paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom))" }}>
-            {formContent}
-          </div>
+        <SheetTrigger asChild>{children ?? <span />}</SheetTrigger>
+        <SheetContent
+          side="bottom"
+          className="p-0 border-0 rounded-t-3xl bg-[var(--yrdly-dark)] max-h-[92dvh] overflow-y-auto"
+          hideClose
+        >
+          {formContent}
         </SheetContent>
       </Sheet>
     );
@@ -443,18 +633,18 @@ const CreateEventDialogComponent = memo(function CreateEventDialog({ children, o
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       {externalOpen === undefined && (
-        <DialogTrigger asChild>{children ? children : <Trigger />}</DialogTrigger>
+        <DialogTrigger asChild>{children ?? <span />}</DialogTrigger>
       )}
-      <DialogContent className={cn("sm:max-w-[626px] p-0 flex flex-col max-h-[90dvh] border border-border rounded-[24px] bg-card text-foreground gap-0 overflow-hidden")} style={{ zIndex: 110 }} hideClose>
-        {headerBlock}
-        <div className="flex-1 flex flex-col min-h-0 overflow-y-auto">
-          {formContent}
-        </div>
+      <DialogContent
+        className="p-0 border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-dark)] rounded-3xl max-w-[620px] w-full overflow-hidden shadow-2xl"
+        hideClose
+      >
+        {formContent}
       </DialogContent>
     </Dialog>
   );
 });
+
 CreateEventDialogComponent.displayName = "CreateEventDialogComponent";
 
 export const CreateEventDialog = CreateEventDialogComponent;
-

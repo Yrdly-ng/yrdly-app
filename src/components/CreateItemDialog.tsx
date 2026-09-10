@@ -13,34 +13,34 @@ import {
   SheetContent,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { X, Image as ImageIcon, Loader2 } from "lucide-react";
+import { X, Camera, ChevronDown, ChevronRight, Gem, PlusCircle, Grid, FileText, MapPin, ShieldCheck, Tag, XCircle, Plus, Check } from "lucide-react";
 import { useAuth } from "@/hooks/use-supabase-auth";
-import { useState, useEffect, memo, useCallback, useMemo } from "react";
+import { useState, useEffect, memo, useCallback, useMemo, useRef } from "react";
 import * as React from "react";
 import { usePosts } from "@/hooks/use-posts";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { Post } from "@/types";
 import Image from "next/image";
+import { cn } from "@/lib/utils";
 
-/* ─── design tokens ─────────────────────────────────────────────── */
-const BG_DARK = "var(--c-bg)";
-const CARD_BG = "var(--c-card)";
-const GREEN = "hsl(var(--primary))";
-const FONT_RALEWAY = "var(--font-raleway)";
-const FONT_PACIFICO = "var(--font-jersey25)";
+const GREEN = "#82DB7E";
 
-/* ─── schema ────────────────────────────────────────────────────── */
-const BlobImage = memo(({ file, className, alt }: { file: File, className?: string, alt?: string }) => {
+export const MARKETPLACE_CATEGORIES = [
+  "Electronics",
+  "Fashion",
+  "Vehicles",
+  "Furniture",
+  "Books",
+  "Sports",
+  "Food",
+  "Services",
+  "Real Estate",
+  "Other",
+];
+
+export const ITEM_CONDITIONS = ["New", "Like New", "Good", "Used", "Refurbished"];
+
+const BlobImage = memo(({ file, className, alt }: { file: File; className?: string; alt?: string }) => {
   const [url, setUrl] = useState<string>('');
   useEffect(() => {
     const objectUrl = URL.createObjectURL(file);
@@ -48,41 +48,19 @@ const BlobImage = memo(({ file, className, alt }: { file: File, className?: stri
     return () => URL.revokeObjectURL(objectUrl);
   }, [file]);
   if (!url) return null;
-  // eslint-disable-next-line @next/next/no-img-element
-  return <img src={url} alt={alt || ""} className={className} />;
+  return <Image src={url} alt={alt || ""} fill className={className} unoptimized />;
 });
 BlobImage.displayName = "BlobImage";
 
 const getFormSchema = (isEditMode: boolean, existingImageCount: number) =>
   z.object({
-    text: z.string().min(1, "Item title can't be empty.").max(100),
-    description: z
-      .string()
-      .min(1, "Item description is required.")
-      .max(1000),
-    price: z.preprocess(
-      (val) =>
-        val === "" || val === null || val === undefined
-          ? undefined
-          : Number(val),
-      z.number().positive("Price must be positive.").optional()
-    ),
-    image: z
-      .any()
-      .refine(
-        (files) =>
-          files &&
-          (files.length > 0 ||
-            (Array.isArray(files) && files.some((f) => typeof f === "string"))),
-        "An image is required for the item."
-      )
-      .refine(
-        (files) => {
-          const newCount = files && typeof files.length === "number" && !Array.isArray(files) ? files.length : 0;
-          return existingImageCount + newCount <= 4;
-        },
-        "You can add up to 4 images per item."
-      ),
+    title: z.string().min(1, "Item title can't be empty.").max(80),
+    description: z.string().min(1, "Item description is required.").max(1000),
+    price: z.string().min(1, "Price is required."),
+    subCategory: z.string().default("Electronics"),
+    condition: z.string().default("New"),
+    negotiable: z.boolean().default(false),
+    imageFiles: z.any().optional(),
   });
 
 type CreateItemDialogProps = {
@@ -92,7 +70,6 @@ type CreateItemDialogProps = {
   open?: boolean;
 };
 
-/* ─── inner form body shared by Dialog & Sheet ───────────────────── */
 interface FormBodyProps {
   form: ReturnType<typeof useForm<any>>;
   onSubmit: (values: any) => Promise<void>;
@@ -101,8 +78,9 @@ interface FormBodyProps {
   postToEdit?: Post;
   removedImageIndexes: number[];
   setRemovedImageIndexes: React.Dispatch<React.SetStateAction<number[]>>;
-  imageField: ReturnType<ReturnType<typeof useForm>["register"]>;
   onClose: () => void;
+  profile: any;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
 }
 
 function FormBody({
@@ -113,153 +91,405 @@ function FormBody({
   postToEdit,
   removedImageIndexes,
   setRemovedImageIndexes,
-  imageField,
   onClose,
+  profile,
+  fileInputRef,
 }: FormBodyProps) {
+  const title = form.watch("title") as string || "";
+  const description = form.watch("description") as string || "";
+  const price = form.watch("price") as string || "";
+  const subCategory = form.watch("subCategory") as string || "Electronics";
+  const condition = form.watch("condition") as string || "New";
+  const negotiable = form.watch("negotiable") as boolean || false;
+  const imageFiles = form.watch("imageFiles") as FileList | undefined;
+
+  const [showCategoryMenu, setShowCategoryMenu] = useState(false);
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  const [showConditionDropdown, setShowConditionDropdown] = useState(false);
+
+  const locationLabel = profile?.home_lga || profile?.home_state
+    ? [profile.home_ward, profile.home_lga, profile.home_state].filter(Boolean).join(", ")
+    : profile?.location
+    ? [profile.location.ward, profile.location.lga, profile.location.state].filter(Boolean).join(", ")
+    : "No location set";
+
+  const totalImageCount = (imageFiles ? imageFiles.length : 0) + ((postToEdit?.image_urls?.length || 0) - removedImageIndexes.length);
+  const canSubmit = title.trim().length > 0 && price.trim().length > 0 && totalImageCount > 0 && !loading;
+
   return (
-    <div className="max-w-2xl mx-auto p-4 sm:p-6 text-foreground pb-6">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-2xl font-black font-sans">
-            {isEditMode ? "Edit Item" : "Create Item for Sale"}
-        </h1>
-        <button type="button" onClick={onClose} className="w-11 h-11 rounded-full bg-background/10 flex items-center justify-center hover:bg-background/20 transition">
-          <X className="w-5 h-5" />
+    <form
+      onSubmit={form.handleSubmit(onSubmit)}
+      className="flex flex-col p-4 sm:p-6 text-foreground font-yrdly-body max-h-[85vh] overflow-y-auto"
+    >
+      {/* ── Top close button ── */}
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-bold font-yrdly-display">
+          {isEditMode ? "Edit Listing" : "Sell an Item"}
+        </h2>
+        <button
+          type="button"
+          onClick={onClose}
+          className="w-8 h-8 rounded-full bg-surface border border-[var(--yrdly-glass-border)] flex items-center justify-center text-foreground hover:opacity-70 transition-opacity"
+          aria-label="Close"
+        >
+          <X size={18} />
         </button>
       </div>
 
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          
-          <div className="space-y-4 p-6 rounded-3xl bg-card border border-border">
-            <h2 className="text-lg font-bold font-sans text-primary">Item Details</h2>
-            
-            <FormField control={form.control} name="text" render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-muted-foreground">Item Title</FormLabel>
-                <FormControl><Input placeholder="e.g Slightly used armchair" className="bg-background border-border h-12 rounded-xl text-base" {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-
-            <FormField control={form.control} name="description" render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-muted-foreground">Description</FormLabel>
-                <FormControl><Textarea placeholder="Add more details about the item..." className="bg-background border-border rounded-xl resize-none h-24 text-base" {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-
-            <FormField control={form.control} name="price" render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-muted-foreground">Price (Optional)</FormLabel>
-                <FormControl>
-                    <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">₦</span>
-                        <Input type="number" placeholder="Leave blank if free" className="bg-background border-border h-12 rounded-xl pl-8 text-base" {...field} />
-                    </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-
-            <FormItem>
-              <FormLabel className="text-muted-foreground">Item Images (Max 4 — shown as a slideshow)</FormLabel>
-              <label className="flex items-center gap-3 w-full bg-background border border-border h-12 rounded-xl px-4 cursor-pointer hover:bg-accent transition">
-                <ImageIcon className="w-5 h-5 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">
-                    {form.watch("image") && form.watch("image").length > 0 ? `${form.watch("image").length} image(s) selected` : "Choose images..."}
-                </span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={(e) => {
-                    const files = e.target.files;
-                    if (!files || files.length === 0) return;
-                    const existingCount = (postToEdit?.image_urls?.length || 0) - removedImageIndexes.length;
-                    const remainingSlots = Math.max(4 - Math.max(existingCount, 0), 0);
-
-                    // Keep files already picked in an earlier pass, then add the new ones on top
-                    const currentValue = form.getValues("image");
-                    const alreadyPicked: File[] = currentValue && typeof currentValue.length === "number"
-                      ? Array.from(currentValue as FileList).filter((f) => f instanceof File)
-                      : [];
-
-                    const combined = [...alreadyPicked, ...Array.from(files)].slice(0, remainingSlots);
-                    const dt = new DataTransfer();
-                    combined.forEach((f) => dt.items.add(f));
-                    form.setValue("image", dt.files, { shouldValidate: true });
-
-                    // Reset the input so picking the same file again still fires onChange
-                    e.target.value = "";
-                  }}
-                />
-              </label>
-              <FormMessage />
-            </FormItem>
-
-            {/* Newly selected image previews */}
-            {form.watch("image") && form.watch("image").length > 0 && Array.from(form.watch("image") as FileList).some(f => f instanceof File) && (
-              <div className="space-y-2 mt-4">
-                <p className="text-sm text-muted-foreground font-sans">New images:</p>
-                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                  {Array.from(form.watch("image") as FileList).filter(f => f instanceof File).map((file, i) => (
-                    <div key={i} className="relative w-16 h-16 flex-shrink-0 rounded-md overflow-hidden group">
-                      <BlobImage file={file as File} alt="Preview" className="w-full h-full object-cover" />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const currentValue = form.getValues("image");
-                          const remaining = Array.from(currentValue as FileList).filter((f) => f instanceof File) as File[];
-                          remaining.splice(i, 1);
-                          const dt = new DataTransfer();
-                          remaining.forEach((f) => dt.items.add(f));
-                          form.setValue("image", dt.files, { shouldValidate: true });
-                        }}
-                        className="absolute top-0.5 right-0.5 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <X size={12} className="text-white" />
-                      </button>
-                    </div>
+      {/* ── Seller card ── */}
+      <div className="rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-3.5 mb-3 flex items-center gap-3">
+        {profile?.avatar_url ? (
+          <Image
+            src={profile.avatar_url}
+            alt={profile?.name || "Seller"}
+            width={46}
+            height={46}
+            className="w-11 h-11 rounded-full object-cover flex-shrink-0"
+          />
+        ) : (
+          <div
+            className="w-11 h-11 rounded-full flex items-center justify-center font-extrabold text-lg text-black flex-shrink-0"
+            style={{ backgroundColor: GREEN }}
+          >
+            {(profile?.name || "?").charAt(0).toUpperCase()}
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-extrabold text-base text-foreground truncate">
+              {profile?.name || "You"}
+            </span>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowCategoryMenu((v) => !v)}
+                className="flex items-center gap-1 rounded-full px-2.5 py-1 border text-xs font-extrabold transition-colors"
+                style={{
+                  backgroundColor: "rgba(130,219,126,0.12)",
+                  borderColor: "rgba(130,219,126,0.4)",
+                  color: GREEN,
+                }}
+              >
+                <Tag size={10} />
+                <span>For Sale</span>
+                <ChevronDown size={10} />
+              </button>
+              {showCategoryMenu && (
+                <div className="absolute top-8 left-0 w-36 rounded-xl border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-dark)] shadow-xl z-50 py-1">
+                  {MARKETPLACE_CATEGORIES.map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => {
+                        form.setValue("subCategory", cat);
+                        setShowCategoryMenu(false);
+                      }}
+                      className={cn(
+                        "w-full text-left px-3 py-2 text-sm hover:bg-white/5 transition-colors",
+                        subCategory === cat ? "text-[#82DB7E] font-bold" : "text-foreground"
+                      )}
+                    >
+                      {cat}
+                    </button>
                   ))}
                 </div>
-              </div>
-            )}
-
-            {/* Existing images (edit mode) */}
-            {postToEdit?.image_urls && postToEdit.image_urls.length > 0 && (
-              <div className="space-y-2 mt-4">
-                <p className="text-sm text-muted-foreground font-sans">Current images ({postToEdit.image_urls.length}):</p>
-                <div className="grid grid-cols-4 gap-2">
-                  {postToEdit.image_urls.map((url, index) => {
-                    const isRemoved = removedImageIndexes.includes(index);
-                    return (
-                      <div key={index} className={`relative group rounded-lg overflow-hidden ${isRemoved ? "opacity-40" : ""}`}>
-                        <Image src={url} alt={`Image ${index + 1}`} width={80} height={64} className="w-full h-16 object-cover" />
-                        {!isRemoved && (
-                          <button type="button" onClick={() => setRemovedImageIndexes((p) => [...p, index])} className="absolute top-0.5 right-0.5 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                            <X className="w-3 h-3 text-foreground" />
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
+          <p className="text-xs text-[var(--yrdly-label)] truncate mt-0.5">
+            {locationLabel} · <span className="text-[#82DB7E]">Public</span>
+          </p>
+        </div>
+      </div>
 
-          <button type="submit" className="w-full h-14 rounded-full font-sans font-bold text-lg bg-primary flex items-center justify-center hover:bg-[#2E7D32] transition-colors disabled:opacity-50" disabled={loading}>
-            {loading ? <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> {isEditMode ? "Saving..." : "Listing Item..."}</> : (isEditMode ? "Save Changes" : "List Item")}
+      {/* ── Photo gallery card ── */}
+      <div className="rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-4 mb-3">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-1.5">
+            <Camera size={16} style={{ color: GREEN }} />
+            <span className="text-sm font-bold text-foreground">Add Photos</span>
+            <span className="text-red-500 font-bold">*</span>
+          </div>
+          <span className="text-xs text-[var(--yrdly-label)]">Add up to 10 photos</span>
+        </div>
+
+        <div className="flex gap-2.5 overflow-x-auto pb-2">
+          {/* Add photo button */}
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="w-24 h-24 rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1 flex-shrink-0 transition-colors"
+            style={{ borderColor: GREEN, backgroundColor: "rgba(130,219,126,0.06)" }}
+          >
+            <Camera size={26} style={{ color: GREEN }} />
+            <span className="text-xs font-bold" style={{ color: GREEN }}>Add Photo</span>
           </button>
-        </form>
-      </Form>
-    </div>
+
+          {/* Uploaded image previews */}
+          {imageFiles && Array.from(imageFiles).map((file, i) => (
+            <div key={i} className="relative w-24 h-24 rounded-xl overflow-hidden flex-shrink-0 border border-[var(--yrdly-glass-border)]">
+              <BlobImage file={file} alt="Preview" className="object-cover w-full h-full" />
+              {i === 0 && (
+                <div
+                  className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-black"
+                  style={{ backgroundColor: GREEN }}
+                >
+                  Cover
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  const dt = new DataTransfer();
+                  for (let j = 0; j < imageFiles.length; j++) {
+                    if (j !== i) dt.items.add(imageFiles[j]);
+                  }
+                  form.setValue("imageFiles", dt.files.length > 0 ? dt.files : undefined, { shouldDirty: true });
+                }}
+                className="absolute top-1 right-1 bg-black/70 rounded-full p-1 text-white hover:bg-black"
+              >
+                <X size={12} />
+              </button>
+            </div>
+          ))}
+
+          {/* Existing images for edit mode */}
+          {postToEdit?.image_urls && postToEdit.image_urls.map((url, i) => {
+            if (removedImageIndexes.includes(i)) return null;
+            return (
+              <div key={`existing-${i}`} className="relative w-24 h-24 rounded-xl overflow-hidden flex-shrink-0 border border-[var(--yrdly-glass-border)]">
+                <Image src={url} alt={`Existing ${i}`} fill className="object-cover" unoptimized />
+                <button
+                  type="button"
+                  onClick={() => setRemovedImageIndexes((prev) => [...prev, i])}
+                  className="absolute top-1 right-1 bg-black/70 rounded-full p-1 text-white hover:bg-black"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            const files = e.target.files;
+            if (!files || files.length === 0) return;
+            form.setValue("imageFiles", files, { shouldDirty: true, shouldValidate: true });
+          }}
+        />
+      </div>
+
+      {/* ── Title card ── */}
+      <div className="rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-4 mb-3">
+        <div className="flex items-center gap-1.5 mb-2">
+          <Gem size={15} style={{ color: GREEN }} />
+          <label className="text-sm font-bold text-foreground">Title</label>
+          <span className="text-red-500 font-bold">*</span>
+        </div>
+        <input
+          {...form.register("title")}
+          placeholder="e.g. iPhone 15 Pro 256GB"
+          maxLength={80}
+          className="w-full bg-transparent outline-none border-none text-foreground placeholder:text-[var(--yrdly-label)] text-base font-medium py-1"
+        />
+        <p className="text-[11px] text-[var(--yrdly-label)] text-right mt-1 font-mono">
+          {title.length}/80
+        </p>
+      </div>
+
+      {/* ── Price & Category side by side ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+        {/* Price Card */}
+        <div className="rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-4">
+          <div className="flex items-center gap-1.5 mb-2">
+            <PlusCircle size={15} style={{ color: GREEN }} />
+            <label className="text-sm font-bold text-foreground">Price</label>
+            <span className="text-red-500 font-bold">*</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="text-xl font-bold text-[var(--yrdly-label)]">₦</span>
+            <input
+              {...form.register("price")}
+              placeholder="250,000"
+              className="w-full bg-transparent outline-none border-none text-foreground placeholder:text-[var(--yrdly-label)] text-xl font-bold py-1"
+              onChange={(e) => {
+                const clean = e.target.value.replace(/[^0-9.]/g, "");
+                form.setValue("price", clean);
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Category Card */}
+        <div className="rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-4 relative">
+          <div className="flex items-center gap-1.5 mb-2">
+            <Grid size={15} style={{ color: GREEN }} />
+            <label className="text-sm font-bold text-foreground">Category</label>
+            <span className="text-red-500 font-bold">*</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowCategoryDropdown((v) => !v)}
+            className="w-full flex items-center justify-between text-left py-1 text-base text-foreground font-medium"
+          >
+            <span className="truncate">{subCategory}</span>
+            <ChevronDown size={16} className="text-[var(--yrdly-label)]" />
+          </button>
+          {showCategoryDropdown && (
+            <div className="absolute top-16 left-0 right-0 rounded-xl border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-dark)] shadow-xl z-50 max-h-48 overflow-y-auto py-1">
+              {MARKETPLACE_CATEGORIES.map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => {
+                    form.setValue("subCategory", cat);
+                    setShowCategoryDropdown(false);
+                  }}
+                  className={cn(
+                    "w-full text-left px-3 py-2 text-sm flex items-center justify-between hover:bg-white/5 transition-colors",
+                    subCategory === cat ? "text-[#82DB7E] font-bold" : "text-foreground"
+                  )}
+                >
+                  <span>{cat}</span>
+                  {subCategory === cat && <Check size={14} style={{ color: GREEN }} />}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Description card ── */}
+      <div className="rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-4 mb-3">
+        <div className="flex items-center gap-1.5 mb-2">
+          <FileText size={15} style={{ color: GREEN }} />
+          <label className="text-sm font-bold text-foreground">Description</label>
+          <span className="text-red-500 font-bold">*</span>
+        </div>
+        <textarea
+          {...form.register("description")}
+          placeholder="Describe your item, its condition, features and anything buyers should know..."
+          rows={4}
+          maxLength={1000}
+          className="w-full bg-transparent resize-none outline-none border-none text-foreground placeholder:text-[var(--yrdly-label)] text-sm leading-relaxed"
+        />
+        <p className="text-[11px] text-[var(--yrdly-label)] text-right mt-1 font-mono">
+          {description.length}/1000
+        </p>
+      </div>
+
+      {/* ── Location card ── */}
+      <div className="rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-3.5 mb-3 flex items-center gap-3">
+        <div
+          className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+          style={{ backgroundColor: "rgba(130,219,126,0.12)" }}
+        >
+          <MapPin size={18} style={{ color: GREEN }} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-foreground">
+            Location <span className="text-red-500">*</span>
+          </p>
+          <p className="text-xs text-[var(--yrdly-label)] truncate">{locationLabel}</p>
+        </div>
+        <ChevronRight size={16} className="text-[var(--yrdly-label)]" />
+      </div>
+
+      {/* ── Condition card ── */}
+      <div className="rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-4 mb-3 relative">
+        <div className="flex items-center gap-1.5 mb-2">
+          <ShieldCheck size={15} style={{ color: GREEN }} />
+          <label className="text-sm font-bold text-foreground">Condition</label>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowConditionDropdown((v) => !v)}
+          className="w-full flex items-center justify-between text-left py-1 text-base text-foreground font-medium"
+        >
+          <span>{condition}</span>
+          <ChevronDown size={16} className="text-[var(--yrdly-label)]" />
+        </button>
+        {showConditionDropdown && (
+          <div className="absolute top-16 left-0 right-0 rounded-xl border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-dark)] shadow-xl z-50 py-1">
+            {ITEM_CONDITIONS.map((cond) => (
+              <button
+                key={cond}
+                type="button"
+                onClick={() => {
+                  form.setValue("condition", cond);
+                  setShowConditionDropdown(false);
+                }}
+                className={cn(
+                  "w-full text-left px-3 py-2 text-sm flex items-center justify-between hover:bg-white/5 transition-colors",
+                  condition === cond ? "text-[#82DB7E] font-bold" : "text-foreground"
+                )}
+              >
+                <span>{cond}</span>
+                {condition === cond && <Check size={14} style={{ color: GREEN }} />}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Price type card ── */}
+      <div className="rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-4 mb-4">
+        <div className="flex items-center gap-1.5 mb-1">
+          <Tag size={15} style={{ color: GREEN }} />
+          <label className="text-sm font-bold text-foreground">Set Price Type</label>
+        </div>
+        <p className="text-xs text-[var(--yrdly-label)] mb-3">
+          Choose how you want to sell this item
+        </p>
+
+        {/* Animated segmented toggle */}
+        <div className="relative flex rounded-full border border-[var(--yrdly-glass-border)] bg-surface p-1 h-11 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => form.setValue("negotiable", false)}
+            className={cn(
+              "flex-1 rounded-full text-xs font-bold transition-all z-10",
+              !negotiable ? "bg-[#82DB7E] text-black" : "text-[var(--yrdly-label)]"
+            )}
+          >
+            Fixed Price
+          </button>
+          <button
+            type="button"
+            onClick={() => form.setValue("negotiable", true)}
+            className={cn(
+              "flex-1 rounded-full text-xs font-bold transition-all z-10",
+              negotiable ? "bg-[#82DB7E] text-black" : "text-[var(--yrdly-label)]"
+            )}
+          >
+            Negotiable
+          </button>
+        </div>
+      </div>
+
+      {/* ── Submit button ── */}
+      <button
+        type="submit"
+        disabled={!canSubmit}
+        className="w-full py-4 rounded-full font-black text-base flex items-center justify-center gap-2.5 transition-all disabled:opacity-50"
+        style={{
+          backgroundColor: canSubmit ? GREEN : "rgba(130,219,126,0.4)",
+          color: "#0B0D0B",
+          boxShadow: canSubmit ? "0 6px 14px rgba(130,219,126,0.25)" : "none",
+        }}
+      >
+        <Tag size={18} />
+        <span>{loading ? "Listing…" : "List Item for Sale"}</span>
+      </button>
+    </form>
   );
 }
 
-/* ─── main component ─────────────────────────────────────────────── */
 const CreateItemDialogComponent = ({
   children,
   postToEdit,
@@ -267,11 +497,13 @@ const CreateItemDialogComponent = ({
   open: externalOpen,
 }: CreateItemDialogProps) => {
   const { createPost } = usePosts();
+  const { profile } = useAuth();
   const [internalOpen, setInternalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [removedImageIndexes, setRemovedImageIndexes] = useState<number[]>([]);
   const isMobile = useIsMobile();
   const isEditMode = !!postToEdit;
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
 
@@ -284,10 +516,13 @@ const CreateItemDialogComponent = ({
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      text: "",
+      title: "",
       description: "",
-      price: "" as any,
-      image: undefined,
+      price: "",
+      subCategory: "Electronics",
+      condition: "New",
+      negotiable: false,
+      imageFiles: undefined,
     },
   });
 
@@ -301,13 +536,24 @@ const CreateItemDialogComponent = ({
       const timer = setTimeout(() => {
         if (isEditMode && postToEdit) {
           stableFormReset({
-            text: postToEdit.text,
-            description: postToEdit.description,
-            price: postToEdit.price,
-            image: postToEdit.image_urls || [],
+            title: postToEdit.title || postToEdit.text,
+            description: postToEdit.description || "",
+            price: postToEdit.price ? String(postToEdit.price) : "",
+            subCategory: postToEdit.category || "Electronics",
+            condition: "Good",
+            negotiable: false,
+            imageFiles: undefined,
           });
         } else if (!isEditMode) {
-          stableFormReset({ text: "", description: "", price: "", image: undefined });
+          stableFormReset({
+            title: "",
+            description: "",
+            price: "",
+            subCategory: "Electronics",
+            condition: "New",
+            negotiable: false,
+            imageFiles: undefined,
+          });
         }
       }, 0);
       return () => clearTimeout(timer);
@@ -322,25 +568,15 @@ const CreateItemDialogComponent = ({
         (_, i) => !removedImageIndexes.includes(i)
       );
     }
-    let validImageFiles: FileList | undefined;
-    if (values.image && values.image.length > 0) {
-      const validFiles = Array.from(values.image).filter(
-        (f) => f && f instanceof File && (f as File).size > 0
-      );
-      if (validFiles.length > 0) {
-        const dt = new DataTransfer();
-        validFiles.forEach((f) => dt.items.add(f as File));
-        validImageFiles = dt.files;
-      }
-    }
     const postData: Partial<Post> = {
-      text: values.text,
+      text: `${values.title} - ₦${values.price}`,
+      title: values.title,
       description: values.description,
       category: "For Sale",
-      price: values.price || 0,
+      price: parseFloat(values.price) || 0,
       image_urls: filteredImageUrls,
     };
-    await createPost(postData, postToEdit?.id, validImageFiles);
+    await createPost(postData, postToEdit?.id, values.imageFiles);
     setLoading(false);
     handleOpenChange(false);
   }
@@ -358,8 +594,6 @@ const CreateItemDialogComponent = ({
     [onOpenChange, externalOpen, form]
   );
 
-  const imageField = form.register("image");
-
   const formBodyProps: FormBodyProps = {
     form,
     onSubmit,
@@ -368,19 +602,18 @@ const CreateItemDialogComponent = ({
     postToEdit,
     removedImageIndexes,
     setRemovedImageIndexes,
-    imageField,
     onClose: () => handleOpenChange(false),
+    profile,
+    fileInputRef,
   };
 
-  /* ── Mobile: bottom Sheet ── */
   if (isMobile) {
     return (
       <Sheet open={open} onOpenChange={handleOpenChange}>
         <SheetTrigger asChild>{children ?? <span />}</SheetTrigger>
         <SheetContent
           side="bottom"
-          className="p-0 border-0 rounded-t-2xl overflow-y-auto max-h-[92dvh]"
-          style={{ background: BG_DARK, zIndex: 110, paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom))" }}
+          className="p-0 border-0 rounded-t-3xl bg-[var(--yrdly-dark)] max-h-[92dvh] overflow-y-auto"
           hideClose
         >
           <FormBody {...formBodyProps} />
@@ -389,15 +622,13 @@ const CreateItemDialogComponent = ({
     );
   }
 
-  /* ── Desktop: centered Dialog ── */
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       {externalOpen === undefined && (
         <DialogTrigger asChild>{children ?? <span />}</DialogTrigger>
       )}
       <DialogContent
-        className="p-0 border-0 shadow-2xl sm:max-w-[672px] max-h-[90dvh] overflow-y-auto"
-        style={{ background: BG_DARK, zIndex: 110 }}
+        className="p-0 border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-dark)] rounded-3xl max-w-[620px] w-full overflow-hidden shadow-2xl"
         hideClose
       >
         <FormBody {...formBodyProps} />

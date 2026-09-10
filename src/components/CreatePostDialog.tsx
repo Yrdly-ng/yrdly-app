@@ -18,20 +18,18 @@ import { useState, useEffect, memo, useCallback, useMemo, useRef } from "react";
 import * as React from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { Post } from "@/types";
-import { X, Paperclip, Loader2 } from "lucide-react";
+import { X, Camera, Image as ImageIcon, Globe, Lock, ChevronDown, Send, Plus, Repeat } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
-import { LocationInput, LocationValue } from "./LocationInput";
+import { LocationInput } from "./LocationInput";
 
 // ── Design tokens ──────────────────────────────────────────────
-const BG       = "var(--c-bg)";
-const BORDER   = "rgba(187,187,187,0.3)";
-const GREEN    = "hsl(var(--primary))";
-const FONT_RL = "var(--font-raleway)";
+const GREEN = "#82DB7E";
 
-// ── Schema ─────────────────────────────────────────────────────
-const BlobImage = memo(({ file, className, alt }: { file: File, className?: string, alt?: string }) => {
+const POST_CATEGORIES = ["General", "Event", "For Sale", "Business"];
+
+const BlobImage = memo(({ file, className, alt }: { file: File; className?: string; alt?: string }) => {
   const [url, setUrl] = useState<string>('');
   useEffect(() => {
     const objectUrl = URL.createObjectURL(file);
@@ -39,52 +37,27 @@ const BlobImage = memo(({ file, className, alt }: { file: File, className?: stri
     return () => URL.revokeObjectURL(objectUrl);
   }, [file]);
   if (!url) return null;
-  return <Image src={url} alt={alt || ""} fill className={className} />;
+  return <Image src={url} alt={alt || ""} fill className={className} unoptimized />;
 });
 BlobImage.displayName = "BlobImage";
 
 const getFormSchema = (hasExistingImages: boolean) =>
   z.object({
-    text:       z.string().min(1, "Text can't be empty.").max(500),
+    text: z.string().min(1, "Text can't be empty.").max(2000),
     imageFiles: z.any().optional(),
-    category:   z.enum(["General", "Event", "For Sale", "Business"]).default("General"),
-    location:   z.any().optional(),
-  }).superRefine((data, ctx) => {
-    const isSpecialCategory = data.category === "Event" || data.category === "For Sale";
-    const hasNewImages = data.imageFiles && data.imageFiles.length > 0;
-    
-    if (isSpecialCategory && !hasNewImages && !hasExistingImages) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["imageFiles"],
-        message: `An image is required for ${data.category} posts.`,
-      });
-    }
+    category: z.enum(["General", "Event", "For Sale", "Business"]).default("General"),
+    visibility: z.enum(["public", "private"]).default("public"),
+    location: z.any().optional(),
   });
 
-
-// ── Location pin icon (SVG matching Figma) ─────────────────────
-const LocationIcon = ({ filled = false }: { filled?: boolean }) => (
-  <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path
-      d="M11 2C7.686 2 5 4.686 5 8c0 4.5 6 12 6 12s6-7.5 6-12c0-3.314-2.686-6-6-6zm0 8.5A2.5 2.5 0 1 1 11 5.5a2.5 2.5 0 0 1 0 5z"
-      stroke={GREEN}
-      strokeWidth="1.3"
-      fill={filled ? GREEN : "none"}
-    />
-  </svg>
-);
-
-// ── Types ──────────────────────────────────────────────────────
 type CreatePostDialogProps = {
-  children?:     React.ReactNode;
-  postToEdit?:   Post;
+  children?: React.ReactNode;
+  postToEdit?: Post;
   onOpenChange?: (open: boolean) => void;
-  createPost:    (postData: any, postId?: string, imageFiles?: FileList, videoFile?: File) => Promise<void>;
-  open?:         boolean;
+  createPost: (postData: any, postId?: string, imageFiles?: FileList, videoFile?: File) => Promise<void>;
+  open?: boolean;
 };
 
-// ── Inner form content (shared between Dialog and Sheet) ───────
 function PostForm({
   form,
   loading,
@@ -92,9 +65,7 @@ function PostForm({
   onClose,
   isEditMode,
   fileInputRef,
-  videoInputRef,
-  videoFile,
-  setVideoFile,
+  profile,
 }: {
   form: any;
   loading: boolean;
@@ -102,322 +73,279 @@ function PostForm({
   onClose: () => void;
   isEditMode: boolean;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
-  videoInputRef: React.RefObject<HTMLInputElement | null>;
-  videoFile: File | null;
-  setVideoFile: (f: File | null) => void;
+  profile: any;
 }) {
-  const text = form.watch("text") as string;
-  const { toast } = useToast();
-  const [fetchingLocation, setFetchingLocation] = React.useState(false);
-  const [showLocationInput, setShowLocationInput] = React.useState(false);
-  const [videoDuration, setVideoDuration] = React.useState<string | null>(null);
-  const [videoPreviewUrl, setVideoPreviewUrl] = React.useState<string | null>(null);
+  const text = form.watch("text") as string || "";
+  const visibility = form.watch("visibility") as "public" | "private" || "public";
+  const category = form.watch("category") as string || "General";
+  const imageFiles = form.watch("imageFiles") as FileList | undefined;
 
-  // Keep object URL in sync with videoFile
-  React.useEffect(() => {
-    if (!videoFile) { setVideoPreviewUrl(null); setVideoDuration(null); return; }
-    const url = URL.createObjectURL(videoFile);
-    setVideoPreviewUrl(url);
-    // Read duration
-    const v = document.createElement('video');
-    v.src = url;
-    v.preload = 'metadata';
-    v.addEventListener('loadedmetadata', () => {
-      const d = v.duration;
-      const m = Math.floor(d / 60);
-      const s = Math.floor(d % 60);
-      setVideoDuration(`${m}:${String(s).padStart(2, '0')}`);
-    });
-    return () => URL.revokeObjectURL(url);
-  }, [videoFile]);
+  const [showCategoryMenu, setShowCategoryMenu] = useState(false);
+  const [showLocationInput, setShowLocationInput] = useState(false);
 
-  const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    // Inline validation
-    const MAX = 15 * 1024 * 1024;
-    const ALLOWED = ['video/mp4', 'video/webm', 'video/quicktime'];
-    if (!ALLOWED.includes(file.type)) {
-      toast({ variant: 'destructive', title: 'Unsupported format', description: 'Only MP4, WebM, and MOV videos are supported.' });
-      return;
-    }
-    if (file.size > MAX) {
-      toast({ variant: 'destructive', title: 'Video too large', description: 'Video must be under 15 MB. Try trimming or compressing it first.' });
-      return;
-    }
-    setVideoFile(file);
-    if (videoInputRef.current) videoInputRef.current.value = '';
-  };
+  const locationLabel = profile?.home_lga || profile?.home_ward
+    ? [profile.home_ward, profile.home_lga].filter(Boolean).join(", ")
+    : profile?.location
+    ? [profile.location.ward, profile.location.lga].filter(Boolean).join(", ")
+    : "";
 
-
-  const handleLocation = async () => {
-    const loc = form.getValues("location");
-    if (loc || showLocationInput) {
-      // Tapping again while active removes it or hides input
-      form.setValue("location", undefined);
-      setShowLocationInput(false);
-      return;
-    }
-    if (!navigator.geolocation) {
-      toast({ title: "Location not supported", description: "Your browser doesn't support geolocation. Please search manually.", variant: "destructive" });
-      setShowLocationInput(true);
-      return;
-    }
-    setFetchingLocation(true);
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        try {
-          const { latitude, longitude } = position.coords;
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
-            { headers: { 'Accept-Language': 'en' } }
-          );
-          const data = await res.json();
-          const locationText = data.display_name
-            ? data.display_name.split(',').slice(0, 3).join(',').trim()
-            : `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
-          
-          form.setValue("location", { address: locationText, geopoint: { latitude, longitude } }, { shouldValidate: true, shouldDirty: true });
-        } catch {
-          toast({ title: "Location error", description: "Could not fetch your address. Please try searching manually.", variant: "destructive" });
-          setShowLocationInput(true);
-        } finally {
-          setFetchingLocation(false);
-        }
-      },
-      (err) => {
-        setFetchingLocation(false);
-        const msg = err.code === 1
-          ? "Location access denied. Please allow location in your browser settings or search manually."
-          : "Could not get your location. Please try searching manually.";
-        toast({ title: "Location unavailable", description: msg, variant: "destructive" });
-        setShowLocationInput(true);
-      },
-      { timeout: 10000, maximumAge: 60000 }
-    );
-  };
+  const canPost = text.trim().length > 0 && !loading;
 
   return (
     <form
-      onSubmit={form.handleSubmit((values: any) => {
-        if (values.location && values.location.address) {
-          const currentText = values.text || "";
-          const separator = currentText && !currentText.endsWith("\n") ? "\n" : "";
-          // Submit the actual text + location display tag, and include the whole values object (which now has location)
-          onSubmit({ ...values, text: `${currentText}${separator}📍 ${values.location.address}` });
-        } else {
-          onSubmit(values);
-        }
-      })}
-      className="flex flex-col"
-      style={{ minHeight: 0, flex: 1 }}
+      onSubmit={form.handleSubmit(onSubmit)}
+      className="flex flex-col p-4 sm:p-6 text-foreground font-yrdly-body max-h-[85vh] overflow-y-auto"
     >
       {/* ── Top close button ── */}
-      <div className="flex items-center justify-end px-3 pt-3 pb-1 flex-shrink-0">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-bold font-yrdly-display">
+          {isEditMode ? "Edit Post" : "Create Post"}
+        </h2>
         <button
           type="button"
           onClick={onClose}
-          className="w-5 h-5 flex items-center justify-center text-foreground hover:opacity-70 transition-opacity"
+          className="w-8 h-8 rounded-full bg-surface border border-[var(--yrdly-glass-border)] flex items-center justify-center text-foreground hover:opacity-70 transition-opacity"
           aria-label="Close"
         >
-          <X size={18} strokeWidth={2} />
+          <X size={18} />
         </button>
       </div>
 
-      {/* ── Scrollable body: textarea + image previews ── */}
-      {/* maxHeight on this section ensures the Post button is never pushed off-screen */}
-      <div className="px-5 pb-2 flex flex-col overflow-y-auto" style={{ maxHeight: "340px", minHeight: 0 }}>
-        <textarea
-          {...form.register("text")}
-          placeholder="What's going on?"
-          rows={4}
-          className={cn(
-            "w-full bg-transparent resize-none outline-none border-none flex-shrink-0",
-            "text-foreground placeholder:text-foreground text-[1rem] leading-[18px]",
-          )}
-          style={{ fontFamily: FONT_RL, fontWeight: 400 }}
-          autoFocus
-        />
-        {form.formState.errors.text && (
-          <p className="text-red-400 text-xs mt-1">
-            {form.formState.errors.text.message as string}
-          </p>
-        )}
-        {form.formState.errors.imageFiles && (
-          <p className="text-red-400 text-xs mt-1">
-            {form.formState.errors.imageFiles.message as string}
-          </p>
-        )}
-        
-        {/* ── Image Previews ── */}
-        {form.watch("imageFiles")?.length > 0 && (
-          <div className="flex gap-2 flex-wrap py-2 mt-2">
-            {Array.from(form.watch("imageFiles") as FileList).map((file, i) => (
-              <div key={i} className="relative w-20 h-20 flex-shrink-0 rounded-md overflow-hidden">
-                <BlobImage 
-                  file={file} 
-                  alt="Preview" 
-                  className="object-cover w-full h-full" 
-                />
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const dt = new DataTransfer();
-                    const currentFiles = form.getValues("imageFiles") as FileList;
-                    for (let j = 0; j < currentFiles.length; j++) {
-                      if (j !== i) dt.items.add(currentFiles[j]);
-                    }
-                    form.setValue("imageFiles", dt.files, { shouldDirty: true });
-                    if (fileInputRef.current) {
-                      fileInputRef.current.files = dt.files;
-                    }
-                  }}
-                  className="absolute top-1 right-1 bg-black/60 rounded-full p-1 hover:bg-black"
-                >
-                  <X size={12} color="white" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* ── Video Preview ── */}
-        {videoFile && videoPreviewUrl && (
-          <div className="relative mt-2 rounded-xl overflow-hidden bg-black">
-            <video
-              src={videoPreviewUrl}
-              controls
-              playsInline
-                disablePictureInPicture
-                controlsList="nodownload noremoteplayback nopictureinpicture"
-              preload="metadata"
-              className="w-full max-h-48 object-contain"
+      {/* ── Profile row ── */}
+      <div className="flex items-start gap-3 mb-4">
+        <div className="relative flex-shrink-0">
+          {profile?.avatar_url ? (
+            <Image
+              src={profile.avatar_url}
+              alt={profile?.name || "Avatar"}
+              width={48}
+              height={48}
+              className="w-12 h-12 rounded-full object-cover"
             />
-            {videoDuration && (
-              <span
-                className="absolute bottom-2 left-2 text-[0.625rem] font-bold px-2 py-0.5 rounded-full"
-                style={{ background: 'rgba(0,0,0,0.65)', color: '#fff', fontFamily: FONT_RL }}
-              >
-                {videoDuration}
-              </span>
-            )}
-            <button
-              type="button"
-              onClick={() => { setVideoFile(null); }}
-              className="absolute top-2 right-2 bg-black/60 rounded-full p-1 hover:bg-black"
+          ) : (
+            <div
+              className="w-12 h-12 rounded-full flex items-center justify-center font-extrabold text-lg text-black"
+              style={{ backgroundColor: GREEN }}
             >
-              <X size={12} color="white" />
-            </button>
+              {(profile?.name || "?").charAt(0).toUpperCase()}
+            </div>
+          )}
+          <div
+            className="absolute bottom-0 right-0 w-4 h-4 rounded-full flex items-center justify-center text-black"
+            style={{ backgroundColor: GREEN }}
+          >
+            <Camera size={9} strokeWidth={3} />
           </div>
-        )}
+        </div>
 
-        {/* ── Location Input / Tag ── */}
-        {showLocationInput ? (
-          <div className="mt-2 w-full px-1">
-            <div className={cn("[&_input]:bg-background [&_input]:border-primary [&_input]:rounded-full [&_input]:text-foreground [&_input]:placeholder:text-muted-foreground [&_input]:h-10")}>
-              <LocationInput name="location" control={form.control} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-extrabold text-base text-foreground truncate">
+              {profile?.name || "You"}
+            </span>
+
+            {/* Category pill dropdown */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowCategoryMenu((v) => !v)}
+                className="flex items-center gap-1 rounded-full px-2.5 py-1 border text-xs font-extrabold transition-colors"
+                style={{
+                  backgroundColor: "rgba(130,219,126,0.12)",
+                  borderColor: "rgba(130,219,126,0.4)",
+                  color: GREEN,
+                }}
+              >
+                <span>{category}</span>
+                <ChevronDown size={12} />
+              </button>
+
+              {showCategoryMenu && (
+                <div className="absolute top-8 left-0 w-36 rounded-xl border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-dark)] shadow-xl z-50 py-1">
+                  {POST_CATEGORIES.map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => {
+                        form.setValue("category", cat);
+                        setShowCategoryMenu(false);
+                      }}
+                      className={cn(
+                        "w-full text-left px-3 py-2 text-sm hover:bg-white/5 transition-colors",
+                        category === cat ? "text-[#82DB7E] font-bold" : "text-foreground"
+                      )}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-        ) : form.watch("location")?.address ? (
-          <div className="flex items-center gap-1.5 mt-2 w-fit max-w-full">
-            <span
-              className="flex items-center gap-1.5 rounded-full pl-3 pr-2 py-1.5 text-[0.8rem] font-medium max-w-full"
-              style={{ background: "rgba(34,197,94,0.12)", color: GREEN, fontFamily: FONT_RL }}
-            >
-              <LocationIcon />
-              <span className="truncate max-w-[220px]">{form.watch("location").address}</span>
+
+          <div className="flex items-center gap-1.5 mt-0.5 text-xs text-[var(--yrdly-label)]">
+            {locationLabel && <span>{locationLabel}</span>}
+            {locationLabel && <span>·</span>}
+            {visibility === "private" ? (
+              <Lock size={11} className="text-[#82DB7E]" />
+            ) : (
+              <Globe size={11} className="text-[#82DB7E]" />
+            )}
+            <span className="text-[#82DB7E] font-medium">
+              {visibility === "private" ? "Private" : "Public"}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Composer card ── */}
+      <div className="rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-4 mb-3">
+        <textarea
+          {...form.register("text")}
+          placeholder="What's happening nearby?"
+          rows={5}
+          maxLength={2000}
+          className="w-full bg-transparent resize-none outline-none border-none text-foreground placeholder:text-[var(--yrdly-label)] text-lg leading-relaxed"
+          autoFocus
+        />
+        <div className="flex items-center justify-between border-t border-[var(--yrdly-glass-border)] pt-2 mt-2">
+          <button
+            type="button"
+            onClick={() => setShowLocationInput((v) => !v)}
+            className="text-xs text-[var(--yrdly-label)] hover:text-foreground transition-colors"
+          >
+            {showLocationInput ? "Hide location search" : "📍 Tag location"}
+          </button>
+          <span className="text-xs text-[var(--yrdly-label)] font-mono">
+            {text.length}/2000
+          </span>
+        </div>
+        {showLocationInput && (
+          <div className="mt-3">
+            <LocationInput name="location" control={form.control} />
+          </div>
+        )}
+      </div>
+
+      {/* ── Media toolbar card ── */}
+      <div className="rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-4 mb-3">
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="w-full flex items-center justify-center gap-3 py-2 rounded-xl border border-dashed transition-colors"
+          style={{
+            borderColor: "rgba(130,219,126,0.4)",
+            backgroundColor: "rgba(130,219,126,0.08)",
+          }}
+        >
+          <div
+            className="w-12 h-12 rounded-xl border flex items-center justify-center"
+            style={{ borderColor: GREEN, backgroundColor: "rgba(130,219,126,0.15)" }}
+          >
+            <ImageIcon size={22} style={{ color: GREEN }} />
+          </div>
+          <div className="text-left">
+            <p className="text-sm font-bold" style={{ color: GREEN }}>Add Photo</p>
+            <p className="text-xs text-[var(--yrdly-label)]">Upload images for your post</p>
+          </div>
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            const files = e.target.files;
+            if (!files || files.length === 0) return;
+            form.setValue("imageFiles", files, { shouldDirty: true, shouldValidate: true });
+          }}
+        />
+      </div>
+
+      {/* ── Image previews ── */}
+      {imageFiles && imageFiles.length > 0 && (
+        <div className="flex gap-2 overflow-x-auto pb-2 mb-3">
+          {Array.from(imageFiles).map((file, i) => (
+            <div key={i} className="relative w-24 h-24 flex-shrink-0 rounded-xl overflow-hidden border border-[var(--yrdly-glass-border)]">
+              <BlobImage file={file} alt="Preview" className="object-cover w-full h-full" />
               <button
                 type="button"
                 onClick={() => {
-                  form.setValue("location", undefined);
-                  setShowLocationInput(false);
+                  const dt = new DataTransfer();
+                  for (let j = 0; j < imageFiles.length; j++) {
+                    if (j !== i) dt.items.add(imageFiles[j]);
+                  }
+                  form.setValue("imageFiles", dt.files.length > 0 ? dt.files : undefined, { shouldDirty: true });
                 }}
-                aria-label="Remove location tag"
-                className="flex-shrink-0 hover:opacity-70 transition-opacity"
+                className="absolute top-1 right-1 bg-black/70 rounded-full p-1 text-white hover:bg-black"
               >
                 <X size={14} />
               </button>
-            </span>
-          </div>
-        ) : null}
-      </div>
-
-      {/* ── Divider ── */}
-      <div className="mx-5 flex-shrink-0" style={{ borderTop: "0.2px solid var(--c-border)" }} />
-
-      {/* ── Bottom toolbar — always visible, pinned ── */}
-      <div className="flex items-center justify-between px-5 py-3 flex-shrink-0">
-        {/* Left icons */}
-        <div className="flex items-center gap-4">
-          {/* Paperclip / photos + videos in one */}
+            </div>
+          ))}
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="hover:opacity-70 transition-opacity"
-            aria-label="Attach photo or video"
+            className="w-24 h-24 rounded-xl border border-dashed border-[var(--yrdly-glass-border)] flex flex-col items-center justify-center gap-1 text-[var(--yrdly-label)] hover:text-foreground flex-shrink-0"
           >
-            <Paperclip size={22} color={GREEN} strokeWidth={2} />
-          </button>
-          {/* Hidden combined image/video input */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*,video/mp4,video/webm,video/quicktime"
-            multiple
-            className="hidden"
-            onChange={(e) => {
-              const files = e.target.files;
-              if (!files || files.length === 0) return;
-              const first = files[0];
-              if (first.type.startsWith("video/")) {
-                handleVideoSelect(e);
-              } else {
-                form.setValue("imageFiles", files);
-              }
-            }}
-          />
-          {/* Hidden video input kept for handleVideoSelect's validation/preview logic */}
-          <input
-            ref={videoInputRef}
-            type="file"
-            accept="video/mp4,video/webm,video/quicktime"
-            className="hidden"
-          />
-
-
-          {/* Location */}
-          <button
-            type="button"
-            onClick={handleLocation}
-            disabled={fetchingLocation}
-            className="hover:opacity-70 transition-opacity disabled:opacity-50"
-            aria-label={form.watch("location")?.address || showLocationInput ? "Remove location" : "Tag your location"}
-          >
-            {fetchingLocation
-              ? <Loader2 size={22} color={GREEN} strokeWidth={2} className="animate-spin" />
-              : <LocationIcon filled={!!form.watch("location")?.address || showLocationInput} />}
+            <Plus size={20} />
+            <span className="text-xs font-semibold">Add more</span>
           </button>
         </div>
+      )}
 
-        {/* Post button */}
-        <button
-          type="submit"
-          disabled={loading || !text?.trim()}
-          className="h-[37px] px-8 rounded-full text-foreground text-[0.875rem] font-medium transition-opacity disabled:opacity-50 hover:opacity-90"
-          style={{ background: GREEN, fontFamily: FONT_RL }}
+      {/* ── Visibility row card ── */}
+      <button
+        type="button"
+        onClick={() => form.setValue("visibility", visibility === "private" ? "public" : "private")}
+        className="w-full flex items-center justify-between rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-4 mb-4 text-left hover:bg-white/5 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <div
+            className="w-9 h-9 rounded-full border flex items-center justify-center"
+            style={{ borderColor: GREEN }}
+          >
+            {visibility === "private" ? (
+              <Lock size={18} style={{ color: GREEN }} />
+            ) : (
+              <Globe size={18} style={{ color: GREEN }} />
+            )}
+          </div>
+          <div>
+            <p className="text-sm font-bold text-foreground">Who can see this?</p>
+            <p className="text-xs text-[var(--yrdly-label)]">
+              {visibility === "private" ? "Only your friends" : "Anyone on Yrdly"}
+            </p>
+          </div>
+        </div>
+        <div
+          className="flex items-center gap-1.5 rounded-full px-3 py-1.5 border text-xs font-bold"
+          style={{ borderColor: GREEN, color: GREEN }}
         >
-          {loading
-            ? <Loader2 className="w-4 h-4 animate-spin text-foreground mx-auto" />
-            : isEditMode ? "Save" : "Post"}
-        </button>
-      </div>
+          <span>{visibility === "private" ? "Private" : "Public"}</span>
+          <Repeat size={12} />
+        </div>
+      </button>
+
+      {/* ── Post button ── */}
+      <button
+        type="submit"
+        disabled={!canPost}
+        className="w-full py-4 rounded-full font-black text-base flex items-center justify-center gap-2.5 transition-all disabled:opacity-50"
+        style={{
+          backgroundColor: canPost ? GREEN : "rgba(130,219,126,0.4)",
+          color: "#0B0D0B",
+          boxShadow: canPost ? "0 6px 14px rgba(130,219,126,0.25)" : "none",
+        }}
+      >
+        <Send size={18} />
+        <span>{loading ? "Posting…" : "Post to Yrdly"}</span>
+      </button>
     </form>
   );
 }
 
-// ── Main component ─────────────────────────────────────────────
 const CreatePostDialogComponent = ({
   children,
   postToEdit,
@@ -425,14 +353,12 @@ const CreatePostDialogComponent = ({
   createPost,
   open: externalOpen,
 }: CreatePostDialogProps) => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [internalOpen, setInternalOpen] = useState(false);
-  const [loading, setLoading]           = useState(false);
-  const [videoFile, setVideoFile]       = useState<File | null>(null);
-  const isMobile    = useIsMobile();
-  const isEditMode  = !!postToEdit;
-  const fileInputRef  = useRef<HTMLInputElement | null>(null);
-  const videoInputRef = useRef<HTMLInputElement | null>(null);
+  const [loading, setLoading] = useState(false);
+  const isMobile = useIsMobile();
+  const isEditMode = !!postToEdit;
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
 
@@ -441,7 +367,7 @@ const CreatePostDialogComponent = ({
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: { text: "", imageFiles: undefined, category: "General" as const },
+    defaultValues: { text: "", imageFiles: undefined, category: "General" as const, visibility: "public" as const },
   });
 
   const stableReset = useCallback((v: any) => form.reset(v), [form]);
@@ -450,9 +376,14 @@ const CreatePostDialogComponent = ({
     if (!open) return;
     const t = setTimeout(() => {
       if (isEditMode && postToEdit) {
-        stableReset({ text: postToEdit.text, imageFiles: undefined, category: postToEdit.category || "General" });
+        stableReset({
+          text: postToEdit.text,
+          imageFiles: undefined,
+          category: (postToEdit.category as any) || "General",
+          visibility: "public",
+        });
       } else {
-        stableReset({ text: "", imageFiles: undefined, category: "General" });
+        stableReset({ text: "", imageFiles: undefined, category: "General", visibility: "public" });
       }
     }, 0);
     return () => clearTimeout(t);
@@ -461,34 +392,30 @@ const CreatePostDialogComponent = ({
   const handleOpenChange = useCallback((next: boolean) => {
     if (externalOpen === undefined) setInternalOpen(next);
     onOpenChange?.(next);
-    if (!next) { 
-      form.reset(); 
-      setVideoFile(null); 
-    }
+    if (!next) form.reset();
   }, [onOpenChange, externalOpen, form]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
     const imageFiles = values.imageFiles?.length > 0 ? values.imageFiles : undefined;
-    const postData   = { ...values, image_urls: isEditMode && postToEdit?.image_urls ? postToEdit.image_urls : undefined };
-    await createPost(postData, postToEdit?.id, imageFiles, videoFile ?? undefined);
-    setVideoFile(null);
+    const postData = {
+      ...values,
+      image_urls: isEditMode && postToEdit?.image_urls ? postToEdit.image_urls : undefined,
+    };
+    await createPost(postData, postToEdit?.id, imageFiles);
     setLoading(false);
     handleOpenChange(false);
   }
 
-  // Shared dialog inner styling
-  const dialogStyles: React.CSSProperties = {
-    background:   BG,
-    border:       `0.2px solid ${BORDER}`,
-    borderRadius: "11px",
-    padding:      0,
-    overflow:     "hidden",
-    maxWidth:     "626px",
-    width:        "100%",
+  const formProps = {
+    form,
+    loading,
+    onSubmit,
+    onClose: () => handleOpenChange(false),
+    isEditMode,
+    fileInputRef,
+    profile,
   };
-
-  const formProps = { form, loading, onSubmit, onClose: () => handleOpenChange(false), isEditMode, fileInputRef, videoInputRef, videoFile, setVideoFile };
 
   if (isMobile) {
     return (
@@ -496,18 +423,7 @@ const CreatePostDialogComponent = ({
         <SheetTrigger asChild>{children ?? <span />}</SheetTrigger>
         <SheetContent
           side="bottom"
-          className="p-0"
-          style={{
-            background: BG,
-            border: `0.2px solid ${BORDER}`,
-            borderTopLeftRadius: "11px",
-            borderTopRightRadius: "11px",
-            minHeight: "300px",
-            maxHeight: "85vh",
-            overflowY: "auto",
-            display: "flex",
-            flexDirection: "column",
-          }}
+          className="p-0 border-0 rounded-t-3xl bg-[var(--yrdly-dark)] max-h-[92dvh] overflow-y-auto"
           hideClose
         >
           <PostForm {...formProps} />
@@ -522,7 +438,7 @@ const CreatePostDialogComponent = ({
         <DialogTrigger asChild>{children ?? <span />}</DialogTrigger>
       )}
       <DialogContent
-        style={dialogStyles}
+        className="p-0 border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-dark)] rounded-3xl max-w-[600px] w-full overflow-hidden shadow-2xl"
         hideClose
       >
         <PostForm {...formProps} />
