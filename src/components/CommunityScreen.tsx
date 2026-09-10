@@ -264,18 +264,7 @@ export function CommunityScreen({ className }: { className?: string }) {
     <div className={`min-h-[100dvh] pb-32 bg-[var(--yrdly-dark)] text-foreground ${className || ""}`}>
       <div className="max-w-2xl mx-auto px-yrdly-md pt-6 space-y-6">
 
-        {/* ── Header ── */}
-        <header className="space-y-1">
-          <div className="flex items-center justify-between">
-            <h1 className="text-[1.35rem] font-bold font-yrdly-display text-foreground">
-              Community
-            </h1>
-            <LocationChip />
-          </div>
-          <p className="text-xs text-[var(--yrdly-label)] font-yrdly-body">
-            Connect with your neighbors and manage your friends list
-          </p>
-        </header>
+
 
         {/* ── Sub-Tab Segmented Switcher (Nearby vs My Circle - Mobile Parity) ── */}
         <div className="flex rounded-full p-1 border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] backdrop-blur-md">

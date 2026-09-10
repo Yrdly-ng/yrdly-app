@@ -240,16 +240,7 @@ export function BusinessesScreen({ backTarget = "/businesses" }: { backTarget?: 
         )}
       </div>
 
-      {/* Floating Create */}
-      <div className="fixed bottom-20 right-4 z-40 lg:bottom-6">
-        <Button
-          size="lg"
-          className="rounded-full h-12 w-12 sm:h-14 sm:w-14 shadow-lg p-0 bg-primary"
-          onClick={handleCreateBusiness}
-        >
-          <Plus className="h-6 w-6 text-foreground" />
-        </Button>
-      </div>
+
 
       {/* Business Creator Onboarding */}
       <BusinessCreatorOnboarding

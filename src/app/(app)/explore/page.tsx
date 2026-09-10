@@ -92,9 +92,6 @@ function ExploreContent() {
           <h1 className="text-2xl font-extrabold text-foreground font-yrdly-display">
             Explore
           </h1>
-          <div className="mt-0.5">
-            <LocationChip />
-          </div>
         </div>
 
         <div className="flex items-center gap-2">

@@ -232,10 +232,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
 
   return (
     <div className={cn("min-h-[100dvh] bg-[var(--yrdly-dark)] text-foreground font-yrdly-body p-3 sm:p-4 md:p-6 space-y-6 md:space-y-8 pb-20 lg:pb-8", className)}>
-      {/* Location filter — its own row, same pattern as Market, so its dropdown is never clipped by a scroll container */}
-      <div className="flex items-center">
-        <LocationChip />
-      </div>
+
       {/* Quick filter bar */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
         {QUICK_FILTERS.map((filter) => {
@@ -610,16 +607,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
         )}
       </section>
 
-      {/* Floating Create */}
-      <div className="fixed bottom-20 right-4 z-40 lg:bottom-6">
-        <Button
-          size="lg"
-          className="rounded-full h-12 w-12 sm:h-14 sm:w-14 shadow-lg p-0 bg-primary"
-          onClick={handleCreateEvent}
-        >
-          <Plus className="h-6 w-6 text-foreground" />
-        </Button>
-      </div>
+
 
       {/* Event Creator Onboarding */}
       <EventCreatorOnboarding

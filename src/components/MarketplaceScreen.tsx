@@ -154,10 +154,7 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
 
   return (
     <div className="min-h-[100dvh] bg-[var(--yrdly-dark)] text-foreground font-yrdly-body">
-      {/* Location filter */}
-      <div className="px-4 pt-4 pb-1">
-        <LocationChip />
-      </div>
+
       {/* Search bar row */}
       <div className="px-4 pt-2 pb-2">
         <div className="relative">
@@ -246,15 +243,7 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
         </GlassCard>
       )}
 
-      {/* FAB — list an item */}
-      <div className="fixed bottom-20 right-4 z-20 pb-[env(safe-area-inset-bottom)]">
-        <button
-          onClick={handleCreateItem}
-          className="w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-transform hover:scale-105 active:scale-95 bg-primary"
-        >
-          <Plus className="w-6 h-6 text-primary-foreground" />
-        </button>
-      </div>
+
 
       {/* Marketplace Creator Onboarding */}
       <MarketplaceCreatorOnboarding
