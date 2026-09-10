@@ -8,6 +8,8 @@ import Image from "next/image";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
+import { LocationChip } from "@/components/LocationChip";
+
 interface TopbarNavItem {
   href: string;
   label: string;
@@ -50,11 +52,15 @@ export function Topbar({
       }}
     >
       <div className="w-full flex items-center gap-3 md:gap-4">
-        <Link href="/home" className="flex items-center gap-2.5 flex-shrink-0">
-          <span className="flex items-center justify-center rounded-full bg-[var(--c-card2)] p-1.5 md:p-2 shadow-sm">
-            <Image src="/logo.png" alt="Yrdly" width={36} height={36} className="h-9 w-9 md:h-9 md:w-9 object-contain" />
+        <Link href="/home" className="flex items-center gap-2 flex-shrink-0">
+          <span className="font-yrdly-display font-black text-2xl tracking-tight text-[#82DB7E]">
+            YRDLY
           </span>
         </Link>
+
+        <div className="flex-shrink-0">
+          <LocationChip />
+        </div>
 
         {/* Desktop nav — replaces the old left sidebar */}
         {navItems.length > 0 && (

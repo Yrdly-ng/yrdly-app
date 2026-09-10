@@ -121,6 +121,8 @@ export function MapScreen({ className }: MapScreenProps) {
   const [search, setSearch]             = useState('');
   const [activeTab, setActiveTab]       = useState<FilterTab>('all');
   const [userCoords, setUserCoords]     = useState<{ lat: number; lng: number } | null>(null);
+  const [eta, setEta]                   = useState<{ duration_seconds: number; duration_in_traffic_seconds: number; distance_meters: number } | null>(null);
+  const [etaLoading, setEtaLoading]     = useState(false);
   
   // Viewport tracking
   const [bounds, setBounds] = useState<[number,number,number,number]|null>(null);
@@ -138,6 +140,39 @@ export function MapScreen({ className }: MapScreenProps) {
       );
     }
   }, []);
+
+  // Fetch ETA when selected pin or userCoords change
+  useEffect(() => {
+    if (!selected || !userCoords) {
+      setEta(null);
+      return;
+    }
+    let active = true;
+    const fetchEta = async () => {
+      setEtaLoading(true);
+      setEta(null);
+      try {
+        const res = await fetch('/api/directions/eta', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            origin: { lat: userCoords.lat, lng: userCoords.lng },
+            destination: { lat: selected.position.lat, lng: selected.position.lng },
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (active) setEta(data);
+        }
+      } catch (err) {
+        console.warn('Failed to fetch ETA:', err);
+      } finally {
+        if (active) setEtaLoading(false);
+      }
+    };
+    fetchEta();
+    return () => { active = false; };
+  }, [selected, userCoords]);
 
   useEffect(() => {
     const load = async () => {
@@ -246,14 +281,16 @@ export function MapScreen({ className }: MapScreenProps) {
   }, [bounds, filtered]);
 
   const TABS: { key: FilterTab; label: string; icon: React.ReactNode; color: string }[] = [
-    { key: 'all',          label: 'All',        icon: <Layers className="w-3.5 h-3.5" />,    color: '#82DB7E' },
-    { key: 'events',       label: 'Events',     icon: <Calendar className="w-3.5 h-3.5" />,  color: '#F59E0B' },
-    { key: 'businesses',   label: 'Businesses', icon: <Briefcase className="w-3.5 h-3.5" />, color: '#22c55e' },
-    { key: 'marketplace',  label: 'Market',     icon: <MapPin className="w-3.5 h-3.5" />,    color: '#E6A100' },
+    { key: 'all',          label: 'All',         icon: <Layers className="w-3.5 h-3.5" />,     color: '#82DB7E' },
+    { key: 'marketplace',  label: 'Marketplace', icon: <MapPin className="w-3.5 h-3.5" />,     color: '#82DB7E' },
+    { key: 'friends',      label: 'Friends',     icon: <Users className="w-3.5 h-3.5" />,      color: '#8B5CF6' },
+    { key: 'events',       label: 'Events',      icon: <Calendar className="w-3.5 h-3.5" />,   color: '#F59E0B' },
+    { key: 'businesses',   label: 'Businesses',  icon: <Briefcase className="w-3.5 h-3.5" />,  color: '#3B82F6' },
+    { key: 'posts',        label: 'Posts',       icon: <Layers className="w-3.5 h-3.5" />,     color: '#82DB7E' },
   ];
 
-  const getPinColor = (t: string) => t === 'business' ? '#a5c8ff' : t === 'event' ? '#ffb4ab' : t === 'marketplace' ? '#E6A100' : '#82db7e';
-  const getGradient = (t: string) => t === 'event' ? 'linear-gradient(135deg, #ff4b4b, #b30000)' : t === 'business' ? 'linear-gradient(135deg, #4b9fff, #0044b3)' : t === 'marketplace' ? 'linear-gradient(135deg, #ffc107, #e65100)' : 'linear-gradient(135deg, #4caf50, #1b5e20)';
+  const getPinColor = (t: string) => t === 'friend' ? '#8B5CF6' : t === 'business' ? '#3B82F6' : t === 'event' ? '#F59E0B' : '#82DB7E';
+  const getGradient = (t: string) => t === 'friend' ? 'linear-gradient(135deg, #a855f7, #6b21a8)' : t === 'event' ? 'linear-gradient(135deg, #f59e0b, #b45309)' : t === 'business' ? 'linear-gradient(135deg, #3b82f6, #1e40af)' : 'linear-gradient(135deg, #82db7e, #15803d)';
 
   return (
     <div className={cn("relative w-full overflow-hidden bg-[var(--yrdly-dark)] text-foreground font-yrdly-body h-[100dvh]", className)}>
@@ -388,6 +425,21 @@ export function MapScreen({ className }: MapScreenProps) {
                   {selected.date && (
                     <div className="flex items-center gap-2 text-sm font-yrdly-body font-medium text-[var(--yrdly-label)]">
                       <Calendar className="w-4 h-4" /> {new Date(selected.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                    </div>
+                  )}
+
+                  {/* ETA Drive Display */}
+                  {(etaLoading || eta) && (
+                    <div className="flex items-center gap-2 pt-1.5 border-t border-[var(--yrdly-glass-border)] text-xs font-yrdly-body font-medium text-foreground">
+                      <Navigation className="w-4 h-4 text-[#82DB7E]" />
+                      {etaLoading ? (
+                        <span className="text-[var(--yrdly-label)]">Calculating drive time...</span>
+                      ) : (
+                        <span>
+                          <strong className="font-bold text-[#82DB7E]">{Math.ceil((eta?.duration_in_traffic_seconds ?? 0) / 60)} min drive</strong>
+                          <span className="text-[var(--yrdly-label)]"> ({((eta?.distance_meters ?? 0) / 1000).toFixed(1)} km away)</span>
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>

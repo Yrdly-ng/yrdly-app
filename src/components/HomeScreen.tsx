@@ -172,41 +172,6 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
 
   return (
     <div className="w-full max-w-2xl mx-auto space-y-4 font-yrdly-body pb-24">
-      {/* ── Top Header (Mobile 1:1 Matching) ── */}
-      <div className="flex items-center justify-between px-1 py-1">
-        <h1 className="text-2xl font-black font-yrdly-display tracking-tight text-[#82DB7E]">
-          YRDLY
-        </h1>
-
-        <div className="flex-1 px-3">
-          <LocationChip />
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => router.push("/map")}
-            className="w-9 h-9 rounded-full bg-surface border border-[var(--yrdly-glass-border)] flex items-center justify-center text-foreground hover:bg-white/5 transition-all"
-            title="Map"
-          >
-            <Map className="w-4 h-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => router.push("/notifications")}
-            className="relative w-9 h-9 rounded-full bg-surface border border-[var(--yrdly-glass-border)] flex items-center justify-center text-foreground hover:bg-white/5 transition-all"
-            title="Notifications"
-          >
-            <Bell className="w-4 h-4" />
-            {unreadNotifCount > 0 && (
-              <span className="absolute -top-1 -right-1 px-1.5 py-0.2 min-w-[18px] h-4 rounded-full text-[10px] font-extrabold bg-red-500 text-white flex items-center justify-center border-2 border-[var(--yrdly-dark)]">
-                {unreadNotifCount > 99 ? "99+" : unreadNotifCount}
-              </span>
-            )}
-          </button>
-        </div>
-      </div>
-
       {/* ── Active Safety Alert Banners ── */}
       {activeAlerts.length > 0 && (
         <div className="space-y-2">
