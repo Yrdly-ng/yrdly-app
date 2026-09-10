@@ -11,7 +11,10 @@
 
 const PAYLUK_SECRET_KEY = process.env.PAYLUK_SECRET_KEY;
 const PAYLUK_BASE_URL =
-  process.env.PAYLUK_BASE_URL || 'https://staging.api.payluk.ng';
+  process.env.PAYLUK_BASE_URL ||
+  (PAYLUK_SECRET_KEY?.startsWith('sk_live_')
+    ? 'https://api.payluk.ng'
+    : 'https://staging.api.payluk.ng');
 
 if (typeof window === 'undefined' && !PAYLUK_SECRET_KEY) {
   console.warn('[Yrdly] Missing PAYLUK_SECRET_KEY — Payluk features will not work.');

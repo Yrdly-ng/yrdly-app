@@ -94,7 +94,7 @@ export function BuyButton({
 
       const data = await res.json();
 
-      if (!res.ok || !data.paymentLink) {
+      if (!res.ok || (!data.paylukPaymentToken && !data.paymentLink)) {
         toast({
           title: "Error",
           description: data.error ?? "Failed to initialize payment.",
@@ -104,10 +104,45 @@ export function BuyButton({
       }
 
       setOpen(false);
-      // Navigate to redirect loading page then to Paystack
-      router.push(
-        `/payment/redirect?link=${encodeURIComponent(data.paymentLink)}&txn=${data.transactionId}`
-      );
+
+      if (data.paylukPaymentToken) {
+        const publicKey = process.env.NEXT_PUBLIC_PAYLUK_PUBLIC_KEY || 'pk_live_6Q6EZJ8f2wBB3zRkNT0tHxEluaEeRzPh';
+        const launchPayluk = () => {
+          if ((window as any).PaylukInlineCheckout) {
+            (window as any).PaylukInlineCheckout.pay({
+              token: data.paylukPaymentToken,
+              publicKey,
+              onSuccess: () => {
+                toast({ title: "Payment Successful", description: "Your transaction has been processed." });
+                router.push(`/transactions/${data.transactionId}`);
+              },
+              onCancel: () => {
+                toast({ title: "Payment Cancelled" });
+              },
+              onError: (err: any) => {
+                toast({ title: "Payment Error", description: err?.message || "An error occurred during payment.", variant: "destructive" });
+              },
+            });
+          } else {
+            toast({ title: "Error", description: "Payment checkout SDK failed to load.", variant: "destructive" });
+          }
+        };
+
+        if ((window as any).PaylukInlineCheckout) {
+          launchPayluk();
+        } else {
+          const script = document.createElement("script");
+          script.src = "https://cdn.payluk.ng/sdk/v1/payluk-inline.js";
+          script.async = true;
+          script.onload = launchPayluk;
+          script.onerror = () => {
+            toast({ title: "Error", description: "Unable to load Payluk payment script.", variant: "destructive" });
+          };
+          document.body.appendChild(script);
+        }
+      } else if (data.paymentLink) {
+        window.location.href = data.paymentLink;
+      }
     } catch {
       toast({ title: "Error", description: "Something went wrong. Please try again.", variant: "destructive" });
     } finally {

@@ -91,13 +91,15 @@ export async function POST(request: NextRequest) {
       itemType?: 'post' | 'catalog_item';
     };
 
+    const effectiveBuyerEmail = buyerEmail || user.email || `${buyerId}@placeholder.yrdly.com`;
+
     // ── Validate ──────────────────────────────────────────
     const missing = [];
     if (!itemId) missing.push('itemId');
     if (!buyerId) missing.push('buyerId');
     if (!sellerId) missing.push('sellerId');
     if (price === undefined || price === null) missing.push('price');
-    if (!buyerEmail) missing.push('buyerEmail');
+    if (!effectiveBuyerEmail) missing.push('buyerEmail');
 
     if (missing.length > 0) {
       console.log("[PaymentInit] Missing fields:", missing, "Payload:", body);
