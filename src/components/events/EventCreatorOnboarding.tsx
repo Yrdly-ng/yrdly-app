@@ -17,9 +17,10 @@ type Step = 1 | 2 | 3;
 interface EventCreatorOnboardingProps {
   isOpen: boolean;
   onClose: () => void;
+  onContinue?: () => void;
 }
 
-export function EventCreatorOnboarding({ isOpen, onClose }: EventCreatorOnboardingProps) {
+export function EventCreatorOnboarding({ isOpen, onClose, onContinue }: EventCreatorOnboardingProps) {
   const { user } = useAuth();
   const router = useRouter();
   const [step, setStep] = useState<Step>(1);
@@ -82,7 +83,11 @@ export function EventCreatorOnboarding({ isOpen, onClose }: EventCreatorOnboardi
 
   const handleCreateEvent = () => {
     onClose();
-    router.push("/events/create");
+    if (onContinue) {
+      onContinue();
+    } else {
+      router.push("/events/create");
+    }
   };
 
   return (

@@ -89,7 +89,7 @@ function PostForm({
     ? [profile.location.ward, profile.location.lga].filter(Boolean).join(", ")
     : "";
 
-  const canPost = text.trim().length > 0 && !loading;
+  const canPost = (text.trim().length > 0 || (imageFiles && imageFiles.length > 0)) && !loading;
 
   return (
     <form

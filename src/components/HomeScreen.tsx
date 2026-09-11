@@ -7,6 +7,7 @@ import { usePosts } from "@/hooks/use-posts";
 import { useLocation } from "@/contexts/LocationContext";
 import { CreatePostDialog } from "@/components/CreatePostDialog";
 import { CreateItemDialog } from "@/components/CreateItemDialog";
+import { CreateEventDialog } from "@/components/CreateEventDialog";
 import { PostCard } from "@/components/PostCard";
 import { PostSkeleton } from "@/components/PostSkeleton";
 import { LocationChip } from "@/components/LocationChip";
@@ -70,6 +71,7 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
   const { activeFilter } = useLocation();
 
   const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [isCreateEventOpen, setIsCreateEventOpen] = useState(false);
   const [marketplaceOnboardingOpen, setMarketplaceOnboardingOpen] = useState(false);
   const [isCreateItemOpen, setIsCreateItemOpen] = useState(false);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
@@ -244,7 +246,12 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
       </CreatePostDialog>
 
       {/* Onboarding Dialogs */}
-      <EventCreatorOnboarding isOpen={onboardingOpen} onClose={() => setOnboardingOpen(false)} />
+      <EventCreatorOnboarding
+        isOpen={onboardingOpen}
+        onClose={() => setOnboardingOpen(false)}
+        onContinue={() => setIsCreateEventOpen(true)}
+      />
+      <CreateEventDialog open={isCreateEventOpen} onOpenChange={setIsCreateEventOpen} />
       <MarketplaceCreatorOnboarding
         isOpen={marketplaceOnboardingOpen}
         onClose={() => setMarketplaceOnboardingOpen(false)}

@@ -114,7 +114,7 @@ function FormBody({
     : "No location set";
 
   const totalImageCount = (imageFiles ? imageFiles.length : 0) + ((postToEdit?.image_urls?.length || 0) - removedImageIndexes.length);
-  const canSubmit = title.trim().length > 0 && price.trim().length > 0 && totalImageCount > 0 && !loading;
+  const canSubmit = title.trim().length > 0 && price.trim().length > 0 && !loading;
 
   return (
     <form

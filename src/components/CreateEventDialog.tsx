@@ -221,7 +221,7 @@ const CreateEventDialogComponent = memo(function CreateEventDialog({
     .join(", ");
 
   const totalImageCount = (imageFiles ? imageFiles.length : 0) + ((postToEdit?.image_urls?.length || 0) - removedImageIndexes.length);
-  const canPublish = title.trim().length > 0 && totalImageCount > 0 && !loading;
+  const canPublish = title.trim().length > 0 && !loading;
 
   const handleOpenChange = useCallback(
     (newOpenState: boolean) => {
