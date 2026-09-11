@@ -385,15 +385,15 @@ export async function POST(request: NextRequest) {
           .single();
 
         if (currentTx?.payluk_escrow_id && currentTx?.payluk_tx_ref) {
-          const existingBuyerPaylukId = await getPaylukCustomerId(buyerId);
-          return NextResponse.json({
-            success: true,
-            transactionId: currentTx.id,
-            totalAmount: currentTx.total_amount,
-            paylukPaymentToken: currentTx.payluk_tx_ref,
-            paylukEscrowId: currentTx.payluk_escrow_id,
-            buyerPaylukId: existingBuyerPaylukId,
-          });
+          // Payluk payment tokens are short-lived (expire after ~30 min).
+          // Returning the stored token on retry causes "invalid payment token".
+          // Cancel this stale transaction so a fresh escrow + token is created below.
+          console.log(`[PaymentInit] Stale Payluk token for tx ${currentTx.id} — cancelling to issue fresh escrow...`);
+          await supabaseAdmin
+            .from("escrow_transactions")
+            .update({ status: EscrowStatus.CANCELLED, updated_at: new Date().toISOString() })
+            .eq("id", currentTx.id);
+          // Fall through — fresh reservation + Payluk escrow token generated below
         }
 
         if (currentTx?.status === 'creating_escrow') {
