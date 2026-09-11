@@ -397,8 +397,8 @@ export const usePosts = (filter?: LocationFilter | null) => {
           author_name: profile.name || 'Anonymous',
           author_image: profile.avatar_url || '',
           image_urls: imageUrls.length > 0 ? imageUrls : [],
-          video_url: videoUrl,
-          video_thumbnail_url: videoThumbnailUrl,
+          ...(videoUrl ? { video_url: videoUrl } : {}),
+          ...(videoThumbnailUrl ? { video_thumbnail_url: videoThumbnailUrl } : {}),
           timestamp: postIdToUpdate ? postData.timestamp : new Date().toISOString(),
           category: postData.category || 'General',
           // Location stamping — only set on new posts, preserve on edits
@@ -451,6 +451,7 @@ export const usePosts = (filter?: LocationFilter | null) => {
           await UserActivityService.updateUserActivity(user.id);
         }
       } catch (error) {
+        console.error('Error saving post:', error);
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to save post.' });
       }
     },
