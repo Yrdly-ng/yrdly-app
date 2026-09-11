@@ -12,24 +12,6 @@ import { PaylukService } from './payluk-service';
  * (virtual-account, payment/initialize).
  */
 export async function getPaylukCustomerId(userId: string): Promise<string> {
-  const { data: user, error } = await supabaseAdmin
-    .from('users')
-    .select('payluk_customer_id')
-    .eq('id', userId)
-    .maybeSingle();
-
-  if (!error && user?.payluk_customer_id) {
-    // Fast path: stored ID exists — return immediately, zero Payluk API calls.
-    return user.payluk_customer_id;
-  }
-
-  // Slow path: no stored ID — run the full onboarding ladder.
-  // This should only be hit on first use; warn so it's visible in monitoring.
-  console.warn(
-    `[PaylukOnboarding] getPaylukCustomerId: no stored ID for user ${userId}, ` +
-    `falling back to full ensurePaylukCustomer. Investigate why onboarding ` +
-    `did not complete for this user.`
-  );
   return ensurePaylukCustomer(userId);
 }
 
