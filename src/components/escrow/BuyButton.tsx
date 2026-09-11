@@ -112,6 +112,11 @@ export function BuyButton({
           initEscrowCheckout({
             publicKey: process.env.NEXT_PUBLIC_PAYLUK_PUBLIC_KEY!,
           });
+
+          // Track whether payment callback already succeeded so onClose doesn't
+          // fire a misleading "Payment Cancelled" toast after a real success.
+          let paymentSucceeded = false;
+
           await pay({
             paymentToken: data.paylukPaymentToken,
             reference: data.transactionId,
@@ -119,7 +124,17 @@ export function BuyButton({
             brand: 'Yrdly',
             customerId: data.buyerPaylukId,
             callback: async (result: any) => {
-              if (result?.status === 'success' || result?.status === 'paid' || result?.event === 'success') {
+              console.log('[BuyButton] Payluk callback result:', JSON.stringify(result));
+              const isSuccess =
+                result?.status === 'success' ||
+                result?.status === 'paid' ||
+                result?.status === 'completed' ||
+                result?.event === 'success' ||
+                result?.event === 'payment.success' ||
+                result?.message?.toLowerCase?.()?.includes('success');
+
+              if (isSuccess) {
+                paymentSucceeded = true;
                 try {
                   await fetch('/api/payment/verify', {
                     method: 'POST',
@@ -134,10 +149,17 @@ export function BuyButton({
                 }
                 toast({ title: "Payment Successful", description: "Your transaction has been processed." });
                 router.push(`/transactions/${data.transactionId}`);
+              } else {
+                console.warn('[BuyButton] Payluk callback with non-success result:', result);
               }
             },
             onClose: () => {
-              toast({ title: "Payment Cancelled", description: "You closed the payment window." });
+              // Payluk always fires onClose when the modal closes — even after
+              // a successful payment. Only show "cancelled" if callback never
+              // reported success.
+              if (!paymentSucceeded) {
+                toast({ title: "Payment Cancelled", description: "You closed the payment window." });
+              }
             },
           });
         } catch (sdkErr: any) {
