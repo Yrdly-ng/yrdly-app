@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     if (bodyTxRef) {
       const { data: existing } = await supabaseAdmin
         .from('escrow_transactions')
-        .select('buyer_id, item_id, seller_id, status, total_amount')
+        .select('id, buyer_id, item_id, seller_id, status, total_amount, payment_provider, payluk_escrow_id')
         .eq('id', bodyTxRef)
         .single();
 
@@ -42,6 +42,37 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           success: true,
           message: 'Payment already verified',
+          transactionId: bodyTxRef,
+          amount: existing.total_amount,
+        });
+      }
+
+      if (existing?.payment_provider === 'payluk' || existing?.payluk_escrow_id) {
+        await supabaseAdmin
+          .from('escrow_transactions')
+          .update({
+            status: EscrowStatus.PAID,
+            paid_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', bodyTxRef);
+
+        if (existing.item_id) {
+          await supabaseAdmin
+            .from('posts')
+            .update({
+              is_sold: true,
+              sold_to_user_id: existing.buyer_id,
+              sold_at: new Date().toISOString(),
+              transaction_id: bodyTxRef,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', existing.item_id);
+        }
+
+        return NextResponse.json({
+          success: true,
+          message: 'Payluk payment verified successfully',
           transactionId: bodyTxRef,
           amount: existing.total_amount,
         });

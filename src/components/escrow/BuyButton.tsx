@@ -118,8 +118,20 @@ export function BuyButton({
             redirectUrl: `${window.location.origin}/transactions/${data.transactionId}`,
             brand: 'Yrdly',
             customerId: data.buyerPaylukId,
-            callback: (result: any) => {
-              if (result?.status === 'success' || result?.status === 'paid') {
+            callback: async (result: any) => {
+              if (result?.status === 'success' || result?.status === 'paid' || result?.event === 'success') {
+                try {
+                  await fetch('/api/payment/verify', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${session.access_token}`,
+                    },
+                    body: JSON.stringify({ txRef: data.transactionId }),
+                  });
+                } catch (verifyErr) {
+                  console.error('[BuyButton] Payment verification error:', verifyErr);
+                }
                 toast({ title: "Payment Successful", description: "Your transaction has been processed." });
                 router.push(`/transactions/${data.transactionId}`);
               }
