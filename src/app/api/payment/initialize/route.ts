@@ -236,20 +236,17 @@ export async function POST(request: NextRequest) {
           { status: 409 }
         );
       } else if (existingTx.buyer_id === buyerId && existingTx.status === EscrowStatus.PENDING) {
-        if (existingTx.payluk_escrow_id && existingTx.payluk_tx_ref) {
-          // Idempotency: Same buyer retrying or resuming checkout for their own pending transaction with Payluk escrow ready
-          const existingBuyerPaylukId = await getPaylukCustomerId(buyerId);
-          return NextResponse.json({
-            success: true,
-            transactionId: existingTx.id,
-            totalAmount: existingTx.total_amount,
-            paylukPaymentToken: existingTx.payluk_tx_ref,
-            paylukEscrowId: existingTx.payluk_escrow_id,
-            buyerPaylukId: existingBuyerPaylukId,
-          });
-        }
-        // Same buyer has a reserved DB row but missing Payluk details (e.g. previous crash)
-        existingTxToResume = existingTx;
+        // Same buyer retrying an unpaid pending checkout.
+        // Payluk payment tokens and references are single-use. Re-using an abandoned token returns
+        // "Reference already exists" (400) from Payluk's checkout session API.
+        // Cancel the abandoned transaction so a fresh reservation + Payluk escrow token is generated below.
+        console.log(`[PaymentInit] Auto-cancelling abandoned unpaid pending tx ${existingTx.id} for buyer ${buyerId} to generate fresh escrow...`);
+        await supabaseAdmin
+          .from("escrow_transactions")
+          .update({ status: EscrowStatus.CANCELLED, updated_at: new Date().toISOString() })
+          .eq("id", existingTx.id)
+          .eq("status", EscrowStatus.PENDING);
+        // Fall through — existingTxToResume remains null, fresh reservation + Payluk escrow token generated below
       } else if (existingTx.status === EscrowStatus.PENDING || existingTx.status === 'creating_escrow' || existingTx.status === 'reconciling') {
         // Different buyer — check if the PENDING reservation is stale (abandoned checkout).
         // If older than PENDING_EXPIRY_MS and still unpaid, auto-cancel it so the item is freed.
