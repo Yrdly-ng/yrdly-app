@@ -181,20 +181,22 @@ export default function CreatePostPage() {
         }
       }
 
-      const postPayload = {
+      const postPayload: Record<string, any> = {
         user_id: user.id,
         text: trimmedText,
         category: "General",
         visibility,
         image_urls: uploadedImageUrls,
-        video_url: uploadedVideoUrls[0] || null,
-        video_urls: uploadedVideoUrls,
         comment_count: 0,
         liked_by: [],
         moderation_status: modStatus,
         created_at: new Date().toISOString(),
         timestamp: new Date().toISOString(),
       };
+
+      if (uploadedVideoUrls.length > 0) {
+        postPayload.video_urls = uploadedVideoUrls;
+      }
 
       const { data: newPost, error: insertErr } = await supabase
         .from("posts")

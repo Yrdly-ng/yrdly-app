@@ -324,9 +324,11 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
   const [seekFlash, setSeekFlash] = useState<"back" | "forward" | null>(null);
   const seekFlashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const activeVideoUrl = post.video_url || ((post as any).video_urls && (post as any).video_urls[0]) || null;
+
   /* ── auto-pause video when scrolled out of view ── */
   useEffect(() => {
-    if (!videoRef.current || !post.video_url) return;
+    if (!videoRef.current || !activeVideoUrl) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -346,7 +348,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
     
     observer.observe(videoRef.current);
     return () => observer.disconnect();
-  }, [post.video_url, isVideoPaused]);
+  }, [activeVideoUrl, isVideoPaused]);
 
   useEffect(() => {
     return () => {
@@ -855,12 +857,12 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
           </div>
         )}
         {/* Video player */}
-        {post.video_url && (
+        {activeVideoUrl && (
           <div className="px-yrdly-sm pb-yrdly-sm">
             <div className="relative rounded-yrdly-md overflow-hidden bg-black">
               <video
                 ref={videoRef}
-                src={post.video_url.includes('#t=') ? post.video_url : `${post.video_url}#t=0.001`}
+                src={activeVideoUrl.includes('#t=') ? activeVideoUrl : `${activeVideoUrl}#t=0.001`}
                 playsInline
                 disablePictureInPicture
                 controlsList="nodownload noremoteplayback nopictureinpicture"
