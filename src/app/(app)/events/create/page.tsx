@@ -231,12 +231,12 @@ export default function CreateEventPage() {
 
       for (let i = 0; i < reorderedFiles.length; i++) {
         const file = reorderedFiles[i];
-        const ext = file.name.split(".").pop() || "jpg";
-        const path = `${user.id}/events/${Date.now()}_${i}.${ext}`;
+        const safeName = file.name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9._-]/g, '');
+        const path = `${user.id}/events/${Date.now()}_${i}_${safeName}`;
 
         const { error: uploadErr } = await supabase.storage
           .from("post-images")
-          .upload(path, file, { contentType: file.type || "image/jpeg", cacheControl: "604800", upsert: true });
+          .upload(path, file, { contentType: file.type || "image/jpeg", cacheControl: "604800", upsert: false });
 
         if (uploadErr) throw uploadErr;
 
@@ -249,12 +249,12 @@ export default function CreateEventPage() {
       const uploadedVideoUrls: string[] = [];
       for (let i = 0; i < videoFiles.length; i++) {
         const file = videoFiles[i];
-        const ext = file.name.split(".").pop() || "mp4";
-        const path = `${user.id}/events/${Date.now()}_${i}.${ext}`;
+        const safeName = file.name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9._-]/g, '');
+        const path = `${user.id}/events/${Date.now()}_${i}_${safeName}`;
 
         const { error: uploadErr } = await supabase.storage
           .from("post-videos")
-          .upload(path, file, { contentType: file.type || "video/mp4", cacheControl: "604800", upsert: true });
+          .upload(path, file, { contentType: file.type || "video/mp4", cacheControl: "604800", upsert: false });
 
         if (uploadErr) throw uploadErr;
 

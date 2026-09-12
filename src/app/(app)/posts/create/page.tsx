@@ -129,7 +129,7 @@ export default function CreatePostPage() {
 
         const { error: uploadErr } = await supabase.storage
           .from("post-images")
-          .upload(path, file, { contentType: file.type || "image/jpeg", cacheControl: "604800", upsert: true });
+          .upload(path, file, { contentType: file.type || "image/jpeg", cacheControl: "604800", upsert: false });
 
         if (uploadErr) throw uploadErr;
 
@@ -152,7 +152,7 @@ export default function CreatePostPage() {
 
         const { error: uploadErr } = await supabase.storage
           .from("post-videos")
-          .upload(path, file, { contentType: file.type || "video/mp4", cacheControl: "604800", upsert: true });
+          .upload(path, file, { contentType: file.type || "video/mp4", cacheControl: "604800", upsert: false });
 
         if (uploadErr) throw uploadErr;
 
