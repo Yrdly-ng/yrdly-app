@@ -202,11 +202,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, free: true, ticket_id: insertedTickets[0].id, quantity });
     }
 
-    // ── Paid ticket — initialise Paystack payment ─────────────────────────
+    // ── Paid ticket — initialise Paystack payment with Split Payment Subaccount ─────
     const txRef = `evt-${event_id.substring(0, 8)}-${Date.now()}`;
     const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
     
     const totalAmount = tier.price * quantity;
+
+    // Fetch organizer's Paystack subaccount ID for automatic Split Payment
+    let organizerSubaccount: string | undefined = undefined;
+    if (event.organizer_id) {
+      const { data: subaccountData } = await supabaseAdmin
+        .from('seller_accounts')
+        .select('paystack_subaccount_id')
+        .eq('user_id', event.organizer_id)
+        .eq('is_primary', true)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (subaccountData?.paystack_subaccount_id) {
+        organizerSubaccount = subaccountData.paystack_subaccount_id;
+      }
+    }
 
     let paymentLink: string;
     try {
@@ -217,6 +233,7 @@ export async function POST(request: NextRequest) {
         buyerName: attendee_name,
         itemTitle: `${quantity}x ${tier.name} — ${event.title}`,
         sellerName: 'Event Organizer',
+        subaccount: organizerSubaccount,
         callbackUrl: callbackUrl || `${origin}/api/events/tickets/verify?tx_ref=${txRef}`,
         metadata: {
           event_id,

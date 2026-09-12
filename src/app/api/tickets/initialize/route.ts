@@ -70,10 +70,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, free: true, ticketId });
     }
 
-    // ── Paid ticket — initialise Paystack payment ───────────────────────────
+    // ── Paid ticket — initialise Paystack payment with Split Payment Subaccount ─────
     const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
-    
 
+    // Fetch organizer's Paystack subaccount ID for automatic Split Payment
+    let organizerSubaccount: string | undefined = tier.event.payment_subaccount_id || undefined;
+    if (!organizerSubaccount && tier.event.organizer_id) {
+      const { data: subaccountData } = await supabaseAdmin
+        .from('seller_accounts')
+        .select('paystack_subaccount_id')
+        .eq('user_id', tier.event.organizer_id)
+        .eq('is_primary', true)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (subaccountData?.paystack_subaccount_id) {
+        organizerSubaccount = subaccountData.paystack_subaccount_id;
+      }
+    }
 
     let paymentLink: string;
     try {
@@ -84,6 +98,7 @@ export async function POST(request: NextRequest) {
         buyerName: attendeeName,
         itemTitle: `Ticket — ${tier.event.title}`,
         sellerName: 'Event Organizer',
+        subaccount: organizerSubaccount,
         callbackUrl: `${origin}/my-tickets?success=1`,
         metadata: {
           event_id: eventId,
@@ -94,8 +109,6 @@ export async function POST(request: NextRequest) {
           attendee_phone: attendeePhone || null
         }
       });
-      // NOTE: We don't currently pass 'subaccount' to PaystackService.initializePayment.
-      // If INSTANT payout is needed, PaystackService.initializePayment should be updated to accept a subaccount param.
     } catch (paystackError: any) {
       console.error('Paystack init error:', paystackError);
       return NextResponse.json({ error: 'Payment initialization failed' }, { status: 502 });
