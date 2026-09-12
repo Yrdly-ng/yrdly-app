@@ -5,32 +5,28 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-supabase-auth';
 import { TransactionStatusService } from '@/lib/transaction-status-service';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Separator } from '@/components/ui/separator';
 import { 
-  CheckCircle,
-  Truck,
-  Package,
-  CreditCard,
-  MessageCircle,
-  AlertTriangle,
-  Clock,
-  User,
-  Calendar,
-  Star
+  CheckCircle, 
+  Truck, 
+  Package, 
+  Clock, 
+  AlertTriangle, 
+  XCircle, 
+  MessageCircle, 
+  Star, 
+  ArrowLeft,
+  Check,
+  Download,
+  Loader2
 } from 'lucide-react';
-import { OpenDisputeDialog } from '@/components/disputes/OpenDisputeDialog';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { EscrowStatus, DeliveryOption } from '@/types/escrow';
 import Image from 'next/image';
+import { Button } from '@/components/ui/button';
+import { GlassCard } from '@/components/ui/glass-card';
+import { SupabaseChatService } from '@/lib/supabase-chat-service';
+import { MARKETPLACE_CONSTANTS } from '@/lib/constants';
+import { OpenDisputeDialog } from '@/components/disputes/OpenDisputeDialog';
 import { SubmitReviewDialog } from '@/components/reviews/SubmitReviewDialog';
 import { ReviewService } from '@/lib/review-service';
-import { AppHeader } from '@/components/AppHeader';
-import { supabase } from '@/lib/supabase';
-import { SupabaseChatService } from '@/lib/supabase-chat-service';
 
 interface TransactionDetails {
   id: string;
@@ -40,25 +36,26 @@ interface TransactionDetails {
   amount: number;
   commission: number;
   seller_amount: number;
-  status: EscrowStatus;
-  payment_method: string;
-  delivery_details: any;
+  status: string;
+  payment_method?: string;
+  delivery_details?: any;
   created_at: string;
-  paid_at?: string;
-  shipped_at?: string;
-  delivered_at?: string;
-  completed_at?: string;
+  paid_at?: string | null;
+  shipped_at?: string | null;
+  delivered_at?: string | null;
+  completed_at?: string | null;
+  dispute_reason?: string | null;
   buyer: {
     id: string;
     name: string;
     avatar_url?: string;
-    email: string;
+    email?: string;
   };
   seller: {
     id: string;
     name: string;
     avatar_url?: string;
-    email: string;
+    email?: string;
   };
   item: {
     id: string;
@@ -66,47 +63,46 @@ interface TransactionDetails {
     text?: string;
     description?: string;
     image_urls?: string[];
+    image_url?: string;
     price: number;
+    business_id?: string;
   };
 }
 
-import { GlassCard } from '@/components/ui/glass-card';
+const STATUS_ORDER = ['pending', 'paid', 'shipped', 'delivered', 'completed'];
+
+const TIMELINE_STEPS = [
+  { status: 'pending', label: 'Order created', key: 'created_at' },
+  { status: 'paid', label: 'Payment confirmed', key: 'paid_at' },
+  { status: 'shipped', label: 'Item sent / handed over', key: 'shipped_at' },
+  { status: 'completed', label: 'Receipt confirmed', key: 'completed_at' },
+];
 
 export default function TransactionDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const { user } = useAuth();
   const { toast } = useToast();
-  
-  const [transaction, setTransaction] = useState<TransactionDetails | null>(null);
+
+  const [tx, setTx] = useState<TransactionDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [userReview, setUserReview] = useState<any | null>(null);
-  const [businessId, setBusinessId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [retryCount, setRetryCount] = useState(0);
 
   const transactionId = params.transactionId as string;
 
-  const fetchTransactionDetails = useCallback(async () => {
+  const fetchTx = useCallback(async () => {
     try {
-      setError(null);
       const data = await TransactionStatusService.getTransactionDetails(transactionId);
-      setTransaction(data);
+      setTx(data);
 
-      // Check if item is linked to a business
-      if (data.item?.business_id && user) {
-        setBusinessId(data.item.business_id);
-        
-        // Fetch user's review for this transaction (if buyer and completed)
-        if (user.id === data.buyer_id && data.status === EscrowStatus.COMPLETED) {
-          const review = await ReviewService.getUserReviewForTransaction(user.id, transactionId);
-          setUserReview(review);
-        }
+      if (user && user.id === data.buyer_id && data.status === 'completed') {
+        const review = await ReviewService.getUserReviewForTransaction(user.id, transactionId);
+        setUserReview(review);
       }
 
-      // Auto-verify if buyer lands on page while status is still PENDING
-      if (user && user.id === data.buyer_id && (data.status === EscrowStatus.PENDING || (data.status as string) === 'creating_escrow')) {
+      // Auto-verify payment if landed on page while status is still PENDING
+      if (user && user.id === data.buyer_id && (data.status === 'pending' || data.status === 'creating_escrow')) {
         try {
           const { supabase } = await import('@/lib/supabase');
           const { data: { session } } = await supabase.auth.getSession();
@@ -121,19 +117,17 @@ export default function TransactionDetailsPage() {
           const verifyResult = await verifyRes.json();
           if (verifyResult?.success) {
             const updatedData = await TransactionStatusService.getTransactionDetails(transactionId);
-            setTransaction(updatedData);
+            setTx(updatedData);
           }
         } catch (verifyErr) {
           console.warn('[TransactionDetailsPage] Auto-verify check skipped:', verifyErr);
         }
       }
     } catch (error) {
-      console.error('[v0] Error fetching transaction details:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to load transaction details.';
-      setError(errorMessage);
+      console.error('Error fetching transaction details:', error);
       toast({
         title: "Error",
-        description: errorMessage,
+        description: "Failed to load transaction details.",
         variant: "destructive",
       });
     } finally {
@@ -146,66 +140,23 @@ export default function TransactionDetailsPage() {
       router.push('/signin');
       return;
     }
+    fetchTx();
+  }, [user, fetchTx, router]);
 
-    fetchTransactionDetails();
-  }, [user, transactionId, router, fetchTransactionDetails]);
-
-  const handleStatusUpdate = async (action: 'shipped' | 'delivered' | 'completed') => {
-    if (!user || !transaction) return;
-
-    setActionLoading(true);
-    try {
-      switch (action) {
-        case 'shipped':
-          await TransactionStatusService.confirmShipped(transactionId, user.id);
-          toast({
-            title: "Item Marked as Shipped",
-            description: "The buyer has been notified.",
-          });
-          break;
-        case 'delivered':
-          await TransactionStatusService.confirmDelivered(transactionId, user.id);
-          toast({
-            title: "Delivery Confirmed",
-            description: "The seller will receive payment shortly.",
-          });
-          break;
-        case 'completed':
-          await TransactionStatusService.completeTransaction(transactionId);
-          toast({
-            title: "Transaction Completed",
-            description: "Funds have been released to the seller.",
-          });
-          break;
-      }
-      
-      // Refresh transaction details
-      await fetchTransactionDetails();
-    } catch (error) {
-      console.error(`Error updating ${action}:`, error);
-      toast({
-        title: "Error",
-        description: `Failed to update ${action} status.`,
-        variant: "destructive",
-      });
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleMessageUser = async () => {
-    if (!transaction || !user) return;
-    
+  const handleMessageCounterparty = async () => {
+    if (!tx || !user) return;
     try {
       setActionLoading(true);
-      const itemTitle = transaction.item?.title || transaction.item?.text || transaction.item?.description || 'Item Inquiry';
-      const itemImage = transaction.item?.image_urls?.[0] || '';
-      const itemPrice = transaction.item?.price || transaction.amount;
+      const isBuyer = user.id === tx.buyer_id;
+      const counterpartyId = isBuyer ? tx.seller_id : tx.buyer_id;
+      const itemTitle = tx.item?.title || tx.item?.text || tx.item?.description || 'Item Inquiry';
+      const itemImage = tx.item?.image_urls?.[0] || tx.item?.image_url || '';
+      const itemPrice = tx.item?.price || tx.amount;
 
       const chatId = await SupabaseChatService.getOrCreateChat(
-        transaction.item_id,
-        transaction.buyer_id,
-        transaction.seller_id,
+        tx.item_id || tx.item?.id,
+        tx.buyer_id,
+        tx.seller_id,
         itemTitle,
         itemImage,
         itemPrice
@@ -216,7 +167,7 @@ export default function TransactionDetailsPage() {
       console.error('Error opening chat:', error);
       toast({
         title: 'Error',
-        description: 'Failed to open chat. Please try again.',
+        description: 'Failed to open chat.',
         variant: 'destructive',
       });
     } finally {
@@ -224,281 +175,233 @@ export default function TransactionDetailsPage() {
     }
   };
 
-  const getStatusBadge = (status: EscrowStatus) => {
-    const statusConfig = {
-      [EscrowStatus.PENDING]: { color: 'bg-yellow-500', text: 'Pending Payment' },
-      [EscrowStatus.PAID]: { color: 'bg-blue-500', text: 'Payment Received' },
-      [EscrowStatus.SHIPPED]: { color: 'bg-purple-500', text: 'Shipped' },
-      [EscrowStatus.DELIVERED]: { color: 'bg-green-500', text: 'Delivered' },
-      [EscrowStatus.COMPLETED]: { color: 'bg-green-600', text: 'Completed' },
-      [EscrowStatus.DISPUTED]: { color: 'bg-red-500', text: 'Disputed' },
-      [EscrowStatus.CANCELLED]: { color: 'bg-gray-500', text: 'Cancelled' },
+  const handleMarkSent = async () => {
+    if (!tx || !user) return;
+    try {
+      setActionLoading(true);
+      await TransactionStatusService.confirmShipped(tx.id, user.id);
+      toast({ title: 'Success', description: 'Transaction marked as sent.' });
+      await fetchTx();
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Failed to mark as sent.', variant: 'destructive' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleConfirmReceipt = async () => {
+    if (!tx || !user) return;
+    try {
+      setActionLoading(true);
+      await TransactionStatusService.confirmDelivered(tx.id, user.id);
+      await TransactionStatusService.completeTransaction(tx.id);
+      toast({ title: 'Success', description: 'Receipt confirmed! Funds released to seller.' });
+      await fetchTx();
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Failed to confirm receipt.', variant: 'destructive' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleClaimFunds = async () => {
+    if (!tx || !user) return;
+    try {
+      setActionLoading(true);
+      await TransactionStatusService.completeTransaction(tx.id);
+      toast({ title: 'Success', description: 'Funds claimed successfully!' });
+      await fetchTx();
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Failed to claim funds.', variant: 'destructive' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const getStatusMeta = (statusStr: string) => {
+    const status = statusStr?.toLowerCase() || 'pending';
+    const meta: Record<string, { label: string; color: string; icon: any }> = {
+      pending: { label: 'Awaiting Payment', color: '#FFB648', icon: Clock },
+      paid: { label: 'Paid — Awaiting Handover', color: '#00D26A', icon: Package },
+      shipped: { label: 'Item Sent / Handed Over', color: '#64B5F6', icon: Truck },
+      delivered: { label: 'Delivered', color: '#00D26A', icon: CheckCircle },
+      completed: { label: 'Completed', color: '#00D26A', icon: CheckCircle },
+      disputed: { label: 'Disputed', color: '#EF4444', icon: AlertTriangle },
+      cancelled: { label: 'Cancelled', color: '#9CA3AF', icon: XCircle },
     };
-
-    const config = statusConfig[status] || statusConfig[EscrowStatus.PENDING];
-    
-    return (
-      <Badge className={`${config.color} text-foreground font-yrdly-body`}>
-        {config.text}
-      </Badge>
-    );
+    return meta[status] || meta.pending;
   };
 
-  const getActionButton = () => {
-    if (!user || !transaction) return null;
+  const formatPrice = (amount: number) => `₦${amount.toLocaleString()}`;
 
-    const isBuyer  = user.id === transaction.buyer_id;
-    const isSeller = user.id === transaction.seller_id;
-
-    switch (transaction.status) {
-      case EscrowStatus.PAID:
-        if (isSeller) {
-          return (
-            <Button
-              onClick={() => router.push(`/transactions/${transactionId}/mark-sent`)}
-              className="w-full font-yrdly-body"
-            >
-              <Truck className="mr-2 h-4 w-4" />
-              Mark as Sent
-            </Button>
-          );
-        }
-        break;
-
-      case EscrowStatus.SHIPPED:
-        if (isBuyer) {
-          return (
-            <Button
-              onClick={() => router.push(`/transactions/${transactionId}/confirm-receipt`)}
-              className="w-full font-yrdly-body"
-            >
-              <Package className="mr-2 h-4 w-4" />
-              Confirm Receipt
-            </Button>
-          );
-        }
-        break;
-
-      case EscrowStatus.DELIVERED:
-        if (isBuyer) {
-          return (
-            <Button
-              onClick={() => router.push(`/transactions/${transactionId}/confirm-receipt`)}
-              className="w-full font-yrdly-body"
-            >
-              <CheckCircle className="mr-2 h-4 w-4" />
-              Confirm &amp; Release Funds
-            </Button>
-          );
-        }
-        break;
+  const formatTs = (isoStr?: string | null) => {
+    if (!isoStr) return null;
+    try {
+      const d = new Date(isoStr);
+      if (isNaN(d.getTime())) return null;
+      return d.toLocaleDateString('en-GB', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return null;
     }
-
-    return null;
   };
 
-  const getDeliveryMethodText = (deliveryDetails: any) => {
-    if (deliveryDetails.option === DeliveryOption.FACE_TO_FACE) {
-      return 'Face-to-Face Meetup';
-    } else if (deliveryDetails.option === DeliveryOption.SELLER_DELIVERY) {
-      return 'Seller Delivery';
-    }
-    return 'Unknown';
-  };
-
-  if (loading) {
+  if (loading || !tx) {
     return (
-      <div className="min-h-[100dvh] bg-[var(--yrdly-dark)] text-foreground font-yrdly-body flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-[var(--yrdly-label)] font-yrdly-body">Loading transaction details...</p>
-        </div>
+      <div className="min-h-[100dvh] bg-background text-foreground flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
 
-  if (!transaction) {
-    return (
-      <div className="min-h-[100dvh] bg-[var(--yrdly-dark)] text-foreground font-yrdly-body flex items-center justify-center p-4">
-        <GlassCard className="w-full max-w-md p-6 text-center space-y-4">
-          <AlertTriangle className="h-12 w-12 text-orange-500 mx-auto" />
-          <div>
-            <h3 className="text-lg font-yrdly-display font-semibold mb-2">Transaction Not Found</h3>
-            <p className="text-sm font-yrdly-body text-[var(--yrdly-label)] mb-4">
-              {error || "The transaction you're looking for doesn't exist or you don't have access to it."}
-            </p>
-          </div>
-          
-          {error && error.includes('logged in') && (
-            <Alert className="bg-blue-500/10 border-blue-500/30 text-blue-300 font-yrdly-body">
-              <AlertDescription className="text-sm">
-                Please sign in to view your transaction details.
-              </AlertDescription>
-            </Alert>
-          )}
-          
-          {error && error.includes('access') && (
-            <Alert className="bg-yellow-500/10 border-yellow-500/30 text-yellow-300 font-yrdly-body">
-              <AlertDescription className="text-sm">
-                This transaction may have been cancelled or deleted. Contact support if you believe this is an error.
-              </AlertDescription>
-            </Alert>
-          )}
-          
-          <div className="flex flex-col gap-2 font-yrdly-body">
-            {retryCount < 3 && (
-              <Button 
-                onClick={() => {
-                  setRetryCount(prev => prev + 1);
-                  setLoading(true);
-                  fetchTransactionDetails();
-                }}
-                variant="outline"
-                className="border-[var(--yrdly-glass-border)] text-foreground"
-              >
-                Try Again
-              </Button>
-            )}
-            <Button onClick={() => router.push('/marketplace')} variant="default">
-              Back to Marketplace
-            </Button>
-          </div>
-        </GlassCard>
-      </div>
-    );
-  }
+  const isBuyer = user?.id === tx.buyer_id;
+  const isSeller = user?.id === tx.seller_id;
+  const counterparty = isBuyer ? tx.seller : tx.buyer;
+  const businessId = tx.item?.business_id;
+  const statusStr = tx.status?.toLowerCase() || 'pending';
+  const meta = getStatusMeta(statusStr);
 
-  const isBuyer = user?.id === transaction.buyer_id;
-  const otherUser = isBuyer ? transaction.seller : transaction.buyer;
+  const imagesArr = Array.isArray(tx.item?.image_urls)
+    ? tx.item.image_urls
+    : tx.item?.image_url
+    ? [tx.item.image_url]
+    : [];
+  const thumb = imagesArr[0] || '';
+
+  const currentStepIndex = STATUS_ORDER.indexOf(statusStr);
+
+  const canMarkSent = isSeller && statusStr === 'paid';
+  const canConfirmReceipt = isBuyer && (statusStr === 'shipped' || statusStr === 'delivered');
+
+  const shippedTime = tx.shipped_at ? new Date(tx.shipped_at).getTime() : 0;
+  const hoursSinceShipped = (Date.now() - shippedTime) / (1000 * 60 * 60);
+  const canClaimFunds =
+    isSeller &&
+    (statusStr === 'shipped' || statusStr === 'delivered') &&
+    hoursSinceShipped >= MARKETPLACE_CONSTANTS.AUTO_RELEASE_HOURS;
+
+  const canDispute = (isBuyer || isSeller) && ['paid', 'shipped', 'delivered'].includes(statusStr);
+  const canReview = isBuyer && statusStr === 'completed';
+
+  const StatusIconComponent = meta.icon;
 
   return (
-    <div className="min-h-[100dvh] bg-[var(--yrdly-dark)] text-foreground font-yrdly-body">
-      <AppHeader 
-        title="Transaction Details" 
-        onBack={() => {
-          if (window.history.length <= 1) {
-            router.push('/profile/purchases');
-          } else {
-            router.back();
-          }
-        }} 
-      />
-      <div className="p-4">
-        <div className="max-w-4xl mx-auto space-y-6">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[var(--yrdly-label)] font-yrdly-body">Transaction ID: {transaction.id}</p>
+    <div className="min-h-[100dvh] bg-background text-foreground font-sans">
+      {/* Header */}
+      <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] md:top-[calc(84px+env(safe-area-inset-top))] z-40 flex items-center gap-3 px-4 py-4 bg-card border-b border-border shadow-sm">
+        <button
+          onClick={() => router.back()}
+          className="p-2 -ml-2 rounded-xl bg-muted/50 hover:bg-muted transition-colors border border-border"
+          aria-label="Back"
+        >
+          <ArrowLeft className="w-5 h-5 text-foreground" />
+        </button>
+        <h1 className="font-sans font-bold text-xl text-foreground">Transaction</h1>
+      </div>
+
+      <div className="max-w-xl mx-auto px-4 py-4 space-y-4">
+        {/* Status Banner */}
+        <div
+          className="p-4 rounded-2xl border flex items-center gap-3.5"
+          style={{
+            borderColor: `${meta.color}50`,
+            backgroundColor: `${meta.color}10`,
+          }}
+        >
+          <div
+            className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
+            style={{ backgroundColor: `${meta.color}20` }}
+          >
+            <StatusIconComponent className="w-5 h-5" style={{ color: meta.color }} />
+          </div>
+          <div>
+            <h2 className="font-bold text-base" style={{ color: meta.color }}>
+              {meta.label}
+            </h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Transaction #{tx.id.slice(0, 8).toUpperCase()}
+            </p>
+          </div>
+        </div>
+
+        {/* Item Card */}
+        <div className="p-4 rounded-2xl bg-card border border-border space-y-3">
+          <div className="flex items-center gap-3.5">
+            <div className="w-16 h-16 rounded-xl bg-muted flex-shrink-0 overflow-hidden relative border border-border/40">
+              {thumb ? (
+                <Image src={thumb} alt={tx.item?.title || 'Item'} fill className="object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                  <Package className="w-6 h-6" />
+                </div>
+              )}
             </div>
-            {getStatusBadge(transaction.status)}
+            <div className="flex-1 min-w-0">
+              <h3 className="font-bold text-base text-foreground truncate">
+                {tx.item?.title || tx.item?.text || 'Item'}
+              </h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                ID: {tx.id.slice(0, 8)}…
+              </p>
+            </div>
           </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Item Details */}
-          <GlassCard className="p-6 space-y-4">
-            <h3 className="flex items-center gap-2 font-yrdly-display font-bold text-lg text-foreground">
-              <Package className="h-5 w-5 text-primary" />
-              Item Details
-            </h3>
-            <div className="flex gap-4">
-              <div className="w-20 h-20 relative rounded-lg overflow-hidden border border-[var(--yrdly-glass-border)]">
-                <Image
-                  src={transaction.item.image_urls?.[0] || "/placeholder.svg"}
-                  alt={transaction.item.title || transaction.item.text || "Item"} fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  className="object-cover"
-                />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-yrdly-display font-semibold text-foreground">
-                  {transaction.item.title || transaction.item.text || "Untitled Item"}
-                </h3>
-                <p className="text-sm font-yrdly-body text-[var(--yrdly-label)]">
-                  {transaction.item.description || transaction.item.text}
-                </p>
-                <p className="text-lg font-yrdly-display font-bold text-primary mt-2">
-                  ₦{transaction.amount.toLocaleString()}
-                </p>
-              </div>
-            </div>
-          </GlassCard>
+          <div className="h-px bg-border" />
 
-          {/* Transaction Summary */}
-          <GlassCard className="p-6 space-y-3">
-            <h3 className="flex items-center gap-2 font-yrdly-display font-bold text-lg text-foreground">
-              <CreditCard className="h-5 w-5 text-primary" />
-              Payment Summary
-            </h3>
-            <div className="flex justify-between font-yrdly-body text-sm">
-              <span className="text-[var(--yrdly-label)]">Item Price:</span>
-              <span className="text-foreground">₦{transaction.amount.toLocaleString()}</span>
+          <div className="space-y-1.5 text-sm">
+            <div className="flex justify-between items-center text-muted-foreground">
+              <span>Item price</span>
+              <span className="font-bold text-foreground">{formatPrice(tx.amount)}</span>
             </div>
-            <div className="flex justify-between font-yrdly-body text-sm">
-              <span className="text-[var(--yrdly-label)]">Platform Fee (3%):</span>
-              <span className="text-foreground">₦{transaction.commission.toLocaleString()}</span>
-            </div>
-            <Separator className="bg-[var(--yrdly-glass-border)]" />
-            <div className="flex justify-between font-yrdly-body text-sm">
-              <span className="text-[var(--yrdly-label)]">Seller Receives:</span>
-              <span className="font-semibold text-foreground">₦{transaction.seller_amount.toLocaleString()}</span>
-            </div>
-            <div className="flex justify-between font-yrdly-display text-lg font-bold">
-              <span className="text-foreground">You Paid:</span>
-              <span className="text-primary">₦{transaction.amount.toLocaleString()}</span>
-            </div>
-          </GlassCard>
-
-          {/* User Information */}
-          <GlassCard className="p-6 space-y-4">
-            <h3 className="flex items-center gap-2 font-yrdly-display font-bold text-lg text-foreground">
-              <User className="h-5 w-5 text-primary" />
-              {isBuyer ? 'Seller' : 'Buyer'} Information
-            </h3>
-            <div className="flex items-center gap-3">
-              <Avatar className="h-12 w-12">
-                <AvatarImage src={otherUser.avatar_url || "/placeholder.svg"} />
-                <AvatarFallback className="font-yrdly-display">
-                  {otherUser.name?.slice(0, 2).toUpperCase() || "U"}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <h3 className="font-yrdly-display font-semibold text-foreground">{otherUser.name}</h3>
-                <p className="text-sm font-yrdly-body text-[var(--yrdly-label)]">{otherUser.email}</p>
-              </div>
-            </div>
-            <Button 
-              onClick={handleMessageUser}
-              disabled={actionLoading}
-              variant="outline" 
-              className="w-full font-yrdly-body border-[var(--yrdly-glass-border)] text-foreground"
-            >
-              <MessageCircle className="mr-2 h-4 w-4" />
-              Message {isBuyer ? 'Seller' : 'Buyer'}
-            </Button>
-          </GlassCard>
-
-          {/* Delivery Information */}
-          <GlassCard className="p-6 space-y-3">
-            <h3 className="flex items-center gap-2 font-yrdly-display font-bold text-lg text-foreground">
-              <Truck className="h-5 w-5 text-primary" />
-              Delivery Information
-            </h3>
-            <div className="flex justify-between font-yrdly-body text-sm">
-              <span className="text-[var(--yrdly-label)]">Method:</span>
-              <span className="text-foreground">{getDeliveryMethodText(transaction.delivery_details)}</span>
-            </div>
-            {transaction.delivery_details.notes && (
-              <div className="font-yrdly-body">
-                <span className="text-[var(--yrdly-label)]">Notes:</span>
-                <p className="text-sm mt-1 text-foreground">{transaction.delivery_details.notes}</p>
+            {isSeller && (
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">You&apos;ll receive</span>
+                <span className="font-bold text-[#00D26A]">
+                  {formatPrice(tx.seller_amount || tx.amount - tx.commission)}
+                </span>
               </div>
             )}
-            <Alert className="bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] text-foreground font-yrdly-body">
-              <MessageCircle className="h-4 w-4 text-primary" />
-              <AlertDescription>
-                Discuss delivery details with the {isBuyer ? 'seller' : 'buyer'} via chat.
-              </AlertDescription>
-            </Alert>
-          </GlassCard>
+          </div>
+        </div>
+
+        {/* Counterparty Card */}
+        <div className="p-4 rounded-2xl bg-card border border-border space-y-3">
+          <h4 className="font-bold text-xs uppercase text-muted-foreground tracking-wider">
+            {isBuyer ? 'Seller' : 'Buyer'}
+          </h4>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center font-bold text-primary text-sm">
+                {counterparty?.name?.[0]?.toUpperCase() || 'U'}
+              </div>
+              <div>
+                <p className="font-bold text-sm text-foreground">
+                  {counterparty?.name || 'User'}
+                </p>
+                {counterparty?.email && (
+                  <p className="text-xs text-muted-foreground">{counterparty.email}</p>
+                )}
+              </div>
+            </div>
+            <Button
+              onClick={handleMessageCounterparty}
+              disabled={actionLoading}
+              size="sm"
+              className="h-9 px-3.5 rounded-xl font-bold bg-primary text-primary-foreground hover:bg-primary/90 text-xs flex items-center gap-1.5"
+            >
+              {actionLoading ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <MessageCircle className="w-3.5 h-3.5" />
+              )}
+              Message
+            </Button>
+          </div>
         </div>
 
         {/* Transaction Timeline */}
@@ -513,54 +416,54 @@ export default function TransactionDetailsPage() {
               <div>
                 <p className="font-medium text-foreground">Transaction Created</p>
                 <p className="text-sm text-[var(--yrdly-label)]">
-                  {new Date(transaction.created_at).toLocaleString()}
+                  {new Date(tx.created_at).toLocaleString()}
                 </p>
               </div>
             </div>
             
-            {transaction.paid_at && (
+            {tx.paid_at && (
               <div className="flex items-center gap-3">
                 <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
                 <div>
                   <p className="font-medium text-foreground">Payment Confirmed</p>
                   <p className="text-sm text-[var(--yrdly-label)]">
-                    {new Date(transaction.paid_at).toLocaleString()}
+                    {new Date(tx.paid_at).toLocaleString()}
                   </p>
                 </div>
               </div>
             )}
             
-            {transaction.shipped_at && (
+            {tx.shipped_at && (
               <div className="flex items-center gap-3">
                 <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
                 <div>
                   <p className="font-medium text-foreground">Item Shipped</p>
                   <p className="text-sm text-[var(--yrdly-label)]">
-                    {new Date(transaction.shipped_at).toLocaleString()}
+                    {new Date(tx.shipped_at).toLocaleString()}
                   </p>
                 </div>
               </div>
             )}
             
-            {transaction.delivered_at && (
+            {tx.delivered_at && (
               <div className="flex items-center gap-3">
                 <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                 <div>
                   <p className="font-medium text-foreground">Delivery Confirmed</p>
                   <p className="text-sm text-[var(--yrdly-label)]">
-                    {new Date(transaction.delivered_at).toLocaleString()}
+                    {new Date(tx.delivered_at).toLocaleString()}
                   </p>
                 </div>
               </div>
             )}
             
-            {transaction.completed_at && (
+            {tx.completed_at && (
               <div className="flex items-center gap-3">
                 <div className="w-3 h-3 bg-green-600 rounded-full"></div>
                 <div>
                   <p className="font-medium text-foreground">Transaction Completed</p>
                   <p className="text-sm text-[var(--yrdly-label)]">
-                    {new Date(transaction.completed_at).toLocaleString()}
+                    {new Date(tx.completed_at).toLocaleString()}
                   </p>
                 </div>
               </div>
@@ -569,29 +472,54 @@ export default function TransactionDetailsPage() {
         </GlassCard>
 
         {/* Action Buttons */}
-        <div className="flex flex-col gap-4 font-yrdly-body">
-          {getActionButton() && (
-            <div className="flex justify-center">
-              {getActionButton()}
-            </div>
-          )}
-          
-          {/* Dispute Button */}
-          {transaction.status !== 'completed' && transaction.status !== 'cancelled' && transaction.status !== 'disputed' && (
-            <div className="flex justify-center">
-              <Button
-                variant="outline"
-                className="border-red-500/40 text-red-400 hover:bg-red-500/10 font-yrdly-body"
-                onClick={() => router.push(`/transactions/${transactionId}/dispute`)}
-              >
-                <AlertTriangle className="mr-2 h-4 w-4" />
-                Open Dispute
-              </Button>
-            </div>
+        <div className="flex flex-col gap-3 font-sans">
+          {canMarkSent && (
+            <Button
+              onClick={handleMarkSent}
+              disabled={actionLoading}
+              className="w-full h-12 rounded-xl font-bold bg-primary text-primary-foreground hover:bg-primary/90 text-sm flex items-center justify-center gap-2"
+            >
+              {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Package className="w-4 h-4" />}
+              I&apos;ve Sent the Item
+            </Button>
           )}
 
+          {canConfirmReceipt && (
+            <Button
+              onClick={handleConfirmReceipt}
+              disabled={actionLoading}
+              className="w-full h-12 rounded-xl font-bold bg-[#00D26A] text-white hover:bg-[#00D26A]/90 text-sm flex items-center justify-center gap-2"
+            >
+              {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+              Confirm Receipt & Release Funds
+            </Button>
+          )}
+
+          {canClaimFunds && (
+            <Button
+              onClick={handleClaimFunds}
+              disabled={actionLoading}
+              className="w-full h-12 rounded-xl font-bold bg-[#00D26A] text-white hover:bg-[#00D26A]/90 text-sm flex items-center justify-center gap-2"
+            >
+              {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+              Claim Funds
+            </Button>
+          )}
+
+          {canDispute && (
+            <Button
+              onClick={() => router.push(`/transactions/${transactionId}/dispute`)}
+              variant="outline"
+              className="w-full h-11 rounded-xl font-bold border-red-500/40 text-red-500 hover:bg-red-500/10 text-xs flex items-center justify-center gap-2"
+            >
+              <AlertTriangle className="w-4 h-4" />
+              Report an Issue / Dispute
+            </Button>
+          )}
+        </div>
+          
           {/* Review Section - Only for completed transactions linked to a business */}
-          {transaction.status === EscrowStatus.COMPLETED && businessId && isBuyer && (
+          {statusStr === 'completed' && businessId && isBuyer && (
             <div className="mt-6">
               <GlassCard className="p-6 space-y-4">
                 <div>
@@ -633,7 +561,7 @@ export default function TransactionDetailsPage() {
                       className="w-full font-yrdly-body"
                       onClick={() =>
                         router.push(
-                          `/transactions/${transactionId}/review?seller=${encodeURIComponent(transaction.seller?.name ?? '')}`
+                          `/transactions/${transactionId}/review?seller=${encodeURIComponent(counterparty?.name ?? '')}`
                         )
                       }
                     >
@@ -647,8 +575,6 @@ export default function TransactionDetailsPage() {
           )}
         </div>
       </div>
-    </div>
-  </div>
   );
 }
 

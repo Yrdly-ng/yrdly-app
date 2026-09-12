@@ -3,44 +3,49 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/hooks/use-supabase-auth';
 import { EscrowService } from '@/lib/escrow-service';
-import { EscrowTransaction, EscrowStatus } from '@/types/escrow';
-import { EscrowStatusDisplay } from '@/components/escrow/EscrowStatusDisplay';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Package, 
-  CreditCard, 
-  Truck, 
-  CheckCircle, 
-  Clock,
-  AlertTriangle,
-  XCircle,
-  Loader2
-} from 'lucide-react';
-import { PAGINATION_CONSTANTS } from '@/lib/constants';
+import { Package, ArrowLeft } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 
-import { GlassCard } from '@/components/ui/glass-card';
+type Tab = 'purchases' | 'sales';
+type Filter = 'all' | 'active' | 'completed' | 'disputed' | 'cancelled';
+
+const STATUS_MAP: Record<string, { label: string; color: string; icon: string }> = {
+  pending: { label: 'IN ESCROW', color: '#FFB648', icon: '🔒' },
+  paid: { label: 'IN ESCROW', color: '#FFB648', icon: '🔒' },
+  shipped: { label: 'SHIPPED', color: '#64B5F6', icon: '📦' },
+  delivered: { label: 'DELIVERED', color: '#00D26A', icon: '✅' },
+  completed: { label: 'COMPLETED', color: '#00D26A', icon: '✅' },
+  disputed: { label: 'DISPUTED', color: '#f59e0b', icon: '⚠️' },
+  cancelled: { label: 'CANCELLED', color: '#ef4444', icon: '✖️' },
+  failed: { label: 'FAILED', color: '#ef4444', icon: '✖️' },
+};
+
+const FILTERS: { key: Filter; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'active', label: 'Active' },
+  { key: 'completed', label: 'Completed' },
+  { key: 'disputed', label: 'Disputed' },
+  { key: 'cancelled', label: 'Cancelled' },
+];
 
 export default function TransactionsPage() {
+  const router = useRouter();
   const { user } = useAuth();
-  const [transactions, setTransactions] = useState<EscrowTransaction[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [activeTab, setActiveTab] = useState('all');
+
+  const [tab, setTab] = useState<Tab>('purchases');
+  const [filter, setFilter] = useState<Filter>('all');
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const loadTransactions = useCallback(async () => {
     if (!user) return;
-    
-    setIsLoading(true);
+    setLoading(true);
     try {
       const { supabase } = await import('@/lib/supabase');
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       const response = await fetch('/api/transactions', {
         headers: {
           'Content-Type': 'application/json',
@@ -52,20 +57,19 @@ export default function TransactionsPage() {
         const data = await response.json();
         setTransactions(data);
       } else {
-        // Fallback to direct client query if API route returns error
-        const [buyerTransactions, sellerTransactions] = await Promise.all([
+        const [buyerTx, sellerTx] = await Promise.all([
           EscrowService.getUserTransactions(user.id),
           EscrowService.getSellerTransactions(user.id)
         ]);
-        const allTransactions = [...buyerTransactions, ...sellerTransactions]
-          .sort((a, b) => new Date(b.createdAt || b.updatedAt).getTime() - new Date(a.createdAt || a.updatedAt).getTime());
-        setTransactions(allTransactions);
+        const allTx = [...buyerTx, ...sellerTx].sort((a: any, b: any) =>
+          new Date(b.created_at || b.createdAt).getTime() - new Date(a.created_at || a.createdAt).getTime()
+        );
+        setTransactions(allTx);
       }
-      setHasMore(false);
     } catch (error) {
       console.error('Failed to load transactions:', error);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   }, [user]);
 
@@ -75,245 +79,212 @@ export default function TransactionsPage() {
     }
   }, [user, loadTransactions]);
 
-  const getFilteredTransactions = () => {
-    if (activeTab === 'all') return transactions;
-    return transactions.filter(t => t.status === activeTab);
-  };
+  const roleFilteredData = transactions.filter((tx) => {
+    const buyerId = tx.buyerId || tx.buyer_id;
+    const sellerId = tx.sellerId || tx.seller_id;
+    if (tab === 'purchases') return buyerId === user?.id;
+    return sellerId === user?.id;
+  });
 
-  const getStatusIcon = (status: EscrowStatus) => {
-    switch (status) {
-      case EscrowStatus.PENDING:
-        return <Clock className="w-5 h-5 text-yellow-500" />;
-      case EscrowStatus.PAID:
-        return <CreditCard className="w-5 h-5 text-blue-500" />;
-      case EscrowStatus.SHIPPED:
-        return <Truck className="w-5 h-5 text-purple-500" />;
-      case EscrowStatus.DELIVERED:
-        return <Package className="w-5 h-5 text-indigo-500" />;
-      case EscrowStatus.COMPLETED:
-        return <CheckCircle className="w-5 h-5 text-green-500" />;
-      case EscrowStatus.DISPUTED:
-        return <AlertTriangle className="w-5 h-5 text-red-500" />;
-      case EscrowStatus.CANCELLED:
-        return <XCircle className="w-5 h-5 text-[var(--yrdly-label)]" />;
-      default:
-        return <Clock className="w-5 h-5 text-[var(--yrdly-label)]" />;
-    }
-  };
-
-  const formatDate = (date: any) => {
-    if (!date) return 'N/A';
-    try {
-      const d = new Date(date);
-      if (isNaN(d.getTime())) return 'N/A';
-      return new Intl.DateTimeFormat('en-NG', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      }).format(d);
-    } catch {
-      return 'N/A';
-    }
-  };
+  const filteredData = roleFilteredData.filter((tx) => {
+    const status = tx.status?.toLowerCase();
+    if (filter === 'all') return true;
+    if (filter === 'active') return status === 'pending' || status === 'paid' || status === 'shipped';
+    if (filter === 'completed') return status === 'completed' || status === 'delivered';
+    if (filter === 'disputed') return status === 'disputed';
+    if (filter === 'cancelled') return status === 'cancelled' || status === 'failed';
+    return true;
+  });
 
   const formatPrice = (price: any) => {
     const num = typeof price === 'number' ? price : (parseFloat(price) || 0);
-    return new Intl.NumberFormat('en-NG', {
-      style: 'currency',
-      currency: 'NGN',
-      minimumFractionDigits: 0
-    }).format(num);
+    return `₦${num.toLocaleString()}`;
   };
 
-  const getRole = (transaction: any) => {
-    const buyerId = transaction.buyerId || transaction.buyer_id;
-    return user?.id === buyerId ? 'Buyer' : 'Seller';
+  const formatDateStr = (dateVal: any) => {
+    if (!dateVal) return '';
+    try {
+      const d = new Date(dateVal);
+      if (isNaN(d.getTime())) return '';
+      return d.toLocaleDateString('en-GB', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      });
+    } catch {
+      return '';
+    }
   };
 
   if (!user) {
     return (
-      <div className="min-h-[100dvh] bg-[var(--yrdly-dark)] text-foreground font-yrdly-body container mx-auto px-4 py-8">
-        <div className="text-center">
-          <h1 className="text-2xl font-yrdly-display font-bold text-foreground mb-4">Transactions</h1>
-          <p className="font-yrdly-body text-[var(--yrdly-label)]">Please log in to view your transactions.</p>
+      <div className="min-h-[100dvh] bg-background text-foreground font-sans container mx-auto px-4 py-8">
+        <div className="text-center py-12">
+          <h1 className="text-2xl font-bold mb-2">Transactions</h1>
+          <p className="text-muted-foreground">Please log in to view your transactions.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-[100dvh] bg-[var(--yrdly-dark)] text-foreground font-yrdly-body container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-yrdly-display font-bold text-foreground mb-2">My Transactions</h1>
-        <p className="font-yrdly-body text-[var(--yrdly-label)]">Track your marketplace purchases and sales</p>
+    <div className="min-h-[100dvh] bg-background text-foreground font-sans">
+      {/* Mobile Sticky Header */}
+      <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] md:top-[calc(84px+env(safe-area-inset-top))] z-40 flex items-center gap-3 px-4 py-4 bg-card border-b border-border shadow-sm">
+        <button
+          onClick={() => router.back()}
+          className="p-2 -ml-2 rounded-xl bg-muted/50 hover:bg-muted transition-colors border border-border"
+          aria-label="Back"
+        >
+          <ArrowLeft className="w-5 h-5 text-foreground" />
+        </button>
+        <div>
+          <h1 className="font-sans font-bold text-xl text-foreground">Transactions</h1>
+        </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-7 bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] text-[var(--yrdly-label)] font-yrdly-body">
-          <TabsTrigger value="all" className="data-[state=active]:bg-primary/20 data-[state=active]:text-foreground">All</TabsTrigger>
-          <TabsTrigger value={EscrowStatus.PENDING} className="data-[state=active]:bg-primary/20 data-[state=active]:text-foreground">Pending</TabsTrigger>
-          <TabsTrigger value={EscrowStatus.PAID} className="data-[state=active]:bg-primary/20 data-[state=active]:text-foreground">Paid</TabsTrigger>
-          <TabsTrigger value={EscrowStatus.SHIPPED} className="data-[state=active]:bg-primary/20 data-[state=active]:text-foreground">Shipped</TabsTrigger>
-          <TabsTrigger value={EscrowStatus.DELIVERED} className="data-[state=active]:bg-primary/20 data-[state=active]:text-foreground">Delivered</TabsTrigger>
-          <TabsTrigger value={EscrowStatus.COMPLETED} className="data-[state=active]:bg-primary/20 data-[state=active]:text-foreground">Completed</TabsTrigger>
-          <TabsTrigger value={EscrowStatus.DISPUTED} className="data-[state=active]:bg-primary/20 data-[state=active]:text-foreground">Disputed</TabsTrigger>
-        </TabsList>
+      <div className="max-w-2xl mx-auto px-4 py-4 space-y-4">
+        {/* Role Segmented Tabs (purchases | sales) */}
+        <div className="bg-muted/60 p-1 rounded-2xl flex gap-1 border border-border/40">
+          {(['purchases', 'sales'] as Tab[]).map((t) => {
+            const active = tab === t;
+            return (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`flex-1 py-2.5 rounded-xl font-bold text-xs capitalize transition-all ${
+                  active
+                    ? 'bg-foreground text-background shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {t}
+              </button>
+            );
+          })}
+        </div>
 
-        <TabsContent value={activeTab} className="space-y-4">
-          {isLoading ? (
-            <div className="grid gap-6">
-              {[1, 2, 3].map(i => (
-                <GlassCard key={i} className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3 w-1/2">
-                      <Skeleton className="w-5 h-5 rounded-full bg-muted" />
-                      <div className="w-full space-y-2">
-                        <Skeleton className="h-6 w-3/4 bg-muted" />
-                        <div className="flex items-center space-x-2">
-                          <Skeleton className="h-5 w-16 bg-muted" />
-                          <Skeleton className="h-5 w-20 bg-muted" />
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right w-1/4 space-y-1">
-                      <Skeleton className="h-8 w-24 ml-auto bg-muted" />
-                      <Skeleton className="h-4 w-32 ml-auto bg-muted" />
-                    </div>
-                  </div>
-                </GlassCard>
-              ))}
-            </div>
-          ) : getFilteredTransactions().length === 0 ? (
-            <GlassCard className="text-center py-12">
-              <Package className="w-16 h-16 text-[var(--yrdly-label)] mx-auto mb-4 opacity-50" />
-              <h3 className="text-lg font-yrdly-display font-medium text-foreground mb-2">No transactions found</h3>
-              <p className="font-yrdly-body text-sm text-[var(--yrdly-label)]">
-                {activeTab === 'all' 
-                  ? "You haven't made any transactions yet."
-                  : `No ${activeTab} transactions found.`
-                }
-              </p>
-            </GlassCard>
-          ) : (
-            <div className="grid gap-6">
-              {getFilteredTransactions().map((transaction: any) => {
-                const isBuyer = getRole(transaction) === 'Buyer';
-                const amount = transaction.amount || 0;
-                const commission = transaction.commission ?? transaction.commission ?? Math.round(amount * 0.03);
-                const sellerAmount = transaction.sellerAmount ?? transaction.seller_amount ?? (amount - commission);
-                const rawPaymentMethod = transaction.paymentMethod || transaction.payment_method || 'card';
-                const paymentMethodStr = String(rawPaymentMethod).replace('_', ' ');
-                const rawDeliveryObj = transaction.deliveryDetails || transaction.delivery_details;
-                const deliveryOption = typeof rawDeliveryObj === 'object' && rawDeliveryObj?.option ? rawDeliveryObj.option : 'face_to_face';
-                const deliveryNotes = typeof rawDeliveryObj === 'object' ? rawDeliveryObj?.notes : undefined;
-                const createdAtVal = transaction.createdAt || transaction.created_at;
-                const updatedAtVal = transaction.updatedAt || transaction.updated_at;
-                const disputeReasonVal = transaction.disputeReason || transaction.dispute_reason;
+        {/* Filter Pills */}
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+          {FILTERS.map((f) => {
+            const active = filter === f.key;
+            return (
+              <button
+                key={f.key}
+                onClick={() => setFilter(f.key)}
+                className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all border ${
+                  active
+                    ? 'bg-[#00D26A] text-black border-[#00D26A] font-bold'
+                    : 'bg-card text-muted-foreground border-border hover:border-muted-foreground/30'
+                }`}
+              >
+                {f.label}
+              </button>
+            );
+          })}
+        </div>
 
-                return (
-                  <GlassCard 
-                    key={transaction.id} 
-                    className="hover:border-[var(--yrdly-glass-border)]/80 transition-all p-6 cursor-pointer"
-                    onClick={() => {
-                      if (typeof window !== 'undefined') {
-                        window.location.href = `/transactions/${transaction.id}`;
-                      }
-                    }}
-                  >
-                    <div className="flex items-center justify-between border-b border-[var(--yrdly-glass-border)] pb-4 mb-4">
-                      <div className="flex items-center space-x-3">
-                        {getStatusIcon(transaction.status)}
-                        <div>
-                          <h3 className="text-lg font-yrdly-display font-bold text-foreground flex items-center gap-2">
-                            Transaction #{transaction.id.slice(-8)}
-                            {transaction.item?.title && (
-                              <span className="text-sm font-normal text-muted-foreground">({transaction.item.title})</span>
-                            )}
-                          </h3>
-                          <div className="flex items-center space-x-2 mt-1">
-                            <Badge variant="outline" className="text-xs font-yrdly-body border-[var(--yrdly-glass-border)] text-[var(--yrdly-label)]">
-                              {isBuyer ? 'Buyer' : 'Seller'}
-                            </Badge>
-                            <EscrowStatusDisplay status={transaction.status} />
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-2xl font-yrdly-display font-bold text-primary">
-                          {formatPrice(amount)}
-                        </div>
-                        <div className="text-sm font-yrdly-body text-[var(--yrdly-label)]">
-                          {isBuyer
-                            ? `You paid ${formatPrice(amount)}`
-                            : `You receive ${formatPrice(sellerAmount)}`
-                          }
-                        </div>
-                        <div className="text-xs font-yrdly-body text-[var(--yrdly-label)]/70">
-                          {!isBuyer && `-${formatPrice(commission)} platform fee`}
-                        </div>
-                      </div>
-                    </div>
+        {/* List Content */}
+        {loading ? (
+          <div className="space-y-3 pt-2">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="p-4 rounded-2xl bg-card border border-border flex items-center gap-4">
+                <Skeleton className="w-13 h-13 rounded-xl bg-muted flex-shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-3/4 bg-muted" />
+                  <Skeleton className="h-3 w-1/2 bg-muted" />
+                  <Skeleton className="h-3 w-1/3 bg-muted" />
+                </div>
+                <div className="space-y-2 text-right">
+                  <Skeleton className="h-4 w-16 ml-auto bg-muted" />
+                  <Skeleton className="h-5 w-20 ml-auto rounded-md bg-muted" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : filteredData.length === 0 ? (
+          <div className="text-center py-16 space-y-2">
+            <Package className="w-12 h-12 text-muted-foreground/40 mx-auto" />
+            <h3 className="font-bold text-foreground text-base">No transactions</h3>
+            <p className="text-sm text-muted-foreground">Nothing here yet.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filteredData.map((tx: any) => {
+              const statusKey = tx.status?.toLowerCase() || 'pending';
+              const meta = STATUS_MAP[statusKey] || STATUS_MAP.pending;
+              const isBuyer = (tx.buyerId || tx.buyer_id) === user?.id;
+              const counterparty = isBuyer ? tx.seller : tx.buyer;
+              const imagesArr = Array.isArray(tx.item?.images || tx.item?.image_urls)
+                ? (tx.item?.images || tx.item?.image_urls)
+                : typeof tx.item?.images === 'string'
+                ? [tx.item.images]
+                : [];
+              const thumb = imagesArr[0] || tx.item?.image_url || '';
+              const dateStr = formatDateStr(tx.created_at || tx.createdAt);
+              const title = tx.item?.title || tx.item?.text || tx.item_title || 'Item';
+              const counterpartyName = counterparty?.name || 'User';
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <h4 className="font-yrdly-display font-semibold text-foreground mb-2">Transaction Details</h4>
-                        <div className="space-y-2 text-sm font-yrdly-body">
-                          <div className="flex justify-between">
-                            <span className="text-[var(--yrdly-label)]">Payment Method:</span>
-                            <span className="capitalize text-foreground">{paymentMethodStr}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-[var(--yrdly-label)]">Delivery:</span>
-                            <span className="capitalize text-foreground">{String(deliveryOption).replace('_', ' ')}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-[var(--yrdly-label)]">Created:</span>
-                            <span className="text-foreground">{formatDate(createdAtVal)}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-[var(--yrdly-label)]">Last Updated:</span>
-                            <span className="text-foreground">{formatDate(updatedAtVal)}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div>
-                        <h4 className="font-yrdly-display font-semibold text-foreground mb-2">Delivery Information</h4>
-                        <div className="space-y-2 text-sm font-yrdly-body">
-                          <div>
-                            <span className="text-[var(--yrdly-label)]">Method:</span>
-                            <p className="text-foreground">
-                              {deliveryOption === 'face_to_face' 
-                                ? 'Face-to-Face Meetup' 
-                                : 'Seller Delivery'}
-                            </p>
-                          </div>
-                          {deliveryNotes && (
-                            <div>
-                              <span className="text-[var(--yrdly-label)]">Notes:</span>
-                              <p className="text-foreground">{deliveryNotes}</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {disputeReasonVal && (
-                      <div className="mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl font-yrdly-body">
-                        <h4 className="font-yrdly-display font-medium text-red-400 mb-1">Dispute Reason</h4>
-                        <p className="text-red-300 text-sm">{disputeReasonVal}</p>
+              return (
+                <div
+                  key={tx.id}
+                  onClick={() => router.push(`/transactions/${tx.id}`)}
+                  className="flex items-center gap-4 p-4 rounded-2xl bg-card border border-border/80 hover:border-primary/50 transition-all cursor-pointer shadow-sm active:scale-[0.99]"
+                >
+                  {/* Thumbnail */}
+                  <div className="w-[52px] h-[52px] rounded-xl bg-muted flex-shrink-0 overflow-hidden relative border border-border/40">
+                    {thumb ? (
+                      <Image
+                        src={thumb}
+                        alt={title}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                        <Package className="w-6 h-6" />
                       </div>
                     )}
-                  </GlassCard>
-                );
-              })}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+                  </div>
+
+                  {/* Middle Info */}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-sm text-foreground truncate">
+                      {title}
+                    </h3>
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">
+                      {counterpartyName}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground/70 mt-0.5">
+                      {dateStr}
+                    </p>
+                  </div>
+
+                  {/* Right Amount & Status */}
+                  <div className="text-right flex flex-col items-end gap-1.5 flex-shrink-0">
+                    <span className="font-bold text-sm text-foreground">
+                      {formatPrice(tx.amount)}
+                    </span>
+                    <div
+                      className="inline-flex items-center px-2 py-0.5 rounded-lg border text-[10px] font-bold tracking-wider"
+                      style={{
+                        backgroundColor: `${meta.color}18`,
+                        borderColor: `${meta.color}35`,
+                        color: meta.color,
+                      }}
+                    >
+                      <span className="mr-1 text-[9px]">{meta.icon}</span>
+                      {meta.label}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
+
 
