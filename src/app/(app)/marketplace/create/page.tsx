@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useAuth } from "@/hooks/use-supabase-auth";
@@ -53,6 +53,25 @@ export default function CreateMarketplaceListingPage() {
   // Location State
   const [locationAddress, setLocationAddress] = useState("");
   const [selectedLocation, setSelectedLocation] = useState<StructuredLocation | null>(null);
+
+  // Set default location from user profile (home_* fields first, legacy fallback)
+  useEffect(() => {
+    if (!profile) return;
+    const state = (profile as any)?.home_state || profile?.location?.state;
+    const lga = (profile as any)?.home_lga || profile?.location?.lga;
+    const ward = (profile as any)?.home_ward || profile?.location?.ward;
+
+    if (state && !locationAddress) {
+      const defaultAddr = [ward, lga, state].filter(Boolean).join(", ");
+      setLocationAddress(defaultAddr);
+      setSelectedLocation({
+        address: defaultAddr,
+        state: state || undefined,
+        lga: lga || undefined,
+        ward: ward || undefined,
+      });
+    }
+  }, [profile]);
 
   // Image State
   const [imageFiles, setImageFiles] = useState<File[]>([]);
@@ -167,9 +186,9 @@ export default function CreateMarketplaceListingPage() {
         is_sold: false,
         visibility: visibility,
         moderation_status: modStatus,
-        state: selectedLocation?.state || null,
-        lga: selectedLocation?.lga || null,
-        ward: selectedLocation?.ward || null,
+        state: selectedLocation?.state || (profile as any)?.home_state || profile?.location?.state || null,
+        lga: selectedLocation?.lga || (profile as any)?.home_lga || profile?.location?.lga || null,
+        ward: selectedLocation?.ward || (profile as any)?.home_ward || profile?.location?.ward || null,
         lat: selectedLocation?.lat || null,
         lng: selectedLocation?.lng || null,
         timestamp: new Date().toISOString(),

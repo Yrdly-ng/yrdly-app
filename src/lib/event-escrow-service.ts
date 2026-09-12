@@ -158,18 +158,42 @@ export class EventEscrowService {
 
     if (payoutError || !payout) throw payoutError || new Error('Failed to create payout record');
 
-    // Execute transfer via Paystack
-    const transferSuccess = await PaystackService.transferToSeller({
-      bankCode: bankDetails.bankCode,
-      accountNumber: bankDetails.accountNumber,
-      amount: net,
-      reference: `event-payout-${payout.id}`,
-      narration: `Event payout for event ${eventId}`,
-    });
+    // Execute transfer via Payluk if customer ID exists, else Paystack
+    let transferSuccess = false;
+    let failureReason = '';
+
+    try {
+      const organizerPaylukId = await getPaylukCustomerId(organizerId);
+      if (organizerPaylukId) {
+        console.log(`[EventEscrowService] Executing Payluk bank withdrawal for event ${eventId}...`);
+        const result = await PaylukService.withdrawToBank({
+          sellerPaylukCustomerId: organizerPaylukId,
+          amount: net,
+          bankCode: bankDetails.bankCode,
+          accountNumber: bankDetails.accountNumber,
+          accountName: bankDetails.accountName,
+          narration: `Event Payout — ${eventId.substring(0, 8)}`,
+        });
+        transferSuccess = true;
+      }
+    } catch (paylukErr: any) {
+      console.warn(`[EventEscrowService] Payluk withdrawal failed, trying Paystack fallback:`, paylukErr?.message);
+    }
+
+    if (!transferSuccess) {
+      transferSuccess = await PaystackService.transferToSeller({
+        bankCode: bankDetails.bankCode,
+        accountNumber: bankDetails.accountNumber,
+        amount: net,
+        reference: `event-payout-${payout.id}`,
+        narration: `Event payout for event ${eventId}`,
+      });
+      if (!transferSuccess) failureReason = 'Outbound bank transfer failed';
+    }
 
     const updatePayload = transferSuccess
       ? { status: 'COMPLETED', paid_at: new Date().toISOString() }
-      : { status: 'FAILED', failure_reason: 'Paystack transfer failed' };
+      : { status: 'FAILED', failure_reason: failureReason || 'Payout transfer failed' };
 
     await adminSupabase
       .from('event_payouts')
