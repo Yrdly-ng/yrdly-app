@@ -14,29 +14,36 @@ export async function POST(request: NextRequest) {
     const rawBody = await request.text();
     const signature = request.headers.get('x-payluk-signature') ?? '';
 
-    const secret = process.env.PAYLUK_WEBHOOK_SECRET;
-    if (secret) {
+    const secret = process.env.PAYLUK_SECRET_KEY || process.env.PAYLUK_WEBHOOK_SECRET;
+    if (secret && signature) {
       const expectedSig = crypto
-        .createHmac('sha256', secret)
+        .createHmac('sha512', secret)
         .update(rawBody)
         .digest('hex');
-      if (signature !== expectedSig) {
+      
+      const valid = signature.length === expectedSig.length &&
+        crypto.timingSafeEqual(Buffer.from(expectedSig), Buffer.from(signature));
+
+      if (!valid) {
         console.error('[Webhook] Invalid Payluk signature');
         return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
       }
-    } else {
-      console.warn('[Webhook] PAYLUK_WEBHOOK_SECRET not set — skipping signature verification');
+    } else if (secret && !signature) {
+      console.error('[Webhook] Missing x-payluk-signature header');
+      return NextResponse.json({ error: 'Missing signature' }, { status: 401 });
     }
 
     const event = JSON.parse(rawBody);
-    console.log('[Webhook] Payluk event received:', event?.event, event?.data?.reference);
+    console.log('[Webhook] Payluk event received:', event?.event, event?.data?.reference || event?.data?.id);
 
     const isSuccess =
+      event?.event === 'escrow.ongoing' ||
+      event?.event === 'payment.escrow.success' ||
+      event?.event === 'payment.deposit.success' ||
       event?.event === 'payment.success' ||
-      event?.event === 'escrow.payment.success' ||
-      event?.event === 'checkout.payment.success' ||
       event?.data?.status === 'success' ||
-      event?.data?.status === 'paid';
+      event?.data?.status === 'paid' ||
+      event?.data?.state === 'OPENED';
 
     if (!isSuccess) {
       console.log('[Webhook] Ignoring non-success event:', event?.event);
@@ -45,6 +52,8 @@ export async function POST(request: NextRequest) {
 
     const reference: string =
       event?.data?.reference ||
+      event?.data?.paymentToken ||
+      event?.data?.id ||
       event?.data?.txRef ||
       event?.data?.transactionRef ||
       event?.reference;
@@ -57,8 +66,8 @@ export async function POST(request: NextRequest) {
     const { data: tx, error: txError } = await supabaseAdmin
       .from('escrow_transactions')
       .select('id, buyer_id, item_id, status')
-      .eq('id', reference)
-      .single();
+      .or(`id.eq.${reference},payluk_escrow_id.eq.${reference},payluk_tx_ref.eq.${reference}`)
+      .maybeSingle();
 
     if (txError || !tx) {
       console.error('[Webhook] Transaction not found for reference:', reference);

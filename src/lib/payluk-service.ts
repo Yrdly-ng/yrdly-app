@@ -239,10 +239,9 @@ export class PaylukService {
     countryId?: string;
     bvn?: string;
   }): Promise<PaylukCustomer> {
-    const { countryId, ...requestParams } = params;
     const response = await paylukRequest<PaylukCustomer>('/v1/customer/create', {
       method: 'POST',
-      body: JSON.stringify(requestParams),
+      body: JSON.stringify(params),
     });
     return response.data;
   }
@@ -310,13 +309,13 @@ export class PaylukService {
   }
 
   /**
-   * GET /v1/customer/:id
+   * GET /v1/customer/get/{customerId}
    * Fetches a single customer by their Payluk customer ID.
    * Throws if the customer doesn't exist (used to verify stored IDs).
    */
   static async getCustomerById(customerId: string): Promise<PaylukCustomer> {
     const response = await paylukRequest<PaylukCustomer>(
-      `/v1/customer/${encodeURIComponent(customerId)}`,
+      `/v1/customer/get/${encodeURIComponent(customerId)}`,
       { method: 'GET' }
     );
     return response.data;
@@ -518,22 +517,29 @@ export class PaylukService {
 
 
   /**
-   * GET /v1/escrow/{escrowId}
-   * Retrieves status and details of an existing escrow.
-   * Requires customerId of buyer or seller.
+   * GET /v1/escrow/verify/{paymentToken}
+   * Resolves an escrow by its payment token.
+   * Used by a buyer or system to inspect a payment link before or after paying.
+   * Does NOT send customer-id header.
    */
-  static async getEscrowDetails(
-    customerId: string,
-    escrowId: string
+  static async verifyEscrow(
+    paymentToken: string
   ): Promise<PaylukEscrow> {
     const response = await paylukRequest<PaylukEscrow>(
-      `/v1/escrow/${escrowId}`,
+      `/v1/escrow/verify/${encodeURIComponent(paymentToken)}`,
       {
         method: 'GET',
-        customerId,
       }
     );
     return response.data;
+  }
+
+  /** Alias for backward compatibility */
+  static async getEscrowDetails(
+    _customerId: string,
+    paymentToken: string
+  ): Promise<PaylukEscrow> {
+    return this.verifyEscrow(paymentToken);
   }
 
   /**

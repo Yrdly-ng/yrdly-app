@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "payluk-api": {
+      "source": "jerozeek/payluk-api-skill",
+      "sourceType": "github",
+      "skillPath": "skills/payluk-api/SKILL.md",
+      "computedHash": "84f6eb5d9d73d24e8cce703bec899dc6b45490a955102ba6e8c3f4df15adbd6c"
+    }
+  }
+}

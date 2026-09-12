@@ -1,0 +1,101 @@
+> ## Documentation Index
+> Fetch the complete documentation index at: https://docs.payluk.ng/llms.txt
+> Use this file to discover all available pages before exploring further.
+
+# Build with AI agents
+
+> Install the Payluk API skill so Claude Code, Cursor, Codex and other coding agents integrate Payluk correctly on the first try.
+
+The **Payluk API skill** is an open-source [Agent Skill](https://agentskills.io) that packages
+this documentation in the shape AI coding agents read best: the rules every request must follow,
+the flow to pick for each use case, every endpoint with its `customer-id` requirement, webhook
+verification, and the full OpenAPI spec. Install it once and your agent stops guessing header
+names, fee maths and state transitions.
+
+<Card title="jerozeek/payluk-api-skill" icon="github" href="https://github.com/jerozeek/payluk-api-skill">
+  Source, releases and issues for the skill. MIT licensed.
+</Card>
+
+## What the agent learns
+
+| Area         | What is covered                                                                                                                                                                                                                                                                                                         |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ground rules | Base URLs and key prefixes, the response envelope, amounts in naira, when `customer-id` is required and when it must be omitted, which routes are `multipart/form-data`.                                                                                                                                                |
+| Flows        | Standard, [multi-quantity](/concepts/multi-quantity-escrows), [milestone](/concepts/milestone-escrows) and [vault](/concepts/vault-escrows) escrows, [disputes](/concepts/dispute-resolution), payment intents, wallets and the [Checkout SDK](/sdk/introduction), each as ordered steps with the actor for every call. |
+| Endpoints    | All routes in the [API reference](/api-reference/escrow/create-escrow), generated from `openapi.json`, with required fields and parameters.                                                                                                                                                                             |
+| Webhooks     | Event names, payload shapes, HMAC-SHA512 [signature verification](/concepts/webhooks#verify-the-signature) in Node and Python, retries and idempotency rules.                                                                                                                                                           |
+| Errors       | Every [status code and message](/essentials/errors) plus each enum in the [status reference](/essentials/status-reference).                                                                                                                                                                                             |
+| Tooling      | A dependency-free CLI for calling the API from a terminal, and a script to verify or produce webhook signatures.                                                                                                                                                                                                        |
+
+Agents load the short `SKILL.md` first and open the detailed references only when a task needs
+them, so the skill costs little context while still carrying the whole API.
+
+## Install
+
+<Tabs>
+  <Tab title="Any agent (skills CLI)">
+    Installs the skill for every supported agent detected on your machine, including Claude Code,
+    Cursor, Codex, GitHub Copilot, Gemini CLI and Windsurf.
+
+    ```bash theme={null}
+    npx skills add jerozeek/payluk-api-skill
+    ```
+
+    Add `-g` to install globally instead of into the current project.
+  </Tab>
+
+  <Tab title="Claude Code (plugin)">
+    Run inside Claude Code:
+
+    ```
+    /plugin marketplace add jerozeek/payluk-api-skill
+    /plugin install payluk-api@payluk
+    ```
+  </Tab>
+
+  <Tab title="Manual">
+    Copy the `skills/payluk-api` directory into your agent's skills folder.
+
+    ```bash theme={null}
+    git clone https://github.com/jerozeek/payluk-api-skill.git
+    cp -r payluk-api-skill/skills/payluk-api ~/.claude/skills/payluk-api   # Claude Code, global
+    cp -r payluk-api-skill/skills/payluk-api .cursor/skills/payluk-api     # Cursor, per project
+    ```
+  </Tab>
+</Tabs>
+
+## Use it
+
+The agent activates the skill on its own whenever a task mentions Payluk, escrows or this API.
+Prompts that work well:
+
+* "Add a Payluk standard escrow flow to this Express app: create the escrow for the seller, let the buyer pay from their wallet, and confirm delivery."
+* "Write a webhook handler for Payluk that verifies the signature and marks the order paid on `escrow.completed`."
+* "Why does `POST /v1/payment/escrow` return `Amount mismatch`?"
+* "Create a milestone escrow with three milestones and confirm the first one."
+
+You can also call the API from a terminal with the bundled client. It picks staging or production
+from your key prefix and prints the [standard envelope](/introduction#the-standard-envelope):
+
+```bash theme={null}
+export PAYLUK_SECRET_KEY=sk_test_replace_me
+node skills/payluk-api/scripts/payluk-request.mjs POST /v1/customer/create \
+  --json '{"firstname":"Ada","lastname":"Eze","email":"ada@example.com","phone":"08012345678"}'
+node skills/payluk-api/scripts/payluk-request.mjs POST /v1/escrow/create \
+  --customer 665f1b2c9a1e4d0012ab3c01 --form amount=150000 --form "purpose=MacBook" --form whoPays=both
+```
+
+<Warning>
+  The skill never needs your secret key to be installed. Only the optional CLI reads
+  `PAYLUK_SECRET_KEY` from your environment, and only at the moment you run it. Keep `sk_live_`
+  keys out of prompts, chat logs and committed files. See [Authentication](/authentication).
+</Warning>
+
+## Keep it current
+
+The skill ships a copy of the same `openapi.json` that renders this API reference, and its
+endpoint catalog is generated from it. Each API change is released as a new version of the skill,
+noted in the [changelog](/changelog). Re-run the install command to update.
+
+Found a gap or a mistake? Open an issue or a pull request on
+[GitHub](https://github.com/jerozeek/payluk-api-skill/issues).

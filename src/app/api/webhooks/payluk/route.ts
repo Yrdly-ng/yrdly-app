@@ -142,16 +142,26 @@ export async function POST(request: NextRequest) {
 
 // ── Handlers ─────────────────────────────────────────────────────────────────
 
-async function handleEscrowCompleted(data: PaylukEscrowData) {
-  // Look up by payluk_tx_ref — same discipline as /api/payluk/pay-escrow.
-  const { data: tx, error } = await supabaseAdmin
+async function findTransactionByPaylukData(data: PaylukEscrowData) {
+  const targetId = data.id;
+  const token = data.paymentToken;
+
+  const orClause = token
+    ? `payluk_escrow_id.eq.${targetId},payluk_tx_ref.eq.${targetId},payluk_tx_ref.eq.${token},id.eq.${targetId}`
+    : `payluk_escrow_id.eq.${targetId},payluk_tx_ref.eq.${targetId},id.eq.${targetId}`;
+
+  return await supabaseAdmin
     .from('escrow_transactions')
     .select('id, status, buyer_id, seller_id, item_id, item_type')
-    .eq('payluk_tx_ref', data.id)
+    .or(orClause)
     .maybeSingle();
+}
+
+async function handleEscrowCompleted(data: PaylukEscrowData) {
+  const { data: tx, error } = await findTransactionByPaylukData(data);
 
   if (error || !tx) {
-    console.warn(`[PaylukWebhook] escrow.completed: no local transaction for payluk_tx_ref=${data.id}`);
+    console.warn(`[PaylukWebhook] escrow.completed: no local transaction for escrow id=${data.id}`);
     return;
   }
 
@@ -180,14 +190,10 @@ async function handleEscrowCompleted(data: PaylukEscrowData) {
 async function handleEscrowClaimed(data: PaylukEscrowData) {
   // Seller claimed funds directly via Payluk — our backend was not the initiator.
   // This webhook is the only source of truth for this transition.
-  const { data: tx, error } = await supabaseAdmin
-    .from('escrow_transactions')
-    .select('id, status, buyer_id, seller_id, item_id, item_type')
-    .eq('payluk_tx_ref', data.id)
-    .maybeSingle();
+  const { data: tx, error } = await findTransactionByPaylukData(data);
 
   if (error || !tx) {
-    console.warn(`[PaylukWebhook] escrow.claimed: no local transaction for payluk_tx_ref=${data.id}`);
+    console.warn(`[PaylukWebhook] escrow.claimed: no local transaction for escrow id=${data.id}`);
     return;
   }
 
@@ -231,14 +237,10 @@ async function handleEscrowClaimed(data: PaylukEscrowData) {
 }
 
 async function handleEscrowDisputed(data: PaylukEscrowData) {
-  const { data: tx, error } = await supabaseAdmin
-    .from('escrow_transactions')
-    .select('id, status, buyer_id, seller_id, item_id, item_type')
-    .eq('payluk_tx_ref', data.id)
-    .maybeSingle();
+  const { data: tx, error } = await findTransactionByPaylukData(data);
 
   if (error || !tx) {
-    console.warn(`[PaylukWebhook] escrow.disputed: no local transaction for payluk_tx_ref=${data.id}`);
+    console.warn(`[PaylukWebhook] escrow.disputed: no local transaction for escrow id=${data.id}`);
     return;
   }
 
