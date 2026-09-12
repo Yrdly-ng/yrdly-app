@@ -6,6 +6,8 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { PaystackService } from './paystack-service';
+import { PaylukService } from './payluk-service';
+import { getPaylukCustomerId } from './payluk-onboarding';
 import { EVENT_CONSTANTS } from './constants';
 import type { EventPayout } from '@/types/events';
 
