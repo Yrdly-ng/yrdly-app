@@ -499,12 +499,18 @@ export async function POST(request: NextRequest) {
         sellerPaylukId = await getPaylukCustomerId(sellerId);
 
         // Per Payluk docs: seller needs canSell, buyer needs canBuy.
-        // A buyer without canBuy is rejected at checkout ("invalid payment token").
-        // These are idempotent PUTs — safe to call every time.
-        await Promise.all([
-          PaylukService.updateCustomerPermissions(buyerPaylukId, { canBuy: true }),
-          PaylukService.updateCustomerPermissions(sellerPaylukId, { canSell: true }),
-        ]);
+        // Non-fatal: Payluk may return 423 if a concurrent operation is in progress,
+        // or permissions may already be set from a prior call. Either way, continue.
+        try {
+          await PaylukService.updateCustomerPermissions(buyerPaylukId, { canBuy: true });
+        } catch (permErr: any) {
+          console.warn('[PaymentInit] Could not set canBuy for buyer (non-fatal):', permErr?.message);
+        }
+        try {
+          await PaylukService.updateCustomerPermissions(sellerPaylukId, { canSell: true });
+        } catch (permErr: any) {
+          console.warn('[PaymentInit] Could not set canSell for seller (non-fatal):', permErr?.message);
+        }
 
         const paylukEscrow = await PaylukService.createEscrow(sellerPaylukId, {
           amount: totalAmount,
