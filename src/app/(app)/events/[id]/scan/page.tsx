@@ -6,7 +6,7 @@ import { ArrowLeft, QrCode, CheckCircle2, XCircle, AlertCircle, Loader2, Refresh
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/hooks/use-supabase-auth";
 import { supabase } from "@/lib/supabase";
 
 const FONT = "var(--font-work-sans), sans-serif";
