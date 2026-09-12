@@ -175,7 +175,7 @@ export class EventEscrowService {
           bankCode: bankDetails.bankCode,
           accountNumber: bankDetails.accountNumber,
           accountName: bankDetails.accountName,
-          narration: `Event Payout — ${eventId.substring(0, 8)}`,
+          reference: `evt-payout-${payout.id}`,
         });
         transferSuccess = true;
       }
