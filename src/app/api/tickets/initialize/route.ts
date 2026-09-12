@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from "@/lib/supabase-server";
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { createClient } from '@supabase/supabase-js';
-import { PaystackService } from '@/lib/paystack-service';
+import { PaylukService } from '@/lib/payluk-service';
+import { getPaylukCustomerId } from '@/lib/payluk-onboarding';
+import { EscrowStatus } from '@/types/escrow';
 
 /**
  * POST /api/tickets/initialize
- * Initiates a Paystack checkout for ticket purchase.
- * Returns a payment link that opens the Paystack modal.
+ * Initiates a Payluk Escrow checkout for ticket purchase.
+ * Returns paylukPaymentToken & paymentLink.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
     // ── Fetch event + tier ────────────────────────────────
     const { data: tier } = await supabaseAdmin
       .from('ticket_tiers')
-      .select('*, event:events(id, title, status, payout_mode, payment_subaccount_id, organizer_id)')
+      .select('*, event:events(id, title, status, payout_mode, payment_subaccount_id, organizer_id, end_time)')
       .eq('id', tierId)
       .single();
 
@@ -46,7 +47,7 @@ export async function POST(request: NextRequest) {
     const txRef = `evt-tkt-${tierId.substring(0,6)}-${user.id.substring(0,4)}-${Date.now()}`;
     const price = Number(tier.price);
 
-    // ── Free ticket — skip Paystack ────────────────────
+    // ── Free ticket — skip Payluk ────────────────────
     if (price === 0) {
       const { data: ticketId, error: rpcErr } = await supabaseAdmin.rpc('purchase_ticket', {
         p_tier_id: tierId,
@@ -70,53 +71,91 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, free: true, ticketId });
     }
 
-    // ── Paid ticket — initialise Paystack payment with Split Payment Subaccount ─────
-    const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
-
-    // Fetch organizer's Paystack subaccount ID for automatic Split Payment
-    let organizerSubaccount: string | undefined = tier.event.payment_subaccount_id || undefined;
-    if (!organizerSubaccount && tier.event.organizer_id) {
-      const { data: subaccountData } = await supabaseAdmin
-        .from('seller_accounts')
-        .select('paystack_subaccount_id')
-        .eq('user_id', tier.event.organizer_id)
-        .eq('is_primary', true)
-        .eq('is_active', true)
-        .maybeSingle();
-
-      if (subaccountData?.paystack_subaccount_id) {
-        organizerSubaccount = subaccountData.paystack_subaccount_id;
-      }
+    // ── Paid ticket — initialise Payluk Escrow ──────────────────────────
+    let buyerPaylukId: string;
+    let organizerPaylukId: string;
+    try {
+      buyerPaylukId = await getPaylukCustomerId(user.id);
+      organizerPaylukId = await getPaylukCustomerId(tier.event.organizer_id);
+    } catch (onboardingErr: any) {
+      console.error('[TicketInit] Payluk onboarding error:', onboardingErr);
+      return NextResponse.json({
+        error: onboardingErr?.message || 'Failed to prepare user payment account.',
+      }, { status: 400 });
     }
 
-    let paymentLink: string;
     try {
-      paymentLink = await PaystackService.initializePayment({
-        transactionId: txRef,
+      await PaylukService.updateCustomerPermissions(buyerPaylukId, { canBuy: true });
+    } catch (e) {}
+    try {
+      await PaylukService.updateCustomerPermissions(organizerPaylukId, { canSell: true });
+    } catch (e) {}
+
+    let maxDelivery = 7;
+    if (tier.event.end_time) {
+      const msUntilEnd = new Date(tier.event.end_time).getTime() - Date.now();
+      const days = Math.ceil(msUntilEnd / (1000 * 60 * 60 * 24));
+      maxDelivery = Math.max(1, Math.min(days + 1, 90));
+    }
+
+    let paylukEscrow;
+    try {
+      paylukEscrow = await PaylukService.createEscrow(organizerPaylukId, {
         amount: price,
-        buyerEmail: attendeeEmail,
-        buyerName: attendeeName,
-        itemTitle: `Ticket — ${tier.event.title}`,
-        sellerName: 'Event Organizer',
-        subaccount: organizerSubaccount,
-        callbackUrl: `${origin}/my-tickets?success=1`,
+        purpose: `Ticket — ${tier.event.title}`,
+        whoPays: 'seller',
+        maxDelivery,
+        deliveryTimeline: 'days',
+        totalQuantity: 1,
+      });
+    } catch (paylukError: any) {
+      console.error('[TicketInit] Payluk createEscrow error:', paylukError);
+      return NextResponse.json({ error: 'Payment initialization failed', details: paylukError?.message }, { status: 502 });
+    }
+
+    const { error: dbInsertErr } = await supabaseAdmin
+      .from('escrow_transactions')
+      .insert({
+        id: txRef,
+        buyer_id: user.id,
+        seller_id: tier.event.organizer_id,
+        amount: price,
+        status: EscrowStatus.PENDING,
+        payment_provider: 'payluk',
+        payluk_tx_ref: paylukEscrow.paymentToken,
+        payluk_escrow_id: paylukEscrow.id,
+        item_type: 'ticket',
+        item_id: tierId,
         metadata: {
           event_id: eventId,
           tier_id: tierId,
+          quantity: 1,
           buyer_id: user.id,
           attendee_name: attendeeName,
           attendee_email: attendeeEmail,
-          attendee_phone: attendeePhone || null
-        }
+          attendee_phone: attendeePhone || null,
+        },
       });
-    } catch (paystackError: any) {
-      console.error('Paystack init error:', paystackError);
-      return NextResponse.json({ error: 'Payment initialization failed' }, { status: 502 });
+
+    if (dbInsertErr) {
+      console.error('[TicketInit] Failed to store escrow_transactions row:', dbInsertErr);
     }
 
-    return NextResponse.json({ success: true, paymentLink, txRef });
+    const isLive = process.env.PAYLUK_SECRET_KEY?.startsWith('sk_live_');
+    const paylukHost = isLive ? 'https://payluk.ng' : 'https://staging.api.payluk.ng';
+    const paymentLink = `${paylukHost}/escrow/${paylukEscrow.paymentToken}`;
+
+    return NextResponse.json({
+      success: true,
+      paymentLink,
+      paylukPaymentToken: paylukEscrow.paymentToken,
+      paylukEscrowId: paylukEscrow.id,
+      buyerPaylukId,
+      txRef,
+    });
   } catch (error) {
     console.error('Ticket initialize error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+

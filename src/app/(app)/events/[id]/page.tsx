@@ -131,8 +131,33 @@ export default function EventDetailPage() {
         // Free ticket — go straight to my-tickets
         setPurchase((s) => ({ ...s, step: "success" }));
         setTimeout(() => router.push("/my-tickets?success=1"), 1500);
+      } else if (data.paylukPaymentToken) {
+        try {
+          const publicKey = process.env.NEXT_PUBLIC_PAYLUK_PUBLIC_KEY;
+          if (publicKey) {
+            const { initEscrowCheckout, pay } = await import('payluk-escrow-inline-checkout');
+            initEscrowCheckout({ publicKey });
+            await pay({
+              paymentToken: data.paylukPaymentToken,
+              reference: data.tx_ref,
+              redirectUrl: `${window.location.origin}/my-tickets?success=1`,
+              brand: 'Yrdly',
+              customerId: data.buyerPaylukId,
+              callback: async () => {
+                setPurchase((s) => ({ ...s, step: "success" }));
+                setTimeout(() => router.push("/my-tickets?success=1"), 1500);
+              },
+              onClose: () => {
+                setPurchase((s) => ({ ...s, step: "form" }));
+              }
+            });
+            return;
+          }
+        } catch (inlineErr) {
+          console.warn('Payluk inline checkout error, falling back to payment_link:', inlineErr);
+        }
+        window.location.href = data.payment_link;
       } else {
-        // Paid — redirect to Paystack
         window.location.href = data.payment_link;
       }
     } catch (err: any) {

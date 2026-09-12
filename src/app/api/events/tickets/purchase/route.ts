@@ -6,12 +6,14 @@ import { EVENT_CONSTANTS } from '@/lib/constants';
 import { ResendEmailService } from '@/lib/resend-service';
 import QRCode from 'qrcode';
 import { getPostHogClient } from '@/lib/posthog-server';
-import { PaystackService } from '@/lib/paystack-service';
+import { PaylukService } from '@/lib/payluk-service';
+import { getPaylukCustomerId } from '@/lib/payluk-onboarding';
+import { EscrowStatus } from '@/types/escrow';
 
 /**
  * POST /api/events/tickets/purchase
- * Initialises a Paystack payment for a ticket.
- * Returns a payment link — the client redirects the user there.
+ * Initialises a Payluk Escrow payment for a ticket.
+ * Returns paylukPaymentToken & payment_link.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -58,7 +60,6 @@ export async function POST(request: NextRequest) {
     // ── Free ticket — create directly, no payment needed ────────────────────
     if (tier.price === 0) {
       const ticketsToInsert = [];
-      const qrDataUrls = [];
       
       for (let i = 0; i < quantity; i++) {
         const ticketCode = `${EVENT_CONSTANTS.TICKET_CODE_PREFIX}-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
@@ -100,12 +101,7 @@ export async function POST(request: NextRequest) {
       } catch (e) {}
 
       // ── Send confirmation email to buyer ────────────────────────────────
-      // We will send one email for the first ticket for simplicity, or we could send an email per ticket.
-      // For now, let's just generate the first ticket's QR code and send the email for it to avoid spam.
-      // In a real scenario, the email template should support multiple tickets or we send multiple emails.
-      // Let's send one email per ticket to be safe so they get all QRs.
       try {
-        const resendStatus = ResendEmailService.getConfigurationStatus();
         if (ResendEmailService.isConfigured()) {
           const { data: fullEvent } = await supabaseAdmin
             .from('events')
@@ -148,7 +144,7 @@ export async function POST(request: NextRequest) {
                     .eq('event_id', event_id)
                     .eq('status', 'PAID');
 
-                  const totalSold = (paidTickets?.length || 0); 
+                  const totalSold = (paidTickets?.length || 0);
                   const grossRevenue = (paidTickets || []).reduce((sum, t) => sum + (t.amount_paid || 0), 0);
                   const netPayout = Math.round(grossRevenue * (1 - EVENT_CONSTANTS.COMMISSION_RATE) * 100) / 100;
 
@@ -202,56 +198,88 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, free: true, ticket_id: insertedTickets[0].id, quantity });
     }
 
-    // ── Paid ticket — initialise Paystack payment with Split Payment Subaccount ─────
+    // ── Paid ticket — initialise Payluk Escrow payment ────────────────────
     const txRef = `evt-${event_id.substring(0, 8)}-${Date.now()}`;
-    const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
-    
     const totalAmount = tier.price * quantity;
 
-    // Fetch organizer's Paystack subaccount ID for automatic Split Payment
-    let organizerSubaccount: string | undefined = undefined;
-    if (event.organizer_id) {
-      const { data: subaccountData } = await supabaseAdmin
-        .from('seller_accounts')
-        .select('paystack_subaccount_id')
-        .eq('user_id', event.organizer_id)
-        .eq('is_primary', true)
-        .eq('is_active', true)
-        .maybeSingle();
-
-      if (subaccountData?.paystack_subaccount_id) {
-        organizerSubaccount = subaccountData.paystack_subaccount_id;
-      }
+    // Fetch or provision Payluk Customer IDs for buyer & organizer
+    let buyerPaylukId: string;
+    let organizerPaylukId: string;
+    try {
+      buyerPaylukId = await getPaylukCustomerId(user.id);
+      organizerPaylukId = await getPaylukCustomerId(event.organizer_id);
+    } catch (onboardingErr: any) {
+      console.error('[TicketPurchase] Payluk onboarding error:', onboardingErr);
+      return NextResponse.json({
+        error: onboardingErr?.message || 'Failed to prepare user payment account.',
+      }, { status: 400 });
     }
 
-    let paymentLink: string;
     try {
-      paymentLink = await PaystackService.initializePayment({
-        transactionId: txRef,
+      await PaylukService.updateCustomerPermissions(buyerPaylukId, { canBuy: true });
+    } catch (e) {}
+    try {
+      await PaylukService.updateCustomerPermissions(organizerPaylukId, { canSell: true });
+    } catch (e) {}
+
+    // Calculate delivery window (in days)
+    let maxDelivery = 7;
+    if (event.end_time) {
+      const msUntilEnd = new Date(event.end_time).getTime() - Date.now();
+      const days = Math.ceil(msUntilEnd / (1000 * 60 * 60 * 24));
+      maxDelivery = Math.max(1, Math.min(days + 1, 90));
+    }
+
+    let paylukEscrow;
+    try {
+      paylukEscrow = await PaylukService.createEscrow(organizerPaylukId, {
         amount: totalAmount,
-        buyerEmail: attendee_email,
-        buyerName: attendee_name,
-        itemTitle: `${quantity}x ${tier.name} — ${event.title}`,
-        sellerName: 'Event Organizer',
-        subaccount: organizerSubaccount,
-        callbackUrl: callbackUrl || `${origin}/api/events/tickets/verify?tx_ref=${txRef}`,
+        purpose: `${quantity}x ${tier.name} — ${event.title}`,
+        whoPays: 'seller',
+        maxDelivery,
+        deliveryTimeline: 'days',
+        totalQuantity: quantity,
+      });
+    } catch (paylukError: any) {
+      console.error('[TicketPurchase] Payluk createEscrow error:', paylukError);
+      return NextResponse.json({
+        error: 'Payment initialization failed',
+        details: paylukError?.message || 'Payluk Escrow error',
+      }, { status: 502 });
+    }
+
+    // Store escrow_transactions record
+    const { error: dbInsertErr } = await supabaseAdmin
+      .from('escrow_transactions')
+      .insert({
+        id: txRef,
+        buyer_id: user.id,
+        seller_id: event.organizer_id,
+        amount: totalAmount,
+        status: EscrowStatus.PENDING,
+        payment_provider: 'payluk',
+        payluk_tx_ref: paylukEscrow.paymentToken,
+        payluk_escrow_id: paylukEscrow.id,
+        item_type: 'ticket',
+        item_id: tier_id,
         metadata: {
           event_id,
           tier_id,
-          quantity, // IMPORTANT: Pass quantity to webhook
+          quantity,
           buyer_id: user.id,
           attendee_name,
           attendee_email,
-          attendee_phone: attendee_phone || null
-        }
+          attendee_phone: attendee_phone || null,
+        },
       });
-    } catch (paystackError: any) {
-      console.error('[v0] Paystack init error:', paystackError);
-      return NextResponse.json({
-        error: 'Payment initialization failed',
-        details: paystackError?.message || 'Paystack API error',
-      }, { status: 502 });
+
+    if (dbInsertErr) {
+      console.error('[TicketPurchase] Failed to store escrow_transactions row:', dbInsertErr);
     }
+
+    const isLive = process.env.PAYLUK_SECRET_KEY?.startsWith('sk_live_');
+    const paylukHost = isLive ? 'https://payluk.ng' : 'https://staging.api.payluk.ng';
+    const paymentLink = `${paylukHost}/escrow/${paylukEscrow.paymentToken}`;
 
     const posthog = getPostHogClient();
     posthog.capture({
@@ -265,19 +293,24 @@ export async function POST(request: NextRequest) {
         amount: totalAmount,
         is_free: false,
         tx_ref: txRef,
+        payluk_escrow_id: paylukEscrow.id,
       },
     });
 
-    return NextResponse.json({ success: true, payment_link: paymentLink, tx_ref: txRef });
+    return NextResponse.json({
+      success: true,
+      payment_link: paymentLink,
+      paylukPaymentToken: paylukEscrow.paymentToken,
+      paylukEscrowId: paylukEscrow.id,
+      buyerPaylukId,
+      tx_ref: txRef,
+    });
   } catch (error) {
-    console.error('[v0] Ticket purchase error:', error);
-    if (error instanceof Error) {
-      console.error('[v0] Error message:', error.message);
-      console.error('[v0] Error stack:', error.stack);
-    }
+    console.error('[TicketPurchase] Ticket purchase error:', error);
     return NextResponse.json({ 
       error: 'Internal server error',
       details: error instanceof Error ? error.message : String(error)
     }, { status: 500 });
   }
 }
+

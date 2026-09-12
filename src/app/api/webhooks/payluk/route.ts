@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { EscrowStatus } from '@/types/escrow';
 import { NotificationService } from '@/lib/notification-service';
+import { TicketService } from '@/lib/ticket-service';
 
 // ── Signature verification ───────────────────────────────────────────────────
 //
@@ -115,7 +116,7 @@ export async function POST(request: NextRequest) {
 
       // ── escrow.ongoing / payment.escrow.success ──────────────────────────
       // Fires when buyer funds the escrow. Update local status to PAID,
-      // mark item as sold (posts / catalog_items) and notify seller.
+      // mark item as sold (posts / catalog_items / tickets) and notify seller.
       case 'escrow.ongoing':
       case 'payment.escrow.success': {
         await handleEscrowOngoing(data);
@@ -152,7 +153,7 @@ async function findTransactionByPaylukData(data: PaylukEscrowData) {
 
   return await supabaseAdmin
     .from('escrow_transactions')
-    .select('id, status, buyer_id, seller_id, item_id, item_type')
+    .select('id, status, buyer_id, seller_id, item_id, item_type, amount, payluk_tx_ref, payluk_escrow_id, metadata')
     .or(orClause)
     .maybeSingle();
 }
@@ -188,8 +189,15 @@ async function handleEscrowOngoing(data: PaylukEscrowData) {
 
   console.log(`[PaylukWebhook] escrow.ongoing: tx ${tx.id} → PAID`);
 
-  // 2. Mark item as sold / update catalog stock
-  if (tx.item_id) {
+  // 2. Handle tickets or products
+  if (tx.item_type === 'ticket' || tx.metadata?.event_id) {
+    try {
+      await TicketService.processTicketPaymentFromTransaction(tx);
+      console.log(`[PaylukWebhook] Minted tickets for ticket escrow tx ${tx.id}`);
+    } catch (tktErr) {
+      console.error(`[PaylukWebhook] Error minting tickets for tx ${tx.id}:`, tktErr);
+    }
+  } else if (tx.item_id) {
     if (tx.item_type === 'catalog_item') {
       try {
         const { data: catItem } = await supabaseAdmin
