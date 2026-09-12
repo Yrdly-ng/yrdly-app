@@ -113,12 +113,12 @@ export async function POST(request: NextRequest) {
         break;
       }
 
-      // ── escrow.ongoing ───────────────────────────────────────────────────
-      // Fires when buyer funds the escrow. Our /api/payluk/pay-escrow route
-      // already handles this transition synchronously (updates to PAID on
-      // success). Receiving this webhook is redundant — ack without action.
-      case 'escrow.ongoing': {
-        console.log(`[PaylukWebhook] escrow.ongoing for ${data.id} — already handled synchronously via pay-escrow route, skipping`);
+      // ── escrow.ongoing / payment.escrow.success ──────────────────────────
+      // Fires when buyer funds the escrow. Update local status to PAID,
+      // mark item as sold (posts / catalog_items) and notify seller.
+      case 'escrow.ongoing':
+      case 'payment.escrow.success': {
+        await handleEscrowOngoing(data);
         break;
       }
 
@@ -155,6 +155,108 @@ async function findTransactionByPaylukData(data: PaylukEscrowData) {
     .select('id, status, buyer_id, seller_id, item_id, item_type')
     .or(orClause)
     .maybeSingle();
+}
+
+async function handleEscrowOngoing(data: PaylukEscrowData) {
+  const { data: tx, error } = await findTransactionByPaylukData(data);
+
+  if (error || !tx) {
+    console.warn(`[PaylukWebhook] escrow.ongoing: no local transaction for escrow id=${data.id}`);
+    return;
+  }
+
+  // Idempotent: if already PAID, SHIPPED, DELIVERED, or COMPLETED, skip.
+  if (tx.status !== EscrowStatus.PENDING && tx.status !== ('creating_escrow' as any)) {
+    console.log(`[PaylukWebhook] escrow.ongoing: tx ${tx.id} status is ${tx.status}, skipping`);
+    return;
+  }
+
+  // 1. Mark transaction as PAID
+  const { error: updateError } = await supabaseAdmin
+    .from('escrow_transactions')
+    .update({
+      status: EscrowStatus.PAID,
+      paid_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', tx.id);
+
+  if (updateError) {
+    console.error(`[PaylukWebhook] escrow.ongoing: failed to update tx ${tx.id}:`, updateError.message);
+    return;
+  }
+
+  console.log(`[PaylukWebhook] escrow.ongoing: tx ${tx.id} → PAID`);
+
+  // 2. Mark item as sold / update catalog stock
+  if (tx.item_id) {
+    if (tx.item_type === 'catalog_item') {
+      try {
+        const { data: catItem } = await supabaseAdmin
+          .from('catalog_items')
+          .select('id, quantity, in_stock')
+          .eq('id', tx.item_id)
+          .maybeSingle();
+
+        if (catItem) {
+          const currentQty = typeof catItem.quantity === 'number' ? catItem.quantity : 1;
+          const newQty = Math.max(0, currentQty - 1);
+          await supabaseAdmin
+            .from('catalog_items')
+            .update({
+              quantity: newQty,
+              in_stock: newQty > 0,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', tx.item_id);
+          console.log(`[PaylukWebhook] Decremented catalog_items stock for ${tx.item_id} (new qty: ${newQty})`);
+        }
+      } catch (catErr) {
+        console.error(`[PaylukWebhook] Error updating catalog stock for ${tx.item_id}:`, catErr);
+      }
+    } else {
+      const { error: saleError } = await supabaseAdmin
+        .from('posts')
+        .update({
+          is_sold: true,
+          sold_to_user_id: tx.buyer_id,
+          sold_at: new Date().toISOString(),
+          transaction_id: tx.id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', tx.item_id);
+
+      if (saleError) {
+        console.error(`[PaylukWebhook] Error marking post ${tx.item_id} as sold:`, saleError);
+      } else {
+        console.log(`[PaylukWebhook] Marked post ${tx.item_id} as sold to buyer ${tx.buyer_id}`);
+      }
+    }
+  }
+
+  // 3. Notify seller
+  try {
+    const { data: buyer } = await supabaseAdmin
+      .from('users')
+      .select('name')
+      .eq('id', tx.buyer_id)
+      .single();
+
+    const buyerName = buyer?.name || 'A buyer';
+
+    await supabaseAdmin.rpc('create_notification', {
+      p_user_id: tx.seller_id,
+      p_type: 'payment_successful',
+      p_title: 'Payment Received! 💰',
+      p_message: `${buyerName} has paid for your item. Arrange handover with the buyer.`,
+      p_sender_id: null,
+      p_related_id: tx.id,
+      p_related_type: 'escrow_transaction',
+      p_data: { buyerName, transactionId: tx.id },
+    });
+  } catch (notifErr) {
+    console.error(`[PaylukWebhook] Error sending seller notification for tx ${tx.id}:`, notifErr);
+  }
 }
 
 async function handleEscrowCompleted(data: PaylukEscrowData) {

@@ -102,6 +102,29 @@ export default function TransactionDetailsPage() {
           setUserReview(review);
         }
       }
+
+      // Auto-verify if buyer lands on page while status is still PENDING
+      if (user && user.id === data.buyer_id && (data.status === EscrowStatus.PENDING || (data.status as string) === 'creating_escrow')) {
+        try {
+          const { supabase } = await import('@/lib/supabase');
+          const { data: { session } } = await supabase.auth.getSession();
+          const verifyRes = await fetch('/api/payment/verify', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
+            },
+            body: JSON.stringify({ txRef: transactionId }),
+          });
+          const verifyResult = await verifyRes.json();
+          if (verifyResult?.success) {
+            const updatedData = await TransactionStatusService.getTransactionDetails(transactionId);
+            setTransaction(updatedData);
+          }
+        } catch (verifyErr) {
+          console.warn('[TransactionDetailsPage] Auto-verify check skipped:', verifyErr);
+        }
+      }
     } catch (error) {
       console.error('[v0] Error fetching transaction details:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to load transaction details.';

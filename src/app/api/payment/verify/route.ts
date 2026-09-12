@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     if (bodyTxRef) {
       const { data: existing } = await supabaseAdmin
         .from('escrow_transactions')
-        .select('id, buyer_id, item_id, seller_id, status, total_amount, payment_provider, payluk_escrow_id')
+        .select('id, buyer_id, item_id, seller_id, status, total_amount, payment_provider, payluk_escrow_id, item_type')
         .eq('id', bodyTxRef)
         .single();
 
@@ -58,16 +58,65 @@ export async function POST(request: NextRequest) {
           .eq('id', bodyTxRef);
 
         if (existing.item_id) {
-          await supabaseAdmin
-            .from('posts')
-            .update({
-              is_sold: true,
-              sold_to_user_id: existing.buyer_id,
-              sold_at: new Date().toISOString(),
-              transaction_id: bodyTxRef,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', existing.item_id);
+          if (existing.item_type === 'catalog_item') {
+            try {
+              const { data: catItem } = await supabaseAdmin
+                .from('catalog_items')
+                .select('id, quantity, in_stock')
+                .eq('id', existing.item_id)
+                .maybeSingle();
+
+              if (catItem) {
+                const currentQty = typeof catItem.quantity === 'number' ? catItem.quantity : 1;
+                const newQty = Math.max(0, currentQty - 1);
+                await supabaseAdmin
+                  .from('catalog_items')
+                  .update({
+                    quantity: newQty,
+                    in_stock: newQty > 0,
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq('id', existing.item_id);
+              }
+            } catch (catErr) {
+              console.error('[PaymentVerify] Error updating catalog stock:', catErr);
+            }
+          } else {
+            await supabaseAdmin
+              .from('posts')
+              .update({
+                is_sold: true,
+                sold_to_user_id: existing.buyer_id,
+                sold_at: new Date().toISOString(),
+                transaction_id: bodyTxRef,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', existing.item_id);
+          }
+        }
+
+        // Send seller notification
+        try {
+          const { data: buyer } = await supabaseAdmin
+            .from('users')
+            .select('name')
+            .eq('id', existing.buyer_id)
+            .single();
+
+          const buyerName = buyer?.name || 'A buyer';
+
+          await supabaseAdmin.rpc('create_notification', {
+            p_user_id: existing.seller_id,
+            p_type: 'payment_successful',
+            p_title: 'Payment Received! 💰',
+            p_message: `${buyerName} has paid for your item. Arrange handover with the buyer.`,
+            p_sender_id: null,
+            p_related_id: bodyTxRef,
+            p_related_type: 'escrow_transaction',
+            p_data: { buyerName, transactionId: bodyTxRef, amount: existing.total_amount }
+          });
+        } catch (notifErr) {
+          console.error('[PaymentVerify] Payluk notification error:', notifErr);
         }
 
         return NextResponse.json({

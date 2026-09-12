@@ -136,13 +136,20 @@ export function BuyButton({
             customerId: data.buyerPaylukId,
             callback: async (result: any) => {
               console.log('[BuyButton] Payluk callback result:', JSON.stringify(result));
+              const statusLower = String(result?.status || result?.state || '').toLowerCase();
+              const eventLower = String(result?.event || '').toLowerCase();
+              const msgLower = String(result?.message || '').toLowerCase();
+
               const isSuccess =
-                result?.status === 'success' ||
-                result?.status === 'paid' ||
-                result?.status === 'completed' ||
-                result?.event === 'success' ||
-                result?.event === 'payment.success' ||
-                result?.message?.toLowerCase?.()?.includes('success');
+                statusLower === 'success' ||
+                statusLower === 'paid' ||
+                statusLower === 'completed' ||
+                statusLower === 'ongoing' ||
+                statusLower === 'opened' ||
+                eventLower.includes('ongoing') ||
+                eventLower.includes('success') ||
+                msgLower.includes('success') ||
+                msgLower.includes('paid');
 
               if (isSuccess) {
                 paymentSucceeded = true;
@@ -164,11 +171,30 @@ export function BuyButton({
                 console.warn('[BuyButton] Payluk callback with non-success result:', result);
               }
             },
-            onClose: () => {
-              // Payluk always fires onClose when the modal closes — even after
-              // a successful payment. Only show "cancelled" if callback never
-              // reported success.
+            onClose: async () => {
+              // Payluk fires onClose when modal closes.
+              // If callback didn't flag success, verify with backend before showing "Cancelled"
               if (!paymentSucceeded) {
+                try {
+                  const verifyRes = await fetch('/api/payment/verify', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${session.access_token}`,
+                    },
+                    body: JSON.stringify({ txRef: data.transactionId }),
+                  });
+                  const verifyData = await verifyRes.json();
+                  if (verifyData?.success) {
+                    paymentSucceeded = true;
+                    toast({ title: "Payment Successful", description: "Your transaction has been processed." });
+                    router.push(`/transactions/${data.transactionId}`);
+                    return;
+                  }
+                } catch (err) {
+                  console.warn('[BuyButton] onClose verification check error:', err);
+                }
+
                 toast({ title: "Payment Cancelled", description: "You closed the payment window." });
               }
             },
