@@ -184,14 +184,15 @@ export class EventEscrowService {
     }
 
     if (!transferSuccess) {
-      transferSuccess = await PaystackService.transferToSeller({
+      const paystackRes = await PaystackService.transferToSeller({
         bankCode: bankDetails.bankCode,
         accountNumber: bankDetails.accountNumber,
         amount: net,
         reference: `event-payout-${payout.id}`,
         narration: `Event payout for event ${eventId}`,
       });
-      if (!transferSuccess) failureReason = 'Outbound bank transfer failed';
+      transferSuccess = paystackRes.success;
+      if (!transferSuccess) failureReason = paystackRes.error || 'Outbound bank transfer failed';
     }
 
     const updatePayload = transferSuccess
