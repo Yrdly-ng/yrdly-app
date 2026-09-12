@@ -108,9 +108,20 @@ export function BuyButton({
 
       if (data.paylukPaymentToken) {
         try {
+          const publicKey = process.env.NEXT_PUBLIC_PAYLUK_PUBLIC_KEY;
+          if (!publicKey) {
+            console.error('[BuyButton] NEXT_PUBLIC_PAYLUK_PUBLIC_KEY is missing in environment variables');
+            toast({
+              title: "Configuration Error",
+              description: "Missing NEXT_PUBLIC_PAYLUK_PUBLIC_KEY in environment settings.",
+              variant: "destructive",
+            });
+            return;
+          }
+
           const { initEscrowCheckout, pay } = await import('payluk-escrow-inline-checkout');
           initEscrowCheckout({
-            publicKey: process.env.NEXT_PUBLIC_PAYLUK_PUBLIC_KEY!,
+            publicKey,
           });
 
           // Track whether payment callback already succeeded so onClose doesn't
