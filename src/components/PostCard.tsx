@@ -476,21 +476,35 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
 
   const handleLike = async () => {
     if (!currentUser || !post.id) return;
+    const previousIsLiked = isLiked;
+    const previousLikes = likes;
+
+    const nextIsLiked = !previousIsLiked;
+    setIsLiked(nextIsLiked);
+    setLikes(nextIsLiked ? previousLikes + 1 : Math.max(0, previousLikes - 1));
+
     try {
-      const { data: pd } = await supabase.from("posts").select("liked_by").eq("id", post.id).single();
-      const current = (pd?.liked_by || []) as string[];
-      const hasLiked = current.includes(currentUser.id);
-      const next = hasLiked ? current.filter((id) => id !== currentUser.id) : [...current, currentUser.id];
-      await supabase.from("posts").update({ liked_by: next }).eq("id", post.id);
-      setLikes(next.length);
-      setIsLiked(!hasLiked);
-      if (!hasLiked) {
+      const { data, error } = await supabase.rpc("toggle_post_like", {
+        p_post_id: post.id,
+        p_user_id: currentUser.id,
+      });
+
+      if (error) throw error;
+
+      if (data) {
+        setIsLiked(data.is_liked);
+        setLikes(data.likes_count);
+      }
+
+      if (nextIsLiked) {
         try { const { NotificationTriggers } = await import("@/lib/notification-triggers"); await NotificationTriggers.onPostLiked(post.id, currentUser.id); } catch {}
       } else {
         try { const { NotificationTriggers } = await import("@/lib/notification-triggers"); await NotificationTriggers.onPostUnliked(post.id, currentUser.id); } catch {}
       }
     } catch {
-      toast({ variant: "destructive", title: "Error", description: "Failed to like post." });
+      setIsLiked(previousIsLiked);
+      setLikes(previousLikes);
+      toast({ variant: "destructive", title: "Error", description: "Failed to update like." });
     }
   };
 

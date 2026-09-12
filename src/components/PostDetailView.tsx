@@ -161,14 +161,25 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
 
   const handleLike = useCallback(async () => {
     if (!currentUser || !post.id) return;
-    const { data } = await supabase.from("posts").select("liked_by").eq("id", post.id).single();
-    if (!data) return;
-    const current = (data.liked_by || []) as string[];
-    const hasLiked = current.includes(currentUser.id);
-    const next = hasLiked ? current.filter((id) => id !== currentUser.id) : [...current, currentUser.id];
-    await supabase.from("posts").update({ liked_by: next }).eq("id", post.id);
-    setLikes(next.length);
-    setIsLiked(!hasLiked);
+    setIsLiked((prevIsLiked) => {
+      const nextIsLiked = !prevIsLiked;
+      setLikes((prevLikes) => (nextIsLiked ? prevLikes + 1 : Math.max(0, prevLikes - 1)));
+
+      supabase.rpc("toggle_post_like", {
+        p_post_id: post.id,
+        p_user_id: currentUser.id,
+      }).then(({ data, error }) => {
+        if (error || !data) {
+          setIsLiked(prevIsLiked);
+          setLikes((prevLikes) => (prevIsLiked ? prevLikes + 1 : Math.max(0, prevLikes - 1)));
+        } else {
+          setIsLiked(data.is_liked);
+          setLikes(data.likes_count);
+        }
+      });
+
+      return nextIsLiked;
+    });
   }, [currentUser, post.id]);
 
   const handleShare = useCallback(async () => {
