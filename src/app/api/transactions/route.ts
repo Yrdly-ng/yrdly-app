@@ -61,13 +61,45 @@ export async function GET(request: NextRequest) {
     const userMap = new Map(users?.map(u => [u.id, u]) || []);
     const itemMap = new Map(items?.map(i => [i.id, i]) || []);
 
-    // Enrich transactions with related data
-    const enrichedTransactions = transactions.map(tx => ({
-      ...tx,
-      buyer: userMap.get(tx.buyer_id) || { id: tx.buyer_id, name: 'Unknown' },
-      seller: userMap.get(tx.seller_id) || { id: tx.seller_id, name: 'Unknown' },
-      item: itemMap.get(tx.item_id) || { id: tx.item_id, title: 'Unknown', price: 0 },
-    }));
+    // Enrich transactions with related data and camelCase properties
+    const enrichedTransactions = transactions.map(tx => {
+      let deliveryDetails = tx.delivery_details;
+      if (typeof deliveryDetails === 'string') {
+        try {
+          deliveryDetails = JSON.parse(deliveryDetails);
+        } catch {
+          deliveryDetails = { option: 'face_to_face' };
+        }
+      }
+      if (!deliveryDetails || typeof deliveryDetails !== 'object') {
+        deliveryDetails = { option: 'face_to_face' };
+      }
+      if (!deliveryDetails.option) {
+        deliveryDetails.option = 'face_to_face';
+      }
+
+      return {
+        ...tx,
+        itemId: tx.item_id,
+        buyerId: tx.buyer_id,
+        sellerId: tx.seller_id,
+        totalAmount: tx.amount,
+        sellerAmount: tx.seller_amount ?? Math.round(tx.amount * 0.97),
+        commission: tx.commission ?? Math.round(tx.amount * 0.03),
+        paymentMethod: tx.payment_method || 'card',
+        deliveryDetails,
+        createdAt: tx.created_at,
+        updatedAt: tx.updated_at,
+        paidAt: tx.paid_at,
+        shippedAt: tx.shipped_at,
+        deliveredAt: tx.delivered_at,
+        completedAt: tx.completed_at,
+        disputeReason: tx.dispute_reason,
+        buyer: userMap.get(tx.buyer_id) || { id: tx.buyer_id, name: 'Unknown' },
+        seller: userMap.get(tx.seller_id) || { id: tx.seller_id, name: 'Unknown' },
+        item: itemMap.get(tx.item_id) || { id: tx.item_id, title: 'Unknown', price: 0 },
+      };
+    });
 
     console.log(`[TransactionsAPI] Successfully fetched ${enrichedTransactions.length} transactions for user ${user.id}`);
 

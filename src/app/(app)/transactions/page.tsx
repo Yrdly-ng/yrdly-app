@@ -101,26 +101,35 @@ export default function TransactionsPage() {
     }
   };
 
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat('en-NG', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(new Date(date));
+  const formatDate = (date: any) => {
+    if (!date) return 'N/A';
+    try {
+      const d = new Date(date);
+      if (isNaN(d.getTime())) return 'N/A';
+      return new Intl.DateTimeFormat('en-NG', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(d);
+    } catch {
+      return 'N/A';
+    }
   };
 
-  const formatPrice = (price: number) => {
+  const formatPrice = (price: any) => {
+    const num = typeof price === 'number' ? price : (parseFloat(price) || 0);
     return new Intl.NumberFormat('en-NG', {
       style: 'currency',
       currency: 'NGN',
       minimumFractionDigits: 0
-    }).format(price);
+    }).format(num);
   };
 
-  const getRole = (transaction: EscrowTransaction) => {
-    return user?.id === transaction.buyerId ? 'Buyer' : 'Seller';
+  const getRole = (transaction: any) => {
+    const buyerId = transaction.buyerId || transaction.buyer_id;
+    return user?.id === buyerId ? 'Buyer' : 'Seller';
   };
 
   if (!user) {
@@ -189,91 +198,117 @@ export default function TransactionsPage() {
             </GlassCard>
           ) : (
             <div className="grid gap-6">
-              {getFilteredTransactions().map((transaction) => (
-                <GlassCard key={transaction.id} className="hover:border-[var(--yrdly-glass-border)]/80 transition-all p-6">
-                  <div className="flex items-center justify-between border-b border-[var(--yrdly-glass-border)] pb-4 mb-4">
-                    <div className="flex items-center space-x-3">
-                      {getStatusIcon(transaction.status)}
-                      <div>
-                        <h3 className="text-lg font-yrdly-display font-bold text-foreground">
-                          Transaction #{transaction.id.slice(-8)}
-                        </h3>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <Badge variant="outline" className="text-xs font-yrdly-body border-[var(--yrdly-glass-border)] text-[var(--yrdly-label)]">
-                            {getRole(transaction)}
-                          </Badge>
-                          <EscrowStatusDisplay status={transaction.status} />
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-yrdly-display font-bold text-primary">
-                        {formatPrice(transaction.amount)}
-                      </div>
-                      <div className="text-sm font-yrdly-body text-[var(--yrdly-label)]">
-                        {getRole(transaction) === 'Buyer' 
-                          ? `You paid ${formatPrice(transaction.amount)}`
-                          : `You receive ${formatPrice(transaction.sellerAmount || (transaction.amount - transaction.commission))}`
-                        }
-                      </div>
-                      <div className="text-xs font-yrdly-body text-[var(--yrdly-label)]/70">
-                        {getRole(transaction) === 'Seller' && `-${formatPrice(transaction.commission)} platform fee`}
-                      </div>
-                    </div>
-                  </div>
+              {getFilteredTransactions().map((transaction: any) => {
+                const isBuyer = getRole(transaction) === 'Buyer';
+                const amount = transaction.amount || 0;
+                const commission = transaction.commission ?? transaction.commission ?? Math.round(amount * 0.03);
+                const sellerAmount = transaction.sellerAmount ?? transaction.seller_amount ?? (amount - commission);
+                const rawPaymentMethod = transaction.paymentMethod || transaction.payment_method || 'card';
+                const paymentMethodStr = String(rawPaymentMethod).replace('_', ' ');
+                const rawDeliveryObj = transaction.deliveryDetails || transaction.delivery_details;
+                const deliveryOption = typeof rawDeliveryObj === 'object' && rawDeliveryObj?.option ? rawDeliveryObj.option : 'face_to_face';
+                const deliveryNotes = typeof rawDeliveryObj === 'object' ? rawDeliveryObj?.notes : undefined;
+                const createdAtVal = transaction.createdAt || transaction.created_at;
+                const updatedAtVal = transaction.updatedAt || transaction.updated_at;
+                const disputeReasonVal = transaction.disputeReason || transaction.dispute_reason;
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <h4 className="font-yrdly-display font-semibold text-foreground mb-2">Transaction Details</h4>
-                      <div className="space-y-2 text-sm font-yrdly-body">
-                        <div className="flex justify-between">
-                          <span className="text-[var(--yrdly-label)]">Payment Method:</span>
-                          <span className="capitalize text-foreground">{transaction.paymentMethod.replace('_', ' ')}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-[var(--yrdly-label)]">Delivery:</span>
-                          <span className="capitalize text-foreground">{transaction.deliveryDetails.option.replace('_', ' ')}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-[var(--yrdly-label)]">Created:</span>
-                          <span className="text-foreground">{formatDate(transaction.createdAt)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-[var(--yrdly-label)]">Last Updated:</span>
-                          <span className="text-foreground">{formatDate(transaction.updatedAt)}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h4 className="font-yrdly-display font-semibold text-foreground mb-2">Delivery Information</h4>
-                      <div className="space-y-2 text-sm font-yrdly-body">
+                return (
+                  <GlassCard 
+                    key={transaction.id} 
+                    className="hover:border-[var(--yrdly-glass-border)]/80 transition-all p-6 cursor-pointer"
+                    onClick={() => {
+                      if (typeof window !== 'undefined') {
+                        window.location.href = `/transactions/${transaction.id}`;
+                      }
+                    }}
+                  >
+                    <div className="flex items-center justify-between border-b border-[var(--yrdly-glass-border)] pb-4 mb-4">
+                      <div className="flex items-center space-x-3">
+                        {getStatusIcon(transaction.status)}
                         <div>
-                          <span className="text-[var(--yrdly-label)]">Method:</span>
-                          <p className="text-foreground">
-                            {transaction.deliveryDetails.option === 'face_to_face' 
-                              ? 'Face-to-Face Meetup' 
-                              : 'Seller Delivery'}
-                          </p>
-                        </div>
-                        {transaction.deliveryDetails.notes && (
-                          <div>
-                            <span className="text-[var(--yrdly-label)]">Notes:</span>
-                            <p className="text-foreground">{transaction.deliveryDetails.notes}</p>
+                          <h3 className="text-lg font-yrdly-display font-bold text-foreground flex items-center gap-2">
+                            Transaction #{transaction.id.slice(-8)}
+                            {transaction.item?.title && (
+                              <span className="text-sm font-normal text-muted-foreground">({transaction.item.title})</span>
+                            )}
+                          </h3>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <Badge variant="outline" className="text-xs font-yrdly-body border-[var(--yrdly-glass-border)] text-[var(--yrdly-label)]">
+                              {isBuyer ? 'Buyer' : 'Seller'}
+                            </Badge>
+                            <EscrowStatusDisplay status={transaction.status} />
                           </div>
-                        )}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-2xl font-yrdly-display font-bold text-primary">
+                          {formatPrice(amount)}
+                        </div>
+                        <div className="text-sm font-yrdly-body text-[var(--yrdly-label)]">
+                          {isBuyer
+                            ? `You paid ${formatPrice(amount)}`
+                            : `You receive ${formatPrice(sellerAmount)}`
+                          }
+                        </div>
+                        <div className="text-xs font-yrdly-body text-[var(--yrdly-label)]/70">
+                          {!isBuyer && `-${formatPrice(commission)} platform fee`}
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {transaction.disputeReason && (
-                    <div className="mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl font-yrdly-body">
-                      <h4 className="font-yrdly-display font-medium text-red-400 mb-1">Dispute Reason</h4>
-                      <p className="text-red-300 text-sm">{transaction.disputeReason}</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <h4 className="font-yrdly-display font-semibold text-foreground mb-2">Transaction Details</h4>
+                        <div className="space-y-2 text-sm font-yrdly-body">
+                          <div className="flex justify-between">
+                            <span className="text-[var(--yrdly-label)]">Payment Method:</span>
+                            <span className="capitalize text-foreground">{paymentMethodStr}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-[var(--yrdly-label)]">Delivery:</span>
+                            <span className="capitalize text-foreground">{String(deliveryOption).replace('_', ' ')}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-[var(--yrdly-label)]">Created:</span>
+                            <span className="text-foreground">{formatDate(createdAtVal)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-[var(--yrdly-label)]">Last Updated:</span>
+                            <span className="text-foreground">{formatDate(updatedAtVal)}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h4 className="font-yrdly-display font-semibold text-foreground mb-2">Delivery Information</h4>
+                        <div className="space-y-2 text-sm font-yrdly-body">
+                          <div>
+                            <span className="text-[var(--yrdly-label)]">Method:</span>
+                            <p className="text-foreground">
+                              {deliveryOption === 'face_to_face' 
+                                ? 'Face-to-Face Meetup' 
+                                : 'Seller Delivery'}
+                            </p>
+                          </div>
+                          {deliveryNotes && (
+                            <div>
+                              <span className="text-[var(--yrdly-label)]">Notes:</span>
+                              <p className="text-foreground">{deliveryNotes}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  )}
-                </GlassCard>
-              ))}
+
+                    {disputeReasonVal && (
+                      <div className="mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl font-yrdly-body">
+                        <h4 className="font-yrdly-display font-medium text-red-400 mb-1">Dispute Reason</h4>
+                        <p className="text-red-300 text-sm">{disputeReasonVal}</p>
+                      </div>
+                    )}
+                  </GlassCard>
+                );
+              })}
             </div>
           )}
         </TabsContent>
