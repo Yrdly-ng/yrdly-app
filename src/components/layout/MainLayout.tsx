@@ -10,18 +10,14 @@ import {
 } from "@phosphor-icons/react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { ProfileDropdown } from "@/components/ProfileDropdown";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { NotificationsDropdown } from "@/components/NotificationsDropdown";
 import { SearchDialog } from "@/components/SearchDialog";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { AlertService, type Alert } from "@/lib/alert-service";
-import { Warning, X, Siren } from "@phosphor-icons/react";
-import { CreatePostDialog } from "@/components/CreatePostDialog";
+import { Siren, X } from "@phosphor-icons/react";
 import { CreateMenuOverlay } from "@/components/CreateMenuOverlay";
-import { CreateItemDialog } from "@/components/CreateItemDialog";
-import { CreateEventDialog } from "@/components/CreateEventDialog";
-import { usePosts } from "@/hooks/use-posts";
 import { Topbar } from "./Topbar";
 import { BottomNav } from "./BottomNav";
 
@@ -45,15 +41,10 @@ export function MainLayout({ children }: MainLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, profile } = useAuth();
-  const { createPost } = usePosts();
-
   const [showProfile, setShowProfile] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
-  const [postDialogOpen, setPostDialogOpen] = useState(false);
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
-  const [listingDialogOpen, setListingDialogOpen] = useState(false);
-  const [eventDialogOpen, setEventDialogOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [urgentAlert, setUrgentAlert] = useState<Alert | null>(null);
@@ -344,28 +335,9 @@ export function MainLayout({ children }: MainLayoutProps) {
 
       <SearchDialog open={showSearch} onOpenChange={setShowSearch} />
 
-      <CreatePostDialog
-        createPost={createPost}
-        open={postDialogOpen}
-        onOpenChange={setPostDialogOpen}
-      />
-
       <CreateMenuOverlay
         open={createMenuOpen}
         onClose={() => setCreateMenuOpen(false)}
-        onPost={() => setPostDialogOpen(true)}
-        onListing={() => setListingDialogOpen(true)}
-        onEvent={() => setEventDialogOpen(true)}
-      />
-
-      <CreateItemDialog
-        open={listingDialogOpen}
-        onOpenChange={setListingDialogOpen}
-      />
-
-      <CreateEventDialog
-        open={eventDialogOpen}
-        onOpenChange={setEventDialogOpen}
       />
     </>
   );

@@ -1,8 +1,6 @@
 "use client";
-
 import { useState, useEffect, useMemo } from "react";
 import { Search, Plus, Edit, Trash2, MessageCircle, ShoppingBag, BadgeCheck } from "lucide-react";
-import { CreateItemDialog } from "@/components/CreateItemDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-supabase-auth";
@@ -47,8 +45,7 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
   ];
 
   const handleEditItem = (item: PostType) => {
-    setEditingItem(item);
-    setIsEditDialogOpen(true);
+    router.push(`/marketplace/edit/${item.id}`);
   };
 
   const handleCreateItem = () => {
@@ -56,7 +53,11 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
       router.push("/verify-phone");
       return;
     }
-    setOnboardingOpen(true);
+    if ((profile as any)?.onboarded_marketplace) {
+      router.push("/marketplace/create");
+    } else {
+      setOnboardingOpen(true);
+    }
   };
 
   const handleDeleteItem = async (itemId: string) => {
@@ -249,26 +250,8 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
       <MarketplaceCreatorOnboarding
         isOpen={onboardingOpen}
         onClose={() => setOnboardingOpen(false)}
-        onContinue={() => setIsCreateDialogOpen(true)}
+        onContinue={() => router.push("/marketplace/create")}
       />
-
-      {/* Create item dialog */}
-      <CreateItemDialog
-        open={isCreateDialogOpen}
-        onOpenChange={setIsCreateDialogOpen}
-      />
-
-      {/* Edit dialog */}
-      {editingItem && (
-        <CreateItemDialog
-          postToEdit={editingItem}
-          open={isEditDialogOpen}
-          onOpenChange={(open) => {
-            setIsEditDialogOpen(open);
-            if (!open) setEditingItem(null);
-          }}
-        />
-      )}
     </div>
   );
 }
