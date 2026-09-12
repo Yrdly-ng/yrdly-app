@@ -86,9 +86,25 @@ export async function POST(request: NextRequest) {
   try {
     await PaylukService.confirmDelivery(buyerPaylukId, tx.payluk_escrow_id);
   } catch (e: any) {
-    console.error('[confirm-delivery] PaylukService.confirmDelivery failed:', e?.message);
+    const msg: string = e?.message ?? '';
+    console.error('[confirm-delivery] PaylukService.confirmDelivery failed:', msg);
+
+    // If Payluk says "Action not allowed", the escrow is already completed/closed on Payluk's side.
+    if (msg.includes('Action not allowed')) {
+      await supabaseAdmin
+        .from('escrow_transactions')
+        .update({
+          status: EscrowStatus.COMPLETED,
+          completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', transactionId);
+
+      return NextResponse.json({ success: true, alreadyCompleted: true });
+    }
+
     return NextResponse.json(
-      { error: e?.message || 'Failed to confirm delivery with Payluk' },
+      { error: msg || 'Failed to confirm delivery with Payluk' },
       { status: 502 }
     );
   }

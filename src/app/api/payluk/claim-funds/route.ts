@@ -89,6 +89,20 @@ export async function POST(request: NextRequest) {
   } catch (e: any) {
     const msg: string = e?.message ?? '';
     console.error('[claim-funds] PaylukService.claimFunds failed:', msg);
+
+    if (msg.includes('Action not allowed')) {
+      await supabaseAdmin
+        .from('escrow_transactions')
+        .update({
+          status: EscrowStatus.COMPLETED,
+          completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', transactionId);
+
+      return NextResponse.json({ success: true, alreadyCompleted: true });
+    }
+
     // Payluk returns 400 with "Escrow cannot be claimed yet" if window hasn't elapsed.
     // Surface the Payluk message directly so mobile can display it.
     return NextResponse.json({ error: msg || 'Failed to claim funds from Payluk' }, { status: 502 });
