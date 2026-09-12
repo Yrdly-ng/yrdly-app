@@ -248,6 +248,26 @@ export class PaylukService {
   }
 
   /**
+   * PUT /v1/customer/permissions/{customerId}
+   * Sets canBuy / canSell / canWithdraw for a merchant customer.
+   * Per Payluk docs: sellers need canSell, buyers need canBuy, or payment is rejected.
+   * Safe to call every time — idempotent.
+   */
+  static async updateCustomerPermissions(
+    customerId: string,
+    permissions: { canBuy?: boolean; canSell?: boolean; canWithdraw?: boolean }
+  ): Promise<PaylukCustomer> {
+    const response = await paylukRequest<PaylukCustomer>(
+      `/v1/customer/permissions/${encodeURIComponent(customerId)}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(permissions),
+      }
+    );
+    return response.data;
+  }
+
+  /**
    * GET /v1/customers?phone=...
    * Looks up a customer by phone number. If multiple matches are found, it uses the provided email to disambiguate.
    * Throws an error if ambiguity cannot be resolved. Returns null if not found.

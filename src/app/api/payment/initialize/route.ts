@@ -497,8 +497,16 @@ export async function POST(request: NextRequest) {
       try {
         buyerPaylukId = await getPaylukCustomerId(buyerId);
         sellerPaylukId = await getPaylukCustomerId(sellerId);
-        
-        const paylukEscrow = await PaylukService.createEscrow(buyerPaylukId, {
+
+        // Per Payluk docs: seller needs canSell, buyer needs canBuy.
+        // A buyer without canBuy is rejected at checkout ("invalid payment token").
+        // These are idempotent PUTs — safe to call every time.
+        await Promise.all([
+          PaylukService.updateCustomerPermissions(buyerPaylukId, { canBuy: true }),
+          PaylukService.updateCustomerPermissions(sellerPaylukId, { canSell: true }),
+        ]);
+
+        const paylukEscrow = await PaylukService.createEscrow(sellerPaylukId, {
           amount: totalAmount,
           purpose: itemData.title,
           whoPays: 'seller',
