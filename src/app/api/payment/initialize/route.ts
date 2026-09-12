@@ -498,7 +498,7 @@ export async function POST(request: NextRequest) {
         buyerPaylukId = await getPaylukCustomerId(buyerId);
         sellerPaylukId = await getPaylukCustomerId(sellerId);
         
-        const paylukEscrow = await PaylukService.createEscrow(sellerPaylukId, {
+        const paylukEscrow = await PaylukService.createEscrow(buyerPaylukId, {
           amount: totalAmount,
           purpose: itemData.title,
           whoPays: 'seller',
