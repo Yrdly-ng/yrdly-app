@@ -30,7 +30,7 @@ export class EventEscrowService {
   /**
    * Get the organizer's bank details for outbound transfers
    */
-  static async getOrganizerBankDetails(organizerId: string): Promise<{ bankCode: string; accountNumber: string; updatedAt: string } | null> {
+  static async getOrganizerBankDetails(organizerId: string): Promise<{ bankCode: string; accountNumber: string; accountName?: string; updatedAt: string } | null> {
     const { data, error } = await adminSupabase
       .from('seller_accounts')
       .select('account_details, account_type, updated_at')
@@ -45,9 +45,10 @@ export class EventEscrowService {
     const accountDetails = data.account_details as Record<string, string> | null;
     const bankCode = accountDetails?.bank_code || accountDetails?.bankCode;
     const accountNumber = accountDetails?.account_number || accountDetails?.accountNumber;
+    const accountName = accountDetails?.account_name || accountDetails?.accountName || 'Organizer';
 
     if (!bankCode || !accountNumber) return null;
-    return { bankCode, accountNumber, updatedAt: data.updated_at };
+    return { bankCode, accountNumber, accountName, updatedAt: data.updated_at };
   }
 
   /**
