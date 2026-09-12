@@ -3,15 +3,15 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, MessageSquare, Plus, Trash2, X, ChevronRight, ShoppingBag } from "lucide-react";
+import { Search, MessageSquare, Plus, Trash2, X, ShoppingBag } from "lucide-react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { ConversationScreen } from "@/components/ConversationScreen";
 
 const GREEN = "#82DB7E";
 
@@ -51,9 +51,13 @@ function timeLabel(ts: string): string {
 
 function SwipeableConversationItem({
   item,
+  isActive,
+  onSelect,
   onDelete,
 }: {
   item: Conversation;
+  isActive?: boolean;
+  onSelect: (id: string, e: React.MouseEvent) => void;
   onDelete: (id: string, e: React.MouseEvent) => void;
 }) {
   const [swipeOffset, setSwipeOffset] = useState(0);
@@ -110,11 +114,12 @@ function SwipeableConversationItem({
         onTouchEnd={handleTouchEnd}
         className="relative z-10 bg-[var(--yrdly-dark)]"
       >
-        <Link
-          href={`/messages/${item.id}`}
+        <div
+          onClick={(e) => onSelect(item.id, e)}
           className={cn(
-            "flex items-center gap-3.5 px-5 py-3.5 transition-colors hover:bg-white/5",
-            isUnread && "bg-[#82DB7E]/[0.03]"
+            "flex items-center gap-3.5 px-4 py-3 cursor-pointer transition-all hover:bg-white/5 border-l-4 border-transparent",
+            isUnread && "bg-[#82DB7E]/[0.03]",
+            isActive && "bg-[#82DB7E]/10 border-l-[#82DB7E]"
           )}
         >
           {/* Avatar */}
@@ -193,17 +198,22 @@ function SwipeableConversationItem({
           >
             <Trash2 size={16} />
           </button>
-        </Link>
+        </div>
       </div>
     </div>
   );
 }
 
-export function MessagesScreen() {
-  const { user, profile } = useAuth();
+interface MessagesScreenProps {
+  initialConvId?: string;
+}
+
+export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
+  const { user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
 
+  const [selectedConvId, setSelectedConvId] = useState<string | null>(initialConvId || null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
@@ -220,6 +230,12 @@ export function MessagesScreen() {
     { key: "marketplace", label: "Marketplace" },
     { key: "business", label: "Business" },
   ];
+
+  useEffect(() => {
+    if (initialConvId) {
+      setSelectedConvId(initialConvId);
+    }
+  }, [initialConvId]);
 
   const fetchConversations = useCallback(async () => {
     if (!user) return;
@@ -311,12 +327,17 @@ export function MessagesScreen() {
         });
 
       setConversations(formatted);
+
+      // Auto-select first conversation on desktop if none selected
+      if (!selectedConvId && !initialConvId && formatted.length > 0 && typeof window !== "undefined" && window.innerWidth >= 768) {
+        setSelectedConvId(formatted[0].id);
+      }
     } catch (e) {
       console.error("Fetch conversations error:", e);
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, selectedConvId, initialConvId]);
 
   useEffect(() => {
     fetchConversations();
@@ -355,6 +376,14 @@ export function MessagesScreen() {
     return conversations.reduce((sum, c) => sum + c.unreadCount, 0);
   }, [conversations]);
 
+  const handleSelectConv = (id: string, e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    setSelectedConvId(id);
+    if (typeof window !== "undefined") {
+      window.history.pushState(null, "", `/messages/${id}`);
+    }
+  };
+
   const handleDeleteConversation = async (conversationId: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -381,6 +410,12 @@ export function MessagesScreen() {
         if (updateError) throw updateError;
 
         setConversations((prev) => prev.filter((c) => c.id !== conversationId));
+        if (selectedConvId === conversationId) {
+          setSelectedConvId(null);
+          if (typeof window !== "undefined") {
+            window.history.pushState(null, "", "/messages");
+          }
+        }
         toast({ title: "Conversation deleted" });
       }
     } catch (e) {
@@ -445,188 +480,229 @@ export function MessagesScreen() {
       }
 
       setIsNewMessageOpen(false);
-      router.push(`/messages/${cid}`);
+      handleSelectConv(cid);
     } catch (err) {
       toast({ title: "Failed to start chat", variant: "destructive" });
     }
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto min-h-[100dvh] bg-[var(--yrdly-dark)] text-foreground font-yrdly-body pb-24">
-      {/* ── Header ── */}
-      <div className="flex items-center justify-between px-5 pt-4 pb-3">
-        {searching ? (
-          <div className="flex items-center gap-3 w-full">
-            <div className="flex-1 flex items-center gap-2 bg-surface border border-[var(--yrdly-glass-border)] rounded-full px-3.5 py-2">
-              <Search className="w-4 h-4 text-[var(--yrdly-label)]" />
-              <input
-                autoFocus
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search messages..."
-                className="w-full bg-transparent outline-none text-sm text-foreground placeholder:text-[var(--yrdly-label)] font-yrdly-body"
-              />
-              {searchQuery.length > 0 && (
-                <button type="button" onClick={() => setSearchQuery("")}>
-                  <X className="w-4 h-4 text-[var(--yrdly-label)]" />
-                </button>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setSearching(false);
-                setSearchQuery("");
-              }}
-              className="text-sm font-semibold text-[#82DB7E] hover:opacity-80"
-            >
-              Cancel
-            </button>
-          </div>
-        ) : (
-          <>
-            <div className="flex items-center gap-2.5">
-              <h1 className="text-2xl font-extrabold text-foreground font-yrdly-display">Messages</h1>
-              {totalUnread > 0 && (
-                <span
-                  className="px-2 py-0.5 rounded-full text-xs font-bold text-black"
-                  style={{ backgroundColor: GREEN }}
-                >
-                  {totalUnread}
-                </span>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2">
+    <div className="w-full max-w-7xl mx-auto h-[calc(100vh-3.5rem)] md:h-[calc(100vh-4.5rem)] my-0 md:my-4 bg-[var(--yrdly-dark)] border-0 md:border md:border-[var(--yrdly-glass-border)] md:rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row font-yrdly-body">
+      {/* ── Left Sidebar (Conversations List) ── */}
+      <div
+        className={cn(
+          "w-full md:w-80 lg:w-96 flex flex-col h-full shrink-0 border-r border-[var(--yrdly-glass-border)] bg-[var(--yrdly-dark)]",
+          selectedConvId ? "hidden md:flex" : "flex"
+        )}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 pt-4 pb-3">
+          {searching ? (
+            <div className="flex items-center gap-3 w-full">
+              <div className="flex-1 flex items-center gap-2 bg-surface border border-[var(--yrdly-glass-border)] rounded-full px-3.5 py-2">
+                <Search className="w-4 h-4 text-[var(--yrdly-label)]" />
+                <input
+                  autoFocus
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search messages..."
+                  className="w-full bg-transparent outline-none text-sm text-foreground placeholder:text-[var(--yrdly-label)] font-yrdly-body"
+                />
+                {searchQuery.length > 0 && (
+                  <button type="button" onClick={() => setSearchQuery("")}>
+                    <X className="w-4 h-4 text-[var(--yrdly-label)]" />
+                  </button>
+                )}
+              </div>
               <button
                 type="button"
-                onClick={() => setSearching(true)}
-                className="w-9 h-9 rounded-full bg-surface border border-[var(--yrdly-glass-border)] flex items-center justify-center text-foreground hover:bg-white/5 transition-all"
+                onClick={() => {
+                  setSearching(false);
+                  setSearchQuery("");
+                }}
+                className="text-sm font-semibold text-[#82DB7E] hover:opacity-80"
               >
-                <Search className="w-4 h-4" />
+                Cancel
               </button>
-
-              <Dialog open={isNewMessageOpen} onOpenChange={setIsNewMessageOpen}>
-                <DialogTrigger asChild>
-                  <button
-                    type="button"
-                    className="w-9 h-9 rounded-full flex items-center justify-center text-black font-bold transition-all hover:opacity-90"
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-extrabold text-foreground font-yrdly-display">Messages</h1>
+                {totalUnread > 0 && (
+                  <span
+                    className="px-2 py-0.5 rounded-full text-xs font-bold text-black"
                     style={{ backgroundColor: GREEN }}
                   >
-                    <Plus className="w-5 h-5" />
-                  </button>
-                </DialogTrigger>
-                <DialogContent className="bg-[var(--yrdly-dark)] border border-[var(--yrdly-glass-border)] text-foreground font-yrdly-body max-w-sm rounded-2xl">
-                  <DialogHeader>
-                    <DialogTitle className="font-yrdly-display font-bold text-lg">New Message</DialogTitle>
-                  </DialogHeader>
-                  <div className="py-2 max-h-[300px] overflow-y-auto space-y-1">
-                    {friendsLoading ? (
-                      <div className="flex justify-center py-6">
-                        <Skeleton className="w-6 h-6 rounded-full" />
-                      </div>
-                    ) : friends.length === 0 ? (
-                      <div className="p-6 text-center text-xs text-[var(--yrdly-label)]">
-                        You have no connections to message yet.
-                      </div>
-                    ) : (
-                      friends.map((friend) => (
-                        <button
-                          key={friend.id}
-                          onClick={() => handleStartChat(friend.id)}
-                          className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors text-left"
-                        >
-                          <Avatar className="w-10 h-10 border border-[var(--yrdly-glass-border)]">
-                            <AvatarImage src={friend.avatar_url || "/placeholder.svg"} />
-                            <AvatarFallback className="bg-primary text-black font-bold font-yrdly-display">
-                              {friend.name?.charAt(0) || "?"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 overflow-hidden">
-                            <p className="font-bold text-sm truncate text-foreground font-yrdly-display">
-                              {friend.name}
-                            </p>
-                          </div>
-                        </button>
-                      ))
+                    {totalUnread}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSearching(true)}
+                  className="w-9 h-9 rounded-full bg-surface border border-[var(--yrdly-glass-border)] flex items-center justify-center text-foreground hover:bg-white/5 transition-all"
+                >
+                  <Search className="w-4 h-4" />
+                </button>
+
+                <Dialog open={isNewMessageOpen} onOpenChange={setIsNewMessageOpen}>
+                  <DialogTrigger asChild>
+                    <button
+                      type="button"
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-black font-bold transition-all hover:opacity-90"
+                      style={{ backgroundColor: GREEN }}
+                    >
+                      <Plus className="w-5 h-5" />
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent className="bg-[var(--yrdly-dark)] border border-[var(--yrdly-glass-border)] text-foreground font-yrdly-body max-w-sm rounded-2xl">
+                    <DialogHeader>
+                      <DialogTitle className="font-yrdly-display font-bold text-lg">New Message</DialogTitle>
+                    </DialogHeader>
+                    <div className="py-2 max-h-[300px] overflow-y-auto space-y-1">
+                      {friendsLoading ? (
+                        <div className="flex justify-center py-6">
+                          <Skeleton className="w-6 h-6 rounded-full" />
+                        </div>
+                      ) : friends.length === 0 ? (
+                        <div className="p-6 text-center text-xs text-[var(--yrdly-label)]">
+                          You have no connections to message yet.
+                        </div>
+                      ) : (
+                        friends.map((friend) => (
+                          <button
+                            key={friend.id}
+                            onClick={() => handleStartChat(friend.id)}
+                            className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors text-left"
+                          >
+                            <Avatar className="w-10 h-10 border border-[var(--yrdly-glass-border)]">
+                              <AvatarImage src={friend.avatar_url || "/placeholder.svg"} />
+                              <AvatarFallback className="bg-primary text-black font-bold font-yrdly-display">
+                                {friend.name?.charAt(0) || "?"}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 overflow-hidden">
+                              <p className="font-bold text-sm truncate text-foreground font-yrdly-display">
+                                {friend.name}
+                              </p>
+                            </div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Filter Pills */}
+        {!searching && (
+          <div className="px-4 mb-3">
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+              {FILTERS.map((item) => {
+                const active = activeFilter === item.key;
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => setActiveFilter(item.key)}
+                    className={cn(
+                      "px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all border flex-shrink-0",
+                      active
+                        ? "bg-[#82DB7E]/10 border-[#82DB7E]/30 text-[#82DB7E] font-bold"
+                        : "bg-transparent border-[var(--yrdly-glass-border)] text-[var(--yrdly-label)] hover:text-foreground"
                     )}
-                  </div>
-                </DialogContent>
-              </Dialog>
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
             </div>
-          </>
+          </div>
         )}
+
+        {/* List */}
+        <div className="flex-1 overflow-y-auto divide-y divide-surface">
+          {loading ? (
+            <div className="space-y-2 p-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="flex items-center gap-3.5 p-3 rounded-2xl border border-[var(--yrdly-glass-border)] bg-card">
+                  <Skeleton className="w-12 h-12 rounded-full flex-shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-48" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : filteredConversations.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+              <div className="w-14 h-14 rounded-2xl bg-surface border border-[var(--yrdly-glass-border)] flex items-center justify-center mb-3">
+                <MessageSquare className="w-7 h-7 text-[var(--yrdly-label)]" />
+              </div>
+              <h3 className="text-base font-bold font-yrdly-display text-foreground mb-1">No messages yet</h3>
+              <p className="text-xs text-[var(--yrdly-label)] max-w-xs mb-4">
+                Say hello to someone in your neighbourhood.
+              </p>
+              <button
+                type="button"
+                onClick={() => router.push("/explore")}
+                className="px-5 py-2.5 rounded-full font-bold text-xs text-black transition-opacity hover:opacity-90"
+                style={{ backgroundColor: GREEN }}
+              >
+                Start a Conversation
+              </button>
+            </div>
+          ) : (
+            filteredConversations.map((item) => (
+              <SwipeableConversationItem
+                key={item.id}
+                item={item}
+                isActive={selectedConvId === item.id}
+                onSelect={handleSelectConv}
+                onDelete={handleDeleteConversation}
+              />
+            ))
+          )}
+        </div>
       </div>
 
-      {/* ── Filter Pills ── */}
-      {!searching && (
-        <div className="px-5 mb-3">
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
-            {FILTERS.map((item) => {
-              const active = activeFilter === item.key;
-              return (
-                <button
-                  key={item.key}
-                  type="button"
-                  onClick={() => setActiveFilter(item.key)}
-                  className={cn(
-                    "px-4 py-1.5 rounded-full text-xs font-semibold transition-all border flex-shrink-0",
-                    active
-                      ? "bg-[#82DB7E]/10 border-[#82DB7E]/30 text-[#82DB7E] font-bold"
-                      : "bg-transparent border-[var(--yrdly-glass-border)] text-[var(--yrdly-label)] hover:text-foreground"
-                  )}
-                >
-                  {item.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ── Conversations List ── */}
-      {loading ? (
-        <div className="space-y-2 px-5">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="flex items-center gap-3.5 p-3.5 rounded-2xl border border-[var(--yrdly-glass-border)] bg-card">
-              <Skeleton className="w-12 h-12 rounded-full flex-shrink-0" />
-              <div className="flex-1 space-y-2">
-                <Skeleton className="h-4 w-32" />
-                <Skeleton className="h-3 w-48" />
-              </div>
+      {/* ── Right Main Pane (Active Chat Screen) ── */}
+      <div
+        className={cn(
+          "flex-1 flex flex-col h-full min-h-0 bg-[var(--yrdly-dark)]/50",
+          !selectedConvId ? "hidden md:flex" : "flex"
+        )}
+      >
+        {selectedConvId ? (
+          <ConversationScreen
+            conversationId={selectedConvId}
+            onBack={() => {
+              setSelectedConvId(null);
+              if (typeof window !== "undefined") {
+                window.history.pushState(null, "", "/messages");
+              }
+            }}
+            isEmbedded
+          />
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full p-8 text-center bg-[var(--yrdly-dark)]">
+            <div className="w-20 h-20 rounded-3xl bg-surface border border-[var(--yrdly-glass-border)] flex items-center justify-center mb-4 text-[#82DB7E]">
+              <MessageSquare className="w-10 h-10" />
             </div>
-          ))}
-        </div>
-      ) : filteredConversations.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-surface border border-[var(--yrdly-glass-border)] flex items-center justify-center mb-4">
-            <MessageSquare className="w-8 h-8 text-[var(--yrdly-label)]" />
+            <h2 className="text-xl font-bold font-yrdly-display text-foreground mb-1">Your Messages</h2>
+            <p className="text-sm text-[var(--yrdly-label)] max-w-sm font-yrdly-body">
+              Select a conversation from the sidebar to chat with neighbours, sellers, or local businesses.
+            </p>
           </div>
-          <h3 className="text-lg font-bold font-yrdly-display text-foreground mb-1">No messages yet</h3>
-          <p className="text-sm text-[var(--yrdly-label)] max-w-xs mb-5">
-            Say hello to someone in your neighbourhood.
-          </p>
-          <button
-            type="button"
-            onClick={() => router.push("/explore")}
-            className="px-6 py-3 rounded-full font-bold text-sm text-black transition-opacity hover:opacity-90"
-            style={{ backgroundColor: GREEN }}
-          >
-            Start a Conversation
-          </button>
-        </div>
-      ) : (
-        <div className="divide-y divide-surface">
-          {filteredConversations.map((item) => (
-            <SwipeableConversationItem
-              key={item.id}
-              item={item}
-              onDelete={handleDeleteConversation}
-            />
-          ))}
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

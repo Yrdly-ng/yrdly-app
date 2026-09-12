@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 import { GlassCard } from "@/components/ui/glass-card";
+import { cn } from "@/lib/utils";
 
 interface ConversationRow {
   id: string;
@@ -50,6 +51,8 @@ interface ChatMessage {
 
 interface ConversationScreenProps {
   conversationId: string;
+  onBack?: () => void;
+  isEmbedded?: boolean;
 }
 
 function formatTime(iso: string) {
@@ -67,7 +70,7 @@ function getActivityStatus(lastSeen: string | null | undefined): string {
   return `Last seen ${Math.floor(h / 24)}d ago`;
 }
 
-export function ConversationScreen({ conversationId }: ConversationScreenProps) {
+export function ConversationScreen({ conversationId, onBack, isEmbedded = false }: ConversationScreenProps) {
   const { user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -392,13 +395,17 @@ export function ConversationScreen({ conversationId }: ConversationScreenProps) 
   const activityStatus = getActivityStatus((otherParticipant as any).last_seen);
 
   return (
-    <div className="w-full max-w-[430px] mx-auto min-h-[100dvh] bg-[var(--yrdly-dark)] text-foreground font-yrdly-body flex flex-col relative">
+    <div className="w-full h-full flex-1 flex flex-col min-h-0 bg-[var(--yrdly-dark)] text-foreground font-yrdly-body relative">
       {/* ── Top Bar ── */}
-      <header className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 bg-[var(--yrdly-dark)]/80 backdrop-blur-md border-b border-[var(--yrdly-glass-border)]">
+      <header className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 bg-[var(--yrdly-dark)]/90 backdrop-blur-md border-b border-[var(--yrdly-glass-border)]">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => router.push("/messages")}
-            className="w-9 h-9 rounded-xl flex items-center justify-center border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] transition-colors hover:bg-white/5"
+            type="button"
+            onClick={() => (onBack ? onBack() : router.push("/messages"))}
+            className={cn(
+              "w-9 h-9 rounded-xl flex items-center justify-center border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] transition-colors hover:bg-white/5",
+              isEmbedded && "md:hidden"
+            )}
           >
             <ArrowLeft className="w-4 h-4 text-foreground" />
           </button>
