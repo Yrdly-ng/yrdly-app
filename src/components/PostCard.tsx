@@ -50,8 +50,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { CreatePostDialog } from "./CreatePostDialog";
-import { CreateEventDialog } from "./CreateEventDialog";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { useToast } from "@/hooks/use-toast";
 import { CommentSection } from "@/components/CommentSection";
@@ -684,19 +682,23 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
                   const canEdit = (Date.now() - new Date(post.created_at || post.timestamp || Date.now()).getTime()) <= 15 * 60 * 1000;
                   if (!canEdit) return null;
                   
-                  return post.category === "Event" ? (
-                    <CreateEventDialog postToEdit={post} open={isEventEditDialogOpen} onOpenChange={setIsEventEditDialogOpen}>
-                      <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="focus:bg-accent">
-                        <Edit className="mr-2 h-4 w-4" /> Edit
+                  if (post.category === "Event") {
+                    return (
+                      <DropdownMenuItem onClick={() => router.push(`/events/${post.id}/manage`)} className="focus:bg-accent cursor-pointer">
+                        <Edit className="mr-2 h-4 w-4" /> Manage Event
                       </DropdownMenuItem>
-                    </CreateEventDialog>
-                  ) : onCreatePost ? (
-                    <CreatePostDialog postToEdit={post} createPost={onCreatePost}>
-                      <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="focus:bg-accent">
-                        <Edit className="mr-2 h-4 w-4" /> Edit
+                    );
+                  }
+
+                  if ((post as any).category === "For Sale" || (post as any).category === "Giveaway") {
+                    return (
+                      <DropdownMenuItem onClick={() => router.push(`/marketplace/edit/${post.id}`)} className="focus:bg-accent cursor-pointer">
+                        <Edit className="mr-2 h-4 w-4" /> Edit Listing
                       </DropdownMenuItem>
-                    </CreatePostDialog>
-                  ) : null;
+                    );
+                  }
+
+                  return null;
                 })()}
                 <AlertDialogTrigger asChild>
                   <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-400 focus:text-red-400 focus:bg-red-500/10">

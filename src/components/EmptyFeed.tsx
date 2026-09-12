@@ -1,12 +1,14 @@
-﻿"use client";
+"use client";
 
-import { CreatePostDialog } from "@/components/CreatePostDialog";
+import { useRouter } from "next/navigation";
 
 interface EmptyFeedProps {
   createPost?: (postData: any, postId?: string, imageFiles?: FileList) => Promise<void>;
 }
 
 export function EmptyFeed({ createPost }: EmptyFeedProps) {
+  const router = useRouter();
+
   return (
     <div
       className="text-center p-8 md:p-12 rounded-[1.5rem] mx-4 my-6 border border-black/[0.06] bg-[var(--c-card)] shadow-[0_18px_40px_rgba(0,0,0,0.08)]"
@@ -46,18 +48,17 @@ export function EmptyFeed({ createPost }: EmptyFeedProps) {
         This is where you&apos;ll see updates from your neighbors. Be the first to share something with your community!
       </p>
       
-      <CreatePostDialog createPost={createPost || (() => Promise.resolve())}>
-        <button
-          className="w-full sm:w-auto px-8 py-3.5 rounded-full flex items-center justify-center text-foreground font-bold transition-all active:scale-95 shadow-[0_8px_20px_rgba(56,142,60,0.25)] hover:shadow-[0_10px_25px_rgba(56,142,60,0.35)]"
-          style={{
-            background: "hsl(var(--primary))",
-            fontFamily: "var(--font-work-sans)",
-            letterSpacing: "0.02em"
-          }}
-        >
-          Create Your First Post
-        </button>
-      </CreatePostDialog>
+      <button
+        onClick={() => router.push("/posts/create")}
+        className="w-full sm:w-auto px-8 py-3.5 rounded-full flex items-center justify-center text-foreground font-bold transition-all active:scale-95 shadow-[0_8px_20px_rgba(56,142,60,0.25)] hover:shadow-[0_10px_25px_rgba(56,142,60,0.35)]"
+        style={{
+          background: "hsl(var(--primary))",
+          fontFamily: "var(--font-work-sans)",
+          letterSpacing: "0.02em"
+        }}
+      >
+        Create Your First Post
+      </button>
     </div>
   );
 }

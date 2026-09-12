@@ -5,9 +5,6 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { usePosts } from "@/hooks/use-posts";
 import { useLocation } from "@/contexts/LocationContext";
-import { CreatePostDialog } from "@/components/CreatePostDialog";
-import { CreateItemDialog } from "@/components/CreateItemDialog";
-import { CreateEventDialog } from "@/components/CreateEventDialog";
 import { PostCard } from "@/components/PostCard";
 import { PostSkeleton } from "@/components/PostSkeleton";
 import { LocationChip } from "@/components/LocationChip";
@@ -209,55 +206,54 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
       )}
 
       {/* ── Quick Post Box (Mobile Parity) ── */}
-      <CreatePostDialog createPost={createPost}>
-        <div className="flex items-center gap-3 p-3 rounded-3xl border border-[var(--yrdly-glass-border)] bg-card cursor-pointer transition-all hover:bg-white/5">
-          <div
-            className="w-10 h-10 rounded-full border-2 overflow-hidden flex-shrink-0 flex items-center justify-center"
-            style={{ borderColor: GREEN, backgroundColor: "var(--yrdly-dark)" }}
-          >
-            {profile?.avatar_url ? (
-              <Image
-                src={profile.avatar_url}
-                alt={profile.name || "User"}
-                width={40}
-                height={40}
-                className="w-full h-full object-cover"
-                unoptimized
-              />
-            ) : (
-              <span className="text-sm font-bold text-[#82DB7E] font-yrdly-display">
-                {profile?.name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || "?"}
-              </span>
-            )}
-          </div>
-
-          <span className="flex-1 text-sm text-[var(--yrdly-label)] truncate font-yrdly-body">
-            What&apos;s happening in your neighbourhood?
-          </span>
-
-          <button
-            type="button"
-            className="h-8 px-4 rounded-full font-bold text-xs text-black shrink-0 transition-transform active:scale-95 font-yrdly-display"
-            style={{ backgroundColor: GREEN }}
-          >
-            Post
-          </button>
+      <div
+        onClick={() => router.push("/posts/create")}
+        className="flex items-center gap-3 p-3 rounded-3xl border border-[var(--yrdly-glass-border)] bg-card cursor-pointer transition-all hover:bg-white/5"
+      >
+        <div
+          className="w-10 h-10 rounded-full border-2 overflow-hidden flex-shrink-0 flex items-center justify-center"
+          style={{ borderColor: GREEN, backgroundColor: "var(--yrdly-dark)" }}
+        >
+          {profile?.avatar_url ? (
+            <Image
+              src={profile.avatar_url}
+              alt={profile.name || "User"}
+              width={40}
+              height={40}
+              className="w-full h-full object-cover"
+              unoptimized
+            />
+          ) : (
+            <span className="text-sm font-bold text-[#82DB7E] font-yrdly-display">
+              {profile?.name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || "?"}
+            </span>
+          )}
         </div>
-      </CreatePostDialog>
+
+        <span className="flex-1 text-sm text-[var(--yrdly-label)] truncate font-yrdly-body">
+          What&apos;s happening in your neighbourhood?
+        </span>
+
+        <button
+          type="button"
+          className="h-8 px-4 rounded-full font-bold text-xs text-black shrink-0 transition-transform active:scale-95 font-yrdly-display"
+          style={{ backgroundColor: GREEN }}
+        >
+          Post
+        </button>
+      </div>
 
       {/* Onboarding Dialogs */}
       <EventCreatorOnboarding
         isOpen={onboardingOpen}
         onClose={() => setOnboardingOpen(false)}
-        onContinue={() => setIsCreateEventOpen(true)}
+        onContinue={() => router.push("/events/create")}
       />
-      <CreateEventDialog open={isCreateEventOpen} onOpenChange={setIsCreateEventOpen} />
       <MarketplaceCreatorOnboarding
         isOpen={marketplaceOnboardingOpen}
         onClose={() => setMarketplaceOnboardingOpen(false)}
-        onContinue={() => setIsCreateItemOpen(true)}
+        onContinue={() => router.push("/marketplace/create")}
       />
-      <CreateItemDialog open={isCreateItemOpen} onOpenChange={setIsCreateItemOpen} />
 
       {/* ── Feed List ── */}
       {loading ? (

@@ -29,7 +29,6 @@ import { cn } from "@/lib/utils";
 import { useLocation } from "@/contexts/LocationContext";
 import { LocationChip } from "@/components/LocationChip";
 import { EventCreatorOnboarding } from "@/components/events/EventCreatorOnboarding";
-import { CreateEventDialog } from "@/components/CreateEventDialog";
 import { AttendeeAvatars } from "@/components/AttendeeAvatars";
 import { TiltCard } from "@/components/ui/TiltCard";
 import { Magnetic } from "@/components/ui/Magnetic";
@@ -615,13 +614,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
       <EventCreatorOnboarding
         isOpen={onboardingOpen}
         onClose={() => setOnboardingOpen(false)}
-        onContinue={() => setEventDialogOpen(true)}
-      />
-
-      {/* Create Event Dialog */}
-      <CreateEventDialog
-        open={eventDialogOpen}
-        onOpenChange={setEventDialogOpen}
+        onContinue={() => router.push("/events/create")}
       />
     </div>
   );

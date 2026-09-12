@@ -33,8 +33,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { CreateEventDialog } from "@/components/CreateEventDialog";
-import { CreatePostDialog } from "@/components/CreatePostDialog";
 import { usePosts } from "@/hooks/use-posts";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -386,33 +384,23 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
                   const canEdit = (Date.now() - new Date(post.created_at || post.timestamp || Date.now()).getTime()) <= 15 * 60 * 1000;
                   if (!canEdit) return null;
                   
-                  return post.category === "Event" ? (
-                    <CreateEventDialog
-                      postToEdit={post}
-                      open={isEventEditDialogOpen}
-                      onOpenChange={setIsEventEditDialogOpen}
-                    >
-                      <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-foreground focus:bg-accent">
-                        <Edit className="mr-2 h-4 w-4" />
-                        Edit
+                  if (post.category === "Event") {
+                    return (
+                      <DropdownMenuItem onClick={() => router.push(`/events/${post.id}/manage`)} className="text-foreground focus:bg-accent cursor-pointer">
+                        <Edit className="mr-2 h-4 w-4" /> Manage Event
                       </DropdownMenuItem>
-                    </CreateEventDialog>
-                  ) : (
-                    <CreatePostDialog
-                      postToEdit={post}
-                      createPost={createPost}
-                      open={isPostEditDialogOpen}
-                      onOpenChange={setIsPostEditDialogOpen}
-                    >
-                      <DropdownMenuItem
-                        onSelect={() => setIsPostEditDialogOpen(true)}
-                        className="text-foreground focus:bg-accent"
-                      >
-                        <Edit className="mr-2 h-4 w-4" />
-                        Edit
+                    );
+                  }
+
+                  if ((post as any).category === "For Sale" || (post as any).category === "Giveaway") {
+                    return (
+                      <DropdownMenuItem onClick={() => router.push(`/marketplace/edit/${post.id}`)} className="text-foreground focus:bg-accent cursor-pointer">
+                        <Edit className="mr-2 h-4 w-4" /> Edit Listing
                       </DropdownMenuItem>
-                    </CreatePostDialog>
-                  );
+                    );
+                  }
+
+                  return null;
                 })()}
                 <AlertDialogTrigger asChild>
                   <DropdownMenuItem className="text-red-400 focus:bg-red-500/10 focus:text-red-400">

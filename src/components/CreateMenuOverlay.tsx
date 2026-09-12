@@ -30,9 +30,9 @@ interface CreateOption {
 interface CreateMenuOverlayProps {
   open: boolean;
   onClose: () => void;
-  onPost: () => void;
-  onListing: () => void;
-  onEvent: () => void;
+  onPost?: () => void;
+  onListing?: () => void;
+  onEvent?: () => void;
 }
 
 export function CreateMenuOverlay({
@@ -107,13 +107,16 @@ export function CreateMenuOverlay({
 
     switch (option.action) {
       case "post":
-        onPost();
+        if (onPost) onPost();
+        else router.push("/posts/create");
         break;
       case "listing":
-        onListing();
+        if (onListing) onListing();
+        else router.push("/marketplace/create");
         break;
       case "event":
-        onEvent();
+        if (onEvent) onEvent();
+        else router.push("/events/create");
         break;
       case "alert":
         router.push("/alerts/new");
