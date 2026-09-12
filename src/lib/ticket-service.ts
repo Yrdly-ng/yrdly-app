@@ -192,7 +192,7 @@ export class TicketService {
     const { data: paylukTx } = await supabaseAdmin
       .from('escrow_transactions')
       .select('*')
-      .or(`id.eq.${txRef},payluk_tx_ref.eq.${txRef},payluk_escrow_id.eq.${txRef}`)
+      .or(`id.eq.${txRef},payment_reference.eq.${txRef},payluk_tx_ref.eq.${txRef},payluk_escrow_id.eq.${txRef}`)
       .maybeSingle();
 
     if (paylukTx) {

@@ -140,12 +140,19 @@ export default function EventDetailPage() {
             await pay({
               paymentToken: data.paylukPaymentToken,
               reference: data.tx_ref,
-              redirectUrl: `${window.location.origin}/my-tickets?success=1`,
+              redirectUrl: `${window.location.origin}/my-tickets?success=1&tx_ref=${encodeURIComponent(data.tx_ref)}`,
               brand: 'Yrdly',
               customerId: data.buyerPaylukId,
               callback: async () => {
+                try {
+                  await fetch('/api/events/tickets/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tx_ref: data.tx_ref }),
+                  });
+                } catch (e) {}
                 setPurchase((s) => ({ ...s, step: "success" }));
-                setTimeout(() => router.push("/my-tickets?success=1"), 1500);
+                setTimeout(() => router.push(`/my-tickets?success=1&tx_ref=${encodeURIComponent(data.tx_ref)}`), 1500);
               },
               onClose: () => {
                 setPurchase((s) => ({ ...s, step: "form" }));

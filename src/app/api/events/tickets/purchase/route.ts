@@ -249,15 +249,25 @@ export async function POST(request: NextRequest) {
     }
 
     // Store escrow_transactions record
+    const transactionId = crypto.randomUUID();
+    const commission = Math.round(totalAmount * EVENT_CONSTANTS.COMMISSION_RATE * 100) / 100;
+    const sellerAmount = totalAmount - commission;
+
     const { error: dbInsertErr } = await supabaseAdmin
       .from('escrow_transactions')
       .insert({
-        id: txRef,
+        id: transactionId,
         buyer_id: user.id,
         seller_id: event.organizer_id,
         amount: totalAmount,
+        commission,
+        total_amount: totalAmount,
+        seller_amount: sellerAmount,
         status: EscrowStatus.PENDING,
+        payment_method: 'card',
+        delivery_details: { option: 'event_entry' },
         payment_provider: 'payluk',
+        payment_reference: txRef,
         payluk_tx_ref: paylukEscrow.paymentToken,
         payluk_escrow_id: paylukEscrow.id,
         item_type: 'ticket',
@@ -275,6 +285,10 @@ export async function POST(request: NextRequest) {
 
     if (dbInsertErr) {
       console.error('[TicketPurchase] Failed to store escrow_transactions row:', dbInsertErr);
+      return NextResponse.json({
+        error: 'Failed to store payment record',
+        details: dbInsertErr.message,
+      }, { status: 500 });
     }
 
     const isLive = process.env.PAYLUK_SECRET_KEY?.startsWith('sk_live_');

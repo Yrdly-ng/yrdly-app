@@ -148,8 +148,8 @@ async function findTransactionByPaylukData(data: PaylukEscrowData) {
   const token = data.paymentToken;
 
   const orClause = token
-    ? `payluk_escrow_id.eq.${targetId},payluk_tx_ref.eq.${targetId},payluk_tx_ref.eq.${token},id.eq.${targetId}`
-    : `payluk_escrow_id.eq.${targetId},payluk_tx_ref.eq.${targetId},id.eq.${targetId}`;
+    ? `payluk_escrow_id.eq.${targetId},payluk_tx_ref.eq.${targetId},payluk_tx_ref.eq.${token},id.eq.${targetId},payment_reference.eq.${targetId},payment_reference.eq.${token}`
+    : `payluk_escrow_id.eq.${targetId},payluk_tx_ref.eq.${targetId},id.eq.${targetId},payment_reference.eq.${targetId}`;
 
   return await supabaseAdmin
     .from('escrow_transactions')

@@ -31,11 +31,28 @@ export default function MyTicketsPage() {
   const [selected, setSelected] = useState<TicketType | null>(null);
 
   const justPurchased = searchParams.get("success") === "1";
+  const txRefParam = searchParams.get("tx_ref");
 
   useEffect(() => {
     if (!user) return;
-    getMyTickets(user.id).then(t => { setTickets(t); setLoading(false); });
-  }, [user]);
+
+    const loadTickets = async () => {
+      if (txRefParam) {
+        try {
+          await fetch('/api/events/tickets/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tx_ref: txRefParam }),
+          });
+        } catch (e) {}
+      }
+      const t = await getMyTickets(user.id);
+      setTickets(t);
+      setLoading(false);
+    };
+
+    loadTickets();
+  }, [user, txRefParam]);
 
   if (loading) {
     return (
