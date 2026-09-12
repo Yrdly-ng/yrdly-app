@@ -38,18 +38,30 @@ export default function TransactionsPage() {
     
     setIsLoading(true);
     try {
-      // Load both buyer and seller transactions
-      const [buyerTransactions, sellerTransactions] = await Promise.all([
-        EscrowService.getUserTransactions(user.id),
-        EscrowService.getSellerTransactions(user.id)
-      ]);
+      const { supabase } = await import('@/lib/supabase');
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await fetch('/api/transactions', {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
+        }
+      });
 
-      // Combine and sort by date
-      const allTransactions = [...buyerTransactions, ...sellerTransactions]
-        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-
-      setTransactions(allTransactions);
-      setHasMore(false); // No pagination for now since backend doesn't support it
+      if (response.ok) {
+        const data = await response.json();
+        setTransactions(data);
+      } else {
+        // Fallback to direct client query if API route returns error
+        const [buyerTransactions, sellerTransactions] = await Promise.all([
+          EscrowService.getUserTransactions(user.id),
+          EscrowService.getSellerTransactions(user.id)
+        ]);
+        const allTransactions = [...buyerTransactions, ...sellerTransactions]
+          .sort((a, b) => new Date(b.createdAt || b.updatedAt).getTime() - new Date(a.createdAt || a.updatedAt).getTime());
+        setTransactions(allTransactions);
+      }
+      setHasMore(false);
     } catch (error) {
       console.error('Failed to load transactions:', error);
     } finally {

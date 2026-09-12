@@ -12,69 +12,53 @@ export class SupabaseChatService {
     itemPrice?: number
   ): Promise<string> {
     try {
-      // Check if chat already exists
-      const { data: existingChats, error: fetchError } = await supabase
-        .from('item_chats')
-        .select('*')
+      // 1. Check if conversation already exists in unified conversations table
+      const { data: existingConvs, error: fetchError } = await supabase
+        .from('conversations')
+        .select('id')
+        .contains('participant_ids', [buyerId, sellerId])
+        .eq('type', 'marketplace')
         .eq('item_id', itemId)
-        .eq('buyer_id', buyerId)
-        .eq('seller_id', sellerId)
         .limit(1);
 
-      if (fetchError) {
-        console.error('Error fetching existing chat:', fetchError);
-        throw fetchError;
+      if (!fetchError && existingConvs && existingConvs.length > 0) {
+        return existingConvs[0].id;
       }
 
-      if (existingChats && existingChats.length > 0) {
-        return existingChats[0].id;
+      // 2. Check if conversation exists between participants for marketplace without item_id match
+      const { data: existingParticipantConvs } = await supabase
+        .from('conversations')
+        .select('id')
+        .contains('participant_ids', [buyerId, sellerId])
+        .eq('type', 'marketplace')
+        .limit(1);
+
+      if (existingParticipantConvs && existingParticipantConvs.length > 0) {
+        return existingParticipantConvs[0].id;
       }
 
-      // Create new chat
-      const newChatData: Record<string, unknown> = {
-        item_id: itemId,
-        buyer_id: buyerId,
-        seller_id: sellerId,
-        item_title: itemTitle,
-        item_image_url: itemImageUrl,
-        created_at: new Date().toISOString(),
-        last_message_at: new Date().toISOString(),
-      };
-      if (itemPrice !== undefined) {
-        newChatData.item_price = itemPrice;
-      }
-
-      const { data: newChat, error: createError } = await supabase
-        .from('item_chats')
-        .insert(newChatData)
+      // 3. Create new conversation in conversations table
+      const { data: newConv, error: createError } = await supabase
+        .from('conversations')
+        .insert({
+          participant_ids: [buyerId, sellerId].sort(),
+          type: 'marketplace',
+          item_id: itemId,
+          item_title: itemTitle || 'Item',
+          item_image: itemImageUrl || '',
+          item_price: itemPrice ?? 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
         .select('id')
         .single();
 
       if (createError) {
-        console.error('Error creating chat:', createError);
+        console.error('Error creating conversation:', createError);
         throw createError;
       }
 
-      // Also create conversation in conversations table
-      const { error: conversationCreateError } = await supabase
-        .from('conversations')
-        .insert({
-          id: newChat.id, // Use the same ID as item_chats
-          type: 'marketplace',
-          participant_ids: [buyerId, sellerId],
-          item_title: itemTitle,
-          item_image: itemImageUrl,
-          item_price: null, // This would need to be passed as a parameter if needed
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        });
-
-      if (conversationCreateError) {
-        console.error('Error creating conversation:', conversationCreateError);
-        // Don't throw here, the chat was created successfully
-      }
-
-      return newChat.id;
+      return newConv.id;
     } catch (error) {
       console.error('Error in getOrCreateChat:', error);
       throw error;
