@@ -128,11 +128,15 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
   const [followLoading, setFollowLoading] = useState(false);
   const [isCreateBusinessOpen, setIsCreateBusinessOpen] = useState(false);
   const [hasBusiness, setHasBusiness] = useState(false);
+  const [userBusinessId, setUserBusinessId] = useState<string | null>(null);
 
   useEffect(() => {
     if (currentUser?.id) {
       supabase.from("businesses").select("id").eq("owner_id", currentUser.id).then(({ data }) => {
-        if (data && data.length > 0) setHasBusiness(true);
+        if (data && data.length > 0) {
+          setHasBusiness(true);
+          setUserBusinessId(data[0].id);
+        }
       });
     }
   }, [currentUser?.id]);
@@ -421,7 +425,9 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
           <ProfileQuickAccess
             hasBusiness={hasBusiness}
             onOpenStore={() => {
-              if (hasBusiness) {
+              if (hasBusiness && userBusinessId) {
+                router.push(`/businesses/${userBusinessId}`);
+              } else if (hasBusiness) {
                 router.push('/businesses');
               } else {
                 setIsCreateBusinessOpen(true);

@@ -158,8 +158,8 @@ export default function MyListingsPage() {
               >
                 <div>
                   <div className="relative aspect-video bg-muted overflow-hidden">
-                    {item.image_url ? (
-                      <Image src={item.image_url} alt={item.title || "Listing"} fill className="object-cover" />
+                    {item.image_urls?.[0] || item.image_url || item.images?.[0] ? (
+                      <Image src={item.image_urls?.[0] || item.image_url || item.images?.[0]} alt={item.title || "Listing"} fill className="object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
                         No Image

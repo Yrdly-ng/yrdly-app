@@ -197,7 +197,8 @@ export function MainLayout({ children }: MainLayoutProps) {
       setUrgentAlertDismissed(() => {
         if (!alert || typeof window === "undefined") return false;
         try {
-          return window.sessionStorage.getItem(`yrdly_alert_dismissed_${alert.id}`) === "1";
+          return window.localStorage.getItem(`yrdly_alert_dismissed_${alert.id}`) === "1" ||
+                 window.localStorage.getItem(`yrdly_dismissed_alert_${alert.id}`) === "true";
         } catch {
           return false;
         }
@@ -223,7 +224,8 @@ export function MainLayout({ children }: MainLayoutProps) {
   const dismissUrgentAlert = () => {
     if (urgentAlert && typeof window !== "undefined") {
       try {
-        window.sessionStorage.setItem(`yrdly_alert_dismissed_${urgentAlert.id}`, "1");
+        window.localStorage.setItem(`yrdly_alert_dismissed_${urgentAlert.id}`, "1");
+        window.localStorage.setItem(`yrdly_dismissed_alert_${urgentAlert.id}`, "true");
       } catch {}
     }
     setUrgentAlertDismissed(true);

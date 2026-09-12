@@ -114,8 +114,8 @@ export default function MyEventsPage() {
               >
                 <div className="flex gap-4">
                   <div className="relative w-24 h-24 rounded-xl bg-muted overflow-hidden shrink-0">
-                    {evt.cover_image || evt.image_url ? (
-                      <Image src={evt.cover_image || evt.image_url} alt={evt.title || "Event"} fill className="object-cover" />
+                    {evt.cover_image_url || evt.image_urls?.[0] || evt.cover_image || evt.image_url ? (
+                      <Image src={evt.cover_image_url || evt.image_urls?.[0] || evt.cover_image || evt.image_url!} alt={evt.title || "Event"} fill className="object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
                         No Image

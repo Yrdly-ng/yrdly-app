@@ -58,6 +58,7 @@ export class AlertService {
             .from("safety_alerts")
             .select("*")
             .eq("status", "approved")
+            .gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
             .order("created_at", { ascending: false }),
           supabase
             .from("alerts")
@@ -131,6 +132,7 @@ export class AlertService {
         .select("*")
         .eq("status", "approved")
         .eq("severity", "urgent")
+        .gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();

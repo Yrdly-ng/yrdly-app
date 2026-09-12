@@ -47,7 +47,7 @@ export default function EventDetailPage() {
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [purchase, setPurchase] = useState<PurchaseState>({ step: "idle", tier: null, errorMsg: "" });
-  const [form, setForm] = useState({ name: "", email: "", phone: "" });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", quantity: 1 });
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [hasTicket, setHasTicket] = useState(false);
@@ -119,6 +119,7 @@ export default function EventDetailPage() {
           attendee_name: form.name.trim(),
           attendee_email: form.email.trim(),
           attendee_phone: form.phone.trim() || undefined,
+          quantity: Math.min(5, Math.max(1, form.quantity || 1)),
         }),
       });
       const data = await res.json();
@@ -527,6 +528,30 @@ export default function EventDetailPage() {
                       value={form.phone}
                       onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
                     />
+
+                    <div className="flex items-center justify-between bg-background border border-border rounded-xl px-4 py-2.5">
+                      <div>
+                        <p className="font-sans text-xs font-medium text-foreground">Quantity</p>
+                        <p className="font-sans text-[10px] text-muted-foreground">Max 5 tickets per tier</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setForm((f) => ({ ...f, quantity: Math.max(1, (f.quantity || 1) - 1) }))}
+                          className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center font-bold text-foreground hover:bg-muted/80 transition"
+                        >
+                          -
+                        </button>
+                        <span className="font-sans font-bold text-sm text-foreground">{form.quantity || 1}</span>
+                        <button
+                          type="button"
+                          onClick={() => setForm((f) => ({ ...f, quantity: Math.min(5, (f.quantity || 1) + 1) }))}
+                          className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center font-bold text-foreground hover:bg-muted/80 transition"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
                   </div>
 
                   {purchase.errorMsg && (
@@ -543,7 +568,7 @@ export default function EventDetailPage() {
                   >
                     {purchase.step === "loading" ? (
                       <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Processing…</>
-                    ) : purchase.tier?.price === 0 ? "Get Free Ticket" : `Pay ${formatPrice(purchase.tier?.price || 0)}`}
+                    ) : purchase.tier?.price === 0 ? "Get Free Ticket" : `Pay ${formatPrice((purchase.tier?.price || 0) * (form.quantity || 1))}`}
                   </Button>
                 </>
               )}

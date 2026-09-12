@@ -12,14 +12,15 @@ export async function POST(request: NextRequest) {
     const { data: { user }, error: authError } = await getAuthenticatedUser(request);
     if (authError || !user) return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
 
-    const { ticketId, eventId } = await request.json();
+    const { ticketId, ticketCode, ticketInput, eventId } = await request.json();
+    const input = ticketInput || ticketCode || ticketId;
 
-    if (!ticketId || !eventId) {
-      return NextResponse.json({ error: 'ticketId and eventId are required' }, { status: 400 });
+    if (!input || !eventId) {
+      return NextResponse.json({ error: 'Ticket code/ID and eventId are required' }, { status: 400 });
     }
 
     const { data: result, error: rpcError } = await supabaseAdmin.rpc('scan_ticket', {
-      p_ticket_id: ticketId,
+      p_ticket_input: input,
       p_scanner_id: user.id,
       p_event_id: eventId
     });

@@ -107,16 +107,18 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
   useEffect(() => {
     const fetchAlerts = async () => {
       try {
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
         const { data } = await supabase
           .from("safety_alerts")
           .select("*")
           .eq("status", "approved")
+          .gte("created_at", twentyFourHoursAgo)
           .order("created_at", { ascending: false })
           .limit(3);
 
         if (data) {
           const visible = data.filter(
-            (a) => !localStorage.getItem(`yrdly_dismissed_alert_${a.id}`)
+            (a) => !localStorage.getItem(`yrdly_dismissed_alert_${a.id}`) && !localStorage.getItem(`yrdly_alert_dismissed_${a.id}`)
           );
           setActiveAlerts(visible as Alert[]);
         }
