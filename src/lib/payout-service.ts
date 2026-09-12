@@ -1,5 +1,7 @@
 import { supabaseAdmin } from './supabase-admin';
 import { PaystackService } from './paystack-service';
+import { PaylukService } from './payluk-service';
+import { getPaylukCustomerId } from './payluk-onboarding';
 import { NotificationService } from './notification-service';
 
 export interface PayoutRequest {
@@ -181,24 +183,47 @@ export class PayoutService {
         if (accountType === 'bank_account' || accountType === 'mobile_money' || accountType === 'digital_wallet') {
           const bankCode = accountDetails?.bank_code || accountDetails?.bankCode;
           const accountNumber = accountDetails?.account_number || accountDetails?.accountNumber;
+          const accountName = accountDetails?.account_name || accountDetails?.accountName;
 
           if (!bankCode || !accountNumber) {
             throw new Error('Missing bank details for payout. Seller must re-add their account.');
           }
 
-          const transferResult = await PaystackService.transferToSeller({
-            bankCode,
-            accountNumber,
-            amount: payoutRequest.amount,
-            reference: `payout-${payoutRequestId}`,
-            narration: `Yrdly payout for transaction ${payoutRequestId}`,
-          });
-          
-          transferSuccess = transferResult.success;
-          if (!transferSuccess && transferResult.error) {
-            transferErrorMsg = transferResult.error;
+          // Check if seller has a Payluk customer ID
+          const sellerPaylukId = await getPaylukCustomerId(payoutRequest.seller_id);
+
+          if (sellerPaylukId) {
+            console.log(`[PayoutService] Initiating Payluk bank withdrawal for seller ${payoutRequest.seller_id}...`);
+            const paylukResult = await PaylukService.withdrawToBank({
+              sellerPaylukCustomerId: sellerPaylukId,
+              amount: payoutRequest.amount,
+              bankCode,
+              accountNumber,
+              accountName,
+              reference: `payout-${payoutRequestId}`,
+            });
+
+            transferSuccess = paylukResult.success;
+            if (!transferSuccess && paylukResult.error) {
+              transferErrorMsg = paylukResult.error;
+            }
+            transactionReference = paylukResult.reference || `payout-${payoutRequestId}`;
+          } else {
+            console.log(`[PayoutService] Seller ${payoutRequest.seller_id} has no Payluk ID, using Paystack transfer...`);
+            const transferResult = await PaystackService.transferToSeller({
+              bankCode,
+              accountNumber,
+              amount: payoutRequest.amount,
+              reference: `payout-${payoutRequestId}`,
+              narration: `Yrdly payout for transaction ${payoutRequestId}`,
+            });
+
+            transferSuccess = transferResult.success;
+            if (!transferSuccess && transferResult.error) {
+              transferErrorMsg = transferResult.error;
+            }
+            transactionReference = `payout-${payoutRequestId}`;
           }
-          transactionReference = `payout-${payoutRequestId}`;
         }
 
         if (transferSuccess) {
