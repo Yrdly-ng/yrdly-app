@@ -124,8 +124,8 @@ export default function CreatePostPage() {
       const uploadedImageUrls: string[] = [];
       for (let i = 0; i < imageFiles.length; i++) {
         const file = imageFiles[i];
-        const ext = file.name.split(".").pop() || "jpg";
-        const path = `${user.id}/${Date.now()}_${i}.${ext}`;
+        const safeName = file.name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9._-]/g, '');
+        const path = `${user.id}/${Date.now()}_${i}_${safeName}`;
 
         const { error: uploadErr } = await supabase.storage
           .from("post-images")
@@ -147,8 +147,8 @@ export default function CreatePostPage() {
       const uploadedVideoUrls: string[] = [];
       for (let i = 0; i < videoFiles.length; i++) {
         const file = videoFiles[i];
-        const ext = file.name.split(".").pop() || "mp4";
-        const path = `${user.id}/${Date.now()}_${i}.${ext}`;
+        const safeName = file.name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9._-]/g, '');
+        const path = `${user.id}/${Date.now()}_${i}_${safeName}`;
 
         const { error: uploadErr } = await supabase.storage
           .from("post-videos")
@@ -183,6 +183,8 @@ export default function CreatePostPage() {
 
       const postPayload: Record<string, any> = {
         user_id: user.id,
+        author_name: profile?.name || user.email?.split("@")[0] || "Neighbor",
+        author_image: profile?.avatar_url || "",
         text: trimmedText,
         category: "General",
         visibility,
@@ -190,6 +192,14 @@ export default function CreatePostPage() {
         comment_count: 0,
         liked_by: [],
         moderation_status: modStatus,
+        state: profile?.home_state || null,
+        lga: profile?.home_lga || null,
+        ward: profile?.home_ward || null,
+        author_location: {
+          state: profile?.home_state || null,
+          lga: profile?.home_lga || null,
+          ward: profile?.home_ward || null,
+        },
         created_at: new Date().toISOString(),
         timestamp: new Date().toISOString(),
       };
