@@ -53,6 +53,28 @@ export async function POST(request: NextRequest) {
     if (tier.sale_ends_at && new Date(tier.sale_ends_at) < new Date()) {
       return NextResponse.json({ error: 'Ticket sales have ended for this tier' }, { status: 400 });
     }
+
+    const MAX_TICKETS_PER_TIER = 5;
+    if (quantity > MAX_TICKETS_PER_TIER) {
+      return NextResponse.json({ error: `You can only purchase a maximum of ${MAX_TICKETS_PER_TIER} tickets per tier.` }, { status: 400 });
+    }
+
+    const { data: existingUserTickets } = await supabaseAdmin
+      .from('tickets')
+      .select('id')
+      .eq('buyer_id', user.id)
+      .eq('tier_id', tier_id)
+      .neq('status', 'CANCELLED');
+
+    const userOwnedCount = existingUserTickets?.length || 0;
+    if (userOwnedCount + quantity > MAX_TICKETS_PER_TIER) {
+      const remainingAllowed = Math.max(0, MAX_TICKETS_PER_TIER - userOwnedCount);
+      const message = userOwnedCount >= MAX_TICKETS_PER_TIER
+        ? `You have reached the maximum limit of ${MAX_TICKETS_PER_TIER} tickets for this tier.`
+        : `You already own ${userOwnedCount} ticket(s) for this tier. You can only buy up to ${remainingAllowed} more (max ${MAX_TICKETS_PER_TIER} per tier).`;
+      return NextResponse.json({ error: 'MAX_TICKET_LIMIT_EXCEEDED', message }, { status: 400 });
+    }
+
     if (tier.capacity !== null && (tier.sold + quantity) > tier.capacity) {
       return NextResponse.json({ error: 'SOLD_OUT', message: `Not enough tickets left. Only ${Math.max(0, tier.capacity - tier.sold)} available.` }, { status: 409 });
     }

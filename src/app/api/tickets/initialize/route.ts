@@ -39,6 +39,22 @@ export async function POST(request: NextRequest) {
     if (tier.event.status !== 'PUBLISHED') {
       return NextResponse.json({ error: 'Event is not available for purchase' }, { status: 400 });
     }
+    const MAX_TICKETS_PER_TIER = 5;
+    const { data: existingUserTickets } = await supabaseAdmin
+      .from('tickets')
+      .select('id')
+      .eq('buyer_id', user.id)
+      .eq('tier_id', tierId)
+      .neq('status', 'CANCELLED');
+
+    const userOwnedCount = existingUserTickets?.length || 0;
+    if (userOwnedCount + 1 > MAX_TICKETS_PER_TIER) {
+      return NextResponse.json({
+        error: 'MAX_TICKET_LIMIT_EXCEEDED',
+        message: `You have reached the maximum limit of ${MAX_TICKETS_PER_TIER} tickets for this tier.`,
+      }, { status: 400 });
+    }
+
     if (tier.capacity != null && tier.sold >= tier.capacity) {
       return NextResponse.json({ error: 'This ticket tier is sold out' }, { status: 409 });
     }
