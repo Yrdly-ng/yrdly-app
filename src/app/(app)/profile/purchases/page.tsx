@@ -20,6 +20,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { SupabaseChatService } from '@/lib/supabase-chat-service';
 
 export default function PurchaseHistoryPage() {
   const { user } = useAuth();
@@ -78,8 +79,31 @@ export default function PurchaseHistoryPage() {
     router.push(`/transactions/${transactionId}`);
   };
 
-  const handleMessageSeller = (sellerId: string, itemId: string) => {
-    router.push(`/messages?user=${sellerId}&item=${itemId}`);
+  const handleMessageSeller = async (purchase: PurchaseHistory) => {
+    if (!user) return;
+    try {
+      const itemTitle = purchase.item.title || purchase.item.text || 'Purchase Inquiry';
+      const itemImage = purchase.item.image_urls?.[0] || '';
+      const itemPrice = purchase.amount;
+
+      const chatId = await SupabaseChatService.getOrCreateChat(
+        purchase.item.id,
+        user.id,
+        purchase.seller.id,
+        itemTitle,
+        itemImage,
+        itemPrice
+      );
+
+      router.push(`/messages/${chatId}`);
+    } catch (error) {
+      console.error('Error starting chat:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to open chat.',
+        variant: 'destructive',
+      });
+    }
   };
 
   if (loading) {
@@ -241,7 +265,7 @@ export default function PurchaseHistoryPage() {
                       View Details
                     </Button>
                     <Button 
-                      onClick={() => handleMessageSeller(purchase.seller.id, purchase.item.id)}
+                      onClick={() => handleMessageSeller(purchase)}
                       variant="outline" 
                       size="sm"
                     >

@@ -29,6 +29,8 @@ import Image from 'next/image';
 import { SubmitReviewDialog } from '@/components/reviews/SubmitReviewDialog';
 import { ReviewService } from '@/lib/review-service';
 import { AppHeader } from '@/components/AppHeader';
+import { supabase } from '@/lib/supabase';
+import { SupabaseChatService } from '@/lib/supabase-chat-service';
 
 interface TransactionDetails {
   id: string;
@@ -191,14 +193,35 @@ export default function TransactionDetailsPage() {
     }
   };
 
-  const handleMessageUser = () => {
-    if (!transaction) return;
+  const handleMessageUser = async () => {
+    if (!transaction || !user) return;
     
-    const otherUserId = user?.id === transaction.buyer_id 
-      ? transaction.seller_id 
-      : transaction.buyer_id;
-    
-    router.push(`/messages?user=${otherUserId}&item=${transaction.item_id}`);
+    try {
+      setActionLoading(true);
+      const itemTitle = transaction.item?.title || transaction.item?.text || transaction.item?.description || 'Item Inquiry';
+      const itemImage = transaction.item?.image_urls?.[0] || '';
+      const itemPrice = transaction.item?.price || transaction.amount;
+
+      const chatId = await SupabaseChatService.getOrCreateChat(
+        transaction.item_id,
+        transaction.buyer_id,
+        transaction.seller_id,
+        itemTitle,
+        itemImage,
+        itemPrice
+      );
+
+      router.push(`/messages/${chatId}`);
+    } catch (error) {
+      console.error('Error opening chat:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to open chat. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const getStatusBadge = (status: EscrowStatus) => {
@@ -444,6 +467,7 @@ export default function TransactionDetailsPage() {
             </div>
             <Button 
               onClick={handleMessageUser}
+              disabled={actionLoading}
               variant="outline" 
               className="w-full font-yrdly-body border-[var(--yrdly-glass-border)] text-foreground"
             >

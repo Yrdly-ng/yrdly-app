@@ -21,6 +21,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { SupabaseChatService } from '@/lib/supabase-chat-service';
 
 export default function SoldItemsPage() {
   const { user } = useAuth();
@@ -84,8 +85,31 @@ export default function SoldItemsPage() {
     router.push(`/transactions/${transactionId}`);
   };
 
-  const handleMessageBuyer = (buyerId: string, itemId: string) => {
-    router.push(`/messages?user=${buyerId}&item=${itemId}`);
+  const handleMessageBuyer = async (soldItem: SoldItemHistory) => {
+    if (!user) return;
+    try {
+      const itemTitle = soldItem.item.title || soldItem.item.text || 'Sale Inquiry';
+      const itemImage = soldItem.item.image_urls?.[0] || '';
+      const itemPrice = soldItem.amount;
+
+      const chatId = await SupabaseChatService.getOrCreateChat(
+        soldItem.item.id,
+        soldItem.buyer.id,
+        user.id,
+        itemTitle,
+        itemImage,
+        itemPrice
+      );
+
+      router.push(`/messages/${chatId}`);
+    } catch (error) {
+      console.error('Error starting chat:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to open chat.',
+        variant: 'destructive',
+      });
+    }
   };
 
   if (loading) {
@@ -238,7 +262,7 @@ export default function SoldItemsPage() {
                       View Details
                     </Button>
                     <Button 
-                      onClick={() => handleMessageBuyer(soldItem.buyer.id, soldItem.item.id)}
+                      onClick={() => handleMessageBuyer(soldItem)}
                       variant="outline" 
                       size="sm"
                     >

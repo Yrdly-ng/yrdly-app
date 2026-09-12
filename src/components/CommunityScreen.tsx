@@ -215,7 +215,7 @@ export function CommunityScreen({ className }: { className?: string }) {
         .maybeSingle();
 
       if (existing) {
-        router.push(`/messages?conversationId=${existing.id}`);
+        router.push(`/messages/${existing.id}`);
       } else {
         const { data: newConv, error } = await supabase
           .from("conversations")
@@ -227,7 +227,7 @@ export function CommunityScreen({ className }: { className?: string }) {
           .single();
 
         if (error) throw error;
-        if (newConv) router.push(`/messages?conversationId=${newConv.id}`);
+        if (newConv) router.push(`/messages/${newConv.id}`);
       }
     } catch (error) {
       console.error("Error starting chat:", error);

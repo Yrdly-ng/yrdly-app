@@ -26,6 +26,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
 import { AppHeader } from '@/components/AppHeader';
+import { SupabaseChatService } from '@/lib/supabase-chat-service';
 
 export default function DisputeDetailsPage() {
   const params = useParams();
@@ -156,17 +157,35 @@ export default function DisputeDetailsPage() {
     }
   };
 
-  const handleMessageUser = () => {
+  const handleMessageUser = async () => {
     if (!dispute || !user) return;
     
     const transaction = dispute.transaction;
     if (!transaction) return;
     
-    const otherUserId = user.id === transaction.buyer_id 
-      ? transaction.seller_id 
-      : transaction.buyer_id;
-    
-    router.push(`/messages?user=${otherUserId}&item=${transaction.item?.id}`);
+    try {
+      const itemTitle = transaction.item?.title || 'Dispute Inquiry';
+      const itemImage = transaction.item?.image_urls?.[0] || '';
+      const itemPrice = transaction.amount;
+
+      const chatId = await SupabaseChatService.getOrCreateChat(
+        transaction.item?.id || '',
+        transaction.buyer_id,
+        transaction.seller_id,
+        itemTitle,
+        itemImage,
+        itemPrice
+      );
+
+      router.push(`/messages/${chatId}`);
+    } catch (error) {
+      console.error('Error opening chat:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to open chat. Please try again.',
+        variant: 'destructive',
+      });
+    }
   };
 
   if (loading) {
