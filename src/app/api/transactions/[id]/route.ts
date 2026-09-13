@@ -36,7 +36,7 @@ export async function GET(
     // Fetch transaction with admin client to bypass RLS
     const { data: transaction, error: txError } = await supabaseAdmin
       .from('escrow_transactions')
-      .select('*')
+      .select('*, disputes:disputes!disputes_transaction_id_fkey(refund_amount, status, resolved_at, created_at)')
       .eq('id', transactionId)
       .single();
 
@@ -118,10 +118,17 @@ export async function GET(
       }
     }
 
+    const disputesList = Array.isArray(transaction.disputes) ? transaction.disputes : [];
+    const resolvedDispute = disputesList
+      .filter((d: any) => d.status === 'resolved' && Number(d.refund_amount) > 0)
+      .sort((a: any, b: any) => new Date(b.resolved_at || b.created_at || 0).getTime() - new Date(a.resolved_at || a.created_at || 0).getTime())[0];
+    const refundAmount = resolvedDispute ? Number(resolvedDispute.refund_amount) : null;
+
     console.log(`[TransactionAPI] Successfully fetched transaction ${transactionId} for user ${user.id}`);
 
     return NextResponse.json({
       ...transaction,
+      refund_amount: refundAmount,
       buyer: buyer || { id: transaction.buyer_id, name: 'Unknown', email: '' },
       seller: seller || { id: transaction.seller_id, name: 'Unknown', email: '' },
       item: itemData || { id: transaction.item_id, title: 'Item', price: transaction.amount || 0 },

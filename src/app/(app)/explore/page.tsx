@@ -9,7 +9,7 @@ import { BusinessesScreen } from "@/components/BusinessesScreen";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMarketplaceActions } from "@/hooks/use-marketplace-actions";
 import { AlertService } from "@/lib/alert-service";
-import { Search, SlidersHorizontal, Compass, ShoppingBag, Calendar, Briefcase } from "lucide-react";
+import { SlidersHorizontal, Compass, ShoppingBag, Calendar, Briefcase } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LocationChip } from "@/components/LocationChip";
 
@@ -104,13 +104,6 @@ function ExploreContent() {
             </button>
           )}
 
-          <button
-            onClick={() => router.push("/search")}
-            className="p-2.5 rounded-full bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] text-foreground hover:bg-primary/10 transition-colors"
-            aria-label="Search"
-          >
-            <Search className="w-4 h-4" />
-          </button>
         </div>
       </div>
 

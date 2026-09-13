@@ -319,17 +319,6 @@ export function CommunityScreen({ className }: { className?: string }) {
           </div>
         )}
 
-        {/* ── Search Bar ── */}
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--yrdly-label)]" />
-          <input
-            type="text"
-            placeholder={activeTab === "friends" ? "Search friends..." : "Search neighbors..."}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-full px-4 pl-10 py-2.5 text-xs text-foreground font-yrdly-body bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] backdrop-blur-md outline-none focus:ring-1 focus:ring-primary placeholder:text-[var(--yrdly-label)]"
-          />
-        </div>
 
         {/* ── Content Body ── */}
         {loading ? (
@@ -470,32 +459,6 @@ export function CommunityScreen({ className }: { className?: string }) {
         ) : (
           /* ── DISCOVER TAB ── */
           <div className="space-y-4">
-            {/* Sub-Filters */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
-              {[
-                { key: "all", label: "All Neighbors", icon: Users },
-                { key: "neighbors", label: "Nearby", icon: MapPin },
-                { key: "mutuals", label: "Mutuals", icon: Sparkles },
-                { key: "sellers", label: "Sellers", icon: Store },
-              ].map((f) => {
-                const Icon = f.icon;
-                const active = discoverFilter === f.key;
-                return (
-                  <button
-                    key={f.key}
-                    onClick={() => setDiscoverFilter(f.key as DiscoverFilter)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap font-yrdly-body transition-colors ${
-                      active
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-[var(--yrdly-glass-bg)] text-[var(--yrdly-label)] border border-[var(--yrdly-glass-border)] hover:text-foreground"
-                    }`}
-                  >
-                    <Icon className="w-3.5 h-3.5" />
-                    {f.label}
-                  </button>
-                );
-              })}
-            </div>
 
             {/* Discovered Users List */}
             {displayedDiscoverList.length === 0 ? (

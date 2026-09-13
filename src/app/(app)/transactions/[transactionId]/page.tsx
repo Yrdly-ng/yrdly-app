@@ -17,7 +17,8 @@ import {
   ArrowLeft,
   Check,
   Download,
-  Loader2
+  Loader2,
+  RotateCcw
 } from 'lucide-react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -37,6 +38,7 @@ interface TransactionDetails {
   commission: number;
   seller_amount: number;
   status: string;
+  refund_amount?: number | null;
   payment_method?: string;
   delivery_details?: any;
   created_at: string;
@@ -218,8 +220,17 @@ export default function TransactionDetailsPage() {
     }
   };
 
-  const getStatusMeta = (statusStr: string) => {
+  const formatPrice = (amount: number) => `₦${amount.toLocaleString()}`;
+
+  const getStatusMeta = (statusStr: string, refundAmount?: number | null) => {
     const status = statusStr?.toLowerCase() || 'pending';
+    if (status === 'cancelled' && refundAmount && refundAmount > 0) {
+      return {
+        label: `Cancelled — Refunded (${formatPrice(refundAmount)})`,
+        color: '#0288D1',
+        icon: RotateCcw,
+      };
+    }
     const meta: Record<string, { label: string; color: string; icon: any }> = {
       pending: { label: 'Awaiting Payment', color: '#FFB648', icon: Clock },
       paid: { label: 'Paid — Awaiting Handover', color: '#00D26A', icon: Package },
@@ -231,8 +242,6 @@ export default function TransactionDetailsPage() {
     };
     return meta[status] || meta.pending;
   };
-
-  const formatPrice = (amount: number) => `₦${amount.toLocaleString()}`;
 
   const formatTs = (isoStr?: string | null) => {
     if (!isoStr) return null;
@@ -264,7 +273,7 @@ export default function TransactionDetailsPage() {
   const counterparty = isBuyer ? tx.seller : tx.buyer;
   const businessId = tx.item?.business_id;
   const statusStr = tx.status?.toLowerCase() || 'pending';
-  const meta = getStatusMeta(statusStr);
+  const meta = getStatusMeta(statusStr, tx.refund_amount);
 
   const imagesArr = Array.isArray(tx.item?.image_urls)
     ? tx.item.image_urls
