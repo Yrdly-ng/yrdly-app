@@ -3,6 +3,8 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { EscrowStatus } from '@/types/escrow';
 import { MARKETPLACE_CONSTANTS } from '@/lib/constants';
 import { PayoutService } from '@/lib/payout-service';
+import { PaylukService } from '@/lib/payluk-service';
+import { getPaylukCustomerId } from '@/lib/payluk-onboarding';
 
 export async function POST(
   request: Request,
@@ -30,7 +32,7 @@ export async function POST(
 
     const { data: transaction, error: fetchError } = await supabaseAdmin
       .from('escrow_transactions')
-      .select('status, seller_id, shipped_at, payment_provider')
+      .select('status, seller_id, buyer_id, shipped_at, payment_provider, payluk_escrow_id, payluk_payment_token')
       .eq('id', transactionId)
       .single();
 
@@ -51,6 +53,28 @@ export async function POST(
 
     if (hoursSinceShipped < MARKETPLACE_CONSTANTS.AUTO_RELEASE_HOURS) {
       return NextResponse.json({ error: 'Delivery window has not elapsed yet' }, { status: 403 });
+    }
+
+    if (transaction.payment_provider === 'payluk' || transaction.payluk_escrow_id) {
+      if (!transaction.payluk_escrow_id) {
+        return NextResponse.json({ error: 'Payluk escrow identifier is missing' }, { status: 409 });
+      }
+      const sellerPaylukId = await getPaylukCustomerId(user.id);
+      if (!sellerPaylukId) {
+        return NextResponse.json({ error: 'Seller Payluk customer is not configured' }, { status: 409 });
+      }
+      try {
+        const released = await PaylukService.claimFunds(
+          sellerPaylukId,
+          transaction.payluk_payment_token || transaction.payluk_escrow_id
+        );
+        if (!['COMPLETED', 'CLAIMED'].includes(released.status)) {
+          return NextResponse.json({ error: 'Payluk has not released the escrow funds yet' }, { status: 409 });
+        }
+      } catch (releaseError: any) {
+        console.error('[ClaimTransaction] Payluk release failed:', releaseError);
+        return NextResponse.json({ error: releaseError.message || 'Payluk escrow release failed' }, { status: 502 });
+      }
     }
 
     // Update status to COMPLETED

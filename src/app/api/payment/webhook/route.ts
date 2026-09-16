@@ -36,17 +36,21 @@ export async function POST(request: NextRequest) {
     const event = JSON.parse(rawBody);
     console.log('[Webhook] Payluk event received:', event?.event, event?.data?.reference || event?.data?.id);
 
-    const isSuccess =
-      event?.event === 'escrow.ongoing' ||
-      event?.event === 'payment.escrow.success' ||
-      event?.event === 'payment.deposit.success' ||
-      event?.event === 'payment.success' ||
-      event?.data?.status === 'success' ||
-      event?.data?.status === 'paid' ||
-      event?.data?.state === 'OPENED';
+    const eventName = String(event?.event || '').toLowerCase();
+    const isPaymentSuccess =
+      eventName === 'payment.escrow.success' ||
+      eventName === 'payment.deposit.success' ||
+      eventName === 'payment.success' ||
+      event?.data?.status === 'paid';
+    const isReleaseSuccess =
+      eventName === 'escrow.completed' ||
+      eventName === 'escrow.claimed' ||
+      eventName === 'escrow.release.success' ||
+      event?.data?.status === 'COMPLETED' ||
+      event?.data?.status === 'CLAIMED';
 
-    if (!isSuccess) {
-      console.log('[Webhook] Ignoring non-success event:', event?.event);
+    if (!isPaymentSuccess && !isReleaseSuccess) {
+      console.log('[Webhook] Ignoring non-payment/release event:', event?.event);
       return NextResponse.json({ received: true });
     }
 
@@ -74,19 +78,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ received: true });
     }
 
-    if (tx.status === EscrowStatus.PAID) {
-      console.log('[Webhook] Already PAID (idempotent):', reference);
+    if (isReleaseSuccess) {
+      if (tx.status === EscrowStatus.COMPLETED) return NextResponse.json({ received: true });
+      const { error } = await supabaseAdmin
+        .from('escrow_transactions')
+        .update({ status: EscrowStatus.COMPLETED, completed_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .eq('id', tx.id)
+        .in('status', [EscrowStatus.PAID, EscrowStatus.DELIVERED]);
+      if (error) return NextResponse.json({ error: 'DB update failed' }, { status: 500 });
       return NextResponse.json({ received: true });
     }
 
+    if (tx.status !== EscrowStatus.PENDING) return NextResponse.json({ received: true });
+
     const { error: updateError } = await supabaseAdmin
       .from('escrow_transactions')
-      .update({
-        status: EscrowStatus.PAID,
-        paid_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', reference)
+      .update({ status: EscrowStatus.PAID, paid_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .eq('id', tx.id)
       .eq('status', EscrowStatus.PENDING);
 
     if (updateError) {
