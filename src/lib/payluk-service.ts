@@ -68,8 +68,15 @@ async function paylukRequest<T>(
   }
 
   const envelopeStatus = Number(data.status);
-  if (!res.ok || (Number.isFinite(envelopeStatus) && envelopeStatus >= 400)) {
-    const errMsg = data.message || data.status?.toString() || 'Payluk API error';
+  const responseData = data.data as unknown;
+  const hasErrorResult =
+    responseData === false ||
+    (typeof responseData === 'object' && responseData !== null &&
+      (('success' in responseData && (responseData as { success?: unknown }).success === false) ||
+       ('error' in responseData && Boolean((responseData as { error?: unknown }).error))));
+
+  if (!res.ok || !Number.isFinite(envelopeStatus) || envelopeStatus < 200 || envelopeStatus >= 300 || hasErrorResult) {
+    const errMsg = data.message || (hasErrorResult ? 'Payluk returned an unsuccessful result' : data.status?.toString()) || 'Payluk API error';
     throw new Error(
       `[Payluk] ${fetchOptions.method || 'GET'} ${endpoint} — HTTP ${res.status}` +
       ` (Payluk status: ${data.status}): ${errMsg} | body: ${rawBody?.slice(0, 400)}`
@@ -114,8 +121,15 @@ async function paylukFormRequest<T>(
   }
 
   const envelopeStatus = Number(data.status);
-  if (!res.ok || (Number.isFinite(envelopeStatus) && envelopeStatus >= 400)) {
-    const errMsg = data.message || data.status?.toString() || 'Payluk API error';
+  const responseData = data.data as unknown;
+  const hasErrorResult =
+    responseData === false ||
+    (typeof responseData === 'object' && responseData !== null &&
+      (('success' in responseData && (responseData as { success?: unknown }).success === false) ||
+       ('error' in responseData && Boolean((responseData as { error?: unknown }).error))));
+
+  if (!res.ok || !Number.isFinite(envelopeStatus) || envelopeStatus < 200 || envelopeStatus >= 300 || hasErrorResult) {
+    const errMsg = data.message || (hasErrorResult ? 'Payluk returned an unsuccessful result' : data.status?.toString()) || 'Payluk API error';
     throw new Error(
       `[Payluk] ${options.method || 'POST'} ${endpoint} — HTTP ${res.status}` +
       ` (Payluk status: ${data.status}): ${errMsg} | body: ${rawBody?.slice(0, 400)}`

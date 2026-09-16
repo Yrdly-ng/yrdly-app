@@ -158,16 +158,23 @@ export async function POST(request: NextRequest) {
   // at the provider reference level; a failure here must not undo the escrow
   // release, but it must be visible to the caller so the seller can retry.
   let payoutInitiated = false;
+  let payoutRequestId: string | undefined;
+  let payoutReason: string | undefined;
   try {
-    await PayoutService.initiateAutoPayout(transactionId);
-    payoutInitiated = true;
+    const payoutResult = await PayoutService.initiateAutoPayout(transactionId);
+    payoutInitiated = payoutResult.payoutCreated;
+    payoutRequestId = payoutResult.payoutRequestId;
+    payoutReason = payoutResult.reason;
   } catch (payoutError) {
     console.error('[confirm-delivery] Seller payout initiation failed:', payoutError);
+    payoutReason = 'payout_creation_failed';
   }
 
   return NextResponse.json({
     success: true,
     payoutInitiated,
+    payoutRequestId,
     payoutRequired: !payoutInitiated,
+    payoutReason,
   });
 }

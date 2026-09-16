@@ -23,6 +23,12 @@ export interface SellerBalance {
   completedPayouts: number;
 }
 
+export interface PayoutInitiationResult {
+  payoutCreated: boolean;
+  payoutRequestId?: string;
+  reason?: 'missing_account' | 'unverified_account' | 'created';
+}
+
 export class PayoutService {
   /**
    * Get seller's balance from completed transactions
@@ -72,7 +78,7 @@ export class PayoutService {
   /**
    * Initiate automatic payout after transaction completion
    */
-  static async initiateAutoPayout(transactionId: string): Promise<void> {
+  static async initiateAutoPayout(transactionId: string): Promise<PayoutInitiationResult> {
     try {
       // Get transaction details
       const { data: transaction, error: fetchError } = await supabaseAdmin
@@ -101,12 +107,12 @@ export class PayoutService {
 
       if (accountError || !sellerAccount) {
         console.log('No primary seller account found, skipping auto payout');
-        return;
+        return { payoutCreated: false, reason: 'missing_account' };
       }
 
       if (sellerAccount.verification_status !== 'verified') {
         console.log('Seller account not verified, skipping auto payout');
-        return;
+        return { payoutCreated: false, reason: 'unverified_account' };
       }
 
       // Create payout request
@@ -129,8 +135,11 @@ export class PayoutService {
         throw payoutError;
       }
 
-      // Process the payout
+      // Process the payout. The request now exists even if provider processing fails;
+      // callers can use the returned id to retry it.
       await this.processPayout(payoutRequest.id);
+
+      return { payoutCreated: true, payoutRequestId: payoutRequest.id, reason: 'created' };
 
     } catch (error) {
       console.error('Failed to initiate auto payout:', error);
