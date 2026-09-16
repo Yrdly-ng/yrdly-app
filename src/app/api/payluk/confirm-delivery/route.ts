@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { getPaylukCustomerId } from '@/lib/payluk-onboarding';
 import { PaylukService } from '@/lib/payluk-service';
 import { EscrowStatus } from '@/types/escrow';
+import { PayoutService } from '@/lib/payout-service';
 
 /**
  * POST /api/payluk/confirm-delivery
@@ -151,5 +152,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'DELIVERY_RECORDED_FAILED' }, { status: 500 });
   }
 
-  return NextResponse.json({ success: true });
+  // Payluk has released the escrow and the local transaction is now completed.
+  // Start the seller payout from this same delivery-confirmation path as well as
+  // the legacy /transactions/:id/complete path. The payout service is idempotent
+  // at the provider reference level; a failure here must not undo the escrow
+  // release, but it must be visible to the caller so the seller can retry.
+  let payoutInitiated = false;
+  try {
+    await PayoutService.initiateAutoPayout(transactionId);
+    payoutInitiated = true;
+  } catch (payoutError) {
+    console.error('[confirm-delivery] Seller payout initiation failed:', payoutError);
+  }
+
+  return NextResponse.json({
+    success: true,
+    payoutInitiated,
+    payoutRequired: !payoutInitiated,
+  });
 }
