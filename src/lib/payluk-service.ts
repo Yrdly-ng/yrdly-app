@@ -704,8 +704,8 @@ export class PaylukService {
     accountName?: string;
     reference: string;
   }): Promise<{ success: boolean; reference?: string; error?: string }> {
-    if (!Number.isFinite(params.amount) || params.amount <= 0) {
-      return { success: false, error: 'Withdrawal amount must be greater than zero.' };
+    if (!Number.isFinite(params.amount) || params.amount < 1000) {
+      return { success: false, error: 'Payluk withdrawals must be at least ₦1,000.' };
     }
 
     try {
