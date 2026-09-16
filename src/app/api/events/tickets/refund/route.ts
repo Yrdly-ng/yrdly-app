@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getAuthenticatedUser } from "@/lib/supabase-server";
-import { supabaseAdmin } from '@/lib/supabase-admin';
 import { getPostHogClient } from '@/lib/posthog-server';
 import { PaystackService } from '@/lib/paystack-service';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 
 /**
  * POST /api/events/tickets/refund
@@ -41,7 +41,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `Ticket status is "${ticket.status}" — cannot refund` }, { status: 400 });
     }
 
-    // ── Call Paystack refund API ─────────────────────────────────────
+    const { data: escrowTransaction } = await supabaseAdmin
+      .from('escrow_transactions')
+      .select('payment_provider')
+      .or(`payment_reference.eq.${ticket.payment_provider_ref},payluk_escrow_id.eq.${ticket.payment_provider_ref},payluk_tx_ref.eq.${ticket.payment_provider_ref}`)
+      .maybeSingle();
+
+    if (escrowTransaction?.payment_provider === 'payluk') {
+      return NextResponse.json(
+        { error: 'This ticket was paid through Payluk. Use the Payluk refund/reversal workflow; Paystack was not called.' },
+        { status: 409 }
+      );
+    }
+
+    // ── Call Paystack refund API only for Paystack transactions ─────────
     if (ticket.payment_provider_ref && ticket.amount_paid > 0) {
       const refunded = await PaystackService.refundTransaction(
         ticket.payment_provider_ref,

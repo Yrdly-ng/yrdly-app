@@ -8,6 +8,7 @@ import QRCode from 'qrcode';
 import { getPostHogClient } from '@/lib/posthog-server';
 import { PaylukService } from '@/lib/payluk-service';
 import { PaystackService } from '@/lib/paystack-service';
+import { getPrimaryPaymentProvider } from '@/lib/payment-provider';
 import { getPaylukCustomerId } from '@/lib/payluk-onboarding';
 import { EscrowStatus } from '@/types/escrow';
 
@@ -222,7 +223,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Paid ticket — Check configured payment provider ────────────────────
-    const provider = (process.env.NEXT_PUBLIC_PAYMENT_PROVIDER || process.env.PAYMENT_PROVIDER || 'payluk').toLowerCase();
+    const provider = getPrimaryPaymentProvider();
     const txRef = `evt-${event_id.substring(0, 8)}-${Date.now()}`;
     const totalAmount = tier.price * quantity;
 
@@ -357,7 +358,7 @@ export async function POST(request: NextRequest) {
         status: EscrowStatus.PENDING,
         payment_method: 'card',
         delivery_details: { option: 'event_entry' },
-        payment_provider: 'payluk',
+        payment_provider: provider,
         payment_reference: txRef,
         payluk_tx_ref: paylukEscrow.paymentToken,
         payluk_escrow_id: paylukEscrow.id,

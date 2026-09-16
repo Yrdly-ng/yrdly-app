@@ -6,6 +6,8 @@ import { getAuthenticatedUser } from "@/lib/supabase-server";
 import { getPostHogClient } from "@/lib/posthog-server";
 import { PaylukService } from "@/lib/payluk-service";
 import { getPaylukCustomerId } from "@/lib/payluk-onboarding";
+import { PaystackService } from "@/lib/paystack-service";
+import { getPrimaryPaymentProvider } from "@/lib/payment-provider";
 
 // Rate limiting constants
 const RATE_LIMIT_MAX = 10;
@@ -296,6 +298,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const provider = getPrimaryPaymentProvider();
+
     // ── Create escrow transaction (admin client bypasses RLS) ──
     // Always use the price from the database — never trust the client-supplied value
     const authorizedPrice = itemData.price;
@@ -326,6 +330,7 @@ export async function POST(request: NextRequest) {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         item_type: itemType,
+        payment_provider: provider,
       };
 
       const { data: txData, error: txError } = await supabaseAdmin
@@ -361,6 +366,26 @@ export async function POST(request: NextRequest) {
     let paylukEscrowId: string | undefined = undefined;
     let sellerPaylukId: string | undefined = undefined;
     let buyerPaylukId: string | undefined = undefined;
+
+    if (provider === 'paystack') {
+      try {
+        const paymentLink = await PaystackService.initializePayment({
+          transactionId,
+          amount: totalAmount,
+          buyerEmail: effectiveBuyerEmail,
+          buyerName: user.user_metadata?.full_name || user.email || 'Yrdly buyer',
+          itemTitle: itemData.title,
+          sellerName: 'Yrdly seller',
+          callbackUrl: `${process.env.NEXT_PUBLIC_APP_URL || ''}/payment/verify?tx_ref=${transactionId}`,
+          metadata: { item_id: itemId, item_type: itemType, buyer_id: buyerId, seller_id: sellerId },
+        });
+        await supabaseAdmin.from('escrow_transactions').update({ payment_reference: transactionId, updated_at: new Date().toISOString() }).eq('id', transactionId);
+        return NextResponse.json({ success: true, transactionId, totalAmount, paymentLink, provider });
+      } catch (paystackError: any) {
+        await supabaseAdmin.from('escrow_transactions').update({ status: EscrowStatus.CANCELLED, updated_at: new Date().toISOString() }).eq('id', transactionId);
+        return NextResponse.json({ error: 'Payment initialization failed', details: paystackError?.message }, { status: 502 });
+      }
+    }
 
     if (totalAmount > 0) {
       const { data: claimedTx, error: claimErr } = await supabaseAdmin
@@ -556,7 +581,7 @@ export async function POST(request: NextRequest) {
         .from("escrow_transactions")
         .update({
           status: EscrowStatus.PENDING,
-          payment_provider: 'payluk',
+          payment_provider: provider,
           payluk_tx_ref: paylukPaymentToken,
           payluk_escrow_id: paylukEscrowId,
           updated_at: new Date().toISOString()

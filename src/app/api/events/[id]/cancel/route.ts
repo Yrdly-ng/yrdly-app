@@ -45,7 +45,18 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     for (const ticket of paidTickets || []) {
       try {
-        // Refund via Paystack if we have a payment reference
+        const { data: escrowTransaction } = await supabaseAdmin
+          .from('escrow_transactions')
+          .select('payment_provider')
+          .or(`payment_reference.eq.${ticket.payment_provider_ref},payluk_escrow_id.eq.${ticket.payment_provider_ref},payluk_tx_ref.eq.${ticket.payment_provider_ref}`)
+          .maybeSingle();
+
+        if (escrowTransaction?.payment_provider === 'payluk') {
+          errors.push(`Ticket ${ticket.id}: Payluk refund/reversal requires the Payluk workflow`);
+          continue;
+        }
+
+        // Refund via Paystack only for Paystack transactions
         if (ticket.payment_provider_ref && ticket.amount_paid > 0) {
           const refunded = await PaystackService.refundTransaction(
             ticket.payment_provider_ref,

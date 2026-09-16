@@ -4,6 +4,8 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { PaylukService } from '@/lib/payluk-service';
 import { getPaylukCustomerId } from '@/lib/payluk-onboarding';
 import { EscrowStatus } from '@/types/escrow';
+import { PaystackService } from '@/lib/paystack-service';
+import { getPrimaryPaymentProvider } from '@/lib/payment-provider';
 
 /**
  * POST /api/tickets/initialize
@@ -87,7 +89,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, free: true, ticketId });
     }
 
-    // ── Paid ticket — initialise Payluk Escrow ──────────────────────────
+    // ── Paid ticket — use the centrally configured primary provider ─────
+    const provider = getPrimaryPaymentProvider();
+    if (provider === 'paystack') {
+      try {
+        const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'https://app.yrdly.ng';
+        const paymentLink = await PaystackService.initializePayment({
+          transactionId: txRef,
+          amount: price,
+          buyerEmail: attendeeEmail,
+          buyerName: attendeeName,
+          itemTitle: `Ticket — ${tier.event.title}`,
+          sellerName: 'Event Organizer',
+          subaccount: tier.event.payment_subaccount_id || undefined,
+          callbackUrl: `${origin}/api/events/tickets/verify?tx_ref=${txRef}`,
+          metadata: { event_id: eventId, tier_id: tierId, buyer_id: user.id, attendee_name: attendeeName, attendee_email: attendeeEmail },
+        });
+        return NextResponse.json({ success: true, paymentLink, txRef, provider });
+      } catch (paystackError: any) {
+        console.error('[TicketInit] Paystack initialize error:', paystackError);
+        return NextResponse.json({ error: 'Payment initialization failed', details: paystackError?.message }, { status: 502 });
+      }
+    }
+
+    // ── Payluk Escrow payment ───────────────────────────────────────────
     let buyerPaylukId: string;
     let organizerPaylukId: string;
     try {
@@ -146,7 +171,7 @@ export async function POST(request: NextRequest) {
         status: EscrowStatus.PENDING,
         payment_method: 'card',
         delivery_details: { option: 'event_entry' },
-        payment_provider: 'payluk',
+        payment_provider: provider,
         payment_reference: txRef,
         payluk_tx_ref: paylukEscrow.paymentToken,
         payluk_escrow_id: paylukEscrow.id,
