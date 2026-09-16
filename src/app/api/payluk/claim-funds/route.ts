@@ -56,15 +56,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Payluk payment token not found for this transaction' }, { status: 400 });
   }
 
-  // 4. Idempotency.
-  if (tx.status === EscrowStatus.COMPLETED) {
-    return NextResponse.json({ success: true, alreadyCompleted: true });
-  }
+  // 4. Do not trust a local COMPLETED flag by itself. A prior release attempt
+  // may have updated the app without releasing the remote escrow, so retries
+  // must still reconcile with Payluk.
 
-  // 5. Must be in PAID state for the claim to be meaningful.
+  // 5. Must be in PAID or locally completed state for the claim to be meaningful.
   //    Payluk will reject with 400 if the delivery window hasn't elapsed yet —
   //    we surface that message directly to the caller.
-  if (tx.status !== EscrowStatus.PAID) {
+  if (tx.status !== EscrowStatus.PAID && tx.status !== EscrowStatus.COMPLETED) {
     return NextResponse.json(
       { error: `Transaction cannot be claimed in state: ${tx.status}` },
       { status: 400 }
@@ -91,16 +90,27 @@ export async function POST(request: NextRequest) {
     console.error('[claim-funds] PaylukService.claimFunds failed:', msg);
 
     if (msg.includes('Action not allowed')) {
-      await supabaseAdmin
-        .from('escrow_transactions')
-        .update({
-          status: EscrowStatus.COMPLETED,
-          completed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', transactionId);
+      try {
+        const remoteEscrow = await PaylukService.verifyEscrow(tx.payluk_tx_ref);
+        if (['COMPLETED', 'CLAIMED'].includes(remoteEscrow.status)) {
+          const { error: reconcileError } = await supabaseAdmin
+            .from('escrow_transactions')
+            .update({
+              status: EscrowStatus.COMPLETED,
+              completed_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', transactionId);
 
-      return NextResponse.json({ success: true, alreadyCompleted: true });
+          if (reconcileError) {
+            console.error('[claim-funds] Remote release verified but reconciliation failed:', reconcileError);
+            return NextResponse.json({ error: 'CLAIM_RECORDED_FAILED' }, { status: 500 });
+          }
+          return NextResponse.json({ success: true, alreadyCompleted: true });
+        }
+      } catch (verifyError) {
+        console.error('[claim-funds] Could not verify Payluk after rejected retry:', verifyError);
+      }
     }
 
     // Payluk returns 400 with "Escrow cannot be claimed yet" if window hasn't elapsed.
@@ -117,7 +127,7 @@ export async function POST(request: NextRequest) {
       updated_at: new Date().toISOString(),
     })
     .eq('id', transactionId)
-    .eq('status', EscrowStatus.PAID);
+    .in('status', [EscrowStatus.PAID, EscrowStatus.COMPLETED]);
 
   if (updateError) {
     console.error(

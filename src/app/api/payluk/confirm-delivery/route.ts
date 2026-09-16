@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
   // 1. Load the transaction — all values come from the DB, not from the client.
   const { data: tx, error: fetchError } = await supabaseAdmin
     .from('escrow_transactions')
-    .select('id, buyer_id, seller_id, status, payluk_escrow_id, payment_provider')
+    .select('id, buyer_id, seller_id, status, payluk_escrow_id, payluk_payment_token, payment_provider')
     .eq('id', transactionId)
     .maybeSingle();
 
@@ -57,13 +57,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Payluk escrow ID not found for this transaction' }, { status: 400 });
   }
 
-  // 4. Idempotency — if already completed, return success without calling Payluk again.
-  if (tx.status === EscrowStatus.COMPLETED) {
-    return NextResponse.json({ success: true, alreadyCompleted: true });
-  }
+  // 4. Never trust a local COMPLETED flag by itself. A previous bug could update
+  // the app before Payluk released the escrow, so verify/release against Payluk first.
+  // This also makes retries safe when the remote escrow is already closed.
 
-  // 5. Validate the transaction is in a confirmable state (PAID, SHIPPED, or DELIVERED).
-  if (![EscrowStatus.PAID, EscrowStatus.SHIPPED, EscrowStatus.DELIVERED].includes(tx.status as EscrowStatus)) {
+  // 5. Validate the transaction is in a confirmable state.
+  if (![EscrowStatus.PAID, EscrowStatus.SHIPPED, EscrowStatus.DELIVERED, EscrowStatus.COMPLETED].includes(tx.status as EscrowStatus)) {
     return NextResponse.json(
       { error: `Transaction cannot be confirmed in state: ${tx.status}` },
       { status: 400 }
@@ -89,18 +88,30 @@ export async function POST(request: NextRequest) {
     const msg: string = e?.message ?? '';
     console.error('[confirm-delivery] PaylukService.confirmDelivery failed:', msg);
 
-    // If Payluk says "Action not allowed", the escrow is already completed/closed on Payluk's side.
-    if (msg.includes('Action not allowed')) {
-      await supabaseAdmin
-        .from('escrow_transactions')
-        .update({
-          status: EscrowStatus.COMPLETED,
-          completed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', transactionId);
+    // Payluk may reject a retry because the escrow is already closed. Verify the
+    // remote state before treating that as success; a local flag is not proof.
+    if (msg.includes('Action not allowed') && tx.payluk_payment_token) {
+      try {
+        const remoteEscrow = await PaylukService.verifyEscrow(tx.payluk_payment_token);
+        if (['COMPLETED', 'CLAIMED'].includes(remoteEscrow.status)) {
+          const { error: reconcileError } = await supabaseAdmin
+            .from('escrow_transactions')
+            .update({
+              status: EscrowStatus.COMPLETED,
+              completed_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', transactionId);
 
-      return NextResponse.json({ success: true, alreadyCompleted: true });
+          if (reconcileError) {
+            console.error('[confirm-delivery] Remote release verified but reconciliation failed:', reconcileError);
+            return NextResponse.json({ error: 'DELIVERY_RECORDED_FAILED' }, { status: 500 });
+          }
+          return NextResponse.json({ success: true, alreadyCompleted: true });
+        }
+      } catch (verifyError) {
+        console.error('[confirm-delivery] Could not verify Payluk after rejected retry:', verifyError);
+      }
     }
 
     return NextResponse.json(
@@ -118,7 +129,7 @@ export async function POST(request: NextRequest) {
       updated_at: new Date().toISOString(),
     })
     .eq('id', transactionId)
-    .in('status', [EscrowStatus.PAID, EscrowStatus.SHIPPED, EscrowStatus.DELIVERED]); // optimistic-lock: skip if already updated by concurrent webhook
+    .in('status', [EscrowStatus.PAID, EscrowStatus.SHIPPED, EscrowStatus.DELIVERED, EscrowStatus.COMPLETED]); // optimistic-lock: allow reconciliation of an older local false-completion
 
   if (updateError) {
     console.error(
