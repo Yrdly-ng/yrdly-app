@@ -83,7 +83,17 @@ export async function POST(request: NextRequest) {
 
   // 7. Call Payluk — this releases funds to the seller on Payluk's side.
   try {
-    await PaylukService.confirmDelivery(buyerPaylukId, tx.payluk_escrow_id);
+    const releasedEscrow = await PaylukService.confirmDelivery(buyerPaylukId, tx.payluk_escrow_id);
+    if (!['COMPLETED', 'CLAIMED'].includes(releasedEscrow.status)) {
+      console.error(
+        `[confirm-delivery] Payluk accepted the request without releasing escrow. ` +
+        `transactionId=${transactionId} remoteStatus=${releasedEscrow.status} remoteState=${releasedEscrow.state}`
+      );
+      return NextResponse.json(
+        { error: 'Payluk has not released the escrow funds yet' },
+        { status: 409 }
+      );
+    }
   } catch (e: any) {
     const msg: string = e?.message ?? '';
     console.error('[confirm-delivery] PaylukService.confirmDelivery failed:', msg);

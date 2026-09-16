@@ -67,7 +67,8 @@ async function paylukRequest<T>(
     );
   }
 
-  if (!res.ok) {
+  const envelopeStatus = Number(data.status);
+  if (!res.ok || (Number.isFinite(envelopeStatus) && envelopeStatus >= 400)) {
     const errMsg = data.message || data.status?.toString() || 'Payluk API error';
     throw new Error(
       `[Payluk] ${fetchOptions.method || 'GET'} ${endpoint} — HTTP ${res.status}` +
@@ -112,7 +113,8 @@ async function paylukFormRequest<T>(
     );
   }
 
-  if (!res.ok) {
+  const envelopeStatus = Number(data.status);
+  if (!res.ok || (Number.isFinite(envelopeStatus) && envelopeStatus >= 400)) {
     const errMsg = data.message || data.status?.toString() || 'Payluk API error';
     throw new Error(
       `[Payluk] ${options.method || 'POST'} ${endpoint} — HTTP ${res.status}` +
