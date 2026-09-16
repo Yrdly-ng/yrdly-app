@@ -18,9 +18,12 @@ export async function POST(request: Request) {
 
     const { amount } = await request.json();
 
-    if (!amount || amount <= 0) {
-      return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
-    }
+  if (!Number.isFinite(amount) || amount < 1000) {
+  return NextResponse.json(
+  { error: 'Withdrawals must be at least ₦1,000.' },
+  { status: 400 }
+  );
+  }
 
     // Get seller account to populate bank details
     const { data: sellerAccount, error: saError } = await supabaseAdmin
@@ -59,14 +62,17 @@ export async function POST(request: Request) {
 
     // Attempt to process it via PayoutService if you process them instantly, otherwise leave it pending.
     // The retry API attempts processPayout, so we can try processing it here too.
-    try {
-      await PayoutService.processPayout(payout.id);
-    } catch (e) {
-      console.error('Failed initial processing of payout:', e);
-      // Don't fail the request, the cron job or admin can retry it later.
-    }
+  try {
+  await PayoutService.processPayout(payout.id);
+  } catch (e) {
+  console.error('Failed initial processing of payout:', e);
+  return NextResponse.json(
+  { error: e instanceof Error ? e.message : 'Payout processing failed', payoutId: payout.id },
+  { status: 502 }
+  );
+  }
 
-    return NextResponse.json({ success: true, payoutId: payout.id });
+  return NextResponse.json({ success: true, payoutId: payout.id });
   } catch (error) {
     console.error('Payout request error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

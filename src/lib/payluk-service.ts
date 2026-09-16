@@ -704,50 +704,62 @@ export class PaylukService {
     accountName?: string;
     reference: string;
   }): Promise<{ success: boolean; reference?: string; error?: string }> {
+    if (!Number.isFinite(params.amount) || params.amount < 1000) {
+      return { success: false, error: 'Payluk withdrawals must be at least ₦1,000.' };
+    }
+
     try {
-      // 1. Create withdrawal intent
-      const intentResponse = await paylukRequest<{ reference: string }>(
-        '/v1/payment/create-intent',
-        {
-          method: 'POST',
-          customerId: params.sellerPaylukCustomerId,
-          body: JSON.stringify({
-            amount: params.amount,
-            reference: params.reference,
-            transactionType: 'withdrawal',
-            currency: 'NGN',
-            withdrawalDetails: {
-              bankCode: params.bankCode,
-              accountNumber: params.accountNumber,
-              ...(params.accountName ? { accountName: params.accountName } : {}),
-            },
-          }),
-        }
-      );
+      const intentResponse = await paylukRequest<{
+        reference?: string;
+        status?: string;
+        paymentStatus?: string;
+      }>('/v1/payment/create-intent', {
+        method: 'POST',
+        customerId: params.sellerPaylukCustomerId,
+        body: JSON.stringify({
+          amount: Number(params.amount.toFixed(2)),
+          reference: params.reference,
+          transactionType: 'withdrawal',
+          currency: 'NGN',
+          withdrawalDetails: {
+            accountNumber: params.accountNumber,
+            bankCode: params.bankCode,
+            ...(params.accountName ? { accountName: params.accountName } : {}),
+          },
+        }),
+      });
 
-      const ref = intentResponse.data?.reference || params.reference;
-
-      // 2. Execute / verify payment intent
-      const verifyResponse = await paylukRequest<any>(
-        '/v1/payment/verify',
-        {
-          method: 'POST',
-          customerId: params.sellerPaylukCustomerId,
-          body: JSON.stringify({ reference: ref }),
-        }
-      );
-
-      if (verifyResponse.status >= 200 && verifyResponse.status < 300) {
-        return { success: true, reference: ref };
-      } else {
-        return { success: false, error: verifyResponse.message || 'Withdrawal verification failed' };
+      const ref = intentResponse.data?.reference;
+      if (!ref) {
+        return { success: false, error: intentResponse.message || 'Payluk did not return a withdrawal reference.' };
       }
+
+      const verifyResponse = await paylukRequest<{
+        reference?: string;
+        status?: string;
+        paymentStatus?: string;
+      }>('/v1/payment/verify', {
+        method: 'POST',
+        customerId: params.sellerPaylukCustomerId,
+        body: JSON.stringify({ reference: ref }),
+      });
+
+      const providerStatus = String(
+        verifyResponse.data?.status || verifyResponse.data?.paymentStatus || ''
+      ).toLowerCase();
+      const successful = ['success', 'successful', 'completed', 'complete'].includes(providerStatus);
+
+      if (!successful) {
+        return {
+          success: false,
+          reference: ref,
+          error: verifyResponse.message || `Payluk withdrawal status: ${providerStatus || 'pending'}`,
+        };
+      }
+
+      return { success: true, reference: ref };
     } catch (err: any) {
       console.error('[PaylukService] withdrawToBank error:', err);
-      if (PAYLUK_SECRET_KEY?.startsWith('sk_test_')) {
-        console.warn('[PaylukService] Test mode: withdrawToBank fallback success.');
-        return { success: true, reference: params.reference };
-      }
       return { success: false, error: err.message || 'Withdrawal request failed' };
     }
   }

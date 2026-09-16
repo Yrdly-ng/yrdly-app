@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { EscrowStatus } from '@/types/escrow';
 import { PayoutService } from '@/lib/payout-service';
+import { PaylukService } from '@/lib/payluk-service';
+import { getPaylukCustomerId } from '@/lib/payluk-onboarding';
 
 export async function POST(
   request: Request,
@@ -35,7 +37,7 @@ export async function POST(
     // 1. Get the transaction using admin client to bypass RLS for this specific secure flow
     const { data: transaction, error: fetchError } = await supabaseAdmin
       .from('escrow_transactions')
-      .select('status, seller_amount, seller_id, buyer_id')
+      .select('status, seller_amount, seller_id, buyer_id, payment_provider, payluk_escrow_id, payluk_payment_token')
       .eq('id', transactionId)
       .single();
 
@@ -50,6 +52,28 @@ export async function POST(
 
     if (transaction.status !== EscrowStatus.DELIVERED) {
       return NextResponse.json({ error: 'Transaction must be delivered before completion' }, { status: 400 });
+    }
+
+    if (transaction.payment_provider === 'payluk' || transaction.payluk_escrow_id) {
+      const escrowId = transaction.payluk_escrow_id;
+      if (!escrowId) {
+        return NextResponse.json({ error: 'Payluk escrow identifier is missing' }, { status: 409 });
+      }
+
+      const buyerPaylukId = await getPaylukCustomerId(transaction.buyer_id);
+      if (!buyerPaylukId) {
+        return NextResponse.json({ error: 'Buyer Payluk customer is not configured' }, { status: 409 });
+      }
+
+      try {
+        const released = await PaylukService.confirmDelivery(buyerPaylukId, escrowId);
+        if (!['COMPLETED', 'CLAIMED'].includes(released.status)) {
+          return NextResponse.json({ error: 'Payluk has not released the escrow funds yet' }, { status: 409 });
+        }
+      } catch (releaseError: any) {
+        console.error('[CompleteTransaction] Payluk release failed:', releaseError);
+        return NextResponse.json({ error: releaseError.message || 'Payluk escrow release failed' }, { status: 502 });
+      }
     }
 
     // 2. Update transaction status
