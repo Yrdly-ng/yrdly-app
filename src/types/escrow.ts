@@ -5,7 +5,8 @@ export enum EscrowStatus {
   DELIVERED = 'delivered',
   COMPLETED = 'completed',
   DISPUTED = 'disputed',
-  CANCELLED = 'cancelled'
+  CANCELLED = 'cancelled',
+  REFUNDED = 'refunded'
 }
 
 export enum PaymentMethod {

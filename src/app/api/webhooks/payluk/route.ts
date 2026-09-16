@@ -123,9 +123,18 @@ export async function POST(request: NextRequest) {
         break;
       }
 
+      // ── escrow.refunded / escrow.cancelled ──────────────────────────────
+      // Fires when Payluk refunds/cancels the escrow (e.g. bank reversal,
+      // seller rejection, or dispute outcome). Mark transaction as REFUNDED,
+      // revert item availability, cancel tickets, and notify buyer & seller.
+      case 'escrow.refunded':
+      case 'escrow.cancelled': {
+        await handleEscrowRefunded(data);
+        break;
+      }
+
       // ── All other events: log and ack ────────────────────────────────────
-      // escrow.created, escrow.pending, escrow.investigating,
-      // escrow.refunded, escrow.split — none require local state changes now.
+      // escrow.created, escrow.pending, escrow.investigating, escrow.split
       // Logging them preserves observability without blocking.
       default: {
         console.log(`[PaylukWebhook] Unhandled event type: ${event} for escrow ${data?.id} — acknowledged without action`);
@@ -406,3 +415,96 @@ async function handleEscrowDisputed(data: PaylukEscrowData) {
     )
   );
 }
+
+async function handleEscrowRefunded(data: PaylukEscrowData) {
+  const { data: tx, error } = await findTransactionByPaylukData(data);
+
+  if (error || !tx) {
+    console.warn(`[PaylukWebhook] escrow.refunded/cancelled: no local transaction for escrow id=${data.id}`);
+    return;
+  }
+
+  if (tx.status === EscrowStatus.REFUNDED || tx.status === EscrowStatus.CANCELLED) {
+    console.log(`[PaylukWebhook] escrow.refunded/cancelled: tx ${tx.id} already ${tx.status}, skipping`);
+    return;
+  }
+
+  // 1. Update transaction status
+  const { error: updateError } = await supabaseAdmin
+    .from('escrow_transactions')
+    .update({
+      status: EscrowStatus.REFUNDED,
+      refunded_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', tx.id);
+
+  if (updateError) {
+    console.error(`[PaylukWebhook] escrow.refunded: failed to update tx ${tx.id}:`, updateError.message);
+  } else {
+    console.log(`[PaylukWebhook] escrow.refunded: tx ${tx.id} → REFUNDED`);
+  }
+
+  // 2. Revert item availability or cancel tickets
+  if (tx.item_type === 'ticket' || tx.metadata?.event_id) {
+    // Cancel issued tickets
+    const txRef = tx.id;
+    await supabaseAdmin
+      .from('tickets')
+      .update({ status: 'CANCELLED', updated_at: new Date().toISOString() })
+      .or(`payment_tx_ref.eq.${txRef},payment_provider_ref.eq.${data.id}`);
+    console.log(`[PaylukWebhook] Cancelled tickets for refunded tx ${tx.id}`);
+  } else if (tx.item_id) {
+    if (tx.item_type === 'catalog_item') {
+      const { data: catItem } = await supabaseAdmin
+        .from('catalog_items')
+        .select('id, quantity')
+        .eq('id', tx.item_id)
+        .maybeSingle();
+
+      if (catItem) {
+        const currentQty = typeof catItem.quantity === 'number' ? catItem.quantity : 0;
+        await supabaseAdmin
+          .from('catalog_items')
+          .update({
+            quantity: currentQty + 1,
+            in_stock: true,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', tx.item_id);
+      }
+    } else {
+      // Post listing: restore availability
+      await supabaseAdmin
+        .from('posts')
+        .update({
+          is_sold: false,
+          sold_to_user_id: null,
+          sold_at: null,
+          transaction_id: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', tx.item_id);
+      console.log(`[PaylukWebhook] Restored post ${tx.item_id} availability after refund`);
+    }
+  }
+
+  // 3. Notify buyer
+  try {
+    if (tx.buyer_id) {
+      await supabaseAdmin.rpc('create_notification', {
+        p_user_id: tx.buyer_id,
+        p_type: 'payment_refunded',
+        p_title: 'Payment Refunded 💸',
+        p_message: 'Your payment was refunded/reversed by Payluk.',
+        p_sender_id: null,
+        p_related_id: tx.id,
+        p_related_type: 'escrow_transaction',
+        p_data: { transactionId: tx.id },
+      });
+    }
+  } catch (notifErr) {
+    console.error(`[PaylukWebhook] Error sending refund notifications for tx ${tx.id}:`, notifErr);
+  }
+}
+
