@@ -7,6 +7,7 @@ import { ResendEmailService } from '@/lib/resend-service';
 import QRCode from 'qrcode';
 import { getPostHogClient } from '@/lib/posthog-server';
 import { PaylukService } from '@/lib/payluk-service';
+import { PaystackService } from '@/lib/paystack-service';
 import { getPaylukCustomerId } from '@/lib/payluk-onboarding';
 import { EscrowStatus } from '@/types/escrow';
 
@@ -220,10 +221,78 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, free: true, ticket_id: insertedTickets[0].id, quantity });
     }
 
-    // ── Paid ticket — initialise Payluk Escrow payment ────────────────────
+    // ── Paid ticket — Check configured payment provider ────────────────────
+    const provider = (process.env.NEXT_PUBLIC_PAYMENT_PROVIDER || process.env.PAYMENT_PROVIDER || 'payluk').toLowerCase();
     const txRef = `evt-${event_id.substring(0, 8)}-${Date.now()}`;
     const totalAmount = tier.price * quantity;
 
+    if (provider === 'paystack') {
+      // Fetch organizer's Paystack subaccount ID for automatic Split Payment
+      let organizerSubaccount: string | undefined = event.payment_subaccount_id || undefined;
+      if (!organizerSubaccount && event.organizer_id) {
+        const { data: subaccountData } = await supabaseAdmin
+          .from('seller_accounts')
+          .select('paystack_subaccount_id')
+          .eq('user_id', event.organizer_id)
+          .eq('is_primary', true)
+          .eq('is_active', true)
+          .maybeSingle();
+
+        if (subaccountData?.paystack_subaccount_id) {
+          organizerSubaccount = subaccountData.paystack_subaccount_id;
+        }
+      }
+
+      const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'https://app.yrdly.ng';
+      let paymentLink: string;
+      try {
+        paymentLink = await PaystackService.initializePayment({
+          transactionId: txRef,
+          amount: totalAmount,
+          buyerEmail: attendee_email,
+          buyerName: attendee_name,
+          itemTitle: `${quantity}x ${tier.name} — ${event.title}`,
+          sellerName: 'Event Organizer',
+          subaccount: organizerSubaccount,
+          callbackUrl: callbackUrl || `${origin}/api/events/tickets/verify?tx_ref=${txRef}`,
+          metadata: {
+            event_id,
+            tier_id,
+            quantity,
+            buyer_id: user.id,
+            attendee_name,
+            attendee_email,
+            attendee_phone: attendee_phone || null
+          }
+        });
+      } catch (paystackError: any) {
+        console.error('[TicketPurchase] Paystack init error:', paystackError);
+        return NextResponse.json({
+          error: 'Payment initialization failed',
+          details: paystackError?.message || 'Paystack API error',
+        }, { status: 502 });
+      }
+
+      const posthog = getPostHogClient();
+      posthog.capture({
+        distinctId: user.id,
+        event: 'ticket_purchased_initiated',
+        properties: {
+          event_id,
+          tier_id,
+          tier_name: tier.name,
+          quantity,
+          amount: totalAmount,
+          is_free: false,
+          tx_ref: txRef,
+          provider: 'paystack',
+        },
+      });
+
+      return NextResponse.json({ success: true, payment_link: paymentLink, tx_ref: txRef, provider: 'paystack' });
+    }
+
+    // ── Payluk Escrow payment (Default) ───────────────────────────────────
     // Fetch or provision Payluk Customer IDs for buyer & organizer
     let buyerPaylukId: string;
     let organizerPaylukId: string;
@@ -330,6 +399,7 @@ export async function POST(request: NextRequest) {
         is_free: false,
         tx_ref: txRef,
         payluk_escrow_id: paylukEscrow.id,
+        provider: 'payluk',
       },
     });
 
@@ -340,6 +410,7 @@ export async function POST(request: NextRequest) {
       paylukEscrowId: paylukEscrow.id,
       buyerPaylukId,
       tx_ref: txRef,
+      provider: 'payluk',
     });
   } catch (error) {
     console.error('[TicketPurchase] Ticket purchase error:', error);
