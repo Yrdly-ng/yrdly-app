@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     // Get seller account to populate bank details
     const { data: sellerAccount, error: saError } = await supabaseAdmin
       .from('seller_accounts')
-      .select('bank_name, account_number, account_name')
+      .select('id, bank_name, account_number, account_name')
       .eq('user_id', user.id)
       .eq('is_active', true)
       .single();
@@ -42,6 +42,7 @@ export async function POST(request: Request) {
       .from('payout_requests')
       .insert({
         seller_id: user.id,
+        account_id: sellerAccount.id,
         amount,
         status: 'pending',
         bank_name: sellerAccount.bank_name,
