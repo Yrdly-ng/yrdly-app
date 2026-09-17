@@ -17,13 +17,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
     }
 
-    // Get seller account to populate bank details
+    // Get seller account ID
     const { data: sellerAccount, error: saError } = await supabaseAdmin
       .from('seller_accounts')
-      .select('bank_name, account_number, account_name')
+      .select('id')
       .eq('user_id', user.id)
       .eq('is_active', true)
-      .single();
+      .maybeSingle();
 
     if (saError || !sellerAccount) {
       return NextResponse.json(
@@ -37,11 +37,9 @@ export async function POST(request: NextRequest) {
       .from('payout_requests')
       .insert({
         seller_id: user.id,
+        account_id: sellerAccount.id,
         amount,
         status: 'pending',
-        bank_name: sellerAccount.bank_name,
-        account_number: sellerAccount.account_number,
-        account_name: sellerAccount.account_name,
       })
       .select('id')
       .single();
