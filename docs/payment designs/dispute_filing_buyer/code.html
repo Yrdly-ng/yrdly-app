@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Work+Sans:wght@300;400;500;600&amp;family=Pacifico&amp;family=Jersey+25&amp;family=Raleway:ital,wght@0,300;0,400;0,600;0,700;1,300&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .bg-glass {
+            background: rgba(21, 24, 29, 0.8);
+            backdrop-filter: blur(12px);
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "tertiary-container": "#35a61a",
+                        "outline": "#899485",
+                        "surface-dim": "#101418",
+                        "secondary-fixed-dim": "#a5c8ff",
+                        "on-surface-variant": "#bfcab9",
+                        "on-surface": "#e1e2e9",
+                        "on-secondary": "#00315f",
+                        "primary-fixed-dim": "#82db7e",
+                        "tertiary-fixed-dim": "#6edf51",
+                        "surface-container": "#1d2025",
+                        "on-tertiary-fixed": "#032100",
+                        "on-error-container": "#ffdad6",
+                        "background": "#101418",
+                        "surface-container-lowest": "#0b0e13",
+                        "secondary-container": "#006ec9",
+                        "surface-variant": "#32353a",
+                        "surface": "#101418",
+                        "primary-container": "#4da24e",
+                        "inverse-primary": "#106d20",
+                        "surface-container-highest": "#32353a",
+                        "on-background": "#e1e2e9",
+                        "on-error": "#690005",
+                        "secondary-fixed": "#d4e3ff",
+                        "error": "#ffb4ab",
+                        "on-secondary-container": "#eaf0ff",
+                        "surface-tint": "#82db7e",
+                        "surface-container-high": "#272a2f",
+                        "outline-variant": "#40493d",
+                        "on-primary-container": "#003207",
+                        "inverse-surface": "#e1e2e9",
+                        "error-container": "#93000a",
+                        "tertiary": "#6edf51",
+                        "surface-container-low": "#191c21",
+                        "on-tertiary-fixed-variant": "#0d5300",
+                        "on-tertiary-container": "#053200",
+                        "on-tertiary": "#073900",
+                        "on-secondary-fixed-variant": "#004786",
+                        "primary-fixed": "#9df898",
+                        "tertiary-fixed": "#8afc6a",
+                        "surface-bright": "#36393f",
+                        "on-primary": "#00390a",
+                        "secondary": "#a5c8ff",
+                        "on-primary-fixed-variant": "#005312",
+                        "inverse-on-surface": "#2e3036",
+                        "primary": "#82db7e",
+                        "on-secondary-fixed": "#001c3a",
+                        "on-primary-fixed": "#002204"
+                    },
+                    fontFamily: {
+                        "headline": ["Plus Jakarta Sans"],
+                        "body": ["Work Sans"],
+                        "label": ["Work Sans"],
+                        "pacifico": ["Pacifico"],
+                        "raleway": ["Raleway"]
+                    },
+                    borderRadius: { "DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface font-body min-h-screen">
+<!-- Top Navigation Anchor -->
+<header class="fixed top-0 w-full z-50 bg-[#15181D]/80 backdrop-blur-xl flex items-center px-6 h-16 w-full">
+<div class="flex items-center gap-4 w-full">
+<button class="active:scale-95 transition-transform hover:opacity-80 transition-opacity">
+<span class="material-symbols-outlined text-[#388E3C]">arrow_back</span>
+</button>
+<div class="flex items-center gap-2">
+<h1 class="font-['Pacifico'] text-2xl tracking-tight text-on-surface">Raise a Dispute</h1>
+<span class="bg-[#E53935] w-2 h-2 rounded-full ring-4 ring-[#E53935]/20 animate-pulse"></span>
+</div>
+</div>
+</header>
+<main class="pt-20 pb-10 px-6 max-w-2xl mx-auto space-y-8">
+<!-- Warning Banner -->
+<section class="bg-[#E53935]/10 border border-[#E53935] rounded-[11px] p-4 flex gap-3 items-start">
+<span class="material-symbols-outlined text-[#E53935] mt-0.5">warning</span>
+<p class="text-sm font-raleway text-on-surface leading-snug">Your funds will remain on hold while our team reviews this.</p>
+</section>
+<!-- Reason Selection -->
+<section class="space-y-4">
+<h2 class="text-on-surface-variant font-raleway text-xs uppercase tracking-widest font-bold px-1">Select a Reason</h2>
+<div class="space-y-2">
+<!-- Active State -->
+<label class="flex items-center justify-between p-4 bg-surface-container rounded-[11px] border-l-4 border-[#388E3C] ring-1 ring-[#388E3C] cursor-pointer group transition-all">
+<span class="font-raleway text-sm text-on-surface">Item not as described</span>
+<input checked="" class="w-5 h-5 border-2 border-[#388E3C] text-[#388E3C] bg-transparent focus:ring-0 checked:bg-[#388E3C]" name="dispute_reason" type="radio"/>
+</label>
+<!-- Inactive States -->
+<label class="flex items-center justify-between p-4 bg-surface-container-low rounded-[11px] hover:bg-surface-container cursor-pointer group transition-all border-l-4 border-transparent">
+<span class="font-raleway text-sm text-on-surface-variant group-hover:text-on-surface">Item not received after meetup</span>
+<input class="w-5 h-5 border-2 border-outline-variant text-[#388E3C] bg-transparent focus:ring-0" name="dispute_reason" type="radio"/>
+</label>
+<label class="flex items-center justify-between p-4 bg-surface-container-low rounded-[11px] hover:bg-surface-container cursor-pointer group transition-all border-l-4 border-transparent">
+<span class="font-raleway text-sm text-on-surface-variant group-hover:text-on-surface">Item is damaged / defective</span>
+<input class="w-5 h-5 border-2 border-outline-variant text-[#388E3C] bg-transparent focus:ring-0" name="dispute_reason" type="radio"/>
+</label>
+<label class="flex items-center justify-between p-4 bg-surface-container-low rounded-[11px] hover:bg-surface-container cursor-pointer group transition-all border-l-4 border-transparent">
+<span class="font-raleway text-sm text-on-surface-variant group-hover:text-on-surface">Seller is unresponsive</span>
+<input class="w-5 h-5 border-2 border-outline-variant text-[#388E3C] bg-transparent focus:ring-0" name="dispute_reason" type="radio"/>
+</label>
+<label class="flex items-center justify-between p-4 bg-surface-container-low rounded-[11px] hover:bg-surface-container cursor-pointer group transition-all border-l-4 border-transparent">
+<span class="font-raleway text-sm text-on-surface-variant group-hover:text-on-surface">Other (provide details)</span>
+<input class="w-5 h-5 border-2 border-outline-variant text-[#388E3C] bg-transparent focus:ring-0" name="dispute_reason" type="radio"/>
+</label>
+</div>
+</section>
+<!-- Details Textarea -->
+<section class="space-y-2">
+<div class="flex justify-between items-center px-1">
+<label class="text-on-surface-variant font-raleway text-xs uppercase tracking-widest font-bold">Details</label>
+<span class="text-[10px] text-outline">0 / 150</span>
+</div>
+<textarea class="w-full h-32 bg-[#1B2B3A] border-none focus:ring-1 focus:ring-[#388E3C] rounded-[11px] p-4 font-raleway text-sm text-on-surface placeholder:italic placeholder:font-light placeholder:text-outline/50 transition-all resize-none" placeholder="Tell us what happened..."></textarea>
+</section>
+<!-- Evidence Upload -->
+<section class="space-y-4">
+<label class="text-on-surface-variant font-raleway text-xs uppercase tracking-widest font-bold px-1">Evidence</label>
+<div class="w-full aspect-[4/1] bg-surface-container border-2 border-dashed border-[#388E3C] rounded-[11px] flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-[#388E3C]">photo_camera</span>
+<p class="font-raleway text-[12px] text-[#bfcab9]">Upload photos or screenshots</p>
+</div>
+<!-- Thumbnail Grid -->
+<div class="grid grid-cols-3 gap-3">
+<div class="relative aspect-square rounded-[11px] overflow-hidden group">
+<img class="w-full h-full object-cover" data-alt="close up of a blurry or damaged product screen with flickering artifacts to show defect for dispute evidence" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAn83tWwPUAheNAVZ-fZzEcbgiwq270bSj_2832AlLzFuhz0ga6eO-LL6gTSwERhKbi7DK0DdeoeobM7EIpOzmdU49DqdmBiMY-hZ-CwuRx2fU4MlYDKixAuNZbpqX53F0zkM9QuzFZu1A18flNKbsUgB6QCvOBrOIO6T_KzmtpzvP2NNGmWenPIN41ukXAB6qwqFKMwtPuRMwBKDTtBdCR-XKDyxmIE7e0yFC3JC1ByjEr1wBFLjFWr_eH04mSfeY7Q8_cyA9Xot3n"/>
+<button class="absolute top-1 right-1 w-6 h-6 bg-black/60 backdrop-blur-md rounded-full flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-xs">close</span>
+</button>
+</div>
+<div class="relative aspect-square rounded-[11px] overflow-hidden group">
+<img class="w-full h-full object-cover" data-alt="screenshot of a chat conversation on a smartphone with unresponsive messages highlight for dispute proof" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCDRhU0C2OSMKJS8Mcyr1mvvq17Fg2TmmyHUaLPcco5Cnb0Q-z74_Ytm5TYWiPVC1pwvaudQvz0fcQtWJQwj-rIBwpK0tTEuIjyXZkdHeQgkp0ls_czL5Z8il8j5dgjdfrtEYKrC0rk_w9RbcOxn5TThvnlC_jQeiv4l58kj7h2_c5yqDDqdSWeXEb2abKsGajIvb7h9EKN5cJPdr6gRO4ajcsCLsjBC_-mJJSaSUKTO6GWC8UD0-2bFlfbyY8nBmVumJxafdRMlSAf"/>
+<button class="absolute top-1 right-1 w-6 h-6 bg-black/60 backdrop-blur-md rounded-full flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-xs">close</span>
+</button>
+</div>
+<div class="relative aspect-square rounded-[11px] overflow-hidden group">
+<img class="w-full h-full object-cover" data-alt="photo of a package that was delivered torn and damaged from side angle with dramatic shadows" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCuWEmqc_FJauu6NekWcDF95wmNXkrVtlte3vWsKE0a36gDcOCXFX6KJSNB4Bs8p7qbn9DbT-MfeO3Eo-AA1yu-6cIi_lBH3o8FSHKF7Rnqa2IloIkK35LoO_tQ_PkTwjdLLQDBht9pZN_H4AQIehbfBroYbMCuYMa6oJSA-T4LvnPrbLL16AHDRv1MQ3XqTERR5Ca1syBoKjEaFdW3bkQyWNNqm4Cj61qKOGR8HkzZNsm6gVVTYeaBo_QJmqwgggnm71TqrInjTW2c"/>
+<button class="absolute top-1 right-1 w-6 h-6 bg-black/60 backdrop-blur-md rounded-full flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-xs">close</span>
+</button>
+</div>
+</div>
+</section>
+<!-- CTA Section -->
+<footer class="pt-6 space-y-4">
+<button class="w-full py-4 bg-[#E53935] text-white font-raleway font-bold rounded-full shadow-lg shadow-[#E53935]/20 active:scale-95 transition-all">
+                Submit Dispute
+            </button>
+<div class="flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">schedule</span>
+<p class="font-raleway text-[11px] text-[#bfcab9] text-center">Our team reviews disputes within 24-48 hours</p>
+</div>
+</footer>
+</main>
+<!-- Content Spacing for non-shell screen -->
+<div class="h-10"></div>
+</body></html>

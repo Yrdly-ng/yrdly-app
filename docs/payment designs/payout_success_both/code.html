@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Payout Success</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;family=Work+Sans:wght@300;400;500;600&amp;family=Pacifico&amp;family=Raleway:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "tertiary-container": "#35a61a",
+              "outline": "#899485",
+              "surface-dim": "#101418",
+              "secondary-fixed-dim": "#a5c8ff",
+              "on-surface-variant": "#bfcab9",
+              "on-surface": "#e1e2e9",
+              "on-secondary": "#00315f",
+              "primary-fixed-dim": "#82db7e",
+              "tertiary-fixed-dim": "#6edf51",
+              "surface-container": "#1d2025",
+              "on-tertiary-fixed": "#032100",
+              "on-error-container": "#ffdad6",
+              "background": "#101418",
+              "surface-container-lowest": "#0b0e13",
+              "secondary-container": "#006ec9",
+              "surface-variant": "#32353a",
+              "surface": "#101418",
+              "primary-container": "#4da24e",
+              "inverse-primary": "#106d20",
+              "surface-container-highest": "#32353a",
+              "on-background": "#e1e2e9",
+              "on-error": "#690005",
+              "secondary-fixed": "#d4e3ff",
+              "error": "#ffb4ab",
+              "on-secondary-container": "#eaf0ff",
+              "surface-tint": "#82db7e",
+              "surface-container-high": "#272a2f",
+              "outline-variant": "#40493d",
+              "on-primary-container": "#003207",
+              "inverse-surface": "#e1e2e9",
+              "error-container": "#93000a",
+              "tertiary": "#6edf51",
+              "surface-container-low": "#191c21",
+              "on-tertiary-fixed-variant": "#0d5300",
+              "on-tertiary-container": "#053200",
+              "on-tertiary": "#073900",
+              "on-secondary-fixed-variant": "#004786",
+              "primary-fixed": "#9df898",
+              "tertiary-fixed": "#8afc6a",
+              "surface-bright": "#36393f",
+              "on-primary": "#00390a",
+              "secondary": "#a5c8ff",
+              "on-primary-fixed-variant": "#005312",
+              "inverse-on-surface": "#2e3036",
+              "primary": "#82db7e",
+              "on-secondary-fixed": "#001c3a",
+              "on-primary-fixed": "#002204"
+            },
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Work Sans"],
+              "label": ["Work Sans"],
+              "pacifico": ["Pacifico"],
+              "raleway": ["Raleway"]
+            },
+            borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .confetti-overlay {
+            background-image: radial-gradient(circle, #82db7e 1px, transparent 1px);
+            background-size: 24px 24px;
+            opacity: 0.1;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body antialiased min-h-screen flex flex-col items-center">
+<!-- Top App Bar (Shared Component Strategy) -->
+<header class="fixed top-0 w-full z-50 bg-[#15181D]/80 backdrop-blur-xl flex items-center px-6 h-16 w-full">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-[#388E3C] cursor-pointer active:scale-95 transition-transform" data-icon="arrow_back">arrow_back</span>
+<h1 class="font-pacifico text-2xl tracking-tight text-on-surface">Checkout</h1>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="w-full max-w-md px-6 pt-24 pb-12 flex flex-col items-center relative">
+<!-- Subtle Confetti Background Effect -->
+<div class="absolute inset-0 pointer-events-none confetti-overlay"></div>
+<!-- Success Animation/Icon Area -->
+<div class="relative mb-8 flex justify-center items-center">
+<div class="absolute w-32 h-32 bg-primary/20 rounded-full blur-3xl"></div>
+<div class="w-24 h-24 bg-surface-container-high rounded-full flex items-center justify-center border-2 border-primary shadow-[0_0_30px_rgba(130,219,126,0.3)]">
+<span class="material-symbols-outlined text-primary text-6xl" data-icon="check_circle" data-weight="fill" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+</div>
+<!-- Success Message -->
+<div class="text-center space-y-2 mb-10 z-10">
+<h2 class="font-pacifico text-[28px] text-white leading-tight">₦43,650 Sent!</h2>
+<p class="font-raleway text-[13px] text-on-surface-variant max-w-[280px] mx-auto">Transferred to your GTBank account •••• 4512</p>
+<div class="inline-flex items-center px-3 py-1 bg-tertiary/10 border border-tertiary/20 rounded-full mt-4">
+<span class="material-symbols-outlined text-tertiary text-sm mr-1.5" data-icon="schedule">schedule</span>
+<span class="font-raleway font-semibold text-[11px] text-tertiary uppercase tracking-wider">Arrives within 24 hours</span>
+</div>
+</div>
+<!-- Transaction Summary Card -->
+<div class="w-full bg-surface-container rounded-xl p-5 mb-10 border border-outline-variant/10 shadow-lg">
+<div class="flex items-center gap-4 mb-4">
+<div class="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 bg-surface-variant">
+<img alt="Item Image" class="w-full h-full object-cover" data-alt="close-up profile shot of premium red athletic sneakers on a clean dark background with professional lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCQAQ8qji34PrRxxn7iffW5Fmwi-v_drhSin3FximEezcyUuffY8erZnJidPUW6sFDsx_pUCg3VjGOXxz1aZbqwd2YRAc221TInqP0pYO-rbh6NSzUThOoqE0We6YddaQnF8-RvATeHyUZ0R7N4fKX9gjQ7Jvy8HtJzHYzcL8wshsHplnzussEVaXjlV6AoFy_Cr1NAuseMOOowyS9QJ8biE7rPSLii6BknK1clHxXsU9FZ0NlF1pM3A2ODE1je-mGYv7Tiwoznroui"/>
+</div>
+<div class="flex-grow">
+<p class="font-raleway font-bold text-white text-sm">Nike Air Max '90 Limited</p>
+<p class="font-raleway text-xs text-on-surface-variant">Buyer: Chidi Okoro</p>
+</div>
+</div>
+<div class="pt-4 border-t border-outline-variant/20 flex flex-col gap-2">
+<div class="flex justify-between items-center">
+<span class="font-raleway text-[11px] text-on-surface-variant uppercase tracking-tight">Ref Number</span>
+<span class="font-body text-[12px] text-on-surface">#TXN-98234-AX</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="font-raleway text-[11px] text-on-surface-variant uppercase tracking-tight">Date</span>
+<span class="font-body text-[12px] text-on-surface">Oct 24, 2023 • 14:32</span>
+</div>
+</div>
+</div>
+<!-- Review Prompt Section -->
+<section class="w-full flex flex-col items-center">
+<h3 class="font-raleway font-bold text-sm text-white mb-6">How was your experience?</h3>
+<!-- Rating Row -->
+<div class="flex gap-3 mb-8">
+<span class="material-symbols-outlined text-secondary-fixed-dim text-3xl cursor-pointer hover:scale-110 transition-transform" data-icon="star">star</span>
+<span class="material-symbols-outlined text-secondary-fixed-dim text-3xl cursor-pointer hover:scale-110 transition-transform" data-icon="star">star</span>
+<span class="material-symbols-outlined text-secondary-fixed-dim text-3xl cursor-pointer hover:scale-110 transition-transform" data-icon="star">star</span>
+<span class="material-symbols-outlined text-secondary-fixed-dim text-3xl cursor-pointer hover:scale-110 transition-transform" data-icon="star">star</span>
+<span class="material-symbols-outlined text-outline-variant text-3xl cursor-pointer hover:scale-110 transition-transform" data-icon="star">star</span>
+</div>
+<!-- Review Textarea (Initially Hidden logic handled by UI design) -->
+<div class="w-full mb-8">
+<label class="sr-only" for="review">Leave a review</label>
+<textarea class="w-full bg-surface-container-high border-0.5 border-primary/20 rounded-xl p-4 text-on-surface text-sm font-raleway focus:ring-1 focus:ring-primary focus:border-primary placeholder:text-on-surface-variant/40" id="review" placeholder="Tell others about your experience (optional)..." rows="3"></textarea>
+</div>
+<!-- Actions -->
+<div class="w-full flex flex-col items-center gap-4">
+<button class="w-full py-4 bg-gradient-to-r from-primary to-primary-container rounded-full font-raleway font-bold text-on-primary-container active:scale-95 transition-transform shadow-lg shadow-primary/10">
+                    Submit Review
+                </button>
+<button class="font-raleway text-sm text-on-surface-variant hover:text-white transition-colors py-2 px-6">
+                    Skip
+                </button>
+</div>
+</section>
+</main>
+<!-- Footer Spacer -->
+<footer class="h-8 w-full"></footer>
+</body></html>

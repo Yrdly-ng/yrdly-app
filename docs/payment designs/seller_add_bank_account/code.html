@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Add Payout Account</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Work+Sans:wght@300;400;500;600&amp;family=Pacifico&amp;family=Raleway:wght@300;400;500;600&amp;family=Jersey+25&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "tertiary-container": "#35a61a",
+              "outline": "#899485",
+              "surface-dim": "#101418",
+              "secondary-fixed-dim": "#a5c8ff",
+              "on-surface-variant": "#bfcab9",
+              "on-surface": "#e1e2e9",
+              "on-secondary": "#00315f",
+              "primary-fixed-dim": "#82db7e",
+              "tertiary-fixed-dim": "#6edf51",
+              "surface-container": "#1d2025",
+              "on-tertiary-fixed": "#032100",
+              "on-error-container": "#ffdad6",
+              "background": "#101418",
+              "surface-container-lowest": "#0b0e13",
+              "secondary-container": "#006ec9",
+              "surface-variant": "#32353a",
+              "surface": "#101418",
+              "primary-container": "#4da24e",
+              "inverse-primary": "#106d20",
+              "surface-container-highest": "#32353a",
+              "on-background": "#e1e2e9",
+              "on-error": "#690005",
+              "secondary-fixed": "#d4e3ff",
+              "error": "#ffb4ab",
+              "on-secondary-container": "#eaf0ff",
+              "surface-tint": "#82db7e",
+              "surface-container-high": "#272a2f",
+              "outline-variant": "#40493d",
+              "on-primary-container": "#003207",
+              "inverse-surface": "#e1e2e9",
+              "error-container": "#93000a",
+              "tertiary": "#6edf51",
+              "surface-container-low": "#191c21",
+              "on-tertiary-fixed-variant": "#0d5300",
+              "on-tertiary-container": "#053200",
+              "on-tertiary": "#073900",
+              "on-secondary-fixed-variant": "#004786",
+              "primary-fixed": "#9df898",
+              "tertiary-fixed": "#8afc6a",
+              "surface-bright": "#36393f",
+              "on-primary": "#00390a",
+              "secondary": "#a5c8ff",
+              "on-primary-fixed-variant": "#005312",
+              "inverse-on-surface": "#2e3036",
+              "primary": "#82db7e",
+              "on-secondary-fixed": "#001c3a",
+              "on-primary-fixed": "#002204"
+            },
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Work Sans"],
+              "label": ["Work Sans"],
+              "brand": ["Pacifico"],
+              "editorial": ["Raleway"]
+            },
+            borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface font-body min-h-screen flex flex-col items-center">
+<!-- Top Navigation Bar -->
+<header class="fixed top-0 w-full z-50 bg-[#15181D]/80 backdrop-blur-xl flex items-center px-6 h-16 w-full">
+<div class="flex items-center gap-4 w-full max-w-2xl mx-auto">
+<button class="active:scale-95 transition-transform hover:opacity-80 transition-opacity">
+<span class="material-symbols-outlined text-[#388E3C]">arrow_back</span>
+</button>
+<h1 class="font-['Pacifico'] text-2xl tracking-tight text-on-surface">Add Payout Account</h1>
+</div>
+</header>
+<!-- Main Content Wrapper -->
+<main class="w-full max-w-2xl px-6 pt-24 pb-12 flex-1 flex flex-col">
+<!-- Header Section -->
+<section class="mb-8">
+<p class="font-editorial text-[12px] text-on-surface-variant mb-4">Required to receive your marketplace earnings</p>
+<!-- Security Note -->
+<div class="flex items-center gap-2 bg-primary-container/10 p-3 rounded-lg">
+<span class="material-symbols-outlined text-primary text-[18px]" data-icon="lock" style="font-variation-settings: 'FILL' 1;">lock</span>
+<p class="font-editorial text-[11px] text-primary">Your account details are encrypted at rest</p>
+</div>
+</section>
+<!-- Bento Form Container -->
+<div class="space-y-6">
+<!-- 1. Select Bank -->
+<div class="space-y-2">
+<label class="font-editorial text-[13px] font-medium ml-4 text-on-surface-variant">Select Bank</label>
+<div class="relative">
+<input class="w-full h-14 bg-surface-container-high border-[0.5px] border-outline-variant/20 rounded-full px-6 text-on-surface focus:border-primary-container focus:ring-0 transition-all font-body" placeholder="Search Nigerian banks..." type="text"/>
+<span class="material-symbols-outlined absolute right-5 top-1/2 -translate-y-1/2 text-on-surface-variant">expand_more</span>
+</div>
+</div>
+<!-- 2. Account Number -->
+<div class="space-y-2">
+<label class="font-editorial text-[13px] font-medium ml-4 text-on-surface-variant">Account Number</label>
+<input class="w-full h-14 bg-surface-container-high border-[0.5px] border-outline-variant/20 rounded-full px-6 text-on-surface focus:border-primary-container focus:ring-0 transition-all font-body appearance-none" placeholder="10-digit account number" type="number"/>
+</div>
+<!-- 3. Verify Action & Status -->
+<div class="flex flex-col gap-4">
+<button class="w-full h-14 rounded-full bg-surface-container border-[0.5px] border-primary-container/40 text-primary font-semibold hover:bg-primary-container/10 transition-colors active:scale-95 flex items-center justify-center gap-2">
+<span>Verify Account</span>
+</button>
+<!-- Success State (Shown after logic would run) -->
+<div class="flex items-center gap-3 px-4 py-2 bg-primary/5 rounded-xl">
+<span class="material-symbols-outlined text-primary text-[20px]" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<p class="font-editorial text-[13px] text-primary">Account Name: <span class="font-bold">John A. Doe</span></p>
+</div>
+</div>
+<!-- 4. Account Name (Read-only) -->
+<div class="space-y-2 opacity-60">
+<label class="font-editorial text-[13px] font-medium ml-4 text-on-surface-variant">Verified Account Name</label>
+<input class="w-full h-14 bg-surface-container-lowest border-[0.5px] border-outline-variant/10 rounded-full px-6 text-on-surface-variant font-body cursor-not-allowed" readonly="" type="text" value="John A. Doe"/>
+</div>
+<!-- Platform Note -->
+<div class="flex items-start gap-3 px-4 py-2">
+<span class="material-symbols-outlined text-on-surface-variant text-[16px] mt-0.5" data-icon="info">info</span>
+<p class="font-editorial text-[11px] text-on-surface-variant leading-relaxed">
+                    We verify your account via Paystack to ensure accurate payouts. Your data is protected by industry-standard protocols.
+                </p>
+</div>
+</div>
+<!-- Sticky Footer Actions -->
+<div class="mt-12 space-y-4">
+<button class="w-full h-14 rounded-full bg-primary-container text-on-primary-container font-bold text-lg shadow-lg shadow-primary-container/20 active:scale-[0.98] transition-all">
+                Save Account Details
+            </button>
+<button class="w-full py-2 text-on-surface-variant font-editorial text-sm hover:text-on-surface transition-colors">
+                Cancel
+            </button>
+</div>
+<!-- Visual Anchor Decor (Editorial Element) -->
+<div class="mt-12 rounded-lg overflow-hidden h-40 relative group">
+<img class="w-full h-full object-cover opacity-30 grayscale hover:grayscale-0 transition-all duration-700" data-alt="abstract artistic visualization of digital financial security with glowing green lines and deep obsidian crystalline structures" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCh1-fld4O4Zw6UFhQ5lVP6xdEZd1meP9q6pkBq7okqckxGlMmpgDJVy2oBJcw0j4Sp4uMBlXXUVBjH6Dy0PAGMkt_rhleTmIkpsSgHCtZqjGQZoz7sE35Kbl3ik0uY2xPc2i7t7TJ0GiKhKhW-RKyJZWUhDiJvutp2_0hc0hxJHJHwWCRl_FMN660Qcx-DU9p452JZ2lzF79l_HtR-6EdakbWNQT-UFDfsPc4e5WuFU9Qe7J32Hng27vh3wrmI-gsE48Ypf9PMJyBM"/>
+<div class="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent"></div>
+<div class="absolute bottom-4 left-6">
+<p class="font-brand text-lg text-primary opacity-80">Safe &amp; Secure</p>
+</div>
+</div>
+</main>
+<!-- Focus Gradient Aura -->
+<div class="fixed -z-10 top-0 right-0 w-[500px] h-[500px] bg-primary-container/5 blur-[120px] rounded-full pointer-events-none"></div>
+<div class="fixed -z-10 bottom-0 left-0 w-[400px] h-[400px] bg-secondary-container/5 blur-[100px] rounded-full pointer-events-none"></div>
+</body></html>

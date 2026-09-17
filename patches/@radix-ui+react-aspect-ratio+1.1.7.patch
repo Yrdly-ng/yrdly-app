@@ -1,0 +1,23 @@
+diff --git a/node_modules/@radix-ui/react-aspect-ratio/dist/index.d.ts b/node_modules/@radix-ui/react-aspect-ratio/dist/index.d.ts
+index 7a83d73..1b0a880 100644
+--- a/node_modules/@radix-ui/react-aspect-ratio/dist/index.d.ts
++++ b/node_modules/@radix-ui/react-aspect-ratio/dist/index.d.ts
+@@ -11,4 +11,4 @@ type AspectRatioProps = Radix.ComponentPropsWithoutRef<typeof AspectRatioFrame>
+ 
+ declare const AspectRatio: React.ForwardRefExoticComponent<AspectRatioProps & React.RefAttributes<HTMLDivElement>>;
+ 
+-export { AspectRatio, type AspectRatioProps };
++export default AspectRatio;
+diff --git a/node_modules/@radix-ui/react-aspect-ratio/dist/index.mjs b/node_modules/@radix-ui/react-aspect-ratio/dist/index.mjs
+index 4514ac0..571b0eb 100644
+--- a/node_modules/@radix-ui/react-aspect-ratio/dist/index.mjs
++++ b/node_modules/@radix-ui/react-aspect-ratio/dist/index.mjs
+@@ -21,4 +21,4 @@
+ /* @__PURE__ */ React.forwardRef((props, forwardedRef) => {
+   return /* @__PURE__ */ React.createElement(AspectRatioFrame, _extends({}, props, { ref: forwardedRef }));
+ });
+-export {
+-  AspectRatio
+-};
++export default AspectRatio;
+\ No newline at end of file

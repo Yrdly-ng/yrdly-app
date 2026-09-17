@@ -1,0 +1,14 @@
+<svg width="400" height="300" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g_fashion" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#EC4899"/>
+      <stop offset="100%" stop-color="#7E22CE"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="300" fill="url(#g_fashion)"/>
+  <circle cx="200" cy="140" r="70" fill="#ffffff" fill-opacity="0.12"/>
+  <g transform="translate(140,80)" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M40 10 a8 8 0 0 1 8 8 h-16 a8 8 0 0 1 8 -8 z"/>
+                 <path d="M40 18 l-34 20 8 10 26 -16 26 16 8 -10 z"/>
+  </g>
+</svg>
