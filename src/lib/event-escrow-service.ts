@@ -161,26 +161,39 @@ export class EventEscrowService {
 
     if (payoutError || !payout) throw payoutError || new Error('Failed to create payout record');
 
-    // Execute transfer via Payluk if customer ID exists, else Paystack
+    // Execute transfer using the configured payment provider.
+    // PAYMENT_PROVIDER env var controls which provider is used (same as ticket purchase route).
+    // 'paystack' → go straight to Paystack (e.g. for Paystack app review).
+    // 'payluk' (default) → try Payluk first, fall back to Paystack on failure.
+    const payoutProvider = (
+      process.env.NEXT_PUBLIC_PAYMENT_PROVIDER ||
+      process.env.PAYMENT_PROVIDER ||
+      'payluk'
+    ).toLowerCase();
+
     let transferSuccess = false;
     let failureReason = '';
 
-    try {
-      const organizerPaylukId = await getPaylukCustomerId(organizerId);
-      if (organizerPaylukId) {
-        console.log(`[EventEscrowService] Executing Payluk bank withdrawal for event ${eventId}...`);
-        const result = await PaylukService.withdrawToBank({
-          sellerPaylukCustomerId: organizerPaylukId,
-          amount: net,
-          bankCode: bankDetails.bankCode,
-          accountNumber: bankDetails.accountNumber,
-          accountName: bankDetails.accountName,
-          reference: `evt-payout-${payout.id}`,
-        });
-        transferSuccess = true;
+    if (payoutProvider !== 'paystack') {
+      try {
+        const organizerPaylukId = await getPaylukCustomerId(organizerId);
+        if (organizerPaylukId) {
+          console.log(`[EventEscrowService] Executing Payluk bank withdrawal for event ${eventId}...`);
+          await PaylukService.withdrawToBank({
+            sellerPaylukCustomerId: organizerPaylukId,
+            amount: net,
+            bankCode: bankDetails.bankCode,
+            accountNumber: bankDetails.accountNumber,
+            accountName: bankDetails.accountName,
+            reference: `evt-payout-${payout.id}`,
+          });
+          transferSuccess = true;
+        }
+      } catch (paylukErr: any) {
+        console.warn(`[EventEscrowService] Payluk withdrawal failed, trying Paystack fallback:`, paylukErr?.message);
       }
-    } catch (paylukErr: any) {
-      console.warn(`[EventEscrowService] Payluk withdrawal failed, trying Paystack fallback:`, paylukErr?.message);
+    } else {
+      console.log(`[EventEscrowService] PAYMENT_PROVIDER=paystack — using Paystack directly for event ${eventId} payout.`);
     }
 
     if (!transferSuccess) {
