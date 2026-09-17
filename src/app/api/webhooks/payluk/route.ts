@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { EscrowStatus } from '@/types/escrow';
 import { NotificationService } from '@/lib/notification-service';
 import { TicketService } from '@/lib/ticket-service';
+import { PaylukService } from '@/lib/payluk-service';
 
 // ── Signature verification ───────────────────────────────────────────────────
 //
@@ -276,12 +277,68 @@ async function handleEscrowOngoing(data: PaylukEscrowData) {
   }
 }
 
+async function createFallbackTransaction(data: PaylukEscrowData) {
+  try {
+    if (!data.sellerId) return null;
+    const customer = await PaylukService.getCustomerById(data.sellerId).catch(() => null);
+    if (!customer || !customer.email) return null;
+
+    const { data: user } = await supabaseAdmin
+      .from('users')
+      .select('id')
+      .eq('email', customer.email)
+      .maybeSingle();
+
+    if (!user) return null;
+
+    // Get fallback post ID
+    const { data: posts } = await supabaseAdmin.from('posts').select('id').limit(1);
+    const fallbackItemId = posts?.[0]?.id || '00000000-0000-0000-0000-000000000000';
+
+    const amount = Number(data.amount || 0);
+
+    const { data: newTx, error } = await supabaseAdmin
+      .from('escrow_transactions')
+      .insert({
+        seller_id: user.id,
+        buyer_id: user.id,
+        item_id: fallbackItemId,
+        amount: amount,
+        commission: 0,
+        seller_amount: amount,
+        total_amount: amount,
+        status: EscrowStatus.COMPLETED,
+        payment_method: 'card',
+        payment_provider: 'payluk',
+        delivery_details: {},
+        payluk_escrow_id: data.id,
+        payluk_tx_ref: data.paymentToken || data.id,
+        completed_at: new Date().toISOString(),
+        metadata: { note: 'Auto-created by Payluk webhook fallback' },
+      })
+      .select('id, status, buyer_id, seller_id, item_id, item_type, amount, payluk_tx_ref, payluk_escrow_id, metadata')
+      .single();
+
+    if (error) {
+      console.error('[PaylukWebhook] Failed to create fallback transaction:', error.message);
+      return null;
+    }
+
+    console.log(`[PaylukWebhook] Successfully created fallback transaction ${newTx.id} for seller ${user.id}`);
+    return newTx;
+  } catch (err: any) {
+    console.error('[PaylukWebhook] Error in createFallbackTransaction:', err?.message);
+    return null;
+  }
+}
+
 async function handleEscrowCompleted(data: PaylukEscrowData) {
-  const { data: tx, error } = await findTransactionByPaylukData(data);
+  let { data: tx, error } = await findTransactionByPaylukData(data);
 
   if (error || !tx) {
-    console.warn(`[PaylukWebhook] escrow.completed: no local transaction for escrow id=${data.id}`);
-    return;
+    console.warn(`[PaylukWebhook] escrow.completed: no local transaction for escrow id=${data.id}, attempting fallback creation...`);
+    tx = await createFallbackTransaction(data);
+    if (!tx) return;
   }
 
   // Idempotent: if already COMPLETED, skip.
@@ -309,11 +366,12 @@ async function handleEscrowCompleted(data: PaylukEscrowData) {
 async function handleEscrowClaimed(data: PaylukEscrowData) {
   // Seller claimed funds directly via Payluk — our backend was not the initiator.
   // This webhook is the only source of truth for this transition.
-  const { data: tx, error } = await findTransactionByPaylukData(data);
+  let { data: tx, error } = await findTransactionByPaylukData(data);
 
   if (error || !tx) {
-    console.warn(`[PaylukWebhook] escrow.claimed: no local transaction for escrow id=${data.id}`);
-    return;
+    console.warn(`[PaylukWebhook] escrow.claimed: no local transaction for escrow id=${data.id}, attempting fallback creation...`);
+    tx = await createFallbackTransaction(data);
+    if (!tx) return;
   }
 
   if (tx.status === EscrowStatus.COMPLETED) {
