@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-supabase-auth';
-import Splash from './splash/page';
+import { SplashScreenContent } from '@/components/SplashScreen';
 
 export default function RootPage() {
   const { user, loading } = useAuth();
@@ -19,14 +19,5 @@ export default function RootPage() {
     }
   }, [user, loading, router]);
 
-  // While loading, show the splash screen.
-  // After loading, the useEffect will redirect.
-  // This prevents a flash of the login page before redirection.
-  if (loading) {
-    return <Splash />;
-  }
-
-  // This will be shown briefly before redirection if not loading.
-  // It can be a splash screen or a blank page.
-  return <Splash />;
+  return <SplashScreenContent autoNavigate={false} />;
 }

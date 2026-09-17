@@ -96,7 +96,7 @@ export function GlassInput({
         focused ? "border-[#82DB7E]/80 ring-1 ring-[#82DB7E]/50" : "border-[var(--yrdly-glass-border)]"
       )}
     >
-      {icon && <div className="mr-3 text-[var(--yrdly-label)]">{icon}</div>}
+      {icon && <div className="mr-3 text-white/50">{icon}</div>}
       <input
         type={type}
         placeholder={placeholder}
@@ -105,7 +105,7 @@ export function GlassInput({
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         maxLength={maxLength}
-        className="w-full bg-transparent text-white text-base font-yrdly-body placeholder:text-[var(--yrdly-label)] focus:outline-none"
+        className="w-full bg-transparent text-white text-base font-yrdly-body placeholder:text-white/40 focus:outline-none"
       />
       {right}
     </div>
@@ -164,7 +164,7 @@ export function PasswordStrength({ value }: { value: string }) {
             />
           ))}
         </div>
-        <span className="text-xs font-yrdly-body font-bold" style={{ color: score > 0 ? colorsList[score] : 'var(--yrdly-label)' }}>
+        <span className="text-xs font-yrdly-body font-bold" style={{ color: score > 0 ? colorsList[score] : 'rgba(255,255,255,0.4)' }}>
           {labels[score]}
         </span>
       </div>
@@ -174,10 +174,10 @@ export function PasswordStrength({ value }: { value: string }) {
             key={r.label}
             className={cn(
               "flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold border transition-all",
-              r.met ? "bg-[#82DB7E]/15 text-[#82DB7E] border-[#82DB7E]/40" : "bg-white/[0.06] text-white/70 border-[var(--yrdly-glass-border)]"
+              r.met ? "bg-[#82DB7E]/15 text-[#82DB7E] border-[#82DB7E]/40" : "bg-white/[0.06] text-white/80 border-white/10"
             )}
           >
-            {r.met ? <CheckCircle className="w-3 h-3 text-[#82DB7E]" /> : <Circle className="w-3 h-3 text-[var(--yrdly-label)]" />}
+            {r.met ? <CheckCircle className="w-3 h-3 text-[#82DB7E]" /> : <Circle className="w-3 h-3 text-white/40" />}
             <span>{r.label}</span>
           </div>
         ))}
@@ -236,9 +236,9 @@ export function StepBar({ step, total, label }: { step: number; total: number; l
 export function Divider({ label }: { label: string }) {
   return (
     <div className="flex items-center gap-3 my-1">
-      <div className="flex-1 h-px bg-[var(--yrdly-glass-border)]" />
-      <span className="text-[10px] font-yrdly-display font-black uppercase tracking-widest text-[var(--yrdly-label)]">{label}</span>
-      <div className="flex-1 h-px bg-[var(--yrdly-glass-border)]" />
+      <div className="flex-1 h-px bg-white/10" />
+      <span className="text-[10px] font-yrdly-display font-black uppercase tracking-widest text-white/50">{label}</span>
+      <div className="flex-1 h-px bg-white/10" />
     </div>
   );
 }
