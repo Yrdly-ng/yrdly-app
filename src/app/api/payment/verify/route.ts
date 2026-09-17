@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { EscrowStatus } from '@/types/escrow';
 import { getAuthenticatedUser } from "@/lib/supabase-server";
 import { PaystackService } from '@/lib/paystack-service';
+import { PaylukService } from '@/lib/payluk-service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -48,6 +49,36 @@ export async function POST(request: NextRequest) {
       }
 
       if (existing?.payment_provider === 'payluk' || existing?.payluk_escrow_id) {
+        // Confirm with Payluk that the escrow was actually funded before marking PAID.
+        // Without this check a cancelled checkout (onClose) would blindly return success.
+        const paymentToken = existing.payluk_escrow_id;
+        if (!paymentToken) {
+          return NextResponse.json({ error: 'Payluk escrow ID not found for this transaction' }, { status: 400 });
+        }
+
+        let escrowState: string;
+        let escrowStatus: string;
+        try {
+          const escrow = await PaylukService.verifyEscrow(paymentToken);
+          escrowState  = escrow.state;  // 'AWAITING_PAYMENT' | 'OPENED' | 'CLOSED'
+          escrowStatus = escrow.status; // 'PENDING' | 'ONGOING' | 'COMPLETED' | …
+        } catch (paylukErr: any) {
+          console.error('[PaymentVerify] Payluk verifyEscrow failed:', paylukErr?.message);
+          return NextResponse.json({ error: 'Could not verify payment status with Payluk' }, { status: 502 });
+        }
+
+        // AWAITING_PAYMENT means the user never paid (cancelled checkout).
+        const isPaid =
+          escrowState === 'OPENED' ||
+          escrowState === 'CLOSED' ||
+          escrowStatus === 'ONGOING' ||
+          escrowStatus === 'COMPLETED';
+
+        if (!isPaid) {
+          console.log(`[PaymentVerify] Payluk escrow ${paymentToken} state=${escrowState} — payment not completed, not marking PAID.`);
+          return NextResponse.json({ success: false, error: 'Payment was not completed' }, { status: 402 });
+        }
+
         await supabaseAdmin
           .from('escrow_transactions')
           .update({
@@ -55,7 +86,8 @@ export async function POST(request: NextRequest) {
             paid_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           })
-          .eq('id', bodyTxRef);
+          .eq('id', bodyTxRef)
+          .eq('status', EscrowStatus.PENDING); // optimistic lock — skip if already updated
 
         if (existing.item_id) {
           if (existing.item_type === 'catalog_item') {

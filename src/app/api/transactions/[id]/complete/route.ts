@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { EscrowStatus } from '@/types/escrow';
 import { PayoutService } from '@/lib/payout-service';
+import { PaylukService } from '@/lib/payluk-service';
+import { getPaylukCustomerId } from '@/lib/payluk-onboarding';
 
 export async function POST(
   request: Request,
@@ -35,7 +37,7 @@ export async function POST(
     // 1. Get the transaction using admin client to bypass RLS for this specific secure flow
     const { data: transaction, error: fetchError } = await supabaseAdmin
       .from('escrow_transactions')
-      .select('status, seller_amount, seller_id, buyer_id')
+      .select('status, seller_amount, seller_id, buyer_id, payment_provider, payluk_escrow_id')
       .eq('id', transactionId)
       .single();
 
@@ -48,8 +50,31 @@ export async function POST(
       return NextResponse.json({ error: 'Only the buyer can complete this transaction' }, { status: 403 });
     }
 
-    if (transaction.status !== EscrowStatus.DELIVERED) {
-      return NextResponse.json({ error: 'Transaction must be delivered before completion' }, { status: 400 });
+    // Allow completion from PAID, SHIPPED, or DELIVERED — seller may have skipped the ship step
+    const confirmableStatuses = [EscrowStatus.PAID, EscrowStatus.SHIPPED, EscrowStatus.DELIVERED];
+    if (!confirmableStatuses.includes(transaction.status as EscrowStatus)) {
+      return NextResponse.json({ error: `Transaction cannot be completed in state: ${transaction.status}` }, { status: 400 });
+    }
+
+    // For Payluk transactions: call confirm-payment FIRST so Payluk releases funds to the seller's
+    // wallet. Without this the escrow stays locked and the subsequent bank withdrawal has nothing
+    // to draw from.
+    if (transaction.payment_provider === 'payluk') {
+      if (!transaction.payluk_escrow_id) {
+        return NextResponse.json({ error: 'Payluk escrow ID missing on this transaction' }, { status: 500 });
+      }
+      try {
+        const buyerPaylukId = await getPaylukCustomerId(user.id);
+        await PaylukService.confirmDelivery(buyerPaylukId, transaction.payluk_escrow_id);
+      } catch (paylukErr: any) {
+        const msg: string = paylukErr?.message ?? '';
+        // If Payluk says the escrow is already closed/completed, treat as success
+        if (!msg.includes('Action not allowed')) {
+          console.error('[complete] PaylukService.confirmDelivery failed:', msg);
+          return NextResponse.json({ error: msg || 'Failed to release Payluk escrow' }, { status: 502 });
+        }
+        console.warn('[complete] Payluk escrow already closed — proceeding to DB update.');
+      }
     }
 
     // 2. Update transaction status

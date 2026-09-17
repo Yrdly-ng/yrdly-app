@@ -161,8 +161,9 @@ export class TransactionStatusService {
         throw new Error('Unauthorized: You can only update your own transactions');
       }
 
-      if (transaction.status !== EscrowStatus.SHIPPED) {
-        throw new Error('Transaction must be shipped before confirming delivery');
+      const confirmableStatuses = [EscrowStatus.PAID, EscrowStatus.SHIPPED, EscrowStatus.DELIVERED];
+      if (!confirmableStatuses.includes(transaction.status as EscrowStatus)) {
+        throw new Error(`Transaction cannot be confirmed in state: ${transaction.status}`);
       }
 
       const { error } = await supabase
