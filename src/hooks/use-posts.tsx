@@ -42,7 +42,11 @@ export const usePosts = (filter?: LocationFilter | null) => {
           name,
           avatar_url,
           created_at,
-          verified_seller
+          verified_seller,
+          verified,
+          is_verified,
+          phone_verified,
+          id_verified
         )
       `);
 
@@ -417,7 +421,7 @@ export const usePosts = (filter?: LocationFilter | null) => {
               .from('posts')
               .update(finalPostData)
               .eq('id', postIdToUpdate)
-              .select(`*, user:users!posts_user_id_fkey(id, name, avatar_url, created_at, verified_seller)`)
+              .select(`*, user:users!posts_user_id_fkey(id, name, avatar_url, created_at, verified_seller, verified, is_verified, phone_verified, id_verified)`)
               .single();
             
             if (error) throw error;
@@ -433,7 +437,7 @@ export const usePosts = (filter?: LocationFilter | null) => {
                 comment_count: 0,
                 liked_by: [],
               })
-              .select(`*, user:users!posts_user_id_fkey(id, name, avatar_url, created_at, verified_seller)`)
+              .select(`*, user:users!posts_user_id_fkey(id, name, avatar_url, created_at, verified_seller, verified, is_verified, phone_verified, id_verified)`)
               .single();
             
             if (error) throw error;

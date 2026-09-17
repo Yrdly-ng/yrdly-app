@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { User, Post, Business } from "../types";
 import { useRouter } from 'next/navigation';
-import { X, Search, Clock, ChevronRight, Star, UserPlus } from 'lucide-react';
+import { X, Search, Clock, ChevronRight, Star, UserPlus, BadgeCheck } from 'lucide-react';
 import { UserProfileDialog } from './UserProfileDialog';
 import { useAuth } from '@/hooks/use-supabase-auth';
 import Image from 'next/image';
@@ -68,7 +68,7 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
         const userLga   = profile?.location?.lga;
 
         // People — scoped to same LGA, fallback to state
-        let usersQuery = supabase.from('users').select('id, name, avatar_url, bio, location, interests, created_at').or(`name.ilike.%${q}%,bio.ilike.%${q}%`).neq('id', currentUser?.id ?? '');
+        let usersQuery = supabase.from('users').select('id, name, avatar_url, bio, location, interests, created_at, verified_seller, verified, is_verified, phone_verified, id_verified').or(`name.ilike.%${q}%,bio.ilike.%${q}%`).neq('id', currentUser?.id ?? '');
         if (userLga)   usersQuery = usersQuery.eq('location->>lga', userLga);
         else if (userState) usersQuery = usersQuery.eq('location->>state', userState);
         const { data: users } = await usersQuery.limit(5);
@@ -268,7 +268,12 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold truncate" style={{ color: 'var(--c-text)' }}>{u.name}</p>
+                        <p className="text-sm font-bold truncate flex items-center gap-1" style={{ color: 'var(--c-text)' }}>
+                          {u.name}
+                          {(u.verified_seller || u.verified || u.is_verified || u.phone_verified || (u as any).id_verified) && (
+                            <BadgeCheck className="w-3.5 h-3.5 text-[#82DB7E] fill-[#82DB7E]/20 shrink-0" />
+                          )}
+                        </p>
                         <p className="text-xs truncate" style={{ color: 'var(--c-text-muted)' }}>
                           {[u.location?.lga, u.location?.state].filter(Boolean).join(', ')}
                         </p>

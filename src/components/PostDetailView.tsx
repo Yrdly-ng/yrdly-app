@@ -15,6 +15,7 @@ import {
   Play,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -243,8 +244,13 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
               <AvatarFallback className="bg-[#82DB7E] text-[#050505] font-yrdly-display text-sm font-bold">{author?.name?.charAt(0) || "?"}</AvatarFallback>
             </Avatar>
           )}
-          <div className="min-w-0">
-            <p className="font-yrdly-display font-bold text-sm text-[var(--yrdly-text-primary)] truncate">{author?.name || "Anonymous"}</p>
+          <div className="min-w-0 flex flex-col justify-center">
+            <div className="flex items-center gap-1.5">
+              <p className="font-yrdly-display font-bold text-sm text-[var(--yrdly-text-primary)] truncate">{author?.name || "Anonymous"}</p>
+              {(author?.verified_seller || author?.is_verified || author?.phone_verified || author?.verified || (post.user as any)?.verified_seller || (post.user as any)?.is_verified || (post.user as any)?.phone_verified || (post.user as any)?.verified) && (
+                <VerifiedBadge size={16} />
+              )}
+            </div>
             <p className="font-yrdly-body font-normal text-[0.6875rem] text-[var(--yrdly-label)]">
               {timeAgo(post.timestamp ? new Date(post.timestamp) : null)}
               {post.updated_at && (new Date(post.updated_at).getTime() - new Date(post.timestamp).getTime() > 2000) && " (edited)"}

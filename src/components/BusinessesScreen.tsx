@@ -349,7 +349,7 @@ function BusinessList({
               <h3 className="font-bold text-foreground truncate font-yrdly-display">
                 {biz.name}
               </h3>
-              {biz.verified_seller && (
+              {(biz.verified_seller || (biz as any).is_verified || (biz as any).phone_verified || (biz as any).verified) && (
                 <BadgeCheck className="w-4 h-4 text-[#82DB7E] fill-[#82DB7E]/20 shrink-0" />
               )}
             </div>

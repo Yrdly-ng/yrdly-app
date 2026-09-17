@@ -306,7 +306,7 @@ export function UserProfileDialog({ user: profileUser, open, onOpenChange }: Use
                         </Avatar>
                         <h1 className="text-2xl font-bold flex items-center justify-center gap-1.5">
                             {profileUser.name}
-                            {((profileUser as any).is_verified || (profileUser as any).verified_seller) && (
+                            {((profileUser as any).is_verified || (profileUser as any).verified_seller || (profileUser as any).phone_verified || (profileUser as any).verified || (profileUser as any).id_verified) && (
                                 <BadgeCheck className="w-5 h-5 text-[#82DB7E] fill-[#82DB7E]/20 shrink-0" />
                             )}
                         </h1>

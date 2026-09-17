@@ -115,6 +115,9 @@ export interface Post {
     created_at?: string;
     verified_seller?: boolean;
     is_verified?: boolean;
+    phone_verified?: boolean;
+    verified?: boolean;
+    id_verified?: boolean;
   };
 }
 
@@ -138,6 +141,9 @@ export interface User {
   bio?: string;
   verified_seller?: boolean;
   is_verified?: boolean;
+  phone_verified?: boolean;
+  verified?: boolean;
+  id_verified?: boolean;
   location?: {
     state?: string;
     lga?: string;

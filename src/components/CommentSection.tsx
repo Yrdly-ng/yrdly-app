@@ -151,7 +151,7 @@ export function CommentSection({
         const fetch = async () => {
             const { data, error } = await supabase
                 .from('comments')
-                .select('*, user:users!comments_user_id_fkey(verified_seller)')
+                .select('*, user:users!comments_user_id_fkey(verified_seller, verified, is_verified, phone_verified, id_verified)')
                 .eq('post_id', postId)
                 .order('timestamp', { ascending: true });
             if (!error && data) {
@@ -177,7 +177,7 @@ export function CommentSection({
                     parentId: c.parent_id,
                     likeCount: c.like_count || 0,
                     isLikedByMe: userLikes.has(c.id),
-                    verifiedSeller: c.user?.verified_seller || false,
+                    verifiedSeller: c.user?.verified_seller || c.user?.is_verified || c.user?.phone_verified || c.user?.verified || c.user?.id_verified || false,
                 }));
                 setComments(mapped);
                 setLikedComments(new Set(userLikes));

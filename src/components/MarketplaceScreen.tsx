@@ -86,7 +86,7 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller, hideHeader = f
       try {
         let query = supabase
           .from("posts")
-          .select(`*, user:users!posts_user_id_fkey(id, name, avatar_url, verified_seller)`)
+          .select(`*, user:users!posts_user_id_fkey(id, name, avatar_url, verified_seller, verified, is_verified, phone_verified, id_verified)`)
           .eq("category", "For Sale")
           .eq("is_sold", false);
 
@@ -396,7 +396,7 @@ function MarketplaceCard({
             className="text-[0.6875rem] truncate flex items-center gap-1 text-[var(--yrdly-label)] font-yrdly-body"
           >
             {item.user?.name || "Unknown Seller"}
-            {item.user?.verified_seller && (
+            {(item.user?.verified_seller || item.user?.is_verified || item.user?.phone_verified || item.user?.verified || item.user?.id_verified) && (
               <BadgeCheck className="w-3.5 h-3.5 text-[#82DB7E] fill-[#82DB7E]/20 shrink-0" />
             )}
           </span>

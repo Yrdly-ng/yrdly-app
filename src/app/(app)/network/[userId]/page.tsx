@@ -38,13 +38,13 @@ export default function NetworkPage() {
       // 1. Fetch Followers
       const { data: followerRows } = await supabase
         .from("followers")
-        .select("follower_id, created_at, users:follower_id(id, name, username, avatar_url, verified, verified_seller)")
+        .select("follower_id, created_at, users:follower_id(id, name, username, avatar_url, verified, verified_seller, is_verified, phone_verified, id_verified)")
         .eq("following_id", targetUserId);
 
       // 2. Fetch Following
       const { data: followingRows } = await supabase
         .from("followers")
-        .select("following_id, created_at, users:following_id(id, name, username, avatar_url, verified, verified_seller)")
+        .select("following_id, created_at, users:following_id(id, name, username, avatar_url, verified, verified_seller, is_verified, phone_verified, id_verified)")
         .eq("follower_id", targetUserId);
 
       // 3. Fetch current user's following list (to determine follow state on cards)
@@ -228,7 +228,7 @@ export default function NetworkPage() {
                         <span className="font-bold text-foreground text-sm truncate" style={{ fontFamily: RALEWAY }}>
                           {user.name}
                         </span>
-                        {(user.verified || user.verified_seller) && (
+                        {(user.verified || user.verified_seller || user.is_verified || user.phone_verified || user.id_verified) && (
                           <ShieldCheck className="w-4 h-4 text-primary shrink-0" />
                         )}
                       </div>
