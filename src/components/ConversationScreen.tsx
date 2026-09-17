@@ -347,7 +347,7 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
         } catch {}
       }
       setNewMessage(""); setSelectedFile(null); setImagePreview(null);
-      setVideoFile(null); setVideoPreview(null);
+      clearVideoPreview();
       stopTyping();
     } catch (e) { console.error(e); } finally { setSending(false); }
   }, [user, conversation, newMessage, selectedFile, videoFile, stopTyping]);
@@ -361,14 +361,38 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
     reader.readAsDataURL(file);
   };
 
+  const videoPreviewUrlRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (videoPreviewUrlRef.current) {
+        URL.revokeObjectURL(videoPreviewUrlRef.current);
+      }
+    };
+  }, []);
+
+  const clearVideoPreview = () => {
+    if (videoPreviewUrlRef.current) {
+      URL.revokeObjectURL(videoPreviewUrlRef.current);
+      videoPreviewUrlRef.current = null;
+    }
+    setVideoFile(null);
+    setVideoPreview(null);
+  };
+
   const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const MAX = 15 * 1024 * 1024;
     const ALLOWED = ['video/mp4', 'video/webm', 'video/quicktime'];
     if (!ALLOWED.includes(file.type) || file.size > MAX) return;
+    if (videoPreviewUrlRef.current) {
+      URL.revokeObjectURL(videoPreviewUrlRef.current);
+    }
+    const url = URL.createObjectURL(file);
+    videoPreviewUrlRef.current = url;
     setVideoFile(file);
-    setVideoPreview(URL.createObjectURL(file));
+    setVideoPreview(url);
     if (videoInputRef.current) videoInputRef.current.value = '';
   };
 
@@ -732,7 +756,7 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
           <div className="relative mb-3 inline-block">
             <video src={videoPreview.includes('#t=') ? videoPreview : `${videoPreview}#t=0.001`} preload="metadata" className="rounded-[10px] w-20 h-20 object-cover" />
             <button
-              onClick={() => { setVideoFile(null); setVideoPreview(null); }}
+              onClick={() => { clearVideoPreview(); }}
               className="absolute -top-2 -right-2 w-6 h-6 rounded-full text-foreground text-xs flex items-center justify-center"
               style={{ background: "#E53935" }}>×</button>
           </div>

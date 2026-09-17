@@ -57,6 +57,16 @@ function OnboardingProfileContent() {
   // Step 2 State: Personalization & Interests
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const avatarPreviewUrlRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (avatarPreviewUrlRef.current) {
+        URL.revokeObjectURL(avatarPreviewUrlRef.current);
+      }
+    };
+  }, []);
+
   const [bio, setBio] = useState('');
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
 
@@ -75,8 +85,13 @@ function OnboardingProfileContent() {
   const handlePickAvatar = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      if (avatarPreviewUrlRef.current) {
+        URL.revokeObjectURL(avatarPreviewUrlRef.current);
+      }
+      const url = URL.createObjectURL(file);
+      avatarPreviewUrlRef.current = url;
       setAvatarFile(file);
-      setAvatarUri(URL.createObjectURL(file));
+      setAvatarUri(url);
     }
   };
 

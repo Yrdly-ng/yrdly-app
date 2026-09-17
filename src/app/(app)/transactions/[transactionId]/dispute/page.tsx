@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -34,12 +34,20 @@ export default function DisputePage() {
   const [images, setImages]     = useState<string[]>([]);
   const [loading, setLoading]   = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const previewUrlsRef = useRef<string[]>([]);
+
+  useEffect(() => {
+    return () => {
+      previewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, []);
 
   const handleImageAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
     Array.from(files).forEach((f) => {
       const url = URL.createObjectURL(f);
+      previewUrlsRef.current.push(url);
       setImages((prev) => [...prev.slice(0, 4), url]);
     });
   };
