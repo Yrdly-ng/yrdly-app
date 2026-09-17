@@ -38,6 +38,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 
 interface EventsScreenProps {
   className?: string;
+  hideHeader?: boolean;
 }
 
 function formatEventDate(d: string | null | undefined): string {
@@ -104,7 +105,7 @@ function isToday(d: string | null | undefined): boolean {
 
 
 
-export function EventsScreen({ className }: EventsScreenProps) {
+export function EventsScreen({ className, hideHeader = false }: EventsScreenProps) {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const router = useRouter();

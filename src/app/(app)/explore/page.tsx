@@ -32,6 +32,7 @@ function MarketplaceTab() {
     <MarketplaceScreen
       onItemClick={handleItemClick}
       onMessageSeller={handleMessageSeller}
+      hideHeader={true}
     />
   );
 }
@@ -66,7 +67,7 @@ function ExploreContent() {
       case "marketplace":
         return <MarketplaceTab />;
       case "events":
-        return <EventsScreen />;
+        return <EventsScreen hideHeader={true} />;
       case "businesses":
         return (
           <Suspense fallback={
@@ -76,7 +77,7 @@ function ExploreContent() {
               ))}
             </div>
           }>
-            <BusinessesScreen backTarget="/explore?tab=businesses" />
+            <BusinessesScreen backTarget="/explore?tab=businesses" hideHeader={true} />
           </Suspense>
         );
       default:

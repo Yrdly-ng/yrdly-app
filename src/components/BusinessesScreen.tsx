@@ -46,7 +46,7 @@ interface CategoryTile {
   image: string | null;
 }
 
-export function BusinessesScreen({ backTarget = "/businesses" }: { backTarget?: string }) {
+export function BusinessesScreen({ backTarget = "/businesses", hideHeader = false }: { backTarget?: string; hideHeader?: boolean }) {
   const router = useRouter();
   const { profile } = useAuth();
   const searchParams = useSearchParams();
@@ -184,42 +184,44 @@ export function BusinessesScreen({ backTarget = "/businesses" }: { backTarget?: 
   return (
     <div className="min-h-[100dvh] bg-[var(--yrdly-dark)] text-foreground font-yrdly-body pb-10">
       {/* Header */}
-      <div className="sticky top-0 z-10 px-4 pt-4 pb-3 bg-[var(--yrdly-dark)]/80 backdrop-blur-md border-b border-[var(--yrdly-glass-border)]">
-        {showingList && (
-          <button
-            onClick={handleClearCategory}
-            className="flex items-center gap-2 text-sm mb-3 transition-opacity hover:opacity-70 text-primary font-yrdly-body"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to categories
-          </button>
-        )}
-
-        <h1 className="text-3xl mb-1 text-foreground font-yrdly-display font-bold">
-          Business Hub
-        </h1>
-        <p className="text-sm mb-4 text-[var(--yrdly-label)] font-yrdly-body">
-          Discover local businesses in your neighborhood
-        </p>
-
-        <div className="relative mb-4">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--yrdly-label)]" />
-          <input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search businesses"
-            className="w-full h-11 pl-11 pr-10 rounded-full text-sm border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] text-foreground placeholder:text-[var(--yrdly-label)] font-yrdly-body focus:outline-none focus:ring-2 focus:ring-primary/30"
-          />
-          {searchQuery && (
+      {!hideHeader && (
+        <div className="sticky top-0 z-10 px-4 pt-4 pb-3 bg-[var(--yrdly-dark)]/80 backdrop-blur-md border-b border-[var(--yrdly-glass-border)]">
+          {showingList && (
             <button
-              onClick={() => setSearchQuery("")}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--yrdly-label)] hover:text-foreground"
+              onClick={handleClearCategory}
+              className="flex items-center gap-2 text-sm mb-3 transition-opacity hover:opacity-70 text-primary font-yrdly-body"
             >
-              <X className="w-4 h-4" />
+              <ArrowLeft className="w-4 h-4" />
+              Back to categories
             </button>
           )}
+
+          <h1 className="text-3xl mb-1 text-foreground font-yrdly-display font-bold">
+            Business Hub
+          </h1>
+          <p className="text-sm mb-4 text-[var(--yrdly-label)] font-yrdly-body">
+            Discover local businesses in your neighborhood
+          </p>
+
+          <div className="relative mb-4">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--yrdly-label)]" />
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search businesses"
+              className="w-full h-11 pl-11 pr-10 rounded-full text-sm border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] text-foreground placeholder:text-[var(--yrdly-label)] font-yrdly-body focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--yrdly-label)] hover:text-foreground"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="px-4">
         {loading ? (

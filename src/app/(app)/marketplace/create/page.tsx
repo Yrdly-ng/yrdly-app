@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useAuth } from "@/hooks/use-supabase-auth";
@@ -76,6 +76,21 @@ export default function CreateMarketplaceListingPage() {
   // Image State
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [coverIndex, setCoverIndex] = useState(0);
+
+  // Memoized Object URLs for attached image files with automatic cleanup to prevent memory leaks
+  const imagePreviews = useMemo(() => {
+    return imageFiles.map((file) => ({
+      file,
+      url: URL.createObjectURL(file),
+    }));
+  }, [imageFiles]);
+
+  useEffect(() => {
+    return () => {
+      imagePreviews.forEach((item) => URL.revokeObjectURL(item.url));
+    };
+  }, [imagePreviews]);
+
   const imageInputRef = useRef<HTMLInputElement>(null);
 
   // Submission State
@@ -347,7 +362,7 @@ export default function CreateMarketplaceListingPage() {
                       )}
                     >
                       <Image
-                        src={URL.createObjectURL(file)}
+                        src={imagePreviews[idx]?.url || ""}
                         alt={`Upload ${idx + 1}`}
                         fill
                         className="object-cover"
@@ -701,7 +716,7 @@ export default function CreateMarketplaceListingPage() {
               <div className="relative aspect-square rounded-2xl overflow-hidden bg-secondary border border-border">
                 {imageFiles.length > 0 ? (
                   <Image
-                    src={URL.createObjectURL(imageFiles[coverIndex] || imageFiles[0])}
+                    src={imagePreviews[coverIndex]?.url || imagePreviews[0]?.url || ""}
                     alt="Preview"
                     fill
                     className="object-cover"

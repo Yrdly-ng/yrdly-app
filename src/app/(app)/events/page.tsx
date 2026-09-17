@@ -1,8 +1,5 @@
-
-"use client";
-
-import { EventsScreen } from "@/components/EventsScreen";
+import { redirect } from "next/navigation";
 
 export default function EventsPage() {
-  return <EventsScreen />;
+  redirect("/explore?tab=events");
 }

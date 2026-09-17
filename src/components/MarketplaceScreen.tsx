@@ -17,9 +17,10 @@ import { GlassCard } from "@/components/ui/glass-card";
 interface MarketplaceScreenProps {
   onItemClick?: (item: PostType) => void;
   onMessageSeller?: (item: PostType) => void;
+  hideHeader?: boolean;
 }
 
-export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceScreenProps) {
+export function MarketplaceScreen({ onItemClick, onMessageSeller, hideHeader = false }: MarketplaceScreenProps) {
   const { user, profile } = useAuth();
   const { activeFilter } = useLocation();
   const filterState = activeFilter?.state;
@@ -157,20 +158,22 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
     <div className="min-h-[100dvh] bg-[var(--yrdly-dark)] text-foreground font-yrdly-body">
 
       {/* Search bar row */}
-      <div className="px-4 pt-2 pb-2">
-        <div className="relative">
-          <Search
-            className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--yrdly-label)]"
-          />
-          <input
-            type="text"
-            placeholder="Search for events, items"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-12 pr-4 py-2.5 bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] backdrop-blur-md text-foreground text-base font-yrdly-body rounded-full outline-none placeholder:text-[var(--yrdly-label)] focus:ring-1 focus:ring-primary"
-          />
+      {!hideHeader && (
+        <div className="px-4 pt-2 pb-2">
+          <div className="relative">
+            <Search
+              className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--yrdly-label)]"
+            />
+            <input
+              type="text"
+              placeholder="Search for events, items"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-12 pr-4 py-2.5 bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] backdrop-blur-md text-foreground text-base font-yrdly-body rounded-full outline-none placeholder:text-[var(--yrdly-label)] focus:ring-1 focus:ring-primary"
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Section title */}
       <div className="px-4 pt-4 pb-3">

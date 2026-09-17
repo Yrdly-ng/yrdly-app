@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
 import { useAuth } from "@/hooks/use-supabase-auth";
@@ -71,6 +71,21 @@ export default function EditMarketplaceItemPage() {
   // Images State
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [newFiles, setNewFiles] = useState<File[]>([]);
+
+  // Memoized Object URLs for newly attached image files with automatic cleanup to prevent memory leaks
+  const newFilePreviews = useMemo(() => {
+    return newFiles.map((file) => ({
+      file,
+      url: URL.createObjectURL(file),
+    }));
+  }, [newFiles]);
+
+  useEffect(() => {
+    return () => {
+      newFilePreviews.forEach((item) => URL.revokeObjectURL(item.url));
+    };
+  }, [newFilePreviews]);
+
   const imageInputRef = useRef<HTMLInputElement>(null);
 
   const fetchItem = useCallback(async () => {
@@ -301,7 +316,7 @@ export default function EditMarketplaceItemPage() {
 
   const allPreviewImages = [
     ...existingImages,
-    ...newFiles.map((f) => URL.createObjectURL(f)),
+    ...newFilePreviews.map((p) => p.url),
   ];
 
   return (
@@ -420,7 +435,7 @@ export default function EditMarketplaceItemPage() {
                     key={`new-${idx}`}
                     className="relative aspect-square rounded-2xl overflow-hidden border border-primary/50 bg-secondary group"
                   >
-                    <Image src={URL.createObjectURL(file)} alt={`New ${idx + 1}`} fill className="object-cover" />
+                    <Image src={newFilePreviews[idx]?.url || ""} alt={`New ${idx + 1}`} fill className="object-cover" />
                     {existingImages.length === 0 && idx === 0 && (
                       <div className="absolute top-2 left-2 bg-primary text-foreground text-[10px] font-bold px-2 py-0.5 rounded-full shadow">
                         Cover

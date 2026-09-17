@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useAuth } from "@/hooks/use-supabase-auth";
@@ -33,6 +33,21 @@ export default function CreatePostPage() {
   const [visibility, setVisibility] = useState<"public" | "private">("public");
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [videoFiles, setVideoFiles] = useState<File[]>([]);
+
+  // Memoized Object URLs for attached image files with automatic cleanup to prevent memory leaks
+  const imagePreviews = useMemo(() => {
+    return imageFiles.map((file) => ({
+      file,
+      url: URL.createObjectURL(file),
+    }));
+  }, [imageFiles]);
+
+  useEffect(() => {
+    return () => {
+      imagePreviews.forEach((item) => URL.revokeObjectURL(item.url));
+    };
+  }, [imagePreviews]);
+
   const [posting, setPosting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [posted, setPosted] = useState(false);
@@ -422,7 +437,7 @@ export default function CreatePostPage() {
                         className="relative aspect-square rounded-2xl overflow-hidden border border-border bg-secondary group flex-shrink-0"
                       >
                         <Image
-                          src={URL.createObjectURL(file)}
+                          src={imagePreviews[i]?.url || ""}
                           alt={`Upload ${i + 1}`}
                           fill
                           className="object-cover"
@@ -584,7 +599,7 @@ export default function CreatePostPage() {
               {imageFiles.length > 0 && (
                 <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-secondary border border-border">
                   <Image
-                    src={URL.createObjectURL(imageFiles[0])}
+                    src={imagePreviews[0]?.url || ""}
                     alt="Preview"
                     fill
                     className="object-cover"

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useAuth } from "@/hooks/use-supabase-auth";
@@ -79,6 +79,21 @@ export default function CreateEventPage() {
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [videoFiles, setVideoFiles] = useState<File[]>([]);
   const [coverIndex, setCoverIndex] = useState(0);
+
+  // Memoized Object URLs for attached image files with automatic cleanup to prevent memory leaks
+  const imagePreviews = useMemo(() => {
+    return imageFiles.map((file) => ({
+      file,
+      url: URL.createObjectURL(file),
+    }));
+  }, [imageFiles]);
+
+  useEffect(() => {
+    return () => {
+      imagePreviews.forEach((item) => URL.revokeObjectURL(item.url));
+    };
+  }, [imagePreviews]);
+
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
@@ -840,7 +855,7 @@ export default function CreateEventPage() {
                           coverIndex === idx ? "border-primary ring-2 ring-primary/30" : "border-border"
                         )}
                       >
-                        <Image src={URL.createObjectURL(file)} alt={`Photo ${idx + 1}`} fill className="object-cover" />
+                        <Image src={imagePreviews[idx]?.url || ""} alt={`Photo ${idx + 1}`} fill className="object-cover" />
                         {coverIndex === idx && (
                           <div className="absolute top-2 left-2 bg-primary text-foreground text-[10px] font-bold px-2 py-0.5 rounded-full shadow">
                             Cover
@@ -1032,7 +1047,7 @@ export default function CreateEventPage() {
 
               <div className="relative aspect-video rounded-2xl overflow-hidden bg-secondary border border-border">
                 {imageFiles.length > 0 ? (
-                  <Image src={URL.createObjectURL(imageFiles[coverIndex] || imageFiles[0])} alt="Cover" fill className="object-cover" />
+                  <Image src={imagePreviews[coverIndex]?.url || imagePreviews[0]?.url || ""} alt="Cover" fill className="object-cover" />
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground p-4 text-center">
                     <Calendar className="w-10 h-10 mb-2 opacity-40" />

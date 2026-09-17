@@ -1,16 +1,5 @@
-
-"use client";
-
-import { MarketplaceScreen } from "@/components/MarketplaceScreen";
-import { useMarketplaceActions } from "@/hooks/use-marketplace-actions";
+import { redirect } from "next/navigation";
 
 export default function MarketplacePage() {
-  const { handleItemClick, handleMessageSeller } = useMarketplaceActions();
-
-  return (
-    <MarketplaceScreen
-      onItemClick={handleItemClick}
-      onMessageSeller={handleMessageSeller}
-    />
-  );
+  redirect("/explore?tab=marketplace");
 }
