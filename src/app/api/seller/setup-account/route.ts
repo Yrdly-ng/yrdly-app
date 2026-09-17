@@ -3,6 +3,7 @@ import { getAuthenticatedUser } from "@/lib/supabase-server";
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { createClient } from '@supabase/supabase-js';
 import { PaystackService } from '@/lib/paystack-service';
+import { PaylukService } from '@/lib/payluk-service';
 import { MARKETPLACE_CONSTANTS } from '@/lib/constants';
 
 /**
@@ -61,8 +62,11 @@ export async function POST(request: NextRequest) {
 
     const profileName = profile?.legal_name || profile?.name || '';
 
-    // ── Task 1: Paystack account resolution & name match ─
-    const resolveResult = await PaystackService.resolveAccount(accountNumber, bankCode);
+    // ── Task 1: Account resolution & name match ─
+    let resolveResult = await PaylukService.resolveAccount(user.id, accountNumber, bankCode);
+    if (!resolveResult.valid || !resolveResult.accountName) {
+      resolveResult = await PaystackService.resolveAccount(accountNumber, bankCode);
+    }
 
     if (resolveResult.valid && resolveResult.accountName) {
       const resolvedName = resolveResult.accountName;
