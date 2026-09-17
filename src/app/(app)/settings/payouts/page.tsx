@@ -65,7 +65,12 @@ export default function PayoutsDashboardPage() {
         }
       });
 
-      const totalWithdrawn = (payouts || []).reduce((acc: number, cur: any) => acc + Number(cur.amount || 0), 0);
+      const totalWithdrawn = (payouts || []).reduce((acc: number, cur: any) => {
+        if (["pending", "processing", "completed"].includes(cur.status)) {
+          return acc + Number(cur.amount || 0);
+        }
+        return acc;
+      }, 0);
       const available = Math.max(0, totalCompleted - totalWithdrawn);
 
       setAvailableBalance(available);
