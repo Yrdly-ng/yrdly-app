@@ -159,6 +159,7 @@ export async function POST(request: NextRequest) {
         account_type: 'bank_account',
         account_details: {
           bank_code: bankCode,
+          bank_name: body.bankName || body.bank_name || '',
           account_number: accountNumber,
           account_name: accountName,
         },
