@@ -243,7 +243,7 @@ function EngagementRow({
         {/* Likes */}
         <button
           onClick={handleLike}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full motion-snappy hover:bg-[var(--yrdly-glass-bg)] hover:scale-[0.97] active:scale-[0.95]"
+          className="flex items-center gap-1.5 min-h-[44px] min-w-[44px] px-3.5 py-2.5 rounded-full motion-snappy hover:bg-[var(--yrdly-glass-bg)] hover:scale-[0.97] active:scale-[0.95]"
         >
           <Heart
             className={`w-5 h-5 ${isLiked ? "text-[#ED1111]" : "text-[var(--yrdly-label)]"} ${
@@ -260,7 +260,7 @@ function EngagementRow({
         {/* Comments */}
         <button
           onClick={onComment}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full motion-snappy hover:bg-[var(--yrdly-glass-bg)] hover:scale-[0.97] active:scale-[0.95]"
+          className="flex items-center gap-1.5 min-h-[44px] min-w-[44px] px-3.5 py-2.5 rounded-full motion-snappy hover:bg-[var(--yrdly-glass-bg)] hover:scale-[0.97] active:scale-[0.95]"
         >
           <MessageCircleMore className="w-5 h-5 text-[var(--yrdly-label)]" />
           <span className="text-[0.75rem] font-medium text-[var(--yrdly-label)] font-yrdly-body">
@@ -270,7 +270,7 @@ function EngagementRow({
         {/* Share */}
         <button
           onClick={onShare}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full motion-snappy hover:bg-[var(--yrdly-glass-bg)] hover:scale-[0.97] active:scale-[0.95]"
+          className="flex items-center justify-center gap-1.5 min-h-[44px] min-w-[44px] px-3.5 py-2.5 rounded-full motion-snappy hover:bg-[var(--yrdly-glass-bg)] hover:scale-[0.97] active:scale-[0.95]"
         >
           <Share2 className="w-5 h-5 text-[var(--yrdly-label)]" />
         </button>
@@ -278,7 +278,7 @@ function EngagementRow({
         <button
           onClick={onBookmark}
           aria-label={isBookmarked ? "Remove bookmark" : "Bookmark post"}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full motion-snappy hover:bg-[var(--yrdly-glass-bg)] hover:scale-[0.97] active:scale-[0.95]"
+          className="flex items-center justify-center gap-1.5 min-h-[44px] min-w-[44px] px-3.5 py-2.5 rounded-full motion-snappy hover:bg-[var(--yrdly-glass-bg)] hover:scale-[0.97] active:scale-[0.95]"
         >
           <Bookmark
             className={cn(

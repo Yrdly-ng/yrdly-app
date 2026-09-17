@@ -309,7 +309,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                 {children}
               </div>
             ) : (
-              <div className="w-full max-w-[680px] mx-auto lg:max-w-[660px]">
+              <div className="w-full max-w-[680px] mx-auto lg:max-w-4xl">
                 {children}
               </div>
             )}

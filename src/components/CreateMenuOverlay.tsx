@@ -145,7 +145,7 @@ export function CreateMenuOverlay({
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 380 }}
-            className="fixed bottom-0 left-0 right-0 z-[121] mx-auto w-full sm:max-w-[520px] rounded-t-[24px] px-5 pt-3 pb-8"
+            className="fixed bottom-0 lg:bottom-auto lg:top-1/2 lg:-translate-y-1/2 left-0 right-0 z-[121] mx-auto w-full sm:max-w-[520px] rounded-t-[24px] lg:rounded-[24px] px-5 pt-3 lg:pt-6 pb-8"
             style={{
               background: "var(--c-card)",
               borderTop: "0.5px solid var(--c-border)",
@@ -155,7 +155,7 @@ export function CreateMenuOverlay({
             }}
           >
             {/* Grabber */}
-            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-[var(--c-border)]" />
+            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-[var(--c-border)] lg:hidden" />
 
             <div className="flex items-center justify-between mb-4">
               <h2
