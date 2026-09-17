@@ -184,6 +184,7 @@ export class PayoutService {
           const bankCode = accountDetails?.bank_code || accountDetails?.bankCode;
           const accountNumber = accountDetails?.account_number || accountDetails?.accountNumber;
           const accountName = accountDetails?.account_name || accountDetails?.accountName;
+          const bankName = accountDetails?.bank_name || accountDetails?.bankName || accountDetails?.bank || 'Bank';
 
           if (!bankCode || !accountNumber) {
             throw new Error('Missing bank details for payout. Seller must re-add their account.');
@@ -198,6 +199,7 @@ export class PayoutService {
               sellerPaylukCustomerId: sellerPaylukId,
               amount: payoutRequest.amount,
               bankCode,
+              bankName,
               accountNumber,
               accountName,
               reference: `payout-${payoutRequestId}`,

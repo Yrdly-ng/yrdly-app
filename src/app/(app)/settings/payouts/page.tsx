@@ -38,8 +38,8 @@ export default function PayoutsDashboardPage() {
       const { data: payouts } = await supabase
         .from("payout_requests")
         .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
+        .eq("seller_id", user.id)
+        .order("requested_at", { ascending: false });
 
       // Fetch seller bank setup info
       try {

@@ -700,6 +700,7 @@ export class PaylukService {
     sellerPaylukCustomerId: string;
     amount: number;
     bankCode: string;
+    bankName?: string;
     accountNumber: string;
     accountName?: string;
     reference: string;
@@ -718,6 +719,7 @@ export class PaylukService {
             currency: 'NGN',
             withdrawalDetails: {
               bankCode: params.bankCode,
+              bankName: params.bankName || 'Bank',
               accountNumber: params.accountNumber,
               ...(params.accountName ? { accountName: params.accountName } : {}),
             },
