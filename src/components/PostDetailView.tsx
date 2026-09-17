@@ -378,16 +378,16 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
             <MessageCircleMore className="w-5 h-5 text-foreground" />
             <span className="font-sans font-light text-xs text-foreground">{formatCount(commentCount)}</span>
           </div>
-          <button onClick={handleShare} className="p-1 rounded hover:bg-accent">
-            <Share2 className="w-6 h-6" />
+          <button onClick={handleShare} aria-label="Share post" className="flex items-center justify-center w-11 h-11 rounded-lg hover:bg-accent text-foreground">
+            <Share2 className="w-5 h-5" />
           </button>
         </div>
         {currentUser?.id === post.user_id && (
           <AlertDialog>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="p-1 rounded hover:bg-accent">
-                  <MoreHorizontal className="w-6 h-6" />
+                <button aria-label="More options" className="flex items-center justify-center w-11 h-11 rounded-lg hover:bg-accent text-foreground">
+                  <MoreHorizontal className="w-5 h-5" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-card border-border">

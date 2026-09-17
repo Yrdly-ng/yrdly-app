@@ -136,12 +136,35 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+  const [viewportHeight, setViewportHeight] = useState<number | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
   const { otherTypingUsers, handleTyping, stopTyping } = useTypingDetection(conversationId);
+
+  // Dynamic Visual Viewport tracking for mobile virtual keyboard height
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.visualViewport) return;
+
+    const handleViewportResize = () => {
+      if (window.visualViewport) {
+        setViewportHeight(window.visualViewport.height);
+      }
+    };
+
+    window.visualViewport.addEventListener("resize", handleViewportResize);
+    window.visualViewport.addEventListener("scroll", handleViewportResize);
+    handleViewportResize();
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener("resize", handleViewportResize);
+        window.visualViewport.removeEventListener("scroll", handleViewportResize);
+      }
+    };
+  }, []);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -395,7 +418,10 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
   const activityStatus = getActivityStatus((otherParticipant as any).last_seen);
 
   return (
-    <div className="w-full h-full flex-1 flex flex-col min-h-0 bg-[var(--yrdly-dark)] text-foreground font-yrdly-body relative">
+    <div
+      style={viewportHeight && typeof window !== "undefined" && window.innerWidth < 768 ? { height: `${viewportHeight}px` } : undefined}
+      className="w-full h-full flex-1 flex flex-col min-h-0 bg-[var(--yrdly-dark)] text-foreground font-yrdly-body relative"
+    >
       {/* ── Top Bar ── */}
       <header className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 bg-[var(--yrdly-dark)]/90 backdrop-blur-md border-b border-[var(--yrdly-glass-border)]">
         <div className="flex items-center gap-3">

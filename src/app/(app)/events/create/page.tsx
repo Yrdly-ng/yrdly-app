@@ -409,7 +409,7 @@ export default function CreateEventPage() {
                 if (step > 0) setStep(step - 1);
                 else router.back();
               }}
-              className="rounded-full hover:bg-secondary"
+              className="w-11 h-11 rounded-full hover:bg-secondary shrink-0"
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
@@ -433,7 +433,7 @@ export default function CreateEventPage() {
                   key={sName}
                   onClick={() => idx < step && setStep(idx)}
                   className={cn(
-                    "flex-1 text-center py-2 px-1 text-[11px] font-bold font-sans rounded-xl transition-colors cursor-pointer border whitespace-nowrap",
+                    "flex-1 min-h-[44px] flex items-center justify-center text-center py-2 px-1 text-[11px] font-bold font-sans rounded-xl transition-colors cursor-pointer border whitespace-nowrap",
                     step === idx
                       ? "bg-primary text-foreground border-primary"
                       : idx < step
@@ -461,7 +461,7 @@ export default function CreateEventPage() {
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     maxLength={100}
-                    className="rounded-xl"
+                    className="rounded-xl min-h-[44px]"
                   />
                 </div>
 
@@ -479,7 +479,7 @@ export default function CreateEventPage() {
                           type="button"
                           onClick={() => setCategory(cat.name)}
                           className={cn(
-                            "px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all",
+                            "min-h-[44px] inline-flex items-center justify-center px-4 py-2.5 rounded-full text-xs font-semibold border transition-all",
                             category === cat.name
                               ? "bg-primary text-foreground border-primary"
                               : "bg-secondary/50 text-secondary-foreground border-border hover:bg-secondary"
@@ -516,7 +516,7 @@ export default function CreateEventPage() {
                     }
                     setStep(1);
                   }}
-                  className="w-full rounded-full py-6 font-sans font-bold bg-primary text-foreground hover:bg-primary/90 text-base"
+                  className="w-full min-h-[44px] rounded-full py-3.5 font-sans font-bold bg-primary text-foreground hover:bg-primary/90 text-base"
                 >
                   Continue to Date & Time
                   <ChevronRight className="w-5 h-5 ml-1" />
@@ -538,7 +538,7 @@ export default function CreateEventPage() {
                     type="date"
                     value={eventDate}
                     onChange={(e) => setEventDate(e.target.value)}
-                    className="rounded-xl"
+                    className="rounded-xl min-h-[44px]"
                   />
                 </div>
 
@@ -549,7 +549,7 @@ export default function CreateEventPage() {
                       type="time"
                       value={startTimeStr}
                       onChange={(e) => setStartTimeStr(e.target.value)}
-                      className="rounded-xl"
+                      className="rounded-xl min-h-[44px]"
                     />
                   </div>
 
@@ -559,13 +559,13 @@ export default function CreateEventPage() {
                       type="time"
                       value={endTimeStr}
                       onChange={(e) => setEndTimeStr(e.target.value)}
-                      className="rounded-xl"
+                      className="rounded-xl min-h-[44px]"
                     />
                   </div>
                 </div>
 
                 <div className="flex gap-3 pt-2">
-                  <Button variant="outline" onClick={() => setStep(0)} className="flex-1 rounded-full py-6 font-bold">
+                  <Button variant="outline" onClick={() => setStep(0)} className="flex-1 min-h-[44px] rounded-full py-3.5 font-bold">
                     <ChevronLeft className="w-5 h-5 mr-1" /> Back
                   </Button>
                   <Button
@@ -576,7 +576,7 @@ export default function CreateEventPage() {
                       }
                       setStep(2);
                     }}
-                    className="flex-1 rounded-full py-6 font-bold bg-primary text-foreground hover:bg-primary/90"
+                    className="flex-1 min-h-[44px] rounded-full py-3.5 font-bold bg-primary text-foreground hover:bg-primary/90"
                   >
                     Continue to Location
                     <ChevronRight className="w-5 h-5 ml-1" />
@@ -598,7 +598,7 @@ export default function CreateEventPage() {
                     type="button"
                     onClick={() => setLocationOnline(false)}
                     className={cn(
-                      "flex-1 py-2.5 rounded-full text-sm font-bold font-sans transition-all",
+                      "flex-1 min-h-[44px] py-2.5 rounded-full text-sm font-bold font-sans transition-all flex items-center justify-center",
                       !locationOnline ? "bg-primary text-foreground shadow" : "text-muted-foreground"
                     )}
                   >
@@ -608,7 +608,7 @@ export default function CreateEventPage() {
                     type="button"
                     onClick={() => setLocationOnline(true)}
                     className={cn(
-                      "flex-1 py-2.5 rounded-full text-sm font-bold font-sans transition-all",
+                      "flex-1 min-h-[44px] py-2.5 rounded-full text-sm font-bold font-sans transition-all flex items-center justify-center",
                       locationOnline ? "bg-primary text-foreground shadow" : "text-muted-foreground"
                     )}
                   >
@@ -623,7 +623,7 @@ export default function CreateEventPage() {
                       placeholder="https://zoom.us/j/... or Youtube Live link"
                       value={onlineLink}
                       onChange={(e) => setOnlineLink(e.target.value)}
-                      className="rounded-xl"
+                      className="rounded-xl min-h-[44px]"
                     />
                   </div>
                 ) : (
@@ -647,7 +647,7 @@ export default function CreateEventPage() {
                 )}
 
                 <div className="flex gap-3 pt-2">
-                  <Button variant="outline" onClick={() => setStep(1)} className="flex-1 rounded-full py-6 font-bold">
+                  <Button variant="outline" onClick={() => setStep(1)} className="flex-1 min-h-[44px] rounded-full py-3.5 font-bold">
                     <ChevronLeft className="w-5 h-5 mr-1" /> Back
                   </Button>
                   <Button
@@ -662,7 +662,7 @@ export default function CreateEventPage() {
                       }
                       setStep(3);
                     }}
-                    className="flex-1 rounded-full py-6 font-bold bg-primary text-foreground hover:bg-primary/90"
+                    className="flex-1 min-h-[44px] rounded-full py-3.5 font-bold bg-primary text-foreground hover:bg-primary/90"
                   >
                     Continue to Tickets
                     <ChevronRight className="w-5 h-5 ml-1" />
@@ -693,7 +693,7 @@ export default function CreateEventPage() {
                       type="button"
                       size="sm"
                       onClick={() => router.push("/profile/payout-settings")}
-                      className="rounded-full bg-amber-500 text-black hover:bg-amber-600 font-bold text-xs"
+                      className="rounded-full bg-amber-500 text-black hover:bg-amber-600 font-bold text-xs min-h-[44px]"
                     >
                       Link Payout Account <ExternalLink className="w-3.5 h-3.5 ml-1" />
                     </Button>
@@ -712,7 +712,7 @@ export default function CreateEventPage() {
                           <button
                             type="button"
                             onClick={() => removeTicketTier(tier.id)}
-                            className="text-xs text-destructive hover:underline"
+                            className="text-xs text-destructive hover:underline p-2 min-h-[44px] flex items-center"
                           >
                             Remove Tier
                           </button>
@@ -726,7 +726,7 @@ export default function CreateEventPage() {
                             value={tier.name}
                             onChange={(e) => updateTicketTier(tier.id, { name: e.target.value })}
                             placeholder="e.g. Early Bird"
-                            className="rounded-xl"
+                            className="rounded-xl min-h-[44px]"
                           />
                         </div>
 
@@ -741,13 +741,13 @@ export default function CreateEventPage() {
                               })
                             }
                             placeholder="Unlimited"
-                            className="rounded-xl"
+                            className="rounded-xl min-h-[44px]"
                           />
                         </div>
                       </div>
 
                       <div className="flex items-center justify-between pt-1">
-                        <label className="flex items-center gap-2 cursor-pointer text-xs font-bold">
+                        <label className="flex items-center gap-2 cursor-pointer text-xs font-bold min-h-[44px]">
                           <input
                             type="checkbox"
                             checked={tier.isFree}
@@ -757,7 +757,7 @@ export default function CreateEventPage() {
                                 price: e.target.checked ? 0 : tier.price || 1000,
                               })
                             }
-                            className="rounded text-primary focus:ring-primary"
+                            className="rounded text-primary focus:ring-primary w-4 h-4"
                           />
                           Free Ticket
                         </label>
@@ -772,7 +772,7 @@ export default function CreateEventPage() {
                                 updateTicketTier(tier.id, { price: parseFloat(e.target.value) || 0 })
                               }
                               placeholder="1000"
-                              className="w-28 rounded-xl"
+                              className="w-28 rounded-xl min-h-[44px]"
                             />
                           </div>
                         )}
@@ -784,14 +784,14 @@ export default function CreateEventPage() {
                     type="button"
                     variant="outline"
                     onClick={addTicketTier}
-                    className="w-full rounded-full border-dashed border-border hover:border-primary font-bold text-xs"
+                    className="w-full min-h-[44px] rounded-full border-dashed border-border hover:border-primary font-bold text-xs"
                   >
                     <Plus className="w-4 h-4 mr-1" /> Add Another Ticket Tier
                   </Button>
                 </div>
 
                 <div className="flex gap-3 pt-2">
-                  <Button variant="outline" onClick={() => setStep(2)} className="flex-1 rounded-full py-6 font-bold">
+                  <Button variant="outline" onClick={() => setStep(2)} className="flex-1 min-h-[44px] rounded-full py-3.5 font-bold">
                     <ChevronLeft className="w-5 h-5 mr-1" /> Back
                   </Button>
                   <Button
@@ -806,7 +806,7 @@ export default function CreateEventPage() {
                       }
                       setStep(4);
                     }}
-                    className="flex-1 rounded-full py-6 font-bold bg-primary text-foreground hover:bg-primary/90"
+                    className="flex-1 min-h-[44px] rounded-full py-3.5 font-bold bg-primary text-foreground hover:bg-primary/90"
                   >
                     Continue to Media
                     <ChevronRight className="w-5 h-5 ml-1" />
@@ -852,9 +852,10 @@ export default function CreateEventPage() {
                             e.stopPropagation();
                             removeImage(idx);
                           }}
-                          className="absolute top-2 right-2 p-1 rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
+                          className="absolute top-2 right-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
+                          aria-label="Remove photo"
                         >
-                          <X className="w-3.5 h-3.5" />
+                          <X className="w-4 h-4" />
                         </button>
                       </div>
                     ))}
@@ -863,7 +864,7 @@ export default function CreateEventPage() {
                       <button
                         type="button"
                         onClick={() => imageInputRef.current?.click()}
-                        className="aspect-square rounded-2xl border-2 border-dashed border-border hover:border-primary/50 flex flex-col items-center justify-center p-3 text-center transition-colors bg-secondary/30 hover:bg-secondary"
+                        className="aspect-square min-h-[80px] rounded-2xl border-2 border-dashed border-border hover:border-primary/50 flex flex-col items-center justify-center p-3 text-center transition-colors bg-secondary/30 hover:bg-secondary"
                       >
                         <ImageIcon className="w-6 h-6 text-muted-foreground mb-1" />
                         <span className="text-xs font-semibold text-muted-foreground">+ Add Photo</span>
@@ -894,7 +895,8 @@ export default function CreateEventPage() {
                           <button
                             type="button"
                             onClick={() => removeVideo(i)}
-                            className="p-1 rounded-full hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                            aria-label="Remove video"
                           >
                             <X className="w-4 h-4" />
                           </button>
@@ -907,7 +909,7 @@ export default function CreateEventPage() {
                     <button
                       type="button"
                       onClick={() => videoInputRef.current?.click()}
-                      className="w-full py-3 rounded-2xl border-2 border-dashed border-border hover:border-primary/50 flex items-center justify-center gap-2 text-xs font-semibold text-muted-foreground transition-colors bg-secondary/30 hover:bg-secondary"
+                      className="w-full min-h-[44px] py-3 rounded-2xl border-2 border-dashed border-border hover:border-primary/50 flex items-center justify-center gap-2 text-xs font-semibold text-muted-foreground transition-colors bg-secondary/30 hover:bg-secondary"
                     >
                       <Video className="w-4 h-4 text-blue-500" />
                       <span>+ Add Video (Max 3, 40MB)</span>
@@ -933,12 +935,12 @@ export default function CreateEventPage() {
                 />
 
                 <div className="flex gap-3 pt-2">
-                  <Button variant="outline" onClick={() => setStep(3)} className="flex-1 rounded-full py-6 font-bold">
+                  <Button variant="outline" onClick={() => setStep(3)} className="flex-1 min-h-[44px] rounded-full py-3.5 font-bold">
                     <ChevronLeft className="w-5 h-5 mr-1" /> Back
                   </Button>
                   <Button
                     onClick={() => setStep(5)}
-                    className="flex-1 rounded-full py-6 font-bold bg-primary text-foreground hover:bg-primary/90"
+                    className="flex-1 min-h-[44px] rounded-full py-3.5 font-bold bg-primary text-foreground hover:bg-primary/90"
                   >
                     Review Event
                     <ChevronRight className="w-5 h-5 ml-1" />
@@ -963,7 +965,7 @@ export default function CreateEventPage() {
                       type="button"
                       onClick={() => setVisibility("PUBLIC")}
                       className={cn(
-                        "flex-1 p-3 rounded-xl border flex items-center gap-2 text-xs font-bold transition-all",
+                        "flex-1 min-h-[44px] p-3 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold transition-all",
                         visibility === "PUBLIC" ? "bg-primary text-foreground border-primary" : "bg-background border-border text-muted-foreground"
                       )}
                     >
@@ -974,7 +976,7 @@ export default function CreateEventPage() {
                       type="button"
                       onClick={() => setVisibility("PRIVATE")}
                       className={cn(
-                        "flex-1 p-3 rounded-xl border flex items-center gap-2 text-xs font-bold transition-all",
+                        "flex-1 min-h-[44px] p-3 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold transition-all",
                         visibility === "PRIVATE" ? "bg-primary text-foreground border-primary" : "bg-background border-border text-muted-foreground"
                       )}
                     >
@@ -997,13 +999,13 @@ export default function CreateEventPage() {
                 )}
 
                 <div className="flex gap-3 pt-2">
-                  <Button variant="outline" disabled={submitting} onClick={() => setStep(4)} className="flex-1 rounded-full py-6 font-bold">
+                  <Button variant="outline" disabled={submitting} onClick={() => setStep(4)} className="flex-1 min-h-[44px] rounded-full py-3.5 font-bold">
                     <ChevronLeft className="w-5 h-5 mr-1" /> Edit Details
                   </Button>
                   <Button
                     disabled={submitting}
                     onClick={handleSubmit}
-                    className="flex-1 rounded-full py-6 font-bold bg-primary text-foreground hover:bg-primary/90 text-base"
+                    className="flex-1 min-h-[44px] rounded-full py-3.5 font-bold bg-primary text-foreground hover:bg-primary/90 text-base"
                   >
                     {submitting ? (
                       <span className="flex items-center gap-2">
