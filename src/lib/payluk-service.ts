@@ -9,6 +9,8 @@
 // Many routes additionally require a `customer-id` header identifying the
 // merchant customer acting as buyer or seller.
 
+import { getPaylukCustomerId } from './payluk-onboarding';
+
 const PAYLUK_SECRET_KEY = process.env.PAYLUK_SECRET_KEY;
 const PAYLUK_BASE_URL =
   process.env.PAYLUK_BASE_URL ||
@@ -656,16 +658,49 @@ export class PaylukService {
    * Requires customerId of the requesting customer.
    */
   static async resolveAccount(
-    customerId: string,
+    customerIdOrUserId: string,
     accountNumber: string,
     bankCode: string
   ): Promise<{ valid: boolean; accountName?: string; accountNumber?: string }> {
     try {
+      let customerId = customerIdOrUserId;
+      if (customerIdOrUserId && (customerIdOrUserId.includes('-') || customerIdOrUserId.length > 24)) {
+        try {
+          customerId = await getPaylukCustomerId(customerIdOrUserId);
+        } catch (e) {
+          console.warn('[PaylukService] Failed to get customer ID for user:', customerIdOrUserId);
+        }
+      }
+
+      const PAYSTACK_TO_PAYLUK_BANK_MAP: Record<string, string> = {
+        '999991': '100004', // OPay
+        '999992': '100004', // OPay / Test Bank
+        '044': '000014',    // Access Bank
+        '058': '000013',    // GTBank
+        '011': '000016',    // First Bank
+        '057': '000015',    // Zenith Bank
+        '50515': '090405',  // Moniepoint
+        '50211': '090267',  // Kuda Bank
+        '214': '090409',    // FCMB
+        '033': '000040',    // UBA
+        '035': '000017',    // Wema Bank
+        '070': '000007',    // Fidelity Bank
+        '050': '000010',    // Ecobank
+        '082': '000002',    // Keystone Bank
+        '232': '000012',    // Stanbic IBTC
+        '230': '000001',    // Sterling Bank
+        '032': '000018',    // Union Bank
+        '101': '000023',    // Providus Bank
+        '100033': '100033', // PalmPay
+      };
+
+      const resolvedBankCode = PAYSTACK_TO_PAYLUK_BANK_MAP[bankCode] || bankCode;
+
       const response = await paylukRequest<PaylukResolvedAccount>(
         '/v1/payment/verify-account',
         {
           method: 'POST',
-          body: JSON.stringify({ accountNumber, bankCode }),
+          body: JSON.stringify({ accountNumber, bankCode: resolvedBankCode }),
           customerId,
         }
       );
