@@ -314,7 +314,7 @@ export default function EditMarketplaceItemPage() {
               variant="ghost"
               size="icon"
               onClick={() => router.back()}
-              className="rounded-full hover:bg-secondary"
+              className="w-11 h-11 rounded-full hover:bg-secondary shrink-0"
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
@@ -324,7 +324,7 @@ export default function EditMarketplaceItemPage() {
           {/* Delete Action Trigger */}
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full text-destructive hover:bg-destructive/10">
+              <Button variant="ghost" size="icon" className="w-11 h-11 rounded-full text-destructive hover:bg-destructive/10 shrink-0">
                 <Trash2 className="w-5 h-5" />
               </Button>
             </AlertDialogTrigger>
@@ -339,7 +339,7 @@ export default function EditMarketplaceItemPage() {
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={handleDelete}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90 min-h-[44px]"
                 >
                   {deleting ? "Deleting..." : "Delete Permanently"}
                 </AlertDialogAction>
@@ -362,7 +362,7 @@ export default function EditMarketplaceItemPage() {
                   type="button"
                   onClick={() => setListingType("For Sale")}
                   className={cn(
-                    "flex-1 py-2.5 rounded-full text-sm font-bold font-sans transition-all",
+                    "flex-1 min-h-[44px] py-2.5 rounded-full text-sm font-bold font-sans transition-all flex items-center justify-center",
                     listingType === "For Sale" ? "bg-primary text-foreground shadow" : "text-muted-foreground"
                   )}
                 >
@@ -375,7 +375,7 @@ export default function EditMarketplaceItemPage() {
                     setPrice("0");
                   }}
                   className={cn(
-                    "flex-1 py-2.5 rounded-full text-sm font-bold font-sans transition-all flex items-center justify-center gap-1.5",
+                    "flex-1 min-h-[44px] py-2.5 rounded-full text-sm font-bold font-sans transition-all flex items-center justify-center gap-1.5",
                     listingType === "Giveaway" ? "bg-emerald-500 text-white shadow" : "text-muted-foreground"
                   )}
                 >
@@ -406,9 +406,10 @@ export default function EditMarketplaceItemPage() {
                     <button
                       type="button"
                       onClick={() => removeExistingImage(idx)}
-                      className="absolute top-2 right-2 p-1 rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
+                      className="absolute top-2 right-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
+                      aria-label="Remove image"
                     >
-                      <X className="w-3.5 h-3.5" />
+                      <X className="w-4 h-4" />
                     </button>
                   </div>
                 ))}
@@ -428,9 +429,10 @@ export default function EditMarketplaceItemPage() {
                     <button
                       type="button"
                       onClick={() => removeNewFile(idx)}
-                      className="absolute top-2 right-2 p-1 rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
+                      className="absolute top-2 right-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
+                      aria-label="Remove image"
                     >
-                      <X className="w-3.5 h-3.5" />
+                      <X className="w-4 h-4" />
                     </button>
                   </div>
                 ))}
@@ -440,7 +442,7 @@ export default function EditMarketplaceItemPage() {
                   <button
                     type="button"
                     onClick={() => imageInputRef.current?.click()}
-                    className="aspect-square rounded-2xl border-2 border-dashed border-border hover:border-primary/50 flex flex-col items-center justify-center p-3 text-center transition-colors bg-secondary/30 hover:bg-secondary"
+                    className="aspect-square min-h-[80px] rounded-2xl border-2 border-dashed border-border hover:border-primary/50 flex flex-col items-center justify-center p-3 text-center transition-colors bg-secondary/30 hover:bg-secondary"
                   >
                     <ImageIcon className="w-6 h-6 text-muted-foreground mb-1" />
                     <span className="text-xs font-semibold text-muted-foreground">+ Add Photo</span>
@@ -465,7 +467,7 @@ export default function EditMarketplaceItemPage() {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 maxLength={120}
-                className="rounded-xl"
+                className="rounded-xl min-h-[44px]"
               />
             </div>
 
@@ -478,7 +480,7 @@ export default function EditMarketplaceItemPage() {
                   placeholder="Price"
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
-                  className="rounded-xl"
+                  className="rounded-xl min-h-[44px]"
                 />
               </div>
             )}
@@ -498,7 +500,7 @@ export default function EditMarketplaceItemPage() {
                       type="button"
                       onClick={() => setSubCategory(cat.name)}
                       className={cn(
-                        "px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all",
+                        "min-h-[44px] inline-flex items-center justify-center px-4 py-2.5 rounded-full text-xs font-semibold border transition-all",
                         subCategory === cat.name
                           ? "bg-primary text-foreground border-primary"
                           : "bg-secondary/50 text-secondary-foreground border-border hover:bg-secondary"
@@ -521,7 +523,7 @@ export default function EditMarketplaceItemPage() {
                     type="button"
                     onClick={() => setCondition(cond)}
                     className={cn(
-                      "px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all",
+                      "min-h-[44px] inline-flex items-center justify-center px-4 py-2.5 rounded-full text-xs font-semibold border transition-all",
                       condition === cond
                         ? "bg-primary text-foreground border-primary"
                         : "bg-secondary/50 text-secondary-foreground border-border hover:bg-secondary"
@@ -568,7 +570,7 @@ export default function EditMarketplaceItemPage() {
                   type="button"
                   onClick={() => setVisibility("public")}
                   className={cn(
-                    "flex-1 p-3 rounded-xl border flex items-center gap-2 text-xs font-bold transition-all",
+                    "flex-1 min-h-[44px] p-3 rounded-xl border flex items-center gap-2 text-xs font-bold transition-all justify-center",
                     visibility === "public" ? "bg-primary text-foreground border-primary" : "bg-background border-border text-muted-foreground"
                   )}
                 >
@@ -579,7 +581,7 @@ export default function EditMarketplaceItemPage() {
                   type="button"
                   onClick={() => setVisibility("private")}
                   className={cn(
-                    "flex-1 p-3 rounded-xl border flex items-center gap-2 text-xs font-bold transition-all",
+                    "flex-1 min-h-[44px] p-3 rounded-xl border flex items-center gap-2 text-xs font-bold transition-all justify-center",
                     visibility === "private" ? "bg-primary text-foreground border-primary" : "bg-background border-border text-muted-foreground"
                   )}
                 >
@@ -595,14 +597,14 @@ export default function EditMarketplaceItemPage() {
                 type="button"
                 variant="outline"
                 onClick={() => router.back()}
-                className="flex-1 rounded-full py-6 font-bold"
+                className="flex-1 min-h-[44px] rounded-full py-3.5 font-bold"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={submitting}
-                className="flex-1 rounded-full py-6 font-bold bg-primary text-foreground hover:bg-primary/90 text-base"
+                className="flex-1 min-h-[44px] rounded-full py-3.5 font-bold bg-primary text-foreground hover:bg-primary/90 text-base"
               >
                 {submitting ? (
                   <span className="flex items-center gap-2">

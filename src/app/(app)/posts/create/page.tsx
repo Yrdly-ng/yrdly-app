@@ -298,234 +298,316 @@ export default function CreatePostPage() {
 
   return (
     <div className="min-h-screen bg-background pb-12">
-      <div className="max-w-2xl mx-auto border-x border-border min-h-screen bg-card">
-        {/* Header */}
-        <div className="sticky top-0 z-30 bg-card/95 backdrop-blur border-b border-border px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => router.back()}
-              className="rounded-full hover:bg-secondary"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <h1 className="text-lg font-bold font-sans text-foreground">
-              Create Post
-            </h1>
-          </div>
-
-          <Button
-            disabled={!hasContent || posting}
-            onClick={handleSubmit}
-            className="rounded-full px-6 bg-primary text-foreground font-sans font-bold hover:bg-primary/90 disabled:opacity-50"
-          >
-            {posting ? (
-              <div className="flex items-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                {uploadProgress > 0 && (
-                  <span className="text-xs">{uploadProgress}%</span>
-                )}
-              </div>
-            ) : (
-              "Post"
-            )}
-          </Button>
-        </div>
-
-        {/* Upload Progress Bar */}
-        {posting && (
-          <div className="w-full bg-secondary h-1">
-            <div
-              className="bg-primary h-1 transition-all duration-300"
-              style={{ width: `${uploadProgress}%` }}
-            />
-          </div>
-        )}
-
-        {/* Composer Area */}
-        <div className="p-4 sm:p-6 space-y-4">
-          {/* User Info & Visibility Bar */}
-          <div className="flex items-center gap-3">
-            <div className="relative w-10 h-10 rounded-full overflow-hidden border border-border bg-secondary flex-shrink-0">
-              {profile?.avatar_url ? (
-                <Image
-                  src={profile.avatar_url}
-                  alt={profile.name || "User"}
-                  fill
-                  className="object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center font-bold text-muted-foreground">
-                  {profile?.name?.[0]?.toUpperCase() || "U"}
-                </div>
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold font-sans text-foreground truncate">
-                {profile?.name || "Neighbor"}
-              </p>
-              <div className="flex items-center gap-2 mt-0.5">
-                {/* Visibility Toggle */}
-                <button
-                  type="button"
-                  onClick={() => setVisibility((v) => (v === "public" ? "private" : "public"))}
-                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-4">
+        {/* Main 2-column container on desktop */}
+        <div className="flex flex-col lg:flex-row gap-6 items-start">
+          {/* Left Column: Form Composer */}
+          <div className="w-full lg:flex-1 border border-border rounded-2xl bg-card overflow-hidden shadow-sm">
+            {/* Header */}
+            <div className="sticky top-0 z-30 bg-card/95 backdrop-blur border-b border-border px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => router.back()}
+                  aria-label="Go back"
+                  className="w-11 h-11 rounded-full hover:bg-secondary flex items-center justify-center"
                 >
-                  {visibility === "public" ? (
-                    <>
-                      <Globe className="w-3 h-3 text-primary" />
-                      <span>Public</span>
-                    </>
-                  ) : (
-                    <>
-                      <Users className="w-3 h-3 text-amber-500" />
-                      <span>Friends Only</span>
-                    </>
-                  )}
-                </button>
-
-                {/* Category Badge (Locked to General) */}
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20">
-                  General
-                </span>
+                  <ArrowLeft className="w-5 h-5" />
+                </Button>
+                <h1 className="text-lg font-bold font-sans text-foreground">
+                  Create Post
+                </h1>
               </div>
+
+              <Button
+                disabled={!hasContent || posting}
+                onClick={handleSubmit}
+                className="rounded-full min-h-[44px] px-6 bg-primary text-foreground font-sans font-bold hover:bg-primary/90 disabled:opacity-50"
+              >
+                {posting ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    {uploadProgress > 0 && (
+                      <span className="text-xs">{uploadProgress}%</span>
+                    )}
+                  </div>
+                ) : (
+                  "Post"
+                )}
+              </Button>
             </div>
-          </div>
 
-          {/* Main Text Input */}
-          <Textarea
-            placeholder="What's happening in your neighbourhood?"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            maxLength={2000}
-            rows={5}
-            className="w-full bg-transparent border-0 focus-visible:ring-0 text-base sm:text-lg resize-none p-0 placeholder:text-muted-foreground/60"
-          />
+            {/* Upload Progress Bar */}
+            {posting && (
+              <div className="w-full bg-secondary h-1">
+                <div
+                  className="bg-primary h-1 transition-all duration-300"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+            )}
 
-          {/* Media Previews */}
-          {/* Images Grid */}
-          {imageFiles.length > 0 && (
-            <div className="space-y-1.5 pt-2">
-              <p className="text-xs text-muted-foreground font-medium">
-                Photos ({imageFiles.length}/10)
-              </p>
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                {imageFiles.map((file, i) => (
-                  <div
-                    key={`${file.name}-${i}`}
-                    className="relative aspect-square rounded-2xl overflow-hidden border border-border bg-secondary group"
-                  >
+            {/* Composer Area */}
+            <div className="p-4 sm:p-6 space-y-4">
+              {/* User Info & Visibility Bar */}
+              <div className="flex items-center gap-3">
+                <div className="relative w-10 h-10 rounded-full overflow-hidden border border-border bg-secondary flex-shrink-0">
+                  {profile?.avatar_url ? (
                     <Image
-                      src={URL.createObjectURL(file)}
-                      alt={`Upload ${i + 1}`}
+                      src={profile.avatar_url}
+                      alt={profile.name || "User"}
                       fill
                       className="object-cover"
                     />
-                    <button
-                      type="button"
-                      onClick={() => removeImage(i)}
-                      className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Videos List */}
-          {videoFiles.length > 0 && (
-            <div className="space-y-1.5 pt-2">
-              <p className="text-xs text-muted-foreground font-medium">
-                Videos ({videoFiles.length}/3)
-              </p>
-              <div className="space-y-2">
-                {videoFiles.map((file, i) => (
-                  <div
-                    key={`${file.name}-${i}`}
-                    className="flex items-center justify-between p-3 rounded-2xl border border-border bg-secondary/50"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <Video className="w-5 h-5 text-primary shrink-0" />
-                      <span className="text-xs font-medium text-foreground truncate">
-                        {file.name}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground shrink-0">
-                        ({(file.size / (1024 * 1024)).toFixed(1)}MB)
-                      </span>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center font-bold text-muted-foreground">
+                      {profile?.name?.[0]?.toUpperCase() || "U"}
                     </div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold font-sans text-foreground truncate">
+                    {profile?.name || "Neighbor"}
+                  </p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    {/* Visibility Toggle */}
                     <button
                       type="button"
-                      onClick={() => removeVideo(i)}
-                      className="p-1 rounded-full hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                      onClick={() => setVisibility((v) => (v === "public" ? "private" : "public"))}
+                      className="inline-flex items-center gap-1 min-h-[44px] px-3 py-1.5 rounded-full text-xs font-medium bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
                     >
-                      <X className="w-4 h-4" />
+                      {visibility === "public" ? (
+                        <>
+                          <Globe className="w-3.5 h-3.5 text-primary" />
+                          <span>Public</span>
+                        </>
+                      ) : (
+                        <>
+                          <Users className="w-3.5 h-3.5 text-amber-500" />
+                          <span>Friends Only</span>
+                        </>
+                      )}
                     </button>
+
+                    {/* Category Badge (Locked to General) */}
+                    <span className="inline-flex items-center min-h-[44px] px-3 py-1.5 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20">
+                      General
+                    </span>
                   </div>
-                ))}
+                </div>
               </div>
-            </div>
-          )}
-        </div>
 
-        {/* Media Toolbar Footer */}
-        <div className="border-t border-border p-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {/* Add Images */}
-            <button
-              type="button"
-              onClick={() => imageInputRef.current?.click()}
-              disabled={imageFiles.length >= 10 || posting}
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-full text-xs font-semibold bg-secondary hover:bg-secondary/80 text-foreground transition-colors disabled:opacity-40"
-            >
-              <ImageIcon className="w-4 h-4 text-emerald-500" />
-              <span>Photo</span>
+              {/* Main Text Input */}
+              <Textarea
+                placeholder="What's happening in your neighbourhood?"
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                maxLength={2000}
+                rows={5}
+                className="w-full bg-transparent border-0 focus-visible:ring-0 text-base sm:text-lg resize-none p-0 placeholder:text-muted-foreground/60"
+              />
+
+              {/* Media Previews */}
+              {/* Images Grid */}
               {imageFiles.length > 0 && (
-                <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full">
-                  {imageFiles.length}
-                </span>
+                <div className="space-y-1.5 pt-2">
+                  <p className="text-xs text-muted-foreground font-medium">
+                    Photos ({imageFiles.length}/10)
+                  </p>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 overflow-x-auto pb-1">
+                    {imageFiles.map((file, i) => (
+                      <div
+                        key={`${file.name}-${i}`}
+                        className="relative aspect-square rounded-2xl overflow-hidden border border-border bg-secondary group flex-shrink-0"
+                      >
+                        <Image
+                          src={URL.createObjectURL(file)}
+                          alt={`Upload ${i + 1}`}
+                          fill
+                          className="object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(i)}
+                          aria-label="Remove image"
+                          className="absolute top-1.5 right-1.5 p-2 rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
-            </button>
 
-            {/* Add Videos */}
-            <button
-              type="button"
-              onClick={() => videoInputRef.current?.click()}
-              disabled={videoFiles.length >= 3 || posting}
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-full text-xs font-semibold bg-secondary hover:bg-secondary/80 text-foreground transition-colors disabled:opacity-40"
-            >
-              <Video className="w-4 h-4 text-blue-500" />
-              <span>Video</span>
+              {/* Videos List */}
               {videoFiles.length > 0 && (
-                <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full">
-                  {videoFiles.length}
-                </span>
+                <div className="space-y-1.5 pt-2">
+                  <p className="text-xs text-muted-foreground font-medium">
+                    Videos ({videoFiles.length}/3)
+                  </p>
+                  <div className="space-y-2">
+                    {videoFiles.map((file, i) => (
+                      <div
+                        key={`${file.name}-${i}`}
+                        className="flex items-center justify-between p-3 rounded-2xl border border-border bg-secondary/50"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <Video className="w-5 h-5 text-primary shrink-0" />
+                          <span className="text-xs font-medium text-foreground truncate">
+                            {file.name}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground shrink-0">
+                            ({(file.size / (1024 * 1024)).toFixed(1)}MB)
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeVideo(i)}
+                          aria-label="Remove video"
+                          className="p-2 rounded-full hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
-            </button>
+            </div>
+
+            {/* Media Toolbar Footer */}
+            <div className="border-t border-border p-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {/* Add Images */}
+                <button
+                  type="button"
+                  onClick={() => imageInputRef.current?.click()}
+                  disabled={imageFiles.length >= 10 || posting}
+                  className="inline-flex items-center gap-2 min-h-[44px] px-4 py-2.5 rounded-full text-xs font-semibold bg-secondary hover:bg-secondary/80 text-foreground transition-colors disabled:opacity-40"
+                >
+                  <ImageIcon className="w-4 h-4 text-emerald-500" />
+                  <span>Photo</span>
+                  {imageFiles.length > 0 && (
+                    <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full">
+                      {imageFiles.length}
+                    </span>
+                  )}
+                </button>
+
+                {/* Add Videos */}
+                <button
+                  type="button"
+                  onClick={() => videoInputRef.current?.click()}
+                  disabled={videoFiles.length >= 3 || posting}
+                  className="inline-flex items-center gap-2 min-h-[44px] px-4 py-2.5 rounded-full text-xs font-semibold bg-secondary hover:bg-secondary/80 text-foreground transition-colors disabled:opacity-40"
+                >
+                  <Video className="w-4 h-4 text-blue-500" />
+                  <span>Video</span>
+                  {videoFiles.length > 0 && (
+                    <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full">
+                      {videoFiles.length}
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              <p className="text-[11px] text-muted-foreground hidden sm:block">
+                Max 10 photos • 3 videos (40MB)
+              </p>
+
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={handleImageSelect}
+              />
+              <input
+                ref={videoInputRef}
+                type="file"
+                accept="video/*"
+                multiple
+                className="hidden"
+                onChange={handleVideoSelect}
+              />
+            </div>
           </div>
 
-          <p className="text-[11px] text-muted-foreground hidden sm:block">
-            Max 10 photos • 3 videos (40MB)
-          </p>
+          {/* Right Column: Desktop Live Feed Card Preview */}
+          <div className="hidden lg:block w-[420px] sticky top-20 flex-shrink-0 space-y-3">
+            <div className="flex items-center justify-between px-1">
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                Live Feed Preview
+              </span>
+              <span className="text-[11px] text-primary font-medium">
+                {visibility === "public" ? "Public Feed" : "Friends Only"}
+              </span>
+            </div>
 
-          <input
-            ref={imageInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            className="hidden"
-            onChange={handleImageSelect}
-          />
-          <input
-            ref={videoInputRef}
-            type="file"
-            accept="video/*"
-            multiple
-            className="hidden"
-            onChange={handleVideoSelect}
-          />
+            <div className="rounded-2xl border border-border bg-card p-4 space-y-3 shadow-lg">
+              {/* Header */}
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full overflow-hidden border border-border bg-secondary flex-shrink-0 relative">
+                  {profile?.avatar_url ? (
+                    <Image
+                      src={profile.avatar_url}
+                      alt={profile.name || "User"}
+                      fill
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center font-bold text-muted-foreground">
+                      {profile?.name?.[0]?.toUpperCase() || "U"}
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold font-sans text-foreground truncate">
+                    {profile?.name || "Neighbor"}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">Just now</p>
+                </div>
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-sky-100 text-sky-700 border border-sky-200 dark:bg-sky-950/60 dark:text-sky-300">
+                  General
+                </span>
+              </div>
+
+              {/* Text content */}
+              <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed min-h-[24px]">
+                {text.trim() || <span className="text-muted-foreground/50 italic">Your post thoughts will appear here...</span>}
+              </p>
+
+              {/* Media preview */}
+              {imageFiles.length > 0 && (
+                <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-secondary border border-border">
+                  <Image
+                    src={URL.createObjectURL(imageFiles[0])}
+                    alt="Preview"
+                    fill
+                    className="object-cover"
+                  />
+                  {imageFiles.length > 1 && (
+                    <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-black/60 text-white">
+                      1 / {imageFiles.length}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Dummy engagement bar */}
+              <div className="pt-2 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
+                <div className="flex items-center gap-4">
+                  <span>♡ 0</span>
+                  <span>💬 0</span>
+                  <span>↗ Share</span>
+                </div>
+                <span>🔖</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
