@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/supabase-server';
 import { PaystackService } from '@/lib/paystack-service';
+import { PaylukService } from '@/lib/payluk-service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,7 +17,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const result = await PaystackService.resolveAccount(accountNumber, bankCode);
+    let result = await PaylukService.resolveAccount(user.id, accountNumber, bankCode);
+    if (!result.valid || !result.accountName || result.accountName.includes('(Fallback)')) {
+      result = await PaystackService.resolveAccount(accountNumber, bankCode);
+    }
 
     if (result.valid && result.accountName) {
       return NextResponse.json({
