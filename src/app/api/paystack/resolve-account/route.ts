@@ -17,10 +17,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    let result = await PaylukService.resolveAccount(user.id, accountNumber, bankCode);
-    if (!result.valid || !result.accountName || result.accountName.includes('(Fallback)')) {
-      result = await PaystackService.resolveAccount(accountNumber, bankCode);
-    }
+    const result = await PaylukService.resolveAccount(user.id, accountNumber, bankCode);
 
     if (result.valid && result.accountName) {
       return NextResponse.json({

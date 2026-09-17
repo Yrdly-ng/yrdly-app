@@ -62,19 +62,14 @@ export async function POST(request: NextRequest) {
 
     const profileName = profile?.legal_name || profile?.name || '';
 
-    // ── Task 1: Account resolution & name match ─
-    let resolveResult = await PaylukService.resolveAccount(user.id, accountNumber, bankCode);
-    if (!resolveResult.valid || !resolveResult.accountName) {
-      resolveResult = await PaystackService.resolveAccount(accountNumber, bankCode);
-    }
+    // ── Task 1: Account resolution & name match (Payluk Live) ─
+    const resolveResult = await PaylukService.resolveAccount(user.id, accountNumber, bankCode);
 
     if (resolveResult.valid && resolveResult.accountName) {
       const resolvedName = resolveResult.accountName;
 
-      const isTestFallback = resolvedName.includes('(Fallback)');
-
       // Compare resolved bank name vs user-entered name
-      if (!isTestFallback && !namesMatch(resolvedName, accountName)) {
+      if (!namesMatch(resolvedName, accountName)) {
         return NextResponse.json(
           {
             error: `Account name mismatch. The bank reports this account belongs to "${resolvedName}". Please use your own account.`,
@@ -85,7 +80,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Also compare resolved bank name vs profile name (fraud guard)
-      if (!isTestFallback && profileName && !namesMatch(resolvedName, profileName)) {
+      if (profileName && !namesMatch(resolvedName, profileName)) {
         return NextResponse.json(
           {
             error: `This bank account does not appear to belong to you. Please add an account registered in your own name.`,
@@ -95,8 +90,7 @@ export async function POST(request: NextRequest) {
         );
       }
     } else {
-      // Paystack could not resolve — reject rather than skip the check
-      console.warn('[AccountSetup] Paystack resolve failed');
+      console.warn('[AccountSetup] Payluk account resolution failed for:', { accountNumber, bankCode });
       return NextResponse.json(
         { error: 'Could not verify account details. Please check your account number and bank, then try again.' },
         { status: 422 }
@@ -113,35 +107,26 @@ export async function POST(request: NextRequest) {
     const isUpdate = existingAccounts && existingAccounts.length > 0;
     const existingSubaccountId = isUpdate ? existingAccounts[0].paystack_subaccount_id : null;
 
-    // ── Create or Update Paystack Subaccount ──────────────
-    const subaccountPayload = {
-      businessName: accountName,
-      bankCode: bankCode,
-      accountNumber: accountNumber,
-      percentageCharge: Math.round(MARKETPLACE_CONSTANTS.COMMISSION_RATE * 100),
-    };
+    // ── Paystack Subaccount (Optional / Best effort) ──────
+    let subaccountId: string | null = existingSubaccountId;
+    try {
+      const subaccountPayload = {
+        businessName: accountName,
+        bankCode: bankCode,
+        accountNumber: accountNumber,
+        percentageCharge: Math.round(MARKETPLACE_CONSTANTS.COMMISSION_RATE * 100),
+      };
 
-    let subaccountId: string | null = null;
-    if (existingSubaccountId) {
-      const updateResult = await PaystackService.updateSubaccount(existingSubaccountId, subaccountPayload);
-      if (!updateResult.success) {
-        console.error('[AccountSetup] Subaccount update failed:', updateResult.error);
-        return NextResponse.json(
-          { error: 'Failed to update payment subaccount. Please try again.' },
-          { status: 502 }
-        );
+      if (existingSubaccountId) {
+        await PaystackService.updateSubaccount(existingSubaccountId, subaccountPayload);
+      } else {
+        const createResult = await PaystackService.createSubaccount(subaccountPayload);
+        if (createResult.success && createResult.subaccountCode) {
+          subaccountId = createResult.subaccountCode;
+        }
       }
-      subaccountId = existingSubaccountId;
-    } else {
-      const createResult = await PaystackService.createSubaccount(subaccountPayload);
-      if (!createResult.success || !createResult.subaccountCode) {
-        console.error('[AccountSetup] Subaccount creation failed:', createResult.error);
-        return NextResponse.json(
-          { error: 'Failed to create payment subaccount. Please try again.' },
-          { status: 502 }
-        );
-      }
-      subaccountId = createResult.subaccountCode;
+    } catch (e) {
+      console.warn('[AccountSetup] Paystack subaccount step skipped (Paystack in test mode):', e);
     }
 
     // ── Deactivate any existing accounts ──────────────────
