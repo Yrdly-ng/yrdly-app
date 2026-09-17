@@ -246,7 +246,7 @@ export default function PayoutsDashboardPage() {
                       ₦{Number(item.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </p>
                     <p className="text-xs text-[var(--yrdly-label)] font-yrdly-body">
-                      {new Date(item.created_at).toLocaleDateString(undefined, { dateStyle: "medium" })}
+                      {item.requested_at ? new Date(item.requested_at).toLocaleDateString(undefined, { dateStyle: "medium" }) : "—"}
                     </p>
                   </div>
 

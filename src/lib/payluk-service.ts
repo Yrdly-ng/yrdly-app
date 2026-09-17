@@ -741,6 +741,31 @@ export class PaylukService {
     reference: string;
   }): Promise<{ success: boolean; reference?: string; error?: string }> {
     try {
+      // Map Paystack/CBN bank codes to Payluk's internal codes
+      const PAYSTACK_TO_PAYLUK_BANK_MAP: Record<string, string> = {
+        '999991': '100004', // OPay
+        '999992': '100004', // OPay / Test Bank
+        '044': '000014',    // Access Bank
+        '058': '000013',    // GTBank
+        '011': '000016',    // First Bank
+        '057': '000015',    // Zenith Bank
+        '50515': '090405',  // Moniepoint
+        '50211': '090267',  // Kuda Bank
+        '214': '090409',    // FCMB
+        '033': '000040',    // UBA
+        '035': '000017',    // Wema Bank
+        '070': '000007',    // Fidelity Bank
+        '050': '000010',    // Ecobank
+        '082': '000002',    // Keystone Bank
+        '232': '000012',    // Stanbic IBTC
+        '230': '000001',    // Sterling Bank
+        '032': '000018',    // Union Bank
+        '101': '000023',    // Providus Bank
+        '100033': '100033', // PalmPay
+      };
+
+      const resolvedBankCode = PAYSTACK_TO_PAYLUK_BANK_MAP[params.bankCode] || params.bankCode;
+
       // 1. Create withdrawal intent
       const intentResponse = await paylukRequest<{ reference: string }>(
         '/v1/payment/create-intent',
@@ -753,7 +778,7 @@ export class PaylukService {
             transactionType: 'withdrawal',
             currency: 'NGN',
             withdrawalDetails: {
-              bankCode: params.bankCode,
+              bankCode: resolvedBankCode,
               bankName: params.bankName || 'Bank',
               accountNumber: params.accountNumber,
               ...(params.accountName ? { accountName: params.accountName } : {}),
