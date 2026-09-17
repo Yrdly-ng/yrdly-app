@@ -30,13 +30,16 @@ export default function WithdrawPage() {
     if (!user) return;
     setLoading(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const authHeaders: Record<string, string> = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
+
       const [txRes, payoutRes, bankRes] = await Promise.all([
         supabase
           .from('escrow_transactions')
           .select('seller_amount, status')
           .eq('seller_id', user.id),
         supabase.from('payout_requests').select('amount, status').eq('seller_id', user.id),
-        fetch('/api/seller/setup-account').then(r => r.ok ? r.json() : { account: null }).catch(() => ({ account: null })),
+        fetch('/api/seller/setup-account', { headers: authHeaders }).then(r => r.ok ? r.json() : { account: null }).catch(() => ({ account: null })),
       ]);
 
       const txs = txRes.data ?? [];

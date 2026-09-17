@@ -1,17 +1,12 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { getAuthenticatedUser } from '@/lib/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { PayoutService } from '@/lib/payout-service';
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { data: { user }, error: authError } = await getAuthenticatedUser(request);
 
-    const token = authHeader.split(' ')[1];
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
