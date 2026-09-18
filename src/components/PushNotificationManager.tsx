@@ -24,59 +24,45 @@ export function PushNotificationManager() {
 
         const setupPushNotifications = async () => {
             try {
-                // Check if VAPID key is available
-                if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) {
-                    // Fail silently if VAPID keys aren't configured yet
-                    return;
-                }
+                if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) return;
 
-                // Request notification permission if not already granted
-                if (permission === 'default') {
-                    const newPermission = await Notification.requestPermission();
-                    setPermission(newPermission);
+                let currentPermission = Notification.permission;
 
-                    if (newPermission !== 'granted') {
-                        toast({
-                            title: "Permission Required",
-                            description: "Please enable notifications to receive updates.",
-                        });
+                // Request permission if default, but do not spam toasts if dismissed/denied
+                if (currentPermission === 'default') {
+                    try {
+                        currentPermission = await Notification.requestPermission();
+                        setPermission(currentPermission);
+                    } catch {
                         return;
                     }
                 }
 
-                if (permission !== 'granted') {
+                if (currentPermission !== 'granted') {
                     return;
                 }
 
-                // Register service worker
+                // Register service worker & push subscription
                 const registration = await navigator.serviceWorker.ready;
                 
-                // Convert VAPID key from base64url to Uint8Array
                 const applicationServerKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-                
-                // Convert base64url to base64
                 const base64 = applicationServerKey
                     .replace(/-/g, '+')
                     .replace(/_/g, '/');
-                
-                // Add padding if needed
                 const padded = base64 + '='.repeat((4 - base64.length % 4) % 4);
                 
-                // Convert to Uint8Array
                 const binaryString = atob(padded);
                 const keyArray = new Uint8Array(binaryString.length);
                 for (let i = 0; i < binaryString.length; i++) {
                     keyArray[i] = binaryString.charCodeAt(i);
                 }
                 
-                // Subscribe to push notifications
                 const subscription = await registration.pushManager.subscribe({
                     userVisibleOnly: true,
                     applicationServerKey: keyArray
                 });
 
-                // Send subscription to Supabase
-                const { error } = await supabase
+                await supabase
                     .from('push_subscriptions')
                     .upsert({
                         user_id: user.id,
@@ -85,22 +71,14 @@ export function PushNotificationManager() {
                         updated_at: new Date().toISOString()
                     });
 
-                if (error) {
-                    // Error saving push subscription
-                } else {
-                }
-
             } catch (error) {
-                toast({
-                    variant: "destructive",
-                    title: "Push Notifications",
-                    description: "Failed to enable push notifications. Please try again.",
-                });
+                // Silently handle error on app boot to prevent annoying toasts
+                console.error("Push notification setup error:", error);
             }
         };
 
         setupPushNotifications();
-    }, [user, isSupported, permission, toast]);
+    }, [user, isSupported]);
 
     // Handle notification clicks
     useEffect(() => {
