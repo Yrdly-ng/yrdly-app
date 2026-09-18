@@ -392,11 +392,8 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
   }, [conversations]);
 
   const handleSelectConv = (id: string, e?: React.MouseEvent) => {
-    if (e) e.preventDefault();
     setSelectedConvId(id);
-    if (typeof window !== "undefined") {
-      window.history.pushState(null, "", `/messages/${id}`);
-    }
+    router.push(`/messages/${id}`);
   };
 
   const handleDeleteConversation = async (conversationId: string, e: React.MouseEvent) => {
@@ -703,9 +700,7 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
             conversationId={selectedConvId}
             onBack={() => {
               setSelectedConvId(null);
-              if (typeof window !== "undefined") {
-                window.history.pushState(null, "", "/messages");
-              }
+              router.push("/messages");
             }}
             isEmbedded
           />

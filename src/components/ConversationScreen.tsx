@@ -531,13 +531,15 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
       {/* ── Messages List ── */}
       <main className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         {messages.length === 0 ? (
-          <GlassCard className="flex flex-col items-center justify-center py-16 text-center rounded-3xl my-8">
-            <MessageCircle className="w-10 h-10 mb-2 text-primary opacity-50" />
-            <p className="text-foreground text-sm font-bold font-yrdly-display">No messages yet</p>
-            <p className="text-xs text-[var(--yrdly-label)] mt-1 font-yrdly-body">
+          <div className="flex flex-col items-center justify-center h-full min-h-[300px] py-12 px-4 text-center">
+            <div className="w-16 h-16 rounded-full bg-[#82DB7E]/10 border border-[#82DB7E]/20 flex items-center justify-center mb-3">
+              <MessageCircle className="w-8 h-8 text-[#82DB7E]" />
+            </div>
+            <p className="text-foreground text-base font-bold font-yrdly-display">No messages yet</p>
+            <p className="text-xs text-[var(--yrdly-label)] mt-1 max-w-xs font-yrdly-body">
               Say hello to {otherParticipant.name?.split(" ")[0]} 👋
             </p>
-          </GlassCard>
+          </div>
         ) : (
           messages.map((msg, index) => {
             const isOwn = msg.sender_id === user?.id;

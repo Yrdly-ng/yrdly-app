@@ -55,7 +55,7 @@ export function MainLayout({ children }: MainLayoutProps) {
     pathname.includes("/chat");
   const isMapPage = pathname === "/map";
   const isHomePage = pathname === "/home";
-  const isMessagesPage = pathname === "/messages";
+  const isMessagesPage = pathname === "/messages" || pathname.startsWith("/messages");
   const isExplorePage = pathname === "/explore";
   const isEdgeToEdgePage = isMessagesPage || isExplorePage;
   const isBusinessOrEventsPage =
