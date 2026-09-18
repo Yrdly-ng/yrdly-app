@@ -16,6 +16,8 @@ import { OnboardingGuard } from '@/components/OnboardingGuard';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { useActivityTracking } from '@/hooks/use-activity-tracking';
 import { PullToRefresh } from '@/components/PullToRefresh';
+import { FriendshipProvider } from '@/contexts/FriendshipContext';
+import { LocationProvider } from '@/contexts/LocationContext';
 
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const { user, profile, loading } = useAuth(); // Using Supabase auth
