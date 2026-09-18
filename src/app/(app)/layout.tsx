@@ -60,9 +60,11 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
     <OnboardingGuard>
       <ServiceWorkerRegistration />
       <PushNotificationManager />
-      <MainLayout>
-        {children}
-      </MainLayout>
+      <PullToRefresh>
+        <MainLayout>
+          {children}
+        </MainLayout>
+      </PullToRefresh>
       {/* Offline Status Component */}
       <OfflineStatus />
     </OnboardingGuard>
