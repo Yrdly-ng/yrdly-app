@@ -1,5 +1,5 @@
 
-"use client";
+import { VerifiedBadge } from '@/components/VerifiedBadge';
 
 import { useEffect, useState, useRef as reactUseRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -306,8 +306,8 @@ export function UserProfileDialog({ user: profileUser, open, onOpenChange }: Use
                         </Avatar>
                         <h1 className="text-2xl font-bold flex items-center justify-center gap-1.5">
                             {profileUser.name}
-                            {((profileUser as any).is_verified || (profileUser as any).verified_seller) && (
-                                <BadgeCheck className="w-5 h-5 text-[#82DB7E] fill-[#82DB7E]/20 shrink-0" />
+                            {((profileUser as any).is_verified || (profileUser as any).verified_seller || (profileUser as any).phone_verified) && (
+                                <VerifiedBadge size={20} type={(profileUser as any).verified_seller ? 'seller' : 'user'} />
                             )}
                         </h1>
                         {profileUser.location && (

@@ -578,13 +578,13 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
       try {
         setLoadingAuthor(true);
         if (post.user) {
-          setAuthor({ id: post.user_id, uid: post.user_id, name: post.user.name || post.author_name || "Anonymous", avatar_url: post.user.avatar_url || post.author_image || "https://placehold.co/100x100.png", timestamp: (post.user as any).created_at || post.timestamp, verified_seller: (post.user as any).verified_seller });
+          setAuthor({ id: post.user_id, uid: post.user_id, name: post.user.name || post.author_name || "Anonymous", avatar_url: post.user.avatar_url || post.author_image || "https://placehold.co/100x100.png", timestamp: (post.user as any).created_at || post.timestamp, verified_seller: (post.user as any).verified_seller, is_verified: (post.user as any).is_verified, phone_verified: (post.user as any).phone_verified } as any);
           setLoadingAuthor(false);
         } else {
-          const { data, error } = await supabase.from("users").select("id, name, avatar_url, created_at, verified_seller").eq("id", post.user_id).single();
+          const { data, error } = await supabase.from("users").select("id, name, avatar_url, created_at, verified_seller, is_verified, phone_verified").eq("id", post.user_id).single();
           setAuthor(error
             ? { id: post.user_id, uid: post.user_id, name: post.author_name || "Anonymous", avatar_url: post.author_image || "https://placehold.co/100x100.png", timestamp: post.timestamp }
-            : { id: data.id, uid: data.id, name: data.name || "Anonymous", avatar_url: data.avatar_url || "https://placehold.co/100x100.png", timestamp: data.created_at || post.timestamp, verified_seller: data.verified_seller }
+            : { id: data.id, uid: data.id, name: data.name || "Anonymous", avatar_url: data.avatar_url || "https://placehold.co/100x100.png", timestamp: data.created_at || post.timestamp, verified_seller: data.verified_seller, is_verified: data.is_verified, phone_verified: data.phone_verified } as any
           );
           setLoadingAuthor(false);
         }
@@ -850,8 +850,8 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
             <div className="flex items-center gap-1.5 flex-wrap">
               <button onClick={openProfile} className="flex items-center gap-1">
                 <span className="font-yrdly-display font-bold text-[0.875rem] text-foreground hover:underline">{author?.name || "Anonymous"}</span>
-                {(author?.verified_seller || (post.user as any)?.verified_seller) && (
-                  <VerifiedBadge size={16} type="seller" />
+                {(author?.verified_seller || (author as any)?.is_verified || (author as any)?.phone_verified || (post.user as any)?.verified_seller || (post.user as any)?.is_verified || (post.user as any)?.phone_verified) && (
+                  <VerifiedBadge size={16} type={(author?.verified_seller || (post.user as any)?.verified_seller) ? "seller" : "user"} />
                 )}
               </button>
               <span className="text-[var(--yrdly-label)] text-[0.6875rem]">•</span>

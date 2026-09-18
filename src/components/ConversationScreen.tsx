@@ -16,6 +16,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 
 import { GlassCard } from "@/components/ui/glass-card";
 import { cn } from "@/lib/utils";
+import { VerifiedBadge } from "@/components/VerifiedBadge";
 
 interface ConversationRow {
   id: string;
@@ -168,7 +169,7 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
     if (!conversation) return;
     const fetch = async () => {
       const { data } = await supabase
-        .from("users").select("id, name, email, avatar_url, created_at, last_seen, is_online")
+        .from("users").select("id, name, email, avatar_url, created_at, last_seen, is_online, verified_seller, is_verified, phone_verified")
         .in("id", conversation.participant_ids);
       const map: Record<string, User> = {};
       data?.forEach((p) => {
@@ -422,9 +423,14 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
               </div>
             </div>
             <div>
-              <h2 className="text-sm font-bold text-foreground font-yrdly-display truncate max-w-[140px]">
-                {otherParticipant.name}
-              </h2>
+              <div className="flex items-center gap-1 min-w-0">
+                <h2 className="text-sm font-bold text-foreground font-yrdly-display truncate max-w-[140px]">
+                  {otherParticipant.name}
+                </h2>
+                {((otherParticipant as any)?.verified_seller || (otherParticipant as any)?.is_verified || (otherParticipant as any)?.phone_verified) && (
+                  <VerifiedBadge size={15} type={(otherParticipant as any)?.verified_seller ? "seller" : "user"} />
+                )}
+              </div>
               <p className="text-[0.65rem] text-[var(--yrdly-label)] font-yrdly-body">
                 {activityStatus}
               </p>

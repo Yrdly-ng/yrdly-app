@@ -13,6 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { cn } from "@/lib/utils";
 import { ConversationScreen } from "@/components/ConversationScreen";
 
+import { VerifiedBadge } from "@/components/VerifiedBadge";
+
 const GREEN = "#82DB7E";
 
 type ConvType = "friend" | "marketplace" | "briefcase";
@@ -27,6 +29,8 @@ interface Conversation {
   lastMessage: string;
   timestamp: string;
   unreadCount: number;
+  isVerified?: boolean;
+  isSeller?: boolean;
   context?: {
     itemId?: string;
     itemTitle?: string;
@@ -57,7 +61,7 @@ function SwipeableConversationItem({
 }: {
   item: Conversation;
   isActive?: boolean;
-  onSelect: (id: string, e: React.MouseEvent) => void;
+  onSelect: (id: string, e?: React.MouseEvent) => void;
   onDelete: (id: string, e: React.MouseEvent) => void;
 }) {
   const [swipeOffset, setSwipeOffset] = useState(0);
@@ -72,10 +76,8 @@ function SwipeableConversationItem({
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!isSwiping.current) return;
     const diff = e.touches[0].clientX - touchStartX.current;
-    if (diff < 0) {
+    if (diff < -15) {
       setSwipeOffset(Math.max(diff, -80));
-    } else {
-      setSwipeOffset(0);
     }
   };
 
@@ -86,6 +88,14 @@ function SwipeableConversationItem({
     } else {
       setSwipeOffset(0);
     }
+  };
+
+  const handleClick = (e: React.MouseEvent) => {
+    if (swipeOffset !== 0) {
+      setSwipeOffset(0);
+      return;
+    }
+    onSelect(item.id, e);
   };
 
   const isUnread = item.unreadCount > 0;
@@ -115,7 +125,7 @@ function SwipeableConversationItem({
         className="relative z-10 bg-[var(--yrdly-dark)]"
       >
         <div
-          onClick={(e) => onSelect(item.id, e)}
+          onClick={handleClick}
           className={cn(
             "flex items-center gap-3.5 px-4 py-3 cursor-pointer transition-all hover:bg-white/5 border-l-4 border-transparent",
             isUnread && "bg-[#82DB7E]/[0.03]",
@@ -144,14 +154,19 @@ function SwipeableConversationItem({
           {/* Details */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-2 mb-0.5">
-              <span
-                className={cn(
-                  "text-sm font-semibold truncate text-foreground font-yrdly-display",
-                  isUnread && "font-extrabold"
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span
+                  className={cn(
+                    "text-sm font-semibold truncate text-foreground font-yrdly-display",
+                    isUnread && "font-extrabold"
+                  )}
+                >
+                  {item.participantName}
+                </span>
+                {item.isVerified && (
+                  <VerifiedBadge size={15} type={item.isSeller ? "seller" : "user"} />
                 )}
-              >
-                {item.participantName}
-              </span>
+              </div>
               <span
                 className={cn(
                   "text-xs font-mono flex-shrink-0",
@@ -275,7 +290,7 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
       if (otherUserIds.length > 0) {
         const { data: usersData } = await supabase
           .from("users")
-          .select("id, name, username, avatar_url")
+          .select("id, name, username, avatar_url, verified_seller, is_verified, phone_verified")
           .in("id", otherUserIds);
 
         if (usersData) {
@@ -305,6 +320,9 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
               ? otherUser.avatar_url
               : null;
 
+          const isVerified = isBiz || !!otherUser?.verified_seller || !!otherUser?.is_verified || !!otherUser?.phone_verified;
+          const isSeller = isBiz || !!otherUser?.verified_seller;
+
           return {
             id: c.id,
             type: convType,
@@ -314,6 +332,8 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
             lastMessage: c.last_message_text || c.last_message || "Tap to chat",
             timestamp: c.updated_at || c.created_at,
             unreadCount: unreadCounts[c.id] || 0,
+            isVerified,
+            isSeller,
             context:
               c.item_title || c.item_id || c.business_name
                 ? {

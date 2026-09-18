@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { AuthService } from "@/lib/auth-service";
 
+import { VerifiedBadge } from "@/components/VerifiedBadge";
+
 interface ProfileDropdownProps {
   onClose: () => void;
 }
@@ -16,6 +18,9 @@ const GREEN = "hsl(var(--primary))";
 export function ProfileDropdown({ onClose }: ProfileDropdownProps) {
   const router = useRouter();
   const { user, profile } = useAuth();
+
+  const isVerified = !!(profile as any)?.is_verified || !!(profile as any)?.phone_verified || !!(profile as any)?.verified_seller;
+  const isSeller = !!(profile as any)?.verified_seller;
 
   const displayName = profile?.name || user?.user_metadata?.name || "User";
   const email = user?.email || "user@example.com";
@@ -85,12 +90,17 @@ export function ProfileDropdown({ onClose }: ProfileDropdownProps) {
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0">
-            <p
-              className="truncate text-foreground text-[0.875rem] leading-[18px]"
-              style={{ fontFamily: FONT, fontWeight: 700 }}
-            >
-              {displayName}
-            </p>
+            <div className="flex items-center gap-1 min-w-0">
+              <p
+                className="truncate text-foreground text-[0.875rem] leading-[18px]"
+                style={{ fontFamily: FONT, fontWeight: 700 }}
+              >
+                {displayName}
+              </p>
+              {isVerified && (
+                <VerifiedBadge size={15} type={isSeller ? "seller" : "user"} />
+              )}
+            </div>
             <p
               className="truncate text-[0.75rem] leading-[16px]"
               style={{ fontFamily: FONT, fontWeight: 300, color: "var(--c-text-muted)" }}

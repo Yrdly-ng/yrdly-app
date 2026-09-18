@@ -48,6 +48,8 @@ const CARD_BG = 'var(--c-card)';
 const FONT_RALEWAY = 'Inter, sans-serif';
 const FONT_PACIFICO = "var(--font-jersey25)";
 
+import { VerifiedBadge } from '@/components/VerifiedBadge';
+
 interface Comment {
     id: string;
     userId: string;
@@ -55,10 +57,11 @@ interface Comment {
     authorImage: string;
     text: string;
     timestamp: string;
-    parentId?: string | null;
+    parentId: string | null;
     likeCount: number;
     isLikedByMe: boolean;
     verifiedSeller?: boolean;
+    isVerified?: boolean;
 }
 
 const QUICK_EMOJIS = [
@@ -151,7 +154,7 @@ export function CommentSection({
         const fetch = async () => {
             const { data, error } = await supabase
                 .from('comments')
-                .select('*, user:users!comments_user_id_fkey(verified_seller)')
+                .select('*, user:users!comments_user_id_fkey(verified_seller, is_verified, phone_verified)')
                 .eq('post_id', postId)
                 .order('timestamp', { ascending: true });
             if (!error && data) {
@@ -178,6 +181,7 @@ export function CommentSection({
                     likeCount: c.like_count || 0,
                     isLikedByMe: userLikes.has(c.id),
                     verifiedSeller: c.user?.verified_seller || false,
+                    isVerified: c.user?.verified_seller || c.user?.is_verified || c.user?.phone_verified || false,
                 }));
                 setComments(mapped);
                 setLikedComments(new Set(userLikes));
@@ -392,8 +396,8 @@ export function CommentSection({
                             <span className="text-[0.875rem] font-bold text-foreground leading-tight truncate">
                                 {comment.authorName}
                             </span>
-                            {comment.verifiedSeller && (
-                                <BadgeCheck className="w-3.5 h-3.5 text-[#82DB7E] fill-[#82DB7E]/20 flex-shrink-0" />
+                            {(comment.isVerified || comment.verifiedSeller) && (
+                                <VerifiedBadge size={14} type={comment.verifiedSeller ? 'seller' : 'user'} />
                             )}
                             <span className="text-[0.75rem] text-muted-foreground font-light leading-tight whitespace-nowrap ml-0.5">
                                 {timeAgoStr(comment.timestamp)}
