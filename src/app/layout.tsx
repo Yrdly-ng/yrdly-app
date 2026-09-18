@@ -10,6 +10,7 @@ import { SpeedInsights } from '@vercel/speed-insights/next';
 import { ThemeProvider } from "@/components/ThemeProvider";
 import Script from "next/script";
 import { AmbientBackground } from '@/components/ui/AmbientBackground';
+import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister';
 
 const raleway = Raleway({
   subsets: ['latin'],
@@ -32,6 +33,16 @@ const pacifico = Pacifico({
 export const metadata: Metadata = {
   title: 'Yrdly - Your Neighborhood Network',
   description: 'Connect with your neighbors, share updates, and build a stronger community with Yrdly.',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Yrdly',
+  },
+  icons: {
+    icon: '/icon-192x192.png',
+    apple: '/icon-192x192.png',
+  },
 };
 
 export const viewport: Viewport = {
@@ -40,6 +51,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: 'cover',
+  themeColor: '#82DB7E',
 };
 
 export default function RootLayout({
@@ -77,6 +89,7 @@ export default function RootLayout({
           <Toaster />
           <Analytics />
           <SpeedInsights />
+          <ServiceWorkerRegister />
           {process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY && (
             <Script
               src={`https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places`}
