@@ -11,6 +11,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import Script from "next/script";
 import { AmbientBackground } from '@/components/ui/AmbientBackground';
 import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister';
+import { PushNotificationManager } from '@/components/PushNotificationManager';
 
 const raleway = Raleway({
   subsets: ['latin'],
@@ -85,6 +86,7 @@ export default function RootLayout({
         >
           <AuthProvider>
             {children}
+            <PushNotificationManager />
           </AuthProvider>
           <Toaster />
           <Analytics />
