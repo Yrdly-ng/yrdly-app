@@ -169,7 +169,7 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
     if (!conversation) return;
     const fetch = async () => {
       const { data } = await supabase
-        .from("users").select("id, name, email, avatar_url, created_at, last_seen, is_online, verified_seller, is_verified, phone_verified")
+        .from("users").select("id, name, email, avatar_url, created_at, last_seen, is_online, verified_seller, phone_verified")
         .in("id", conversation.participant_ids);
       const map: Record<string, User> = {};
       data?.forEach((p) => {

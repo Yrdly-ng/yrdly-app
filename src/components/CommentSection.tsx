@@ -154,7 +154,7 @@ export function CommentSection({
         const fetch = async () => {
             const { data, error } = await supabase
                 .from('comments')
-                .select('*, user:users!comments_user_id_fkey(verified_seller, is_verified, phone_verified)')
+                .select('*, user:users!comments_user_id_fkey(verified_seller, phone_verified)')
                 .eq('post_id', postId)
                 .order('timestamp', { ascending: true });
             if (!error && data) {

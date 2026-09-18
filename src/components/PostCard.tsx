@@ -581,10 +581,10 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
           setAuthor({ id: post.user_id, uid: post.user_id, name: post.user.name || post.author_name || "Anonymous", avatar_url: post.user.avatar_url || post.author_image || "https://placehold.co/100x100.png", timestamp: (post.user as any).created_at || post.timestamp, verified_seller: (post.user as any).verified_seller, is_verified: (post.user as any).is_verified, phone_verified: (post.user as any).phone_verified } as any);
           setLoadingAuthor(false);
         } else {
-          const { data, error } = await supabase.from("users").select("id, name, avatar_url, created_at, verified_seller, is_verified, phone_verified").eq("id", post.user_id).single();
+          const { data, error } = await supabase.from("users").select("id, name, avatar_url, created_at, verified_seller, phone_verified").eq("id", post.user_id).single();
           setAuthor(error
             ? { id: post.user_id, uid: post.user_id, name: post.author_name || "Anonymous", avatar_url: post.author_image || "https://placehold.co/100x100.png", timestamp: post.timestamp }
-            : { id: data.id, uid: data.id, name: data.name || "Anonymous", avatar_url: data.avatar_url || "https://placehold.co/100x100.png", timestamp: data.created_at || post.timestamp, verified_seller: data.verified_seller, is_verified: data.is_verified, phone_verified: data.phone_verified } as any
+            : { id: data.id, uid: data.id, name: data.name || "Anonymous", avatar_url: data.avatar_url || "https://placehold.co/100x100.png", timestamp: data.created_at || post.timestamp, verified_seller: data.verified_seller, is_verified: (data as any).is_verified || false, phone_verified: data.phone_verified } as any
           );
           setLoadingAuthor(false);
         }

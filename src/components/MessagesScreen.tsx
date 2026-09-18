@@ -290,7 +290,7 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
       if (otherUserIds.length > 0) {
         const { data: usersData } = await supabase
           .from("users")
-          .select("id, name, username, avatar_url, verified_seller, is_verified, phone_verified")
+          .select("id, name, username, avatar_url, verified_seller, phone_verified")
           .in("id", otherUserIds);
 
         if (usersData) {
