@@ -38,7 +38,6 @@ import { GlassCard } from "@/components/ui/glass-card";
 
 interface EventsScreenProps {
   className?: string;
-  hideHeader?: boolean;
 }
 
 function formatEventDate(d: string | null | undefined): string {
@@ -105,7 +104,7 @@ function isToday(d: string | null | undefined): boolean {
 
 
 
-export function EventsScreen({ className, hideHeader = false }: EventsScreenProps) {
+export function EventsScreen({ className }: EventsScreenProps) {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
@@ -233,10 +232,10 @@ export function EventsScreen({ className, hideHeader = false }: EventsScreenProp
   }
 
   return (
-    <div className={cn("min-h-[100dvh] bg-[var(--c-bg)] text-foreground font-yrdly-body p-3 sm:p-4 md:p-6 space-y-6 md:space-y-8 pb-20 lg:pb-8", className)}>
+    <div className={cn("min-h-[100dvh] bg-[var(--yrdly-dark)] text-foreground font-yrdly-body p-3 sm:p-4 md:p-6 space-y-6 md:space-y-8 pb-20 lg:pb-8", className)}>
 
       {/* Quick filter bar */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 pr-4 scrollbar-hide">
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
         {QUICK_FILTERS.map((filter) => {
           const active = activeQuickFilters.has(filter);
           return (
@@ -244,7 +243,7 @@ export function EventsScreen({ className, hideHeader = false }: EventsScreenProp
               key={filter}
               onClick={() => toggleQuickFilter(filter)}
               className={cn(
-                "flex-shrink-0 min-h-[44px] px-3.5 py-2 rounded-full font-yrdly-body text-xs font-semibold transition-all border flex items-center justify-center",
+                "flex-shrink-0 px-3.5 py-1.5 rounded-full font-yrdly-body text-xs font-semibold transition-all border",
                 active
                   ? "bg-[var(--yrdly-glass-bg)] text-foreground border-[var(--yrdly-glass-border)] shadow-sm font-yrdly-display"
                   : "bg-transparent border-[var(--yrdly-glass-border)] text-[var(--yrdly-label)] hover:text-foreground"
@@ -277,11 +276,13 @@ export function EventsScreen({ className, hideHeader = false }: EventsScreenProp
                 {pickedForYou.map((event) => (
                   <CarouselItem
                     key={event.id}
-                    className="pl-2 sm:pl-4 basis-[92%] sm:basis-[75%] md:basis-[50%] lg:basis-[40%] xl:basis-[33%]"
+                    className="pl-2 sm:pl-4 basis-[92%] sm:basis-[82%] md:basis-[72%] lg:basis-[68%]"
                   >
                     <TiltCard
-                      className="w-full rounded-[20px] sm:rounded-[24px] overflow-hidden aspect-[16/9] max-h-[320px] bg-card border border-[var(--yrdly-glass-border)]"
-                      maxTilt={5}
+                      className="w-full rounded-[20px] sm:rounded-[24px] overflow-hidden aspect-[820/340] max-h-[300px] sm:max-h-[350px] bg-card border border-[var(--yrdly-glass-border)]"
+                      maxTilt={0}
+                      scale={1}
+                      glare={false}
                       onClick={() => router.push(`/events/${event.id}`)}
                     >
                       <Image
@@ -447,11 +448,11 @@ export function EventsScreen({ className, hideHeader = false }: EventsScreenProp
       </section>
 
       {/* Sort buttons - horizontal scroll on mobile */}
-      <div className="flex gap-2 overflow-x-auto pb-1 pr-4 scrollbar-hide font-yrdly-body">
+      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide font-yrdly-body">
         <button
           onClick={() => setSortBy("all")}
           className={cn(
-            "flex items-center gap-1.5 min-h-[44px] px-3.5 py-2.5 rounded-lg text-xs flex-shrink-0 transition-all border",
+            "flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs flex-shrink-0 transition-all border",
             sortBy === "all"
               ? "bg-[var(--yrdly-glass-bg)] text-foreground border-[var(--yrdly-glass-border)] font-yrdly-display"
               : "bg-transparent text-[var(--yrdly-label)] border-[var(--yrdly-glass-border)] hover:text-foreground"
@@ -463,7 +464,7 @@ export function EventsScreen({ className, hideHeader = false }: EventsScreenProp
         <button
           onClick={() => setSortBy("price")}
           className={cn(
-            "flex items-center gap-1.5 min-h-[44px] px-3.5 py-2.5 rounded-lg text-xs flex-shrink-0 transition-all border",
+            "flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs flex-shrink-0 transition-all border",
             sortBy === "price"
               ? "bg-[var(--yrdly-glass-bg)] text-foreground border-[var(--yrdly-glass-border)] font-yrdly-display"
               : "bg-transparent text-[var(--yrdly-label)] border-[var(--yrdly-glass-border)] hover:text-foreground"
@@ -475,7 +476,7 @@ export function EventsScreen({ className, hideHeader = false }: EventsScreenProp
         <button
           onClick={() => setSortBy("date")}
           className={cn(
-            "flex items-center gap-1.5 min-h-[44px] px-3.5 py-2.5 rounded-lg text-xs flex-shrink-0 transition-all border",
+            "flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs flex-shrink-0 transition-all border",
             sortBy === "date"
               ? "bg-[var(--yrdly-glass-bg)] text-foreground border-[var(--yrdly-glass-border)] font-yrdly-display"
               : "bg-transparent text-[var(--yrdly-label)] border-[var(--yrdly-glass-border)] hover:text-foreground"
@@ -498,7 +499,7 @@ export function EventsScreen({ className, hideHeader = false }: EventsScreenProp
             <p className="text-[var(--yrdly-label)] font-yrdly-body text-xs max-w-[280px]">Be the first to create an event in your neighborhood.</p>
           </GlassCard>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {mainstream.map((event, idx) => {
               const { day, month } = dateChipParts(event.start_time);
               const isSaved = savedEvents.has(event.id);
@@ -550,7 +551,7 @@ export function EventsScreen({ className, hideHeader = false }: EventsScreenProp
                     <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5">
                       <button
                         aria-label={isSaved ? "Unsave" : "Save"}
-                        className="w-11 h-11 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-colors bg-black/50 backdrop-blur-md"
+                        className="w-8 h-8 rounded-full flex items-center justify-center transition-colors bg-black/50 backdrop-blur-md"
                         onClick={(e) => {
                           e.stopPropagation();
                           toggleSaved(event.id);
@@ -560,7 +561,7 @@ export function EventsScreen({ className, hideHeader = false }: EventsScreenProp
                       </button>
                       <button
                         aria-label="Share"
-                        className="w-11 h-11 sm:w-9 sm:h-9 rounded-full flex items-center justify-center bg-black/50 backdrop-blur-md"
+                        className="w-8 h-8 rounded-full flex items-center justify-center bg-black/50 backdrop-blur-md"
                         onClick={(e) => {
                           e.stopPropagation();
                           if (navigator.share) {

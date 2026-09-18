@@ -32,7 +32,7 @@ export function BottomNav({ navItems, pathname, onCreateMenu }: BottomNavProps) 
         key={href}
         href={href}
         className={cn(
-          "flex flex-1 flex-col items-center justify-center gap-0.5 min-h-[44px] py-2 text-[0.65rem] font-semibold transition-colors duration-150",
+          "flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[0.65rem] font-semibold transition-colors duration-150",
           active ? "text-[var(--primary)]" : "text-[var(--c-text-muted)]"
         )}
       >

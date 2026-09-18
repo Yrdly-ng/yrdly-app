@@ -23,6 +23,7 @@ import {
   BadgeCheck,
   ChevronLeft,
   ChevronRight,
+  X,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { supabase } from "@/lib/supabase";
@@ -55,7 +56,6 @@ import { useToast } from "@/hooks/use-toast";
 import { CommentSection } from "@/components/CommentSection";
 import { timeAgo, formatPrice, cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
-import { ImageSwiper } from "./ImageSwiper";
 import { GlassCard } from "@/components/ui/glass-card";
 
 /* ─── design tokens ─────────────────────────────────────────────── */
@@ -93,21 +93,34 @@ function ImageCollage({
 }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const dragStartPos = useRef<{ x: number; y: number } | null>(null);
 
   if (urls.length === 0) return null;
 
   if (urls.length === 1) {
     return (
       <div
-        className="w-full cursor-pointer overflow-hidden relative rounded-yrdly-md"
+        className="w-full cursor-pointer overflow-hidden relative rounded-yrdly-md bg-[var(--yrdly-glass-border)]/30"
         style={{ aspectRatio: "4/5", maxHeight: 480 }}
-        onClick={() => onImageClick(0)}
+        onClick={(e) => {
+          e.stopPropagation();
+          onImageClick(0);
+        }}
       >
+        <Image
+          src={urls[0]}
+          alt=""
+          fill
+          aria-hidden="true"
+          className="object-cover scale-110 blur-2xl brightness-75 pointer-events-none"
+          sizes="48px"
+          quality={10}
+        />
         <Image
           src={urls[0]}
           alt="Post image"
           fill
-          className="object-cover post-media-image"
+          className="object-contain post-media-image"
           sizes="(max-width: 640px) 100vw, 626px"
         />
       </div>
@@ -136,7 +149,7 @@ function ImageCollage({
 
   return (
     <div
-      className="relative w-full overflow-hidden rounded-yrdly-md group"
+      className="relative w-full overflow-hidden rounded-yrdly-md group bg-[var(--yrdly-glass-border)]/30"
       style={{ aspectRatio: "4/5", maxHeight: 480 }}
     >
       <div
@@ -148,13 +161,36 @@ function ImageCollage({
           <div
             key={i}
             className="relative flex-shrink-0 w-full h-full snap-center cursor-pointer"
-            onClick={() => onImageClick(i)}
+            onPointerDown={(e) => {
+              dragStartPos.current = { x: e.clientX, y: e.clientY };
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              const start = dragStartPos.current;
+              const moved = start
+                ? Math.hypot(e.clientX - start.x, e.clientY - start.y)
+                : 0;
+              // Ignore the click if it was actually the end of a swipe/drag gesture.
+              if (moved < 8) {
+                onImageClick(i);
+              }
+            }}
           >
+            <Image
+              src={url}
+              alt=""
+              fill
+              aria-hidden="true"
+              loading="lazy"
+              className="object-cover scale-110 blur-2xl brightness-75 pointer-events-none"
+              sizes="48px"
+              quality={10}
+            />
             <Image
               src={url}
               alt={`Post image ${i + 1}`}
               fill
-              className="object-cover post-media-image"
+              className="object-contain post-media-image"
               sizes="(max-width: 640px) 100vw, 626px"
             />
           </div>
@@ -168,7 +204,7 @@ function ImageCollage({
             e.stopPropagation();
             scrollToSlide(activeIndex - 1);
           }}
-          className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-black/80"
+          className="yrdly-no-tap-scale absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-black/80"
           aria-label="Previous image"
         >
           <ChevronLeft className="w-5 h-5" />
@@ -181,7 +217,7 @@ function ImageCollage({
             e.stopPropagation();
             scrollToSlide(activeIndex + 1);
           }}
-          className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-black/80"
+          className="yrdly-no-tap-scale absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-black/80"
           aria-label="Next image"
         >
           <ChevronRight className="w-5 h-5" />
@@ -194,6 +230,150 @@ function ImageCollage({
       </div>
 
       {/* Dot Indicators */}
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-sm z-10 pointer-events-none">
+        {urls.map((_, i) => (
+          <div
+            key={i}
+            className={cn(
+              "h-1.5 rounded-full transition-all duration-200",
+              i === activeIndex ? "w-4 bg-[#82DB7E]" : "w-1.5 bg-white/60"
+            )}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─── swipeable image carousel for the comments modal ───────────── */
+function ModalImageCarousel({
+  urls,
+  initialIndex,
+}: {
+  urls: string[];
+  initialIndex: number;
+}) {
+  const [activeIndex, setActiveIndex] = useState(
+    Math.max(0, Math.min(initialIndex, urls.length - 1))
+  );
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
+  const dragStartX = useRef(0);
+  const dragStartScrollLeft = useRef(0);
+
+  // Jump straight to the image the user actually tapped, without animating.
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      if (scrollRef.current) {
+        scrollRef.current.scrollLeft = activeIndex * scrollRef.current.clientWidth;
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleScroll = () => {
+    if (!scrollRef.current) return;
+    const { scrollLeft, clientWidth } = scrollRef.current;
+    if (clientWidth > 0) {
+      setActiveIndex(Math.round(scrollLeft / clientWidth));
+    }
+  };
+
+  const scrollToSlide = (idx: number) => {
+    if (!scrollRef.current) return;
+    const targetIdx = Math.max(0, Math.min(idx, urls.length - 1));
+    const width = scrollRef.current.clientWidth;
+    scrollRef.current.scrollTo({ left: targetIdx * width, behavior: "smooth" });
+    setActiveIndex(targetIdx);
+  };
+
+  // Click-and-drag support so this feels swipeable with a mouse too (like IG web),
+  // not just via touch. Native overflow-x scroll-snap already handles touch swipes.
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === "touch") return; // let native touch scrolling handle this
+    if (!scrollRef.current) return;
+    isDragging.current = true;
+    dragStartX.current = e.clientX;
+    dragStartScrollLeft.current = scrollRef.current.scrollLeft;
+    scrollRef.current.style.scrollSnapType = "none";
+    scrollRef.current.setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDragging.current || !scrollRef.current) return;
+    e.preventDefault();
+    const delta = e.clientX - dragStartX.current;
+    scrollRef.current.scrollLeft = dragStartScrollLeft.current - delta;
+  };
+
+  const endDrag = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDragging.current || !scrollRef.current) return;
+    isDragging.current = false;
+    scrollRef.current.style.scrollSnapType = "";
+    try {
+      scrollRef.current.releasePointerCapture(e.pointerId);
+    } catch {}
+    const { scrollLeft, clientWidth } = scrollRef.current;
+    const nearest = Math.round(scrollLeft / clientWidth);
+    scrollToSlide(nearest);
+  };
+
+  return (
+    <div className="relative w-full h-full overflow-hidden group">
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={endDrag}
+        onPointerLeave={endDrag}
+        className="flex w-full h-full overflow-x-auto snap-x snap-mandatory scrollbar-hide select-none cursor-grab active:cursor-grabbing"
+      >
+        {urls.map((url, i) => (
+          <div key={i} className="relative flex-shrink-0 w-full h-full snap-center">
+            <Image
+              src={url}
+              alt={`Post image ${i + 1}`}
+              fill
+              className="object-cover pointer-events-none"
+              sizes="60vw"
+              draggable={false}
+            />
+          </div>
+        ))}
+      </div>
+
+      {activeIndex > 0 && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            scrollToSlide(activeIndex - 1);
+          }}
+          className="yrdly-no-tap-scale absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-black/80"
+          aria-label="Previous image"
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+      )}
+
+      {activeIndex < urls.length - 1 && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            scrollToSlide(activeIndex + 1);
+          }}
+          className="yrdly-no-tap-scale absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-black/80"
+          aria-label="Next image"
+        >
+          <ChevronRight className="w-5 h-5" />
+        </button>
+      )}
+
+      <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-[10px] font-bold bg-black/60 text-white z-10 pointer-events-none font-yrdly-body">
+        {activeIndex + 1} / {urls.length}
+      </div>
+
       <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-sm z-10 pointer-events-none">
         {urls.map((_, i) => (
           <div
@@ -243,7 +423,7 @@ function EngagementRow({
         {/* Likes */}
         <button
           onClick={handleLike}
-          className="flex items-center gap-1.5 min-h-[44px] min-w-[44px] px-3.5 py-2.5 rounded-full motion-snappy hover:bg-[var(--yrdly-glass-bg)] hover:scale-[0.97] active:scale-[0.95]"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full motion-snappy hover:bg-[var(--yrdly-glass-bg)] hover:scale-[0.97] active:scale-[0.95]"
         >
           <Heart
             className={`w-5 h-5 ${isLiked ? "text-[#ED1111]" : "text-[var(--yrdly-label)]"} ${
@@ -260,7 +440,7 @@ function EngagementRow({
         {/* Comments */}
         <button
           onClick={onComment}
-          className="flex items-center gap-1.5 min-h-[44px] min-w-[44px] px-3.5 py-2.5 rounded-full motion-snappy hover:bg-[var(--yrdly-glass-bg)] hover:scale-[0.97] active:scale-[0.95]"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full motion-snappy hover:bg-[var(--yrdly-glass-bg)] hover:scale-[0.97] active:scale-[0.95]"
         >
           <MessageCircleMore className="w-5 h-5 text-[var(--yrdly-label)]" />
           <span className="text-[0.75rem] font-medium text-[var(--yrdly-label)] font-yrdly-body">
@@ -270,7 +450,7 @@ function EngagementRow({
         {/* Share */}
         <button
           onClick={onShare}
-          className="flex items-center justify-center gap-1.5 min-h-[44px] min-w-[44px] px-3.5 py-2.5 rounded-full motion-snappy hover:bg-[var(--yrdly-glass-bg)] hover:scale-[0.97] active:scale-[0.95]"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full motion-snappy hover:bg-[var(--yrdly-glass-bg)] hover:scale-[0.97] active:scale-[0.95]"
         >
           <Share2 className="w-5 h-5 text-[var(--yrdly-label)]" />
         </button>
@@ -278,7 +458,7 @@ function EngagementRow({
         <button
           onClick={onBookmark}
           aria-label={isBookmarked ? "Remove bookmark" : "Bookmark post"}
-          className="flex items-center justify-center gap-1.5 min-h-[44px] min-w-[44px] px-3.5 py-2.5 rounded-full motion-snappy hover:bg-[var(--yrdly-glass-bg)] hover:scale-[0.97] active:scale-[0.95]"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full motion-snappy hover:bg-[var(--yrdly-glass-bg)] hover:scale-[0.97] active:scale-[0.95]"
         >
           <Bookmark
             className={cn(
@@ -312,7 +492,6 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
   const [isLiked, setIsLiked] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
-  const [isImageSwiperOpen, setIsImageSwiperOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isEventEditDialogOpen, setIsEventEditDialogOpen] = useState(false);
   const [isTextExpanded, setIsTextExpanded] = useState(false);
@@ -399,40 +578,13 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
       try {
         setLoadingAuthor(true);
         if (post.user) {
-          const u = post.user as any;
-          setAuthor({
-            id: post.user_id,
-            uid: post.user_id,
-            name: u.name || post.author_name || "Anonymous",
-            avatar_url: u.avatar_url || post.author_image || "https://placehold.co/100x100.png",
-            timestamp: u.created_at || post.timestamp,
-            verified_seller: u.verified_seller,
-            is_verified: u.is_verified || u.phone_verified || u.verified || u.id_verified || u.verified_seller,
-            phone_verified: u.phone_verified,
-            verified: u.verified,
-            id_verified: u.id_verified,
-          });
+          setAuthor({ id: post.user_id, uid: post.user_id, name: post.user.name || post.author_name || "Anonymous", avatar_url: post.user.avatar_url || post.author_image || "https://placehold.co/100x100.png", timestamp: (post.user as any).created_at || post.timestamp, verified_seller: (post.user as any).verified_seller });
           setLoadingAuthor(false);
         } else {
-          const { data, error } = await supabase
-            .from("users")
-            .select("id, name, avatar_url, created_at, verified_seller, verified, is_verified, phone_verified, id_verified")
-            .eq("id", post.user_id)
-            .single();
+          const { data, error } = await supabase.from("users").select("id, name, avatar_url, created_at, verified_seller").eq("id", post.user_id).single();
           setAuthor(error
             ? { id: post.user_id, uid: post.user_id, name: post.author_name || "Anonymous", avatar_url: post.author_image || "https://placehold.co/100x100.png", timestamp: post.timestamp }
-            : {
-                id: data.id,
-                uid: data.id,
-                name: data.name || "Anonymous",
-                avatar_url: data.avatar_url || "https://placehold.co/100x100.png",
-                timestamp: data.created_at || post.timestamp,
-                verified_seller: data.verified_seller,
-                is_verified: data.is_verified || data.phone_verified || data.verified || data.id_verified || data.verified_seller,
-                phone_verified: data.phone_verified,
-                verified: data.verified,
-                id_verified: data.id_verified,
-              }
+            : { id: data.id, uid: data.id, name: data.name || "Anonymous", avatar_url: data.avatar_url || "https://placehold.co/100x100.png", timestamp: data.created_at || post.timestamp, verified_seller: data.verified_seller }
           );
           setLoadingAuthor(false);
         }
@@ -626,30 +778,36 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
     if (author && author.id !== currentUser?.id) router.push(`/profile/${author.id}`);
   };
 
+  // Shared destination logic so tapping the post body and tapping a photo
+  // always land in the same place.
+  const goToPostDestination = () => {
+    if (post.category === "For Sale") {
+      router.push(`/marketplace/${post.id}`);
+      return;
+    }
+    if (post.category === "Event" && post.event_link) {
+      const cleanLink = post.event_link.split('?')[0];
+      const parts = cleanLink.split('/');
+      const eventId = parts.pop() || parts.pop();
+      if (eventId) {
+        router.push(`/events/${eventId}`);
+        return;
+      }
+    }
+    setIsCommentsOpen(true);
+  };
+
   const handleCardClick = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('button, a, [role="dialog"], [role="menu"]')) return;
     if (window.getSelection()?.toString()) return;
     if (!isCommentsOpen) {
-      if (post.category === "For Sale") {
-        router.push(`/marketplace/${post.id}`);
-      } else if (post.category === "Event" && post.event_link) {
-        const cleanLink = post.event_link.split('?')[0];
-        const parts = cleanLink.split('/');
-        const eventId = parts.pop() || parts.pop();
-        if (eventId) {
-          router.push(`/events/${eventId}`);
-        } else {
-          router.push(`/posts/${post.id}`);
-        }
-      } else {
-        router.push(`/posts/${post.id}`);
-      }
+      goToPostDestination();
     }
   };
 
   const handleImageClick = (index: number) => {
     setSelectedImageIndex(index);
-    setIsImageSwiperOpen(true);
+    goToPostDestination();
   };
 
   const getEventDate = () => {
@@ -692,8 +850,8 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
             <div className="flex items-center gap-1.5 flex-wrap">
               <button onClick={openProfile} className="flex items-center gap-1">
                 <span className="font-yrdly-display font-bold text-[0.875rem] text-foreground hover:underline">{author?.name || "Anonymous"}</span>
-                {(author?.verified_seller || author?.is_verified || author?.phone_verified || author?.verified || (post.user as any)?.verified_seller || (post.user as any)?.is_verified || (post.user as any)?.phone_verified || (post.user as any)?.verified) && (
-                  <VerifiedBadge size={16} />
+                {(author?.verified_seller || (post.user as any)?.verified_seller) && (
+                  <VerifiedBadge size={16} type="seller" />
                 )}
               </button>
               <span className="text-[var(--yrdly-label)] text-[0.6875rem]">•</span>
@@ -999,30 +1157,105 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
         {cardContent}
       </GlassCard>
 
-      {/* Comments Sheet */}
-      <Sheet open={isCommentsOpen} onOpenChange={setIsCommentsOpen}>
-        <SheetContent side="bottom" className="p-0 flex flex-col rounded-t-2xl border-0 bg-[var(--yrdly-dark)] text-foreground" style={{ maxHeight: "90vh" }}>
-          <SheetHeader className="px-yrdly-md py-yrdly-sm border-b border-[var(--yrdly-glass-border)] flex-shrink-0">
-            <SheetTitle className="text-center text-foreground font-yrdly-display">Comments</SheetTitle>
-          </SheetHeader>
-          <CommentSection
-            postId={post.id}
-            post={post}
-            author={author}
-            onCommentCountChange={setCommentCount}
-            onClose={() => setIsCommentsOpen(false)}
-          />
-        </SheetContent>
-      </Sheet>
+      {/* Comments — Instagram-style modal (image left, comments right on wide screens) */}
+      {isCommentsOpen && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center p-0 md:p-6"
+          style={{ background: "rgba(0,0,0,0.9)" }}
+          onClick={() => setIsCommentsOpen(false)}
+        >
+          <button
+            onClick={() => setIsCommentsOpen(false)}
+            className="absolute top-3 right-3 md:top-5 md:right-5 z-10 flex items-center justify-center w-9 h-9 rounded-full text-white hover:bg-white/10"
+            aria-label="Close comments"
+          >
+            <X className="w-5 h-5" />
+          </button>
 
-      {/* Image Swiper */}
-      {urls.length > 0 && (
-        <ImageSwiper
-          images={urls}
-          isOpen={isImageSwiperOpen}
-          onClose={() => setIsImageSwiperOpen(false)}
-          initialIndex={selectedImageIndex}
-        />
+          <div
+            className="w-full h-full md:h-[min(90vh,700px)] md:max-w-[935px] md:rounded-xl overflow-hidden flex flex-col md:flex-row bg-background border border-[var(--yrdly-glass-border)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Left — image, video, or (if text-only) the post's own writing, like Instagram's own comments screen */}
+            {(urls.length > 0 || activeVideoUrl) ? (
+              <div className="hidden md:block relative flex-1 min-w-0 h-full bg-black overflow-hidden">
+                {activeVideoUrl ? (
+                  <video
+                    src={activeVideoUrl.includes("#t=") ? activeVideoUrl : `${activeVideoUrl}#t=0.001`}
+                    controls
+                    playsInline
+                    preload="metadata"
+                    poster={post.video_thumbnail_url ?? undefined}
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                ) : urls.length > 1 ? (
+                  <ModalImageCarousel urls={urls} initialIndex={selectedImageIndex} />
+                ) : (
+                  <Image
+                    src={urls[0]}
+                    alt="Post image"
+                    fill
+                    className="object-cover"
+                    sizes="60vw"
+                  />
+                )}
+              </div>
+            ) : (
+              <div className="hidden md:flex flex-1 min-w-0 h-full bg-[var(--yrdly-glass-bg)] overflow-hidden flex-col p-10 justify-center">
+                <div className="flex items-center gap-3 mb-5">
+                  <Avatar className="h-11 w-11 flex-shrink-0">
+                    <AvatarImage src={author?.avatar_url} />
+                    <AvatarFallback className="bg-[#82DB7E] text-[#050505] font-bold">
+                      {author?.name?.charAt(0) || "?"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <p className="font-yrdly-display font-bold text-sm text-foreground truncate">
+                      {author?.name || "Anonymous"}
+                    </p>
+                    {post.category && (
+                      <span
+                        className="inline-block mt-0.5 px-2.5 py-0.5 rounded-full font-sans font-medium text-[0.6875rem] text-foreground"
+                        style={{ background: "var(--c-card2)" }}
+                      >
+                        {post.category}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <p className="font-sans text-2xl leading-snug text-foreground whitespace-pre-wrap break-words max-h-[70%] overflow-y-auto">
+                  {post.text}
+                </p>
+              </div>
+            )}
+
+            {/* Right — header + comments + input */}
+            <div className="w-full md:w-[400px] flex-shrink-0 flex flex-col min-h-0 h-full border-l border-[var(--yrdly-glass-border)] bg-background">
+              <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--yrdly-glass-border)] flex-shrink-0">
+                <Avatar className="h-8 w-8 flex-shrink-0">
+                  <AvatarImage src={author?.avatar_url} />
+                  <AvatarFallback className="bg-[#82DB7E] text-[#050505] text-xs font-bold">
+                    {author?.name?.charAt(0) || "?"}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="font-yrdly-display font-bold text-sm text-foreground truncate">
+                  {author?.name || "Anonymous"}
+                </span>
+              </div>
+
+              <div className="flex-1 min-h-0 flex flex-col">
+                <CommentSection
+                  postId={post.id}
+                  post={post}
+                  author={author}
+                  onCommentCountChange={setCommentCount}
+                  onClose={() => setIsCommentsOpen(false)}
+                  hidePostPreview
+                />
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

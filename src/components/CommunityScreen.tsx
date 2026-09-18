@@ -262,7 +262,7 @@ export function CommunityScreen({ className }: { className?: string }) {
 
   return (
     <div className={`min-h-[100dvh] pb-32 bg-[var(--yrdly-dark)] text-foreground ${className || ""}`}>
-      <div className="max-w-2xl mx-auto px-yrdly-md pt-6 space-y-6">
+      <div className="max-w-none w-full px-yrdly-md pt-6 space-y-6">
 
 
 

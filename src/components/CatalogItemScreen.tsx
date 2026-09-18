@@ -170,7 +170,7 @@ export function CatalogItemScreen({
             <div className="flex-1">
               <h3 className="font-semibold text-foreground flex items-center gap-1">
                 {business.name}
-                {((business as any).verified_seller || (business as any).is_verified || (business as any).phone_verified || (business as any).verified) && (
+                {((business as any).verified_seller || (business as any).is_verified) && (
                   <BadgeCheck className="w-4 h-4 text-[#82DB7E] fill-[#82DB7E]/20 shrink-0" />
                 )}
               </h3>

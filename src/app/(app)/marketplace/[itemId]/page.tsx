@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Send, ShoppingBag, MapPin, Share2 } from "lucide-react";
+import { ArrowLeft, Send, ShoppingBag, MapPin, Share2, X, ZoomIn } from "lucide-react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
@@ -33,6 +34,12 @@ export default function MarketplaceItemPage() {
   const [message, setMessage] = useState("Hi, Is this available?");
   const [sendingMessage, setSendingMessage] = useState(false);
   const [justShared, setJustShared] = useState(false);
+  const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const handleShare = async () => {
     const shareUrl = typeof window !== "undefined" ? window.location.href : "";
@@ -308,10 +315,13 @@ export default function MarketplaceItemPage() {
           <div className="px-3 sm:px-6 pt-5">
             <div
               ref={galleryRef}
-              className="relative w-full rounded-xl overflow-hidden select-none"
+              className="relative w-full rounded-xl overflow-hidden select-none cursor-zoom-in"
               style={{
                 aspectRatio: '4/3',
                 maxHeight: '360px',
+              }}
+              onClick={() => {
+                if (images.length > 0 && !isDraggingImage) setIsImageViewerOpen(true);
               }}
               onTouchStart={images.length > 1 ? handleGalleryTouchStart : undefined}
               onTouchMove={images.length > 1 ? handleGalleryTouchMove : undefined}
@@ -356,6 +366,14 @@ export default function MarketplaceItemPage() {
                 </div>
               )}
 
+              {images.length > 0 && (
+                <div
+                  className="absolute bottom-2.5 right-2.5 flex items-center justify-center w-8 h-8 rounded-full pointer-events-none"
+                  style={{ background: "rgba(0,0,0,0.55)" }}
+                >
+                  <ZoomIn className="w-4 h-4 text-white" />
+                </div>
+              )}
             </div>
 
             {/* Dot indicators */}
@@ -615,6 +633,85 @@ export default function MarketplaceItemPage() {
             ))}
           </div>
         </div>
+      )}
+
+      {/* ════ Full-screen image viewer ════ */}
+      {isMounted && isImageViewerOpen && images.length > 0 && createPortal(
+        <div
+          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center"
+          style={{ background: "rgba(0,0,0,0.92)" }}
+          onClick={() => setIsImageViewerOpen(false)}
+        >
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsImageViewerOpen(false);
+            }}
+            className="absolute top-4 right-4 z-10 flex items-center justify-center w-10 h-10 rounded-full"
+            style={{ background: "rgba(255,255,255,0.12)" }}
+            aria-label="Close"
+          >
+            <X className="w-5 h-5 text-white" />
+          </button>
+
+          <div
+            className="relative w-full h-full flex items-center justify-center px-4 py-16"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Image
+              src={images[currentImageIndex]}
+              alt={item.title || "Item image"}
+              fill
+              className="object-contain"
+              sizes="100vw"
+              priority
+            />
+          </div>
+
+          {images.length > 1 && (
+            <>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goToPrevImage();
+                }}
+                disabled={currentImageIndex === 0}
+                className="absolute left-3 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-10 h-10 rounded-full disabled:opacity-30"
+                style={{ background: "rgba(255,255,255,0.12)" }}
+                aria-label="Previous image"
+              >
+                <ArrowLeft className="w-5 h-5 text-white" />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goToNextImage();
+                }}
+                disabled={currentImageIndex === images.length - 1}
+                className="absolute right-3 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-10 h-10 rounded-full disabled:opacity-30"
+                style={{ background: "rgba(255,255,255,0.12)" }}
+                aria-label="Next image"
+              >
+                <ArrowLeft className="w-5 h-5 text-white rotate-180" />
+              </button>
+
+              <div className="absolute bottom-6 z-10 flex items-center justify-center gap-2.5">
+                {images.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      goToImage(i);
+                    }}
+                    className="w-[6px] h-[6px] rounded-full transition-colors"
+                    style={{ background: i === currentImageIndex ? "#fff" : "rgba(255,255,255,0.4)" }}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+        </div>,
+        document.body
       )}
     </div>
   );

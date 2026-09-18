@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useAuth } from "@/hooks/use-supabase-auth";
@@ -76,21 +76,6 @@ export default function CreateMarketplaceListingPage() {
   // Image State
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [coverIndex, setCoverIndex] = useState(0);
-
-  // Memoized Object URLs for attached image files with automatic cleanup to prevent memory leaks
-  const imagePreviews = useMemo(() => {
-    return imageFiles.map((file) => ({
-      file,
-      url: URL.createObjectURL(file),
-    }));
-  }, [imageFiles]);
-
-  useEffect(() => {
-    return () => {
-      imagePreviews.forEach((item) => URL.revokeObjectURL(item.url));
-    };
-  }, [imagePreviews]);
-
   const imageInputRef = useRef<HTMLInputElement>(null);
 
   // Submission State
@@ -304,7 +289,7 @@ export default function CreateMarketplaceListingPage() {
                 if (step > 0) setStep(step - 1);
                 else router.back();
               }}
-              className="w-11 h-11 rounded-full hover:bg-secondary shrink-0"
+              className="rounded-full hover:bg-secondary"
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
@@ -322,13 +307,13 @@ export default function CreateMarketplaceListingPage() {
           {/* Form Wizard Column */}
           <div className={cn("space-y-6", step === 3 ? "md:col-span-6" : "md:col-span-7")}>
             {/* Step Indicators */}
-            <div className="flex items-center justify-between gap-2 border-b border-border pb-4 overflow-x-auto pb-4">
+            <div className="flex items-center justify-between gap-2 border-b border-border pb-4">
               {STEPS.map((sName, idx) => (
                 <div
                   key={sName}
                   onClick={() => idx < step && setStep(idx)}
                   className={cn(
-                    "flex-1 min-h-[44px] flex items-center justify-center text-center px-2 py-2 text-xs font-bold font-sans rounded-xl transition-colors cursor-pointer border",
+                    "flex-1 text-center py-2 text-xs font-bold font-sans rounded-xl transition-colors cursor-pointer border",
                     step === idx
                       ? "bg-primary text-foreground border-primary"
                       : idx < step
@@ -362,7 +347,7 @@ export default function CreateMarketplaceListingPage() {
                       )}
                     >
                       <Image
-                        src={imagePreviews[idx]?.url || ""}
+                        src={URL.createObjectURL(file)}
                         alt={`Upload ${idx + 1}`}
                         fill
                         className="object-cover"
@@ -378,10 +363,9 @@ export default function CreateMarketplaceListingPage() {
                           e.stopPropagation();
                           removeImage(idx);
                         }}
-                        className="absolute top-2 right-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
-                        aria-label="Remove image"
+                        className="absolute top-2 right-2 p-1 rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
                       >
-                        <X className="w-4 h-4" />
+                        <X className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   ))}
@@ -390,7 +374,7 @@ export default function CreateMarketplaceListingPage() {
                     <button
                       type="button"
                       onClick={() => imageInputRef.current?.click()}
-                      className="aspect-square min-h-[80px] rounded-2xl border-2 border-dashed border-border hover:border-primary/50 flex flex-col items-center justify-center p-3 text-center transition-colors bg-secondary/30 hover:bg-secondary"
+                      className="aspect-square rounded-2xl border-2 border-dashed border-border hover:border-primary/50 flex flex-col items-center justify-center p-3 text-center transition-colors bg-secondary/30 hover:bg-secondary"
                     >
                       <ImageIcon className="w-6 h-6 text-muted-foreground mb-1" />
                       <span className="text-xs font-semibold text-muted-foreground">+ Add Photo</span>
@@ -415,7 +399,7 @@ export default function CreateMarketplaceListingPage() {
                     }
                     setStep(1);
                   }}
-                  className="w-full min-h-[44px] rounded-full py-3.5 font-sans font-bold bg-primary text-foreground hover:bg-primary/90 text-base"
+                  className="w-full rounded-full py-6 font-sans font-bold bg-primary text-foreground hover:bg-primary/90 text-base"
                 >
                   Continue to Details
                   <ChevronRight className="w-5 h-5 ml-1" />
@@ -437,7 +421,7 @@ export default function CreateMarketplaceListingPage() {
                     type="button"
                     onClick={() => setListingType("For Sale")}
                     className={cn(
-                      "flex-1 min-h-[44px] py-2.5 rounded-full text-sm font-bold font-sans transition-all flex items-center justify-center",
+                      "flex-1 py-2.5 rounded-full text-sm font-bold font-sans transition-all",
                       listingType === "For Sale" ? "bg-primary text-foreground shadow" : "text-muted-foreground"
                     )}
                   >
@@ -450,7 +434,7 @@ export default function CreateMarketplaceListingPage() {
                       setPrice("0");
                     }}
                     className={cn(
-                      "flex-1 min-h-[44px] py-2.5 rounded-full text-sm font-bold font-sans transition-all flex items-center justify-center gap-1.5",
+                      "flex-1 py-2.5 rounded-full text-sm font-bold font-sans transition-all flex items-center justify-center gap-1.5",
                       listingType === "Giveaway" ? "bg-emerald-500 text-white shadow" : "text-muted-foreground"
                     )}
                   >
@@ -467,7 +451,7 @@ export default function CreateMarketplaceListingPage() {
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     maxLength={120}
-                    className="rounded-xl min-h-[44px]"
+                    className="rounded-xl"
                   />
                 </div>
 
@@ -480,7 +464,7 @@ export default function CreateMarketplaceListingPage() {
                       placeholder="e.g. 250000"
                       value={price}
                       onChange={(e) => setPrice(e.target.value)}
-                      className="rounded-xl min-h-[44px]"
+                      className="rounded-xl"
                     />
                   </div>
                 )}
@@ -500,7 +484,7 @@ export default function CreateMarketplaceListingPage() {
                           type="button"
                           onClick={() => setSubCategory(cat.name)}
                           className={cn(
-                            "min-h-[44px] inline-flex items-center justify-center px-4 py-2.5 rounded-full text-xs font-semibold border transition-all",
+                            "px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all",
                             subCategory === cat.name
                               ? "bg-primary text-foreground border-primary"
                               : "bg-secondary/50 text-secondary-foreground border-border hover:bg-secondary"
@@ -523,7 +507,7 @@ export default function CreateMarketplaceListingPage() {
                         type="button"
                         onClick={() => setCondition(cond)}
                         className={cn(
-                          "min-h-[44px] inline-flex items-center justify-center px-4 py-2.5 rounded-full text-xs font-semibold border transition-all",
+                          "px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all",
                           condition === cond
                             ? "bg-primary text-foreground border-primary"
                             : "bg-secondary/50 text-secondary-foreground border-border hover:bg-secondary"
@@ -539,7 +523,7 @@ export default function CreateMarketplaceListingPage() {
                   <Button
                     variant="outline"
                     onClick={() => setStep(0)}
-                    className="flex-1 min-h-[44px] rounded-full py-3.5 font-bold"
+                    className="flex-1 rounded-full py-6 font-bold"
                   >
                     <ChevronLeft className="w-5 h-5 mr-1" />
                     Back
@@ -556,7 +540,7 @@ export default function CreateMarketplaceListingPage() {
                       }
                       setStep(2);
                     }}
-                    className="flex-1 min-h-[44px] rounded-full py-3.5 font-bold bg-primary text-foreground hover:bg-primary/90"
+                    className="flex-1 rounded-full py-6 font-bold bg-primary text-foreground hover:bg-primary/90"
                   >
                     Continue
                     <ChevronRight className="w-5 h-5 ml-1" />
@@ -609,14 +593,14 @@ export default function CreateMarketplaceListingPage() {
                   <Button
                     variant="outline"
                     onClick={() => setStep(1)}
-                    className="flex-1 min-h-[44px] rounded-full py-3.5 font-bold"
+                    className="flex-1 rounded-full py-6 font-bold"
                   >
                     <ChevronLeft className="w-5 h-5 mr-1" />
                     Back
                   </Button>
                   <Button
                     onClick={() => setStep(3)}
-                    className="flex-1 min-h-[44px] rounded-full py-3.5 font-bold bg-primary text-foreground hover:bg-primary/90"
+                    className="flex-1 rounded-full py-6 font-bold bg-primary text-foreground hover:bg-primary/90"
                   >
                     Review Listing
                     <ChevronRight className="w-5 h-5 ml-1" />
@@ -641,7 +625,7 @@ export default function CreateMarketplaceListingPage() {
                       type="button"
                       onClick={() => setVisibility("public")}
                       className={cn(
-                        "flex-1 min-h-[44px] p-3 rounded-xl border flex items-center gap-2 text-xs font-bold transition-all justify-center",
+                        "flex-1 p-3 rounded-xl border flex items-center gap-2 text-xs font-bold transition-all",
                         visibility === "public" ? "bg-primary text-foreground border-primary" : "bg-background border-border text-muted-foreground"
                       )}
                     >
@@ -652,7 +636,7 @@ export default function CreateMarketplaceListingPage() {
                       type="button"
                       onClick={() => setVisibility("private")}
                       className={cn(
-                        "flex-1 min-h-[44px] p-3 rounded-xl border flex items-center gap-2 text-xs font-bold transition-all justify-center",
+                        "flex-1 p-3 rounded-xl border flex items-center gap-2 text-xs font-bold transition-all",
                         visibility === "private" ? "bg-primary text-foreground border-primary" : "bg-background border-border text-muted-foreground"
                       )}
                     >
@@ -679,7 +663,7 @@ export default function CreateMarketplaceListingPage() {
                     variant="outline"
                     disabled={posting}
                     onClick={() => setStep(2)}
-                    className="flex-1 min-h-[44px] rounded-full py-3.5 font-bold"
+                    className="flex-1 rounded-full py-6 font-bold"
                   >
                     <ChevronLeft className="w-5 h-5 mr-1" />
                     Edit Details
@@ -687,7 +671,7 @@ export default function CreateMarketplaceListingPage() {
                   <Button
                     disabled={posting}
                     onClick={handleSubmit}
-                    className="flex-1 min-h-[44px] rounded-full py-3.5 font-bold bg-primary text-foreground hover:bg-primary/90 text-base"
+                    className="flex-1 rounded-full py-6 font-bold bg-primary text-foreground hover:bg-primary/90 text-base"
                   >
                     {posting ? (
                       <span className="flex items-center gap-2">
@@ -716,7 +700,7 @@ export default function CreateMarketplaceListingPage() {
               <div className="relative aspect-square rounded-2xl overflow-hidden bg-secondary border border-border">
                 {imageFiles.length > 0 ? (
                   <Image
-                    src={imagePreviews[coverIndex]?.url || imagePreviews[0]?.url || ""}
+                    src={URL.createObjectURL(imageFiles[coverIndex] || imageFiles[0])}
                     alt="Preview"
                     fill
                     className="object-cover"

@@ -6,7 +6,6 @@ import {
   House,
   Compass,
   ChatCircle,
-  User,
 } from "@phosphor-icons/react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { ProfileDropdown } from "@/components/ProfileDropdown";
@@ -34,7 +33,6 @@ const navItems = [
     matchPaths: ["/explore", "/marketplace", "/events", "/businesses"],
   },
   { href: "/messages", label: "Messages", icon: ChatCircle },
-  { href: "/profile", label: "Profile", icon: User },
 ];
 
 export function MainLayout({ children }: MainLayoutProps) {
@@ -54,6 +52,15 @@ export function MainLayout({ children }: MainLayoutProps) {
     (pathname.startsWith("/messages/") && pathname !== "/messages") ||
     pathname.includes("/chat");
   const isMapPage = pathname === "/map";
+  const isHomePage = pathname === "/home";
+  const isMessagesPage = pathname === "/messages";
+  const isExplorePage = pathname === "/explore";
+  const isEdgeToEdgePage = isMessagesPage || isExplorePage;
+  const isBusinessOrEventsPage =
+    pathname.startsWith("/businesses") ||
+    pathname.startsWith("/events") ||
+    pathname === "/my-events";
+  const isWidePage = isHomePage || isEdgeToEdgePage || isBusinessOrEventsPage;
 
   const currentNavItem = navItems.find(
     (item) =>
@@ -262,9 +269,12 @@ export function MainLayout({ children }: MainLayoutProps) {
             "flex-1 w-full min-w-0",
             isMapPage
               ? "p-0 overflow-hidden"
+              : isEdgeToEdgePage
+              ? "p-0 overflow-y-auto overflow-x-hidden"
               : "px-3 sm:px-4 md:px-6 py-4",
             isChatPage ? "h-[100dvh]" : "",
-            !isChatPage && !isMapPage ? "pb-20 md:pb-4" : ""
+            isEdgeToEdgePage ? "h-[calc(100dvh-64px)] md:h-[calc(100dvh-84px)]" : "",
+            !isChatPage && !isMapPage && !isEdgeToEdgePage ? "pb-20 md:pb-4" : ""
           )}
         >
           {showUrgentBanner && urgentAlert && (
@@ -308,8 +318,24 @@ export function MainLayout({ children }: MainLayoutProps) {
               <div className="w-full h-full">
                 {children}
               </div>
+            ) : isMessagesPage ? (
+              <div className="w-full h-full">
+                {children}
+              </div>
+            ) : isExplorePage ? (
+              <div className="w-full min-h-full">
+                {children}
+              </div>
+            ) : isHomePage ? (
+              <div className="w-full max-w-[680px] mx-auto lg:max-w-none">
+                {children}
+              </div>
+            ) : isWidePage ? (
+              <div className="w-full">
+                {children}
+              </div>
             ) : (
-              <div className="w-full max-w-[680px] mx-auto lg:max-w-4xl">
+              <div className="w-full max-w-[680px] mx-auto lg:max-w-[660px]">
                 {children}
               </div>
             )}

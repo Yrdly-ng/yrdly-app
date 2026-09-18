@@ -185,7 +185,7 @@ export default function ManageEventPage() {
               variant="ghost"
               size="icon"
               onClick={() => router.back()}
-              className="w-11 h-11 rounded-full hover:bg-secondary shrink-0"
+              className="rounded-full hover:bg-secondary"
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
@@ -203,14 +203,14 @@ export default function ManageEventPage() {
                 fetchData();
               }}
               disabled={refreshing}
-              className="rounded-full font-bold text-xs gap-1.5 min-h-[44px] px-4"
+              className="rounded-full font-bold text-xs gap-1.5"
             >
               <RefreshCw className={cn("w-3.5 h-3.5", refreshing && "animate-spin")} />
               Refresh
             </Button>
             <Button
               onClick={() => router.push(`/events/${id}/scan`)}
-              className="rounded-full bg-primary text-foreground font-bold text-xs gap-1.5 hover:bg-primary/90 min-h-[44px] px-4"
+              className="rounded-full bg-primary text-foreground font-bold text-xs gap-1.5 hover:bg-primary/90"
             >
               <QrCode className="w-4 h-4" />
               Ticket Scanner
@@ -314,7 +314,7 @@ export default function ManageEventPage() {
                 placeholder="Search buyer name or tier..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 rounded-full text-xs min-h-[44px]"
+                className="pl-9 rounded-full text-xs"
               />
             </div>
           </div>

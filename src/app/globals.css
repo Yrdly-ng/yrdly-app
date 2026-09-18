@@ -252,6 +252,13 @@
 }
 
 /* Yrdly specific styles */
+.yrdly-no-tap-scale {
+  transform: none !important;
+}
+.yrdly-no-tap-scale:active {
+  transform: none !important;
+}
+
 .yrdly-gradient {
   background: linear-gradient(135deg, #a7d1ab 0%, #ffb347 100%);
 }

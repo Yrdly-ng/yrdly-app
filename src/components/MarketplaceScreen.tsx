@@ -17,10 +17,9 @@ import { GlassCard } from "@/components/ui/glass-card";
 interface MarketplaceScreenProps {
   onItemClick?: (item: PostType) => void;
   onMessageSeller?: (item: PostType) => void;
-  hideHeader?: boolean;
 }
 
-export function MarketplaceScreen({ onItemClick, onMessageSeller, hideHeader = false }: MarketplaceScreenProps) {
+export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceScreenProps) {
   const { user, profile } = useAuth();
   const { activeFilter } = useLocation();
   const filterState = activeFilter?.state;
@@ -86,7 +85,7 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller, hideHeader = f
       try {
         let query = supabase
           .from("posts")
-          .select(`*, user:users!posts_user_id_fkey(id, name, avatar_url, verified_seller, verified, is_verified, phone_verified, id_verified)`)
+          .select(`*, user:users!posts_user_id_fkey(id, name, avatar_url, verified_seller)`)
           .eq("category", "For Sale")
           .eq("is_sold", false);
 
@@ -158,22 +157,20 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller, hideHeader = f
     <div className="min-h-[100dvh] bg-[var(--yrdly-dark)] text-foreground font-yrdly-body">
 
       {/* Search bar row */}
-      {!hideHeader && (
-        <div className="px-4 pt-2 pb-2">
-          <div className="relative">
-            <Search
-              className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--yrdly-label)]"
-            />
-            <input
-              type="text"
-              placeholder="Search for events, items"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-2.5 bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] backdrop-blur-md text-foreground text-base font-yrdly-body rounded-full outline-none placeholder:text-[var(--yrdly-label)] focus:ring-1 focus:ring-primary"
-            />
-          </div>
+      <div className="px-4 pt-2 pb-2">
+        <div className="relative">
+          <Search
+            className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--yrdly-label)]"
+          />
+          <input
+            type="text"
+            placeholder="Search for events, items"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-12 pr-4 py-2.5 bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] backdrop-blur-md text-foreground text-base font-yrdly-body rounded-full outline-none placeholder:text-[var(--yrdly-label)] focus:ring-1 focus:ring-primary"
+          />
         </div>
-      )}
+      </div>
 
       {/* Section title */}
       <div className="px-4 pt-4 pb-3">
@@ -183,14 +180,14 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller, hideHeader = f
       </div>
 
       {/* Category filter pills */}
-      <div className="px-4 pb-3 flex items-center gap-2 overflow-x-auto pr-4 scrollbar-hide">
+      <div className="px-4 pb-3 flex items-center gap-2 overflow-x-auto scrollbar-hide">
         {CATEGORY_PILLS.map((cat) => {
           const active = activeCategory === cat.label;
           return (
             <button
               key={cat.label}
               onClick={() => setActiveCategory(cat.label)}
-              className={`flex-shrink-0 min-h-[44px] flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold font-yrdly-body transition-all duration-150 active:scale-[0.97] border ${
+              className={`flex-shrink-0 flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold font-yrdly-body transition-all duration-150 active:scale-[0.97] border ${
                 active
                   ? "bg-primary text-primary-foreground border-primary"
                   : "bg-[var(--yrdly-glass-bg)] text-[var(--yrdly-label)] border-[var(--yrdly-glass-border)]"
@@ -336,34 +333,33 @@ function MarketplaceCard({
             <>
               <button
                 onClick={() => onEdit(item)}
-                className="flex-1 min-h-[44px] flex items-center justify-center gap-1 text-xs py-2 rounded-full border border-primary text-primary font-yrdly-body bg-transparent transition-colors"
+                className="flex-1 flex items-center justify-center gap-1 text-xs py-1.5 rounded-full border border-primary text-primary font-yrdly-body bg-transparent transition-colors"
               >
-                <Edit className="w-3.5 h-3.5" />
+                <Edit className="w-3 h-3" />
                 Edit
               </button>
               <button
                 onClick={() => onDelete(item.id)}
-                className="min-h-[44px] min-w-[44px] flex items-center justify-center px-3 py-2 rounded-full border border-red-500 text-red-500 text-xs transition-colors hover:bg-red-500/10 font-yrdly-body"
-                aria-label="Delete item"
+                className="px-2.5 py-1.5 rounded-full border border-red-500 text-red-500 text-xs transition-colors hover:bg-red-500/10 font-yrdly-body"
               >
-                <Trash2 className="w-3.5 h-3.5" />
+                <Trash2 className="w-3 h-3" />
               </button>
             </>
           ) : (
             <>
               <Magnetic
                 onClick={() => onItemClick?.(item)}
-                className="flex-1 min-h-[44px] flex items-center justify-center text-xs py-2 rounded-full font-semibold transition-colors bg-primary text-primary-foreground font-yrdly-body"
+                className="flex-1 text-xs py-1.5 rounded-full font-semibold transition-colors bg-primary text-primary-foreground justify-center font-yrdly-body"
                 strength={4}
               >
                 {item.price === 0 ? "Claim Free" : "Buy Now"}
               </Magnetic>
               <button
                 onClick={() => onMessageSeller?.(item)}
-                className="min-h-[44px] min-w-[44px] flex items-center justify-center px-3 py-2 rounded-full border border-primary text-primary transition-colors hover:bg-primary/10"
+                className="px-2.5 py-1.5 rounded-full border border-primary text-primary transition-colors hover:bg-primary/10"
                 aria-label="Message seller"
               >
-                <MessageCircle className="w-4 h-4" />
+                <MessageCircle className="w-3.5 h-3.5" />
               </button>
             </>
           )}
@@ -396,7 +392,7 @@ function MarketplaceCard({
             className="text-[0.6875rem] truncate flex items-center gap-1 text-[var(--yrdly-label)] font-yrdly-body"
           >
             {item.user?.name || "Unknown Seller"}
-            {(item.user?.verified_seller || item.user?.is_verified || item.user?.phone_verified || item.user?.verified || item.user?.id_verified) && (
+            {item.user?.verified_seller && (
               <BadgeCheck className="w-3.5 h-3.5 text-[#82DB7E] fill-[#82DB7E]/20 shrink-0" />
             )}
           </span>

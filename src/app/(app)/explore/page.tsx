@@ -32,7 +32,6 @@ function MarketplaceTab() {
     <MarketplaceScreen
       onItemClick={handleItemClick}
       onMessageSeller={handleMessageSeller}
-      hideHeader={true}
     />
   );
 }
@@ -67,7 +66,7 @@ function ExploreContent() {
       case "marketplace":
         return <MarketplaceTab />;
       case "events":
-        return <EventsScreen hideHeader={true} />;
+        return <EventsScreen />;
       case "businesses":
         return (
           <Suspense fallback={
@@ -77,7 +76,7 @@ function ExploreContent() {
               ))}
             </div>
           }>
-            <BusinessesScreen backTarget="/explore?tab=businesses" hideHeader={true} />
+            <BusinessesScreen backTarget="/explore?tab=businesses" />
           </Suspense>
         );
       default:
@@ -86,7 +85,7 @@ function ExploreContent() {
   }, [activeTab]);
 
   return (
-    <div className="pb-28 max-w-2xl mx-auto px-4 pt-4 min-h-[100dvh]" style={{ background: "var(--c-bg)" }}>
+    <div className="w-full min-h-full px-4 md:px-6 pt-4 pb-10" style={{ background: "var(--c-card)" }}>
       {/* ── Header Bar ── */}
       <div className="flex items-center justify-between pb-3 mb-2">
         <div>
@@ -140,7 +139,7 @@ function ExploreContent() {
 export default function ExplorePage() {
   return (
     <Suspense fallback={
-      <div className="max-w-2xl mx-auto p-4 space-y-4">
+      <div className="w-full h-full p-4 space-y-4">
         <Skeleton className="h-10 w-full rounded-full" />
         <div className="grid grid-cols-2 gap-4">
           <Skeleton className="h-48 rounded-xl" />

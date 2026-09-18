@@ -37,29 +37,14 @@ export default function EditProfilePage() {
     setWebsite(p.website || "");
   }, [authProfile, user]);
 
-  const avatarPreviewUrlRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (avatarPreviewUrlRef.current) {
-        URL.revokeObjectURL(avatarPreviewUrlRef.current);
-      }
-    };
-  }, []);
-
   const displayAvatar =
     avatarUri || (authProfile as any)?.avatar_url || user?.user_metadata?.avatar_url || "";
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (avatarPreviewUrlRef.current) {
-      URL.revokeObjectURL(avatarPreviewUrlRef.current);
-    }
-    const url = URL.createObjectURL(file);
-    avatarPreviewUrlRef.current = url;
     setAvatarFile(file);
-    setAvatarUri(url);
+    setAvatarUri(URL.createObjectURL(file));
   };
 
   const handleSave = async () => {

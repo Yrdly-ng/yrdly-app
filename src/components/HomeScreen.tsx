@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { usePosts } from "@/hooks/use-posts";
@@ -10,9 +10,12 @@ import { PostSkeleton } from "@/components/PostSkeleton";
 import { LocationChip } from "@/components/LocationChip";
 import { EventCreatorOnboarding } from "@/components/events/EventCreatorOnboarding";
 import { MarketplaceCreatorOnboarding } from "@/components/marketplace/MarketplaceCreatorOnboarding";
-import { Map, Bell, AlertTriangle, X } from "lucide-react";
+import { Map, Bell, AlertTriangle, X, TrendingUp, CalendarDays, UserPlus, LayoutGrid, Heart, ArrowUp, Plus } from "lucide-react";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
+import { useCommunityConnections } from "@/hooks/use-community-connections";
+import { getPublishedEvents } from "@/lib/event-service";
+import type { Event } from "@/types/events";
 
 const GREEN = "#82DB7E";
 
@@ -73,6 +76,172 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
   const [isCreateItemOpen, setIsCreateItemOpen] = useState(false);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   const [activeAlerts, setActiveAlerts] = useState<Alert[]>([]);
+
+  // Sidebar data
+  const { discoverUsers, followUser } = useCommunityConnections();
+  const [trendingPosts, setTrendingPosts] = useState<
+    { id: string; category: string; snippet: string; image: string; like_count: number }[]
+  >([]);
+  // ── Trending reorder animation (FLIP) ──
+  const trendingRowRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const trendingPrevTops = useRef<Record<string, number>>({});
+  const trendingPrevRanks = useRef<Record<string, number>>({});
+  const [risingTrendingIds, setRisingTrendingIds] = useState<Set<string>>(new Set());
+  const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
+  const [recentListings, setRecentListings] = useState<
+    { id: string; title: string; price: number; image: string }[]
+  >([]);
+
+  useEffect(() => {
+    const fetchTrending = async () => {
+      try {
+        const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+        const { data } = await supabase
+          .from("posts")
+          .select("id, category, title, text, image_url, image_urls, liked_by")
+          .gte("created_at", since)
+          .limit(50);
+
+        const ranked = (data || [])
+          .map((p: any) => ({
+            id: p.id,
+            category: p.category,
+            snippet: p.title || p.text?.split("\n")[0] || "Post",
+            image: p.image_urls?.[0] || p.image_url || "",
+            like_count: Array.isArray(p.liked_by) ? p.liked_by.length : 0,
+          }))
+          .sort((a, b) => b.like_count - a.like_count)
+          .slice(0, 3);
+
+        // Capture current row positions before re-ordering (for the FLIP slide animation)
+        const tops: Record<string, number> = {};
+        Object.entries(trendingRowRefs.current).forEach(([id, el]) => {
+          if (el) tops[id] = el.getBoundingClientRect().top;
+        });
+        trendingPrevTops.current = tops;
+
+        // Work out which posts climbed the ranking (or are new) to give them a brief highlight
+        const rising = new Set<string>();
+        ranked.forEach((p, i) => {
+          const prevRank = trendingPrevRanks.current[p.id];
+          if (prevRank === undefined || i < prevRank) rising.add(p.id);
+        });
+        const nextRanks: Record<string, number> = {};
+        ranked.forEach((p, i) => {
+          nextRanks[p.id] = i;
+        });
+        trendingPrevRanks.current = nextRanks;
+
+        if (rising.size > 0) {
+          setRisingTrendingIds(rising);
+          setTimeout(() => setRisingTrendingIds(new Set()), 900);
+        }
+
+        setTrendingPosts(ranked);
+      } catch (e) {
+        console.error("Error fetching trending posts:", e);
+      }
+    };
+    fetchTrending();
+
+    const interval = setInterval(fetchTrending, 2000);
+
+    const ch = supabase
+      .channel("home_trending_posts")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "posts" },
+        fetchTrending
+      )
+      .subscribe();
+
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(ch);
+    };
+  }, []);
+
+  // Slide rows smoothly into their new position instead of snapping (FLIP animation)
+  useLayoutEffect(() => {
+    Object.entries(trendingPrevTops.current).forEach(([id, prevTop]) => {
+      const el = trendingRowRefs.current[id];
+      if (!el) return;
+      const newTop = el.getBoundingClientRect().top;
+      const delta = prevTop - newTop;
+      if (delta) {
+        el.style.transition = "none";
+        el.style.transform = `translateY(${delta}px)`;
+        requestAnimationFrame(() => {
+          el.style.transition = "transform 450ms cubic-bezier(0.22,1,0.36,1)";
+          el.style.transform = "";
+        });
+      }
+    });
+  }, [trendingPosts]);
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const events = await getPublishedEvents({ limit: 3 });
+        setUpcomingEvents(events);
+      } catch (e) {
+        console.error("Error fetching upcoming events:", e);
+      }
+    };
+    fetchEvents();
+
+    const ch = supabase
+      .channel("home_upcoming_events")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "events" },
+        fetchEvents
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, []);
+
+  useEffect(() => {
+    const fetchListings = async () => {
+      try {
+        const { data } = await supabase
+          .from("posts")
+          .select("id, title, text, price, image_url, image_urls")
+          .eq("category", "For Sale")
+          .eq("is_sold", false)
+          .order("timestamp", { ascending: false })
+          .limit(3);
+
+        const mapped = (data || []).map((item: any) => ({
+          id: item.id,
+          title: item.title || item.text?.split("\n")[0] || "Item",
+          price: item.price || 0,
+          image: item.image_urls?.[0] || item.image_url || "",
+        }));
+
+        setRecentListings(mapped);
+      } catch (e) {
+        console.error("Error fetching recent listings:", e);
+      }
+    };
+    fetchListings();
+
+    const ch = supabase
+      .channel("home_recent_listings")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "posts" },
+        fetchListings
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, []);
 
   const { posts, loading, loadingMore, hasMore, loadMore, deletePost, createPost } = usePosts(activeFilter);
 
@@ -172,7 +341,8 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
   }, [hasMore, loading, posts.length]);
 
   return (
-    <div className="w-full max-w-2xl mx-auto space-y-4 font-yrdly-body pb-24">
+    <div className="w-full max-w-none mx-auto grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_500px] gap-6 pb-24">
+    <div className="w-full max-w-none lg:mx-0 space-y-4 font-yrdly-body">
       {/* ── Active Safety Alert Banners (Horizontal Swipe Carousel) ── */}
       {activeAlerts.length > 0 && (
         <div className="flex overflow-x-auto snap-x snap-mandatory gap-3 pb-2 scrollbar-none">
@@ -287,6 +457,194 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
           </p>
         </div>
       )}
+    </div>
+
+    {/* ── Right Sidebar (fixed in place, does not move while the feed scrolls) ── */}
+    <div className="hidden lg:block relative">
+      <aside className="sticky top-[80px] md:top-[100px] grid grid-cols-2 gap-5 font-yrdly-body w-full items-start">
+      <div className="rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-5 shadow-sm transition-all hover:border-primary/40 hover:shadow-md">
+        <div className="flex items-center gap-3 mb-4">
+          <span
+            className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+            style={{ backgroundColor: `${GREEN}22` }}
+          >
+            <TrendingUp size={17} style={{ color: GREEN }} />
+          </span>
+          <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--yrdly-label)] font-yrdly-display">
+            Trending nearby
+          </h3>
+        </div>
+        {trendingPosts.length > 0 ? (
+          trendingPosts.map((p) => (
+            <div
+              key={p.id}
+              ref={(el) => {
+                trendingRowRefs.current[p.id] = el;
+              }}
+              onClick={() => router.push(`/posts/${p.id}`)}
+              className={`relative flex items-center gap-3 py-2.5 px-2 -mx-1 rounded-lg border-b border-[var(--yrdly-glass-border)] last:border-b-0 cursor-pointer transition-all duration-500 hover:bg-[var(--yrdly-glass-border)]/40 hover:ring-1 hover:ring-inset hover:ring-primary/40 ${
+                risingTrendingIds.has(p.id) ? "ring-1 ring-inset ring-primary/60 bg-primary/5" : ""
+              }`}
+            >
+              <div className="w-11 h-11 rounded-lg overflow-hidden flex-shrink-0 bg-background flex items-center justify-center">
+                {p.image ? (
+                  <Image src={p.image} alt={p.snippet} width={44} height={44} className="w-full h-full object-cover" unoptimized />
+                ) : (
+                  <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: GREEN }} />
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-[15px] font-bold truncate">{p.snippet}</div>
+                <div className="text-xs text-[var(--yrdly-label)] capitalize">{p.category}</div>
+              </div>
+              <span className="flex items-center gap-1 text-sm text-[var(--yrdly-label)] flex-shrink-0">
+                {risingTrendingIds.has(p.id) && (
+                  <ArrowUp size={13} className="animate-bounce" style={{ color: GREEN }} />
+                )}
+                <Heart size={13} />
+                {p.like_count}
+              </span>
+            </div>
+          ))
+        ) : (
+          <p className="text-xs text-[var(--yrdly-label)]">No trending posts yet.</p>
+        )}
+      </div>
+
+      <div className="rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-5 shadow-sm transition-all hover:border-primary/40 hover:shadow-md">
+        <div className="flex items-center gap-3 mb-4">
+          <span
+            className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+            style={{ backgroundColor: "#B24C7A22" }}
+          >
+            <LayoutGrid size={17} style={{ color: "#B24C7A" }} />
+          </span>
+          <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--yrdly-label)] font-yrdly-display">
+            Fresh listings
+          </h3>
+        </div>
+        {recentListings.length > 0 ? (
+          recentListings.map((item) => (
+            <div
+              key={item.id}
+              onClick={() => router.push(`/marketplace/${item.id}`)}
+              className="flex items-center gap-3.5 py-2.5 px-2 -mx-1 rounded-lg border-b border-[var(--yrdly-glass-border)] last:border-b-0 cursor-pointer transition-all hover:bg-[var(--yrdly-glass-border)]/40 hover:ring-1 hover:ring-inset hover:ring-primary/40"
+            >
+              <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-background">
+                {item.image && (
+                  <Image src={item.image} alt={item.title} width={48} height={48} className="w-full h-full object-cover" unoptimized />
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-[15px] font-bold truncate">{item.title}</div>
+                <div className="text-sm text-[var(--yrdly-label)]">₦{item.price?.toLocaleString()}</div>
+              </div>
+            </div>
+          ))
+        ) : (
+          <p className="text-xs text-[var(--yrdly-label)]">No listings yet.</p>
+        )}
+      </div>
+
+      <div className="rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-5 shadow-sm transition-all hover:border-primary/40 hover:shadow-md">
+        <div className="flex items-center gap-3 mb-4">
+          <span
+            className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+            style={{ backgroundColor: "#C97A2E22" }}
+          >
+            <CalendarDays size={17} style={{ color: "#C97A2E" }} />
+          </span>
+          <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--yrdly-label)] font-yrdly-display">
+            Upcoming events
+          </h3>
+        </div>
+        {upcomingEvents.length > 0 ? (
+          upcomingEvents.map((e: any) => {
+            const d = new Date(e.start_time);
+            const month = d.toLocaleString("en-US", { month: "short" }).toUpperCase();
+            const day = d.getDate();
+            return (
+              <div
+                key={e.id}
+                onClick={() => router.push(`/events/${e.id}`)}
+                className="flex gap-3.5 py-2.5 px-2 -mx-1 rounded-lg border-b border-[var(--yrdly-glass-border)] last:border-b-0 cursor-pointer transition-all hover:bg-[var(--yrdly-glass-border)]/40 hover:ring-1 hover:ring-inset hover:ring-primary/40"
+              >
+                <div
+                  className="text-xs font-bold text-center leading-tight rounded-lg px-2.5 py-1.5 h-fit flex-shrink-0"
+                  style={{ backgroundColor: "#C97A2E1A", color: "#C97A2E" }}
+                >
+                  {month}
+                  <br />
+                  <span className="text-base">{day}</span>
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[15px] font-bold truncate">{e.title}</div>
+                  <div className="text-sm text-[var(--yrdly-label)] mt-0.5 truncate">
+                    📍 {e.location_address || "TBA"} · {e.attendee_count || 0} going
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <p className="text-xs text-[var(--yrdly-label)]">No upcoming events nearby.</p>
+        )}
+      </div>
+
+      <div className="rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-5 shadow-sm transition-all hover:border-primary/40 hover:shadow-md">
+        <div className="flex items-center gap-3 mb-4">
+          <span
+            className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+            style={{ backgroundColor: "#2F6FA822" }}
+          >
+            <UserPlus size={17} style={{ color: "#2F6FA8" }} />
+          </span>
+          <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--yrdly-label)] font-yrdly-display">
+            People to follow
+          </h3>
+        </div>
+        {discoverUsers.length > 0 ? (
+          discoverUsers.slice(0, 3).map((u: any) => (
+            <div key={u.id} className="flex flex-col gap-2 py-2.5 px-2 -mx-1 rounded-lg transition-all hover:bg-[var(--yrdly-glass-border)]/40 hover:ring-1 hover:ring-inset hover:ring-primary/40">
+              <div className="flex items-center gap-3 min-w-0">
+                <div
+                  onClick={() => router.push(`/profile/${u.id}`)}
+                  className="w-11 h-11 rounded-full overflow-hidden flex items-center justify-center text-sm font-bold flex-shrink-0 ring-2 cursor-pointer"
+                  style={{ backgroundColor: "var(--yrdly-dark)", color: GREEN, ["--tw-ring-color" as any]: `${GREEN}40` }}
+                >
+                  {u.avatar_url ? (
+                    <Image src={u.avatar_url} alt={u.name} width={44} height={44} className="w-full h-full object-cover" unoptimized />
+                  ) : (
+                    u.name?.charAt(0)?.toUpperCase() || "?"
+                  )}
+                </div>
+                <span
+                  onClick={() => router.push(`/profile/${u.id}`)}
+                  className="flex-1 min-w-0 text-[15px] font-semibold leading-snug break-words cursor-pointer hover:underline"
+                >
+                  {u.name}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => followUser(u.id)}
+                  aria-label={`Follow ${u.name}`}
+                  className="w-7 h-7 rounded-full border flex items-center justify-center flex-shrink-0 transition-colors hover:text-black"
+                  style={{ borderColor: GREEN, color: GREEN }}
+                  onMouseEnter={(ev) => (ev.currentTarget.style.backgroundColor = GREEN)}
+                  onMouseLeave={(ev) => (ev.currentTarget.style.backgroundColor = "transparent")}
+                >
+                  <Plus size={15} strokeWidth={2.5} />
+                </button>
+              </div>
+            </div>
+          ))
+        ) : (
+          <p className="text-xs text-[var(--yrdly-label)]">No suggestions right now.</p>
+        )}
+      </div>
+
+    </aside>
+    </div>
     </div>
   );
 }

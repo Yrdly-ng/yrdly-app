@@ -84,17 +84,8 @@ export function MarketplaceChatLayout({
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const previewUrlRef = useRef<string | null>(null);
   const [showChat, setShowChat] = useState(false);
   const [onlineStatuses, setOnlineStatuses] = useState<{ [userId: string]: boolean }>({});
-
-  useEffect(() => {
-    return () => {
-      if (previewUrlRef.current) {
-        URL.revokeObjectURL(previewUrlRef.current);
-      }
-    };
-  }, []);
 
   // Initialize online status tracking for current user
   useEffect(() => {
@@ -352,10 +343,6 @@ export function MarketplaceChatLayout({
       }
       
       setNewMessage("");
-      if (previewUrlRef.current) {
-        URL.revokeObjectURL(previewUrlRef.current);
-        previewUrlRef.current = null;
-      }
       setImageFile(null);
       setImagePreview(null);
       setUploadProgress(null);
@@ -370,21 +357,12 @@ export function MarketplaceChatLayout({
   const handleImageSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      if (previewUrlRef.current) {
-        URL.revokeObjectURL(previewUrlRef.current);
-      }
-      const url = URL.createObjectURL(file);
-      previewUrlRef.current = url;
       setImageFile(file);
-      setImagePreview(url);
+      setImagePreview(URL.createObjectURL(file));
     }
   }, []);
 
   const removeImagePreview = useCallback(() => {
-    if (previewUrlRef.current) {
-      URL.revokeObjectURL(previewUrlRef.current);
-      previewUrlRef.current = null;
-    }
     setImageFile(null);
     setImagePreview(null);
     if(fileInputRef.current) {

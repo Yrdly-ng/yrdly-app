@@ -100,7 +100,7 @@ export function Topbar({
               <Button
                 variant="ghost"
                 size="icon"
-                className="w-11 h-11 md:w-10 md:h-10 flex items-center justify-center text-[var(--c-text-muted)] border border-[var(--c-border)] bg-[var(--c-card2)] rounded-full hover:bg-[#F3F4F6] hover:text-[var(--foreground)] transition-all duration-150"
+                className="w-9 h-9 md:w-10 md:h-10 flex items-center justify-center text-[var(--c-text-muted)] border border-[var(--c-border)] bg-[var(--c-card2)] rounded-full hover:bg-[#F3F4F6] hover:text-[var(--foreground)] transition-all duration-150"
               >
                 <MapPin weight="bold" className="w-4 h-4 md:w-5 md:h-5" />
               </Button>
@@ -114,7 +114,7 @@ export function Topbar({
             <Button
               variant="ghost"
               size="icon"
-              className="relative w-11 h-11 md:w-10 md:h-10 flex items-center justify-center text-[var(--c-text-muted)] border border-[var(--c-border)] bg-[var(--c-card2)] rounded-full hover:bg-[#F3F4F6] hover:text-[var(--foreground)] transition-all duration-150"
+              className="relative w-9 h-9 md:w-10 md:h-10 flex items-center justify-center text-[var(--c-text-muted)] border border-[var(--c-border)] bg-[var(--c-card2)] rounded-full hover:bg-[#F3F4F6] hover:text-[var(--foreground)] transition-all duration-150"
               onClick={onNotifications}
             >
               <Bell weight="bold" className="w-4 h-4 md:w-5 md:h-5" />
@@ -132,7 +132,7 @@ export function Topbar({
           <Button
             variant="ghost"
             size="icon"
-            className="flex w-11 h-11 md:w-10 md:h-10 rounded-full overflow-hidden p-0.5 ml-1 border border-[var(--c-border)] bg-[var(--c-card2)] shadow-sm"
+            className="flex w-9 h-9 md:w-10 md:h-10 rounded-full overflow-hidden p-0.5 ml-1 border border-[var(--c-border)] bg-[var(--c-card2)] shadow-sm"
             onClick={onProfile}
           >
             <Avatar className="w-full h-full rounded-full">

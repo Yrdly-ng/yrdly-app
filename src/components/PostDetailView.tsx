@@ -15,7 +15,6 @@ import {
   Play,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -244,13 +243,8 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
               <AvatarFallback className="bg-[#82DB7E] text-[#050505] font-yrdly-display text-sm font-bold">{author?.name?.charAt(0) || "?"}</AvatarFallback>
             </Avatar>
           )}
-          <div className="min-w-0 flex flex-col justify-center">
-            <div className="flex items-center gap-1.5">
-              <p className="font-yrdly-display font-bold text-sm text-[var(--yrdly-text-primary)] truncate">{author?.name || "Anonymous"}</p>
-              {(author?.verified_seller || author?.is_verified || author?.phone_verified || author?.verified || (post.user as any)?.verified_seller || (post.user as any)?.is_verified || (post.user as any)?.phone_verified || (post.user as any)?.verified) && (
-                <VerifiedBadge size={16} />
-              )}
-            </div>
+          <div className="min-w-0">
+            <p className="font-yrdly-display font-bold text-sm text-[var(--yrdly-text-primary)] truncate">{author?.name || "Anonymous"}</p>
             <p className="font-yrdly-body font-normal text-[0.6875rem] text-[var(--yrdly-label)]">
               {timeAgo(post.timestamp ? new Date(post.timestamp) : null)}
               {post.updated_at && (new Date(post.updated_at).getTime() - new Date(post.timestamp).getTime() > 2000) && " (edited)"}
@@ -384,16 +378,16 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
             <MessageCircleMore className="w-5 h-5 text-foreground" />
             <span className="font-sans font-light text-xs text-foreground">{formatCount(commentCount)}</span>
           </div>
-          <button onClick={handleShare} aria-label="Share post" className="flex items-center justify-center w-11 h-11 rounded-lg hover:bg-accent text-foreground">
-            <Share2 className="w-5 h-5" />
+          <button onClick={handleShare} className="p-1 rounded hover:bg-accent">
+            <Share2 className="w-6 h-6" />
           </button>
         </div>
         {currentUser?.id === post.user_id && (
           <AlertDialog>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button aria-label="More options" className="flex items-center justify-center w-11 h-11 rounded-lg hover:bg-accent text-foreground">
-                  <MoreHorizontal className="w-5 h-5" />
+                <button className="p-1 rounded hover:bg-accent">
+                  <MoreHorizontal className="w-6 h-6" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-card border-border">

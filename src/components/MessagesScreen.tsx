@@ -327,17 +327,12 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
         });
 
       setConversations(formatted);
-
-      // Auto-select first conversation on desktop if none selected
-      if (!selectedConvId && !initialConvId && formatted.length > 0 && typeof window !== "undefined" && window.innerWidth >= 768) {
-        setSelectedConvId(formatted[0].id);
-      }
     } catch (e) {
       console.error("Fetch conversations error:", e);
     } finally {
       setLoading(false);
     }
-  }, [user, selectedConvId, initialConvId]);
+  }, [user, initialConvId]);
 
   useEffect(() => {
     fetchConversations();
@@ -487,12 +482,12 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
   };
 
   return (
-    <div className="w-full max-w-7xl mx-auto h-[calc(100vh-3.5rem)] md:h-[calc(100vh-4.5rem)] my-0 md:my-4 bg-[var(--yrdly-dark)] border-0 md:border md:border-[var(--yrdly-glass-border)] md:rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row font-yrdly-body">
+    <div className="w-full h-full bg-[var(--yrdly-dark)] overflow-hidden flex flex-col md:flex-row font-yrdly-body">
       {/* ── Left Sidebar (Conversations List) ── */}
       <div
         className={cn(
           "w-full md:w-80 lg:w-96 flex flex-col h-full shrink-0 border-r border-[var(--yrdly-glass-border)] bg-[var(--yrdly-dark)]",
-          selectedConvId ? "hidden md:flex" : "flex"
+          selectedConvId ? "hidden" : "flex"
         )}
       >
         {/* Header */}
@@ -682,6 +677,7 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
       >
         {selectedConvId ? (
           <ConversationScreen
+            key={selectedConvId}
             conversationId={selectedConvId}
             onBack={() => {
               setSelectedConvId(null);

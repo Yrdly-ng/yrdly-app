@@ -136,35 +136,12 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
-  const [viewportHeight, setViewportHeight] = useState<number | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
   const { otherTypingUsers, handleTyping, stopTyping } = useTypingDetection(conversationId);
-
-  // Dynamic Visual Viewport tracking for mobile virtual keyboard height
-  useEffect(() => {
-    if (typeof window === "undefined" || !window.visualViewport) return;
-
-    const handleViewportResize = () => {
-      if (window.visualViewport) {
-        setViewportHeight(window.visualViewport.height);
-      }
-    };
-
-    window.visualViewport.addEventListener("resize", handleViewportResize);
-    window.visualViewport.addEventListener("scroll", handleViewportResize);
-    handleViewportResize();
-
-    return () => {
-      if (window.visualViewport) {
-        window.visualViewport.removeEventListener("resize", handleViewportResize);
-        window.visualViewport.removeEventListener("scroll", handleViewportResize);
-      }
-    };
-  }, []);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -347,7 +324,7 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
         } catch {}
       }
       setNewMessage(""); setSelectedFile(null); setImagePreview(null);
-      clearVideoPreview();
+      setVideoFile(null); setVideoPreview(null);
       stopTyping();
     } catch (e) { console.error(e); } finally { setSending(false); }
   }, [user, conversation, newMessage, selectedFile, videoFile, stopTyping]);
@@ -361,38 +338,14 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
     reader.readAsDataURL(file);
   };
 
-  const videoPreviewUrlRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (videoPreviewUrlRef.current) {
-        URL.revokeObjectURL(videoPreviewUrlRef.current);
-      }
-    };
-  }, []);
-
-  const clearVideoPreview = () => {
-    if (videoPreviewUrlRef.current) {
-      URL.revokeObjectURL(videoPreviewUrlRef.current);
-      videoPreviewUrlRef.current = null;
-    }
-    setVideoFile(null);
-    setVideoPreview(null);
-  };
-
   const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const MAX = 15 * 1024 * 1024;
     const ALLOWED = ['video/mp4', 'video/webm', 'video/quicktime'];
     if (!ALLOWED.includes(file.type) || file.size > MAX) return;
-    if (videoPreviewUrlRef.current) {
-      URL.revokeObjectURL(videoPreviewUrlRef.current);
-    }
-    const url = URL.createObjectURL(file);
-    videoPreviewUrlRef.current = url;
     setVideoFile(file);
-    setVideoPreview(url);
+    setVideoPreview(URL.createObjectURL(file));
     if (videoInputRef.current) videoInputRef.current.value = '';
   };
 
@@ -442,10 +395,7 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
   const activityStatus = getActivityStatus((otherParticipant as any).last_seen);
 
   return (
-    <div
-      style={viewportHeight && typeof window !== "undefined" && window.innerWidth < 768 ? { height: `${viewportHeight}px` } : undefined}
-      className="w-full h-full flex-1 flex flex-col min-h-0 bg-[var(--yrdly-dark)] text-foreground font-yrdly-body relative"
-    >
+    <div className="w-full h-full flex-1 flex flex-col min-h-0 bg-[var(--yrdly-dark)] text-foreground font-yrdly-body relative">
       {/* ── Top Bar ── */}
       <header className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 bg-[var(--yrdly-dark)]/90 backdrop-blur-md border-b border-[var(--yrdly-glass-border)]">
         <div className="flex items-center gap-3">
@@ -756,7 +706,7 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
           <div className="relative mb-3 inline-block">
             <video src={videoPreview.includes('#t=') ? videoPreview : `${videoPreview}#t=0.001`} preload="metadata" className="rounded-[10px] w-20 h-20 object-cover" />
             <button
-              onClick={() => { clearVideoPreview(); }}
+              onClick={() => { setVideoFile(null); setVideoPreview(null); }}
               className="absolute -top-2 -right-2 w-6 h-6 rounded-full text-foreground text-xs flex items-center justify-center"
               style={{ background: "#E53935" }}>×</button>
           </div>

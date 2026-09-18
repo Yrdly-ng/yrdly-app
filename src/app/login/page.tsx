@@ -129,7 +129,7 @@ export default function LoginPage() {
             <h2 className="text-2xl font-yrdly-display font-black text-white">
               {isSignUp ? 'Join your neighbourhood' : 'Welcome back'}
             </h2>
-            <p className="text-sm font-yrdly-body font-normal text-white/60">
+            <p className="text-sm font-yrdly-body font-normal text-[var(--yrdly-label)]">
               {isSignUp
                 ? 'Create your account — it only takes a moment'
                 : 'Sign in to your neighbourhood'}
@@ -178,7 +178,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="text-white/40 hover:text-white transition-colors"
+                  className="text-[var(--yrdly-label)] hover:text-white transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -214,7 +214,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => { setIsSignUp(!isSignUp); setError(''); }}
-              className="text-xs text-white/60 hover:text-white transition-colors font-yrdly-body"
+              className="text-xs text-[var(--yrdly-label)] hover:text-white transition-colors font-yrdly-body"
             >
               {isSignUp ? 'Already have an account? ' : "Don't have an account? "}
               <span className="text-[#82DB7E] font-bold">{isSignUp ? 'Sign in' : 'Sign up'}</span>
