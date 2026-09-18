@@ -1160,8 +1160,8 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
       {/* Comments — Instagram-style modal (image left, comments right on wide screens) */}
       {isCommentsOpen && (
         <div
-          className="fixed inset-0 z-[200] flex items-center justify-center p-0 md:p-6"
-          style={{ background: "rgba(0,0,0,0.9)" }}
+          className="fixed inset-0 z-[200] flex items-end md:items-center justify-center p-0 md:p-6"
+          style={{ background: "rgba(0,0,0,0.85)" }}
           onClick={() => setIsCommentsOpen(false)}
         >
           <button
@@ -1173,7 +1173,8 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
           </button>
 
           <div
-            className="w-full h-full md:h-[min(90vh,700px)] md:max-w-[935px] md:rounded-xl overflow-hidden flex flex-col md:flex-row bg-background border border-[var(--yrdly-glass-border)]"
+            className="w-full md:h-[min(90vh,700px)] md:max-w-[935px] md:rounded-xl overflow-hidden flex flex-col md:flex-row bg-background border border-[var(--yrdly-glass-border)] rounded-t-[24px]"
+            style={{ height: 'calc(100dvh - env(safe-area-inset-top, 0px) - 24px)', maxHeight: '92dvh' }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Left — image, video, or (if text-only) the post's own writing, like Instagram's own comments screen */}

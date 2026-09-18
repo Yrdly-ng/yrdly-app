@@ -6,6 +6,7 @@ import {
   House,
   Compass,
   ChatCircle,
+  User,
 } from "@phosphor-icons/react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { ProfileDropdown } from "@/components/ProfileDropdown";
@@ -33,6 +34,7 @@ const navItems = [
     matchPaths: ["/explore", "/marketplace", "/events", "/businesses"],
   },
   { href: "/messages", label: "Messages", icon: ChatCircle },
+  { href: "/profile", label: "Profile", icon: User },
 ];
 
 export function MainLayout({ children }: MainLayoutProps) {

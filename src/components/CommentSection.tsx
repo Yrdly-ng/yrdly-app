@@ -674,7 +674,7 @@ export function CommentSection({
     if (!isInline) {
         return (
             <div
-                className="flex flex-col w-full max-h-[80vh] rounded-[11px] overflow-hidden relative"
+                className="flex flex-col w-full h-full overflow-hidden relative"
                 style={{ background: BG, border: '0.2px solid var(--c-border)' }}
             >
                 {/* Post preview block */}

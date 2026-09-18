@@ -637,14 +637,16 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
               ))}
             </div>
           ) : filteredConversations.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-              <div className="w-14 h-14 rounded-2xl bg-surface border border-[var(--yrdly-glass-border)] flex items-center justify-center mb-3">
-                <MessageSquare className="w-7 h-7 text-[var(--yrdly-label)]" />
+            <div className="flex flex-col items-center justify-center h-full px-6 text-center gap-4">
+              <div className="w-16 h-16 rounded-3xl bg-surface border border-[var(--yrdly-glass-border)] flex items-center justify-center">
+                <MessageSquare className="w-8 h-8 text-[#82DB7E]" />
               </div>
-              <h3 className="text-base font-bold font-yrdly-display text-foreground mb-1">No messages yet</h3>
-              <p className="text-xs text-[var(--yrdly-label)] max-w-xs mb-4">
-                Say hello to someone in your neighbourhood.
-              </p>
+              <div>
+                <h3 className="text-base font-bold font-yrdly-display text-foreground mb-1">No messages yet</h3>
+                <p className="text-xs text-muted-foreground max-w-xs">
+                  Say hello to someone in your neighbourhood.
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => router.push("/explore")}
