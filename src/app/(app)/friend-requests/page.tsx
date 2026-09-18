@@ -143,7 +143,7 @@ export default function FriendRequestsSentPage() {
           Sent Requests
         </h1>
         <p className="text-sm" style={{ color: "var(--c-text-muted)", fontFamily: FONT }}>
-          Friend requests you've sent that are still pending
+          Friend requests you&apos;ve sent that are still pending
         </p>
       </div>
 
