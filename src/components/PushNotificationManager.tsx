@@ -66,6 +66,64 @@ export function PushNotificationManager() {
         }
     }, [user, isSupported, permission]);
 
+    // Real-time listener: capture & display every notification (messages, friend requests, alerts, etc.)
+    useEffect(() => {
+        if (!user) return;
+
+        const channelId = `realtime_notifications_${user.id}`;
+        const channel = supabase
+            .channel(channelId)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'notifications',
+                    filter: `user_id=eq.${user.id}`,
+                },
+                async (payload) => {
+                    const newNotif = payload.new as any;
+                    if (!newNotif) return;
+
+                    // 1. Show in-app Toast notification
+                    toast({
+                        title: newNotif.title || 'Notification 🔔',
+                        description: newNotif.message || '',
+                    });
+
+                    // 2. Deliver Native OS / Device Push Notification
+                    if ('Notification' in window && Notification.permission === 'granted') {
+                        try {
+                            const url = newNotif.data?.url || '/notifications';
+                            const title = newNotif.title || 'Yrdly';
+                            const options: any = {
+                                body: newNotif.message || '',
+                                icon: '/icon-192x192.png',
+                                badge: '/icon-192x192.png',
+                                data: { url, ...newNotif.data },
+                            };
+
+                            if ('serviceWorker' in navigator) {
+                                const reg = await navigator.serviceWorker.ready;
+                                if (reg && reg.showNotification) {
+                                    await reg.showNotification(title, options);
+                                    return;
+                                }
+                            }
+                            new Notification(title, options);
+                        } catch (err) {
+                            console.error('Real-time native push error:', err);
+                        }
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [user, toast]);
+
     // Handle user tapping Enable Notifications button
     const handleEnableNotifications = async () => {
         try {

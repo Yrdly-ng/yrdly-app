@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { MapPin, ChevronDown, Globe, Navigation, Map, X } from "lucide-react";
+import { MapPin, ChevronDown, Navigation, Map, X } from "lucide-react";
 import { useLocation } from "@/contexts/LocationContext";
 import { useRouter } from "next/navigation";
 import states from "@/data/states.json";
@@ -140,7 +140,7 @@ export function LocationChip() {
         }}
       >
         {scope === "all" ? (
-          <Globe className="w-3.5 h-3.5" />
+          <MapPin className="w-3.5 h-3.5" />
         ) : scope === "other_state" ? (
           <Map className="w-3.5 h-3.5" />
         ) : (
@@ -303,7 +303,7 @@ export function LocationChip() {
                   ((e.currentTarget.style.background) = "transparent")
                 }
               >
-                <Globe
+                <MapPin
                   className="w-4 h-4 flex-shrink-0"
                   style={{ color: scope === "all" ? "#1565C0" : "var(--c-text-muted)" }}
                 />

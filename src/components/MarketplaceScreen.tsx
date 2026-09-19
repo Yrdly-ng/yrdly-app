@@ -11,6 +11,7 @@ import Image from "next/image";
 import { useLocation } from "@/contexts/LocationContext";
 import { LocationChip } from "@/components/LocationChip";
 import { MarketplaceCreatorOnboarding } from "@/components/marketplace/MarketplaceCreatorOnboarding";
+import { MarketplaceItemCard } from "@/components/MarketplaceItemCard";
 import { Magnetic } from "@/components/ui/Magnetic";
 import { GlassCard } from "@/components/ui/glass-card";
 
@@ -99,84 +100,70 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
           query = query.eq('ward', filterWard);
         }
 
-        const { data, error } = await query.order("timestamp", { ascending: false });
+        const { data, error } = await query.order("created_at", { ascending: false });
 
-        if (!error) setItems(data as PostType[]);
+        if (error) {
+          console.error("Error fetching items:", error);
+          toast({ variant: "destructive", title: "Error", description: "Failed to load marketplace items." });
+        } else {
+          setItems(data || []);
+        }
+      } catch (error) {
+        console.error("Error in fetchItems:", error);
       } finally {
         setLoading(false);
       }
     };
 
     fetchItems();
-
-    const channelId = `marketplace-items-${Math.random().toString(36).substring(2, 15)}`;
-    const channel = supabase
-      .channel(channelId)
-      .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, (payload) => {
-        if (payload.eventType === "INSERT") {
-          const newItem = payload.new as PostType;
-          if (newItem.category !== "For Sale" || newItem.is_sold) return;
-          setItems((prev) => [newItem, ...prev]);
-        } else if (payload.eventType === "UPDATE") {
-          const updated = payload.new as PostType;
-          setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
-        } else if (payload.eventType === "DELETE") {
-          setItems((prev) => prev.filter((i) => i.id !== payload.old.id));
-        }
-      })
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [filterState, filterLga, filterWard]);
+  }, [filterState, filterLga, filterWard, toast]);
 
   const filteredItems = useMemo(() => {
-    let list = items;
-
-    const activePill = CATEGORY_PILLS.find((c) => c.label === activeCategory);
-    if (activePill && activePill.keywords.length > 0) {
-      list = list.filter((item) => {
-        const haystack = `${item.title || ""} ${item.text || ""} ${item.description || ""}`.toLowerCase();
-        return activePill.keywords.some((kw) => haystack.includes(kw));
-      });
-    }
-
-    if (!searchTerm) return list;
-    const q = searchTerm.toLowerCase();
-    return list.filter(
-      (item) =>
-        (item.text?.toLowerCase() || "").includes(q) ||
-        (item.title?.toLowerCase() || "").includes(q) ||
-        (item.description?.toLowerCase() || "").includes(q)
-    );
+    return items.filter((item) => {
+      const title = item.title || item.text || "";
+      const matchesSearch = title.toLowerCase().includes(searchTerm.toLowerCase());
+      if (!matchesSearch) return false;
+      if (activeCategory === "All Items") return true;
+      const pill = CATEGORY_PILLS.find((p) => p.label === activeCategory);
+      if (!pill || pill.keywords.length === 0) return true;
+      return pill.keywords.some((kw) => title.toLowerCase().includes(kw));
+    });
   }, [items, searchTerm, activeCategory]);
 
-  const formatPrice = (price: number) =>
-    price === 0 ? "FREE" : `₦${price.toLocaleString()}`;
-
   return (
-    <div className="min-h-[100dvh] bg-[var(--yrdly-dark)] text-foreground font-yrdly-body">
-
-      {/* Search bar row */}
-      <div className="px-4 pt-2 pb-2">
-        <div className="relative">
-          <Search
-            className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--yrdly-label)]"
-          />
-          <input
-            type="text"
-            placeholder="Search for events, items"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-12 pr-4 py-2.5 bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] backdrop-blur-md text-foreground text-base font-yrdly-body rounded-full outline-none placeholder:text-[var(--yrdly-label)] focus:ring-1 focus:ring-primary"
-          />
+    <div className="max-w-4xl mx-auto space-y-4 font-yrdly-body pb-20 sm:pb-8">
+      {/* Header bar */}
+      <div className="px-4 flex items-center justify-between">
+        <h1 className="text-xl sm:text-2xl font-bold font-yrdly-display text-foreground">
+          Marketplace
+        </h1>
+        <div className="flex items-center gap-2">
+          <LocationChip />
+          <Magnetic
+            className="flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold text-primary-foreground font-yrdly-display transition-all duration-150 active:scale-[0.97]"
+            style={{ background: "hsl(var(--primary))" }}
+            onClick={handleCreateItem}
+          >
+            <Plus className="w-4 h-4" />
+            Sell Item
+          </Magnetic>
         </div>
       </div>
 
-      {/* Section title */}
-      <div className="px-4 pt-4 pb-3">
-        <h2 className="text-lg font-bold font-yrdly-display text-foreground">
-          Closest to you
-        </h2>
+      {/* Search Bar */}
+      <div className="px-4">
+        <GlassCard className="rounded-full p-0">
+          <div className="flex items-center px-3 py-1.5 gap-2">
+            <Search className="w-4 h-4 text-[var(--yrdly-label)] flex-shrink-0" />
+            <input
+              type="text"
+              placeholder="Search items, phones, laptops..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-transparent text-xs text-foreground placeholder-[var(--yrdly-label)] focus:outline-none font-yrdly-body"
+            />
+          </div>
+        </GlassCard>
       </div>
 
       {/* Category filter pills */}
@@ -211,18 +198,12 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
         </div>
       ) : filteredItems.length > 0 ? (
         <div className="px-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 pb-28">
-          {filteredItems.map((item, index) => (
-            <MarketplaceCard
+          {filteredItems.map((item) => (
+            <MarketplaceItemCard
               key={item.id}
               item={item}
-              isOwner={!!(user && item.user_id === user.id)}
-              formatPrice={formatPrice}
-              onItemClick={onItemClick}
+              onPress={() => (onItemClick ? onItemClick(item) : router.push(`/marketplace/${item.id}`))}
               onMessageSeller={onMessageSeller}
-              onEdit={handleEditItem}
-              onDelete={handleDeleteItem}
-              onProfileClick={(userId) => router.push(`/profile/${userId}`)}
-              priority={index < 4}
             />
           ))}
         </div>

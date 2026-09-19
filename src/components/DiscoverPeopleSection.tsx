@@ -3,10 +3,10 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCommunityConnections, CommunityFilterTab } from '@/hooks/use-community-connections';
+import { DiscoverUserCard } from '@/components/DiscoverUserCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { UserPlus, Users, Loader2, Compass } from 'lucide-react';
+import { Compass } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const FILTER_TABS: { key: CommunityFilterTab; label: string }[] = [
@@ -19,7 +19,7 @@ const FILTER_TABS: { key: CommunityFilterTab; label: string }[] = [
 export function DiscoverPeopleSection() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<CommunityFilterTab>('all');
-  const { discoverUsers, loading, actionInProgress, followUser } = useCommunityConnections(activeTab);
+  const { discoverUsers, loading } = useCommunityConnections(activeTab);
 
   if (loading) {
     return (
@@ -27,15 +27,9 @@ export function DiscoverPeopleSection() {
         <CardHeader>
           <Skeleton className="h-6 w-48" />
         </CardHeader>
-        <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="flex items-center space-x-3 p-3 border rounded-lg">
-              <Skeleton className="h-10 w-10 rounded-full" />
-              <div className="space-y-1 flex-1">
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-3 w-16" />
-              </div>
-            </div>
+        <CardContent className="flex items-center gap-4 overflow-x-auto pb-2 scrollbar-hide">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-44 w-[200px] rounded-2xl flex-shrink-0" />
           ))}
         </CardContent>
       </Card>
@@ -83,51 +77,16 @@ export function DiscoverPeopleSection() {
             No suggested connections found for this filter.
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {discoverUsers.slice(0, 6).map((person) => {
-              const initials = person.name ? person.name.charAt(0).toUpperCase() : '?';
-              const isFollowing = actionInProgress[person.id];
-
-              return (
-                <div
-                  key={person.id}
-                  className="flex items-center justify-between p-3 rounded-xl border border-border/50 bg-card hover:bg-muted/30 transition-colors shadow-2xs"
-                >
-                  <div
-                    className="flex items-center space-x-3 min-w-0 cursor-pointer"
-                    onClick={() => router.push(`/profile/${person.id}`)}
-                  >
-                    <Avatar className="h-10 w-10 border border-border/40">
-                      <AvatarImage src={person.avatar_url || undefined} alt={person.name} />
-                      <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">{initials}</AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0">
-                      <p className="font-medium text-sm truncate">{person.name}</p>
-                      {person.username && (
-                        <p className="text-xs text-muted-foreground truncate">@{person.username}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="shrink-0 ml-2 rounded-full h-8 text-xs font-semibold border-primary/30 text-primary hover:bg-primary/10"
-                    onClick={() => followUser(person.id)}
-                    disabled={isFollowing}
-                  >
-                    {isFollowing ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <>
-                        <UserPlus className="h-3.5 w-3.5 mr-1" />
-                        Follow
-                      </>
-                    )}
-                  </Button>
-                </div>
-              );
-            })}
+          <div className="flex items-center gap-4 overflow-x-auto pb-2 scrollbar-hide">
+            {discoverUsers.slice(0, 10).map((person) => (
+              <DiscoverUserCard
+                key={person.id}
+                user={person}
+                context={activeTab === 'neighbors' ? 'neighbor' : activeTab === 'sellers' ? 'seller' : 'mutual'}
+                mutualCount={1}
+                onPress={() => router.push(`/profile/${person.id}`)}
+              />
+            ))}
           </div>
         )}
       </CardContent>

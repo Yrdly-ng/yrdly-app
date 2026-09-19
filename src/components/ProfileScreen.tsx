@@ -20,6 +20,7 @@ import Image from "next/image";
 import { ProfileQuickAccess } from "./ProfileQuickAccess";
 import { CreateBusinessDialog } from "./CreateBusinessDialog";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
+import { ProfilePostGridItem } from "@/components/ProfilePostGridItem";
 import { useFriendshipGlobal } from "@/hooks/use-friendship-global";
 import { GlassCard } from "@/components/ui/glass-card";
 import {
@@ -445,51 +446,14 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
         {/* Posts tab (Media Posts) */}
         {activeTab === "posts" && (
           mediaPosts.length > 0 ? (
-            <div className="bento-section">
-              <div className="columns-2 gap-4">
-                {mediaPosts.map((post: Post) => {
-                  const thumbUrl = post.image_url || post.image_urls?.[0] || null;
-                  const hasVideo = !!post.video_url;
-                  return (
-                    <GlassCard
-                      key={post.id}
-                      className="rounded-[11px] cursor-pointer overflow-hidden mb-4 break-inside-avoid p-0"
-                      onClick={() => router.push(`/posts/${post.id}`)}
-                    >
-                      <div className="relative w-full" style={{ aspectRatio: '1/1' }}>
-                        {hasVideo ? (
-                          <video
-                            src={post.video_url!.includes('#t=') ? post.video_url! : `${post.video_url}#t=0.001`}
-                            muted
-                            playsInline
-                            preload="metadata"
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <Image src={thumbUrl || "/images/onboarding/splash.jpg"} alt={post.text || "Post"} fill sizes="(max-width: 768px) 50vw, 25vw" className="object-cover" />
-                        )}
-                        {hasVideo && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                            <div className="w-8 h-8 rounded-full bg-black/50 flex items-center justify-center">
-                              <Play className="w-4 h-4 text-white" fill="white" />
-                            </div>
-                          </div>
-                        )}
-                        {(post.image_urls?.length || 0) > 1 && (
-                          <span className="absolute top-1.5 right-1.5 text-[0.6rem] font-semibold px-1.5 py-0.5 rounded-full bg-black/50 text-white font-yrdly-body">
-                            +{(post.image_urls?.length || 1) - 1}
-                          </span>
-                        )}
-                      </div>
-                      {!!post.text && (
-                        <div className="px-4 py-3">
-                          <p className="text-foreground text-xs line-clamp-2 font-yrdly-body">{post.text}</p>
-                        </div>
-                      )}
-                    </GlassCard>
-                  );
-                })}
-              </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {mediaPosts.map((post: Post) => (
+                <ProfilePostGridItem
+                  key={post.id}
+                  post={post}
+                  onPress={() => router.push(`/posts/${post.id}`)}
+                />
+              ))}
             </div>
           ) : (
             <div className="py-12 text-center text-xs text-[var(--yrdly-label)] font-yrdly-body">

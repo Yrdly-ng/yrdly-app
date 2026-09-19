@@ -30,6 +30,7 @@ import { useLocation } from "@/contexts/LocationContext";
 import { LocationChip } from "@/components/LocationChip";
 import { EventCreatorOnboarding } from "@/components/events/EventCreatorOnboarding";
 import { AttendeeAvatars } from "@/components/AttendeeAvatars";
+import { EventCard, EventCardCompact } from "@/components/EventCard";
 import { TiltCard } from "@/components/ui/TiltCard";
 import { Magnetic } from "@/components/ui/Magnetic";
 import { RevealOnScroll } from "@/components/ui/RevealOnScroll";
@@ -370,80 +371,20 @@ export function EventsScreen({ className }: EventsScreenProps) {
             See all
           </Link>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-          {inYourArea.map((event) => {
-            const { day, month } = dateChipParts(event.start_time);
-            const isSaved = savedEvents.has(event.id);
-            return (
-              <GlassCard
-                key={event.id}
-                className="rounded-xl overflow-hidden cursor-pointer transition-all duration-300 hover:-translate-y-1 p-0"
-                onClick={() => router.push(`/events/${event.id}`)}
-              >
-                <div className="p-3 flex gap-2">
-                  <div className="relative w-14 h-14 rounded-lg flex-shrink-0 bg-background overflow-hidden">
-                    <Image
-                      src={event.cover_image_url || "/placeholder.svg"}
-                      alt=""
-                      width={56}
-                      height={56}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute top-0.5 left-0.5 rounded-md px-1 py-0.5 text-center leading-none bg-black/60 backdrop-blur-sm">
-                      <div className="text-white font-yrdly-display font-bold text-[0.55rem]">{day}</div>
-                      <div className="text-white/80 font-yrdly-body text-[0.45rem]">{month}</div>
-                    </div>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-yrdly-display font-semibold text-xs sm:text-[0.8125rem] text-foreground truncate">
-                      {event.title || "Event"}
-                    </p>
-                    <p className="font-yrdly-body text-[0.625rem] text-[var(--yrdly-label)] mt-0.5">
-                      {formatEventDate(event.start_time)}
-                    </p>
-                    <div className="flex items-center gap-1 mt-1 text-[var(--yrdly-label)]">
-                      <MapPin className="w-3 h-3 flex-shrink-0" />
-                      <span className="font-yrdly-body text-[0.625rem] truncate">
-                        {event.location_address || event.description?.slice(0, 30) || "—"}
-                      </span>
-                    </div>
-                  </div>
-                  <button
-                    aria-label={isSaved ? "Unsave" : "Save"}
-                    className="p-1 h-fit text-[var(--yrdly-label)] hover:text-primary transition-colors"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleSaved(event.id);
-                    }}
-                  >
-                    <Heart className={cn("w-4 h-4", isSaved && "fill-primary text-primary")} />
-                  </button>
-                </div>
-                <div className="px-3 pb-3 pt-0 border-t border-[var(--yrdly-glass-border)]">
-                  {event.attendee_count && event.attendee_count > 0 ? (
-                    <p className="font-yrdly-body text-[0.625rem] text-[var(--yrdly-label)] mb-2 mt-2">
-                      {event.attendee_count === 1 ? "1 person going" : `${event.attendee_count} people going`}
-                    </p>
-                  ) : (
-                    <p className="font-yrdly-body text-[0.625rem] text-[var(--yrdly-label)] mb-2 mt-2">
-                      Be the first to RSVP
-                    </p>
-                  )}
-                  <Button
-                    size="sm"
-                    className="w-full rounded-[15px] font-yrdly-body text-[0.6875rem] text-foreground transition-shadow hover:shadow-[0_0_16px_rgba(92,213,120,0.45)]"
-                    style={{ background: "hsl(var(--primary))" }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      router.push(`/events/${event.id}`);
-                    }}
-                  >
-                    Get Ticket
-                  </Button>
-                </div>
-              </GlassCard>
-            );
-          })}
+        <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+          {inYourArea.map((event) => (
+            <EventCardCompact
+              key={event.id}
+              event={{
+                ...event,
+                image_url: event.cover_image_url || (event as any).image_url,
+                event_date: event.start_time,
+                event_location: event.location_address,
+                price: (event as any).price || 0,
+              } as any}
+              onPress={() => router.push(`/events/${event.id}`)}
+            />
+          ))}
         </div>
       </section>
 
@@ -487,125 +428,34 @@ export function EventsScreen({ className }: EventsScreenProps) {
         </button>
       </div>
 
-      {/* Mainstream Events */}
+      {/* Mainstream / Grid Events */}
       <section className="space-y-4">
-        <h2 className="text-lg sm:text-[1.125rem] leading-8 text-foreground font-yrdly-display font-bold">
-          Mainstream Events
-        </h2>
         {mainstream.length === 0 ? (
-          <GlassCard className="rounded-[11px] py-16 px-6 flex flex-col items-center justify-center gap-3 text-center">
-            <CalendarDays className="w-14 h-14 text-[var(--yrdly-label)]" aria-hidden />
-            <p className="text-foreground font-yrdly-display font-bold text-sm">No events yet</p>
+          <GlassCard className="flex flex-col items-center justify-center py-16 px-4 text-center rounded-2xl">
+            <div className="w-12 h-12 rounded-full flex items-center justify-center mb-3 bg-primary/10">
+              <CalendarDays className="w-6 h-6 text-primary" />
+            </div>
+            <h3 className="text-base font-bold font-yrdly-display text-foreground mb-1">No Events Found</h3>
             <p className="text-[var(--yrdly-label)] font-yrdly-body text-xs max-w-[280px]">Be the first to create an event in your neighborhood.</p>
           </GlassCard>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {mainstream.map((event, idx) => {
-              const { day, month } = dateChipParts(event.start_time);
-              const isSaved = savedEvents.has(event.id);
-              return (
+            {mainstream.map((event, idx) => (
               <RevealOnScroll key={event.id} delay={(idx % 4) * 60}>
-              <GlassCard
-                className="rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 hover:-translate-y-1 p-0"
-                onClick={() => router.push(`/events/${event.id}`)}
-              >
-                <div className="p-4 sm:p-5">
-                  {event.organizer && (
-                    <div className="flex items-center gap-2 mb-3">
-                      <Avatar className="w-8 h-8">
-                        <AvatarImage src={(event.organizer as any)?.avatar_url} />
-                        <AvatarFallback className="bg-primary text-primary-foreground text-xs font-yrdly-display">
-                          {(event.organizer as any)?.name?.slice(0, 1) || "U"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-yrdly-display font-bold text-sm text-foreground flex items-center gap-1">
-                          {(event.organizer as any)?.name}
-                          {((event.organizer as any)?.verified_seller || (event.organizer as any)?.is_verified) && (
-                            <BadgeCheck className="w-4 h-4 text-[#82DB7E] fill-[#82DB7E]/20 shrink-0" />
-                          )}
-                        </p>
-                        <p className="font-yrdly-body text-[0.6875rem] text-[var(--yrdly-label)]">
-                          {timeAgo(event.created_at ? new Date(event.created_at) : null)}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                  <h3 className="font-yrdly-display font-extrabold text-base sm:text-lg text-foreground mb-3">
-                    {event.title || "Event"}
-                  </h3>
-                  <div className="relative w-full aspect-[434/262] rounded-[15px] overflow-hidden bg-background mb-4">
-                    <Image
-                      src={event.cover_image_url || "/placeholder.svg"}
-                      alt={event.title || "Event"}
-                      fill
-                      className="object-cover"
-                      sizes="(max-width: 768px) 100vw, 50vw"
-                    />
-                    {/* Date chip overlay */}
-                    <div className="absolute top-2.5 left-2.5 rounded-lg px-2 py-1 text-center leading-none bg-black/60 backdrop-blur-md">
-                      <div className="text-white font-yrdly-display font-bold text-xs">{day}</div>
-                      <div className="text-white/80 font-yrdly-body text-[0.5625rem]">{month}</div>
-                    </div>
-                    {/* Action buttons overlay */}
-                    <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5">
-                      <button
-                        aria-label={isSaved ? "Unsave" : "Save"}
-                        className="w-8 h-8 rounded-full flex items-center justify-center transition-colors bg-black/50 backdrop-blur-md"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleSaved(event.id);
-                        }}
-                      >
-                        <Heart className={cn("w-4 h-4 text-white", isSaved && "fill-white")} />
-                      </button>
-                      <button
-                        aria-label="Share"
-                        className="w-8 h-8 rounded-full flex items-center justify-center bg-black/50 backdrop-blur-md"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (navigator.share) {
-                            navigator.share({
-                              title: event.title || "Event",
-                              url: window.location.origin + `/events/${event.id}`,
-                            });
-                          } else {
-                            navigator.clipboard.writeText(window.location.origin + `/events/${event.id}`);
-                            toast({ title: "Link copied" });
-                          }
-                        }}
-                      >
-                        <Share2 className="w-4 h-4 text-white" />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="space-y-2 text-foreground font-yrdly-body text-[0.8125rem]">
-                    <div className="flex items-center gap-2">
-                      <CalendarDays className="w-4 h-4 flex-shrink-0 text-primary" />
-                      {formatEventDateTime(event.start_time)}
-                    </div>
-                    <div className="flex items-center gap-2 truncate text-[var(--yrdly-label)]">
-                      <MapPin className="w-4 h-4 flex-shrink-0 text-primary" />
-                      {event.location_address || "Online"}
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between mt-4">
-                    <span className="font-yrdly-display font-bold text-xl sm:text-2xl text-primary">
-                      {event.ticket_tiers && event.ticket_tiers.length > 0
-                        ? `From ₦${Math.min(...event.ticket_tiers.map(t => t.price)).toLocaleString()}`
-                        : "Free"}
-                    </span>
-                    {event.attendee_count && event.attendee_count > 0 ? (
-                      <AttendeeAvatars attendees={event.attendees} totalCount={event.attendee_count} maxVisible={4} />
-                    ) : (
-                      <span className="font-yrdly-body text-[0.6875rem] text-[var(--yrdly-label)]">Be the first to join</span>
-                    )}
-                  </div>
-                </div>
-              </GlassCard>
+                <EventCard
+                  event={{
+                    ...event,
+                    image_url: event.cover_image_url || (event as any).image_url,
+                    event_date: event.start_time,
+                    event_location: event.location_address,
+                    price: (event as any).price || 0,
+                    author_name: (event.organizer as any)?.name || (event as any).author_name,
+                    author_image: (event.organizer as any)?.avatar_url || (event as any).author_image,
+                  } as any}
+                  onPress={() => router.push(`/events/${event.id}`)}
+                />
               </RevealOnScroll>
-              );
-            })}
+            ))}
           </div>
         )}
       </section>
