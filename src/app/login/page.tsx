@@ -74,7 +74,7 @@ export default function LoginPage() {
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password || (isSignUp && (!name || !username))) {
+    if (!email || !password || (isSignUp && !name)) {
       setError("Please fill in all required fields");
       return;
     }
@@ -108,15 +108,7 @@ export default function LoginPage() {
           router.push("/home");
         }
       } else {
-        const cleanUsername = username.replace(/^@/, "").trim().toLowerCase();
-        const isAvailable = await AuthService.checkUsernameAvailability(cleanUsername);
-        if (!isAvailable) {
-          setError(`The username @${cleanUsername} is already taken. Please choose another.`);
-          setLoading(false);
-          return;
-        }
-
-        const { user: newUser, error: err } = await signUp(email, password, name, cleanUsername);
+        const { user: newUser, error: err } = await signUp(email, password, name);
         if (err) {
           const errMsg = (err?.message || "").toLowerCase();
           if (
@@ -279,29 +271,15 @@ export default function LoginPage() {
 
             <form onSubmit={handleAuth} className="space-y-3">
               {isSignUp && (
-                <>
-                  {/* Full Name */}
-                  <div className="relative w-full">
-                    <input
-                      type="text"
-                      placeholder="Full name"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="w-full h-[50px] px-4 rounded-xl bg-[#121214] border border-white/20 focus:border-white/50 focus:bg-[#18181b] outline-none text-sm text-white placeholder:text-zinc-500 font-yrdly-body transition-all"
-                    />
-                  </div>
-
-                  {/* Username */}
-                  <div className="relative w-full">
-                    <input
-                      type="text"
-                      placeholder="Username (e.g. johndoe)"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      className="w-full h-[50px] px-4 rounded-xl bg-[#121214] border border-white/20 focus:border-white/50 focus:bg-[#18181b] outline-none text-sm text-white placeholder:text-zinc-500 font-yrdly-body transition-all"
-                    />
-                  </div>
-                </>
+                <div className="relative w-full">
+                  <input
+                    type="text"
+                    placeholder="Full name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full h-[50px] px-4 rounded-xl bg-[#121214] border border-white/20 focus:border-white/50 focus:bg-[#18181b] outline-none text-sm text-white placeholder:text-zinc-500 font-yrdly-body transition-all"
+                  />
+                </div>
               )}
 
               {/* Email */}
