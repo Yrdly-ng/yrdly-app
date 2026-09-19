@@ -1,8 +1,11 @@
 export type WidthTier = 'narrow' | 'default' | 'wide' | 'xwide' | 'full';
 
 export function getPageWidthTier(pathname: string): string {
+  if (pathname.startsWith('/settings')) {
+    return 'max-w-[680px] mx-auto lg:max-w-5xl';
+  }
+
   if (
-    pathname.startsWith('/settings') ||
     pathname.startsWith('/payment') ||
     pathname.startsWith('/verify-phone') ||
     pathname === '/profile/payout-settings'
@@ -18,7 +21,7 @@ export function getPageWidthTier(pathname: string): string {
       pathname !== '/profile/payouts' &&
       pathname !== '/profile/payout-settings')
   ) {
-    return 'max-w-[680px] mx-auto lg:max-w-6xl';
+    return 'max-w-[680px] mx-auto lg:max-w-4xl min-[1440px]:max-w-7xl';
   }
 
   if (

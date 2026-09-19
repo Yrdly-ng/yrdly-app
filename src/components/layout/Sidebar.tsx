@@ -54,13 +54,15 @@ export function Sidebar({
   return (
     <aside className="fixed top-0 left-0 bottom-0 z-40 hidden lg:flex w-64 flex-col border-r border-[var(--c-border)] bg-[var(--c-card)] p-4 font-yrdly-body select-none">
       {/* Brand & Location Chip */}
-      <div className="flex items-center justify-between pb-6 pt-1">
+      <div className="pb-4 pt-1 space-y-3">
         <Link href="/home" className="flex items-center gap-2">
           <span className="font-yrdly-display font-black text-2xl tracking-tight text-[#82DB7E]">
             YRDLY
           </span>
         </Link>
-        <LocationChip />
+        <div>
+          <LocationChip />
+        </div>
       </div>
 
       {/* Primary Nav Links */}
@@ -79,8 +81,8 @@ export function Sidebar({
               className={cn(
                 "flex items-center justify-between px-3.5 py-3 rounded-2xl text-sm font-semibold transition-all duration-150",
                 active
-                  ? "bg-[var(--accent)] text-[var(--accent-foreground)] shadow-sm font-bold"
-                  : "text-[var(--c-text-muted)] hover:bg-[var(--secondary)] hover:text-[var(--foreground)]"
+                  ? "bg-accent text-accent-foreground shadow-sm font-bold"
+                  : "text-[var(--c-text-muted)] hover:bg-secondary hover:text-foreground"
               )}
             >
               <div className="flex items-center gap-3">
@@ -101,8 +103,8 @@ export function Sidebar({
           className={cn(
             "flex items-center gap-3 px-3.5 py-3 rounded-2xl text-sm font-semibold transition-all duration-150",
             isSettingsActive
-              ? "bg-[var(--accent)] text-[var(--accent-foreground)] shadow-sm font-bold"
-              : "text-[var(--c-text-muted)] hover:bg-[var(--secondary)] hover:text-[var(--foreground)]"
+              ? "bg-accent text-accent-foreground shadow-sm font-bold"
+              : "text-[var(--c-text-muted)] hover:bg-secondary hover:text-foreground"
           )}
         >
           <Gear size={22} weight={isSettingsActive ? "fill" : "regular"} className="flex-shrink-0" />
@@ -127,7 +129,7 @@ export function Sidebar({
       <div className="pt-4 border-t border-[var(--c-border)] flex items-center justify-between px-1">
         <button
           onClick={onSearch}
-          className="w-10 h-10 rounded-full flex items-center justify-center text-[var(--c-text-muted)] hover:bg-[var(--secondary)] hover:text-[var(--foreground)] transition-colors"
+          className="w-10 h-10 rounded-full flex items-center justify-center text-[var(--c-text-muted)] hover:bg-secondary hover:text-foreground transition-colors"
           title="Search"
           aria-label="Search"
         >
@@ -136,7 +138,7 @@ export function Sidebar({
 
         <button
           onClick={onNotifications}
-          className="relative w-10 h-10 rounded-full flex items-center justify-center text-[var(--c-text-muted)] hover:bg-[var(--secondary)] hover:text-[var(--foreground)] transition-colors"
+          className="relative w-10 h-10 rounded-full flex items-center justify-center text-[var(--c-text-muted)] hover:bg-secondary hover:text-foreground transition-colors"
           title="Notifications"
           aria-label="Notifications"
         >
@@ -156,7 +158,7 @@ export function Sidebar({
         >
           <Avatar className="w-full h-full rounded-full">
             <AvatarImage src={profile?.avatar_url || ""} />
-            <AvatarFallback className="bg-[var(--primary)] text-white font-bold text-xs">
+            <AvatarFallback className="bg-primary text-white font-bold text-xs">
               {profile?.name?.charAt(0).toUpperCase() || "U"}
             </AvatarFallback>
           </Avatar>

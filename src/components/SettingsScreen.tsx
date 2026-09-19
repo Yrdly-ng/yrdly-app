@@ -1,33 +1,14 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  User,
-  Mail,
-  ShoppingBag,
-  Wallet,
-  Landmark,
-  Lock,
-  MapPin,
-  Shield,
-  Moon,
-  Bell,
-  UserPlus,
-  BookOpen,
-  HelpCircle,
-  Flag,
-  Inbox,
-  AlertTriangle,
-  LogOut,
-  Trash2,
   ChevronRight,
   ArrowLeft,
   ShieldCheck,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useTheme } from "@/components/ThemeProvider";
-import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -39,8 +20,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-
 import { GlassCard } from "@/components/ui/glass-card";
+import { SETTINGS_GROUPS } from "@/components/settings/settings-menu";
 
 const GREEN = "hsl(var(--primary))";
 
@@ -93,9 +74,7 @@ function SettingSection({
 }
 
 function SettingDivider() {
-  return (
-    <div className="h-[1px] ml-16 bg-[var(--yrdly-glass-border)]" />
-  );
+  return <div className="h-[1px] ml-16 bg-[var(--yrdly-glass-border)]" />;
 }
 
 /* ── Setting Row ── */
@@ -178,7 +157,6 @@ export function SettingsScreen({ onBack }: { onBack?: () => void }) {
 
   const isAdmin =
     (profile as any)?.is_admin || (profile as any)?.role === "admin";
-
   const isDarkMode = theme === "dark";
 
   const toggleDarkMode = (value: boolean) => {
@@ -215,207 +193,90 @@ export function SettingsScreen({ onBack }: { onBack?: () => void }) {
       </header>
 
       <div className="max-w-xl mx-auto px-4 pt-6">
-        {/* ── Account & Identity ── */}
-        <SettingSection title="Account & Identity">
-          <SettingRow
-            icon={<User className="w-4 h-4 text-primary" />}
-            label="Edit Profile"
-            sub="Update your name, photo and bio"
-            onPress={() => router.push("/settings/profile")}
-          />
-          <SettingDivider />
-          <SettingRow
-            icon={<span className="text-base leading-none">🇳🇬</span>}
-            label="Phone Number"
-            sub={
-              (profile as any)?.phone_verified
-                ? `${(profile as any)?.phone || "Phone"} · Verified`
-                : "Verify phone number"
-            }
-            onPress={
-              (profile as any)?.phone_verified
-                ? undefined
-                : () => router.push("/verify-phone")
-            }
-            chevron={!(profile as any)?.phone_verified}
-          />
-          <SettingDivider />
-          <SettingRow
-            icon={<Mail className="w-4 h-4 text-primary" />}
-            label="Email Address"
-            sub={user?.email || "No email linked"}
-            onPress={() => setShowEmailDialog(true)}
-          />
-        </SettingSection>
+        {SETTINGS_GROUPS.map((group) => {
+          if (group.adminOnly && !isAdmin) return null;
 
-        {/* ── Commerce ── */}
-        <SettingSection title="Commerce">
-          <SettingRow
-            icon={<ShoppingBag className="w-4 h-4 text-primary" />}
-            label="Transactions"
-            sub="Track your orders & marketplace activity"
-            onPress={() => router.push("/transactions")}
-          />
-          <SettingDivider />
-          <SettingRow
-            icon={<Wallet className="w-4 h-4 text-primary" />}
-            label="Payouts"
-            sub="Manage your earnings & balances"
-            onPress={() => router.push("/settings/payouts")}
-          />
-          <SettingDivider />
-          <SettingRow
-            icon={<Landmark className="w-4 h-4 text-primary" />}
-            label="Bank Account"
-            sub="Manage your linked payout account"
-            onPress={() => router.push("/profile/payout-settings")}
-          />
-        </SettingSection>
+          return (
+            <React.Fragment key={group.title}>
+              {group.adminOnly && isAdmin && (
+                <GlassCard className="flex items-center gap-3 p-4 rounded-[18px] mb-3 border border-emerald-500/20 bg-emerald-500/5">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-emerald-500/10 border border-emerald-500/20 text-emerald-500">
+                    <ShieldCheck className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-bold text-emerald-500 text-sm font-yrdly-display">
+                      Admin Portal
+                    </p>
+                    <p className="text-xs text-[var(--yrdly-label)] font-yrdly-body">
+                      You have administrator privileges
+                    </p>
+                  </div>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-500 border border-emerald-500/25 font-yrdly-display">
+                    ADMIN
+                  </span>
+                </GlassCard>
+              )}
 
-        {/* ── Privacy & Location ── */}
-        <SettingSection title="Privacy & Location">
-          <SettingRow
-            icon={<Lock className="w-4 h-4 text-primary" />}
-            label="Privacy & Discoverability"
-            sub="Manage location sharing and visibility"
-            onPress={() => router.push("/settings/privacy")}
-          />
-          <SettingDivider />
-          <SettingRow
-            icon={<MapPin className="w-4 h-4 text-primary" />}
-            label="Location"
-            sub="Your neighbourhood & location alerts"
-            onPress={() => router.push("/settings/location")}
-          />
-          <SettingDivider />
-          <SettingRow
-            icon={<Shield className="w-4 h-4 text-primary" />}
-            label="Blocked Users"
-            sub="Manage who can't see or contact you"
-            value={
-              (profile as any)?.blocked_users?.length
-                ? String((profile as any).blocked_users.length)
-                : "0"
-            }
-            onPress={() => router.push("/settings/blocked")}
-          />
-        </SettingSection>
+              <SettingSection title={group.title}>
+                {group.items.map((item, idx) => {
+                  const IconComponent = item.icon;
+                  let iconNode: React.ReactNode = (
+                    <IconComponent className={`w-4 h-4 ${item.danger ? "text-red-500" : "text-primary"}`} />
+                  );
+                  let itemSub = item.sub;
+                  let itemChevron = item.chevron !== undefined ? item.chevron : true;
+                  let itemValue: string | undefined;
+                  let onPressAction: (() => void) | undefined;
 
-        {/* ── Preferences ── */}
-        <SettingSection title="Preferences">
-          <SettingRow
-            icon={<Moon className="w-4 h-4 text-primary" />}
-            label="Dark Mode"
-            sub="Toggle dark mode theme"
-            toggle
-            toggled={isDarkMode}
-            onToggle={toggleDarkMode}
-          />
-          <SettingDivider />
-          <SettingRow
-            icon={<Bell className="w-4 h-4 text-primary" />}
-            label="Notifications"
-            sub="Choose what you want to hear"
-            onPress={() => router.push("/settings/notifications")}
-          />
-        </SettingSection>
+                  // Handle dynamic values & actions for specific items
+                  if (item.key === "phone-number") {
+                    iconNode = <span className="text-base leading-none">🇳🇬</span>;
+                    itemSub = (profile as any)?.phone_verified
+                      ? `${(profile as any)?.phone || "Phone"} · Verified`
+                      : "Verify phone number";
+                    itemChevron = !(profile as any)?.phone_verified;
+                    onPressAction = (profile as any)?.phone_verified
+                      ? undefined
+                      : () => router.push("/verify-phone");
+                  } else if (item.key === "email-address") {
+                    itemSub = user?.email || "No email linked";
+                    onPressAction = () => setShowEmailDialog(true);
+                  } else if (item.key === "blocked") {
+                    itemValue = (profile as any)?.blocked_users?.length
+                      ? String((profile as any).blocked_users.length)
+                      : "0";
+                    onPressAction = () => item.href && router.push(item.href);
+                  } else if (item.key === "invite") {
+                    itemValue = "Invite";
+                    onPressAction = () => item.href && router.push(item.href);
+                  } else if (item.key === "sign-out") {
+                    onPressAction = () => setShowSignOutDialog(true);
+                  } else if (item.href) {
+                    onPressAction = () => router.push(item.href!);
+                  }
 
-        {/* ── Community & Support ── */}
-        <SettingSection title="Community & Support">
-          <SettingRow
-            icon={<UserPlus className="w-4 h-4 text-primary" />}
-            label="Invite Neighbours"
-            sub="Invite neighbours to join your community"
-            value="Invite"
-            onPress={() => router.push("/settings/invite")}
-          />
-          <SettingDivider />
-          <SettingRow
-            icon={<BookOpen className="w-4 h-4 text-primary" />}
-            label="Neighbourhood Guidelines"
-            sub="What we stand for in every community"
-            onPress={() => router.push("/settings/guidelines")}
-          />
-          <SettingDivider />
-          <SettingRow
-            icon={<HelpCircle className="w-4 h-4 text-primary" />}
-            label="Help Center"
-            sub="FAQs, tutorials and getting support"
-            onPress={() => router.push("/settings/help")}
-          />
-          <SettingDivider />
-          <SettingRow
-            icon={<Flag className="w-4 h-4 text-primary" />}
-            label="Report an Issue"
-            sub="Flag a problem or inappropriate content"
-            onPress={() => router.push("/settings/report")}
-          />
-        </SettingSection>
-
-        {/* ── Admin Tools (if admin) ── */}
-        {isAdmin && (
-          <div className="mb-6">
-            <GlassCard className="flex items-center gap-3 p-4 rounded-[18px] mb-3 border border-emerald-500/20 bg-emerald-500/5">
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-emerald-500/10 border border-emerald-500/20 text-emerald-500">
-                <ShieldCheck className="w-5 h-5" />
-              </div>
-              <div className="flex-1">
-                <p className="font-bold text-emerald-500 text-sm font-yrdly-display">
-                  Admin Portal
-                </p>
-                <p className="text-xs text-[var(--yrdly-label)] font-yrdly-body">
-                  You have administrator privileges
-                </p>
-              </div>
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-500 border border-emerald-500/25 font-yrdly-display">
-                ADMIN
-              </span>
-            </GlassCard>
-            <SettingSection title="Admin Tools">
-              <SettingRow
-                icon={<Inbox className="w-4 h-4 text-primary" />}
-                label="Dispute Resolution"
-                sub="Review and resolve marketplace disputes"
-                onPress={() => router.push("/admin/disputes")}
-              />
-              <SettingDivider />
-              <SettingRow
-                icon={<Shield className="w-4 h-4 text-primary" />}
-                label="Moderation Queue"
-                sub="Review flagged content and users"
-                onPress={() => router.push("/admin/moderation")}
-              />
-              <SettingDivider />
-              <SettingRow
-                icon={<AlertTriangle className="w-4 h-4 text-primary" />}
-                label="Safety Alerts"
-                sub="Create and manage community safety alerts"
-                onPress={() => router.push("/settings/safety")}
-              />
-            </SettingSection>
-          </div>
-        )}
-
-        {/* ── Account ── */}
-        <SettingSection title="Account">
-          <SettingRow
-            icon={<LogOut className="w-4 h-4 text-red-500" />}
-            label="Sign Out"
-            sub="Log out of your YRDLY account"
-            danger
-            chevron={false}
-            onPress={() => setShowSignOutDialog(true)}
-          />
-          <SettingDivider />
-          <SettingRow
-            icon={<Trash2 className="w-4 h-4 text-red-500" />}
-            label="Request Account Deletion"
-            sub="We'll process your request within 30 days"
-            danger
-            chevron={false}
-            onPress={() => router.push("/settings/delete-account")}
-          />
-        </SettingSection>
+                  return (
+                    <React.Fragment key={item.key}>
+                      <SettingRow
+                        icon={iconNode}
+                        label={item.label}
+                        sub={itemSub}
+                        value={itemValue}
+                        danger={item.danger}
+                        toggle={item.toggle}
+                        toggled={item.toggle ? isDarkMode : undefined}
+                        onToggle={item.toggle ? toggleDarkMode : undefined}
+                        chevron={itemChevron}
+                        onPress={onPressAction}
+                      />
+                      {idx < group.items.length - 1 && <SettingDivider />}
+                    </React.Fragment>
+                  );
+                })}
+              </SettingSection>
+            </React.Fragment>
+          );
+        })}
 
         <p className="text-center text-xs py-6 text-[var(--yrdly-label)] font-yrdly-body">
           YRDLY v1.01

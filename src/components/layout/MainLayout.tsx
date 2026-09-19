@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   House,
   Compass,
+  MapPin,
   ChatCircle,
   User,
 } from "@phosphor-icons/react";
@@ -35,6 +36,7 @@ const navItems = [
     icon: Compass,
     matchPaths: ["/explore", "/marketplace", "/events", "/businesses"],
   },
+  { href: "/map", label: "Map", icon: MapPin },
   { href: "/messages", label: "Messages", icon: ChatCircle },
   { href: "/profile", label: "Profile", icon: User },
 ];

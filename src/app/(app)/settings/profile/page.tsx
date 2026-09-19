@@ -114,7 +114,7 @@ export default function EditProfilePage() {
       <header className="sticky top-0 z-50 flex items-center justify-between px-6 py-4 bg-[var(--yrdly-dark)]/90 backdrop-blur-md border-b border-[var(--yrdly-glass-border)]">
         <button
           onClick={() => router.back()}
-          className="w-9 h-9 flex items-center justify-center rounded-full bg-surface border border-[var(--yrdly-glass-border)] text-foreground transition-all hover:bg-white/5"
+          className="w-9 h-9 flex items-center justify-center rounded-full bg-surface border border-[var(--yrdly-glass-border)] text-foreground transition-all hover:bg-white/5 lg:hidden"
         >
           <ArrowLeft className="w-4 h-4" />
         </button>

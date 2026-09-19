@@ -183,7 +183,7 @@ export default function LocationSettingsPage() {
         <div className="max-w-xl mx-auto flex items-center justify-between">
           <button
             onClick={() => router.back()}
-            className="w-8 h-8 rounded-[11px] bg-[var(--yrdly-surface)] border border-[var(--yrdly-glass-border)] flex items-center justify-center text-[var(--yrdly-text)] hover:opacity-80 transition-opacity"
+            className="w-8 h-8 rounded-[11px] bg-[var(--yrdly-surface)] border border-[var(--yrdly-glass-border)] flex items-center justify-center text-[var(--yrdly-text)] hover:opacity-80 transition-opacity lg:hidden"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
