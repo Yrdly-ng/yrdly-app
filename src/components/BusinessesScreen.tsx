@@ -185,15 +185,31 @@ export function BusinessesScreen({ backTarget = "/businesses" }: { backTarget?: 
     <div className="min-h-[100dvh] bg-[var(--yrdly-dark)] text-foreground font-yrdly-body pb-10">
       {/* Header */}
       <div className="sticky top-0 z-10 px-4 pt-4 pb-3 bg-[var(--yrdly-dark)]/80 backdrop-blur-md border-b border-[var(--yrdly-glass-border)]">
-        {showingList && (
-          <button
-            onClick={handleClearCategory}
-            className="flex items-center gap-2 text-sm mb-3 transition-opacity hover:opacity-70 text-primary font-yrdly-body"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to categories
-          </button>
-        )}
+        <div className="flex items-center gap-3 mb-3">
+          {showingList ? (
+            <button
+              onClick={handleClearCategory}
+              className="flex items-center gap-2 text-sm transition-opacity hover:opacity-70 text-primary font-yrdly-body"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to categories
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                if (backTarget && backTarget !== "/businesses") {
+                  router.push(backTarget);
+                } else {
+                  router.push("/explore");
+                }
+              }}
+              className="flex items-center gap-2 text-sm transition-opacity hover:opacity-70 text-primary font-yrdly-body"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Explore
+            </button>
+          )}
+        </div>
 
         <h1 className="text-3xl mb-1 text-foreground font-yrdly-display font-bold">
           Business Hub

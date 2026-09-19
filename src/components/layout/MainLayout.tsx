@@ -66,7 +66,16 @@ export function MainLayout({ children }: MainLayoutProps) {
     pathname.startsWith("/businesses") ||
     pathname.startsWith("/events") ||
     pathname === "/my-events";
-  const isWidePage = isHomePage || isEdgeToEdgePage || isBusinessOrEventsPage;
+  const isMarketplacePage = pathname.startsWith("/marketplace");
+  const isPostsPage = pathname.startsWith("/posts");
+  const isProfilePage = pathname.startsWith("/profile");
+  const isWidePage =
+    isHomePage ||
+    isEdgeToEdgePage ||
+    isBusinessOrEventsPage ||
+    isMarketplacePage ||
+    isPostsPage ||
+    isProfilePage;
 
   const currentNavItem = navItems.find(
     (item) =>

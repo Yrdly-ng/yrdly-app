@@ -232,223 +232,229 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
         </span>
       </div>
 
-      {/* Post header: avatar, name, time, tag */}
-      <div className="flex items-start justify-between gap-3 px-4 pt-4 pb-2">
-        <div className="flex items-center gap-3 min-w-0">
-          {loadingAuthor ? (
-            <div className="w-10 h-10 rounded-full bg-muted animate-pulse" />
-          ) : (
-            <Avatar className="h-10 w-10 flex-shrink-0">
-              <AvatarImage src={author?.avatar_url} />
-              <AvatarFallback className="bg-[#82DB7E] text-[#050505] font-yrdly-display text-sm font-bold">{author?.name?.charAt(0) || "?"}</AvatarFallback>
-            </Avatar>
-          )}
-          <div className="min-w-0">
-            <p className="font-yrdly-display font-bold text-sm text-[var(--yrdly-text-primary)] truncate">{author?.name || "Anonymous"}</p>
-            <p className="font-yrdly-body font-normal text-[0.6875rem] text-[var(--yrdly-label)]">
-              {timeAgo(post.timestamp ? new Date(post.timestamp) : null)}
-              {post.updated_at && (new Date(post.updated_at).getTime() - new Date(post.timestamp).getTime() > 2000) && " (edited)"}
+      {/* Main content grid: 1-col on mobile, 2-col on desktop */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 lg:divide-x lg:divide-[var(--yrdly-glass-border)]">
+        {/* Left column — post header, text, media, engagement */}
+        <div className="lg:col-span-7 xl:col-span-7 flex flex-col min-w-0">
+          {/* Post header: avatar, name, time, tag */}
+          <div className="flex items-start justify-between gap-3 px-4 pt-4 pb-2">
+            <div className="flex items-center gap-3 min-w-0">
+              {loadingAuthor ? (
+                <div className="w-10 h-10 rounded-full bg-muted animate-pulse" />
+              ) : (
+                <Avatar className="h-10 w-10 flex-shrink-0">
+                  <AvatarImage src={author?.avatar_url} />
+                  <AvatarFallback className="bg-[#82DB7E] text-[#050505] font-yrdly-display text-sm font-bold">{author?.name?.charAt(0) || "?"}</AvatarFallback>
+                </Avatar>
+              )}
+              <div className="min-w-0">
+                <p className="font-yrdly-display font-bold text-sm text-[var(--yrdly-text-primary)] truncate">{author?.name || "Anonymous"}</p>
+                <p className="font-yrdly-body font-normal text-[0.6875rem] text-[var(--yrdly-label)]">
+                  {timeAgo(post.timestamp ? new Date(post.timestamp) : null)}
+                  {post.updated_at && (new Date(post.updated_at).getTime() - new Date(post.timestamp).getTime() > 2000) && " (edited)"}
+                </p>
+              </div>
+            </div>
+            <span
+              className="flex-shrink-0 px-3 py-1 rounded-[12.5px] font-sans font-medium text-xs text-foreground"
+              style={{ background: "var(--c-card2)" }}
+            >
+              {post.category}
+            </span>
+          </div>
+
+          {/* Post body text */}
+          <div className="px-4 pb-3">
+            <p className="font-sans font-normal text-[0.8125rem] leading-[15px] text-foreground whitespace-pre-wrap">
+              {post.text || ""}
             </p>
           </div>
-        </div>
-        <span
-          className="flex-shrink-0 px-3 py-1 rounded-[12.5px] font-sans font-medium text-xs text-foreground"
-          style={{ background: "var(--c-card2)" }}
-        >
-          {post.category}
-        </span>
-      </div>
 
-      {/* Post body text */}
-      <div className="px-4 pb-3">
-        <p className="font-sans font-normal text-[0.8125rem] leading-[15px] text-foreground whitespace-pre-wrap">
-          {post.text || ""}
-        </p>
-      </div>
-
-      {/* Image Swiper Carousel — mirrors PostCard layout */}
-      {urls.length > 0 && (
-        <div className="px-3 pb-4">
-          {urls.length === 1 ? (
-            <div className="relative w-full overflow-hidden rounded-2xl h-[360px] sm:h-[480px] lg:h-[540px] max-h-[640px]">
-              <Image src={urls[0]} alt="" fill className="object-cover" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 1200px" />
-            </div>
-          ) : (
-            <div className="relative group w-full overflow-hidden rounded-2xl h-[360px] sm:h-[480px] lg:h-[540px]">
-              <div
-                ref={carouselRef}
-                onScroll={handleScroll}
-                className="flex w-full h-full overflow-x-auto snap-x snap-mandatory scroll-smooth"
-                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-              >
-                {urls.map((u, i) => (
-                  <div key={i} className="relative w-full h-full flex-shrink-0 snap-start">
-                    <Image
-                      src={u}
-                      alt=""
-                      fill
-                      className="object-cover"
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 1200px"
-                    />
-                  </div>
-                ))}
-              </div>
-
-              {/* Prev / Next Chevrons */}
-              {activeIndex > 0 && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    scrollToSlide(activeIndex - 1);
-                  }}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-black/80"
-                  aria-label="Previous image"
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                </button>
-              )}
-
-              {activeIndex < urls.length - 1 && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    scrollToSlide(activeIndex + 1);
-                  }}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-black/80"
-                  aria-label="Next image"
-                >
-                  <ChevronRight className="w-5 h-5" />
-                </button>
-              )}
-
-              {/* Slide Counter Badge */}
-              <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-[10px] font-bold bg-black/60 text-white z-10 pointer-events-none font-yrdly-body">
-                {activeIndex + 1} / {urls.length}
-              </div>
-
-              {/* Dot Indicators */}
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-sm z-10 pointer-events-none">
-                {urls.map((_, i) => (
+          {/* Image Swiper Carousel — mirrors PostCard layout */}
+          {urls.length > 0 && (
+            <div className="px-3 pb-4">
+              {urls.length === 1 ? (
+                <div className="relative w-full overflow-hidden rounded-2xl h-[360px] sm:h-[480px] lg:h-[540px] max-h-[640px]">
+                  <Image src={urls[0]} alt="" fill className="object-cover" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 60vw, 900px" />
+                </div>
+              ) : (
+                <div className="relative group w-full overflow-hidden rounded-2xl h-[360px] sm:h-[480px] lg:h-[540px]">
                   <div
-                    key={i}
-                    className={cn(
-                      "h-1.5 rounded-full transition-all duration-200",
-                      i === activeIndex ? "w-4 bg-[#82DB7E]" : "w-1.5 bg-white/60"
-                    )}
-                  />
-                ))}
+                    ref={carouselRef}
+                    onScroll={handleScroll}
+                    className="flex w-full h-full overflow-x-auto snap-x snap-mandatory scroll-smooth"
+                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                  >
+                    {urls.map((u, i) => (
+                      <div key={i} className="relative w-full h-full flex-shrink-0 snap-start">
+                        <Image
+                          src={u}
+                          alt=""
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 60vw, 900px"
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Prev / Next Chevrons */}
+                  {activeIndex > 0 && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        scrollToSlide(activeIndex - 1);
+                      }}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-black/80"
+                      aria-label="Previous image"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+                  )}
+
+                  {activeIndex < urls.length - 1 && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        scrollToSlide(activeIndex + 1);
+                      }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-black/80"
+                      aria-label="Next image"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                  )}
+
+                  {/* Slide Counter Badge */}
+                  <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-[10px] font-bold bg-black/60 text-white z-10 pointer-events-none font-yrdly-body">
+                    {activeIndex + 1} / {urls.length}
+                  </div>
+
+                  {/* Dot Indicators */}
+                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-sm z-10 pointer-events-none">
+                    {urls.map((_, i) => (
+                      <div
+                        key={i}
+                        className={cn(
+                          "h-1.5 rounded-full transition-all duration-200",
+                          i === activeIndex ? "w-4 bg-[#82DB7E]" : "w-1.5 bg-white/60"
+                        )}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Video player */}
+          {post.video_url && (
+            <div className="px-3 pb-4">
+              <div className="relative rounded-xl overflow-hidden bg-black">
+                <video
+                  src={post.video_url.includes('#t=') ? post.video_url : `${post.video_url}#t=0.001`}
+                  controls
+                  playsInline
+                  disablePictureInPicture
+                  controlsList="nodownload noremoteplayback nopictureinpicture"
+                  preload="metadata"
+                  poster={post.video_thumbnail_url ?? undefined}
+                  className="w-full object-cover max-h-[500px] lg:max-h-[600px]"
+                  style={{ borderRadius: 12 }}
+                />
               </div>
             </div>
           )}
-        </div>
-      )}
 
-      {/* Video player */}
-      {post.video_url && (
-        <div className="px-3 pb-4">
-          <div className="relative rounded-xl overflow-hidden bg-black">
-            <video
-              src={post.video_url.includes('#t=') ? post.video_url : `${post.video_url}#t=0.001`}
-              controls
-              playsInline
-              disablePictureInPicture
-              controlsList="nodownload noremoteplayback nopictureinpicture"
-              preload="metadata"
-              poster={post.video_thumbnail_url ?? undefined}
-              className="w-full object-cover max-h-[500px] lg:max-h-[600px]"
-              style={{ borderRadius: 12 }}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Engagement row */}
-      <div className="flex items-center justify-between px-4 py-3 border-t border-border">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={handleLike}
-              className="flex items-center justify-center w-11 h-11 p-2.5 rounded-lg bg-[#D9D9D9]/20 hover:bg-accent"
-            >
-              <Heart className={cn("w-5 h-5", isLiked && "fill-[#ED1111] text-[#ED1111]")} />
-            </button>
-            <span className="font-sans font-light italic text-xs text-foreground">{formatCount(likes)}</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <MessageCircleMore className="w-5 h-5 text-foreground" />
-            <span className="font-sans font-light text-xs text-foreground">{formatCount(commentCount)}</span>
-          </div>
-          <button onClick={handleShare} className="p-1 rounded hover:bg-accent">
-            <Share2 className="w-6 h-6" />
-          </button>
-        </div>
-        {currentUser?.id === post.user_id && (
-          <AlertDialog>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="p-1 rounded hover:bg-accent">
-                  <MoreHorizontal className="w-6 h-6" />
+          {/* Engagement row */}
+          <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={handleLike}
+                  className="flex items-center justify-center w-11 h-11 p-2.5 rounded-lg bg-[#D9D9D9]/20 hover:bg-accent"
+                >
+                  <Heart className={cn("w-5 h-5", isLiked && "fill-[#ED1111] text-[#ED1111]")} />
                 </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-card border-border">
-                {(() => {
-                  const canEdit = (Date.now() - new Date(post.created_at || post.timestamp || Date.now()).getTime()) <= 15 * 60 * 1000;
-                  if (!canEdit) return null;
-                  
-                  if (post.category === "Event") {
-                    return (
-                      <DropdownMenuItem onClick={() => router.push(`/events/${post.id}/manage`)} className="text-foreground focus:bg-accent cursor-pointer">
-                        <Edit className="mr-2 h-4 w-4" /> Manage Event
+                <span className="font-sans font-light italic text-xs text-foreground">{formatCount(likes)}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <MessageCircleMore className="w-5 h-5 text-foreground" />
+                <span className="font-sans font-light text-xs text-foreground">{formatCount(commentCount)}</span>
+              </div>
+              <button onClick={handleShare} className="p-1 rounded hover:bg-accent">
+                <Share2 className="w-6 h-6" />
+              </button>
+            </div>
+            {currentUser?.id === post.user_id && (
+              <AlertDialog>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="p-1 rounded hover:bg-accent">
+                      <MoreHorizontal className="w-6 h-6" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="bg-card border-border">
+                    {(() => {
+                      const canEdit = (Date.now() - new Date(post.created_at || post.timestamp || Date.now()).getTime()) <= 15 * 60 * 1000;
+                      if (!canEdit) return null;
+                      
+                      if (post.category === "Event") {
+                        return (
+                          <DropdownMenuItem onClick={() => router.push(`/events/${post.id}/manage`)} className="text-foreground focus:bg-accent cursor-pointer">
+                            <Edit className="mr-2 h-4 w-4" /> Manage Event
+                          </DropdownMenuItem>
+                        );
+                      }
+
+                      if ((post as any).category === "For Sale" || (post as any).category === "Giveaway") {
+                        return (
+                          <DropdownMenuItem onClick={() => router.push(`/marketplace/edit/${post.id}`)} className="text-foreground focus:bg-accent cursor-pointer">
+                            <Edit className="mr-2 h-4 w-4" /> Edit Listing
+                          </DropdownMenuItem>
+                        );
+                      }
+
+                      return null;
+                    })()}
+                    <AlertDialogTrigger asChild>
+                      <DropdownMenuItem className="text-red-400 focus:bg-red-500/10 focus:text-red-400">
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
                       </DropdownMenuItem>
-                    );
-                  }
+                    </AlertDialogTrigger>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <AlertDialogContent className="bg-card border-border text-foreground">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete your post and all comments.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel className="bg-background/10 text-foreground border-0">Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
+        </div>
 
-                  if ((post as any).category === "For Sale" || (post as any).category === "Giveaway") {
-                    return (
-                      <DropdownMenuItem onClick={() => router.push(`/marketplace/edit/${post.id}`)} className="text-foreground focus:bg-accent cursor-pointer">
-                        <Edit className="mr-2 h-4 w-4" /> Edit Listing
-                      </DropdownMenuItem>
-                    );
-                  }
-
-                  return null;
-                })()}
-                <AlertDialogTrigger asChild>
-                  <DropdownMenuItem className="text-red-400 focus:bg-red-500/10 focus:text-red-400">
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
-                  </DropdownMenuItem>
-                </AlertDialogTrigger>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <AlertDialogContent className="bg-card border-border text-foreground">
-              <AlertDialogHeader>
-                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will permanently delete your post and all comments.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel className="bg-background/10 text-foreground border-0">Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
-                  Delete
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        )}
-      </div>
-
-      {/* Comment input + CommentSection (inline, dark) */}
-      <div className="border-t border-border">
-        <CommentSection
-          postId={post.id}
-          post={post}
-          author={author}
-          onCommentCountChange={handleCommentCountChange}
-          variant="inline"
-          hidePostPreview
-        />
+        {/* Right column — comment input + CommentSection (desktop side column) */}
+        <div className="lg:col-span-5 xl:col-span-5 flex flex-col border-t lg:border-t-0 border-border">
+          <CommentSection
+            postId={post.id}
+            post={post}
+            author={author}
+            onCommentCountChange={handleCommentCountChange}
+            variant="inline"
+            hidePostPreview
+          />
+        </div>
       </div>
     </div>
   );
