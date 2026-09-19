@@ -214,7 +214,7 @@ export default function PayoutSettingsPage() {
 
             <div className="flex items-center gap-1.5 pt-1 text-[12px] text-[var(--yrdly-label)] font-yrdly-body">
               <CheckCircle2 className="w-3.5 h-3.5 text-[#82DB7E]" />
-              <span>Verified by Paystack</span>
+              <span>Verified by Payluk</span>
             </div>
           </div>
 
@@ -347,7 +347,7 @@ export default function PayoutSettingsPage() {
             {step === "verifying" && (
               <div className="flex items-center gap-3 px-4 py-3.5 bg-[rgba(100,181,246,0.06)] border border-[rgba(100,181,246,0.2)] rounded-[14px]">
                 <p className="text-[13px] text-[#64B5F6] font-yrdly-body">
-                  Verifying account with Paystack…
+                  Verifying account with Payluk…
                 </p>
               </div>
             )}
@@ -365,7 +365,7 @@ export default function PayoutSettingsPage() {
                     {resolvedName}
                   </p>
                   <p className="text-[12px] text-[#82DB7E] mt-0.5 font-yrdly-body">
-                    Verified by Paystack ✓
+                    Verified by Payluk ✓
                   </p>
                 </div>
               </div>
