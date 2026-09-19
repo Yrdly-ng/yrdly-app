@@ -118,10 +118,13 @@ export default function LoginPage() {
 
         const { user: newUser, error: err } = await signUp(email, password, name, cleanUsername);
         if (err) {
-          const errMsg = (err.message || "").toLowerCase();
+          const errMsg = (err?.message || "").toLowerCase();
           if (
             errMsg.includes("already registered") ||
-            errMsg.includes("already in use")
+            errMsg.includes("already in use") ||
+            errMsg.includes("confirmation email") ||
+            errMsg.includes("unexpected_failure") ||
+            errMsg.includes("error sending")
           ) {
             try {
               await supabase.auth.resend({ type: "signup", email });
@@ -129,11 +132,7 @@ export default function LoginPage() {
             router.push(`/onboarding/verify-email?email=${encodeURIComponent(email)}`);
             return;
           }
-          if (errMsg.includes("confirmation email") || errMsg.includes("unexpected_failure")) {
-            router.push(`/onboarding/verify-email?email=${encodeURIComponent(email)}`);
-            return;
-          }
-          setError(err.message);
+          setError(err.message || "An error occurred during sign up.");
         } else if (newUser) {
           posthog.identify(newUser.id, { email: newUser.email, name });
           posthog.capture("user_signed_up", { method: "email" });
