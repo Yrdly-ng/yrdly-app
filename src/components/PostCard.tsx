@@ -120,6 +120,8 @@ function MediaCollage({
   const scrollRef = useRef<HTMLDivElement>(null);
   const dragStartPos = useRef<{ x: number; y: number } | null>(null);
 
+  const isSwiping = useRef(false);
+
   const handleScroll = () => {
     if (!scrollRef.current) return;
     const { scrollLeft, clientWidth } = scrollRef.current;
@@ -158,14 +160,19 @@ function MediaCollage({
                 className="relative flex-shrink-0 w-full h-full snap-center cursor-pointer"
                 onPointerDown={(e) => {
                   dragStartPos.current = { x: e.clientX, y: e.clientY };
+                  isSwiping.current = false;
+                }}
+                onPointerMove={(e) => {
+                  if (dragStartPos.current) {
+                    const dist = Math.hypot(e.clientX - dragStartPos.current.x, e.clientY - dragStartPos.current.y);
+                    if (dist > 10) {
+                      isSwiping.current = true;
+                    }
+                  }
                 }}
                 onClick={(e) => {
                   e.stopPropagation();
-                  const start = dragStartPos.current;
-                  const moved = start
-                    ? Math.hypot(e.clientX - start.x, e.clientY - start.y)
-                    : 0;
-                  if (moved < 8) {
+                  if (!isSwiping.current) {
                     onImageClick(i);
                   }
                 }}

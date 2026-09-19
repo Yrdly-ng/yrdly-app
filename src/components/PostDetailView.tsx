@@ -13,6 +13,7 @@ import {
   Trash2,
   Edit,
   Play,
+  X,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -65,6 +66,7 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
   const [isEventEditDialogOpen, setIsEventEditDialogOpen] = useState(false);
   const [isPostEditDialogOpen, setIsPostEditDialogOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
   const { createPost } = usePosts();
 
@@ -270,15 +272,34 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
             </p>
           </div>
 
-          {/* Image Swiper Carousel — mirrors PostCard layout */}
+          {/* Image Swiper Carousel — uncropped object-contain with blurred backdrop + tap to open lightbox */}
           {urls.length > 0 && (
             <div className="px-3 pb-4">
               {urls.length === 1 ? (
-                <div className="relative w-full overflow-hidden rounded-2xl h-[360px] sm:h-[480px] lg:h-[540px] max-h-[640px]">
-                  <Image src={urls[0]} alt="" fill className="object-cover" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 60vw, 900px" />
+                <div
+                  className="relative w-full overflow-hidden rounded-2xl h-[360px] sm:h-[480px] lg:h-[540px] max-h-[640px] bg-black cursor-pointer group"
+                  onClick={() => setLightboxIndex(0)}
+                >
+                  <Image
+                    src={urls[0]}
+                    alt=""
+                    fill
+                    aria-hidden="true"
+                    loading="lazy"
+                    className="object-cover scale-110 blur-2xl brightness-75 pointer-events-none"
+                    sizes="48px"
+                    quality={10}
+                  />
+                  <Image
+                    src={urls[0]}
+                    alt="Post media"
+                    fill
+                    className="object-contain"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 60vw, 900px"
+                  />
                 </div>
               ) : (
-                <div className="relative group w-full overflow-hidden rounded-2xl h-[360px] sm:h-[480px] lg:h-[540px]">
+                <div className="relative group w-full overflow-hidden rounded-2xl h-[360px] sm:h-[480px] lg:h-[540px] bg-black">
                   <div
                     ref={carouselRef}
                     onScroll={handleScroll}
@@ -286,12 +307,26 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
                     style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                   >
                     {urls.map((u, i) => (
-                      <div key={i} className="relative w-full h-full flex-shrink-0 snap-start">
+                      <div
+                        key={i}
+                        className="relative w-full h-full flex-shrink-0 snap-start cursor-pointer"
+                        onClick={() => setLightboxIndex(i)}
+                      >
                         <Image
                           src={u}
                           alt=""
                           fill
-                          className="object-cover"
+                          aria-hidden="true"
+                          loading="lazy"
+                          className="object-cover scale-110 blur-2xl brightness-75 pointer-events-none"
+                          sizes="48px"
+                          quality={10}
+                        />
+                        <Image
+                          src={u}
+                          alt={`Post media ${i + 1}`}
+                          fill
+                          className="object-contain"
                           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 60vw, 900px"
                         />
                       </div>
@@ -456,6 +491,95 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
           />
         </div>
       </div>
+
+      {/* Full Screen Image Lightbox Modal */}
+      {lightboxIndex !== null && urls[lightboxIndex] && (
+        <div
+          className="fixed inset-0 z-[500] bg-black/95 backdrop-blur-md flex flex-col justify-between items-center select-none"
+          onClick={() => setLightboxIndex(null)}
+        >
+          {/* Top Bar */}
+          <div
+            className="w-full flex items-center justify-between px-4 py-3.5 z-10 bg-black/40"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span className="text-white font-medium text-sm font-yrdly-body">
+              {lightboxIndex + 1} / {urls.length}
+            </span>
+            <button
+              onClick={() => setLightboxIndex(null)}
+              className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+              aria-label="Close full screen view"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          {/* Center Image Container */}
+          <div
+            className="relative flex-1 w-full flex items-center justify-center p-2 sm:p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="relative w-full h-full max-w-5xl max-h-[85vh]">
+              <Image
+                src={urls[lightboxIndex]}
+                alt={`Full screen image ${lightboxIndex + 1}`}
+                fill
+                className="object-contain"
+                sizes="100vw"
+                priority
+              />
+            </div>
+
+            {/* Previous Image Button */}
+            {urls.length > 1 && lightboxIndex > 0 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLightboxIndex(lightboxIndex - 1);
+                }}
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center z-20"
+                aria-label="Previous image"
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+            )}
+
+            {/* Next Image Button */}
+            {urls.length > 1 && lightboxIndex < urls.length - 1 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLightboxIndex(lightboxIndex + 1);
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center z-20"
+                aria-label="Next image"
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
+            )}
+          </div>
+
+          {/* Bottom Dot Indicators */}
+          {urls.length > 1 && (
+            <div
+              className="flex items-center gap-2 pb-6 z-10"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {urls.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setLightboxIndex(i)}
+                  className={cn(
+                    "w-2.5 h-2.5 rounded-full transition-all",
+                    i === lightboxIndex ? "bg-[#82DB7E] scale-125" : "bg-white/40 hover:bg-white/70"
+                  )}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

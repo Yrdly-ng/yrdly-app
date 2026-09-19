@@ -344,14 +344,24 @@ export default function MarketplaceItemPage() {
                   onTransitionEnd={() => setIsImageAnimating(false)}
                 >
                   {images.map((src, i) => (
-                    <div key={i} className="relative h-full flex-shrink-0" style={{ width: `${100 / images.length}%` }}>
+                    <div key={i} className="relative h-full flex-shrink-0 bg-black" style={{ width: `${100 / images.length}%` }}>
+                      <Image
+                        src={src}
+                        alt=""
+                        fill
+                        aria-hidden="true"
+                        loading="lazy"
+                        className="object-cover scale-110 blur-2xl brightness-75 pointer-events-none"
+                        sizes="48px"
+                        quality={10}
+                      />
                       <Image
                         src={src}
                         alt={item.title || "Item image"}
                         fill
                         draggable={false}
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        className="object-cover pointer-events-none"
+                        className="object-contain pointer-events-none"
                         priority={i === currentImageIndex}
                       />
                     </div>
