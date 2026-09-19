@@ -169,7 +169,7 @@ export default function PayoutSettingsPage() {
     return (
       <div className="min-h-screen bg-[var(--yrdly-dark)] text-[var(--yrdly-text)] pb-20 font-yrdly-body">
         {/* Header */}
-        <header className="sticky top-0 z-30 bg-[var(--yrdly-dark)]/80 backdrop-blur-md px-5 py-3 border-b border-[var(--yrdly-glass-border)]">
+        <header className="lg:hidden sticky top-0 z-30 bg-[var(--yrdly-dark)]/80 backdrop-blur-md px-5 py-3 border-b border-[var(--yrdly-glass-border)]">
           <div className="max-w-xl mx-auto flex items-center gap-3">
             <button
               onClick={() => router.back()}
@@ -236,7 +236,7 @@ export default function PayoutSettingsPage() {
   return (
     <div className="min-h-screen bg-[var(--yrdly-dark)] text-[var(--yrdly-text)] pb-20 font-yrdly-body">
       {/* Header */}
-      <header className="sticky top-0 z-30 bg-[var(--yrdly-dark)]/80 backdrop-blur-md px-5 py-3 border-b border-[var(--yrdly-glass-border)]">
+      <header className="lg:hidden sticky top-0 z-30 bg-[var(--yrdly-dark)]/80 backdrop-blur-md px-5 py-3 border-b border-[var(--yrdly-glass-border)]">
         <div className="max-w-xl mx-auto flex items-center gap-3">
           <button
             onClick={() => {

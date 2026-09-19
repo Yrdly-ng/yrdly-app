@@ -63,7 +63,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
       </aside>
 
       {/* Main Content Pane ({children} rendered EXACTLY ONCE) */}
-      <main className="min-w-0">
+      <main className="min-w-0 lg:overflow-y-auto lg:max-h-[calc(100dvh-80px)] scrollbar-hide">
         {isIndexPage && (
           <div className="hidden lg:flex flex-col items-center justify-center p-12 border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] backdrop-blur-md rounded-[20px] min-h-[450px] text-center space-y-3">
             <SettingsIcon className="w-10 h-10 text-[var(--yrdly-label)] opacity-50" />

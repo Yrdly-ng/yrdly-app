@@ -63,7 +63,7 @@ export default function HelpCenterPage() {
   return (
     <div className="min-h-screen bg-background text-foreground pb-12">
       {/* Top Header */}
-      <header className="sticky top-0 z-20 backdrop-blur-md bg-background/80 border-b border-border/50 px-4 py-3 flex items-center justify-between">
+      <header className="lg:hidden sticky top-0 z-20 backdrop-blur-md bg-background/80 border-b border-border/50 px-4 py-3 flex items-center justify-between">
         <button
           onClick={() => router.back()}
           className="w-9 h-9 rounded-xl bg-card border border-border flex items-center justify-center hover:bg-muted transition-colors"

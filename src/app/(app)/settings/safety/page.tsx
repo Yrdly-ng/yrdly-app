@@ -69,7 +69,7 @@ export default function SafetyAlertsAdminQueuePage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-20">
-      <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b border-border/40 px-4 py-3 flex items-center gap-3">
+      <header className="lg:hidden sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b border-border/40 px-4 py-3 flex items-center gap-3">
         <button
           onClick={() => router.back()}
           className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-card transition-colors"

@@ -109,9 +109,9 @@ export default function EditProfilePage() {
   };
 
   return (
-    <div className="min-h-[100dvh] pb-36 bg-[var(--yrdly-dark)] font-yrdly-body text-foreground">
+    <div className="pb-12 font-yrdly-body text-foreground">
       {/* ── Header (1:1 Mobile matching) ── */}
-      <header className="sticky top-0 z-50 flex items-center justify-between px-6 py-4 bg-[var(--yrdly-dark)]/90 backdrop-blur-md border-b border-[var(--yrdly-glass-border)]">
+      <header className="lg:hidden sticky top-0 z-50 flex items-center justify-between px-6 py-4 bg-[var(--yrdly-dark)]/90 backdrop-blur-md border-b border-[var(--yrdly-glass-border)]">
         <button
           onClick={() => router.back()}
           className="w-9 h-9 flex items-center justify-center rounded-full bg-surface border border-[var(--yrdly-glass-border)] text-foreground transition-all hover:bg-white/5 lg:hidden"
@@ -138,7 +138,7 @@ export default function EditProfilePage() {
         </button>
       </header>
 
-      <main className="max-w-xl mx-auto px-6 py-6 space-y-8">
+      <main className="max-w-xl mx-auto px-6 pt-4 pb-6 space-y-8">
         {/* ── Avatar Section ── */}
         <div className="flex flex-col items-center pt-2 pb-6 border-b border-[var(--yrdly-glass-border)]">
           <div
