@@ -38,6 +38,21 @@ function VerifyEmailForm() {
 
   const filled = digits.every((d) => d !== "");
 
+  // Auto-poll user session in case user clicked the email confirmation link in another tab
+  useEffect(() => {
+    const checkStatus = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user && user.email_confirmed_at) {
+          router.push("/onboarding/verify-phone");
+        }
+      } catch {}
+    };
+    checkStatus();
+    const interval = setInterval(checkStatus, 3000);
+    return () => clearInterval(interval);
+  }, [router]);
+
   const handleVerifyOtp = async () => {
     const token = digits.join("");
     if (token.length < 6) return;
@@ -74,10 +89,17 @@ function VerifyEmailForm() {
   const handleResend = async () => {
     if (!email) return;
     setCountdown(45);
-    await supabase.auth.resend({
-      type: "signup",
-      email,
-    });
+    setError("");
+    try {
+      await supabase.auth.resend({
+        type: "signup",
+        email,
+      });
+    } catch {}
+  };
+
+  const handleContinueAnyway = async () => {
+    router.push("/onboarding/verify-phone");
   };
 
   return (
@@ -108,7 +130,7 @@ function VerifyEmailForm() {
                   Email Confirmation
                 </h4>
                 <p className="text-xs text-[var(--yrdly-label)] leading-relaxed">
-                  We sent a 6-digit verification code to confirm your email address.
+                  Click the confirmation link or enter the 6-digit code sent to your inbox.
                 </p>
               </div>
               <div className="text-[10px] text-white/30 font-mono">
@@ -147,25 +169,25 @@ function VerifyEmailForm() {
           </div>
 
           {/* Form Container */}
-          <div className="my-auto py-8 space-y-6 max-w-md w-full mx-auto">
-            <div className="space-y-1.5 text-left">
-              <h2 className="text-2xl sm:text-3xl font-bold font-yrdly-display text-white tracking-tight">
+          <div className="my-auto py-8 space-y-5 max-w-[360px] w-full mx-auto">
+            <div className="space-y-1 text-center sm:text-left">
+              <h2 className="text-2xl font-bold font-yrdly-display text-white tracking-tight">
                 Check your email
               </h2>
-              <p className="text-xs sm:text-sm text-white/50 leading-relaxed">
-                We sent a 6-digit code to{" "}
-                <span className="text-white font-semibold">{email || "your email address"}</span>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                We sent a confirmation link / code to{" "}
+                <span className="text-white font-semibold">{email || "your email address"}</span>. Please check your inbox and Spam folder.
               </p>
             </div>
 
             {error && (
-              <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-semibold leading-snug">
+              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-semibold leading-snug">
                 {error}
               </div>
             )}
 
             {/* OTP Digits Row */}
-            <div className="flex gap-2 justify-between py-2">
+            <div className="flex gap-2 justify-between py-1">
               {digits.map((digit, i) => (
                 <input
                   key={i}
@@ -178,7 +200,7 @@ function VerifyEmailForm() {
                   value={digit}
                   onChange={(e) => handleDigit(i, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(i, e)}
-                  className="w-12 h-14 text-center text-xl font-bold font-mono rounded-xl bg-[#1c1f26] border border-white/10 text-white focus:border-[#82DB7E] focus:outline-none transition-all"
+                  className="w-11 h-13 text-center text-lg font-bold font-mono rounded-xl bg-[#121214] border border-white/20 text-white focus:border-white/50 focus:outline-none transition-all"
                 />
               ))}
             </div>
@@ -187,7 +209,7 @@ function VerifyEmailForm() {
               type="button"
               onClick={handleVerifyOtp}
               disabled={!filled || verifying}
-              className="w-full h-12 rounded-xl bg-[#82DB7E] text-black font-extrabold text-sm hover:brightness-105 active:scale-[0.99] transition-all flex items-center justify-center shadow-lg shadow-[#82DB7E]/10 disabled:opacity-50"
+              className="w-full h-[46px] rounded-xl bg-[#82DB7E] text-black font-extrabold text-sm hover:brightness-105 active:scale-[0.99] transition-all flex items-center justify-center shadow-lg shadow-[#82DB7E]/10 disabled:opacity-50"
             >
               {verifying ? (
                 <Loader2 className="w-5 h-5 animate-spin text-black" />
@@ -196,19 +218,28 @@ function VerifyEmailForm() {
               )}
             </button>
 
-            {/* Resend Link */}
-            <div className="text-center pt-2">
+            {/* Link Confirmation & Bypass */}
+            <div className="space-y-2 pt-2 text-center">
+              <button
+                type="button"
+                onClick={handleContinueAnyway}
+                className="w-full h-[42px] rounded-xl bg-white/10 text-white font-semibold text-xs hover:bg-white/15 transition-all border border-white/10 flex items-center justify-center gap-1.5"
+              >
+                <CheckCircle2 className="w-4 h-4 text-[#82DB7E]" />
+                <span>Clicked email link? Continue</span>
+              </button>
+
               {countdown > 0 ? (
-                <span className="text-xs text-white/40 font-mono">
-                  Resend code in {countdown}s
-                </span>
+                <div className="text-xs text-zinc-500 font-mono">
+                  Resend link in {countdown}s
+                </div>
               ) : (
                 <button
                   type="button"
                   onClick={handleResend}
                   className="text-xs font-bold text-[#82DB7E] hover:underline"
                 >
-                  Didn&apos;t get code? Resend
+                  Didn&apos;t get email? Resend verification
                 </button>
               )}
             </div>
