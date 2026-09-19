@@ -358,8 +358,8 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
   }, [hasMore, loading, posts.length]);
 
   return (
-    <div className="w-full max-w-[680px] 2xl:max-w-none mx-auto grid grid-cols-1 2xl:grid-cols-[minmax(0,1fr)_400px] gap-6 pb-24">
-    <div className="w-full max-w-none 2xl:mx-0 space-y-4 font-yrdly-body">
+    <div className="w-full max-w-[680px] lg:max-w-none mx-auto grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_360px] gap-6 pb-24">
+    <div className="w-full max-w-none space-y-4 font-yrdly-body">
       {/* ── Active Safety Alert Banners (Horizontal Swipe Carousel) ── */}
       {activeAlerts.length > 0 && (
         <div className="flex overflow-x-auto snap-x snap-mandatory gap-3 pb-2 scrollbar-none">
@@ -477,8 +477,8 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
     </div>
 
     {/* ── Right Sidebar (fixed in place, does not move while the feed scrolls) ── */}
-    <div className="hidden xl:block relative">
-      <aside className="sticky top-[80px] md:top-[100px] grid grid-cols-2 gap-5 font-yrdly-body w-full items-start">
+    <div className="hidden lg:block relative shrink-0">
+      <aside className="sticky top-[80px] md:top-[100px] flex flex-col gap-4 font-yrdly-body w-full items-start">
       <div className="rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-5 shadow-sm transition-all hover:border-primary/40 hover:shadow-md">
         <div className="flex items-center gap-3 mb-4">
           <span

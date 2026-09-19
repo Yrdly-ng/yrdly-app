@@ -281,13 +281,17 @@ export function MainLayout({ children }: MainLayoutProps) {
       <div
         className={cn(
           "flex min-h-[100dvh] bg-[var(--c-bg)]",
-          isChatPage || isMapPage ? "" : "pt-[64px] md:pt-[84px] lg:pt-0 lg:pl-64"
+          isMapPage
+            ? ""
+            : isChatPage
+            ? "pt-0 lg:pl-64"
+            : "pt-[64px] md:pt-[84px] lg:pt-0 lg:pl-64"
         )}
       >
         <main
           className={cn(
             "flex-1 w-full min-w-0",
-            isChatPage || isMapPage
+            isMapPage
               ? "h-[100dvh] p-0 overflow-hidden"
               : isEdgeToEdgePage
               ? "h-[calc(100dvh-64px)] md:h-[calc(100dvh-84px)] lg:h-[100dvh] p-0 overflow-y-auto overflow-x-hidden"
