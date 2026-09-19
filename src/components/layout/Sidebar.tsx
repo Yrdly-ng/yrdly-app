@@ -16,6 +16,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LocationChip } from "@/components/LocationChip";
 import { cn } from "@/lib/utils";
 
+import { useTheme } from "next-themes";
+
 interface SidebarNavItem {
   href: string;
   label: string;
@@ -50,6 +52,8 @@ export function Sidebar({
   pathname,
 }: SidebarProps) {
   const isSettingsActive = pathname.startsWith("/settings");
+  const { theme, setTheme, resolvedTheme } = useTheme();
+  const isDark = (theme || resolvedTheme) === "dark";
 
   return (
     <aside className="fixed top-0 left-0 bottom-0 z-40 hidden lg:flex w-64 flex-col border-r border-[var(--c-border)] bg-[var(--c-card)] p-4 font-yrdly-body select-none">
@@ -148,6 +152,32 @@ export function Sidebar({
               {unreadNotifications > 9 ? "9+" : unreadNotifications}
             </span>
           )}
+        </button>
+
+        {/* Simple Theme Switcher */}
+        <button
+          type="button"
+          role="switch"
+          aria-checked={isDark}
+          onClick={() => setTheme(isDark ? "light" : "dark")}
+          className="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full transition-colors duration-200"
+          style={{ background: isDark ? "#82DB7E" : "rgba(128,128,128,0.3)" }}
+          title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+          aria-label="Toggle theme mode"
+        >
+          <span
+            className="pointer-events-none flex items-center justify-center h-5 w-5 rounded-full bg-white shadow transition-transform duration-200"
+            style={{
+              transform: isDark ? "translateX(20px)" : "translateX(2px)",
+              marginTop: 2,
+            }}
+          >
+            {isDark ? (
+              <span className="text-[10px] leading-none">🌙</span>
+            ) : (
+              <span className="text-[10px] leading-none">☀️</span>
+            )}
+          </span>
         </button>
 
         <button

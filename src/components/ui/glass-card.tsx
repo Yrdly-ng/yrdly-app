@@ -25,6 +25,11 @@ export function GlassCard({
 
   const effectiveRadius = typeof borderRadius === "number" ? `${borderRadius}px` : borderRadius;
 
+  // Extract flex alignment classes if present in className to also apply to inner container
+  const flexAlignment = className
+    ? className.split(/\s+/).filter(c => c.includes("flex") || c.includes("items-") || c.includes("justify-") || c === "text-center" || c === "text-left" || c === "text-right").join(" ")
+    : "";
+
   return (
     <div
       className={cn(
@@ -40,7 +45,7 @@ export function GlassCard({
       }}
       {...props}
     >
-      <div className={cn("relative z-10 w-full h-full", contentClassName)}>
+      <div className={cn("relative z-10 w-full h-full", flexAlignment, contentClassName)}>
         {children}
       </div>
     </div>
