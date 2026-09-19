@@ -1,7 +1,7 @@
 "use client";
 
 import type { User, Post } from "@/types";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import Image from "next/image";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -26,6 +26,7 @@ import {
   X,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-supabase-auth";
+import { useLocation } from "@/contexts/LocationContext";
 import { supabase } from "@/lib/supabase";
 import { Skeleton } from "./ui/skeleton";
 import {
@@ -574,6 +575,17 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
+  const { activeFilter } = useLocation();
+
+  const showUserLocationOnPost = !activeFilter?.lga;
+
+  const postLocationLabel = useMemo(() => {
+    if (post.ward && post.lga) return `${post.ward}, ${post.lga}`;
+    if (post.lga && post.state) return `${post.lga}, ${post.state}`;
+    if (post.lga) return post.lga;
+    if (post.state) return post.state;
+    return null;
+  }, [post.ward, post.lga, post.state]);
 
   const [author, setAuthor] = useState<User | null>(null);
   const [loadingAuthor, setLoadingAuthor] = useState(true);
@@ -686,12 +698,27 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
     fetch();
   }, [post.user_id, post.user, post.timestamp, post.author_image, post.author_name]);
 
-  /* ── realtime post updates ── */
+  /* ── realtime post updates & comment count sync ── */
   useEffect(() => {
     if (!post.id) return;
     setLikes(post.liked_by?.length || 0);
     setCommentCount(post.comment_count || 0);
     if (currentUser && post.liked_by) setIsLiked(post.liked_by.includes(currentUser.id));
+
+    // Verify exact comment count from comments table on mount
+    supabase
+      .from("comments")
+      .select("id", { count: "exact", head: true })
+      .eq("post_id", post.id)
+      .then(({ count, error }) => {
+        if (!error && count !== null && count !== undefined) {
+          setCommentCount(count);
+          if (count !== post.comment_count) {
+            supabase.from("posts").update({ comment_count: count }).eq("id", post.id).then();
+          }
+        }
+      });
+
     const ch = supabase.channel(`post-${post.id}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "posts", filter: `id=eq.${post.id}` }, (payload) => {
         if (payload.new) {
@@ -957,6 +984,15 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
               <span className="font-yrdly-body font-normal text-[0.6875rem] text-[var(--yrdly-label)]">
                 {timeAgo(post.timestamp ? new Date(post.timestamp) : null)}
               </span>
+              {showUserLocationOnPost && postLocationLabel && (
+                <>
+                  <span className="text-[var(--yrdly-label)] text-[0.6875rem]">•</span>
+                  <span className="font-yrdly-body font-normal text-[0.6875rem] text-[var(--yrdly-label)] flex items-center gap-0.5">
+                    <MapPin className="w-3 h-3 text-primary inline-block" />
+                    {postLocationLabel}
+                  </span>
+                </>
+              )}
               {post.updated_at && (new Date(post.updated_at).getTime() - new Date(post.timestamp).getTime() > 2000) && (
                 <>
                   <span className="text-[var(--yrdly-label)] text-[0.6875rem]">•</span>
