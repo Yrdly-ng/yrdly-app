@@ -109,26 +109,28 @@ export default function VerifyPhonePage() {
           </div>
 
           {/* Form Container */}
-          <div className="my-auto py-8 space-y-6 max-w-md w-full mx-auto">
-            <div className="space-y-1.5 text-left">
-              <h2 className="text-2xl sm:text-3xl font-bold font-yrdly-display text-white tracking-tight">
+          <div className="my-auto py-8 space-y-5 max-w-[360px] w-full mx-auto">
+            <div className="space-y-1 text-center sm:text-left">
+              <h2 className="text-2xl font-bold font-yrdly-display text-white tracking-tight">
                 Verify phone number
               </h2>
-              <p className="text-xs sm:text-sm text-white/50 leading-relaxed">
+              <p className="text-xs text-zinc-400 leading-relaxed">
                 YRDLY is a verified community. We use your number for trust & security.
               </p>
             </div>
 
             {error && (
-              <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 text-xs text-red-400">
-                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                <span>{error}</span>
+              <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-[#1c1214]/90 border border-red-500/35 text-red-400 text-xs font-semibold leading-snug shadow-[0_8px_25px_rgba(239,68,68,0.15)] backdrop-blur-md animate-in fade-in-0 slide-in-from-top-2 duration-200">
+                <div className="w-7 h-7 rounded-xl bg-red-500/15 border border-red-500/30 flex items-center justify-center shrink-0 text-red-400 shadow-[0_0_10px_rgba(239,68,68,0.2)]">
+                  <AlertCircle className="w-4 h-4 stroke-[2.2]" />
+                </div>
+                <span className="flex-1 min-w-0">{error}</span>
               </div>
             )}
 
             {/* Phone Input Row */}
             <div className="flex gap-2 items-center">
-              <div className="flex items-center gap-1.5 px-3.5 h-13 rounded-xl bg-[#1c1f26] border border-white/10 text-white text-sm font-semibold shrink-0">
+              <div className="flex items-center gap-1.5 px-3.5 h-[50px] rounded-xl bg-[#121214] border border-white/20 text-white text-sm font-semibold shrink-0">
                 <span className="text-base">🇳🇬</span>
                 <span>+234</span>
                 <ChevronDown className="w-3 h-3 text-white/40" />
@@ -141,7 +143,7 @@ export default function VerifyPhonePage() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
                   maxLength={10}
-                  className="w-full h-13 px-4 rounded-xl bg-[#1c1f26] border border-white/10 focus:border-[#82DB7E] focus:outline-none text-sm text-white placeholder:text-white/30 font-yrdly-body transition-all"
+                  className="w-full h-[50px] px-4 rounded-xl bg-[#121214] border border-white/20 focus:border-white/50 focus:bg-[#18181b] outline-none text-sm text-white placeholder:text-zinc-500 font-yrdly-body transition-all"
                 />
               </div>
             </div>
@@ -156,7 +158,7 @@ export default function VerifyPhonePage() {
               type="button"
               onClick={handleSendOtp}
               disabled={phone.length < 10 || loading}
-              className="w-full h-12 rounded-xl bg-[#82DB7E] text-black font-extrabold text-sm hover:brightness-105 active:scale-[0.99] transition-all flex items-center justify-center shadow-lg shadow-[#82DB7E]/10 disabled:opacity-50"
+              className="w-full h-[46px] rounded-xl bg-[#82DB7E] text-black font-extrabold text-sm hover:brightness-105 active:scale-[0.99] transition-all flex items-center justify-center shadow-lg shadow-[#82DB7E]/10 disabled:opacity-50"
             >
               {loading ? (
                 <Loader2 className="w-5 h-5 animate-spin text-black" />

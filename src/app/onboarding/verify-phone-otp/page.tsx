@@ -140,12 +140,12 @@ function VerifyPhoneOtpForm() {
           </div>
 
           {/* Form Container */}
-          <div className="my-auto py-8 space-y-6 max-w-md w-full mx-auto">
-            <div className="space-y-1.5 text-left">
-              <h2 className="text-2xl sm:text-3xl font-bold font-yrdly-display text-white tracking-tight">
+          <div className="my-auto py-8 space-y-5 max-w-[360px] w-full mx-auto">
+            <div className="space-y-1 text-center sm:text-left">
+              <h2 className="text-2xl font-bold font-yrdly-display text-white tracking-tight">
                 Enter SMS Code
               </h2>
-              <p className="text-xs sm:text-sm text-white/50 leading-relaxed">
+              <p className="text-xs text-zinc-400 leading-relaxed">
                 We sent a 6-digit code to{" "}
                 <span className="text-white font-semibold">+234 {phone || "your phone"}</span>
               </p>
@@ -171,7 +171,7 @@ function VerifyPhoneOtpForm() {
                   value={digit}
                   onChange={(e) => handleDigit(i, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(i, e)}
-                  className="w-12 h-14 text-center text-xl font-bold font-mono rounded-xl bg-[#1c1f26] border border-white/10 text-white focus:border-[#82DB7E] focus:outline-none transition-all"
+                  className="w-11 h-[50px] text-center text-xl font-bold font-mono rounded-xl bg-[#121214] border border-white/20 focus:border-white/50 focus:bg-[#18181b] text-white outline-none transition-all"
                 />
               ))}
             </div>
@@ -180,7 +180,7 @@ function VerifyPhoneOtpForm() {
               type="button"
               onClick={handleVerifyOtp}
               disabled={!filled || verifying}
-              className="w-full h-12 rounded-xl bg-[#82DB7E] text-black font-extrabold text-sm hover:brightness-105 active:scale-[0.99] transition-all flex items-center justify-center shadow-lg shadow-[#82DB7E]/10 disabled:opacity-50"
+              className="w-full h-[46px] rounded-xl bg-[#82DB7E] text-black font-extrabold text-sm hover:brightness-105 active:scale-[0.99] transition-all flex items-center justify-center shadow-lg shadow-[#82DB7E]/10 disabled:opacity-50"
             >
               {verifying ? (
                 <Loader2 className="w-5 h-5 animate-spin text-black" />
