@@ -119,7 +119,9 @@ export async function POST(request: NextRequest) {
       // Fires when buyer funds the escrow. Update local status to PAID,
       // mark item as sold (posts / catalog_items / tickets) and notify seller.
       case 'escrow.ongoing':
-      case 'payment.escrow.success': {
+      case 'payment.escrow.success':
+      case 'escrow.paid':
+      case 'escrow.opened': {
         await handleEscrowOngoing(data);
         break;
       }
