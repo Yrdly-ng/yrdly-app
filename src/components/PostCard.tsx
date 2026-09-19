@@ -1166,17 +1166,21 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
         >
           <button
             onClick={() => setIsCommentsOpen(false)}
-            className="absolute top-3 right-3 md:top-5 md:right-5 z-10 flex items-center justify-center w-9 h-9 rounded-full text-white hover:bg-white/10"
+            className="hidden md:flex absolute top-5 right-5 z-10 items-center justify-center w-9 h-9 rounded-full text-white hover:bg-white/10"
             aria-label="Close comments"
           >
             <X className="w-5 h-5" />
           </button>
 
           <div
-            className="w-full md:h-[min(90vh,700px)] md:max-w-[935px] md:rounded-xl overflow-hidden flex flex-col md:flex-row bg-background border border-[var(--yrdly-glass-border)] rounded-t-[24px]"
-            style={{ height: 'calc(100dvh - env(safe-area-inset-top, 0px) - 24px)', maxHeight: '92dvh' }}
+            className="w-full h-[88dvh] md:h-[min(90vh,700px)] md:max-w-[935px] md:rounded-xl overflow-hidden flex flex-col md:flex-row bg-background border-t md:border border-[var(--yrdly-glass-border)] rounded-t-[24px] md:rounded-t-xl"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Mobile Grab Handle Bar */}
+            <div className="md:hidden flex flex-col items-center justify-center pt-2.5 pb-1 flex-shrink-0 bg-background">
+              <div className="w-10 h-1 bg-muted-foreground/30 rounded-full" />
+            </div>
+
             {/* Left — image, video, or (if text-only) the post's own writing, like Instagram's own comments screen */}
             {(urls.length > 0 || activeVideoUrl) ? (
               <div className="hidden md:block relative flex-1 min-w-0 h-full bg-black overflow-hidden">
@@ -1232,7 +1236,8 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
 
             {/* Right — header + comments + input */}
             <div className="w-full md:w-[400px] flex-shrink-0 flex flex-col min-h-0 h-full border-l border-[var(--yrdly-glass-border)] bg-background">
-              <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--yrdly-glass-border)] flex-shrink-0">
+              {/* Desktop Author Header */}
+              <div className="hidden md:flex items-center gap-3 px-4 py-3 border-b border-[var(--yrdly-glass-border)] flex-shrink-0">
                 <Avatar className="h-8 w-8 flex-shrink-0">
                   <AvatarImage src={author?.avatar_url} />
                   <AvatarFallback className="bg-[#82DB7E] text-[#050505] text-xs font-bold">

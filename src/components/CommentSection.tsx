@@ -638,7 +638,7 @@ export function CommentSection({
                     <button
                         type="submit"
                         disabled={!newComment.trim()}
-                        className="px-4 py-1.5 rounded-full text-[0.8125rem] font-bold bg-[#EFF3F4] text-[#0F1419] disabled:opacity-60 disabled:cursor-not-allowed transition-opacity flex-shrink-0"
+                        className="px-4 py-1.5 rounded-full text-[0.8125rem] font-extrabold bg-[#82DB7E] text-black disabled:opacity-40 disabled:cursor-not-allowed transition-all flex-shrink-0"
                     >
                         Reply
                     </button>
@@ -726,7 +726,7 @@ export function CommentSection({
                 </div>
 
                 {/* Sticky Comment input */}
-                <div className="sticky bottom-0 w-full backdrop-blur-md bg-background/80 border-t border-border/50 p-3 z-10 flex-shrink-0">
+                <div className="sticky bottom-0 w-full backdrop-blur-xl bg-background/95 border-t border-border/50 p-3 pb-[max(12px,env(safe-area-inset-bottom))] z-20 flex-shrink-0">
                     {inputBox}
                 </div>
                 {reportDialog}
@@ -751,7 +751,7 @@ export function CommentSection({
                 <div ref={commentsEndRef} />
             </div>
             {/* Sticky Comment input */}
-            <div className="sticky bottom-0 w-full backdrop-blur-md bg-background/80 border-t border-border/50 p-3 z-10">
+            <div className="sticky bottom-0 w-full backdrop-blur-xl bg-background/95 border-t border-border/50 p-3 pb-[max(12px,env(safe-area-inset-bottom))] z-20">
                 {inputBox}
             </div>
             {reportDialog}
