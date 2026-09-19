@@ -258,7 +258,7 @@ export function MainLayout({ children }: MainLayoutProps) {
 
   return (
     <>
-      {!isChatPage && !isMapPage && (
+      {!isMapPage && (
         <Sidebar
           unreadMessages={unreadMessagesCount}
           unreadNotifications={unreadCount}
