@@ -1,170 +1,274 @@
-# Implementation Plan & Architectural Strategy: Creation & Edit Flow Parity Migration (Mobile -> Web)
+# Web App Desktop Layout Redesign Plan (P1 - P4)
 
-## Overview & Architectural Goals
-This plan details the full migration of **Post**, **Listing (For Sale / Giveaway)**, and **Event** creation and edit flows in `yrdly-app` (web) from modal/dialog patterns to full-page routes. 
-`yrdly-mobile` is the strict design and behavioral source of truth. All new and updated web pages will enforce full responsiveness across Mobile Web (< 768px), Tablet (768px - 1024px), and Desktop (> 1024px) viewports.
+## Revision 1
 
 ---
 
-## 1. Decision Inventory & Route Mapping
+## Task A: Empirical Verification & Codebase Audit
 
-| Content Type | Action | Web Route | Source of Truth File (`yrdly-mobile`) | Replaces Old Web Component/Route |
-| :--- | :--- | :--- | :--- | :--- |
-| **Event** | Create | `/events/create` | `src/app/create-event.tsx` | `CreateEventDialog.tsx` & `NewEventForm.tsx` |
-| **Event** | Manage/View | `/events/[id]/manage` | `src/app/events/[id]/manage.tsx` | `CreateEventDialog.tsx` (edit mode) |
-| **Listing** | Create | `/marketplace/create` | `src/app/create-for-sale.tsx` | `CreateItemDialog.tsx` |
-| **Listing** | Edit | `/marketplace/edit/[itemId]` | `src/app/marketplace/edit/[id].tsx` | Existing `src/app/(app)/marketplace/edit/[itemId]/page.tsx` |
-| **Post** | Create | `/posts/create` | `src/app/create-post.tsx` | `CreatePostDialog.tsx` |
-| **Post** | Edit | *REMOVED* | *N/A (Mobile has no post edit)* | `CreatePostDialog.tsx` (edit mode) |
+### 1. Git State & Clean Tree Verification
+- `git branch -a` output:
+  ```
+    feat/responsiveness-pass
+    feature/cloudflare-integration
+  * main
+    paystack-integration
+    remotes/origin/HEAD -> origin/main
+    remotes/origin/daniel-update
+    remotes/origin/escrow-release-reconciliation
+    remotes/origin/feat/responsiveness-pass
+    remotes/origin/fix-payluk-release-flow
+    remotes/origin/fix-withdraw-authorization
+    remotes/origin/jason-dev
+    remotes/origin/main
+    remotes/origin/paystack-integration
+  ```
+- **Finding**: No open Phase 5 or create-flow branches found. Working tree is clean on `main`.
 
-### Component Retirement & Deletion Strategy
-The old dialog components and duplicate forms will be retired and deleted once the full-page routes and wiring updates are complete:
-- **`src/components/CreatePostDialog.tsx`** → DELETE
-- **`src/components/CreateItemDialog.tsx`** → DELETE
-- **`src/components/CreateEventDialog.tsx`** → DELETE
-- **`src/components/events/NewEventForm.tsx`** → DELETE
-- **`src/components/CreateMenuOverlay.tsx`** → KEEP, but update `onPost`, `onListing`, and `onEvent` handlers to execute `router.push(...)` instead of opening dialog states.
+### 2. BottomNav `onCreateMenu` & FAB Check
+- **Full File**: `/Users/macbook/Development/projects/yrdly-app/src/components/layout/BottomNav.tsx`
+- **FAB Implementation** (Lines 61–69):
+  ```tsx
+  {onCreateMenu && (
+    <button
+      onClick={onCreateMenu}
+      aria-label="Create"
+      className="relative -translate-y-3 flex items-center justify-center w-12 h-12 rounded-full bg-[#82DB7E] text-black font-extrabold shadow-lg shadow-black/20 transition-transform duration-150 active:scale-90"
+    >
+      <Plus size={26} weight="bold" />
+    </button>
+  )}
+  ```
+- **Finding**: `onCreateMenu` is called when the center FAB Plus button is clicked. In `MainLayout.tsx` (Line 350), passing `() => setCreateMenuOpen(false)` is **inverted**. It will be fixed in a standalone commit.
 
----
+### 3. Topbar Triggers & Controls Check
+- **`onSearch` & `onCreate`**: Declared as props in `TopbarProps`, but **NOT** rendered or destructured anywhere in `Topbar.tsx` JSX.
+- **Location Pill**: Rendered via `<LocationChip />` (Line 62), wired to `LocationContext` to display active LGA/State filter and trigger location modal.
+- **Map Pin Button**: Wrapped in `<Link href="/map">` (Line 99), navigating to `/map`.
 
-## 2. Detailed Page Specifications & Responsive Layout Strategy
+### 4. Git History Audit for `handleToggleFollow`
+- Command: `git log --oneline -S"handleToggleFollow" -- src/components/ProfileScreen.tsx`
+- Result commit: `e193fff5` (*refactor: update top navigation and synchronize web app with mobile design*).
+- **Finding**: Commit `e193fff5` removed the mobile/web action bar from `ProfileScreen.tsx` to match the new design, leaving `handleToggleFollow` and `friendship` declared in script logic but unreferenced in JSX.
 
-### A. Event Creation (`/events/create`)
-- **Route File**: `src/app/(app)/events/create/page.tsx`
-- **Steps**:
-  1. **Basic Info**: Title, dynamic category (via `useCategories` hook or `/api/categories`), description textarea.
-  2. **Date & Time**: Start date/time, end date/time (with validation: end > start).
-  3. **Location**: Venue vs. Online toggle.
-     - *Online*: Link input (`online_link`).
-     - *Venue*: Google Places address lookup resolving `address`, `lat`, `lng`, `ward`, `lga`, `state`.
-  4. **Tickets**: Dynamic tier array (Name, Free/Paid toggle, Price ₦, Capacity limit).
-     - **Payout Gate**: Before enabling paid tiers or completing step 3, fetch `GET /api/seller/setup-account` and check `!!res?.account` (matching `src/app/create-event.tsx` in `yrdly-mobile` exactly). If `false` and a paid ticket tier is present, show inline warning banner + "Link Bank Account" button redirecting to `/profile/payout-settings` (or `/settings/payouts`).
-  5. **Photos**: Multi-image file picker with cover selection badge and image removal.
-  6. **Review & Publish**: Full summary preview card + visibility toggle (`public` vs `friends`). Submits to `/api/events/create`.
-- **Success States**:
-  - **Published**: Green check badge, "Event Published!", redirect to `/events/[id]`.
-  - **Sent for Moderation**: Orange clock badge, "Sent for Moderation", message explaining admin review.
-- **Responsive Layout Strategy**:
-  - **Mobile (< 768px)**: Single column wizard with step dots at top and fixed bottom navigation bar (Back / Next / Publish).
-  - **Tablet & Desktop (≥ 768px)**: 2-column layout. Left column (w-3/5) contains step form card; Right column (w-2/5) contains sticky Live Event Card Preview updating in real-time.
+### 5. `globals.css` Token Audit
+- `--c-card` and `--c-border` **DO exist** in `src/app/globals.css`:
+  - `:root` (Light): `--c-card: #FFFFFF;`, `--c-border: #E4E4E7;` (Lines 120, 125)
+  - `.dark` (Dark): `--c-card: #121212;`, `--c-border: #27272A;` (Lines 132, 136)
 
----
+### 6. Grid & Column Classes Audit Across Screen Components
+- **`BusinessesScreen.tsx`**: `grid grid-cols-2 gap-3.5 mt-2` (L226, L270).
+- **`EventsScreen.tsx`**: `grid grid-cols-1 sm:grid-cols-3 gap-3` (L216), `grid grid-cols-1 md:grid-cols-2 gap-4` (L226, L442).
+- **`ExploreScreen.tsx`** (`src/app/(app)/explore/page.tsx`): `w-full min-h-full px-4 md:px-6 pt-4 pb-10` (L88).
+- **`MessagesScreen.tsx`** (`ConversationScreen.tsx`): `w-full h-full p-0`.
 
-### B. Event Management Dashboard (`/events/[id]/manage`)
-- **Route File**: `src/app/(app)/events/[id]/manage/page.tsx`
-- **Features** (Ported from `src/app/events/[id]/manage.tsx`):
-  - Organizer-only access check (`organizer_id === user.id`).
-  - Read-only Event Summary Banner (Banner image, Title, Date, Venue/Link).
-  - **KPI Metrics Cards**: Total Tickets Sold, Revenue (₦), Scanned Tickets count.
-  - **Ticket Buyer Roster**: Searchable list of issued tickets showing Buyer Name, Tier Name, Amount Paid, Purchase Date, and Scan Status ("Scanned" vs "Not scanned").
-  - **Ticket Scanner Trigger**: Button to launch ticket scanner (`/events/[id]/scan`).
-- **Responsive Layout Strategy**:
-  - **Mobile**: Stacked 1-column layout. Metric cards in a 2x2 grid.
-  - **Desktop**: 3-column top metric row + full-width data table for ticket roster.
-
----
-
-### C. Listing / For Sale Creation (`/marketplace/create`)
-- **Route File**: `src/app/(app)/marketplace/create/page.tsx`
-- **Steps**:
-  1. **Type & Photos**: For Sale vs Giveaway toggle. Multi-image file uploader (up to 10 photos) with cover image badge.
-  2. **Details**: Title, Price ₦ (disabled and set to 0 if Giveaway), Condition selector (`New`, `Like New`, `Good`, `Fair`, `Poor`), Sub-category chip selector (Electronics, Fashion, Vehicles, etc. from `MARKETPLACE_CATEGORIES`).
-     - **Database Field Mapping**: The form writes TWO separate fields to the `posts` table, matching `src/app/create-for-sale.tsx` in `yrdly-mobile` exactly:
-       - `category`: Set to `"Giveaway"` (if Giveaway toggle active) or `"For Sale"` (if For Sale active).
-       - `sub_category`: Set to the selected category chip (e.g. `"Electronics"`, `"Fashion"`). These MUST NOT be merged into a single field.
-  3. **Description & Location**: Detailed description, Google Places venue search resolving address, lat/lng, LGA, Ward, State.
-  4. **Review & Publish**: Listing preview card + Visibility toggle (`public` vs `friends`).
-- **Success States**: Distinct Published vs Moderation Pending screens.
-- **Responsive Layout Strategy**:
-  - **Mobile**: Step-by-step wizard.
-  - **Desktop**: Side-by-side split screen (Form controls on left, sticky Marketplace Card preview on right).
+### 7. `HomeScreen.tsx` Layout `lg:` Breakpoint Usage
+- Line 361: `grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_500px]`
+- Line 362: `lg:mx-0`
+- Line 480: `hidden lg:block relative`
+- (`xl:` is not used anywhere in `HomeScreen.tsx`).
 
 ---
 
-### D. Listing Editing (`/marketplace/edit/[itemId]`)
-- **Route File**: `src/app/(app)/marketplace/edit/[itemId]/page.tsx`
-- **Features** (Ported from `src/app/marketplace/edit/[id].tsx`):
-  - Owner-only authorization check.
-  - Photos management (existing images from Supabase storage + new image uploads, cover image selection, image deletion).
-  - Field updates: Title, Price ₦, Category (`category` + `sub_category`), Condition, Description, Location search.
-  - **Delete Listing Action**: Destructive button opening a confirmation AlertDialog calling listing deletion API.
-- **Responsive Layout Strategy**:
-  - **Mobile & Desktop**: Max-width container (`max-w-3xl mx-auto`) with sectioned card containers and sticky header save bar.
+## Task B: Implementation Plan (P1 – P4)
+
+### 1. Goals & Non-Goals
+
+#### Goals
+- Redesign desktop (>=1024px / `lg`) layout across the web app.
+- Introduce 4 width tiers in `MainLayout` (`narrow`, `default`, `wide`, `full`).
+- Replace top navigation header on desktop (>=1024px) with a left sidebar shell (`Sidebar.tsx`).
+- Restructure Profile page on desktop (>=1440px) with a 2-column layout and dedicated `RightRail`.
+- Implement desktop (>=1024px) master-detail split view for Settings.
+
+#### Non-Goals
+- Mobile (<768px) and Tablet (768px–1023px) layouts must NOT change.
+- Mobile navigation (`BottomNav`) and feature parity remain untouched.
+- No changes to public/auth pages outside `src/app/(app)`.
 
 ---
 
-### E. Post Creation (`/posts/create`)
-- **Route File**: `src/app/(app)/posts/create/page.tsx`
-- **Features** (Ported from `src/app/create-post.tsx`):
-  - User avatar header + text composer textarea.
-  - Category locked strictly to `"General"` (Category selection dropdown removed from composer).
-  - Media Attachments: Image picker (up to 10 photos) **AND Video picker** (up to 3 videos, max 40MB each) with upload progress indicator.
-  - Visibility toggle (`public` vs `friends`).
-  - Submits to `createPost` handler in `usePosts`.
-- **Success States**: Distinct Published vs Moderation Pending screens.
-- **Responsive Layout Strategy**:
-  - **Mobile**: Full-screen modal-like page container.
-  - **Desktop**: Centered card overlay style (`max-w-2xl mx-auto mt-6`) with rich media grid preview.
+### 2. Available Desktop Content Width Math
+
+Formula: `Available Content Width = Viewport Width - Sidebar (256px) - Outer Padding (48px)`
+
+| Viewport Width | Sidebar | Outer Padding | Available Content Width |
+|---|---|---|---|
+| **1024px (`lg`)** | 256px | 48px | **720px** |
+| **1280px (`xl`)** | 256px | 48px | **976px** |
+| **1440px (`min-[1440px]`)** | 256px | 48px | **1136px** |
+| **1536px (`2xl`)** | 256px | 48px | **1232px** |
+
+#### Viewport Behavior Matrix
+
+| Page / Route | 1024px (`lg`) | 1280px (`xl`) | 1440px (`min-[1440px]`) | 1536px (`2xl`) |
+|---|---|---|---|---|
+| **Home** | 720px feed (Right col hidden) | 976px feed (Right col hidden) | 1136px feed (Right col hidden) | 1232px grid (feed ~782px + right col 400px) |
+| **Profile** | 720px profile col | 976px profile col | 1136px grid (main profile ~748px + RightRail 340px) | 1232px grid (main profile ~844px + RightRail 340px) |
+| **Businesses** | 720px (2-col grid) | 976px (3-col grid) | 1136px (3 or 4-col grid) | 1232px (4-col grid) |
+| **Events** | 720px (2-col grid) | 976px (3-col grid) | 1136px (3-col grid) | 1232px (4-col grid) |
+| **Explore** | 720px tab content | 976px tab content | 1136px tab content | 1232px tab content |
+| **Messages** | 768px edge-to-edge chat | 1024px edge-to-edge chat | 1184px edge-to-edge chat | 1280px edge-to-edge chat |
 
 ---
 
-## 3. Wiring & Invocation Refactoring Mapping
+### 3. Phase Breakdown & Scope Matrix
 
-| File Path | Lines to Modify | Change Description |
-| :--- | :--- | :--- |
-| `src/components/CreateMenuOverlay.tsx` | L123-142 | Update `onPost`, `onListing`, `onEvent` handlers to invoke `router.push('/posts/create')`, `router.push('/marketplace/create')`, and `router.push('/events/create')`. |
-| `src/components/layout/MainLayout.tsx` | L53-56, L347-369 | Remove `postDialogOpen`, `listingDialogOpen`, `eventDialogOpen` state variables and remove `<CreatePostDialog>`, `<CreateItemDialog>`, `<CreateEventDialog>` JSX renders. |
-| `src/components/PostCard.tsx` | L53-54, L688-698 | Remove `CreateEventDialog` and `CreatePostDialog` imports & JSX renders. Update edit action: for listings navigate to `/marketplace/edit/${id}`; for events navigate to `/events/${id}/manage`. Remove post edit trigger. |
-| `src/components/PostDetailView.tsx` | L36-37, L390-414 | Remove `CreateEventDialog` and `CreatePostDialog` imports & renders. Update event manage link to `/events/${id}/manage`. |
-| `src/components/EventsScreen.tsx` | L32, L128, L622 | Update "Create Event" button to navigate to `/events/create`. Remove `CreateEventDialog` import & render. |
-| `src/components/HomeScreen.tsx` | L8-10, L212-260 | Remove `CreatePostDialog`, `CreateItemDialog`, `CreateEventDialog` imports & renders. Update FAB create actions to navigate to `/posts/create`, `/marketplace/create`, `/events/create`. |
-| `src/components/EmptyFeed.tsx` | L3, L49-60 | Update "Create Post" button to navigate to `/posts/create`. Remove `CreatePostDialog` render. |
-| `src/components/marketplace/MarketplaceCreatorOnboarding.tsx` | L86 | Update `onContinue` to route to `/marketplace/create`. |
-| `src/components/MarketplaceScreen.tsx` | L5, L256-263 | Update "Create Listing" button to navigate to `/marketplace/create`. Remove `CreateItemDialog` render. |
+| Phase | Description | Files in Scope | Files NOT to Touch |
+|---|---|---|---|
+| **P1** | Width Tiers in `MainLayout` | `src/components/layout/MainLayout.tsx`, `src/lib/layout-utils.ts` (new) | `Topbar.tsx`, `BottomNav.tsx`, inner page screens |
+| **P2** | Desktop Sidebar Shell (>=1024px) | `src/components/layout/Sidebar.tsx` (new), `src/components/layout/MainLayout.tsx`, `src/components/layout/Topbar.tsx`, `src/components/HomeScreen.tsx`, `src/components/NotificationsDropdown.tsx`, `src/components/ProfileDropdown.tsx`, `src/components/AppHeader.tsx`, `src/app/(app)/my-tickets/page.tsx`, `src/app/(app)/profile/purchases/page.tsx`, `src/app/(app)/profile/sold-items/page.tsx`, `src/app/(app)/transactions/page.tsx`, `src/app/(app)/transactions/[transactionId]/page.tsx` | Mobile components, inner page max-widths |
+| **P3** | Profile Restructure + Per-Page Right Rail | `src/components/ProfileScreen.tsx`, `src/components/RightRail.tsx` (new), `src/app/(app)/profile/page.tsx`, `src/app/(app)/profile/[userId]/page.tsx` | `HomeScreen.tsx` |
+| **P4** | Settings Master-Detail on Desktop | `src/app/(app)/settings/layout.tsx` (new), `src/components/SettingsScreen.tsx`, `src/lib/layout-utils.ts`, `src/components/layout/MainLayout.tsx` | `/profile/payouts` |
 
 ---
 
-## 4. Technical Ambiguities & Open Questions
+### 4. Phase 1: Width Tiers in `MainLayout`
 
-1. **Location Resolution & Google Places**:
-   - *Question*: `LocationInput.tsx` currently wraps react-hook-form. For full parity with mobile's location resolution (`address`, `lat`, `lng`, `ward`, `lga`, `state`), should we enhance `LocationInput` to pass structured address components, or extract a lightweight `useGooglePlaces` hook?
-   - *Resolution*: Enhance `LocationInput` with an `onLocationSelect` callback returning `{ address, lat, lng, ward, lga, state }` so it can be cleanly reused across Event, Listing, and Edit pages without duplicate API calls.
+#### Width Tier Helper (`src/lib/layout-utils.ts`)
+```ts
+export type WidthTier = 'narrow' | 'default' | 'wide' | 'full';
 
-2. **Payout Account Verification**:
-   - *Question*: How should web verify if a user has a linked payout account before allowing paid ticket tiers?
-   - *Resolution*: Call `GET /api/seller/setup-account` and check `!!res?.account` (matching `src/app/create-event.tsx` in `yrdly-mobile` exactly). If `false` and a paid ticket tier is present, show inline warning banner + "Link Bank Account" button redirecting to `/profile/payout-settings` (or `/settings/payouts`).
+export function getPageWidthTier(pathname: string): WidthTier {
+  if (
+    pathname.startsWith('/settings') ||
+    pathname.startsWith('/payment') ||
+    pathname.startsWith('/verify-phone') ||
+    pathname === '/profile/payout-settings'
+  ) {
+    return 'narrow'; // max-w-xl (576px)
+  }
 
-3. **Video Upload Storage & Bucket Name**:
-   - *Question*: What is the exact Supabase Storage bucket name used for post videos?
-   - *Resolution*: **CONFIRMED: `'post-videos'`**. Verified in `yrdly-mobile`'s `StorageService.uploadPostVideo` (`src/lib/storage-service.ts` line 296) and `yrdly-app`'s `use-posts.tsx` line 604 (`supabase.storage.from('post-videos')`). Web video uploads will upload directly to bucket `'post-videos'` under path `${userId}/${Date.now()}.${ext}`.
+  if (
+    (pathname.startsWith('/marketplace') && pathname !== '/marketplace/create') ||
+    (pathname.startsWith('/profile') &&
+      pathname !== '/profile/purchases' &&
+      pathname !== '/profile/sold-items' &&
+      pathname !== '/profile/payout-settings') ||
+    pathname.startsWith('/my-listings') ||
+    pathname.startsWith('/disputes')
+  ) {
+    return 'wide'; // max-w-5xl (1024px)
+  }
+
+  if (pathname.startsWith('/admin')) {
+    return 'full'; // w-full
+  }
+
+  return 'default'; // max-w-2xl (672px)
+}
+```
+
+#### P1 Visibly Changes Table Per Route
+
+| Route | Pre-P1 Wrapper Class | Post-P1 Wrapper Class | Visible Impact |
+|---|---|---|---|
+| `/settings/*`, `/payment*`, `/verify-phone*`, `/profile/payout-settings` | `max-w-[680px] lg:max-w-[660px]` | `max-w-xl` (576px) | Slightly cleaner, narrower column on desktop |
+| `/profile`, `/profile/[userId]`, `/profile/payouts` | `max-w-[680px] lg:max-w-[660px]` | `max-w-5xl` (1024px) | **Major Expansion**: Profile expands into wide 1024px column on desktop |
+| `/marketplace`, `/marketplace/[id]`, `/my-listings`, `/disputes*` | `max-w-[680px] lg:max-w-[660px]` | `max-w-5xl` (1024px) | **Major Expansion**: Cards expand into wide 1024px layout |
+| `/notifications`, `/friend-requests`, `/network*`, `/alerts`, `/bookmarks`, `/community`, `/tickets`, `/my-tickets`, `/posts/*`, `/transactions*`, `/profile/purchases`, `/profile/sold-items`, `/marketplace/create` | `max-w-[680px] lg:max-w-[660px]` | `max-w-2xl` (672px) | Standardized 672px column width |
+| `/admin` | `max-w-[680px] lg:max-w-[660px]` | `w-full` | Admin dashboard expands full-width |
 
 ---
 
-## 5. Phased Execution Plan (Single-Action Rule Compliant: Max 2 File Edits Per Step)
+### 5. Phase 2: Desktop Sidebar Shell (>=1024px)
 
-### Phase 1: Shared Helper & Location Enhancements
-- **Step 1.1**: Update `src/components/LocationInput.tsx` to support structured location callbacks (`lat`, `lng`, `ward`, `lga`, `state`).
+#### Sidebar Component (`src/components/layout/Sidebar.tsx`)
+- Rendered on desktop (`hidden lg:flex fixed left-0 top-0 bottom-0 w-64 flex-col border-r border-[var(--c-border)] bg-[var(--c-card)] p-4 z-40`).
+- Hidden on chat and map pages (`!isChatPage && !isMapPage`).
+- Renders:
+  1. Brand Logo (`YRDLY`) & Location Chip (`LocationChip`)
+  2. Navigation Links (Home, Explore, Messages with unread badge, Profile, Settings)
+  3. "+ Create" Action Button
+  4. Bottom Action Bar: Search button, Notifications button (with unread badge), User Avatar & Profile menu trigger.
 
-### Phase 2: Post Creation Route (`/posts/create`)
-- **Step 2.1**: Create `src/app/(app)/posts/create/page.tsx` (Port `create-post.tsx` with text, image, video upload to `'post-videos'`, visibility, and 2 success states).
+#### `HomeScreen.tsx` Right Column Shift
+To prevent the main feed column from being squished below ~600px on 1024px / 1280px viewports:
+- File: `/Users/macbook/Development/projects/yrdly-app/src/components/HomeScreen.tsx`
+- Class replacements:
+  - Line 361: `grid grid-cols-1 2xl:grid-cols-[minmax(0,1fr)_400px]` (was `lg:grid-cols-[minmax(0,1fr)_500px]`)
+  - Line 362: `2xl:mx-0` (was `lg:mx-0`)
+  - Line 480: `hidden 2xl:block relative` (was `hidden lg:block relative`)
 
-### Phase 3: Listing Creation & Edit Routes
-- **Step 3.1**: Create `src/app/(app)/marketplace/create/page.tsx` (Port `create-for-sale.tsx` with multi-step wizard, Giveaway toggle, writing `category` + `sub_category`, location, condition).
-- **Step 3.2**: Refactor `src/app/(app)/marketplace/edit/[itemId]/page.tsx` (Port `src/app/marketplace/edit/[id].tsx` with photo management and delete confirmation).
+#### Dropdown Re-Anchoring
+- **`NotificationsDropdown.tsx`**: Anchor using `lg:left-[272px] lg:right-auto lg:bottom-16 lg:top-auto` when triggered from sidebar bottom bar.
+- **`ProfileDropdown.tsx`**: Anchor using `lg:left-[272px] lg:right-auto lg:bottom-16 lg:top-auto` when triggered from sidebar bottom bar.
 
-### Phase 4: Event Creation & Management Routes
-- **Step 4.1**: Rebuild `src/app/(app)/events/create/page.tsx` (Port `create-event.tsx` with 6 steps, payout gate via `GET /api/seller/setup-account`, dynamic tiers, 2 success states).
-- **Step 4.2**: Create `src/app/(app)/events/[id]/manage/page.tsx` (Port `manage.tsx` with event metrics, ticket buyer roster, and scanner link).
+#### Appended Sticky Offset Table
 
-### Phase 5: Navigation & Component Wiring Updates
-- **Step 5.1**: Modify `src/components/CreateMenuOverlay.tsx` to route `onPost`, `onListing`, `onEvent` to new full-page routes.
-- **Step 5.2**: Modify `src/components/layout/MainLayout.tsx` to remove old dialog states and dialog renders.
-- **Step 5.3**: Modify `src/components/HomeScreen.tsx` and `src/components/EmptyFeed.tsx` to navigate to new creation routes.
-- **Step 5.4**: Modify `src/components/EventsScreen.tsx` and `src/components/MarketplaceScreen.tsx` to navigate to new creation/manage routes.
-- **Step 5.5**: Modify `src/components/PostCard.tsx` and `src/components/PostDetailView.tsx` to remove dialog triggers and update manage/edit links.
-- **Step 5.6**: Modify `src/components/marketplace/MarketplaceCreatorOnboarding.tsx` to route to `/marketplace/create`.
+| File Path | Line | Existing Offset Class | Appended Offset Class (P2) |
+|---|---|---|---|
+| `MainLayout.tsx` | 266 | `pt-[64px] md:pt-[84px]` | `pt-[64px] md:pt-[84px] lg:pt-0 lg:pl-64` (applied only when not chat/map) |
+| `MainLayout.tsx` | 275 | `h-[calc(100dvh-64px)] md:h-[calc(100dvh-84px)]` | `h-[calc(100dvh-64px)] md:h-[calc(100dvh-84px)] lg:h-[100dvh]` |
+| `MainLayout.tsx` | 281 | `sticky top-[64px] md:top-[84px]` | `sticky top-[64px] md:top-[84px] lg:top-4` |
+| `Topbar.tsx` | 46 | `h-[64px] md:h-[84px]` | Append `lg:hidden` to Topbar container |
+| `AppHeader.tsx` | 22 | `sticky top-[calc(4rem+env(safe-area-inset-top))] md:top-[calc(84px+env(safe-area-inset-top))]` | `sticky top-[calc(4rem+env(safe-area-inset-top))] md:top-[calc(84px+env(safe-area-inset-top))] lg:top-0` |
+| `my-tickets/page.tsx` | 60, 92 | `sticky top-[calc(4rem+env(safe-area-inset-top))] md:top-[calc(84px+env(safe-area-inset-top))]` | `sticky top-[calc(4rem+env(safe-area-inset-top))] md:top-[calc(84px+env(safe-area-inset-top))] lg:top-0` |
+| `purchases/page.tsx` | 112, 142 | `sticky top-[calc(4rem+env(safe-area-inset-top))] md:top-[calc(84px+env(safe-area-inset-top))]` | `sticky top-[calc(4rem+env(safe-area-inset-top))] md:top-[calc(84px+env(safe-area-inset-top))] lg:top-0` |
+| `sold-items/page.tsx` | 118, 148 | `sticky top-[calc(4rem+env(safe-area-inset-top))] md:top-[calc(84px+env(safe-area-inset-top))]` | `sticky top-[calc(4rem+env(safe-area-inset-top))] md:top-[calc(84px+env(safe-area-inset-top))] lg:top-0` |
+| `transactions/page.tsx` | 133 | `sticky top-[calc(4rem+env(safe-area-inset-top))] md:top-[calc(84px+env(safe-area-inset-top))]` | `sticky top-[calc(4rem+env(safe-area-inset-top))] md:top-[calc(84px+env(safe-area-inset-top))] lg:top-0` |
+| `transactions/[id]/page.tsx` | 305 | `sticky top-[calc(4rem+env(safe-area-inset-top))] md:top-[calc(84px+env(safe-area-inset-top))]` | `sticky top-[calc(4rem+env(safe-area-inset-top))] md:top-[calc(84px+env(safe-area-inset-top))] lg:top-0` |
 
-### Phase 6: Legacy Component Cleanup & Verification
-- **Step 6.1**: Delete obsolete dialog components: `src/components/CreatePostDialog.tsx` & `src/components/CreateItemDialog.tsx`.
-- **Step 6.2**: Delete obsolete event components: `src/components/CreateEventDialog.tsx` & `src/components/events/NewEventForm.tsx`.
-- **Step 6.3**: Run `npm run build` to verify clean TypeScript compilation without broken imports.
+---
+
+### 6. Phase 3: Profile Restructure & Per-Page Right Rail
+
+#### Profile Desktop Layout Restructure (`ProfileScreen.tsx`)
+- Outer container: `w-full grid grid-cols-1 min-[1440px]:grid-cols-[minmax(0,1fr)_340px] gap-6`.
+- Main column Quick Access: `min-[1440px]:hidden` (renders in main column when `<1440px`).
+- `<RightRail />`: `hidden min-[1440px]:block` (renders in right column when `>=1440px`). Controlled via CSS so only one Quick Access is visible.
+
+#### Dedicated Right-Rail Component (`src/components/RightRail.tsx`)
+- Renders:
+  1. **Quick Access Widget** (My Tickets, My Events, Store, My Listings).
+  2. **Suggested Neighbors Widget**: Scoped query fetching users from `users` table: `select('id, name, username, avatar_url, bio')`, `.eq('home_lga', currentUser.home_lga)`, `.neq('id', currentUser.id)`, excluding users already followed.
+  3. **Upcoming Local Events Widget**: `getPublishedEvents({ lga: userLga, limit: 5 })`.
+- **Navigation Handlers**: Preserve existing followers/following navigation (`/network/[userId]?mode=followers`).
+- **No "Share Profile" button**.
+
+#### Decision for User Review: Follow / Unfollow Button
+- **Context**: Commit `e193fff5` removed the action bar containing the Follow button on other users' profiles, while `handleToggleFollow` remains in `ProfileScreen.tsx` script logic.
+- **Decision Option A**: Re-add a compact "Follow" / "Following" button in the Profile Identity block next to the user's handle when viewing `isOwnProfile={false}`.
+- **Decision Option B**: Leave identity block as-is (matching current mobile parity).
+
+---
+
+### 7. Phase 4: Settings Master-Detail on Desktop
+
+#### Desktop Master-Detail Architecture
+- Create `/src/app/(app)/settings/layout.tsx`:
+  - Renders master setting categories list on left (hidden below `lg`).
+  - Renders `{children}` on right.
+  - At `>=lg`, index route `/settings` automatically redirects to `/settings/profile`.
+  - Sub-page back arrows in settings components get `lg:hidden`.
+- **Scope**: Add `src/lib/layout-utils.ts` and `src/components/layout/MainLayout.tsx` to P4 scope.
+
+#### Payout Settings Handling Strategy
+- **Recommendation (Link-Out)**: Keep `/profile/payout-settings` at its existing route. Add a link item inside the Settings "Commerce" menu section pointing to `/profile/payout-settings`. On desktop, it renders cleanly in the `narrow` width tier.
+
+---
+
+### 8. Standalone Commit Note: BottomNav FAB Fix
+- **Standalone Commit**: Fix `onCreateMenu` handler in `MainLayout.tsx` (Line 350) from `() => setCreateMenuOpen(false)` to `() => setCreateMenuOpen(true)`. Placed in a separate commit pending user approval.
+
+---
+
+### 9. Known Gap (Out of Scope)
+- **Viewport Gap (768px – 1023px `md` to `<lg`)**: On viewports between 768px and 1023px, `BottomNav` is hidden (`md:hidden`) and `Topbar` navigation links are hidden (`hidden lg:flex`). Navigation during this range occurs via Topbar action icons or browser navigation.
+
+---
+
+### 10. Verification & User Manual Checklist
+
+#### Antigravity Automated Verification
+1. `npx tsc --noEmit` (Must return 0 errors).
+2. Grep search verification for unexpected layout class conflicts.
+
+#### User Manual Viewport Testing Checklist
+For each completed phase, user verifies in browser across 6 target viewports:
+- [ ] `375px` (Mobile)
+- [ ] `768px` (Tablet / `md`)
+- [ ] `1024px` (Desktop / `lg`)
+- [ ] `1280px` (Wide Desktop / `xl`)
+- [ ] `1440px` (Desktop Large / `min-[1440px]`)
+- [ ] `1536px` (Ultra Wide / `2xl`)
