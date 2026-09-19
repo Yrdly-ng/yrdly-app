@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { SceneBg, GlassCard, GlassInput, StepBar, PrimaryBtn } from '@/components/onboarding/primitives';
 import { AuthService } from '@/lib/auth-service';
+import { StorageService } from '@/lib/storage-service';
 import { useAuth } from '@/hooks/use-supabase-auth';
 import { supabase } from '@/lib/supabase';
 import { useGpsLocation } from '@/hooks/use-gps-location';
@@ -278,15 +279,11 @@ function OnboardingProfileContent() {
       let avatarUrl = user.user_metadata?.avatar_url || null;
 
       if (avatarFile) {
-        const fileExt = avatarFile.name.split('.').pop();
-        const filePath = `${user.id}/${Date.now()}.${fileExt}`;
-        const { error: uploadErr } = await supabase.storage
-          .from('avatars')
-          .upload(filePath, avatarFile, { upsert: true });
-
-        if (!uploadErr) {
-          const { data: pubUrlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
-          avatarUrl = pubUrlData.publicUrl;
+        const { url: uploadedUrl, error: uploadErr } = await StorageService.uploadUserAvatar(user.id, avatarFile);
+        if (!uploadErr && uploadedUrl) {
+          avatarUrl = uploadedUrl;
+        } else if (uploadErr) {
+          console.error('Avatar upload error during onboarding:', uploadErr);
         }
       }
 
@@ -308,7 +305,7 @@ function OnboardingProfileContent() {
         profile_completed: true,
       } as any);
 
-      router.replace('/onboarding/welcome');
+      router.replace('/onboarding/tour');
     } catch (err: any) {
       setSaveError(err?.message || 'Something went wrong. Please try again.');
     } finally {
