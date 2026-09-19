@@ -118,13 +118,18 @@ export default function LoginPage() {
 
         const { user: newUser, error: err } = await signUp(email, password, name, cleanUsername);
         if (err) {
+          const errMsg = (err.message || "").toLowerCase();
           if (
-            err.message.toLowerCase().includes("already registered") ||
-            err.message.toLowerCase().includes("already in use")
+            errMsg.includes("already registered") ||
+            errMsg.includes("already in use")
           ) {
             try {
               await supabase.auth.resend({ type: "signup", email });
             } catch {}
+            router.push(`/onboarding/verify-email?email=${encodeURIComponent(email)}`);
+            return;
+          }
+          if (errMsg.includes("confirmation email") || errMsg.includes("unexpected_failure")) {
             router.push(`/onboarding/verify-email?email=${encodeURIComponent(email)}`);
             return;
           }
@@ -304,7 +309,7 @@ export default function LoginPage() {
               <Mail className="w-4 h-4 text-white/40 flex-shrink-0" />
               <input
                 type="email"
-                placeholder="Mobile number, username or email address"
+                placeholder="Email address"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full bg-transparent outline-none text-sm text-white placeholder:text-white/30 font-yrdly-body"

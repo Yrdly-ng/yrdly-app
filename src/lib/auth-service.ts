@@ -56,7 +56,7 @@ export class AuthService {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: typeof window !== "undefined" ? `${window.location.origin}/auth/callback` : undefined,
           data: {
             name,
             username,
@@ -64,10 +64,13 @@ export class AuthService {
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        if (data?.user) {
+          return { user: data.user, error: null };
+        }
+        throw error;
+      }
 
-      // Note: User profile will be created automatically after email confirmation
-      // via the onAuthStateChange listener in the AuthProvider
       return { user: data.user, error: null };
     } catch (error) {
       console.error('Sign up error:', error);
