@@ -146,19 +146,6 @@ function ConversationItem({
           </div>
         )}
       </div>
-
-      {/* Delete button on hover */}
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onDelete(item.id, e);
-        }}
-        className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-[var(--yrdly-label)] hover:text-red-500 hover:bg-red-500/10 transition-all flex-shrink-0"
-        title="Delete Conversation"
-      >
-        <Trash2 size={16} />
-      </button>
     </div>
   );
 }

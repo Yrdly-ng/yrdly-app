@@ -693,7 +693,7 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
       </main>
 
       {/* ── Input ── */}
-      <footer className="flex-shrink-0 p-4 pb-8 backdrop-blur-xl"
+      <footer className="flex-shrink-0 p-3 sm:p-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-xl"
         style={{
           background: 'color-mix(in srgb, var(--c-card) 88%, transparent)',
           borderTop: "1px solid var(--c-border)",
