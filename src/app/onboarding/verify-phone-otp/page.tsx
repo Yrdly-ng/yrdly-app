@@ -3,12 +3,14 @@
 import React, { useState, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Loader2, ShieldCheck } from "lucide-react";
+import { useAuth } from "@/hooks/use-supabase-auth";
 
 function VerifyPhoneOtpForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const phone = searchParams.get("phone") || "";
   const pinId = searchParams.get("pinId") || "";
+  const { verifyPhoneOtp } = useAuth();
 
   const [digits, setDigits] = useState(["", "", "", "", "", ""]);
   const [countdown, setCountdown] = useState(45);
@@ -47,17 +49,11 @@ function VerifyPhoneOtpForm() {
     setVerifying(true);
 
     try {
-      const res = await fetch("/api/auth/verify-phone-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: `+234${phone}`, pinId, code }),
-      });
-
-      const data = await res.json();
+      const { verified, error: otpError } = await verifyPhoneOtp(pinId, code);
       setVerifying(false);
 
-      if (!res.ok || !data.success) {
-        setError(data.error || "Invalid verification code");
+      if (otpError || !verified) {
+        setError(otpError || "Invalid verification code");
       } else {
         router.push("/onboarding/profile");
       }

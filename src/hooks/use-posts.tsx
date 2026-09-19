@@ -403,7 +403,7 @@ export const usePosts = (filter?: LocationFilter | null) => {
           timestamp: postIdToUpdate ? postData.timestamp : new Date().toISOString(),
           category: postData.category || 'General',
           // Location stamping — only set on new posts, preserve on edits
-          ...(postIdToUpdate ? { updated_at: new Date().toISOString() } : {
+          ...(postIdToUpdate ? { updated_at: new Date().toISOString(), is_edited: true } : {
             state: resolvedState,
             lga: resolvedLga,
             ward: resolvedWard,

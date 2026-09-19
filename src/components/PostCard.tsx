@@ -993,7 +993,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
                   </span>
                 </>
               )}
-              {post.updated_at && (new Date(post.updated_at).getTime() - new Date(post.timestamp).getTime() > 2000) && (
+              {post.is_edited && (
                 <>
                   <span className="text-[var(--yrdly-label)] text-[0.6875rem]">•</span>
                   <span className="font-yrdly-body font-normal text-[0.6875rem] text-[var(--yrdly-label)]">edited</span>

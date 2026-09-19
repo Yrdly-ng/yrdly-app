@@ -105,6 +105,7 @@ export interface Post {
   price?: number;
   condition?: string;
   is_sold?: boolean;
+  is_edited?: boolean;
   liked_by: string[];
   created_at?: string;
   updated_at?: string;
