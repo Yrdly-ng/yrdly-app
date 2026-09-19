@@ -477,7 +477,7 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
     </div>
 
     {/* ── Right Sidebar (fixed in place, does not move while the feed scrolls) ── */}
-    <div className="hidden 2xl:block relative">
+    <div className="hidden xl:block relative">
       <aside className="sticky top-[80px] md:top-[100px] grid grid-cols-2 gap-5 font-yrdly-body w-full items-start">
       <div className="rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-5 shadow-sm transition-all hover:border-primary/40 hover:shadow-md">
         <div className="flex items-center gap-3 mb-4">

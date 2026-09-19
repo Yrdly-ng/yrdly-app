@@ -363,9 +363,10 @@ export function MainLayout({ children }: MainLayoutProps) {
 
       {!isChatPage && !isMapPage && (
         <BottomNav
-          navItems={navItems}
+          navItems={navItems.filter((i) => i.href !== "/map")}
           pathname={pathname}
-          onCreateMenu={() => setCreateMenuOpen(false)}
+          onCreateMenu={() => setCreateMenuOpen(true)}
+          unreadMessages={unreadMessagesCount}
         />
       )}
 

@@ -16,9 +16,10 @@ interface BottomNavProps {
   navItems: BottomNavItem[];
   pathname: string;
   onCreateMenu?: () => void;
+  unreadMessages?: number;
 }
 
-export function BottomNav({ navItems, pathname, onCreateMenu }: BottomNavProps) {
+export function BottomNav({ navItems, pathname, onCreateMenu, unreadMessages = 0 }: BottomNavProps) {
   const isActive = (item: BottomNavItem) =>
     pathname === item.href ||
     (item.href !== "/home" && pathname.startsWith(item.href)) ||
@@ -27,16 +28,25 @@ export function BottomNav({ navItems, pathname, onCreateMenu }: BottomNavProps) 
   const renderItem = (item: BottomNavItem) => {
     const active = isActive(item);
     const { href, label, icon: Icon } = item;
+    const isMessages = href === "/messages";
+
     return (
       <Link
         key={href}
         href={href}
         className={cn(
-          "flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[0.65rem] font-semibold transition-colors duration-150",
+          "flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[0.65rem] font-semibold transition-colors duration-150 relative",
           active ? "text-[var(--primary)]" : "text-[var(--c-text-muted)]"
         )}
       >
-        <Icon size={22} weight={active ? "fill" : "regular"} className="flex-shrink-0" />
+        <div className="relative">
+          <Icon size={22} weight={active ? "fill" : "regular"} className="flex-shrink-0" />
+          {isMessages && unreadMessages > 0 && (
+            <span className="absolute -top-1 -right-2.5 min-w-[16px] h-[16px] px-1 flex items-center justify-center rounded-full bg-[#82DB7E] text-black text-[0.6rem] font-extrabold leading-none shadow-sm">
+              {unreadMessages > 9 ? "9+" : unreadMessages}
+            </span>
+          )}
+        </div>
         <span>{label}</span>
       </Link>
     );

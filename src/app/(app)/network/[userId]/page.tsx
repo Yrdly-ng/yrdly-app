@@ -38,14 +38,36 @@ export default function NetworkPage() {
       // 1. Fetch Followers
       const { data: followerRows } = await supabase
         .from("followers")
-        .select("follower_id, created_at, users:follower_id(id, name, username, avatar_url, verified, verified_seller)")
+        .select("follower_id")
         .eq("following_id", targetUserId);
+
+      const followerIds = (followerRows || []).map((r: any) => r.follower_id).filter(Boolean);
+
+      let fetchedFollowers: any[] = [];
+      if (followerIds.length > 0) {
+        const { data: followerUsers } = await supabase
+          .from("users")
+          .select("id, name, username, avatar_url, verified, verified_seller")
+          .in("id", followerIds);
+        fetchedFollowers = followerUsers || [];
+      }
 
       // 2. Fetch Following
       const { data: followingRows } = await supabase
         .from("followers")
-        .select("following_id, created_at, users:following_id(id, name, username, avatar_url, verified, verified_seller)")
+        .select("following_id")
         .eq("follower_id", targetUserId);
+
+      const followingIds = (followingRows || []).map((r: any) => r.following_id).filter(Boolean);
+
+      let fetchedFollowing: any[] = [];
+      if (followingIds.length > 0) {
+        const { data: followingUsers } = await supabase
+          .from("users")
+          .select("id, name, username, avatar_url, verified, verified_seller")
+          .in("id", followingIds);
+        fetchedFollowing = followingUsers || [];
+      }
 
       // 3. Fetch current user's following list (to determine follow state on cards)
       if (currentUser?.id) {
@@ -59,17 +81,8 @@ export default function NetworkPage() {
         }
       }
 
-      setFollowers(
-        (followerRows || [])
-          .map((r: any) => r.users)
-          .filter(Boolean)
-      );
-
-      setFollowing(
-        (followingRows || [])
-          .map((r: any) => r.users)
-          .filter(Boolean)
-      );
+      setFollowers(fetchedFollowers);
+      setFollowing(fetchedFollowing);
     } catch (err) {
       console.error("Failed loading network:", err);
     } finally {

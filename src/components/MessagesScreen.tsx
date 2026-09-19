@@ -435,7 +435,7 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
       <div
         className={cn(
           "w-full md:w-80 lg:w-96 flex flex-col h-full shrink-0 border-r border-[var(--yrdly-glass-border)] bg-[var(--yrdly-dark)]",
-          selectedConvId ? "hidden" : "flex"
+          selectedConvId ? "hidden md:flex" : "flex"
         )}
       >
         {/* Header */}
