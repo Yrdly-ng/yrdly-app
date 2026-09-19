@@ -53,7 +53,7 @@ export default function SafetyAlertsAdminQueuePage() {
     try {
       const { error } = await supabase
         .from("safety_alerts")
-        .update({ status, reviewed_at: new Date().toISOString() })
+        .update({ status, updated_at: new Date().toISOString() })
         .eq("id", alertId);
 
       if (error) throw error;

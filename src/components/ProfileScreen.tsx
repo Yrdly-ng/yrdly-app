@@ -106,7 +106,7 @@ function MiniCard({ title, sub, img, badge, onClick }: {
 }
 
 function isMediaPost(p: any): boolean {
-  return !!p.image_url || !!(p.image_urls && p.image_urls.length > 0) || !!p.video_url || !!(p.video_urls && p.video_urls.length > 0);
+  return !!p.image_url || !!(p.image_urls && p.image_urls.length > 0) || !!p.video_url || !!(p.video_urls && p.video_urls.length > 0) || !!p.video_thumbnail_url;
 }
 
 export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId, targetUser: externalTargetUser }: ProfileScreenProps) {

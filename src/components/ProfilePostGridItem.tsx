@@ -16,7 +16,7 @@ export function ProfilePostGridItem({ post, onPress }: ProfilePostGridItemProps)
     : post.image_url
     ? [post.image_url]
     : [];
-  const imageUrl = imageUrls[0];
+  const imageUrl = imageUrls[0] || post.video_thumbnail_url || null;
   const isVideo = !!post.video_url || ((post as any).video_urls && (post as any).video_urls.length > 0);
   const likesCount = post.liked_by?.length || 0;
   const commentCount = post.comment_count || 0;
