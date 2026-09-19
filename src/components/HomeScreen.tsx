@@ -96,11 +96,19 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
     const fetchTrending = async () => {
       try {
         const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-        const { data } = await supabase
+        let query = supabase
           .from("posts")
           .select("id, category, title, text, image_url, image_urls, liked_by")
-          .gte("created_at", since)
-          .limit(50);
+          .gte("created_at", since);
+
+        if (activeFilter?.state) {
+          query = query.eq("state", activeFilter.state);
+        }
+        if (activeFilter?.lga) {
+          query = query.eq("lga", activeFilter.lga);
+        }
+
+        const { data } = await query.limit(50);
 
         const ranked = (data || [])
           .map((p: any) => ({
@@ -144,10 +152,10 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
     };
     fetchTrending();
 
-    const interval = setInterval(fetchTrending, 2000);
+    const interval = setInterval(fetchTrending, 4000);
 
     const ch = supabase
-      .channel("home_trending_posts")
+      .channel(`home_trending_posts_${Math.random().toString(36).substring(2, 7)}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "posts" },
@@ -159,7 +167,7 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
       clearInterval(interval);
       supabase.removeChannel(ch);
     };
-  }, []);
+  }, [activeFilter]);
 
   // Slide rows smoothly into their new position instead of snapping (FLIP animation)
   useLayoutEffect(() => {
@@ -191,7 +199,7 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
     fetchEvents();
 
     const ch = supabase
-      .channel("home_upcoming_events")
+      .channel(`home_upcoming_events_${Math.random().toString(36).substring(2, 7)}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "events" },
@@ -207,12 +215,21 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
   useEffect(() => {
     const fetchListings = async () => {
       try {
-        const { data } = await supabase
+        let query = supabase
           .from("posts")
           .select("id, title, text, price, image_url, image_urls")
           .eq("category", "For Sale")
-          .eq("is_sold", false)
-          .order("timestamp", { ascending: false })
+          .eq("is_sold", false);
+
+        if (activeFilter?.state) {
+          query = query.eq("state", activeFilter.state);
+        }
+        if (activeFilter?.lga) {
+          query = query.eq("lga", activeFilter.lga);
+        }
+
+        const { data } = await query
+          .order("created_at", { ascending: false })
           .limit(3);
 
         const mapped = (data || []).map((item: any) => ({
@@ -230,7 +247,7 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
     fetchListings();
 
     const ch = supabase
-      .channel("home_recent_listings")
+      .channel(`home_recent_listings_${Math.random().toString(36).substring(2, 7)}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "posts" },
@@ -241,7 +258,7 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
     return () => {
       supabase.removeChannel(ch);
     };
-  }, []);
+  }, [activeFilter]);
 
   const { posts, loading, loadingMore, hasMore, loadMore, deletePost, createPost } = usePosts(activeFilter);
 
