@@ -70,7 +70,7 @@ export function PushNotificationManager() {
     useEffect(() => {
         if (!user) return;
 
-        const channelId = `realtime_notifications_${user.id}`;
+        const channelId = `realtime_notifications_${user.id}_${Math.random().toString(36).substring(2, 9)}`;
         const channel = supabase
             .channel(channelId)
             .on(

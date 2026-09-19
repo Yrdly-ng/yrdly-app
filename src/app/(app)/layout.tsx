@@ -61,7 +61,6 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
   return (
     <OnboardingGuard>
       <ServiceWorkerRegistration />
-      <PushNotificationManager />
       <PullToRefresh>
         <MainLayout>
           {children}
