@@ -1,0 +1,9 @@
+# Yrdly Security Vulnerability Disclosure Policy
+# Standardized according to RFC 9116
+
+Contact: mailto:security@yrdly.ng
+Contact: mailto:support@yrdly.ng
+Expires: 2027-09-19T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://app.yrdly.ng/.well-known/security.txt
+Policy: https://yrdly.ng/privacy-policy
