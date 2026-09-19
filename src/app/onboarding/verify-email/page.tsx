@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { ArrowLeft, Loader2, Mail, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Loader2, Mail } from "lucide-react";
 
 function VerifyEmailForm() {
   const router = useRouter();
@@ -38,20 +38,6 @@ function VerifyEmailForm() {
 
   const filled = digits.every((d) => d !== "");
 
-  // Auto-poll user session in case user clicked the email confirmation link in another tab
-  useEffect(() => {
-    const checkStatus = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user && user.email_confirmed_at) {
-          router.push("/onboarding/verify-phone");
-        }
-      } catch {}
-    };
-    checkStatus();
-    const interval = setInterval(checkStatus, 3000);
-    return () => clearInterval(interval);
-  }, [router]);
 
   const handleVerifyOtp = async () => {
     const token = digits.join("");
@@ -96,10 +82,6 @@ function VerifyEmailForm() {
         email,
       });
     } catch {}
-  };
-
-  const handleContinueAnyway = async () => {
-    router.push("/onboarding/verify-phone");
   };
 
   return (
@@ -175,8 +157,8 @@ function VerifyEmailForm() {
                 Check your email
               </h2>
               <p className="text-xs text-zinc-400 leading-relaxed">
-                We sent a confirmation link / code to{" "}
-                <span className="text-white font-semibold">{email || "your email address"}</span>. Please check your inbox and Spam folder.
+                We sent a 6-digit code to{" "}
+                <span className="text-white font-semibold">{email || "your email address"}</span>. Check your inbox and spam folder.
               </p>
             </div>
 
@@ -218,28 +200,19 @@ function VerifyEmailForm() {
               )}
             </button>
 
-            {/* Link Confirmation & Bypass */}
-            <div className="space-y-2 pt-2 text-center">
-              <button
-                type="button"
-                onClick={handleContinueAnyway}
-                className="w-full h-[42px] rounded-xl bg-white/10 text-white font-semibold text-xs hover:bg-white/15 transition-all border border-white/10 flex items-center justify-center gap-1.5"
-              >
-                <CheckCircle2 className="w-4 h-4 text-[#82DB7E]" />
-                <span>Clicked email link? Continue</span>
-              </button>
-
+            {/* Resend */}
+            <div className="text-center pt-2">
               {countdown > 0 ? (
-                <div className="text-xs text-zinc-500 font-mono">
-                  Resend link in {countdown}s
-                </div>
+                <span className="text-xs text-zinc-500 font-mono">
+                  Resend code in {countdown}s
+                </span>
               ) : (
                 <button
                   type="button"
                   onClick={handleResend}
                   className="text-xs font-bold text-[#82DB7E] hover:underline"
                 >
-                  Didn&apos;t get email? Resend verification
+                  Didn&apos;t get the code? Resend
                 </button>
               )}
             </div>
