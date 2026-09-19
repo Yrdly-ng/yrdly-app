@@ -223,29 +223,35 @@ export default function LoginPage() {
       </div>
 
       {/* ── Right Auth Panel (Instagram Style Form) ── */}
-      <div className="flex-1 min-h-[100dvh] flex flex-col justify-between p-6 sm:p-12 lg:p-16 bg-[#121418] max-w-xl w-full mx-auto">
-        {/* Top Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="lg:hidden font-yrdly-display font-black text-2xl text-[#82DB7E]">
-              YRDLY
-            </span>
+      <div
+        className="flex-1 min-h-[100dvh] flex flex-col justify-between p-6 sm:p-10 lg:p-14 relative bg-cover bg-center"
+        style={{ backgroundImage: "url('/images/onboarding/signup.jpg')" }}
+      >
+        <div className="absolute inset-0 bg-black/80 backdrop-blur-sm z-0" />
+
+        <div className="relative z-10 flex-1 flex flex-col justify-between max-w-lg w-full mx-auto">
+          {/* Top Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="lg:hidden font-yrdly-display font-black text-2xl text-[#82DB7E]">
+                YRDLY
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsSignUp(!isSignUp);
+                setError("");
+              }}
+              className="text-xs font-bold text-[#82DB7E] hover:underline"
+            >
+              {isSignUp ? "Log in" : "Sign up"}
+            </button>
           </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              setIsSignUp(!isSignUp);
-              setError("");
-            }}
-            className="text-xs font-bold text-[#82DB7E] hover:underline"
-          >
-            {isSignUp ? "Log in" : "Sign up"}
-          </button>
-        </div>
-
-        {/* Form Container */}
-        <div className="my-auto py-8 space-y-6 max-w-sm w-full mx-auto">
+          {/* Form Container */}
+          <div className="my-auto py-8 space-y-6 max-w-md w-full mx-auto">
           {/* Form Header */}
           <div className="space-y-1.5 text-left">
             <h2 className="text-2xl sm:text-3xl font-bold font-yrdly-display text-white tracking-tight">
@@ -409,6 +415,7 @@ export default function LoginPage() {
         {/* Footer Meta Style */}
         <div className="pt-6 text-center text-[11px] font-bold tracking-widest text-white/20 uppercase font-mono">
           YRDLY
+        </div>
         </div>
       </div>
     </div>

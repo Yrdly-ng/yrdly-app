@@ -1,36 +1,21 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Mail } from 'lucide-react';
-import Link from 'next/link';
-
-// Design tokens
-const colors = {
-  background: 'var(--c-bg)',
-  blob: '#A154F2',
-  overlay: 'rgba(255, 255, 255, 0.05)',
-  border: 'hsl(var(--primary))',
-  primary: 'hsl(var(--primary))',
-  text: 'var(--c-text)',
-  textFaded: 'var(--c-text-muted)',
-  link: '#1976D2',
-};
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
+import { Loader2, Mail, ArrowLeft, CheckCircle2 } from "lucide-react";
+import Link from "next/link";
 
 export default function ForgotPasswordPage() {
-  const [email, setEmail] = useState('');
-  const [error, setError] = useState('');
+  const [email, setEmail] = useState("");
+  const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setLoading(true);
 
     try {
@@ -44,112 +29,160 @@ export default function ForgotPasswordPage() {
       } else {
         setSuccess(true);
       }
-    } catch (err) {
-      setError('An unexpected error occurred. Please try again.');
+    } catch {
+      setError("An unexpected error occurred. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  const inputClass =
-    'w-full h-12 sm:h-14 pl-4 pr-11 sm:pl-5 sm:pr-12 rounded-full font-sans font-light text-sm text-[var(--c-text)] placeholder:text-[var(--c-text-muted)] bg-transparent border-0 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 transition';
-  const borderStyle = { border: '0.5px solid #388E3C' };
-  const pillRound = 'rounded-full';
-
   return (
-    <div
-      className="min-h-[100dvh] relative flex flex-col items-center justify-center px-4 py-6"
-      style={{ background: colors.background }}
-    >
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div
-          className="absolute w-[10%] min-w-[40px] aspect-square rounded-full"
-          style={{ background: colors.blob, opacity: 0.55, left: '5%', top: '10%' }}
-        />
-        <div
-          className="absolute w-[8%] min-w-[32px] aspect-square rounded-full"
-          style={{ background: colors.blob, opacity: 0.55, right: '5%', bottom: '10%' }}
-        />
-      </div>
-
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: colors.overlay,
-          border: '1px solid var(--c-border)',
-          backdropFilter: 'blur(1.8px)',
-        }}
-      />
-
-      <div className="relative z-10 w-full max-w-[471px] flex flex-col items-center">
-        <div className="text-center mb-8 w-full">
-          <h1
-            className="text-2xl text-[var(--c-text)] leading-tight px-1"
-            style={{ fontFamily: "var(--font-jersey25)" }}
-          >
-            Reset Password
-          </h1>
-          <p className="font-sans font-light text-sm text-[var(--c-text-muted)] mt-2">
-            Enter your email to receive a password reset link
-          </p>
+    <div className="min-h-[100dvh] w-full bg-[#0b0c0f] text-foreground flex flex-col lg:flex-row overflow-x-hidden font-yrdly-body select-none">
+      {/* ── Left Hero Panel (Instagram Style Showcase) ── */}
+      <div className="hidden lg:flex flex-1 flex-col justify-between p-12 lg:p-16 bg-[#08090b] relative overflow-hidden border-r border-white/5">
+        <div className="flex items-center gap-2 z-10">
+          <span className="font-yrdly-display font-black text-3xl tracking-tight text-[#82DB7E]">
+            YRDLY
+          </span>
         </div>
 
-        {error && (
-          <Alert className="mb-4 border-red-500/50 bg-red-500/10 text-red-200 w-full">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
+        <div className="flex flex-col items-center text-center my-auto z-10 max-w-md mx-auto space-y-8">
+          <h1 className="text-4xl xl:text-5xl font-extrabold text-white leading-tight font-yrdly-display tracking-tight">
+            Reset your password for your{" "}
+            <span className="bg-gradient-to-r from-[#FFD600] via-[#82DB7E] to-[#00D078] bg-clip-text text-transparent">
+              neighbourhood.
+            </span>
+          </h1>
 
-        {success ? (
-          <div className="w-full text-center space-y-4">
-            <Alert className="mb-4 border-green-500/50 bg-green-500/10 text-green-200 w-full">
-              <AlertDescription>Check your email for a reset link.</AlertDescription>
-            </Alert>
-            <Button
-              onClick={() => router.push('/login')}
-              variant="outline"
-              className="w-full h-11 rounded-full font-sans text-[var(--c-text)] border-primary hover:bg-accent"
-            >
-              Back to Sign in
-            </Button>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="w-full space-y-5">
-            <div className={`relative ${pillRound}`} style={borderStyle}>
-              <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                <Mail className="h-5 w-5 text-[#BBBBBB]" />
+          <div className="relative w-72 h-72 flex items-center justify-center pt-4">
+            <div className="relative w-56 h-64 rounded-3xl bg-[#14171d] border border-[#82DB7E]/30 p-5 shadow-2xl z-20 flex flex-col justify-between text-left">
+              <div className="w-10 h-10 rounded-2xl bg-[#82DB7E]/20 border border-[#82DB7E] flex items-center justify-center text-[#82DB7E]">
+                <Mail className="w-5 h-5" />
               </div>
-              <Input
-                type="email"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className={inputClass}
-                required
-              />
+              <div className="space-y-1.5 my-auto">
+                <h4 className="text-sm font-bold text-white font-yrdly-display">
+                  Trouble logging in?
+                </h4>
+                <p className="text-xs text-[var(--yrdly-label)] leading-relaxed">
+                  Enter your email address and we&apos;ll send you a link to get back into your account.
+                </p>
+              </div>
+              <div className="text-[10px] text-white/30 font-mono">
+                Security & Verification
+              </div>
             </div>
+          </div>
+        </div>
 
-            <Button
-              type="submit"
-              className={`w-full h-11 ${pillRound} font-sans font-medium text-primary-foreground hover:opacity-90`}
-              style={{ background: colors.primary }}
-              disabled={loading}
+        <div className="z-10 text-xs text-white/30 text-center font-mono">
+          © {new Date().getFullYear()} YRDLY Inc.
+        </div>
+      </div>
+
+      {/* ── Right Auth Panel (Instagram Style Form) ── */}
+      <div
+        className="flex-1 min-h-[100dvh] flex flex-col justify-between p-6 sm:p-10 lg:p-14 relative bg-cover bg-center"
+        style={{ backgroundImage: "url('/images/onboarding/signup.jpg')" }}
+      >
+        <div className="absolute inset-0 bg-black/80 backdrop-blur-sm z-0" />
+
+        <div className="relative z-10 flex-1 flex flex-col justify-between max-w-lg w-full mx-auto">
+          {/* Top Header */}
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => router.push("/login")}
+              className="flex items-center gap-1.5 text-xs font-bold text-white/70 hover:text-white transition-colors"
             >
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Send Reset Link
-            </Button>
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back to Login</span>
+            </button>
+            <span className="lg:hidden font-yrdly-display font-black text-2xl text-[#82DB7E]">
+              YRDLY
+            </span>
+          </div>
 
-            <div className="text-center mt-6">
-              <Link
-                href="/login"
-                className="font-sans text-sm hover:underline"
-                style={{ color: colors.link }}
-              >
-                Back to Sign in
-              </Link>
+          {/* Form Container */}
+          <div className="my-auto py-8 space-y-6 max-w-md w-full mx-auto">
+            <div className="space-y-1.5 text-left">
+              <h2 className="text-2xl sm:text-3xl font-bold font-yrdly-display text-white tracking-tight">
+                Reset Password
+              </h2>
+              <p className="text-xs sm:text-sm text-white/50">
+                Enter your email address to receive a password reset link
+              </p>
             </div>
-          </form>
-        )}
+
+            {error && (
+              <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-semibold leading-snug">
+                {error}
+              </div>
+            )}
+
+            {success ? (
+              <div className="space-y-5 text-left bg-emerald-950/40 border border-[#82DB7E]/30 p-5 rounded-2xl">
+                <div className="flex items-center gap-3">
+                  <CheckCircle2 className="w-6 h-6 text-[#82DB7E] shrink-0" />
+                  <div>
+                    <h4 className="text-sm font-bold text-white font-yrdly-display">
+                      Reset Link Sent
+                    </h4>
+                    <p className="text-xs text-white/70 mt-0.5">
+                      Check your inbox for a password reset email from YRDLY.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => router.push("/login")}
+                  className="w-full h-12 rounded-xl bg-[#82DB7E] text-black font-extrabold text-sm hover:brightness-105 active:scale-[0.99] transition-all flex items-center justify-center"
+                >
+                  Return to Log in
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="flex items-center gap-3 px-4 h-13 rounded-xl bg-[#1c1f26] border border-white/10 focus-within:border-[#82DB7E] transition-all">
+                  <Mail className="w-4 h-4 text-white/40 flex-shrink-0" />
+                  <input
+                    type="email"
+                    placeholder="Enter your email address"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full bg-transparent outline-none text-sm text-white placeholder:text-white/30 font-yrdly-body"
+                    required
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full h-12 rounded-xl bg-[#82DB7E] text-black font-extrabold text-sm hover:brightness-105 active:scale-[0.99] transition-all flex items-center justify-center shadow-lg shadow-[#82DB7E]/10"
+                >
+                  {loading ? (
+                    <Loader2 className="w-5 h-5 animate-spin text-black" />
+                  ) : (
+                    "Send Reset Link"
+                  )}
+                </button>
+
+                <div className="text-center pt-2">
+                  <Link
+                    href="/login"
+                    className="text-xs text-white/60 hover:text-white transition-colors font-medium"
+                  >
+                    Remember your password? <span className="text-[#82DB7E] font-bold">Log in</span>
+                  </Link>
+                </div>
+              </form>
+            )}
+          </div>
+
+          <div className="pt-6 text-center text-[11px] font-bold tracking-widest text-white/20 uppercase font-mono">
+            YRDLY
+          </div>
+        </div>
       </div>
     </div>
   );
