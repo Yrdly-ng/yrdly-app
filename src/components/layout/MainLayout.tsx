@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   House,
   Compass,
+  MapPin,
   ChatCircle,
   User,
 } from "@phosphor-icons/react";
@@ -20,6 +21,8 @@ import { Siren, X } from "@phosphor-icons/react";
 import { CreateMenuOverlay } from "@/components/CreateMenuOverlay";
 import { Topbar } from "./Topbar";
 import { BottomNav } from "./BottomNav";
+import { Sidebar } from "./Sidebar";
+import { getPageWidthTier } from "@/lib/layout-utils";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -33,6 +36,7 @@ const navItems = [
     icon: Compass,
     matchPaths: ["/explore", "/marketplace", "/events", "/businesses"],
   },
+  { href: "/map", label: "Map", icon: MapPin },
   { href: "/messages", label: "Messages", icon: ChatCircle },
   { href: "/profile", label: "Profile", icon: User },
 ];
@@ -246,6 +250,20 @@ export function MainLayout({ children }: MainLayoutProps) {
   return (
     <>
       {!isChatPage && !isMapPage && (
+        <Sidebar
+          unreadMessages={unreadMessagesCount}
+          unreadNotifications={unreadCount}
+          onSearch={() => setShowSearch(true)}
+          onNotifications={() => setShowNotifications(!showNotifications)}
+          onProfile={() => setShowProfile(!showProfile)}
+          onCreate={() => setCreateMenuOpen(true)}
+          profile={profile}
+          navItems={navItems}
+          pathname={pathname}
+        />
+      )}
+
+      {!isChatPage && !isMapPage && (
         <Topbar
           unreadMessages={unreadMessagesCount}
           unreadNotifications={unreadCount}
@@ -263,7 +281,7 @@ export function MainLayout({ children }: MainLayoutProps) {
       <div
         className={cn(
           "flex min-h-[100dvh] bg-[var(--c-bg)]",
-          isChatPage || isMapPage ? "" : "pt-[64px] md:pt-[84px]"
+          isChatPage || isMapPage ? "" : "pt-[64px] md:pt-[84px] lg:pt-0 lg:pl-64"
         )}
       >
         <main
@@ -272,13 +290,13 @@ export function MainLayout({ children }: MainLayoutProps) {
             isChatPage || isMapPage
               ? "h-[100dvh] p-0 overflow-hidden"
               : isEdgeToEdgePage
-              ? "h-[calc(100dvh-64px)] md:h-[calc(100dvh-84px)] p-0 overflow-y-auto overflow-x-hidden"
+              ? "h-[calc(100dvh-64px)] md:h-[calc(100dvh-84px)] lg:h-[100dvh] p-0 overflow-y-auto overflow-x-hidden"
               : "px-3 sm:px-4 md:px-6 py-4 pb-20 md:pb-4"
           )}
         >
           {showUrgentBanner && urgentAlert && (
             <div
-              className="sticky top-[64px] md:top-[84px] z-40 flex items-start gap-3 px-4 py-3 rounded-2xl mb-3 shadow-lg"
+              className="sticky top-[64px] md:top-[84px] lg:top-4 z-40 flex items-start gap-3 px-4 py-3 rounded-2xl mb-3 shadow-lg"
               style={{
                 background: "rgba(239,68,68,0.10)",
                 border: "1px solid rgba(239,68,68,0.3)",
@@ -334,7 +352,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                 {children}
               </div>
             ) : (
-              <div className="w-full max-w-[680px] mx-auto lg:max-w-[660px]">
+              <div className={cn("w-full", getPageWidthTier(pathname))}>
                 {children}
               </div>
             )}
@@ -347,7 +365,7 @@ export function MainLayout({ children }: MainLayoutProps) {
         <BottomNav
           navItems={navItems}
           pathname={pathname}
-          onCreateMenu={() => setCreateMenuOpen(true)}
+          onCreateMenu={() => setCreateMenuOpen(false)}
         />
       )}
 

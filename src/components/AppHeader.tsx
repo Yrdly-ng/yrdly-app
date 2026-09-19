@@ -19,7 +19,7 @@ export function AppHeader({ title, onBack, rightElement }: AppHeaderProps) {
   };
 
   return (
-    <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] md:top-[calc(84px+env(safe-area-inset-top))] z-40 flex items-center justify-between px-4 py-4 bg-card border-b border-border shadow-sm">
+    <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] md:top-[calc(84px+env(safe-area-inset-top))] lg:top-0 z-40 flex items-center justify-between px-4 py-4 bg-card border-b border-border shadow-sm">
       <div className="flex items-center gap-3">
         <button 
           onClick={handleBack} 

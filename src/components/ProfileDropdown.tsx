@@ -67,7 +67,7 @@ export function ProfileDropdown({ onClose }: ProfileDropdownProps) {
     /* full-screen backdrop to close on outside click */
     <div className="fixed inset-0 z-[110]" onClick={onClose}>
       <div
-        className="absolute top-[68px] right-3 w-[220px] overflow-hidden"
+        className="absolute top-[68px] right-3 lg:fixed lg:left-[272px] lg:right-auto lg:top-auto lg:bottom-16 lg:max-h-[70vh] lg:overflow-y-auto w-[220px] overflow-hidden"
         style={{
           background: "var(--c-card)",
           borderRadius: 11,

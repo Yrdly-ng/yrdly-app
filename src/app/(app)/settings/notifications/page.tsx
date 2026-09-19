@@ -103,7 +103,7 @@ export default function NotificationSettingsPage() {
     if (loading) {
         return (
             <div className="pt-16 pb-20 px-4 max-w-2xl mx-auto space-y-4 font-yrdly-body text-foreground">
-                <Link href="/settings">
+                <Link href="/settings" className="lg:hidden">
                     <Button variant="ghost" className="gap-2 text-primary font-bold">
                         <ArrowLeft className="h-4 w-4" />
                         Back to Settings
@@ -130,7 +130,7 @@ export default function NotificationSettingsPage() {
 
     return (
         <div className="pt-16 pb-20 px-4 max-w-2xl mx-auto space-y-4 font-yrdly-body text-foreground">
-            <Link href="/settings">
+            <Link href="/settings" className="lg:hidden">
                 <Button variant="ghost" className="gap-2 text-primary font-bold">
                     <ArrowLeft className="h-4 w-4" />
                     Back to Settings
