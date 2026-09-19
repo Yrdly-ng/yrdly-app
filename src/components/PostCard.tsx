@@ -83,49 +83,42 @@ function CategoryTag({ category }: { category: string }) {
   );
 }
 
-/* ─── interactive inline image swiper for feed posts ────────────── */
-function ImageCollage({
-  urls,
+export interface MediaItem {
+  type: "image" | "video";
+  url: string;
+}
+
+/* ─── swipeable media carousel for post card ────────────────────────── */
+function MediaCollage({
+  items,
   onImageClick,
+  videoRef,
+  isVideoMuted,
+  setIsVideoMuted,
+  isVideoPaused,
+  setIsVideoPaused,
+  videoProgress,
+  setVideoProgress,
+  seekFlash,
+  handleVideoTap,
+  poster,
 }: {
-  urls: string[];
-  onImageClick: (i: number) => void;
+  items: MediaItem[];
+  onImageClick: (index: number) => void;
+  videoRef?: React.RefObject<HTMLVideoElement | null>;
+  isVideoMuted?: boolean;
+  setIsVideoMuted?: React.Dispatch<React.SetStateAction<boolean>>;
+  isVideoPaused?: boolean;
+  setIsVideoPaused?: React.Dispatch<React.SetStateAction<boolean>>;
+  videoProgress?: number;
+  setVideoProgress?: React.Dispatch<React.SetStateAction<number>>;
+  seekFlash?: "back" | "forward" | null;
+  handleVideoTap?: (e: React.MouseEvent<HTMLVideoElement>) => void;
+  poster?: string;
 }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const dragStartPos = useRef<{ x: number; y: number } | null>(null);
-
-  if (urls.length === 0) return null;
-
-  if (urls.length === 1) {
-    return (
-      <div
-        className="w-full cursor-pointer overflow-hidden relative rounded-yrdly-md bg-[var(--yrdly-glass-border)]/30"
-        style={{ aspectRatio: "4/5", maxHeight: 480 }}
-        onClick={(e) => {
-          e.stopPropagation();
-          onImageClick(0);
-        }}
-      >
-        <Image
-          src={urls[0]}
-          alt=""
-          fill
-          aria-hidden="true"
-          className="object-cover scale-110 blur-2xl brightness-75 pointer-events-none"
-          sizes="48px"
-          quality={10}
-        />
-        <Image
-          src={urls[0]}
-          alt="Post image"
-          fill
-          className="object-contain post-media-image"
-          sizes="(max-width: 640px) 100vw, 626px"
-        />
-      </div>
-    );
-  }
 
   const handleScroll = () => {
     if (!scrollRef.current) return;
@@ -138,7 +131,7 @@ function ImageCollage({
 
   const scrollToSlide = (idx: number) => {
     if (!scrollRef.current) return;
-    const targetIdx = Math.max(0, Math.min(idx, urls.length - 1));
+    const targetIdx = Math.max(0, Math.min(idx, items.length - 1));
     const width = scrollRef.current.clientWidth;
     scrollRef.current.scrollTo({
       left: targetIdx * width,
@@ -149,7 +142,7 @@ function ImageCollage({
 
   return (
     <div
-      className="relative w-full overflow-hidden rounded-yrdly-md group bg-[var(--yrdly-glass-border)]/30"
+      className="relative w-full overflow-hidden rounded-yrdly-md group bg-black"
       style={{ aspectRatio: "4/5", maxHeight: 480 }}
     >
       <div
@@ -157,111 +150,190 @@ function ImageCollage({
         onScroll={handleScroll}
         className="flex w-full h-full overflow-x-auto snap-x snap-mandatory scrollbar-hide select-none"
       >
-        {urls.map((url, i) => (
-          <div
-            key={i}
-            className="relative flex-shrink-0 w-full h-full snap-center cursor-pointer"
-            onPointerDown={(e) => {
-              dragStartPos.current = { x: e.clientX, y: e.clientY };
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              const start = dragStartPos.current;
-              const moved = start
-                ? Math.hypot(e.clientX - start.x, e.clientY - start.y)
-                : 0;
-              // Ignore the click if it was actually the end of a swipe/drag gesture.
-              if (moved < 8) {
-                onImageClick(i);
-              }
-            }}
-          >
-            <Image
-              src={url}
-              alt=""
-              fill
-              aria-hidden="true"
-              loading="lazy"
-              className="object-cover scale-110 blur-2xl brightness-75 pointer-events-none"
-              sizes="48px"
-              quality={10}
-            />
-            <Image
-              src={url}
-              alt={`Post image ${i + 1}`}
-              fill
-              className="object-contain post-media-image"
-              sizes="(max-width: 640px) 100vw, 626px"
-            />
-          </div>
-        ))}
+        {items.map((item, i) => {
+          if (item.type === "image") {
+            return (
+              <div
+                key={i}
+                className="relative flex-shrink-0 w-full h-full snap-center cursor-pointer"
+                onPointerDown={(e) => {
+                  dragStartPos.current = { x: e.clientX, y: e.clientY };
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const start = dragStartPos.current;
+                  const moved = start
+                    ? Math.hypot(e.clientX - start.x, e.clientY - start.y)
+                    : 0;
+                  if (moved < 8) {
+                    onImageClick(i);
+                  }
+                }}
+              >
+                <Image
+                  src={item.url}
+                  alt=""
+                  fill
+                  aria-hidden="true"
+                  loading="lazy"
+                  className="object-cover scale-110 blur-2xl brightness-75 pointer-events-none"
+                  sizes="48px"
+                  quality={10}
+                />
+                <Image
+                  src={item.url}
+                  alt={`Post media ${i + 1}`}
+                  fill
+                  className="object-contain post-media-image"
+                  sizes="(max-width: 640px) 100vw, 626px"
+                />
+              </div>
+            );
+          }
+
+          return (
+            <div key={i} className="relative flex-shrink-0 w-full h-full snap-center bg-black overflow-hidden">
+              <video
+                ref={videoRef}
+                src={item.url.includes("#t=") ? item.url : `${item.url}#t=0.001`}
+                playsInline
+                disablePictureInPicture
+                controlsList="nodownload noremoteplayback nopictureinpicture"
+                muted={isVideoMuted}
+                loop
+                preload="metadata"
+                poster={poster}
+                className="w-full h-full object-contain post-media-image"
+                onTimeUpdate={() => {
+                  if (videoRef?.current && setVideoProgress) {
+                    const progress = (videoRef.current.currentTime / videoRef.current.duration) * 100;
+                    setVideoProgress(progress || 0);
+                  }
+                }}
+                onClick={handleVideoTap}
+              />
+
+              {/* Tap-to-pause overlay icon */}
+              {isVideoPaused && !seekFlash && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                  <div className="bg-black/40 rounded-full p-3">
+                    <Play className="w-7 h-7 text-white fill-white" />
+                  </div>
+                </div>
+              )}
+
+              {/* Seek flash */}
+              {seekFlash && (
+                <div
+                  className={`absolute inset-y-0 ${seekFlash === "back" ? "left-0" : "right-0"} w-1/3 flex items-center justify-center pointer-events-none z-10`}
+                >
+                  <div className="flex flex-col items-center gap-1 bg-black/50 rounded-full px-3 py-3 animate-in fade-in zoom-in duration-150">
+                    {seekFlash === "back" ? (
+                      <RotateCcw className="w-5 h-5 text-white" />
+                    ) : (
+                      <RotateCw className="w-5 h-5 text-white" />
+                    )}
+                    <span className="text-[0.625rem] font-medium text-white font-yrdly-body">5s</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Mute / unmute */}
+              {setIsVideoMuted && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsVideoMuted((prev) => !prev);
+                  }}
+                  aria-label={isVideoMuted ? "Unmute video" : "Mute video"}
+                  className="absolute bottom-3 right-3 z-10 flex items-center justify-center bg-black/50 hover:bg-black/70 transition-colors rounded-full w-8 h-8"
+                >
+                  {isVideoMuted ? <VolumeX className="w-4 h-4 text-white" /> : <Volume2 className="w-4 h-4 text-white" />}
+                </button>
+              )}
+
+              {/* Video Progress Bar */}
+              {videoProgress !== undefined && (
+                <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/20 z-10">
+                  <div
+                    className="h-full bg-primary transition-all duration-100"
+                    style={{ width: `${videoProgress}%` }}
+                  />
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Prev / Next Chevrons on Desktop Hover */}
-      {activeIndex > 0 && (
+      {items.length > 1 && activeIndex > 0 && (
         <button
           onClick={(e) => {
             e.stopPropagation();
             scrollToSlide(activeIndex - 1);
           }}
-          className="yrdly-no-tap-scale absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-black/80"
-          aria-label="Previous image"
+          className="yrdly-no-tap-scale absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20 hover:bg-black/80"
+          aria-label="Previous slide"
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
       )}
 
-      {activeIndex < urls.length - 1 && (
+      {items.length > 1 && activeIndex < items.length - 1 && (
         <button
           onClick={(e) => {
             e.stopPropagation();
             scrollToSlide(activeIndex + 1);
           }}
-          className="yrdly-no-tap-scale absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-black/80"
-          aria-label="Next image"
+          className="yrdly-no-tap-scale absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20 hover:bg-black/80"
+          aria-label="Next slide"
         >
           <ChevronRight className="w-5 h-5" />
         </button>
       )}
 
       {/* Slide Counter Badge */}
-      <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-[10px] font-bold bg-black/60 text-white z-10 pointer-events-none font-yrdly-body">
-        {activeIndex + 1} / {urls.length}
-      </div>
+      {items.length > 1 && (
+        <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-[10px] font-bold bg-black/60 text-white z-20 pointer-events-none font-yrdly-body">
+          {activeIndex + 1} / {items.length}
+        </div>
+      )}
 
       {/* Dot Indicators */}
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-sm z-10 pointer-events-none">
-        {urls.map((_, i) => (
-          <div
-            key={i}
-            className={cn(
-              "h-1.5 rounded-full transition-all duration-200",
-              i === activeIndex ? "w-4 bg-[#82DB7E]" : "w-1.5 bg-white/60"
-            )}
-          />
-        ))}
-      </div>
+      {items.length > 1 && (
+        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-sm z-20 pointer-events-none">
+          {items.map((_, i) => (
+            <div
+              key={i}
+              className={cn(
+                "h-1.5 rounded-full transition-all duration-200",
+                i === activeIndex ? "w-4 bg-[#82DB7E]" : "w-1.5 bg-white/60"
+              )}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-/* ─── swipeable image carousel for the comments modal ───────────── */
-function ModalImageCarousel({
-  urls,
+/* ─── swipeable media carousel for the comments modal ───────────── */
+function ModalMediaCarousel({
+  items,
   initialIndex,
 }: {
-  urls: string[];
+  items: MediaItem[];
   initialIndex: number;
 }) {
   const [activeIndex, setActiveIndex] = useState(
-    Math.max(0, Math.min(initialIndex, urls.length - 1))
+    Math.max(0, Math.min(initialIndex, items.length - 1))
   );
   const scrollRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
   const dragStartX = useRef(0);
   const dragStartScrollLeft = useRef(0);
 
-  // Jump straight to the image the user actually tapped, without animating.
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
       if (scrollRef.current) {
@@ -269,7 +341,6 @@ function ModalImageCarousel({
       }
     });
     return () => cancelAnimationFrame(frame);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleScroll = () => {
@@ -282,16 +353,14 @@ function ModalImageCarousel({
 
   const scrollToSlide = (idx: number) => {
     if (!scrollRef.current) return;
-    const targetIdx = Math.max(0, Math.min(idx, urls.length - 1));
+    const targetIdx = Math.max(0, Math.min(idx, items.length - 1));
     const width = scrollRef.current.clientWidth;
     scrollRef.current.scrollTo({ left: targetIdx * width, behavior: "smooth" });
     setActiveIndex(targetIdx);
   };
 
-  // Click-and-drag support so this feels swipeable with a mouse too (like IG web),
-  // not just via touch. Native overflow-x scroll-snap already handles touch swipes.
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (e.pointerType === "touch") return; // let native touch scrolling handle this
+    if (e.pointerType === "touch") return;
     if (!scrollRef.current) return;
     isDragging.current = true;
     dragStartX.current = e.clientX;
@@ -330,61 +399,75 @@ function ModalImageCarousel({
         onPointerLeave={endDrag}
         className="flex w-full h-full overflow-x-auto snap-x snap-mandatory scrollbar-hide select-none cursor-grab active:cursor-grabbing"
       >
-        {urls.map((url, i) => (
-          <div key={i} className="relative flex-shrink-0 w-full h-full snap-center">
-            <Image
-              src={url}
-              alt={`Post image ${i + 1}`}
-              fill
-              className="object-cover pointer-events-none"
-              sizes="60vw"
-              draggable={false}
-            />
+        {items.map((item, i) => (
+          <div key={i} className="relative flex-shrink-0 w-full h-full snap-center bg-black">
+            {item.type === "image" ? (
+              <Image
+                src={item.url}
+                alt={`Post media ${i + 1}`}
+                fill
+                className="object-cover pointer-events-none"
+                sizes="60vw"
+                draggable={false}
+              />
+            ) : (
+              <video
+                src={item.url.includes("#t=") ? item.url : `${item.url}#t=0.001`}
+                controls
+                playsInline
+                preload="metadata"
+                className="w-full h-full object-contain"
+              />
+            )}
           </div>
         ))}
       </div>
 
-      {activeIndex > 0 && (
+      {items.length > 1 && activeIndex > 0 && (
         <button
           onClick={(e) => {
             e.stopPropagation();
             scrollToSlide(activeIndex - 1);
           }}
           className="yrdly-no-tap-scale absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-black/80"
-          aria-label="Previous image"
+          aria-label="Previous slide"
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
       )}
 
-      {activeIndex < urls.length - 1 && (
+      {items.length > 1 && activeIndex < items.length - 1 && (
         <button
           onClick={(e) => {
             e.stopPropagation();
             scrollToSlide(activeIndex + 1);
           }}
           className="yrdly-no-tap-scale absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-black/80"
-          aria-label="Next image"
+          aria-label="Next slide"
         >
           <ChevronRight className="w-5 h-5" />
         </button>
       )}
 
-      <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-[10px] font-bold bg-black/60 text-white z-10 pointer-events-none font-yrdly-body">
-        {activeIndex + 1} / {urls.length}
-      </div>
+      {items.length > 1 && (
+        <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-[10px] font-bold bg-black/60 text-white z-10 pointer-events-none font-yrdly-body">
+          {activeIndex + 1} / {items.length}
+        </div>
+      )}
 
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-sm z-10 pointer-events-none">
-        {urls.map((_, i) => (
-          <div
-            key={i}
-            className={cn(
-              "h-1.5 rounded-full transition-all duration-200",
-              i === activeIndex ? "w-4 bg-[#82DB7E]" : "w-1.5 bg-white/60"
-            )}
-          />
-        ))}
-      </div>
+      {items.length > 1 && (
+        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-sm z-10 pointer-events-none">
+          {items.map((_, i) => (
+            <div
+              key={i}
+              className={cn(
+                "h-1.5 rounded-full transition-all duration-200",
+                i === activeIndex ? "w-4 bg-[#82DB7E]" : "w-1.5 bg-white/60"
+              )}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -829,6 +912,11 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
   };
 
   const urls = post.image_urls?.length ? post.image_urls : post.image_url ? [post.image_url] : [];
+  const mediaItems: MediaItem[] = [
+    ...urls.map((url) => ({ type: "image" as const, url })),
+    ...(activeVideoUrl ? [{ type: "video" as const, url: activeVideoUrl }] : []),
+  ];
+
 
   /* ── post header ── */
   const PostHeader = (
@@ -941,10 +1029,23 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
             {post.title || post.text?.split("\n")[0]}
           </p>
         )}
-        {/* image */}
-        {urls.length > 0 && (
+        {/* Media Carousel */}
+        {mediaItems.length > 0 && (
           <div className="px-yrdly-sm pb-yrdly-sm">
-            <ImageCollage urls={urls} onImageClick={handleImageClick} />
+            <MediaCollage
+              items={mediaItems}
+              onImageClick={handleImageClick}
+              videoRef={videoRef}
+              isVideoMuted={isVideoMuted}
+              setIsVideoMuted={setIsVideoMuted}
+              isVideoPaused={isVideoPaused}
+              setIsVideoPaused={setIsVideoPaused}
+              videoProgress={videoProgress}
+              setVideoProgress={setVideoProgress}
+              seekFlash={seekFlash}
+              handleVideoTap={handleVideoTap}
+              poster={post.video_thumbnail_url ?? undefined}
+            />
           </div>
         )}
         {/* Description text */}
@@ -987,12 +1088,23 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
         {PostHeader}
         {/* Item name */}
         <p className="px-yrdly-md pb-yrdly-xs font-yrdly-display font-semibold text-[1.125rem] text-foreground leading-[21px]">{itemTitle}</p>
-        {/* image */}
-        {urls.length > 0 && (
+        {/* Media */}
+        {mediaItems.length > 0 && (
           <div className="px-yrdly-sm pb-yrdly-sm">
-            <div className="relative w-full overflow-hidden rounded-yrdly-md" style={{ aspectRatio: "4/5", maxHeight: 480 }}>
-              <Image src={urls[0]} alt="" fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover post-media-image" />
-            </div>
+            <MediaCollage
+              items={mediaItems}
+              onImageClick={handleImageClick}
+              videoRef={videoRef}
+              isVideoMuted={isVideoMuted}
+              setIsVideoMuted={setIsVideoMuted}
+              isVideoPaused={isVideoPaused}
+              setIsVideoPaused={setIsVideoPaused}
+              videoProgress={videoProgress}
+              setVideoProgress={setVideoProgress}
+              seekFlash={seekFlash}
+              handleVideoTap={handleVideoTap}
+              poster={post.video_thumbnail_url ?? undefined}
+            />
           </div>
         )}
         {/* Price */}
@@ -1053,86 +1165,23 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
             </p>
           </div>
         )}
-        {/* Images */}
-        {urls.length > 0 && (
+        {/* Media Carousel */}
+        {mediaItems.length > 0 && (
           <div className="px-yrdly-sm pb-yrdly-sm">
-            <ImageCollage urls={urls} onImageClick={handleImageClick} />
-          </div>
-        )}
-        {/* Video player */}
-        {activeVideoUrl && (
-          <div className="px-yrdly-sm pb-yrdly-sm">
-            <div className="relative rounded-yrdly-md overflow-hidden bg-black">
-              <video
-                ref={videoRef}
-                src={activeVideoUrl.includes('#t=') ? activeVideoUrl : `${activeVideoUrl}#t=0.001`}
-                playsInline
-                disablePictureInPicture
-                controlsList="nodownload noremoteplayback nopictureinpicture"
-                muted={isVideoMuted}
-                loop
-                preload="metadata"
-                poster={post.video_thumbnail_url ?? undefined}
-                className="w-full object-cover post-media-image"
-                style={{ aspectRatio: "4/5", maxHeight: 480 }}
-                onTimeUpdate={() => {
-                  if (videoRef.current) {
-                    const progress = (videoRef.current.currentTime / videoRef.current.duration) * 100;
-                    setVideoProgress(progress || 0);
-                  }
-                }}
-                onClick={handleVideoTap}
-              />
-
-              {/* Tap-to-pause overlay icon */}
-              {isVideoPaused && !seekFlash && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <div className="bg-black/40 rounded-full p-3">
-                    <Play className="w-7 h-7 text-white fill-white" />
-                  </div>
-                </div>
-              )}
-
-              {/* Seek flash */}
-              {seekFlash && (
-                <div
-                  className={`absolute inset-y-0 ${seekFlash === "back" ? "left-0" : "right-0"} w-1/3 flex items-center justify-center pointer-events-none`}
-                >
-                  <div className="flex flex-col items-center gap-1 bg-black/50 rounded-full px-3 py-3 animate-in fade-in zoom-in duration-150">
-                    {seekFlash === "back" ? (
-                      <RotateCcw className="w-5 h-5 text-white" />
-                    ) : (
-                      <RotateCw className="w-5 h-5 text-white" />
-                    )}
-                    <span className="text-[0.625rem] font-medium text-white font-yrdly-body">5s</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Mute / unmute */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsVideoMuted((prev) => !prev);
-                }}
-                aria-label={isVideoMuted ? "Unmute video" : "Mute video"}
-                className="absolute bottom-3 right-3 z-10 flex items-center justify-center bg-black/50 hover:bg-black/70 transition-colors rounded-full w-8 h-8"
-              >
-                {isVideoMuted ? (
-                  <VolumeX className="w-4 h-4 text-white" />
-                ) : (
-                  <Volume2 className="w-4 h-4 text-white" />
-                )}
-              </button>
-
-              {/* Custom Thin Progress Bar */}
-              <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-white/30 z-10">
-                <div 
-                  className="h-full bg-white/90 transition-all duration-75 ease-linear"
-                  style={{ width: `${videoProgress}%` }}
-                />
-              </div>
-            </div>
+            <MediaCollage
+              items={mediaItems}
+              onImageClick={handleImageClick}
+              videoRef={videoRef}
+              isVideoMuted={isVideoMuted}
+              setIsVideoMuted={setIsVideoMuted}
+              isVideoPaused={isVideoPaused}
+              setIsVideoPaused={setIsVideoPaused}
+              videoProgress={videoProgress}
+              setVideoProgress={setVideoProgress}
+              seekFlash={seekFlash}
+              handleVideoTap={handleVideoTap}
+              poster={post.video_thumbnail_url ?? undefined}
+            />
           </div>
         )}
         {/* Engagement */}
@@ -1185,29 +1234,10 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
               <div className="w-10 h-1 bg-muted-foreground/30 rounded-full" />
             </div>
 
-            {/* Left — image, video, or (if text-only) the post's own writing, like Instagram's own comments screen */}
-            {(urls.length > 0 || activeVideoUrl) ? (
+            {/* Left — image, video, or text-only writing */}
+            {mediaItems.length > 0 ? (
               <div className="hidden md:block relative flex-1 min-w-0 h-full bg-black overflow-hidden">
-                {activeVideoUrl ? (
-                  <video
-                    src={activeVideoUrl.includes("#t=") ? activeVideoUrl : `${activeVideoUrl}#t=0.001`}
-                    controls
-                    playsInline
-                    preload="metadata"
-                    poster={post.video_thumbnail_url ?? undefined}
-                    className="absolute inset-0 w-full h-full object-cover"
-                  />
-                ) : urls.length > 1 ? (
-                  <ModalImageCarousel urls={urls} initialIndex={selectedImageIndex} />
-                ) : (
-                  <Image
-                    src={urls[0]}
-                    alt="Post image"
-                    fill
-                    className="object-cover"
-                    sizes="60vw"
-                  />
-                )}
+                <ModalMediaCarousel items={mediaItems} initialIndex={selectedImageIndex} />
               </div>
             ) : (
               <div className="hidden md:flex flex-1 min-w-0 h-full bg-[var(--yrdly-glass-bg)] overflow-hidden flex-col p-10 justify-center">
