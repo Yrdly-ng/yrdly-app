@@ -106,8 +106,7 @@ export default function AdminModerationPage() {
 
   if (loading && queue.length === 0) {
     return (
-      <div className="min-h-[100dvh] bg-[var(--yrdly-dark)] text-[var(--yrdly-text-primary)] font-yrdly-body p-4">
-        <div className="max-w-6xl mx-auto space-y-6">
+      <div className="p-4 text-[var(--yrdly-text-primary)] font-yrdly-body space-y-6">
           <div>
             <h1 className="text-2xl font-bold font-yrdly-display">Moderation Queue</h1>
             <p className="text-[var(--yrdly-label)]">Review flagged content across Yrdly</p>
@@ -128,14 +127,12 @@ export default function AdminModerationPage() {
               </Card>
             ))}
           </div>
-        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-[100dvh] bg-[var(--yrdly-dark)] text-[var(--yrdly-text-primary)] font-yrdly-body p-4">
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className="p-4 text-[var(--yrdly-text-primary)] font-yrdly-body space-y-6">
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold font-yrdly-display">Moderation Queue</h1>
@@ -265,7 +262,6 @@ export default function AdminModerationPage() {
             </div>
           </div>
         )}
-      </div>
     </div>
   );
 }

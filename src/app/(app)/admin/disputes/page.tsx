@@ -115,8 +115,7 @@ export default function AdminDisputesPage() {
 
   if (loading) {
     return (
-      <div className="min-h-[100dvh] bg-[var(--yrdly-dark)] p-4 font-yrdly-body">
-        <div className="max-w-6xl mx-auto space-y-6">
+      <div className="p-4 font-yrdly-body space-y-6">
           <div>
             <h1 className="text-2xl font-bold font-yrdly-display text-foreground">Admin Dispute Dashboard</h1>
             <p className="text-[var(--yrdly-label)]">Manage and resolve disputes</p>
@@ -139,14 +138,12 @@ export default function AdminDisputesPage() {
               </Card>
             ))}
           </div>
-        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-[100dvh] bg-[var(--yrdly-dark)] p-4 font-yrdly-body">
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className="p-4 font-yrdly-body space-y-6">
         <div>
           <h1 className="text-2xl font-bold font-yrdly-display text-foreground">Admin Dispute Dashboard</h1>
           <p className="text-[var(--yrdly-label)]">Manage and resolve disputes</p>
@@ -340,7 +337,6 @@ export default function AdminDisputesPage() {
             </CardContent>
           </Card>
         </div>
-      </div>
     </div>
   );
 }

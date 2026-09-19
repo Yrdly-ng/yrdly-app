@@ -5,6 +5,14 @@ export function getPageWidthTier(pathname: string): string {
     return 'max-w-[680px] mx-auto lg:max-w-5xl';
   }
 
+  if (pathname.startsWith('/transactions')) {
+    return 'max-w-[680px] mx-auto lg:max-w-4xl';
+  }
+
+  if (pathname.startsWith('/admin')) {
+    return 'max-w-[680px] mx-auto lg:max-w-none';
+  }
+
   if (
     pathname.startsWith('/payment') ||
     pathname.startsWith('/verify-phone') ||

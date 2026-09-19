@@ -128,9 +128,9 @@ export default function TransactionsPage() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-background text-foreground font-sans">
+    <div className="font-sans pb-20">
       {/* Mobile Sticky Header */}
-      <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] md:top-[calc(84px+env(safe-area-inset-top))] lg:top-0 z-40 flex items-center gap-3 px-4 py-4 bg-card border-b border-border shadow-sm">
+      <div className="lg:hidden sticky top-[calc(4rem+env(safe-area-inset-top))] md:top-[calc(84px+env(safe-area-inset-top))] z-40 flex items-center gap-3 px-4 py-4 bg-card border-b border-border shadow-sm">
         <button
           onClick={() => router.back()}
           className="p-2 -ml-2 rounded-xl bg-muted/50 hover:bg-muted transition-colors border border-border"
@@ -143,7 +143,7 @@ export default function TransactionsPage() {
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 py-4 space-y-4">
+      <div className="px-4 py-4 space-y-4">
         {/* Role Segmented Tabs (purchases | sales) */}
         <div className="bg-muted/60 p-1 rounded-2xl flex gap-1 border border-border/40">
           {(['purchases', 'sales'] as Tab[]).map((t) => {
