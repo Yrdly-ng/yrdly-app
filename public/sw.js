@@ -87,7 +87,20 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// ── Push Notifications ───────────────────────────────────────────────────────
+// ── Push & Message Notifications ─────────────────────────────────────────────
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
+    const { title, body, icon, badge, data } = event.data.payload || {};
+    self.registration.showNotification(title || 'Yrdly', {
+      body: body || '',
+      icon: icon || '/icon-192x192.png',
+      badge: badge || '/icon-192x192.png',
+      data: data || {},
+      vibrate: [100, 50, 100],
+    });
+  }
+});
+
 self.addEventListener('push', (event) => {
   if (!event.data) return;
   let data;
@@ -99,8 +112,8 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(data.title || 'Yrdly', {
       body: data.body || '',
-      icon: data.icon || '/icons/icon-192x192.png',
-      badge: '/icons/icon-72x72.png',
+      icon: data.icon || '/icon-192x192.png',
+      badge: '/icon-192x192.png',
       data: data.url ? { url: data.url } : undefined,
       vibrate: [100, 50, 100],
     })

@@ -167,3 +167,20 @@ export async function reverseGeocode(
     lng,
   };
 }
+
+export async function resolveCoords(
+  lat: number,
+  lng: number
+): Promise<{ state: string; lga: string; ward: string } | typeof OUTSIDE_NIGERIA | null> {
+  const result = await reverseGeocode(lat, lng);
+  if ("status" in result) {
+    if (result.status === OUTSIDE_NIGERIA) return OUTSIDE_NIGERIA;
+    return null;
+  }
+  return {
+    state: result.state,
+    lga: result.lga,
+    ward: result.ward,
+  };
+}
+

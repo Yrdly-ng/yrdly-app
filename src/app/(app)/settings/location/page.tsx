@@ -4,22 +4,15 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useLocationData } from "@/hooks/use-location-data";
-import { useLocation } from "@/contexts/LocationContext";
-import { ArrowLeft, MapPin, Check } from "lucide-react";
+import { ChevronLeft, MapPin, Navigation, Check } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { GpsLocationStep } from "@/components/onboarding/GpsLocationStep";
-import { OUTSIDE_NIGERIA } from "@/lib/geocoding-service";
-
-const FONT = "var(--yrdly-font-body)";
-const PACIFICO = "var(--yrdly-font-display)";
-const GREEN = "hsl(var(--primary))";
-const CARD = "var(--yrdly-glass-bg)";
-const BG = "var(--yrdly-dark)";
+import { resolveCoords, OUTSIDE_NIGERIA } from "@/lib/geocoding-service";
+import { useToast } from "@/hooks/use-toast";
 
 export default function LocationSettingsPage() {
   const router = useRouter();
   const { profile, updateProfile } = useAuth();
-  const { displayLabel } = useLocation();
+  const { toast } = useToast();
   const {
     states,
     lgas,
@@ -29,311 +22,354 @@ export default function LocationSettingsPage() {
     loadWards,
   } = useLocationData();
 
-  const profileLocation = profile?.location as
-    | { state?: string; lga?: string; ward?: string }
-    | undefined;
+  const [updating, setUpdating] = useState(false);
+  const [gpsLoading, setGpsLoading] = useState(false);
+
+  const currentLga = profile?.home_lga || (profile?.location as any)?.lga;
+  const currentState = profile?.home_state || (profile?.location as any)?.state;
+  const currentNeighbourhood =
+    currentLga && currentState ? `${currentLga}, ${currentState}` : currentState || "Not set";
 
   const [selectedState, setSelectedState] = useState(
-    profile?.home_state || profile?.location?.state || ""
+    profile?.home_state || (profile?.location as any)?.state || ""
   );
-  const [selectedLga, setSelectedLga] = useState(profile?.home_lga || profile?.location?.lga || "");
+  const [selectedLga, setSelectedLga] = useState(
+    profile?.home_lga || (profile?.location as any)?.lga || ""
+  );
   const [selectedWard, setSelectedWard] = useState(
-    profile?.home_ward || profile?.location?.ward || ""
+    profile?.home_ward || (profile?.location as any)?.ward || ""
   );
-  const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [showMigrationPrompt, setShowMigrationPrompt] = useState(false);
   const [activeListingsCount, setActiveListingsCount] = useState(0);
-  const [showManualLocation, setShowManualLocation] = useState(!profile?.home_state && !profile?.location?.state);
-  const [manualReason, setManualReason] = useState<string>("");
+  const [outsideNigeriaMsg, setOutsideNigeriaMsg] = useState(false);
 
-  // Load LGAs when state is set on mount
+  // Load LGAs on state change or mount
   useEffect(() => {
     if (selectedState) loadLgas(selectedState);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedState, loadLgas]);
 
-  // Load wards when LGA is set on mount
+  // Load Wards on LGA change or mount
   useEffect(() => {
     if (selectedState && selectedLga) loadWards(selectedState, selectedLga);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedState, selectedLga, loadWards]);
 
-  const handleStateChange = (state: string) => {
-    setSelectedState(state);
-    setSelectedLga("");
-    setSelectedWard("");
-    loadLgas(state);
-    setSaved(false);
+  const handleSaveLocation = async (
+    state: string,
+    lga: string,
+    ward: string | null,
+    lat?: number,
+    lng?: number,
+    migrateListings = false
+  ) => {
+    setUpdating(true);
+    try {
+      const updateData: any = {
+        home_state: state,
+        home_lga: lga,
+        home_ward: ward || null,
+        location: { state, lga, ward: ward || undefined },
+      };
+
+      if (lat !== undefined && lng !== undefined) {
+        updateData.home_lat = lat;
+        updateData.home_lng = lng;
+        updateData.home_location_geom = `POINT(${lng} ${lat})`;
+      }
+
+      await updateProfile(updateData);
+
+      if (migrateListings && profile?.id) {
+        await supabase
+          .from("posts")
+          .update({
+            state,
+            lga,
+            ward: ward || null,
+          })
+          .eq("user_id", profile.id)
+          .eq("category", "For Sale")
+          .eq("is_sold", false);
+      }
+
+      setSaved(true);
+      setShowMigrationPrompt(false);
+      toast({ title: "Success", description: "Location updated successfully." });
+      setTimeout(() => setSaved(false), 2000);
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message || "Failed to update location.", variant: "destructive" });
+    } finally {
+      setUpdating(false);
+    }
   };
 
-  const handleLgaChange = (lga: string) => {
-    setSelectedLga(lga);
-    setSelectedWard("");
-    loadWards(selectedState, lga);
-    setSaved(false);
-  };
+  const handleUseGPS = async () => {
+    if (!navigator.geolocation) {
+      toast({ title: "Error", description: "Geolocation is not supported by your browser.", variant: "destructive" });
+      return;
+    }
 
-  const handleWardChange = (ward: string) => {
-    setSelectedWard(ward);
-    setSaved(false);
+    setGpsLoading(true);
+    setOutsideNigeriaMsg(false);
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          const match = await resolveCoords(lat, lng);
+
+          if (match === OUTSIDE_NIGERIA) {
+            setOutsideNigeriaMsg(true);
+            toast({ title: "Outside Nigeria", description: "GPS placed you outside Nigeria. Please select your home area manually." });
+          } else if (match) {
+            setSelectedState(match.state);
+            setSelectedLga(match.lga);
+            setSelectedWard(match.ward || "");
+            await handleSaveLocation(match.state, match.lga, match.ward || null, lat, lng);
+          } else {
+            toast({ title: "Error", description: "Could not resolve location structure.", variant: "destructive" });
+          }
+        } catch (e: any) {
+          toast({ title: "Error", description: e.message || "Failed to resolve GPS coordinates.", variant: "destructive" });
+        } finally {
+          setGpsLoading(false);
+        }
+      },
+      (err) => {
+        setGpsLoading(false);
+        toast({ title: "Permission Denied", description: "Could not access location services.", variant: "destructive" });
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
   };
 
   const hasChanges =
-    selectedState !== (profile?.home_state || profile?.location?.state || "") ||
-    selectedLga !== (profile?.home_lga || profile?.location?.lga || "") ||
-    selectedWard !== (profile?.home_ward || profile?.location?.ward || "");
+    selectedState !== (profile?.home_state || (profile?.location as any)?.state || "") ||
+    selectedLga !== (profile?.home_lga || (profile?.location as any)?.lga || "") ||
+    selectedWard !== (profile?.home_ward || (profile?.location as any)?.ward || "");
 
   const canSave = selectedState && selectedLga && hasChanges;
 
   const handleSaveClick = async () => {
     if (!canSave) return;
-    setSaving(true);
-    
-    // Check for active marketplace listings
+    setUpdating(true);
+
     try {
       const { count, error } = await supabase
-        .from('posts')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', profile?.id || '')
-        .eq('category', 'For Sale')
-        .eq('is_sold', false);
-        
+        .from("posts")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", profile?.id || "")
+        .eq("category", "For Sale")
+        .eq("is_sold", false);
+
       if (!error && count && count > 0) {
         setActiveListingsCount(count);
         setShowMigrationPrompt(true);
-        setSaving(false);
+        setUpdating(false);
         return;
       }
     } catch (e) {
       console.error(e);
     }
-    
-    // Proceed with save if no listings
-    await finalizeSave(false);
-  };
 
-  const finalizeSave = async (migrateListings: boolean) => {
-    setSaving(true);
-    try {
-      await updateProfile({
-        home_state: selectedState,
-        home_lga: selectedLga,
-        home_ward: selectedWard || null,
-      });
-
-      if (migrateListings && profile?.id) {
-         await supabase
-          .from('posts')
-          .update({
-            state: selectedState,
-            lga: selectedLga,
-            ward: selectedWard || null
-          })
-          .eq('user_id', profile.id)
-          .eq('category', 'For Sale')
-          .eq('is_sold', false);
-      }
-
-      setSaved(true);
-      setShowMigrationPrompt(false);
-      setTimeout(() => setSaved(false), 2000);
-    } catch (error) {
-      console.error("Error updating location:", error);
-    } finally {
-      setSaving(false);
-    }
+    await handleSaveLocation(selectedState, selectedLga, selectedWard || null, undefined, undefined, false);
   };
 
   return (
-    <div className="min-h-[100dvh] pb-32 bg-[var(--yrdly-dark)] font-yrdly-body text-foreground">
-      <div className="max-w-lg mx-auto px-4 pt-6 space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-3">
+    <div className="min-h-screen bg-[var(--yrdly-dark)] text-[var(--yrdly-text)] pb-20 font-yrdly-body">
+      {/* Header */}
+      <header className="sticky top-0 z-30 bg-[var(--yrdly-dark)]/80 backdrop-blur-md px-5 py-3 border-b border-[var(--yrdly-glass-border)]">
+        <div className="max-w-xl mx-auto flex items-center justify-between">
           <button
             onClick={() => router.back()}
-            className="w-10 h-10 flex items-center justify-center rounded-full bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)]"
+            className="w-8 h-8 rounded-[11px] bg-[var(--yrdly-surface)] border border-[var(--yrdly-glass-border)] flex items-center justify-center text-[var(--yrdly-text)] hover:opacity-80 transition-opacity"
           >
-            <ArrowLeft className="w-5 h-5 text-foreground" />
+            <ChevronLeft className="w-5 h-5" />
           </button>
-          <h1 className="text-foreground text-[1.25rem] font-yrdly-display font-bold">
-            Location
+          <h1 className="text-[18px] font-bold text-[var(--yrdly-text)] font-yrdly-display">
+            Location Settings
           </h1>
-        </div>
-
-        {/* Current location display */}
-        <div className="p-4 rounded-2xl flex items-center gap-3 bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] backdrop-blur-xl shadow-lg">
-          <div className="w-10 h-10 rounded-full flex items-center justify-center bg-primary/20">
-            <MapPin className="w-5 h-5 text-primary" />
-          </div>
-          <div className="flex-1">
-            <p className="text-[0.6875rem] uppercase tracking-wider text-[var(--yrdly-label)] font-yrdly-body">
-              Current Location
-            </p>
-            <p className="text-foreground text-[0.875rem] font-semibold font-yrdly-body">
-              {displayLabel}
-            </p>
-          </div>
-        </div>
-
-        {/* Info */}
-        <p className="text-[0.75rem] px-1 text-[var(--yrdly-label)] font-yrdly-body leading-relaxed">
-          Your location determines which posts, events, marketplace items, and
-          neighbors you see. Change it if you&apos;ve moved to a new area.
-        </p>
-
-        {!showManualLocation ? (
-          <GpsLocationStep
-            onLocationFound={(loc) => {
-              setSelectedState(loc.state);
-              setSelectedLga(loc.lga);
-              setSelectedWard(loc.ward);
-              loadLgas(loc.state);
-              if (loc.lga) loadWards(loc.state, loc.lga);
-              setSaved(false);
-              setShowManualLocation(true);
-            }}
-            onFallbackToManual={(reason) => {
-              if (reason) setManualReason(reason);
-              setShowManualLocation(true);
-            }}
-          />
-        ) : (
-          <div className="space-y-6 font-yrdly-body">
-            {manualReason === OUTSIDE_NIGERIA && (
-              <div className="w-full rounded-[24px] bg-primary/10 border border-primary/30 p-4 flex flex-col items-center justify-center space-y-2 text-center animate-in fade-in slide-in-from-top-2 duration-300">
-                <MapPin className="w-6 h-6 text-primary" />
-                <p className="text-primary font-bold text-sm">
-                  It looks like you&apos;re currently outside Nigeria. Please select your home community below.
-                </p>
-              </div>
+          <div className="w-8 h-8 flex items-center justify-center">
+            {updating && (
+              <div className="w-4 h-4 border-2 border-[#82DB7E] border-t-transparent rounded-full animate-spin" />
             )}
-            
-            {/* State selector */}
-            <div className="space-y-2">
-              <label className="text-[0.75rem] uppercase tracking-wider px-1 text-[var(--yrdly-label)] font-yrdly-body">
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-xl mx-auto px-5 py-5 space-y-5">
+        {/* Current Location Card */}
+        <div className="flex items-center gap-3 p-4 bg-[var(--yrdly-surface)] border border-[var(--yrdly-glass-border)] rounded-[16px]">
+          <div className="w-9 h-9 rounded-full bg-[rgba(130,219,126,0.1)] flex items-center justify-center flex-shrink-0">
+            <MapPin className="w-[18px] h-[18px] text-[#82DB7E]" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] font-bold uppercase tracking-[0.8px] text-[var(--yrdly-muted)] mb-1 font-yrdly-body">
+              CURRENT NEIGHBOURHOOD
+            </p>
+            <p className="text-[15px] font-semibold text-[var(--yrdly-text)] truncate font-yrdly-body">
+              {currentNeighbourhood}
+            </p>
+          </div>
+        </div>
+
+        {/* GPS Button */}
+        <button
+          onClick={handleUseGPS}
+          disabled={gpsLoading || updating}
+          className="w-full h-[50px] rounded-[25px] bg-[#82DB7E] text-black font-semibold text-[14px] font-yrdly-body hover:opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+        >
+          {gpsLoading ? (
+            <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <>
+              <Navigation className="w-4 h-4 text-black" />
+              <span>Use Current Location (GPS)</span>
+            </>
+          )}
+        </button>
+
+        {/* Outside Nigeria warning */}
+        {outsideNigeriaMsg && (
+          <div className="p-4 rounded-[16px] bg-[rgba(130,219,126,0.1)] border border-[rgba(130,219,126,0.3)] text-[13px] font-medium text-[#82DB7E]">
+            It looks like you&apos;re currently outside Nigeria. Please select your home community below.
+          </div>
+        )}
+
+        {/* Section label */}
+        <div className="pt-2">
+          <p className="text-[11px] font-bold uppercase tracking-[0.8px] text-[var(--yrdly-muted)] mb-3 font-yrdly-body">
+            CHANGE NEIGHBOURHOOD
+          </p>
+
+          <div className="space-y-4 font-yrdly-body">
+            {/* State Selector */}
+            <div className="space-y-1.5">
+              <label className="text-[12px] uppercase tracking-[0.8px] text-[var(--yrdly-label)] font-yrdly-body">
                 State *
               </label>
               <select
                 value={selectedState}
-                onChange={(e) => handleStateChange(e.target.value)}
+                onChange={(e) => {
+                  setSelectedState(e.target.value);
+                  setSelectedLga("");
+                  setSelectedWard("");
+                  setSaved(false);
+                }}
                 disabled={locationLoading}
-                className="w-full p-4 rounded-xl text-foreground text-[0.875rem] appearance-none outline-none bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] font-yrdly-body"
+                className="w-full h-12 px-4 rounded-[14px] bg-[var(--yrdly-surface)] border border-[var(--yrdly-glass-border)] text-[14px] text-[var(--yrdly-text)] outline-none appearance-none font-yrdly-body"
               >
-                <option value="" className="bg-[var(--yrdly-dark)] text-foreground">Select your state</option>
-                {states
-                  .filter((s) => s != null && s !== "")
-                  .map((state) => (
-                    <option key={state} value={state} className="bg-[var(--yrdly-dark)] text-foreground">
-                      {state}
-                    </option>
-                  ))}
+                <option value="" className="bg-[var(--yrdly-dark)]">Select State</option>
+                {states.filter(Boolean).map((st) => (
+                  <option key={st} value={st} className="bg-[var(--yrdly-dark)]">
+                    {st}
+                  </option>
+                ))}
               </select>
             </div>
 
-            {/* LGA selector */}
-            <div className="space-y-2">
-              <label className="text-[0.75rem] uppercase tracking-wider px-1 text-[var(--yrdly-label)] font-yrdly-body">
+            {/* LGA Selector */}
+            <div className="space-y-1.5">
+              <label className="text-[12px] uppercase tracking-[0.8px] text-[var(--yrdly-label)] font-yrdly-body">
                 Local Government Area *
               </label>
               <select
                 value={selectedLga}
-                onChange={(e) => handleLgaChange(e.target.value)}
+                onChange={(e) => {
+                  setSelectedLga(e.target.value);
+                  setSelectedWard("");
+                  setSaved(false);
+                }}
                 disabled={!selectedState || locationLoading}
-                className="w-full p-4 rounded-xl text-foreground text-[0.875rem] appearance-none outline-none bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] font-yrdly-body disabled:opacity-50"
+                className="w-full h-12 px-4 rounded-[14px] bg-[var(--yrdly-surface)] border border-[var(--yrdly-glass-border)] text-[14px] text-[var(--yrdly-text)] outline-none appearance-none disabled:opacity-50 font-yrdly-body"
               >
-                <option value="" className="bg-[var(--yrdly-dark)] text-foreground">
-                  {!selectedState ? "Select state first" : "Select your LGA"}
+                <option value="" className="bg-[var(--yrdly-dark)]">
+                  {!selectedState ? "Select state first" : "Select LGA"}
                 </option>
-                {lgas
-                  .filter((l) => l != null && l !== "")
-                  .map((lga) => (
-                    <option key={lga} value={lga} className="bg-[var(--yrdly-dark)] text-foreground">
-                      {lga}
-                    </option>
-                  ))}
+                {lgas.filter(Boolean).map((lg) => (
+                  <option key={lg} value={lg} className="bg-[var(--yrdly-dark)]">
+                    {lg}
+                  </option>
+                ))}
               </select>
             </div>
 
-            {/* Ward selector */}
-            <div className="space-y-2">
-              <label className="text-[0.75rem] uppercase tracking-wider px-1 text-[var(--yrdly-label)] font-yrdly-body">
+            {/* Ward Selector */}
+            <div className="space-y-1.5">
+              <label className="text-[12px] uppercase tracking-[0.8px] text-[var(--yrdly-label)] font-yrdly-body">
                 Ward (Optional)
               </label>
               <select
                 value={selectedWard}
-                onChange={(e) => handleWardChange(e.target.value)}
+                onChange={(e) => {
+                  setSelectedWard(e.target.value);
+                  setSaved(false);
+                }}
                 disabled={!selectedLga || locationLoading}
-                className="w-full p-4 rounded-xl text-foreground text-[0.875rem] appearance-none outline-none bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] font-yrdly-body disabled:opacity-50"
+                className="w-full h-12 px-4 rounded-[14px] bg-[var(--yrdly-surface)] border border-[var(--yrdly-glass-border)] text-[14px] text-[var(--yrdly-text)] outline-none appearance-none disabled:opacity-50 font-yrdly-body"
               >
-                <option value="" className="bg-[var(--yrdly-dark)] text-foreground">
-                  {!selectedLga ? "Select LGA first" : "Select your ward"}
+                <option value="" className="bg-[var(--yrdly-dark)]">
+                  {!selectedLga ? "Select LGA first" : "Select Ward"}
                 </option>
-                {wards
-                  .filter((w) => w != null && w !== "")
-                  .map((ward) => (
-                    <option key={ward} value={ward} className="bg-[var(--yrdly-dark)] text-foreground">
-                      {ward}
-                    </option>
-                  ))}
+                {wards.filter(Boolean).map((wd) => (
+                  <option key={wd} value={wd} className="bg-[var(--yrdly-dark)]">
+                    {wd}
+                  </option>
+                ))}
               </select>
             </div>
-            
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={() => setShowManualLocation(false)}
-                className="text-sm font-bold transition-colors text-primary font-yrdly-body"
-              >
-                Use Auto-Detect instead
-              </button>
-            </div>
+
+            {/* Save Button */}
+            <button
+              onClick={handleSaveClick}
+              disabled={!canSave || updating}
+              className="w-full py-4 rounded-[18px] bg-[#82DB7E] text-black font-bold text-[15px] font-yrdly-display hover:opacity-90 disabled:opacity-50 transition-all flex items-center justify-center mt-4"
+            >
+              {updating ? (
+                <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
+              ) : saved ? (
+                <span className="flex items-center gap-2">
+                  <Check className="w-5 h-5" />
+                  Location Updated!
+                </span>
+              ) : (
+                "Save Location"
+              )}
+            </button>
           </div>
-        )}
+        </div>
 
-        {/* Save button */}
-        <button
-          onClick={handleSaveClick}
-          disabled={!canSave || saving}
-          className="w-full py-4 rounded-full text-[0.875rem] font-bold transition-all active:scale-[0.98] mt-6 bg-primary text-primary-foreground disabled:opacity-50 font-yrdly-body"
-        >
-          {saving ? (
-            "Saving..."
-          ) : saved ? (
-            <span className="flex items-center justify-center gap-2">
-              <Check className="w-5 h-5" />
-              Location Updated!
-            </span>
-          ) : (
-            "Save Location"
-          )}
-        </button>
-
-        {/* Migration Prompt */}
+        {/* Migration Prompt Modal */}
         {showMigrationPrompt && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="w-full max-w-sm p-6 rounded-[16px] space-y-4 shadow-xl bg-[var(--yrdly-dark)] border border-[var(--yrdly-glass-border)] text-foreground font-yrdly-body">
-              <h3 className="text-lg font-bold text-foreground font-yrdly-display">Update Active Listings?</h3>
-              <p className="text-sm text-[var(--yrdly-label)]">
-                You have {activeListingsCount} active marketplace {activeListingsCount === 1 ? 'listing' : 'listings'}. Would you like to update their location to your new home area so local buyers can find them?
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div className="w-full max-w-sm p-6 rounded-[24px] space-y-4 bg-[var(--yrdly-dark)] border border-[var(--yrdly-glass-border)] text-[var(--yrdly-text)] font-yrdly-body shadow-2xl">
+              <h3 className="text-[18px] font-bold font-yrdly-display">Update Active Listings?</h3>
+              <p className="text-[14px] text-[var(--yrdly-label)]">
+                You have {activeListingsCount} active marketplace {activeListingsCount === 1 ? "listing" : "listings"}. Would you like to update their location to your new home area so local buyers can find them?
               </p>
               <div className="flex flex-col gap-2 pt-2">
                 <button
-                  onClick={() => finalizeSave(true)}
-                  disabled={saving}
-                  className="w-full py-3 rounded-full font-semibold transition-all active:scale-95 bg-primary text-primary-foreground"
+                  onClick={() => handleSaveLocation(selectedState, selectedLga, selectedWard || null, undefined, undefined, true)}
+                  disabled={updating}
+                  className="w-full py-3.5 rounded-[16px] font-bold bg-[#82DB7E] text-black hover:opacity-90 transition-all"
                 >
                   Yes, Update Listings
                 </button>
                 <button
-                  onClick={() => finalizeSave(false)}
-                  disabled={saving}
-                  className="w-full py-3 rounded-full font-semibold transition-all active:scale-95 bg-background/50 border border-[var(--yrdly-glass-border)] text-foreground"
+                  onClick={() => handleSaveLocation(selectedState, selectedLga, selectedWard || null, undefined, undefined, false)}
+                  disabled={updating}
+                  className="w-full py-3.5 rounded-[16px] font-semibold bg-[var(--yrdly-surface)] border border-[var(--yrdly-glass-border)] text-[var(--yrdly-text)] hover:opacity-80 transition-all"
                 >
                   No, Keep Old Location
                 </button>
                 <button
-                  onClick={() => { setShowMigrationPrompt(false); setSaving(false); }}
-                  disabled={saving}
-                  className="w-full py-2 text-sm transition-all active:scale-95 text-[var(--yrdly-label)]"
+                  onClick={() => {
+                    setShowMigrationPrompt(false);
+                    setUpdating(false);
+                  }}
+                  disabled={updating}
+                  className="w-full py-2 text-[13px] text-[var(--yrdly-label)] hover:text-[var(--yrdly-text)] transition-all"
                 >
                   Cancel
                 </button>
@@ -341,7 +377,8 @@ export default function LocationSettingsPage() {
             </div>
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }
+

@@ -18,49 +18,50 @@ export class PushNotificationService {
     try {
       const { type, ...restPayload } = payload;
       // Invoke the Edge function to send push notification to mobile users
-      const { data, error } = await supabase.functions.invoke('send-push-notification', {
+      supabase.functions.invoke('send-push-notification', {
         body: { userId, payload: restPayload, type }
+      }).catch((err) => {
+        console.error('Edge function error:', err);
       });
 
-      if (error) {
-        console.error('Edge function error:', error);
-      }
-
-      // Also handle local web push if applicable (for web users)
-      if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      // Handle local web notification on client
+      if (typeof window !== 'undefined' && 'Notification' in window) {
         try {
-          const registration = await navigator.serviceWorker.ready;
-          if (registration.active) {
-            // Only show local notification if this user is the recipient
-            const { data: session } = await supabase.auth.getSession();
-            if (session?.session?.user?.id === userId) {
-              const notificationPayload = {
-                title: payload.title,
-                body: payload.body,
-                icon: payload.icon || '/favicon.ico',
-                badge: payload.badge || '/favicon.ico',
-                data: {
-                  ...payload.data,
-                  url: payload.url,
-                  timestamp: Date.now()
-                },
-                actions: [
-                  { action: 'view', title: 'View', icon: '/favicon.ico' },
-                  { action: 'close', title: 'Close', icon: '/favicon.ico' }
-                ]
-              };
-              registration.active.postMessage({
-                type: 'SHOW_NOTIFICATION',
-                payload: notificationPayload
-              });
+          let perm = Notification.permission;
+          if (perm === 'default') {
+            perm = await Notification.requestPermission();
+          }
+
+          if (perm === 'granted') {
+            const title = payload.title || 'Yrdly';
+            const options: NotificationOptions = {
+              body: payload.body || '',
+              icon: payload.icon || '/icon-192x192.png',
+              badge: payload.badge || '/icon-192x192.png',
+              data: {
+                ...payload.data,
+                url: payload.url,
+                timestamp: Date.now(),
+              },
+            };
+
+            if ('serviceWorker' in navigator) {
+              const registration = await navigator.serviceWorker.ready;
+              if (registration && registration.showNotification) {
+                await registration.showNotification(title, options);
+              } else {
+                new Notification(title, options);
+              }
+            } else {
+              new Notification(title, options);
             }
           }
         } catch (swError) {
-          console.error('Error sending to local service worker:', swError);
+          console.error('Error displaying web notification:', swError);
         }
       }
 
-      return data?.success === true || true;
+      return true;
     } catch (error) {
       console.error('Error sending push notification:', error);
       return false;
@@ -115,8 +116,9 @@ export class PushNotificationService {
   static async testNotification(userId: string): Promise<boolean> {
     return this.sendToUser(userId, {
       title: 'Test Notification',
-      body: 'This is a test push notification from Yrdly!',
+      body: 'This is a test push notification from Yrdly! 🔔',
       url: '/home'
     });
   }
 }
+
