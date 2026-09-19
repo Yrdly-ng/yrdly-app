@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { AuthService } from "@/lib/auth-service";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { supabase } from "@/lib/supabase";
-import { User, AtSign, Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
+import { User, AtSign, Mail, Lock, Eye, EyeOff, Loader2, AlertCircle } from "lucide-react";
 import posthog from "@/lib/posthog";
 
 const isPasswordStrong = (pwd: string) =>
@@ -270,8 +270,11 @@ export default function LoginPage() {
             </div>
 
             {error && (
-              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-semibold leading-snug">
-                {error}
+              <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-[#1c1214]/90 border border-red-500/35 text-red-400 text-xs font-semibold leading-snug shadow-[0_8px_25px_rgba(239,68,68,0.15)] backdrop-blur-md animate-in fade-in-0 slide-in-from-top-2 duration-200">
+                <div className="w-7 h-7 rounded-xl bg-red-500/15 border border-red-500/30 flex items-center justify-center shrink-0 text-red-400 shadow-[0_0_10px_rgba(239,68,68,0.2)]">
+                  <AlertCircle className="w-4 h-4 stroke-[2.2]" />
+                </div>
+                <span className="flex-1 min-w-0">{error}</span>
               </div>
             )}
 
