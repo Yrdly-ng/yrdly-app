@@ -703,6 +703,34 @@ export class NotificationService {
   }
 
   /**
+   * Helper to format user-friendly payout failure messages
+   */
+  private static formatPayoutFailureReason(rawReason: string): string {
+    if (!rawReason) return 'Your payout request could not be processed. Please try again or contact support.';
+
+    const lower = rawReason.toLowerCase();
+    if (lower.includes('insufficient balance')) {
+      return 'Insufficient funds in wallet to complete payout. Please verify your balance and try again.';
+    }
+    if (lower.includes('expired') || lower.includes('timeout')) {
+      return 'The payout request timed out. Please try again.';
+    }
+    if (lower.includes('account') || lower.includes('bank')) {
+      return 'Please check your payout bank account details and try again.';
+    }
+
+    if (rawReason.includes('HTTP') || rawReason.includes('[Payluk]') || rawReason.includes('POST /') || rawReason.includes('{')) {
+      const match = rawReason.match(/"message"\s*:\s*"([^"]+)"/);
+      if (match && match[1]) {
+        return this.formatPayoutFailureReason(match[1]);
+      }
+      return 'Your payout request could not be processed at this time. Please retry later or contact support.';
+    }
+
+    return rawReason;
+  }
+
+  /**
    * Create a payout failed notification
    */
   static async createPayoutFailedNotification(
@@ -711,16 +739,17 @@ export class NotificationService {
     reason: string,
     payoutId: string
   ): Promise<void> {
+    const cleanReason = this.formatPayoutFailureReason(reason);
     await this.createNotification({
       userId: sellerId,
       type: 'payout_failed',
       relatedId: payoutId,
       relatedType: 'payout',
       title: 'Payout Failed',
-      message: `Payout of ₦${amount.toLocaleString()} failed: ${reason}`,
+      message: `Payout of ₦${amount.toLocaleString()} failed: ${cleanReason}`,
       data: {
         amount,
-        reason,
+        reason: cleanReason,
         payoutId,
       },
     });
