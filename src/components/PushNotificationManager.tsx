@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { Bell, X } from 'lucide-react';
 
 export function PushNotificationManager() {
-    const { user } = useAuth();
+    const { user, profile } = useAuth();
     const { toast } = useToast();
     const [isSupported, setIsSupported] = useState(false);
     const [permission, setPermission] = useState<NotificationPermission>('default');
@@ -23,7 +23,7 @@ export function PushNotificationManager() {
 
     const subscribeUser = async () => {
         try {
-            if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || !user) return;
+            if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || !user || !profile) return;
 
             const registration = await navigator.serviceWorker.ready;
             
@@ -58,13 +58,13 @@ export function PushNotificationManager() {
         }
     };
 
-    // Auto-subscribe if permission is already granted
+    // Auto-subscribe if permission is already granted and profile exists in public.users
     useEffect(() => {
-        if (!user || !isSupported) return;
+        if (!user || !profile || !isSupported) return;
         if (permission === 'granted') {
             subscribeUser();
         }
-    }, [user, isSupported, permission]);
+    }, [user, profile, isSupported, permission]);
 
     // Real-time listener: capture & display every notification (messages, friend requests, alerts, etc.)
     useEffect(() => {
@@ -173,8 +173,8 @@ export function PushNotificationManager() {
         };
     }, [isSupported]);
 
-    // Render interactive prompt banner if permission is default
-    if (permission === 'default' && showBanner && isSupported && user) {
+    // Render interactive prompt banner if permission is default and user profile exists
+    if (permission === 'default' && showBanner && isSupported && user && profile) {
         return (
             <div className="fixed top-20 left-4 right-4 md:left-auto md:right-6 md:w-96 z-[100] animate-in fade-in slide-in-from-top-4 duration-300">
                 <div className="bg-[var(--c-card)] border border-[#82DB7E]/40 rounded-2xl p-4 shadow-2xl backdrop-blur-xl flex items-start gap-3">
