@@ -785,16 +785,20 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
       router.push(`/marketplace/${post.id}`);
       return;
     }
-    if (post.category === "Event" && post.event_link) {
-      const cleanLink = post.event_link.split('?')[0];
-      const parts = cleanLink.split('/');
-      const eventId = parts.pop() || parts.pop();
-      if (eventId) {
-        router.push(`/events/${eventId}`);
-        return;
+    if (post.category === "Event") {
+      if (post.event_link) {
+        const cleanLink = post.event_link.split('?')[0];
+        const parts = cleanLink.split('/');
+        const eventId = parts.pop() || parts.pop();
+        if (eventId) {
+          router.push(`/events/${eventId}`);
+          return;
+        }
       }
+      router.push(`/events/${post.id}`);
+      return;
     }
-    setIsCommentsOpen(true);
+    router.push(`/posts/${post.id}`);
   };
 
   const handleCardClick = (e: React.MouseEvent) => {
