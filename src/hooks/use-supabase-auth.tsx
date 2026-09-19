@@ -308,7 +308,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (error) throw error;
-      if (data.error) throw new Error(data.error);
+      if (data.error) {
+        let errMessage = data.error;
+        if (typeof errMessage === 'string' && (errMessage.toLowerCase().includes('token') || errMessage.toLowerCase().includes('expired'))) {
+          errMessage = 'The verification code has expired. Please request a new code and try again.';
+        }
+        throw new Error(errMessage);
+      }
 
       if (profile) {
         setProfile({ ...profile, phone_verified: true });
@@ -317,7 +323,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { verified: true, error: null };
     } catch (error: any) {
       console.error('verifyPhoneOtp error:', error);
-      return { verified: false, error: error.message || error };
+      let errMessage = error.message || error;
+      if (typeof errMessage === 'string' && (errMessage.toLowerCase().includes('token') || errMessage.toLowerCase().includes('expired'))) {
+        errMessage = 'The verification code has expired. Please request a new code and try again.';
+      }
+      return { verified: false, error: errMessage };
     }
   };
 
