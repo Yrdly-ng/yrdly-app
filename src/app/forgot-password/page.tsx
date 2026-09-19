@@ -103,24 +103,24 @@ export default function ForgotPasswordPage() {
           </div>
 
           {/* Form Container */}
-          <div className="my-auto py-8 space-y-6 max-w-md w-full mx-auto">
-            <div className="space-y-1.5 text-left">
-              <h2 className="text-2xl sm:text-3xl font-bold font-yrdly-display text-white tracking-tight">
+          <div className="my-auto py-8 space-y-5 max-w-[360px] w-full mx-auto">
+            <div className="space-y-1 text-center sm:text-left">
+              <h2 className="text-2xl font-bold font-yrdly-display text-white tracking-tight">
                 Reset Password
               </h2>
-              <p className="text-xs sm:text-sm text-white/50">
+              <p className="text-xs text-zinc-400">
                 Enter your email address to receive a password reset link
               </p>
             </div>
 
             {error && (
-              <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-semibold leading-snug">
+              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-semibold leading-snug">
                 {error}
               </div>
             )}
 
             {success ? (
-              <div className="space-y-5 text-left bg-emerald-950/40 border border-[#82DB7E]/30 p-5 rounded-2xl">
+              <div className="space-y-4 text-left bg-emerald-950/40 border border-[#82DB7E]/30 p-5 rounded-2xl">
                 <div className="flex items-center gap-3">
                   <CheckCircle2 className="w-6 h-6 text-[#82DB7E] shrink-0" />
                   <div>
@@ -136,21 +136,20 @@ export default function ForgotPasswordPage() {
                 <button
                   type="button"
                   onClick={() => router.push("/login")}
-                  className="w-full h-12 rounded-xl bg-[#82DB7E] text-black font-extrabold text-sm hover:brightness-105 active:scale-[0.99] transition-all flex items-center justify-center"
+                  className="w-full h-[46px] rounded-xl bg-[#82DB7E] text-black font-extrabold text-sm hover:brightness-105 active:scale-[0.99] transition-all flex items-center justify-center"
                 >
                   Return to Log in
                 </button>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="flex items-center gap-3 px-4 h-13 rounded-xl bg-[#1c1f26] border border-white/10 focus-within:border-[#82DB7E] transition-all">
-                  <Mail className="w-4 h-4 text-white/40 flex-shrink-0" />
+              <form onSubmit={handleSubmit} className="space-y-3">
+                <div className="relative w-full">
                   <input
                     type="email"
                     placeholder="Enter your email address"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-transparent outline-none text-sm text-white placeholder:text-white/30 font-yrdly-body"
+                    className="w-full h-[50px] px-4 rounded-xl bg-[#121214] border border-white/20 focus:border-white/50 focus:bg-[#18181b] outline-none text-sm text-white placeholder:text-zinc-500 font-yrdly-body transition-all"
                     required
                   />
                 </div>
@@ -158,7 +157,7 @@ export default function ForgotPasswordPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full h-12 rounded-xl bg-[#82DB7E] text-black font-extrabold text-sm hover:brightness-105 active:scale-[0.99] transition-all flex items-center justify-center shadow-lg shadow-[#82DB7E]/10"
+                  className="w-full h-[46px] rounded-xl bg-[#82DB7E] text-black font-extrabold text-sm hover:brightness-105 active:scale-[0.99] transition-all flex items-center justify-center shadow-lg shadow-[#82DB7E]/10"
                 >
                   {loading ? (
                     <Loader2 className="w-5 h-5 animate-spin text-black" />

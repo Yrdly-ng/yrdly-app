@@ -256,104 +256,100 @@ export default function LoginPage() {
           </div>
 
           {/* Form Container */}
-          <div className="my-auto py-8 space-y-6 max-w-md w-full mx-auto">
-          {/* Form Header */}
-          <div className="space-y-1.5 text-left">
-            <h2 className="text-2xl sm:text-3xl font-bold font-yrdly-display text-white tracking-tight">
-              {isSignUp ? "Create an account" : "Log in to Yrdly"}
-            </h2>
-            <p className="text-xs sm:text-sm text-white/50">
-              {isSignUp
-                ? "Connect with your neighbours and community"
-                : "Welcome back! Enter your details to continue"}
-            </p>
-          </div>
-
-          {error && (
-            <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-semibold leading-snug">
-              {error}
+          <div className="my-auto py-8 space-y-5 max-w-[360px] w-full mx-auto">
+            {/* Form Header */}
+            <div className="space-y-1 text-center sm:text-left">
+              <h2 className="text-2xl font-bold font-yrdly-display text-white tracking-tight">
+                {isSignUp ? "Create an account" : "Log in to Yrdly"}
+              </h2>
+              <p className="text-xs text-zinc-400">
+                {isSignUp
+                  ? "Connect with your neighbours and community"
+                  : "Welcome back! Enter your details to continue"}
+              </p>
             </div>
-          )}
 
-          <form onSubmit={handleAuth} className="space-y-3.5">
-            {isSignUp && (
-              <>
-                {/* Full Name */}
-                <div className="flex items-center gap-3 px-4 h-13 rounded-xl bg-[#1c1f26] border border-white/10 focus-within:border-[#82DB7E] transition-all">
-                  <User className="w-4 h-4 text-white/40 flex-shrink-0" />
-                  <input
-                    type="text"
-                    placeholder="Full name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full bg-transparent outline-none text-sm text-white placeholder:text-white/30 font-yrdly-body"
-                  />
-                </div>
-
-                {/* Username */}
-                <div className="flex items-center gap-3 px-4 h-13 rounded-xl bg-[#1c1f26] border border-white/10 focus-within:border-[#82DB7E] transition-all">
-                  <AtSign className="w-4 h-4 text-white/40 flex-shrink-0" />
-                  <input
-                    type="text"
-                    placeholder="Username (e.g. johndoe)"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="w-full bg-transparent outline-none text-sm text-white placeholder:text-white/30 font-yrdly-body"
-                  />
-                </div>
-              </>
+            {error && (
+              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-semibold leading-snug">
+                {error}
+              </div>
             )}
 
-            {/* Email */}
-            <div className="flex items-center gap-3 px-4 h-13 rounded-xl bg-[#1c1f26] border border-white/10 focus-within:border-[#82DB7E] transition-all">
-              <Mail className="w-4 h-4 text-white/40 flex-shrink-0" />
-              <input
-                type="email"
-                placeholder="Email address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-transparent outline-none text-sm text-white placeholder:text-white/30 font-yrdly-body"
-              />
-            </div>
+            <form onSubmit={handleAuth} className="space-y-3">
+              {isSignUp && (
+                <>
+                  {/* Full Name */}
+                  <div className="relative w-full">
+                    <input
+                      type="text"
+                      placeholder="Full name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="w-full h-[50px] px-4 rounded-xl bg-[#121214] border border-white/20 focus:border-white/50 focus:bg-[#18181b] outline-none text-sm text-white placeholder:text-zinc-500 font-yrdly-body transition-all"
+                    />
+                  </div>
 
-            {/* Password */}
-            <div className="flex items-center gap-3 px-4 h-13 rounded-xl bg-[#1c1f26] border border-white/10 focus-within:border-[#82DB7E] transition-all">
-              <Lock className="w-4 h-4 text-white/40 flex-shrink-0" />
-              <input
-                type={showPassword ? "text" : "password"}
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-transparent outline-none text-sm text-white placeholder:text-white/30 font-yrdly-body"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="text-white/40 hover:text-white transition-colors"
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
+                  {/* Username */}
+                  <div className="relative w-full">
+                    <input
+                      type="text"
+                      placeholder="Username (e.g. johndoe)"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      className="w-full h-[50px] px-4 rounded-xl bg-[#121214] border border-white/20 focus:border-white/50 focus:bg-[#18181b] outline-none text-sm text-white placeholder:text-zinc-500 font-yrdly-body transition-all"
+                    />
+                  </div>
+                </>
+              )}
 
-            {isSignUp && <PasswordStrengthIndicator value={password} />}
+              {/* Email */}
+              <div className="relative w-full">
+                <input
+                  type="email"
+                  placeholder="Email address"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full h-[50px] px-4 rounded-xl bg-[#121214] border border-white/20 focus:border-white/50 focus:bg-[#18181b] outline-none text-sm text-white placeholder:text-zinc-500 font-yrdly-body transition-all"
+                />
+              </div>
 
-            {/* Primary Action Button */}
-            <div className="pt-2">
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full h-12 rounded-xl bg-[#82DB7E] text-black font-extrabold text-sm hover:brightness-105 active:scale-[0.99] transition-all flex items-center justify-center shadow-lg shadow-[#82DB7E]/10"
-              >
-                {loading ? (
-                  <Loader2 className="w-5 h-5 animate-spin text-black" />
-                ) : isSignUp ? (
-                  "Create Account"
-                ) : (
-                  "Log in"
-                )}
-              </button>
-            </div>
-          </form>
+              {/* Password */}
+              <div className="relative w-full flex items-center">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full h-[50px] pl-4 pr-11 rounded-xl bg-[#121214] border border-white/20 focus:border-white/50 focus:bg-[#18181b] outline-none text-sm text-white placeholder:text-zinc-500 font-yrdly-body transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 text-zinc-400 hover:text-white transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+
+              {isSignUp && <PasswordStrengthIndicator value={password} />}
+
+              {/* Primary Action Button */}
+              <div className="pt-1.5">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full h-[46px] rounded-xl bg-[#82DB7E] text-black font-extrabold text-sm hover:brightness-105 active:scale-[0.99] transition-all flex items-center justify-center shadow-lg shadow-[#82DB7E]/10"
+                >
+                  {loading ? (
+                    <Loader2 className="w-5 h-5 animate-spin text-black" />
+                  ) : isSignUp ? (
+                    "Create Account"
+                  ) : (
+                    "Log in"
+                  )}
+                </button>
+              </div>
+            </form>
 
           {/* Forgotten Password Link */}
           {!isSignUp && (
