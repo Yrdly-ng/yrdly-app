@@ -43,7 +43,7 @@ export function Topbar({
 }: TopbarProps) {
   return (
     <header 
-      className="fixed top-0 left-0 right-0 z-50 flex items-center px-4 md:px-6 bg-[var(--c-card)]/80 backdrop-blur-md border-b border-[var(--c-border)] h-[64px] md:h-[84px] shadow-[0_8px_32px_rgba(0,0,0,0.08)] [transform:translateZ(0)] [will-change:transform]"
+      className="fixed top-0 left-0 right-0 z-50 flex lg:hidden items-center px-4 md:px-6 bg-[var(--c-card)]/80 backdrop-blur-md border-b border-[var(--c-border)] h-[64px] md:h-[84px] shadow-[0_8px_32px_rgba(0,0,0,0.08)] [transform:translateZ(0)] [will-change:transform]"
       style={{
         WebkitBackfaceVisibility: 'hidden',
         backfaceVisibility: 'hidden',
