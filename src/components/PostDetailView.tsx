@@ -270,11 +270,11 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
       {urls.length > 0 && (
         <div className="px-3 pb-4">
           {urls.length === 1 ? (
-            <div className="relative w-full overflow-hidden rounded-2xl" style={{ height: 360, maxHeight: 420 }}>
-              <Image src={urls[0]} alt="" fill className="object-cover" sizes="(max-width: 640px) 100vw, 626px" />
+            <div className="relative w-full overflow-hidden rounded-2xl h-[360px] sm:h-[480px] lg:h-[540px] max-h-[640px]">
+              <Image src={urls[0]} alt="" fill className="object-cover" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 1200px" />
             </div>
           ) : (
-            <div className="relative group w-full overflow-hidden rounded-2xl" style={{ height: 360 }}>
+            <div className="relative group w-full overflow-hidden rounded-2xl h-[360px] sm:h-[480px] lg:h-[540px]">
               <div
                 ref={carouselRef}
                 onScroll={handleScroll}
@@ -288,7 +288,7 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
                       alt=""
                       fill
                       className="object-cover"
-                      sizes="(max-width: 640px) 100vw, 626px"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 1200px"
                     />
                   </div>
                 ))}
@@ -351,12 +351,12 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
               src={post.video_url.includes('#t=') ? post.video_url : `${post.video_url}#t=0.001`}
               controls
               playsInline
-                disablePictureInPicture
-                controlsList="nodownload noremoteplayback nopictureinpicture"
+              disablePictureInPicture
+              controlsList="nodownload noremoteplayback nopictureinpicture"
               preload="metadata"
               poster={post.video_thumbnail_url ?? undefined}
-              className="w-full object-cover"
-              style={{ borderRadius: 12, maxHeight: 400 }}
+              className="w-full object-cover max-h-[500px] lg:max-h-[600px]"
+              style={{ borderRadius: 12 }}
             />
           </div>
         </div>

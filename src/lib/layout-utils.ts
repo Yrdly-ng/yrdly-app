@@ -33,8 +33,8 @@ export function getPageWidthTier(pathname: string): string {
     return 'max-w-[680px] mx-auto lg:max-w-5xl';
   }
 
-  if (pathname.startsWith('/admin')) {
-    return 'max-w-[680px] mx-auto lg:max-w-none';
+  if (pathname.startsWith('/posts')) {
+    return 'max-w-[680px] mx-auto lg:max-w-5xl min-[1440px]:max-w-6xl';
   }
 
   return 'max-w-[680px] mx-auto lg:max-w-2xl';
