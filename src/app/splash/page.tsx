@@ -8,54 +8,35 @@ const YRDLY_MARK_D =
 
 export default function SplashScreen() {
   const router = useRouter();
-  const [filled, setFilled] = useState(false);
 
   useEffect(() => {
-    const fillTimer = setTimeout(() => {
-      setFilled(true);
-    }, 900);
-
     const navTimer = setTimeout(() => {
       router.push('/home');
     }, 2200);
 
     return () => {
-      clearTimeout(fillTimer);
       clearTimeout(navTimer);
     };
   }, [router]);
 
   return (
     <div className="fixed inset-0 flex flex-col items-center justify-center bg-background z-50 select-none">
-      <style>{`
-        @keyframes drawPath {
-          0% { stroke-dashoffset: 4000; }
-          100% { stroke-dashoffset: 0; }
-        }
-        .animated-logo-path {
-          stroke-dasharray: 4000;
-          stroke-dashoffset: 4000;
-          animation: drawPath 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-        }
-      `}</style>
-
-      <div className="relative flex flex-col items-center gap-6">
+      <div className="relative flex flex-col items-center gap-6 animate-fade-in transition-all duration-700">
         <svg
           viewBox="0 0 1280 1280"
-          className="w-36 h-36 sm:w-44 sm:h-44 drop-shadow-md"
+          className="w-36 h-36 sm:w-44 sm:h-44 drop-shadow-md animate-pulse"
         >
           <g transform="translate(0,1280) scale(0.1,-0.1)">
             <path
               d={YRDLY_MARK_D}
               stroke="#0B9445"
               strokeWidth="25"
-              fill={filled ? '#F7F17C' : 'none'}
-              className="animated-logo-path transition-all duration-700 ease-out"
+              fill="#F7F17C"
             />
           </g>
         </svg>
 
-        <div className="text-center space-y-1 animate-fade-in">
+        <div className="text-center space-y-1">
           <h1
             className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground"
             style={{ fontFamily: 'var(--font-raleway)' }}
