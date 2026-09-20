@@ -271,7 +271,14 @@ function OnboardingProfileContent() {
   };
 
   const handleComplete = async () => {
-    if (!user || !selectedLoc) return;
+    if (!user) {
+      setSaveError('Account session missing or email unverified. Please verify your email first.');
+      return;
+    }
+    if (!selectedLoc) {
+      setSaveError('Please select your neighbourhood location first.');
+      return;
+    }
     setLoading(true);
     setSaveError('');
 
