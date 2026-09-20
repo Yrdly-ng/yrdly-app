@@ -40,6 +40,7 @@ self.addEventListener('fetch', (event) => {
   // Always bypass the service worker for Supabase, auth, and API calls
   if (
     url.hostname.includes('supabase.co') ||
+    url.hostname === 'api.yrdly.ng' ||
     url.pathname.startsWith('/api/') ||
     url.pathname.startsWith('/auth/') ||
     request.method !== 'GET'

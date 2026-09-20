@@ -10,6 +10,7 @@ const isLocalhost = typeof window !== 'undefined' &&
 // Create Supabase client for client-side operations using SSR package to support cookieOptions
 export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey, {
   cookieOptions: {
+    name: 'sb-yoiyqxtpmxnrrbqqidcs-auth-token',
     domain: isLocalhost ? undefined : (process.env.NEXT_PUBLIC_COOKIE_DOMAIN || '.yrdly.ng'),
     maxAge: 365 * 24 * 60 * 60,
     path: '/',
