@@ -21,9 +21,6 @@ export function useOnboarding() {
     // Check if profile is completed
     if (!profile.profile_completed) return 'profile_setup';
     
-    // Check if welcome message has been sent
-    if (!profile.welcome_message_sent) return 'welcome';
-    
     // Check if tour is completed
     if (!profile.tour_completed) return 'tour';
     

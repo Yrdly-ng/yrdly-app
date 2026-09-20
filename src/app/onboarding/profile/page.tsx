@@ -308,8 +308,9 @@ function OnboardingProfileContent() {
         home_ward: selectedLoc.ward,
         home_lat: lat,
         home_lng: lng,
-        onboarding_status: 'completed',
+        onboarding_status: 'tour',
         profile_completed: true,
+        welcome_message_sent: true,
       } as any);
 
       router.replace('/onboarding/tour');
