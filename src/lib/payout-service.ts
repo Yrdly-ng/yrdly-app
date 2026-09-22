@@ -73,7 +73,7 @@ export class PayoutService {
         const sellerPaylukId = await getPaylukCustomerId(sellerId);
         if (sellerPaylukId) {
           const wallet = await PaylukService.getCustomerWallet(sellerPaylukId);
-          if (typeof wallet.mainBalance === 'number') {
+          if (typeof wallet.mainBalance === 'number' && !isNaN(wallet.mainBalance)) {
             availableBalance = Math.min(availableBalance, wallet.mainBalance);
           }
         }

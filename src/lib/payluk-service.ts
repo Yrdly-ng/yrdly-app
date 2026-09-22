@@ -754,21 +754,21 @@ export class PaylukService {
     escrowBalance: number;
     currency: string;
   }> {
-    const response = await paylukRequest<{
-      mainBalance: number;
-      escrowBalance: number;
-      currency: string;
-    }>(
+    const response = await paylukRequest<any>(
       '/v1/merchant-customers/get-customer-wallet',
       {
         method: 'GET',
         customerId: sellerPaylukCustomerId,
       }
     );
+    const data = response?.data || response;
+    const mainBal = data?.mainBalance ?? data?.wallet?.mainBalance ?? data?.main_balance ?? data?.balance ?? 0;
+    const escrowBal = data?.escrowBalance ?? data?.wallet?.escrowBalance ?? data?.escrow_balance ?? 0;
+    const curr = data?.currency || 'NGN';
     return {
-      mainBalance: response.data?.mainBalance ?? 0,
-      escrowBalance: response.data?.escrowBalance ?? 0,
-      currency: response.data?.currency || 'NGN',
+      mainBalance: typeof mainBal === 'number' ? mainBal : Number(mainBal) || 0,
+      escrowBalance: typeof escrowBal === 'number' ? escrowBal : Number(escrowBal) || 0,
+      currency: curr,
     };
   }
 

@@ -11,8 +11,18 @@ import { PaylukService } from './payluk-service';
  * reserved for routes that may legitimately create a new customer
  * (virtual-account, payment/initialize).
  */
-export async function getPaylukCustomerId(userId: string): Promise<string> {
-  return ensurePaylukCustomer(userId);
+export async function getPaylukCustomerId(userId: string): Promise<string | null> {
+  try {
+    const { data: user } = await supabaseAdmin
+      .from('users')
+      .select('payluk_customer_id')
+      .eq('id', userId)
+      .maybeSingle();
+
+    return user?.payluk_customer_id || null;
+  } catch {
+    return null;
+  }
 }
 
 /**
