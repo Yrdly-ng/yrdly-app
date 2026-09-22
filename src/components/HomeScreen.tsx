@@ -478,7 +478,7 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
 
     {/* ── Right Sidebar (fixed in place, does not move while the feed scrolls) ── */}
     <div className="hidden lg:block relative shrink-0">
-      <aside className="sticky top-[80px] md:top-[100px] flex flex-col gap-4 font-yrdly-body w-full items-start overflow-y-auto max-h-[calc(100dvh-100px)] pb-6 scrollbar-hide">
+      <aside className="sticky top-[80px] md:top-[100px] flex min-w-0 w-full max-w-full flex-col gap-4 overflow-x-hidden font-yrdly-body items-start overflow-y-auto max-h-[calc(100dvh-100px)] pb-6 scrollbar-hide">
       <div className="rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-5 shadow-sm transition-all hover:border-primary/40 hover:shadow-md">
         <div className="flex items-center gap-3 mb-4">
           <span
@@ -499,7 +499,7 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
                 trendingRowRefs.current[p.id] = el;
               }}
               onClick={() => router.push(`/posts/${p.id}`)}
-              className={`relative flex items-center gap-3 py-2.5 px-2 -mx-1 rounded-lg border-b border-[var(--yrdly-glass-border)] last:border-b-0 cursor-pointer transition-all duration-500 hover:bg-[var(--yrdly-glass-border)]/40 hover:ring-1 hover:ring-inset hover:ring-primary/40 ${
+              className={`relative flex min-w-0 w-full max-w-full items-center gap-3 py-2.5 px-2 -mx-1 rounded-lg border-b border-[var(--yrdly-glass-border)] last:border-b-0 cursor-pointer transition-all duration-500 hover:bg-[var(--yrdly-glass-border)]/40 hover:ring-1 hover:ring-inset hover:ring-primary/40 ${
                 risingTrendingIds.has(p.id) ? "ring-1 ring-inset ring-primary/60 bg-primary/5" : ""
               }`}
             >
@@ -511,7 +511,7 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="text-[15px] font-bold truncate">{p.snippet}</div>
+                <div className="min-w-0 break-words line-clamp-2 text-[15px] font-bold">{p.snippet}</div>
                 <div className="text-xs text-[var(--yrdly-label)] capitalize">{p.category}</div>
               </div>
               <span className="flex items-center gap-1 text-sm text-[var(--yrdly-label)] flex-shrink-0">
