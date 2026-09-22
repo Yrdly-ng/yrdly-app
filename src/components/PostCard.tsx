@@ -517,11 +517,11 @@ function EngagementRow({
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-full motion-snappy hover:bg-[var(--yrdly-glass-bg)] hover:scale-[0.97] active:scale-[0.95]"
         >
           <Heart
-            className={`w-5 h-5 ${isLiked ? "text-[#ED1111]" : "text-[var(--yrdly-label)]"} ${
+            className={`w-5 h-5 ${isLiked ? "text-[#82DB7E]" : "text-[var(--yrdly-label)]"} ${
               animating ? "animate-heart-pop" : ""
             }`}
             style={{
-              fill: isLiked ? "#ED1111" : "transparent",
+              fill: isLiked ? "#82DB7E" : "transparent",
             }}
           />
           <span className="text-[0.75rem] font-medium text-[var(--yrdly-label)] font-yrdly-body">

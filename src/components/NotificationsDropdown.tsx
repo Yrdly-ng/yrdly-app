@@ -46,7 +46,7 @@ function getNotificationBadge(type: string) {
     case 'friend_request':
       return { icon: UserPlus, bg: "#006ec9", fg: "#ffffff" }; // Blue
     case 'post_like':
-      return { icon: Heart, bg: "#ffb4ab", fg: "#690005", fill: true }; // Red
+      return { icon: Heart, bg: "#82DB7E", fg: "#123B17", fill: true }; // Green
     case 'message':
       return { icon: MessageSquare, bg: "#4da24e", fg: "#ffffff" }; // Green
     case 'post_comment':

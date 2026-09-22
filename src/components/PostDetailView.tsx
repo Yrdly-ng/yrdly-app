@@ -412,7 +412,7 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
                   onClick={handleLike}
                   className="flex items-center justify-center w-11 h-11 p-2.5 rounded-lg bg-[#D9D9D9]/20 hover:bg-accent"
                 >
-                  <Heart className={cn("w-5 h-5", isLiked && "fill-[#ED1111] text-[#ED1111]")} />
+                  <Heart className={cn("w-5 h-5", isLiked && "fill-[#82DB7E] text-[#82DB7E]")} />
                 </button>
                 <span className="font-sans font-light italic text-xs text-foreground">{formatCount(likes)}</span>
               </div>
