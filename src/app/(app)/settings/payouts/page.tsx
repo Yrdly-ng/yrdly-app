@@ -317,7 +317,7 @@ export default function PayoutsDashboardPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-[14px] font-semibold text-[var(--yrdly-text)] truncate font-yrdly-body">
-                            {item.bank_name} · ****{item.account_number.slice(-4)}
+                            {item.bank_name || 'Bank'} · ****{item.account_number ? item.account_number.slice(-4) : '****'}
                           </p>
                           <p className="text-[11px] text-[var(--yrdly-label)] truncate font-yrdly-body">
                             {dateStr} · {item.id.slice(0, 8).toUpperCase()}
