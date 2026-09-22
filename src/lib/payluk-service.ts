@@ -18,6 +18,11 @@ const PAYLUK_BASE_URL =
     ? 'https://api.payluk.ng'
     : 'https://staging.api.payluk.ng');
 
+// Payluk deducts withdrawal charges from the seller's wallet balance.
+// Sellers request the net amount they should receive, so a ₦1,000 balance
+// with a ₦50 Payluk charge produces a ₦950 bank payout.
+const PAYLUK_WITHDRAWAL_FEE_NGN = 50;
+
 if (typeof window === 'undefined' && !PAYLUK_SECRET_KEY) {
   console.warn('[Yrdly] Missing PAYLUK_SECRET_KEY — Payluk features will not work.');
 }
@@ -786,7 +791,17 @@ export class PaylukService {
 
       // 1. Create withdrawal intent
       let intentResponse;
-      let targetAmount = params.amount;
+      const targetAmount = Math.max(
+        0,
+        Math.floor(params.amount - PAYLUK_WITHDRAWAL_FEE_NGN)
+      );
+
+      if (targetAmount <= 0) {
+        return {
+          success: false,
+          error: `Withdrawal amount must exceed Payluk's ₦${PAYLUK_WITHDRAWAL_FEE_NGN} fee`,
+        };
+      }
 
       try {
         intentResponse = await paylukRequest<{ reference: string }>(
@@ -808,33 +823,8 @@ export class PaylukService {
             }),
           }
         );
-      } catch (intentErr: any) {
-        if (intentErr?.message?.includes('Insufficient balance')) {
-          console.warn(`[PaylukService] Insufficient balance for ₦${targetAmount}, retrying with fee-adjusted amount...`);
-          // Try reducing by ~3.2% (Payluk escrow fee ~20 + withdrawal fee ~11)
-          targetAmount = Math.max(1, Math.floor(params.amount - 31));
-          intentResponse = await paylukRequest<{ reference: string }>(
-            '/v1/payment/create-intent',
-            {
-              method: 'POST',
-              customerId: params.sellerPaylukCustomerId,
-              body: JSON.stringify({
-                amount: targetAmount,
-                reference: `${params.reference}-adj`,
-                transactionType: 'withdrawal',
-                currency: 'NGN',
-                withdrawalDetails: {
-                  bankCode: resolvedBankCode,
-                  bankName: params.bankName || 'Bank',
-                  accountNumber: params.accountNumber,
-                  ...(params.accountName ? { accountName: params.accountName } : {}),
-                },
-              }),
-            }
-          );
-        } else {
-          throw intentErr;
-        }
+      } catch (intentErr) {
+        throw intentErr;
       }
 
       const ref = intentResponse.data?.reference || params.reference;
@@ -850,41 +840,8 @@ export class PaylukService {
             body: JSON.stringify({ reference: ref }),
           }
         );
-      } catch (verifyErr: any) {
-        if (verifyErr?.message?.includes('Insufficient balance') && targetAmount === params.amount) {
-          console.warn(`[PaylukService] Insufficient balance on verify for ₦${targetAmount}, retrying adjusted intent...`);
-          targetAmount = Math.max(1, Math.floor(params.amount - 31));
-          const retryRef = `${params.reference}-retry`;
-          const newIntent = await paylukRequest<{ reference: string }>(
-            '/v1/payment/create-intent',
-            {
-              method: 'POST',
-              customerId: params.sellerPaylukCustomerId,
-              body: JSON.stringify({
-                amount: targetAmount,
-                reference: retryRef,
-                transactionType: 'withdrawal',
-                currency: 'NGN',
-                withdrawalDetails: {
-                  bankCode: resolvedBankCode,
-                  bankName: params.bankName || 'Bank',
-                  accountNumber: params.accountNumber,
-                  ...(params.accountName ? { accountName: params.accountName } : {}),
-                },
-              }),
-            }
-          );
-          verifyResponse = await paylukRequest<any>(
-            '/v1/payment/verify',
-            {
-              method: 'POST',
-              customerId: params.sellerPaylukCustomerId,
-              body: JSON.stringify({ reference: newIntent.data?.reference || retryRef }),
-            }
-          );
-        } else {
-          throw verifyErr;
-        }
+      } catch (verifyErr) {
+        throw verifyErr;
       }
 
       if (verifyResponse.status >= 200 && verifyResponse.status < 300) {
