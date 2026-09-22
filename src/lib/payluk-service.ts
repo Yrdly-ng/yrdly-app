@@ -845,10 +845,6 @@ export class PaylukService {
       }
     } catch (err: any) {
       console.error('[PaylukService] withdrawToBank error:', err);
-      if (PAYLUK_SECRET_KEY?.startsWith('sk_test_')) {
-        console.warn('[PaylukService] Test mode: withdrawToBank fallback success.');
-        return { success: true, reference: params.reference };
-      }
       return { success: false, error: err.message || 'Withdrawal request failed' };
     }
   }
