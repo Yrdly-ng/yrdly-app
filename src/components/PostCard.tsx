@@ -595,6 +595,21 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+
+  // Keep the feed fixed while the comment surface owns touch scrolling.
+  useEffect(() => {
+    if (!isCommentsOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    const previousOverscrollBehavior = document.body.style.overscrollBehavior;
+    document.body.style.overflow = "hidden";
+    document.body.style.overscrollBehavior = "none";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.overscrollBehavior = previousOverscrollBehavior;
+    };
+  }, [isCommentsOpen]);
   const [isEventEditDialogOpen, setIsEventEditDialogOpen] = useState(false);
   const [isTextExpanded, setIsTextExpanded] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -1256,8 +1271,8 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
       {/* Comments — Instagram-style modal (image left, comments right on wide screens) */}
       {isCommentsOpen && (
         <div
-          className="fixed inset-0 z-[200] flex items-end md:items-center justify-center p-0 md:p-6"
-          style={{ background: "rgba(0,0,0,0.85)" }}
+          className="fixed inset-0 z-[200] flex items-end md:items-center justify-center p-0 md:p-6 overscroll-none"
+          style={{ background: "rgba(0,0,0,0.85)", touchAction: "none" }}
           onClick={() => setIsCommentsOpen(false)}
         >
           <button
@@ -1271,6 +1286,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
           <div
             className="w-full h-[88dvh] md:h-[min(90vh,700px)] md:max-w-[935px] md:rounded-xl overflow-hidden flex flex-col md:flex-row bg-background border-t md:border border-[var(--yrdly-glass-border)] rounded-t-[24px] md:rounded-t-xl"
             onClick={(e) => e.stopPropagation()}
+            style={{ touchAction: "pan-y", overscrollBehavior: "contain" }}
           >
             {/* Mobile Grab Handle Bar */}
             <div className="md:hidden flex flex-col items-center justify-center pt-2.5 pb-1 flex-shrink-0 bg-background">
