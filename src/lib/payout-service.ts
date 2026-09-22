@@ -29,6 +29,15 @@ export class PayoutService {
    */
   static async getSellerBalance(sellerId: string): Promise<SellerBalance> {
     try {
+      // Auto-cleanup stale pending/processing payout requests older than 5 minutes
+      const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+      await supabaseAdmin
+        .from('payout_requests')
+        .update({ status: 'failed', failure_reason: 'Request timed out' })
+        .eq('seller_id', sellerId)
+        .in('status', ['pending', 'processing'])
+        .lt('created_at', fiveMinsAgo);
+
       // Get completed transactions for this seller
       const { data: transactions, error } = await supabaseAdmin
         .from('escrow_transactions')
@@ -57,9 +66,24 @@ export class PayoutService {
       const completedPayouts = payouts?.filter(p => p.status === 'completed').reduce((sum, p) => sum + p.amount, 0) || 0;
       const pendingPayouts = payouts?.filter(p => p.status === 'pending' || p.status === 'processing').reduce((sum, p) => sum + p.amount, 0) || 0;
 
+      let availableBalance = Math.max(0, totalEarnings - completedPayouts - pendingPayouts);
+
+      // Cross-reference with Payluk customer wallet balance if seller has Payluk ID
+      try {
+        const sellerPaylukId = await getPaylukCustomerId(sellerId);
+        if (sellerPaylukId) {
+          const wallet = await PaylukService.getCustomerWallet(sellerPaylukId);
+          if (typeof wallet.mainBalance === 'number') {
+            availableBalance = Math.min(availableBalance, wallet.mainBalance);
+          }
+        }
+      } catch (wErr) {
+        console.warn('[PayoutService] getSellerBalance Payluk wallet check warning:', wErr);
+      }
+
       return {
         totalEarnings,
-        availableBalance: totalEarnings - completedPayouts - pendingPayouts,
+        availableBalance,
         pendingPayouts,
         completedPayouts,
       };

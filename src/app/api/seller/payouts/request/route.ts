@@ -69,6 +69,14 @@ export async function POST(request: NextRequest) {
       processResult = await PayoutService.processPayout(payout.id);
     } catch (e) {
       console.error('Failed initial processing of payout:', e);
+      await supabaseAdmin
+        .from('payout_requests')
+        .update({
+          status: 'failed',
+          failure_reason: e instanceof Error ? e.message : 'Processing error',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', payout.id);
     }
 
     if (processResult && !processResult.success) {
