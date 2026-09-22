@@ -57,29 +57,34 @@ export default function NetworkPage() {
 
       let usersById = new Map<string, any>();
       if (allUserIds.length > 0) {
-        const { data: userRows, error: usersError } = await supabase
+        const { data: userRows } = await supabase
           .from("users")
-          .select("id, name, username, avatar_url, verified, verified_seller")
+          .select("*")
           .in("id", allUserIds);
 
-        if (usersError) throw usersError;
         usersById = new Map((userRows || []).map((user) => [user.id, user]));
       }
 
       if (currentUser?.id) {
-        const { data: myFollowingData, error: myFollowingError } = await supabase
+        const { data: myFollowingData } = await supabase
           .from("followers")
           .select("following_id")
           .eq("follower_id", currentUser.id);
 
-        if (myFollowingError) throw myFollowingError;
         setMyFollowingIds(new Set((myFollowingData || []).map((row) => row.following_id)));
       } else {
         setMyFollowingIds(new Set());
       }
 
-      setFollowers(followerIds.map((id) => usersById.get(id)).filter(Boolean));
-      setFollowing(followingIds.map((id) => usersById.get(id)).filter(Boolean));
+      const toUser = (id: string) => usersById.get(id) || {
+        id,
+        name: "Yrdly user",
+        username: null,
+        avatar_url: null,
+      };
+
+      setFollowers(followerIds.map(toUser));
+      setFollowing(followingIds.map(toUser));
     } catch (err) {
       console.error("Failed loading network:", err);
       setFollowers([]);
