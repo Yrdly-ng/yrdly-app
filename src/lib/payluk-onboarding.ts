@@ -11,18 +11,8 @@ import { PaylukService } from './payluk-service';
  * reserved for routes that may legitimately create a new customer
  * (virtual-account, payment/initialize).
  */
-export async function getPaylukCustomerId(userId: string): Promise<string | null> {
-  try {
-    const { data: user } = await supabaseAdmin
-      .from('users')
-      .select('payluk_customer_id')
-      .eq('id', userId)
-      .maybeSingle();
-
-    return user?.payluk_customer_id || null;
-  } catch {
-    return null;
-  }
+export async function getPaylukCustomerId(userId: string): Promise<string> {
+  return ensurePaylukCustomer(userId);
 }
 
 /**
@@ -30,13 +20,6 @@ export async function getPaylukCustomerId(userId: string): Promise<string | null
  * - If `payluk_customer_id` is already set, returns it immediately.
  * - Otherwise, parses the user's name, creates a Payluk customer using the Nigeria countryId,
  *   saves the ID to the `users` table, and returns it.
- *
- * BVN Requirement Note:
- * Per Payluk docs, providing a BVN yields a permanent dedicated virtual account via Paystack,
- * whereas omitting it yields a 24-hour temporary account. We intentionally omit it here because:
- * 1. The `users` table does not currently collect or store BVNs.
- * 2. On Safe Haven (staging), BVNs require SMS OTP verification which cannot be automated via this API.
- * 3. Omitting it safely falls back to temporary accounts or the Payluk Test Bank.
  */
 export async function ensurePaylukCustomer(userId: string): Promise<string> {
   let { data: user, error } = await supabaseAdmin
@@ -60,30 +43,9 @@ export async function ensurePaylukCustomer(userId: string): Promise<string> {
     };
   }
 
-  // 1. If already onboarded, verify the stored ID is still valid on Payluk
+  // 1. If already onboarded, return stored ID immediately
   if (user.payluk_customer_id) {
-    try {
-      await PaylukService.getCustomerById(user.payluk_customer_id);
-      return user.payluk_customer_id; // confirmed valid
-    } catch (verifyErr: any) {
-      const isNotFound = verifyErr?.message?.includes('HTTP 404') || verifyErr?.message?.includes('not found');
-      
-      if (!isNotFound) {
-        // If Payluk is down or rate-limited (429/5xx), DO NOT clear the ID or try to recreate it.
-        // That would just cause a cascade of 429s on the create endpoint.
-        console.error(`[PaylukOnboarding] Payluk verify error for ${userId} (not a 404, throwing):`, verifyErr?.message);
-        throw verifyErr;
-      }
-
-      console.warn(
-        `[PaylukOnboarding] Stored payluk_customer_id ${user.payluk_customer_id} is stale or invalid for user ${userId}: ${verifyErr?.message}. Re-creating...`
-      );
-      // Clear the stale ID so we fall through to re-creation
-      await supabaseAdmin
-        .from('users')
-        .update({ payluk_customer_id: null })
-        .eq('id', userId);
-    }
+    return user.payluk_customer_id;
   }
 
   // 2. Prepare customer data
