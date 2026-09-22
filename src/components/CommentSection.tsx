@@ -436,8 +436,8 @@ export function CommentSection({
                             onClick={() => handleLikeComment(comment.id)} 
                             className="flex items-center gap-1.5 group"
                         >
-                            <Heart className={cn("w-3.5 h-3.5 transition-colors", isLiked ? "fill-[#ED1111] text-[#ED1111]" : "text-muted-foreground group-hover:text-[#ED1111]")} />
-                            {comment.likeCount > 0 && <span className={cn("text-xs font-medium transition-colors", isLiked ? "text-[#ED1111]" : "text-muted-foreground")}>{fmt(comment.likeCount)}</span>}
+                            <Heart className={cn("w-3.5 h-3.5 transition-colors", isLiked ? "fill-[#82DB7E] text-[#82DB7E]" : "text-muted-foreground group-hover:text-[#82DB7E]")} />
+                            {comment.likeCount > 0 && <span className={cn("text-xs font-medium transition-colors", isLiked ? "text-[#82DB7E]" : "text-muted-foreground")}>{fmt(comment.likeCount)}</span>}
                         </motion.button>
 
                         <button
