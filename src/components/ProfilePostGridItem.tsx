@@ -38,10 +38,11 @@ export function ProfilePostGridItem({ post, onPress }: ProfilePostGridItemProps)
       ) : isVideo ? (
         <div className="relative h-full w-full overflow-hidden bg-emerald-950/60">
           <video
-            src={videoUrl}
+            src={videoUrl ? (videoUrl.includes("#t=") ? videoUrl : `${videoUrl}#t=0.001`) : undefined}
+            poster={post.video_thumbnail_url || undefined}
             muted
             playsInline
-            preload="metadata"
+            preload="auto"
             aria-label={post.text || "Video post"}
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
