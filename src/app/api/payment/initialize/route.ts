@@ -299,9 +299,10 @@ export async function POST(request: NextRequest) {
     // ── Create escrow transaction (admin client bypasses RLS) ──
     // Always use the price from the database — never trust the client-supplied value
     const authorizedPrice = itemData.price;
-    // Buyer pays item price only; platform takes commission from seller's share at payout
+    // The buyer-facing platform fee must be included in the Payluk checkout amount.
+    // Payluk adds its fee to the escrow amount when whoPays is set to buyer.
     const commission = Math.round(authorizedPrice * MARKETPLACE_CONSTANTS.COMMISSION_RATE);
-    const totalAmount = authorizedPrice;
+    const totalAmount = authorizedPrice + commission;
 
     // ── STEP 1: DB Reservation FIRST (Before external Payluk call) ──
     // Inserting into escrow_transactions first enforces single-buyer reservation at the DB layer
@@ -319,7 +320,7 @@ export async function POST(request: NextRequest) {
         amount: authorizedPrice,
         commission,
         total_amount: totalAmount,
-        seller_amount: authorizedPrice - commission,
+        seller_amount: authorizedPrice,
         status: EscrowStatus.PENDING,
         payment_method: PaymentMethod.CARD,
         delivery_details: { option: DeliveryOption.FACE_TO_FACE },
@@ -513,9 +514,9 @@ export async function POST(request: NextRequest) {
         }
 
         const paylukEscrow = await PaylukService.createEscrow(sellerPaylukId, {
-          amount: totalAmount,
+          amount: authorizedPrice,
           purpose: itemData.title,
-          whoPays: 'seller',
+          whoPays: 'buyer',
           maxDelivery: 7,
           deliveryTimeline: 'days',
         });
