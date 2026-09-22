@@ -21,8 +21,8 @@ interface PayoutRequest {
   status: PayoutStatus;
   requested_at: string;
   processed_at: string | null;
-  bank_name: string;
-  account_number: string;
+  bank_name?: string;
+  account_number?: string;
 }
 
 const STATUS_COLOR: Record<string, string> = {
@@ -60,7 +60,7 @@ export default function PayoutsDashboardPage() {
           .eq("seller_id", user.id),
         supabase
           .from("payout_requests")
-          .select("id, amount, status, requested_at, processed_at, bank_name, account_number")
+          .select("id, amount, status, requested_at, processed_at")
           .eq("seller_id", user.id)
           .order("requested_at", { ascending: false }),
         fetch(`/api/seller/setup-account?userId=${user.id}`).then((r) =>
