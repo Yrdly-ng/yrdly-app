@@ -16,8 +16,9 @@ export function ProfilePostGridItem({ post, onPress }: ProfilePostGridItemProps)
     : post.image_url
     ? [post.image_url]
     : [];
+  const videoUrl = post.video_url || ((post as any).video_urls?.[0] as string | undefined);
   const imageUrl = imageUrls[0] || post.video_thumbnail_url || null;
-  const isVideo = !!post.video_url || ((post as any).video_urls && (post as any).video_urls.length > 0);
+  const isVideo = Boolean(videoUrl);
   const likesCount = post.liked_by?.length || 0;
   const commentCount = post.comment_count || 0;
 
@@ -35,8 +36,18 @@ export function ProfilePostGridItem({ post, onPress }: ProfilePostGridItemProps)
           className="object-cover transition-transform duration-300 group-hover:scale-105"
         />
       ) : isVideo ? (
-        <div className="flex h-full w-full items-center justify-center bg-emerald-950/60">
-          <PlayCircle className="h-10 w-10 text-primary/80" />
+        <div className="relative h-full w-full overflow-hidden bg-emerald-950/60">
+          <video
+            src={videoUrl}
+            muted
+            playsInline
+            preload="metadata"
+            aria-label={post.text || "Video post"}
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          />
+          <div className="absolute inset-0 flex items-center justify-center bg-black/15">
+            <PlayCircle className="h-10 w-10 text-white drop-shadow-md" />
+          </div>
         </div>
       ) : (
         <div className="flex h-full w-full flex-col justify-between p-3.5 bg-gradient-to-br from-card via-background to-muted text-foreground">
