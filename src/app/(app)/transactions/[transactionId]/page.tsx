@@ -414,69 +414,37 @@ export default function TransactionDetailsPage() {
         </div>
 
         {/* Transaction Timeline */}
-        <GlassCard className="p-6 space-y-4">
-          <h3 className="flex items-center gap-2 font-yrdly-display font-bold text-lg text-foreground">
-            <Clock className="h-5 w-5 text-primary" />
-            Transaction Timeline
-          </h3>
-          <div className="space-y-4 font-yrdly-body">
-            <div className="flex items-center gap-3">
-              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-              <div>
-                <p className="font-medium text-foreground">Transaction Created</p>
-                <p className="text-sm text-[var(--yrdly-label)]">
-                  {new Date(tx.created_at).toLocaleString()}
-                </p>
-              </div>
-            </div>
-            
-            {tx.paid_at && (
-              <div className="flex items-center gap-3">
-                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                <div>
-                  <p className="font-medium text-foreground">Payment Confirmed</p>
-                  <p className="text-sm text-[var(--yrdly-label)]">
-                    {new Date(tx.paid_at).toLocaleString()}
+        <GlassCard className="overflow-hidden p-5 sm:p-6">
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <h3 className="flex items-center gap-2 font-yrdly-display font-bold text-lg text-foreground">
+              <Clock className="h-5 w-5 text-primary" />
+              Transaction Timeline
+            </h3>
+            <span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-primary">
+              {meta.label}
+            </span>
+          </div>
+          <div className="font-yrdly-body">
+            {[
+              { label: 'Transaction Created', date: tx.created_at, color: 'bg-primary', visible: true },
+              { label: 'Payment Confirmed', date: tx.paid_at, color: 'bg-blue-500', visible: Boolean(tx.paid_at) },
+              { label: 'Item Shipped', date: tx.shipped_at, color: 'bg-purple-500', visible: Boolean(tx.shipped_at) },
+              { label: 'Delivery Confirmed', date: tx.delivered_at, color: 'bg-emerald-500', visible: Boolean(tx.delivered_at) },
+              { label: 'Transaction Completed', date: tx.completed_at, color: 'bg-green-600', visible: Boolean(tx.completed_at) },
+            ].filter((step) => step.visible).map((step, index, steps) => (
+              <div key={step.label} className="relative flex gap-4 pb-5 last:pb-0">
+                {index < steps.length - 1 && (
+                  <span className="absolute left-[5px] top-3 h-[calc(100%-8px)] w-px bg-border" aria-hidden="true" />
+                )}
+                <span className={`relative z-10 mt-1.5 h-3 w-3 shrink-0 rounded-full ring-4 ring-card ${step.color}`} />
+                <div className="min-w-0">
+                  <p className="font-semibold text-foreground">{step.label}</p>
+                  <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
+                    {new Date(step.date as string).toLocaleString()}
                   </p>
                 </div>
               </div>
-            )}
-            
-            {tx.shipped_at && (
-              <div className="flex items-center gap-3">
-                <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-                <div>
-                  <p className="font-medium text-foreground">Item Shipped</p>
-                  <p className="text-sm text-[var(--yrdly-label)]">
-                    {new Date(tx.shipped_at).toLocaleString()}
-                  </p>
-                </div>
-              </div>
-            )}
-            
-            {tx.delivered_at && (
-              <div className="flex items-center gap-3">
-                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                <div>
-                  <p className="font-medium text-foreground">Delivery Confirmed</p>
-                  <p className="text-sm text-[var(--yrdly-label)]">
-                    {new Date(tx.delivered_at).toLocaleString()}
-                  </p>
-                </div>
-              </div>
-            )}
-            
-            {tx.completed_at && (
-              <div className="flex items-center gap-3">
-                <div className="w-3 h-3 bg-green-600 rounded-full"></div>
-                <div>
-                  <p className="font-medium text-foreground">Transaction Completed</p>
-                  <p className="text-sm text-[var(--yrdly-label)]">
-                    {new Date(tx.completed_at).toLocaleString()}
-                  </p>
-                </div>
-              </div>
-            )}
+            ))}
           </div>
         </GlassCard>
 

@@ -27,64 +27,64 @@ export default function NetworkPage() {
   const [following, setFollowing] = useState<any[]>([]);
   const [myFollowingIds, setMyFollowingIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const isOwnProfile = currentUser?.id === targetUserId;
 
   const loadNetworkData = useCallback(async () => {
     if (!targetUserId) return;
     setLoading(true);
+    setLoadError(null);
 
     try {
-      // 1. Fetch Followers
-      const { data: followerRows } = await supabase
-        .from("followers")
-        .select("follower_id")
-        .eq("following_id", targetUserId);
+      const [{ data: followerRows, error: followersError }, { data: followingRows, error: followingError }] = await Promise.all([
+        supabase
+          .from("followers")
+          .select("follower_id")
+          .eq("following_id", targetUserId),
+        supabase
+          .from("followers")
+          .select("following_id")
+          .eq("follower_id", targetUserId),
+      ]);
 
-      const followerIds = (followerRows || []).map((r: any) => r.follower_id).filter(Boolean);
+      if (followersError) throw followersError;
+      if (followingError) throw followingError;
 
-      let fetchedFollowers: any[] = [];
-      if (followerIds.length > 0) {
-        const { data: followerUsers } = await supabase
+      const followerIds = (followerRows || []).map((row) => row.follower_id).filter(Boolean);
+      const followingIds = (followingRows || []).map((row) => row.following_id).filter(Boolean);
+      const allUserIds = [...new Set([...followerIds, ...followingIds])];
+
+      let usersById = new Map<string, any>();
+      if (allUserIds.length > 0) {
+        const { data: userRows, error: usersError } = await supabase
           .from("users")
           .select("id, name, username, avatar_url, verified, verified_seller")
-          .in("id", followerIds);
-        fetchedFollowers = followerUsers || [];
+          .in("id", allUserIds);
+
+        if (usersError) throw usersError;
+        usersById = new Map((userRows || []).map((user) => [user.id, user]));
       }
 
-      // 2. Fetch Following
-      const { data: followingRows } = await supabase
-        .from("followers")
-        .select("following_id")
-        .eq("follower_id", targetUserId);
-
-      const followingIds = (followingRows || []).map((r: any) => r.following_id).filter(Boolean);
-
-      let fetchedFollowing: any[] = [];
-      if (followingIds.length > 0) {
-        const { data: followingUsers } = await supabase
-          .from("users")
-          .select("id, name, username, avatar_url, verified, verified_seller")
-          .in("id", followingIds);
-        fetchedFollowing = followingUsers || [];
-      }
-
-      // 3. Fetch current user's following list (to determine follow state on cards)
       if (currentUser?.id) {
-        const { data: myFollowingData } = await supabase
+        const { data: myFollowingData, error: myFollowingError } = await supabase
           .from("followers")
           .select("following_id")
           .eq("follower_id", currentUser.id);
 
-        if (myFollowingData) {
-          setMyFollowingIds(new Set(myFollowingData.map((r) => r.following_id)));
-        }
+        if (myFollowingError) throw myFollowingError;
+        setMyFollowingIds(new Set((myFollowingData || []).map((row) => row.following_id)));
+      } else {
+        setMyFollowingIds(new Set());
       }
 
-      setFollowers(fetchedFollowers);
-      setFollowing(fetchedFollowing);
+      setFollowers(followerIds.map((id) => usersById.get(id)).filter(Boolean));
+      setFollowing(followingIds.map((id) => usersById.get(id)).filter(Boolean));
     } catch (err) {
       console.error("Failed loading network:", err);
+      setFollowers([]);
+      setFollowing([]);
+      setLoadError(err instanceof Error ? err.message : "Unable to load network data");
     } finally {
       setLoading(false);
     }
@@ -209,6 +209,18 @@ export default function NetworkPage() {
         {loading ? (
           <div className="py-12 flex justify-center">
             <div className="w-7 h-7 border-3 border-primary border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : loadError ? (
+          <div className="py-12 text-center space-y-3" style={{ fontFamily: FONT }}>
+            <p className="font-semibold text-sm text-destructive">Unable to load network</p>
+            <p className="text-xs text-muted-foreground">{loadError}</p>
+            <button
+              type="button"
+              onClick={loadNetworkData}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
+            >
+              Try again
+            </button>
           </div>
         ) : filteredList.length === 0 ? (
           <div className="py-12 text-center text-muted-foreground space-y-1" style={{ fontFamily: FONT }}>
