@@ -73,6 +73,61 @@ export default function WithdrawPage() {
     fetchData();
   }, [fetchData]);
 
+  const [previewing, setPreviewing] = useState(false);
+  const [previewData, setPreviewData] = useState<{
+    amount: number;
+    fee: number;
+    totalDebit: number;
+    netToBank: number;
+  } | null>(null);
+
+  const handleContinue = async () => {
+    if (numAmount <= 0 || numAmount > balance) {
+      toast({
+        title: "Invalid Amount",
+        description: "Please enter an amount within your available balance.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setPreviewing(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('/api/seller/payouts/preview', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify({ amount: numAmount }),
+      });
+
+      const resData = await res.json();
+
+      if (!res.ok || !resData.success) {
+        const displayMsg = resData.reason || resData.message || resData.error || 'Failed to preview withdrawal';
+        throw new Error(displayMsg);
+      }
+
+      setPreviewData({
+        amount: resData.amount ?? numAmount,
+        fee: resData.fee ?? 0,
+        totalDebit: resData.totalDebit ?? numAmount,
+        netToBank: resData.netToBank ?? numAmount,
+      });
+      setStep('confirm');
+    } catch (e: any) {
+      toast({
+        title: "Withdrawal Preview Failed",
+        description: e.message || "Failed to preview withdrawal",
+        variant: "destructive",
+      });
+    } finally {
+      setPreviewing(false);
+    }
+  };
+
   const handleWithdraw = async () => {
     if (numAmount <= 0 || numAmount > balance) {
       toast({
@@ -135,7 +190,7 @@ export default function WithdrawPage() {
         <div className="space-y-2">
           <h2 className="text-2xl font-bold font-yrdly-display text-foreground">Withdrawal Submitted!</h2>
           <p className="text-[var(--yrdly-label)] text-sm">
-            Your withdrawal of ₦{numAmount.toLocaleString()} has been queued. Funds will be transferred to your registered bank account.
+            Your withdrawal of ₦{numAmount.toLocaleString()} has been processed. Funds will be transferred to your registered bank account.
           </p>
         </div>
         <Button className="w-full" onClick={() => router.push('/profile')}>
@@ -216,9 +271,10 @@ export default function WithdrawPage() {
               </div>
               <Button
                 className="w-full"
-                onClick={() => setStep('confirm')}
-                disabled={numAmount <= 0 || numAmount > balance}
+                onClick={handleContinue}
+                disabled={previewing || numAmount <= 0 || numAmount > balance}
               >
+                {previewing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 Continue
               </Button>
             </div>
@@ -229,8 +285,20 @@ export default function WithdrawPage() {
               <div className="space-y-2">
                 <p className="text-sm font-medium text-foreground">Confirm Withdrawal Details</p>
                 <div className="flex justify-between text-sm py-1 border-b border-[var(--yrdly-glass-border)]">
-                  <span className="text-[var(--yrdly-label)]">Amount:</span>
+                  <span className="text-[var(--yrdly-label)]">Amount to withdraw:</span>
                   <span className="font-semibold text-foreground">₦{numAmount.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-sm py-1 border-b border-[var(--yrdly-glass-border)]">
+                  <span className="text-[var(--yrdly-label)]">Payluk fee (incl. VAT):</span>
+                  <span className="font-semibold text-amber-500">₦{(previewData?.fee ?? 0).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-sm py-1 border-b border-[var(--yrdly-glass-border)]">
+                  <span className="text-[var(--yrdly-label)]">Total deducted from balance:</span>
+                  <span className="font-bold text-foreground">₦{(previewData?.totalDebit ?? numAmount).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-sm py-1 border-b border-[var(--yrdly-glass-border)]">
+                  <span className="text-[var(--yrdly-label)]">Amount sent to bank:</span>
+                  <span className="font-bold text-emerald-500">₦{(previewData?.netToBank ?? numAmount).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-sm py-1 border-b border-[var(--yrdly-glass-border)]">
                   <span className="text-[var(--yrdly-label)]">Payout Bank:</span>
