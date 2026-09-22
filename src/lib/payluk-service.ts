@@ -784,9 +784,18 @@ export class PaylukService {
 
       const resolvedBankCode = PAYSTACK_TO_PAYLUK_BANK_MAP[params.bankCode] || params.bankCode;
 
-      // 1. Create withdrawal intent
+      // 1. Create withdrawal intent.
+      // Send the seller's requested gross balance amount. Payluk calculates its
+      // current withdrawal fee and deducts it from that amount, so the seller
+      // receives the net payout without Yrdly hard-coding Payluk's fee schedule.
       let intentResponse;
-      let targetAmount = params.amount;
+
+      if (!Number.isFinite(params.amount) || params.amount <= 0) {
+        return {
+          success: false,
+          error: 'Withdrawal amount must be greater than zero',
+        };
+      }
 
       try {
         intentResponse = await paylukRequest<{ reference: string }>(
@@ -795,7 +804,7 @@ export class PaylukService {
             method: 'POST',
             customerId: params.sellerPaylukCustomerId,
             body: JSON.stringify({
-              amount: targetAmount,
+              amount: params.amount,
               reference: params.reference,
               transactionType: 'withdrawal',
               currency: 'NGN',
@@ -808,33 +817,8 @@ export class PaylukService {
             }),
           }
         );
-      } catch (intentErr: any) {
-        if (intentErr?.message?.includes('Insufficient balance')) {
-          console.warn(`[PaylukService] Insufficient balance for ₦${targetAmount}, retrying with fee-adjusted amount...`);
-          // Try reducing by ~3.2% (Payluk escrow fee ~20 + withdrawal fee ~11)
-          targetAmount = Math.max(1, Math.floor(params.amount - 31));
-          intentResponse = await paylukRequest<{ reference: string }>(
-            '/v1/payment/create-intent',
-            {
-              method: 'POST',
-              customerId: params.sellerPaylukCustomerId,
-              body: JSON.stringify({
-                amount: targetAmount,
-                reference: `${params.reference}-adj`,
-                transactionType: 'withdrawal',
-                currency: 'NGN',
-                withdrawalDetails: {
-                  bankCode: resolvedBankCode,
-                  bankName: params.bankName || 'Bank',
-                  accountNumber: params.accountNumber,
-                  ...(params.accountName ? { accountName: params.accountName } : {}),
-                },
-              }),
-            }
-          );
-        } else {
-          throw intentErr;
-        }
+      } catch (intentErr) {
+        throw intentErr;
       }
 
       const ref = intentResponse.data?.reference || params.reference;
@@ -850,41 +834,8 @@ export class PaylukService {
             body: JSON.stringify({ reference: ref }),
           }
         );
-      } catch (verifyErr: any) {
-        if (verifyErr?.message?.includes('Insufficient balance') && targetAmount === params.amount) {
-          console.warn(`[PaylukService] Insufficient balance on verify for ₦${targetAmount}, retrying adjusted intent...`);
-          targetAmount = Math.max(1, Math.floor(params.amount - 31));
-          const retryRef = `${params.reference}-retry`;
-          const newIntent = await paylukRequest<{ reference: string }>(
-            '/v1/payment/create-intent',
-            {
-              method: 'POST',
-              customerId: params.sellerPaylukCustomerId,
-              body: JSON.stringify({
-                amount: targetAmount,
-                reference: retryRef,
-                transactionType: 'withdrawal',
-                currency: 'NGN',
-                withdrawalDetails: {
-                  bankCode: resolvedBankCode,
-                  bankName: params.bankName || 'Bank',
-                  accountNumber: params.accountNumber,
-                  ...(params.accountName ? { accountName: params.accountName } : {}),
-                },
-              }),
-            }
-          );
-          verifyResponse = await paylukRequest<any>(
-            '/v1/payment/verify',
-            {
-              method: 'POST',
-              customerId: params.sellerPaylukCustomerId,
-              body: JSON.stringify({ reference: newIntent.data?.reference || retryRef }),
-            }
-          );
-        } else {
-          throw verifyErr;
-        }
+      } catch (verifyErr) {
+        throw verifyErr;
       }
 
       if (verifyResponse.status >= 200 && verifyResponse.status < 300) {
