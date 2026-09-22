@@ -192,7 +192,7 @@ function MediaCollage({
                   src={item.url}
                   alt={`Post media ${i + 1}`}
                   fill
-                  className="object-contain post-media-image"
+                  className="object-cover post-media-image"
                   sizes="(max-width: 640px) 100vw, 626px"
                 />
               </div>

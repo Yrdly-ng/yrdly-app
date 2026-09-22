@@ -274,7 +274,7 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
             </p>
           </div>
 
-          {/* Image Swiper Carousel — uncropped object-contain with blurred backdrop + tap to open lightbox */}
+          {/* Image swiper carousel with a full-bleed mobile presentation and tap-to-open lightbox */}
           {urls.length > 0 && (
 
             <div className="px-3 pb-4">
@@ -297,8 +297,8 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
                     src={urls[0]}
                     alt="Post media"
                     fill
-                    className="object-contain"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 60vw, 900px"
+className="object-cover"
+  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 60vw, 900px"
                   />
                 </div>
               ) : (
@@ -325,11 +325,11 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
                           sizes="48px"
                           quality={10}
                         />
-                        <Image
-                          src={u}
-                          alt={`Post media ${i + 1}`}
-                          fill
-                          className="object-contain"
+<Image
+  src={u}
+  alt={`Post media ${i + 1}`}
+  fill
+  className="object-cover"
                           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 60vw, 900px"
                         />
                       </div>
