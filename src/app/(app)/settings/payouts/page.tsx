@@ -19,7 +19,7 @@ interface PayoutRequest {
   id: string;
   amount: number;
   status: PayoutStatus;
-  created_at: string;
+  requested_at: string;
   processed_at: string | null;
   bank_name: string;
   account_number: string;
@@ -300,7 +300,7 @@ export default function PayoutsDashboardPage() {
               <div>
                 {payouts.map((item, index) => {
                   const col = STATUS_COLOR[item.status] || STATUS_COLOR.pending;
-                  const dateStr = new Date(item.created_at).toLocaleDateString("en-GB", {
+                  const dateStr = new Date(item.requested_at).toLocaleDateString("en-GB", {
                     day: "numeric",
                     month: "short",
                     year: "numeric",
