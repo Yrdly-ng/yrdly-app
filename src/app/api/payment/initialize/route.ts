@@ -299,9 +299,9 @@ export async function POST(request: NextRequest) {
     // ── Create escrow transaction (admin client bypasses RLS) ──
     // Always use the price from the database — never trust the client-supplied value
     const authorizedPrice = itemData.price;
-    // Yrdly's 3% commission is a merchant-side fee collected from the buyer.
-    // It is added to the unpaid Payluk escrow via additionalFee below, while
-    // the escrow principal remains the seller's item price.
+    // Yrdly's 3% commission is collected from the buyer as an additional fee.
+    // Payluk's own escrow fee is charged to the seller via whoPays: 'seller' below,
+    // while the escrow principal remains the seller's item price.
     const commission = Math.round(authorizedPrice * MARKETPLACE_CONSTANTS.COMMISSION_RATE);
     const totalAmount = authorizedPrice + commission;
 
@@ -517,7 +517,7 @@ export async function POST(request: NextRequest) {
         const paylukEscrow = await PaylukService.createEscrow(sellerPaylukId, {
           amount: authorizedPrice,
           purpose: itemData.title,
-          whoPays: 'buyer',
+          whoPays: 'seller',
           maxDelivery: 7,
           deliveryTimeline: 'days',
         });
