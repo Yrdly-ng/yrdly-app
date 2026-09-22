@@ -43,6 +43,13 @@ function PasswordStrengthIndicator({ value }: { value: string }) {
   );
 }
 
+// ── Assign your custom card image paths here ──
+const CARD_IMAGES = {
+  cardLeft: "",   // e.g. "/images/cards/card-left.jpg" or any image URL
+  cardRight: "",  // e.g. "/images/cards/card-right.jpg" or any image URL
+  cardCenter: "", // e.g. "/images/cards/card-center.jpg" or any image URL
+};
+
 export default function LoginPage() {
   const router = useRouter();
   const { user, profile, loading: authLoading, signIn, signUp, signInWithGoogle } = useAuth();
@@ -162,29 +169,45 @@ export default function LoginPage() {
           {/* Instagram-style stacked visual card preview */}
           <div className="relative w-72 h-80 flex items-center justify-center pt-4">
             {/* Card 1 (Back Left) */}
-            <div className="absolute top-2 -left-4 w-48 h-64 rounded-3xl bg-card border border-white/10 p-3 shadow-2xl transform -rotate-12 transition-transform hover:-rotate-6">
-              <div className="w-full h-32 rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center">
-                <span className="text-2xl">🎉</span>
+            <div className="absolute top-2 -left-4 w-48 h-64 rounded-3xl bg-card border border-white/10 p-2.5 shadow-2xl transform -rotate-12 transition-transform hover:-rotate-6 overflow-hidden flex flex-col">
+              <div className="w-full h-36 rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center overflow-hidden relative">
+                {CARD_IMAGES.cardLeft ? (
+                  <img
+                    src={CARD_IMAGES.cardLeft}
+                    alt="Left Card Preview"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-2xl">🎉</span>
+                )}
               </div>
-              <div className="mt-3 space-y-1 text-left">
+              <div className="mt-3 space-y-1 text-left px-1">
                 <div className="h-3 w-24 bg-white/20 rounded-full" />
                 <div className="h-2 w-32 bg-white/10 rounded-full" />
               </div>
             </div>
 
             {/* Card 2 (Back Right) */}
-            <div className="absolute top-4 -right-4 w-48 h-64 rounded-3xl bg-card border border-white/10 p-3 shadow-2xl transform rotate-12 transition-transform hover:rotate-6">
-              <div className="w-full h-32 rounded-2xl bg-gradient-to-br from-amber-500/20 to-emerald-500/20 flex items-center justify-center">
-                <span className="text-2xl">🛍️</span>
+            <div className="absolute top-4 -right-4 w-48 h-64 rounded-3xl bg-card border border-white/10 p-2.5 shadow-2xl transform rotate-12 transition-transform hover:rotate-6 overflow-hidden flex flex-col">
+              <div className="w-full h-36 rounded-2xl bg-gradient-to-br from-amber-500/20 to-emerald-500/20 flex items-center justify-center overflow-hidden relative">
+                {CARD_IMAGES.cardRight ? (
+                  <img
+                    src={CARD_IMAGES.cardRight}
+                    alt="Right Card Preview"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-2xl">🛍️</span>
+                )}
               </div>
-              <div className="mt-3 space-y-1 text-left">
+              <div className="mt-3 space-y-1 text-left px-1">
                 <div className="h-3 w-28 bg-white/20 rounded-full" />
                 <div className="h-2 w-20 bg-white/10 rounded-full" />
               </div>
             </div>
 
             {/* Card 3 (Center Main) */}
-            <div className="relative w-56 h-72 rounded-3xl bg-[#14171d] border border-[#82DB7E]/30 p-4 shadow-2xl z-20 flex flex-col justify-between">
+            <div className="relative w-56 h-72 rounded-3xl bg-[#14171d] border border-[#82DB7E]/30 p-3.5 shadow-2xl z-20 flex flex-col justify-between">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-full bg-[#82DB7E]/20 border border-[#82DB7E] flex items-center justify-center text-[#82DB7E] font-bold text-xs">
                   Y
@@ -199,11 +222,21 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <div className="my-2 rounded-2xl overflow-hidden bg-emerald-950/40 border border-[#82DB7E]/20 p-3 text-left">
-                <p className="text-xs text-white/90 leading-snug font-yrdly-body">
-                  &quot;Fresh organic produce available right around the block! 🌱&quot;
-                </p>
-              </div>
+              {CARD_IMAGES.cardCenter ? (
+                <div className="my-2 rounded-2xl overflow-hidden h-32 relative border border-[#82DB7E]/20">
+                  <img
+                    src={CARD_IMAGES.cardCenter}
+                    alt="Center Card Preview"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="my-2 rounded-2xl overflow-hidden bg-emerald-950/40 border border-[#82DB7E]/20 p-3 text-left">
+                  <p className="text-xs text-white/90 leading-snug font-yrdly-body">
+                    &quot;Fresh organic produce available right around the block! 🌱&quot;
+                  </p>
+                </div>
+              )}
 
               <div className="flex items-center justify-between text-xs text-[var(--yrdly-label)] pt-1 border-t border-white/5">
                 <span className="text-[#82DB7E] font-bold">❤️ 24 likes</span>
