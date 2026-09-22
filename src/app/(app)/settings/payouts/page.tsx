@@ -53,7 +53,7 @@ export default function PayoutsDashboardPage() {
     setLoading(true);
 
     try {
-      const [txRes, payoutRes, bankRes] = await Promise.all([
+      const [txRes, payoutRes, bankRes, balRes] = await Promise.all([
         supabase
           .from("escrow_transactions")
           .select("seller_amount, status")
@@ -66,6 +66,9 @@ export default function PayoutsDashboardPage() {
         fetch(`/api/seller/setup-account?userId=${user.id}`).then((r) =>
           r.ok ? r.json() : { account: null }
         ).catch(() => ({ account: null })),
+        fetch("/api/seller/payouts/balance").then((r) =>
+          r.ok ? r.json() : null
+        ).catch(() => null),
       ]);
 
       const txs = txRes.data ?? [];
@@ -82,9 +85,12 @@ export default function PayoutsDashboardPage() {
         .filter((p: any) => ["pending", "processing", "completed"].includes(p.status))
         .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
 
+      const fallbackBalance = Math.max(0, earned - paidOut);
+      const serverAvailable = balRes && typeof balRes.availableBalance === "number" ? balRes.availableBalance : fallbackBalance;
+
       setLifetimeEarned(earned);
       setPendingEscrow(pendingE);
-      setBalance(Math.max(0, earned - paidOut));
+      setBalance(serverAvailable);
       setPayouts(pyts as PayoutRequest[]);
 
       if (bankRes.account) {
