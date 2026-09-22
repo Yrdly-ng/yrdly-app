@@ -29,14 +29,14 @@ export class PayoutService {
    */
   static async getSellerBalance(sellerId: string): Promise<SellerBalance> {
     try {
-      // Auto-cleanup stale pending/processing payout requests older than 5 minutes
-      const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+      // Auto-cleanup stale pending/processing payout requests older than 1 minute
+      const oneMinAgo = new Date(Date.now() - 60 * 1000).toISOString();
       await supabaseAdmin
         .from('payout_requests')
         .update({ status: 'failed', failure_reason: 'Request timed out' })
         .eq('seller_id', sellerId)
         .in('status', ['pending', 'processing'])
-        .lt('created_at', fiveMinsAgo);
+        .lt('requested_at', oneMinAgo);
 
       // Get completed transactions for this seller
       const { data: transactions, error } = await supabaseAdmin

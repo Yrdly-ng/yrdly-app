@@ -60,9 +60,9 @@ export default function PayoutsDashboardPage() {
           .eq("seller_id", user.id),
         supabase
           .from("payout_requests")
-          .select("id, amount, status, created_at, processed_at, bank_name, account_number")
+          .select("id, amount, status, requested_at, processed_at, bank_name, account_number")
           .eq("seller_id", user.id)
-          .order("created_at", { ascending: false }),
+          .order("requested_at", { ascending: false }),
         fetch(`/api/seller/setup-account?userId=${user.id}`).then((r) =>
           r.ok ? r.json() : { account: null }
         ).catch(() => ({ account: null })),
