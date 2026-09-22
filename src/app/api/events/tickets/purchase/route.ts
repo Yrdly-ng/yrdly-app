@@ -331,6 +331,11 @@ export async function POST(request: NextRequest) {
         deliveryTimeline: 'days',
         totalQuantity: quantity,
       });
+
+      const commission = Math.round(totalAmount * EVENT_CONSTANTS.COMMISSION_RATE * 100) / 100;
+      if (commission > 0) {
+        await PaylukService.addAdditionalFee(paylukEscrow.paymentToken, commission);
+      }
     } catch (paylukError: any) {
       console.error('[TicketPurchase] Payluk createEscrow error:', paylukError);
       return NextResponse.json({

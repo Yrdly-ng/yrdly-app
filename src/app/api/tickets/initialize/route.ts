@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { PaylukService } from '@/lib/payluk-service';
 import { getPaylukCustomerId } from '@/lib/payluk-onboarding';
 import { EscrowStatus } from '@/types/escrow';
+import { MARKETPLACE_CONSTANTS } from '@/lib/constants';
 
 /**
  * POST /api/tickets/initialize
@@ -129,8 +130,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Payment initialization failed', details: paylukError?.message }, { status: 502 });
     }
 
+    const commission = Math.round(price * MARKETPLACE_CONSTANTS.COMMISSION_RATE * 100) / 100;
+    if (commission > 0) {
+      try {
+        await PaylukService.addAdditionalFee(paylukEscrow.paymentToken, commission);
+      } catch (paylukError: any) {
+        console.error('[TicketInit] Payluk commission registration error:', paylukError);
+        return NextResponse.json({
+          error: 'Payment initialization failed',
+          details: paylukError?.message || 'Failed to register platform commission',
+        }, { status: 502 });
+      }
+    }
+
     const transactionId = crypto.randomUUID();
-    const commission = Math.round(price * 0.05 * 100) / 100;
     const sellerAmount = price - commission;
 
     const { error: dbInsertErr } = await supabaseAdmin
