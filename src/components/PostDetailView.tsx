@@ -214,6 +214,8 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
   );
 
   const urls = post.image_urls?.length ? post.image_urls : post.image_url ? [post.image_url] : [];
+  const videoUrl = post.video_url || ((post as any).video_urls?.[0] as string | undefined);
+  const hasVideo = Boolean(videoUrl);
   const hasThreeOrMore = urls.length >= 3;
 
   return (
@@ -274,6 +276,7 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
 
           {/* Image Swiper Carousel — uncropped object-contain with blurred backdrop + tap to open lightbox */}
           {urls.length > 0 && (
+
             <div className="px-3 pb-4">
               {urls.length === 1 ? (
                 <div
@@ -383,18 +386,18 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
           )}
 
           {/* Video player */}
-          {post.video_url && (
+          {hasVideo && videoUrl && (
             <div className="px-3 pb-4">
-              <div className="relative rounded-xl overflow-hidden bg-black">
+              <div className="relative overflow-hidden rounded-xl bg-black">
                 <video
-                  src={post.video_url.includes('#t=') ? post.video_url : `${post.video_url}#t=0.001`}
+                  src={videoUrl.includes('#t=') ? videoUrl : `${videoUrl}#t=0.001`}
                   controls
                   playsInline
                   disablePictureInPicture
                   controlsList="nodownload noremoteplayback nopictureinpicture"
-                  preload="metadata"
+                  preload="auto"
                   poster={post.video_thumbnail_url ?? undefined}
-                  className="w-full object-cover max-h-[500px] lg:max-h-[600px]"
+                  className="max-h-[500px] w-full object-contain lg:max-h-[600px]"
                   style={{ borderRadius: 12 }}
                 />
               </div>
