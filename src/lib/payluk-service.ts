@@ -517,6 +517,24 @@ export class PaylukService {
     return response.data;
   }
 
+  /**
+   * PUT /v1/escrow/additional-fee/{paymentToken}
+   * Adds Yrdly's buyer-paid commission to an unpaid escrow.
+   */
+  static async addAdditionalFee(
+    paymentToken: string,
+    additionalFee: number
+  ): Promise<PaylukEscrow> {
+    const response = await paylukRequest<PaylukEscrow>(
+      `/v1/escrow/additional-fee/${encodeURIComponent(paymentToken)}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({ additionalFee }),
+      }
+    );
+    return response.data;
+  }
+
 
   /**
    * GET /v1/escrow/verify/{paymentToken}
