@@ -749,6 +749,16 @@ export class PaylukService {
    * Withdraw funds from a seller's Payluk customer wallet to their Nigerian bank account.
    * Two-step flow: 1. POST /v1/payment/create-intent (withdrawal), 2. POST /v1/payment/verify
    */
+  static async getWalletBalance(customerId: string): Promise<number | null> {
+    const response = await paylukRequest<any>('/v1/wallet', {
+      method: 'GET',
+      customerId,
+    });
+    const data = response.data ?? {};
+    const balance = Number(data.availableBalance ?? data.available_balance ?? data.balance);
+    return Number.isFinite(balance) ? balance : null;
+  }
+
   static async withdrawToBank(params: {
     sellerPaylukCustomerId: string;
     amount: number;
@@ -798,7 +808,15 @@ export class PaylukService {
       }
 
       try {
-        intentResponse = await paylukRequest<{ reference: string }>(
+        const walletBalance = await this.getWalletBalance(params.sellerPaylukCustomerId);
+        if (walletBalance !== null && params.amount >= walletBalance) {
+          return {
+            success: false,
+            error: 'Withdrawal amount must be below your available balance to cover Payluk’s withdrawal fee. Enter a smaller amount and try again.',
+          };
+        }
+
+        intentResponse = await paylukRequest<{ reference: string; fee?: number }>(
           '/v1/payment/create-intent',
           {
             method: 'POST',
