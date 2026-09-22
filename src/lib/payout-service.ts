@@ -141,7 +141,13 @@ export class PayoutService {
   /**
    * Process a payout request
    */
-  static async processPayout(payoutRequestId: string): Promise<void> {
+  static async processPayout(payoutRequestId: string): Promise<{
+    success: boolean;
+    error?: string;
+    reason?: string;
+    maximumWithdrawable?: number;
+    intentFee?: number;
+  }> {
     try {
       // Get payout request details
       const { data: payoutRequest, error: fetchError } = await supabaseAdmin
@@ -153,31 +159,42 @@ export class PayoutService {
         .eq('id', payoutRequestId)
         .single();
 
-      if (fetchError) {
+      if (fetchError || !payoutRequest) {
         console.error('Error fetching payout request:', fetchError);
-        throw fetchError;
+        throw fetchError || new Error('Payout request not found');
       }
 
-      if (payoutRequest.status !== 'pending') {
-        throw new Error('Payout request is not pending');
+      if (payoutRequest.status === 'completed') {
+        console.log(`[PayoutService] Payout ${payoutRequestId} is already completed. Skipping.`);
+        return { success: true };
       }
 
-      // Update status to processing
-      await supabaseAdmin
+      // CAS guard: update status from 'pending' to 'processing' atomically
+      const { data: updatedRows, error: casError } = await supabaseAdmin
         .from('payout_requests')
         .update({
           status: 'processing',
           updated_at: new Date().toISOString(),
         })
-        .eq('id', payoutRequestId);
+        .eq('id', payoutRequestId)
+        .eq('status', 'pending')
+        .select('id');
+
+      if (casError || !updatedRows || updatedRows.length === 0) {
+        console.warn(`[PayoutService] Payout ${payoutRequestId} is already being processed or completed by another worker.`);
+        return { success: false, error: 'Payout is already processing or completed' };
+      }
 
       // Get seller account details
-      const accountDetails = payoutRequest.seller_account.account_details as Record<string, string> | null;
-      const accountType = payoutRequest.seller_account.account_type;
+      const accountDetails = payoutRequest.seller_account?.account_details as Record<string, string> | null;
+      const accountType = payoutRequest.seller_account?.account_type;
 
       let transferSuccess = false;
       let transferErrorMsg = 'Transfer failed';
+      let transferReason = '';
       let transactionReference = '';
+      let maximumWithdrawable: number | undefined;
+      let intentFee: number | undefined;
 
       try {
         if (accountType === 'bank_account' || accountType === 'mobile_money' || accountType === 'digital_wallet') {
@@ -189,6 +206,10 @@ export class PayoutService {
           if (!bankCode || !accountNumber) {
             throw new Error('Missing bank details for payout. Seller must re-add their account.');
           }
+
+          // Fetch current available balance before this payout request was deducted
+          const currentBalance = await this.getSellerBalance(payoutRequest.seller_id);
+          const yrdlyAvailableBalance = currentBalance.availableBalance + payoutRequest.amount;
 
           // Check if seller has a Payluk customer ID
           const sellerPaylukId = await getPaylukCustomerId(payoutRequest.seller_id);
@@ -203,11 +224,15 @@ export class PayoutService {
               accountNumber,
               accountName,
               reference: `payout-${payoutRequestId}`,
+              yrdlyAvailableBalance,
             });
 
             transferSuccess = paylukResult.success;
             if (!transferSuccess && paylukResult.error) {
               transferErrorMsg = paylukResult.error;
+              transferReason = paylukResult.reason || paylukResult.error;
+              maximumWithdrawable = paylukResult.maximumWithdrawable;
+              intentFee = paylukResult.intentFee;
             }
             transactionReference = paylukResult.reference || `payout-${payoutRequestId}`;
           } else {
@@ -250,13 +275,15 @@ export class PayoutService {
           } catch (notificationError) {
             console.error('Failed to send payout success notification:', notificationError);
           }
+
+          return { success: true };
         } else {
-          // Update payout request as failed
+          // Update payout request as failed (releasing Yrdly available balance)
           await supabaseAdmin
             .from('payout_requests')
             .update({
               status: 'failed',
-              failure_reason: transferErrorMsg,
+              failure_reason: transferReason || transferErrorMsg,
               processed_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
             })
@@ -267,42 +294,51 @@ export class PayoutService {
             await NotificationService.createPayoutFailedNotification(
               payoutRequest.seller_id,
               payoutRequest.amount,
-              transferErrorMsg,
+              transferReason || transferErrorMsg,
               payoutRequestId
             );
           } catch (notificationError) {
             console.error('Failed to send payout failure notification:', notificationError);
           }
+
+          return {
+            success: false,
+            error: transferErrorMsg,
+            reason: transferReason,
+            maximumWithdrawable,
+            intentFee,
+          };
         }
 
-      } catch (transferError) {
+      } catch (transferError: any) {
         console.error('Transfer error:', transferError);
         
-        // Update payout request as failed
+        const errorMsg = transferError instanceof Error ? transferError.message : 'Unknown error';
         await supabaseAdmin
           .from('payout_requests')
           .update({
             status: 'failed',
-            failure_reason: transferError instanceof Error ? transferError.message : 'Unknown error',
+            failure_reason: errorMsg,
             processed_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           })
           .eq('id', payoutRequestId);
 
-        // Send failure notification
         try {
           await NotificationService.createPayoutFailedNotification(
             payoutRequest.seller_id,
             payoutRequest.amount,
-            transferError instanceof Error ? transferError.message : 'Unknown error',
+            errorMsg,
             payoutRequestId
           );
         } catch (notificationError) {
           console.error('Failed to send payout failure notification:', notificationError);
         }
+
+        return { success: false, error: errorMsg };
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to process payout:', error);
       throw new Error('Failed to process payout');
     }

@@ -96,17 +96,18 @@ export default function WithdrawPage() {
 
       if (!res.ok) {
         const errData = await res.json();
-        throw new Error(errData.error || 'Failed to request withdrawal');
+        const displayMsg = errData.reason || errData.message || errData.error || 'Failed to request withdrawal';
+        throw new Error(displayMsg);
       }
 
       setStep('success');
       toast({
-        title: "Withdrawal Requested",
-        description: "Your payout request has been submitted for processing.",
+        title: "Withdrawal Successful",
+        description: "Your payout request has been processed.",
       });
     } catch (e: any) {
       toast({
-        title: "Error",
+        title: "Withdrawal Cannot Be Processed",
         description: e.message || "Failed to request withdrawal",
         variant: "destructive",
       });

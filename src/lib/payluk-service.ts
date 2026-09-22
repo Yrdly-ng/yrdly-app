@@ -746,8 +746,40 @@ export class PaylukService {
   }
 
   /**
+   * Fetch merchant customer wallet details from Payluk API.
+   * Explicitly distinguishes mainBalance from escrowBalance.
+   */
+  static async getCustomerWallet(sellerPaylukCustomerId: string): Promise<{
+    mainBalance: number;
+    escrowBalance: number;
+    currency: string;
+  }> {
+    const response = await paylukRequest<{
+      mainBalance: number;
+      escrowBalance: number;
+      currency: string;
+    }>(
+      '/v1/merchant-customers/get-customer-wallet',
+      {
+        method: 'GET',
+        customerId: sellerPaylukCustomerId,
+      }
+    );
+    return {
+      mainBalance: response.data?.mainBalance ?? 0,
+      escrowBalance: response.data?.escrowBalance ?? 0,
+      currency: response.data?.currency || 'NGN',
+    };
+  }
+
+  /**
    * Withdraw funds from a seller's Payluk customer wallet to their Nigerian bank account.
-   * Two-step flow: 1. POST /v1/payment/create-intent (withdrawal), 2. POST /v1/payment/verify
+   * Two-step flow:
+   * 1. POST /v1/payment/create-intent (transactionType: "withdrawal")
+   *    Returns data.amount, data.fee, data.reference, data.status.
+   * 2. Strict validation: totalPaylukDebit = data.amount + data.fee.
+   *    If totalPaylukDebit > availableBalance: DO NOT verify. Return fee details & maxWithdrawable.
+   * 3. POST /v1/payment/verify using exact returned reference ONLY IF totalPaylukDebit <= availableBalance.
    */
   static async getWalletBalance(customerId: string): Promise<number | null> {
     const response = await paylukRequest<any>('/v1/wallet', {
@@ -767,7 +799,18 @@ export class PaylukService {
     accountNumber: string;
     accountName?: string;
     reference: string;
-  }): Promise<{ success: boolean; reference?: string; error?: string }> {
+    yrdlyAvailableBalance?: number;
+  }): Promise<{
+    success: boolean;
+    reference?: string;
+    intentAmount?: number;
+    intentFee?: number;
+    totalPaylukDebit?: number;
+    maximumWithdrawable?: number;
+    error?: string;
+    reason?: string;
+    paylukStatus?: string;
+  }> {
     try {
       // Map Paystack/CBN bank codes to Payluk's internal codes
       const PAYSTACK_TO_PAYLUK_BANK_MAP: Record<string, string> = {
@@ -794,76 +837,136 @@ export class PaylukService {
 
       const resolvedBankCode = PAYSTACK_TO_PAYLUK_BANK_MAP[params.bankCode] || params.bankCode;
 
-      // 1. Create withdrawal intent.
-      // Send the seller's requested gross balance amount. Payluk calculates its
-      // current withdrawal fee and deducts it from that amount, so the seller
-      // receives the net payout without Yrdly hard-coding Payluk's fee schedule.
-      let intentResponse;
+      // 1. Fetch seller's Payluk wallet to check mainBalance (ignoring escrowBalance for withdrawals)
+      let paylukMainBalance = Infinity;
+      try {
+        const wallet = await this.getCustomerWallet(params.sellerPaylukCustomerId);
+        paylukMainBalance = wallet.mainBalance ?? 0;
+      } catch (walletErr) {
+        console.warn('[PaylukService] Could not fetch Payluk customer wallet balance, proceeding with Yrdly balance validation:', walletErr);
+      }
 
-      if (!Number.isFinite(params.amount) || params.amount <= 0) {
+      const effectiveAvailableBalance = params.yrdlyAvailableBalance !== undefined
+        ? Math.min(params.yrdlyAvailableBalance, paylukMainBalance)
+        : paylukMainBalance;
+
+      // If requested amount already exceeds effective available balance, reject before staging
+      if (params.amount > effectiveAvailableBalance) {
         return {
           success: false,
-          error: 'Withdrawal amount must be greater than zero',
+          reference: params.reference,
+          intentAmount: params.amount,
+          error: `Requested amount (₦${params.amount.toLocaleString()}) exceeds available balance (₦${effectiveAvailableBalance.toLocaleString()}).`,
+          reason: `Requested amount (₦${params.amount.toLocaleString()}) exceeds available balance (₦${effectiveAvailableBalance.toLocaleString()}).`,
         };
       }
 
-      try {
-        const walletBalance = await this.getWalletBalance(params.sellerPaylukCustomerId);
-        if (walletBalance !== null && params.amount >= walletBalance) {
-          return {
-            success: false,
-            error: 'Withdrawal amount must be below your available balance to cover Payluk’s withdrawal fee. Enter a smaller amount and try again.',
-          };
+      // 2. Create withdrawal intent
+      const intentResponse = await paylukRequest<{
+        amount?: number;
+        fee?: number;
+        reference?: string;
+        status?: string;
+      }>(
+        '/v1/payment/create-intent',
+        {
+          method: 'POST',
+          customerId: params.sellerPaylukCustomerId,
+          body: JSON.stringify({
+            amount: params.amount,
+            reference: params.reference,
+            transactionType: 'withdrawal',
+            currency: 'NGN',
+            withdrawalDetails: {
+              bankCode: resolvedBankCode,
+              bankName: params.bankName || 'Bank',
+              accountNumber: params.accountNumber,
+              ...(params.accountName ? { accountName: params.accountName } : {}),
+            },
+          }),
         }
+      );
 
-        intentResponse = await paylukRequest<{ reference: string; fee?: number }>(
-          '/v1/payment/create-intent',
-          {
-            method: 'POST',
-            customerId: params.sellerPaylukCustomerId,
-            body: JSON.stringify({
-              amount: params.amount,
-              reference: params.reference,
-              transactionType: 'withdrawal',
-              currency: 'NGN',
-              withdrawalDetails: {
-                bankCode: resolvedBankCode,
-                bankName: params.bankName || 'Bank',
-                accountNumber: params.accountNumber,
-                ...(params.accountName ? { accountName: params.accountName } : {}),
-              },
-            }),
-          }
-        );
-      } catch (intentErr) {
-        throw intentErr;
+      // 3. Strict response validation (Case 5: HTTP 200 with malformed/missing data.fee must reject safely)
+      const intentData = intentResponse?.data;
+      const intentAmount = intentData?.amount;
+      const intentFee = intentData?.fee;
+      const intentRef = intentData?.reference || params.reference;
+
+      if (
+        !intentData ||
+        typeof intentAmount !== 'number' || isNaN(intentAmount) || intentAmount < 0 ||
+        typeof intentFee !== 'number' || isNaN(intentFee) || intentFee < 0 ||
+        !intentRef || typeof intentRef !== 'string'
+      ) {
+        return {
+          success: false,
+          reference: params.reference,
+          error: 'Payluk create-intent response is invalid or missing required fee/amount fields.',
+        };
       }
 
-      const ref = intentResponse.data?.reference || params.reference;
+      // 4. Calculate total debit required by Payluk
+      const totalPaylukDebit = intentAmount + intentFee;
 
-      // 2. Execute / verify payment intent
-      let verifyResponse;
-      try {
-        verifyResponse = await paylukRequest<any>(
-          '/v1/payment/verify',
-          {
-            method: 'POST',
-            customerId: params.sellerPaylukCustomerId,
-            body: JSON.stringify({ reference: ref }),
-          }
-        );
-      } catch (verifyErr) {
-        throw verifyErr;
+      // 5. Verify total Payluk debit against effective available balance
+      if (totalPaylukDebit > effectiveAvailableBalance) {
+        const maximumWithdrawable = Math.max(0, effectiveAvailableBalance - intentFee);
+        const reasonMsg = `Your available balance is ₦${effectiveAvailableBalance.toLocaleString()}. Payluk's withdrawal fee is ₦${intentFee.toLocaleString()}. The maximum you can withdraw is ₦${maximumWithdrawable.toLocaleString()}.`;
+        return {
+          success: false,
+          reference: intentRef,
+          intentAmount,
+          intentFee,
+          totalPaylukDebit,
+          maximumWithdrawable,
+          error: 'Withdrawal amount plus Payluk fee exceeds available balance.',
+          reason: reasonMsg,
+        };
       }
 
-      if (verifyResponse.status >= 200 && verifyResponse.status < 300) {
-        return { success: true, reference: ref };
+      // 6. Execute / verify payment intent ONLY IF totalPaylukDebit <= effectiveAvailableBalance
+      const verifyResponse = await paylukRequest<any>(
+        '/v1/payment/verify',
+        {
+          method: 'POST',
+          customerId: params.sellerPaylukCustomerId,
+          body: JSON.stringify({ reference: intentRef }),
+        }
+      );
+
+      const verifyDataStatus = verifyResponse?.data?.status;
+      const isSuccess = verifyResponse.status >= 200 && verifyResponse.status < 300 && (
+        verifyDataStatus === 'successful' || verifyDataStatus === 'success' || verifyDataStatus === 'completed' || verifyResponse.status === 200
+      );
+
+      if (isSuccess) {
+        return {
+          success: true,
+          reference: intentRef,
+          intentAmount,
+          intentFee,
+          totalPaylukDebit,
+          paylukStatus: 'successful',
+        };
       } else {
-        return { success: false, error: verifyResponse.message || 'Withdrawal verification failed' };
+        return {
+          success: false,
+          reference: intentRef,
+          intentAmount,
+          intentFee,
+          totalPaylukDebit,
+          error: verifyResponse.message || 'Withdrawal verification failed',
+          paylukStatus: String(verifyDataStatus || 'failed'),
+        };
       }
     } catch (err: any) {
       console.error('[PaylukService] withdrawToBank error:', err);
-      return { success: false, error: err.message || 'Withdrawal request failed' };
+      return {
+        success: false,
+        reference: params.reference,
+        error: err.message || 'Withdrawal request failed',
+      };
     }
   }
 

@@ -32,6 +32,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate requested amount against server-computed seller available balance
+    const currentBalance = await PayoutService.getSellerBalance(user.id);
+    if (amount > currentBalance.availableBalance) {
+      return NextResponse.json(
+        {
+          error: 'INSUFFICIENT_BALANCE',
+          message: `Requested withdrawal amount (₦${amount.toLocaleString()}) exceeds available balance (₦${currentBalance.availableBalance.toLocaleString()}).`,
+          requestedAmount: amount,
+          availableBalance: currentBalance.availableBalance,
+        },
+        { status: 400 }
+      );
+    }
+
     // Insert payout request
     const { data: payout, error: insertError } = await supabaseAdmin
       .from('payout_requests')
@@ -49,13 +63,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to request payout' }, { status: 500 });
     }
 
-    // Attempt to process it via PayoutService if you process them instantly, otherwise leave it pending.
-    // The retry API attempts processPayout, so we can try processing it here too.
+    // Process payout immediately
+    let processResult: { success: boolean; error?: string; reason?: string; maximumWithdrawable?: number; intentFee?: number } | undefined;
     try {
-      await PayoutService.processPayout(payout.id);
+      processResult = await PayoutService.processPayout(payout.id);
     } catch (e) {
       console.error('Failed initial processing of payout:', e);
-      // Don't fail the request, the cron job or admin can retry it later.
+    }
+
+    if (processResult && !processResult.success) {
+      return NextResponse.json({
+        success: false,
+        payoutId: payout.id,
+        error: processResult.error || 'Withdrawal processing failed',
+        reason: processResult.reason,
+        requestedAmount: amount,
+        fee: processResult.intentFee,
+        maximumWithdrawable: processResult.maximumWithdrawable,
+      }, { status: 400 });
     }
 
     return NextResponse.json({ success: true, payoutId: payout.id });
