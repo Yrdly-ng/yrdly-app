@@ -18,11 +18,6 @@ const PAYLUK_BASE_URL =
     ? 'https://api.payluk.ng'
     : 'https://staging.api.payluk.ng');
 
-// Payluk deducts withdrawal charges from the seller's wallet balance.
-// Sellers request the net amount they should receive, so a ₦1,000 balance
-// with a ₦50 Payluk charge produces a ₦950 bank payout.
-const PAYLUK_WITHDRAWAL_FEE_NGN = 50;
-
 if (typeof window === 'undefined' && !PAYLUK_SECRET_KEY) {
   console.warn('[Yrdly] Missing PAYLUK_SECRET_KEY — Payluk features will not work.');
 }
@@ -789,17 +784,16 @@ export class PaylukService {
 
       const resolvedBankCode = PAYSTACK_TO_PAYLUK_BANK_MAP[params.bankCode] || params.bankCode;
 
-      // 1. Create withdrawal intent
+      // 1. Create withdrawal intent.
+      // Send the seller's requested gross balance amount. Payluk calculates its
+      // current withdrawal fee and deducts it from that amount, so the seller
+      // receives the net payout without Yrdly hard-coding Payluk's fee schedule.
       let intentResponse;
-      const targetAmount = Math.max(
-        0,
-        Math.floor(params.amount - PAYLUK_WITHDRAWAL_FEE_NGN)
-      );
 
-      if (targetAmount <= 0) {
+      if (!Number.isFinite(params.amount) || params.amount <= 0) {
         return {
           success: false,
-          error: `Withdrawal amount must exceed Payluk's ₦${PAYLUK_WITHDRAWAL_FEE_NGN} fee`,
+          error: 'Withdrawal amount must be greater than zero',
         };
       }
 
@@ -810,7 +804,7 @@ export class PaylukService {
             method: 'POST',
             customerId: params.sellerPaylukCustomerId,
             body: JSON.stringify({
-              amount: targetAmount,
+              amount: params.amount,
               reference: params.reference,
               transactionType: 'withdrawal',
               currency: 'NGN',
