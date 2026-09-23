@@ -755,14 +755,14 @@ export class PaylukService {
     currency: string;
   }> {
     const response = await paylukRequest<any>(
-      '/v1/merchant-customers/get-customer-wallet',
+      '/v1/wallet',
       {
         method: 'GET',
         customerId: sellerPaylukCustomerId,
       }
     );
     const data = response?.data || response;
-    const mainBal = data?.mainBalance ?? data?.wallet?.mainBalance ?? data?.main_balance ?? data?.balance ?? 0;
+    const mainBal = data?.mainBalance ?? data?.availableBalance ?? data?.wallet?.mainBalance ?? data?.main_balance ?? data?.available_balance ?? data?.balance ?? 0;
     const escrowBal = data?.escrowBalance ?? data?.wallet?.escrowBalance ?? data?.escrow_balance ?? 0;
     const curr = data?.currency || 'NGN';
     return {
