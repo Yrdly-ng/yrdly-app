@@ -248,7 +248,8 @@ export default function ManageServicesWebPage() {
                     onChange={(e) => setPriceIsFrom(e.target.checked)}
                     className="w-4 h-4 rounded accent-emerald-500 bg-neutral-950 border-neutral-800"
                   />
-                  <span className="text-neutral-300 text-xs">Price is a "Starting from" estimate</span>
+                  <span className="text-neutral-300 text-xs">Price is a &quot;Starting from&quot; estimate</span>
+
                 </label>
               </div>
 

@@ -298,9 +298,10 @@ export default function BookingDetailWebPage() {
               </div>
               {booking.notes && (
                 <div className="pt-2 border-t border-neutral-800/60">
-                  <span className="text-xs text-neutral-400 italic">Notes: "{booking.notes}"</span>
+                  <span className="text-xs text-neutral-400 italic">Notes: &quot;{booking.notes}&quot;</span>
                 </div>
               )}
+
             </div>
           </div>
 
