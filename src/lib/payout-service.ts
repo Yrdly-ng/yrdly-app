@@ -278,10 +278,15 @@ export class PayoutService {
         }
 
         if (transferSuccess) {
-          // Update payout request as completed
+          // Update payout request as completed with final net amount
+          const finalPayoutAmount = (paylukResult && typeof paylukResult.intentAmount === 'number' && paylukResult.intentAmount > 0)
+            ? paylukResult.intentAmount
+            : payoutRequest.amount;
+
           await supabaseAdmin
             .from('payout_requests')
             .update({
+              amount: finalPayoutAmount,
               status: 'completed',
               transaction_reference: transactionReference,
               processed_at: new Date().toISOString(),

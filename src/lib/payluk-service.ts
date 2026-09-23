@@ -1040,31 +1040,96 @@ export class PaylukService {
       }
 
       // 4. Calculate total debit required by Payluk
-      const totalPaylukDebit = intentAmount + intentFee;
+      let activeIntentData = intentData;
+      let activeIntentAmount = intentAmount;
+      let activeIntentFee = intentFee;
+      let activeIntentRef = intentRef;
+      let totalPaylukDebit = activeIntentAmount + activeIntentFee;
 
-      // 5. Verify total Payluk debit against effective available balance
+      // 5. Auto-deduct Payluk fee from requested amount if total debit exceeds available balance
       if (totalPaylukDebit > effectiveAvailableBalance) {
-        const maximumWithdrawable = Math.max(0, effectiveAvailableBalance - intentFee);
-        const reasonMsg = `Your available balance is ₦${effectiveAvailableBalance.toLocaleString()}. Payluk's withdrawal fee is ₦${intentFee.toLocaleString()}. The maximum you can withdraw is ₦${maximumWithdrawable.toLocaleString()}.`;
-        return {
-          success: false,
-          reference: intentRef,
-          intentAmount,
-          intentFee,
-          totalPaylukDebit,
-          maximumWithdrawable,
-          error: 'Withdrawal amount plus Payluk fee exceeds available balance.',
-          reason: reasonMsg,
-        };
+        const netAmount = Math.floor((effectiveAvailableBalance - activeIntentFee) * 100) / 100;
+        
+        if (netAmount <= 0) {
+          const reasonMsg = `Your available balance (₦${effectiveAvailableBalance.toLocaleString()}) cannot cover Payluk's withdrawal fee (₦${activeIntentFee.toLocaleString()}).`;
+          return {
+            success: false,
+            reference: activeIntentRef,
+            intentAmount: activeIntentAmount,
+            intentFee: activeIntentFee,
+            totalPaylukDebit,
+            maximumWithdrawable: 0,
+            error: 'Insufficient balance to cover Payluk withdrawal fee.',
+            reason: reasonMsg,
+          };
+        }
+
+        console.log(`[PaylukService] Total debit (₦${totalPaylukDebit}) exceeds balance (₦${effectiveAvailableBalance}). Auto-deducting fee (₦${activeIntentFee}): creating adjusted intent for net amount ₦${netAmount}...`);
+        
+        // Re-create intent with auto-deducted fee net amount
+        const adjustedIntentResponse = await paylukRequest<{
+          amount?: number;
+          fee?: number;
+          reference?: string;
+          status?: string;
+        }>(
+          '/v1/payment/create-intent',
+          {
+            method: 'POST',
+            customerId: params.sellerPaylukCustomerId,
+            body: JSON.stringify({
+              amount: netAmount,
+              reference: `${params.reference}-adj`,
+              transactionType: 'withdrawal',
+              currency: 'NGN',
+              withdrawalDetails: {
+                bankCode: resolvedBankCode,
+                bankName: params.bankName || 'Bank',
+                accountNumber: params.accountNumber,
+                ...(params.accountName ? { accountName: params.accountName } : {}),
+              },
+            }),
+          }
+        );
+
+        const adjData = adjustedIntentResponse?.data;
+        if (
+          adjData &&
+          typeof adjData.amount === 'number' &&
+          typeof adjData.fee === 'number' &&
+          adjData.reference
+        ) {
+          activeIntentData = adjData;
+          activeIntentAmount = adjData.amount;
+          activeIntentFee = adjData.fee;
+          activeIntentRef = adjData.reference;
+          totalPaylukDebit = activeIntentAmount + activeIntentFee;
+        }
+
+        // If after auto-deduct it still exceeds, reject with maximum withdrawable
+        if (totalPaylukDebit > effectiveAvailableBalance) {
+          const maximumWithdrawable = Math.max(0, Math.floor((effectiveAvailableBalance - activeIntentFee) * 100) / 100);
+          const reasonMsg = `Your available balance is ₦${effectiveAvailableBalance.toLocaleString()}. Payluk's withdrawal fee is ₦${activeIntentFee.toLocaleString()}. The maximum you can withdraw is ₦${maximumWithdrawable.toLocaleString()}.`;
+          return {
+            success: false,
+            reference: activeIntentRef,
+            intentAmount: activeIntentAmount,
+            intentFee: activeIntentFee,
+            totalPaylukDebit,
+            maximumWithdrawable,
+            error: 'Withdrawal amount plus Payluk fee exceeds available balance.',
+            reason: reasonMsg,
+          };
+        }
       }
 
-      // 6. Execute / verify payment intent ONLY IF totalPaylukDebit <= effectiveAvailableBalance
+      // 6. Execute / verify payment intent (totalPaylukDebit <= effectiveAvailableBalance)
       const verifyResponse = await paylukRequest<any>(
         '/v1/payment/verify',
         {
           method: 'POST',
           customerId: params.sellerPaylukCustomerId,
-          body: JSON.stringify({ reference: intentRef }),
+          body: JSON.stringify({ reference: activeIntentRef }),
         }
       );
 
@@ -1076,8 +1141,13 @@ export class PaylukService {
       if (isSuccess) {
         return {
           success: true,
-          reference: intentRef,
-          intentAmount,
+          reference: activeIntentRef,
+          intentAmount: activeIntentAmount,
+          intentFee: activeIntentFee,
+          totalPaylukDebit,
+          maximumWithdrawable: activeIntentAmount,
+        };
+      }
           intentFee,
           totalPaylukDebit,
           paylukStatus: 'successful',
