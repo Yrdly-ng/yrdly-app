@@ -35,6 +35,10 @@ export interface Business {
   logo?: string;
   distance?: string;
   catalog?: CatalogItem[];
+  mode?: BusinessMode;
+  no_show_count?: number;
+  late_cancellation_count?: number;
+  is_flagged?: boolean;
 }
 
 export interface CatalogItem {
@@ -166,6 +170,82 @@ export interface User {
   timestamp?: string;
   isOnline?: boolean;
   lastSeen?: string;
+  no_show_count?: number;
+  late_cancellation_count?: number;
+  is_flagged?: boolean;
+}
+
+export type BusinessMode = 'product' | 'service' | 'both';
+
+export interface ServiceOffering {
+  id: string;
+  business_id: string;
+  name: string;
+  description?: string;
+  duration_minutes: number;
+  price?: number;
+  price_is_from: boolean;
+  category?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProviderAvailability {
+  id: string;
+  business_id: string;
+  day_of_week: number; // 0 = Sun, 6 = Sat
+  start_time: string; // HH:mm format
+  end_time: string;   // HH:mm format
+  is_available: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface AvailabilityException {
+  id: string;
+  business_id: string;
+  date: string; // YYYY-MM-DD
+  is_blackout: boolean;
+  custom_start_time?: string;
+  custom_end_time?: string;
+  reason?: string;
+  created_at?: string;
+}
+
+export type BookingStatus = 'requested' | 'confirmed' | 'completed' | 'cancelled' | 'late_cancelled' | 'no_show';
+export type StrikeType = 'late_cancellation' | 'no_show';
+export type StrikeParty = 'customer' | 'provider';
+
+export interface Booking {
+  id: string;
+  customer_id: string;
+  business_id: string;
+  service_id: string;
+  appointment_time: string;
+  end_time: string;
+  status: BookingStatus;
+  notes?: string;
+  cancelled_by?: string;
+  cancelled_at?: string;
+  strike_type?: StrikeType;
+  strike_party?: StrikeParty;
+  reminder_24h_sent?: boolean;
+  reminder_2h_sent?: boolean;
+  created_at: string;
+  updated_at: string;
+  // Joined fields
+  service?: ServiceOffering;
+  business?: Business;
+  customer?: {
+    id: string;
+    name: string;
+    avatar_url?: string;
+    phone?: string;
+    is_flagged?: boolean;
+    no_show_count?: number;
+    late_cancellation_count?: number;
+  };
 }
 
 export interface FriendRequest {

@@ -55,9 +55,88 @@ export class ReviewService {
   }
 
   /**
+   * Check if a user can review a business based on a booking
+   */
+  static async canUserReviewBooking(
+    userId: string,
+    bookingId: string
+  ): Promise<{ canReview: boolean; reason?: string; businessId?: string }> {
+    try {
+      const { data: booking, error } = await supabase
+        .from('bookings')
+        .select('id, customer_id, business_id, status')
+        .eq('id', bookingId)
+        .single();
+
+      if (error || !booking) {
+        return { canReview: false, reason: 'Booking not found' };
+      }
+
+      if (booking.customer_id !== userId) {
+        return { canReview: false, reason: 'Only the booking customer can leave a review' };
+      }
+
+      if (booking.status !== 'completed') {
+        return { canReview: false, reason: 'Reviews can only be submitted for completed bookings' };
+      }
+
+      const { data: existingReview } = await supabase
+        .from('business_reviews')
+        .select('id')
+        .eq('booking_id', bookingId)
+        .maybeSingle();
+
+      if (existingReview) {
+        return { canReview: false, reason: 'You have already reviewed this completed booking' };
+      }
+
+      return { canReview: true, businessId: booking.business_id };
+    } catch (error) {
+      console.error('Error checking booking review eligibility:', error);
+      return { canReview: false, reason: 'Error verifying booking review status' };
+    }
+  }
+
+  /**
+   * Submit a review for a completed booking
+   */
+  static async submitBookingReview(
+    bookingId: string,
+    userId: string,
+    rating: number,
+    comment?: string
+  ): Promise<string> {
+    if (rating < 1 || rating > 5) {
+      throw new Error('Rating must be between 1 and 5');
+    }
+
+    const { canReview, reason, businessId } = await this.canUserReviewBooking(userId, bookingId);
+    if (!canReview || !businessId) {
+      throw new Error(reason || 'Cannot review this booking');
+    }
+
+    const { data, error } = await supabase
+      .from('business_reviews')
+      .insert({
+        business_id: businessId,
+        user_id: userId,
+        booking_id: bookingId,
+        verified_purchase: true,
+        rating,
+        comment: comment || '',
+      })
+      .select('id')
+      .single();
+
+    if (error) throw error;
+    return data.id;
+  }
+
+  /**
    * Submit a review for a business
    */
   static async submitReview(
+
     businessId: string,
     userId: string,
     transactionId: string,

@@ -52,7 +52,11 @@ export type NotificationType =
   | 'payout_failed'
   | 'catalog_item_inquiry'
   | 'business_review_received'
-  | 'catalog_item_out_of_stock';
+  | 'catalog_item_out_of_stock'
+  | 'booking_requested'
+  | 'booking_confirmed'
+  | 'booking_cancelled'
+  | 'booking_no_show';
 
 export interface CreateNotificationParams {
   userId: string;

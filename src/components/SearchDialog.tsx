@@ -83,8 +83,13 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
           found.push({ type: 'post', data: p as Post });
         });
 
-        // Businesses — scoped to user's state
-        let bizQuery = supabase.from('businesses').select('*').eq('is_active', true).or(`name.ilike.%${q}%,description.ilike.%${q}%,category.ilike.%${q}%`);
+        // Businesses — scoped to user's state, deprioritizing flagged businesses
+        let bizQuery = supabase
+          .from('businesses')
+          .select('*')
+          .eq('is_active', true)
+          .or(`name.ilike.%${q}%,description.ilike.%${q}%,category.ilike.%${q}%`)
+          .order('is_flagged', { ascending: true });
         if (userState) bizQuery = bizQuery.eq('state', userState);
         const { data: businesses } = await bizQuery.limit(5);
         (businesses || []).forEach(b => found.push({ type: 'business', data: b as Business }));

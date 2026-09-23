@@ -409,4 +409,160 @@ export class NotificationTriggers {
   static async onProfileView(_viewedUserId: string, _viewerId: string) {
     // Profile view notifications intentionally disabled
   }
+
+  /**
+   * Trigger notification when a booking request is created
+   */
+  static async onBookingRequested(params: {
+    bookingId: string;
+    customerUserId?: string;
+    providerBusinessId?: string;
+    providerOwnerId?: string;
+    serviceName?: string;
+    bookingDate?: string;
+    startTime?: string;
+    [key: string]: any;
+  }) {
+    try {
+      let targetUserId = params.providerOwnerId;
+      if (!targetUserId && params.providerBusinessId) {
+        const { data: bus } = await supabase
+          .from('businesses')
+          .select('user_id')
+          .eq('id', params.providerBusinessId)
+          .single();
+        targetUserId = bus?.user_id;
+      }
+
+      if (targetUserId) {
+        let customerName = params.customerName;
+        if (!customerName && params.customerUserId) {
+          const { data: customer } = await supabase
+            .from('users')
+            .select('name')
+            .eq('id', params.customerUserId)
+            .single();
+          customerName = customer?.name;
+        }
+
+        await NotificationService.createNotification({
+          userId: targetUserId,
+          type: 'booking_requested',
+          senderId: params.customerUserId,
+          relatedId: params.bookingId,
+          relatedType: 'booking',
+          title: 'New Booking Request',
+          message: `${customerName || 'A customer'} requested ${params.serviceName || 'a service'}`,
+          data: params,
+        });
+      }
+    } catch (error) {
+      console.error('Error creating booking_requested notification:', error);
+    }
+  }
+
+  /**
+   * Trigger notification when a booking is confirmed by provider
+   */
+  static async onBookingConfirmed(params: {
+    bookingId: string;
+    customerUserId?: string;
+    customerId?: string;
+    serviceName?: string;
+    bookingDate?: string;
+    startTime?: string;
+    [key: string]: any;
+  }) {
+    try {
+      const recipientId = params.customerUserId || params.customerId;
+      if (recipientId) {
+        await NotificationService.createNotification({
+          userId: recipientId,
+          type: 'booking_confirmed',
+          relatedId: params.bookingId,
+          relatedType: 'booking',
+          title: 'Booking Confirmed!',
+          message: `Your booking for ${params.serviceName || 'service'} has been confirmed.`,
+          data: params,
+        });
+      }
+    } catch (error) {
+      console.error('Error creating booking_confirmed notification:', error);
+    }
+  }
+
+  /**
+   * Trigger notification when a booking is cancelled
+   */
+  static async onBookingCancelled(params: {
+    bookingId: string;
+    customerUserId?: string;
+    providerBusinessId?: string;
+    serviceName?: string;
+    cancelledByUserId?: string;
+    targetUserId?: string;
+    reason?: string;
+    [key: string]: any;
+  }) {
+    try {
+      let recipientId = params.targetUserId;
+      if (!recipientId && params.providerBusinessId) {
+        const { data: bus } = await supabase
+          .from('businesses')
+          .select('user_id')
+          .eq('id', params.providerBusinessId)
+          .single();
+
+        recipientId = params.cancelledByUserId === params.customerUserId
+          ? bus?.user_id
+          : params.customerUserId;
+      }
+
+      if (recipientId) {
+        await NotificationService.createNotification({
+          userId: recipientId,
+          type: 'booking_cancelled',
+          senderId: params.cancelledByUserId,
+          relatedId: params.bookingId,
+          relatedType: 'booking',
+          title: 'Booking Cancelled',
+          message: `Booking for ${params.serviceName || 'service'} was cancelled.${params.reason ? ` Reason: ${params.reason}` : ''}`,
+          data: params,
+        });
+      }
+    } catch (error) {
+      console.error('Error creating booking_cancelled notification:', error);
+    }
+  }
+
+  /**
+   * Trigger notification when a customer is marked as no-show
+   */
+  static async onBookingNoShow(params: {
+    bookingId: string;
+    customerUserId?: string;
+    targetUserId?: string;
+    serviceName?: string;
+    strikeAdded?: boolean;
+    currentStrikeCount?: number;
+    [key: string]: any;
+  }) {
+    try {
+      const recipientId = params.targetUserId || params.customerUserId;
+      if (recipientId) {
+        await NotificationService.createNotification({
+          userId: recipientId,
+          type: 'booking_no_show',
+          relatedId: params.bookingId,
+          relatedType: 'booking',
+          title: 'Marked as No-Show',
+          message: `You were marked as no-show for ${params.serviceName || 'service'}.${params.currentStrikeCount !== undefined ? ` Total strikes: ${params.currentStrikeCount}` : ''}`,
+          data: params,
+        });
+      }
+    } catch (error) {
+      console.error('Error creating booking_no_show notification:', error);
+    }
+  }
 }
+
