@@ -578,6 +578,35 @@ interface PostCardProps {
   onCreatePost?: (postData: any, postId?: string, imageFiles?: FileList) => Promise<void>;
 }
 
+function useVisualViewportKeyboard(active: boolean) {
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    if (!active || typeof window === "undefined" || !window.visualViewport) {
+      setKeyboardHeight(0);
+      return;
+    }
+
+    const handleViewportChange = () => {
+      const vv = window.visualViewport;
+      if (!vv) return;
+      const kh = Math.max(0, window.innerHeight - vv.height - (vv.offsetTop || 0));
+      setKeyboardHeight(kh > 60 ? kh : 0);
+    };
+
+    window.visualViewport.addEventListener("resize", handleViewportChange);
+    window.visualViewport.addEventListener("scroll", handleViewportChange);
+    handleViewportChange();
+
+    return () => {
+      window.visualViewport?.removeEventListener("resize", handleViewportChange);
+      window.visualViewport?.removeEventListener("scroll", handleViewportChange);
+    };
+  }, [active]);
+
+  return keyboardHeight;
+}
+
 export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
@@ -602,6 +631,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const keyboardHeight = useVisualViewportKeyboard(isCommentsOpen);
   const [isEventEditDialogOpen, setIsEventEditDialogOpen] = useState(false);
   const [isTextExpanded, setIsTextExpanded] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -1261,8 +1291,14 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
       </GlassCard>
 
       {/* Comments — Mobile Drawer / Desktop Modal */}
-      <Drawer open={isCommentsOpen} onOpenChange={setIsCommentsOpen}>
-        <DrawerContent className="p-0 border-t md:border border-[var(--yrdly-glass-border)] rounded-t-[24px] md:rounded-xl max-h-[88vh] md:max-h-[90vh] md:h-[min(90vh,700px)] md:max-w-[935px] md:mx-auto overflow-hidden">
+      <Drawer open={isCommentsOpen} onOpenChange={setIsCommentsOpen} repositionInputs={false}>
+        <DrawerContent
+          className="p-0 border-t md:border border-[var(--yrdly-glass-border)] rounded-t-[24px] md:rounded-xl max-h-[88vh] md:max-h-[90vh] md:h-[min(90vh,700px)] md:max-w-[935px] md:mx-auto overflow-hidden"
+          style={{
+            transform: keyboardHeight > 0 ? `translate3d(0, -${keyboardHeight}px, 0)` : undefined,
+            transition: "transform 0.25s cubic-bezier(0.2, 0.9, 0.3, 1)",
+          }}
+        >
           <DrawerHeader className="sr-only">
             <DrawerTitle>Comments</DrawerTitle>
             <DrawerDescription>View and post comments on this post.</DrawerDescription>
