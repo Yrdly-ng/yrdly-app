@@ -125,7 +125,16 @@ export function CommentSection({
     const { user: currentUser, profile: userDetails, loading } = useAuth();
     const { toast } = useToast();
     const inputRef = useRef<HTMLInputElement>(null);
-    const commentsEndRef = useRef<HTMLDivElement>(null);
+    const commentsScrollRef = useRef<HTMLDivElement>(null);
+
+    const scrollCommentsToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
+        const container = commentsScrollRef.current;
+        if (!container) return;
+        container.scrollTo({
+            top: container.scrollHeight,
+            behavior,
+        });
+    }, []);
 
     const [comments, setComments] = useState<Comment[]>([]);
     const [newComment, setNewComment] = useState('');
@@ -202,7 +211,7 @@ export function CommentSection({
                     const d = payload.new as any;
                     const nc: Comment = { id: d.id, userId: d.user_id, authorName: d.author_name, authorImage: d.author_image, text: d.text, timestamp: d.timestamp, parentId: d.parent_id, likeCount: d.like_count || 0, isLikedByMe: false };
                     setComments(prev => [...prev.filter(c => c.id !== nc.id), nc].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()));
-                    setTimeout(() => commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+                    requestAnimationFrame(() => scrollCommentsToBottom('smooth'));
                 } else if (payload.eventType === 'UPDATE' && payload.new) {
                     const d = payload.new as any;
                     setComments(prev => prev.map(c => c.id === d.id ? { ...c, text: d.text, likeCount: d.like_count || 0 } : c));
@@ -212,7 +221,7 @@ export function CommentSection({
             })
             .subscribe();
         return () => { supabase.removeChannel(ch); };
-    }, [postId, currentUser, onCommentCountChange]);
+    }, [postId, currentUser, onCommentCountChange, scrollCommentsToBottom]);
 
     const isFirstSync = useRef(true);
     useEffect(() => {
@@ -244,7 +253,7 @@ export function CommentSection({
         setComments(prev => [...prev, optimistic]);
         setNewComment('');
         setReplyingTo(null);
-        setTimeout(() => commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+        requestAnimationFrame(() => scrollCommentsToBottom('smooth'));
 
         try {
             const { data, error } = await supabase.from('comments').insert({ post_id: postId, user_id: currentUser.id, author_name: optimistic.authorName, author_image: optimistic.authorImage, text, parent_id: parentId || null }).select().single();
@@ -714,7 +723,7 @@ export function CommentSection({
                 {sortHeader}
 
                 {/* Comments */}
-                <div className="px-4 pb-4 space-y-3 overflow-y-auto flex-1">
+                <div ref={commentsScrollRef} className="px-4 pb-4 space-y-3 overflow-y-auto flex-1 overscroll-contain">
                     {sortedParentComments.length === 0 ? (
                         <div className="py-8 text-center">
                             <p className="text-[0.8125rem] text-muted-foreground" style={{ fontFamily: FONT_RALEWAY }}>No comments yet. Be the first!</p>
@@ -722,11 +731,10 @@ export function CommentSection({
                     ) : (
                         sortedParentComments.map(c => renderComment(c))
                     )}
-                    <div ref={commentsEndRef} />
                 </div>
 
-                {/* Sticky Comment input */}
-                <div className="sticky bottom-0 w-full backdrop-blur-xl bg-background/95 border-t border-border/50 p-3 pb-[max(12px,env(safe-area-inset-bottom))] z-20 flex-shrink-0">
+                {/* Comment input */}
+                <div className="flex-shrink-0 w-full backdrop-blur-xl bg-background/95 border-t border-border/50 p-3 pb-[max(12px,env(safe-area-inset-bottom))] z-20">
                     {inputBox}
                 </div>
                 {reportDialog}
@@ -738,7 +746,7 @@ export function CommentSection({
     return (
         <div className="flex flex-col h-auto relative">
             {sortHeader}
-            <div className="px-4 pb-4 space-y-3 overflow-y-auto flex-1" style={{ maxHeight: 'min(60vh, 400px)' }}>
+            <div ref={commentsScrollRef} className="px-4 pb-4 space-y-3 overflow-y-auto flex-1 overscroll-contain" style={{ maxHeight: 'min(60vh, 400px)' }}>
                 {sortedParentComments.length === 0 ? (
                     <div className="py-8 text-center flex flex-col items-center gap-2">
                         <MessageCircleMore className="w-10 h-10 text-muted-foreground" />
@@ -748,10 +756,9 @@ export function CommentSection({
                 ) : (
                     sortedParentComments.map(c => renderComment(c))
                 )}
-                <div ref={commentsEndRef} />
             </div>
-            {/* Sticky Comment input */}
-            <div className="sticky bottom-0 w-full backdrop-blur-xl bg-background/95 border-t border-border/50 p-3 pb-[max(12px,env(safe-area-inset-bottom))] z-20">
+            {/* Comment input */}
+            <div className="flex-shrink-0 w-full backdrop-blur-xl bg-background/95 border-t border-border/50 p-3 pb-[max(12px,env(safe-area-inset-bottom))] z-20">
                 {inputBox}
             </div>
             {reportDialog}

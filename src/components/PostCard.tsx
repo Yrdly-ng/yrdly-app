@@ -55,6 +55,13 @@ import {
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { useToast } from "@/hooks/use-toast";
 import { CommentSection } from "@/components/CommentSection";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+} from "@/components/ui/drawer";
 import { timeAgo, formatPrice, cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -595,21 +602,6 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-
-  // Keep the feed fixed while the comment surface owns touch scrolling.
-  useEffect(() => {
-    if (!isCommentsOpen) return;
-
-    const previousOverflow = document.body.style.overflow;
-    const previousOverscrollBehavior = document.body.style.overscrollBehavior;
-    document.body.style.overflow = "hidden";
-    document.body.style.overscrollBehavior = "none";
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      document.body.style.overscrollBehavior = previousOverscrollBehavior;
-    };
-  }, [isCommentsOpen]);
   const [isEventEditDialogOpen, setIsEventEditDialogOpen] = useState(false);
   const [isTextExpanded, setIsTextExpanded] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -1268,32 +1260,25 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
         {cardContent}
       </GlassCard>
 
-      {/* Comments — Instagram-style modal (image left, comments right on wide screens) */}
-      {isCommentsOpen && (
-        <div
-          className="fixed inset-0 z-[200] flex items-end md:items-center justify-center p-0 md:p-6 overscroll-none"
-          style={{ background: "rgba(0,0,0,0.85)", touchAction: "none" }}
-          onClick={() => setIsCommentsOpen(false)}
-        >
-          <button
-            onClick={() => setIsCommentsOpen(false)}
-            className="hidden md:flex absolute top-5 right-5 z-10 items-center justify-center w-9 h-9 rounded-full text-white hover:bg-white/10"
-            aria-label="Close comments"
-          >
-            <X className="w-5 h-5" />
-          </button>
+      {/* Comments — Mobile Drawer / Desktop Modal */}
+      <Drawer open={isCommentsOpen} onOpenChange={setIsCommentsOpen}>
+        <DrawerContent className="p-0 border-t md:border border-[var(--yrdly-glass-border)] rounded-t-[24px] md:rounded-xl max-h-[88vh] md:max-h-[90vh] md:h-[min(90vh,700px)] md:max-w-[935px] md:mx-auto overflow-hidden">
+          <DrawerHeader className="sr-only">
+            <DrawerTitle>Comments</DrawerTitle>
+            <DrawerDescription>View and post comments on this post.</DrawerDescription>
+          </DrawerHeader>
 
-          <div
-            className="w-full h-[88dvh] md:h-[min(90vh,700px)] md:max-w-[935px] md:rounded-xl overflow-hidden flex flex-col md:flex-row bg-background border-t md:border border-[var(--yrdly-glass-border)] rounded-t-[24px] md:rounded-t-xl"
-            onClick={(e) => e.stopPropagation()}
-            style={{ touchAction: "pan-y", overscrollBehavior: "contain" }}
-          >
-            {/* Mobile Grab Handle Bar */}
-            <div className="md:hidden flex flex-col items-center justify-center pt-2.5 pb-1 flex-shrink-0 bg-background">
-              <div className="w-10 h-1 bg-muted-foreground/30 rounded-full" />
-            </div>
+          <div className="w-full h-full flex flex-col md:flex-row bg-background overflow-hidden min-h-0 flex-1 relative">
+            {/* Desktop Close Button */}
+            <button
+              onClick={() => setIsCommentsOpen(false)}
+              className="hidden md:flex absolute top-4 right-4 z-20 items-center justify-center w-8 h-8 rounded-full text-foreground/70 hover:bg-accent transition-colors"
+              aria-label="Close comments"
+            >
+              <X className="w-4 h-4" />
+            </button>
 
-            {/* Left — image, video, or text-only writing */}
+            {/* Left — image, video, or text-only writing (Desktop) */}
             {mediaItems.length > 0 ? (
               <div className="hidden md:block relative flex-1 min-w-0 h-full bg-black overflow-hidden">
                 <ModalMediaCarousel items={mediaItems} initialIndex={selectedImageIndex} />
@@ -1328,7 +1313,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
             )}
 
             {/* Right — header + comments + input */}
-            <div className="w-full md:w-[400px] flex-shrink-0 flex flex-col min-h-0 h-full border-l border-[var(--yrdly-glass-border)] bg-background">
+            <div className="w-full md:w-[400px] flex-shrink-0 flex flex-col min-h-0 h-full border-l-0 md:border-l border-[var(--yrdly-glass-border)] bg-background">
               {/* Desktop Author Header */}
               <div className="hidden md:flex items-center gap-3 px-4 py-3 border-b border-[var(--yrdly-glass-border)] flex-shrink-0">
                 <Avatar className="h-8 w-8 flex-shrink-0">
@@ -1342,7 +1327,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
                 </span>
               </div>
 
-              <div className="flex-1 min-h-0 flex flex-col">
+              <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
                 <CommentSection
                   postId={post.id}
                   post={post}
@@ -1354,8 +1339,8 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
               </div>
             </div>
           </div>
-        </div>
-      )}
+        </DrawerContent>
+      </Drawer>
     </>
   );
 }
