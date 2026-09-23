@@ -74,7 +74,6 @@ export async function POST(request: NextRequest) {
         .update({
           status: 'failed',
           failure_reason: e instanceof Error ? e.message : 'Processing error',
-          updated_at: new Date().toISOString(),
         })
         .eq('id', payout.id);
     }

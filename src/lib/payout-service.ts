@@ -198,7 +198,6 @@ export class PayoutService {
         .from('payout_requests')
         .update({
           status: 'processing',
-          updated_at: new Date().toISOString(),
         })
         .eq('id', payoutRequestId)
         .eq('status', 'pending')
@@ -292,7 +291,6 @@ export class PayoutService {
               status: 'completed',
               transaction_reference: transactionReference,
               processed_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
             })
             .eq('id', payoutRequestId);
 
@@ -316,7 +314,6 @@ export class PayoutService {
               status: 'failed',
               failure_reason: transferReason || transferErrorMsg,
               processed_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
             })
             .eq('id', payoutRequestId);
 
@@ -351,7 +348,6 @@ export class PayoutService {
             status: 'failed',
             failure_reason: errorMsg,
             processed_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
           })
           .eq('id', payoutRequestId);
 
@@ -489,7 +485,6 @@ export class PayoutService {
         .from('payout_requests')
         .update({
           status: 'cancelled',
-          updated_at: new Date().toISOString(),
         })
         .eq('id', payoutRequestId)
         .eq('status', 'pending');
