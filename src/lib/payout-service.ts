@@ -219,6 +219,7 @@ export class PayoutService {
       let transactionReference = '';
       let maximumWithdrawable: number | undefined;
       let intentFee: number | undefined;
+      let actualNetPayoutAmount: number | undefined;
 
       try {
         if (accountType === 'bank_account' || accountType === 'mobile_money' || accountType === 'digital_wallet') {
@@ -259,6 +260,7 @@ export class PayoutService {
               intentFee = paylukResult.intentFee;
             }
             transactionReference = paylukResult.reference || `payout-${payoutRequestId}`;
+            actualNetPayoutAmount = paylukResult.intentAmount;
           } else {
             console.log(`[PayoutService] Seller ${payoutRequest.seller_id} has no Payluk ID, using Paystack transfer...`);
             const transferResult = await PaystackService.transferToSeller({
@@ -279,8 +281,8 @@ export class PayoutService {
 
         if (transferSuccess) {
           // Update payout request as completed with final net amount
-          const finalPayoutAmount = (paylukResult && typeof paylukResult.intentAmount === 'number' && paylukResult.intentAmount > 0)
-            ? paylukResult.intentAmount
+          const finalPayoutAmount = (actualNetPayoutAmount && actualNetPayoutAmount > 0)
+            ? actualNetPayoutAmount
             : payoutRequest.amount;
 
           await supabaseAdmin
