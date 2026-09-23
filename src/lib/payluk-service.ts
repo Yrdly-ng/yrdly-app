@@ -1146,18 +1146,14 @@ export class PaylukService {
           intentFee: activeIntentFee,
           totalPaylukDebit,
           maximumWithdrawable: activeIntentAmount,
-        };
-      }
-          intentFee,
-          totalPaylukDebit,
           paylukStatus: 'successful',
         };
       } else {
         return {
           success: false,
-          reference: intentRef,
-          intentAmount,
-          intentFee,
+          reference: activeIntentRef,
+          intentAmount: activeIntentAmount,
+          intentFee: activeIntentFee,
           totalPaylukDebit,
           error: verifyResponse.message || 'Withdrawal verification failed',
           paylukStatus: String(verifyDataStatus || 'failed'),
