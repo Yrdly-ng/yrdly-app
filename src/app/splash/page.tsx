@@ -22,20 +22,6 @@ export default function SplashScreen() {
   return (
     <div className="fixed inset-0 flex flex-col items-center justify-center bg-background z-50 select-none">
       <div className="relative flex flex-col items-center gap-6 animate-fade-in transition-all duration-700">
-        <svg
-          viewBox="0 0 1280 1280"
-          className="w-36 h-36 sm:w-44 sm:h-44 drop-shadow-md animate-pulse"
-        >
-          <g transform="translate(0,1280) scale(0.1,-0.1)">
-            <path
-              d={YRDLY_MARK_D}
-              stroke="#0B9445"
-              strokeWidth="25"
-              fill="#F7F17C"
-            />
-          </g>
-        </svg>
-
         <div className="text-center space-y-1">
           <h1
             className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground"
