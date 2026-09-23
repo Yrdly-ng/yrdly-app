@@ -80,10 +80,12 @@ export async function POST(request: NextRequest) {
     }
 
     if (processResult && !processResult.success) {
+      const displayError = processResult.reason || processResult.error || 'Withdrawal processing failed';
       return NextResponse.json({
         success: false,
         payoutId: payout.id,
-        error: processResult.error || 'Withdrawal processing failed',
+        error: displayError,
+        message: displayError,
         reason: processResult.reason,
         requestedAmount: amount,
         fee: processResult.intentFee,
