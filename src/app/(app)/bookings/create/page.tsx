@@ -1,4 +1,3 @@
-'use me';
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -42,7 +41,24 @@ export default function CreateBookingWebPage() {
   const [business, setBusiness] = useState<any>(null);
   const [loadingDetails, setLoadingDetails] = useState(true);
 
-  const { slots, loading: slotsLoading } = useAvailableSlots(businessId, serviceId, selectedDate);
+  const [staffList, setStaffList] = useState<any[]>([]);
+  const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
+  const { slots, loading: slotsLoading } = useAvailableSlots(businessId, serviceId, selectedDate, selectedStaffId);
+
+  useEffect(() => {
+    if (!businessId) return;
+    void (supabase.from('business_staff').select('*').eq('business_id', businessId).eq('is_active', true).order('created_at').then(({ data }: any) => { if (data) setStaffList(data); }) as unknown as Promise<void>);
+  }, [businessId]);
+
+  useEffect(() => {
+    if (!serviceId || !staffList.length) return;
+    void (supabase.from('service_staff_assignments').select('staff_id').eq('service_id', serviceId).then(({ data }: any) => {
+      if (data && data.length) {
+        const ids = new Set((data as any[]).map((r:any)=>r.staff_id));
+        setStaffList((prev: any[]) => prev.filter((s:any)=>ids.has(s.id)));
+      }
+    }) as unknown as Promise<void>);
+  }, [serviceId]);
 
   useEffect(() => {
     const fetchDetails = async () => {
@@ -81,6 +97,7 @@ export default function CreateBookingWebPage() {
         serviceId: serviceId,
         appointmentTime: selectedSlotTime,
         notes: notes.trim() || undefined,
+        staffId: selectedStaffId,
       });
 
       const userName = (user as any)?.name || (user as any)?.user_metadata?.full_name || 'Customer';
@@ -200,7 +217,16 @@ export default function CreateBookingWebPage() {
 
           {/* Slot Picker */}
           <div>
-            <label className="block text-sm font-bold text-neutral-200 mb-2">2. Select Available Slot</label>
+            {staffList.length > 0 && (
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-neutral-200 mb-2">Staff (optional)</label>
+                <select value={selectedStaffId || ''} onChange={(e)=>{ setSelectedStaffId(e.target.value || null); setSelectedSlotTime(null); }} className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-3 text-sm text-neutral-100">
+                  <option value="">Any available staff</option>
+                  {staffList.map((s:any)=>(<option key={s.id} value={s.id}>{s.name}{s.role?` — ${s.role}`:''}</option>))}
+                </select>
+              </div>
+            )}
+            <label className="block text-sm font-bold text-neutral-200 mb-2">2. Select Available Slot{selectedStaffId ? ' (selected staff)' : ''}</label>
             {slotsLoading ? (
               <div className="py-8 text-center text-neutral-400 text-xs">Checking availability...</div>
             ) : slots.length === 0 ? (

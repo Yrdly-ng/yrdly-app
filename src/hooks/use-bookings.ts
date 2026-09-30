@@ -37,7 +37,7 @@ export function useServiceOfferings(businessId?: string) {
   return { offerings, loading, error, refresh: fetchOfferings };
 }
 
-export function useProviderAvailability(businessId?: string) {
+export function useProviderAvailability(businessId?: string, staffId?: string | null) {
   const [availability, setAvailability] = useState<ProviderAvailability[]>([]);
   const [exceptions, setExceptions] = useState<AvailabilityException[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,7 +50,7 @@ export function useProviderAvailability(businessId?: string) {
     try {
       setLoading(true);
       const [weekly, exc] = await Promise.all([
-        BookingService.getProviderAvailability(businessId),
+        BookingService.getProviderAvailability(businessId, staffId ?? null),
         BookingService.getAvailabilityExceptions(businessId),
       ]);
       setAvailability(weekly);
@@ -60,7 +60,7 @@ export function useProviderAvailability(businessId?: string) {
     } finally {
       setLoading(false);
     }
-  }, [businessId]);
+  }, [businessId, staffId]);
 
   useEffect(() => {
     fetchData();
@@ -69,7 +69,7 @@ export function useProviderAvailability(businessId?: string) {
   return { availability, exceptions, loading, refresh: fetchData };
 }
 
-export function useAvailableSlots(businessId?: string, serviceId?: string, dateString?: string) {
+export function useAvailableSlots(businessId?: string, serviceId?: string, dateString?: string, staffId?: string | null) {
   const [slots, setSlots] = useState<TimeSlot[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -80,14 +80,14 @@ export function useAvailableSlots(businessId?: string, serviceId?: string, dateS
     }
     try {
       setLoading(true);
-      const data = await BookingService.getAvailableSlots(businessId, serviceId, dateString);
+      const data = await BookingService.getAvailableSlots(businessId, serviceId, dateString, staffId ?? null);
       setSlots(data);
     } catch (err) {
       console.error('Error fetching slots:', err);
     } finally {
       setLoading(false);
     }
-  }, [businessId, serviceId, dateString]);
+  }, [businessId, serviceId, dateString, staffId]);
 
   useEffect(() => {
     fetchSlots();

@@ -67,9 +67,14 @@
 
 ---
 
-## 3. Next Steps
-Waiting for user sign-off on:
-1. Precondition greenlight from Oluwaferanmi.
-2. Decision on Flag Enforcement mechanism (Option A vs B).
-3. Table strategy for Quote Flow (`quote_requests` table vs `bookings` state layering).
-4. Confirmation on Multi-Staff scope inclusion.
+## 3. Next Steps (Phase 4 Complete — 2026-09-30 yrdly-app)
+- All Phase 4 tracks verified on live Supabase `yoiyqxtpmxnrrbqqidcs`:
+  - `npx tsc --noEmit` EXIT:0.
+  - Checkout: `booking_payments bk_df8c6907-28a7-47b8-aa17-956532e9c733_deposit_...` created; Payluk intent 404 expected (no live customer) — `payluk_reference` intact for webhook.
+  - Webhook: HMAC hex+base64 ok → `deposit_paid` then idempotent skip; escrow `escrow_held` ok; quote `f467775a` → booking `0a367446` + webhook ok.
+  - DB indexes 8/8 verified; legacy `uq_business_day/date` constraints dropped via `fix_uq_legacy_drop_v2` (2BP01 fix).
+- Remaining optional: sync Phase 4 libs to `yrdly/` parity, EAS builds — requires explicit approval.
+- Original pending items resolved:
+  1. Flag Enforcement: friction model (warning/deprioritize, no hard block) + 90-day auto-clear preserved.
+  2. Quote Flow: separate `quote_requests` table → `bookings` via `quote_id` (not state layering).
+  3. Multi-Staff: `business_staff` + `service_staff_assignments` with partial `staff_id` indexes.

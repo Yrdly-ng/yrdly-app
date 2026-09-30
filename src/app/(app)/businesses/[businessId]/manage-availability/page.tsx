@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useProviderAvailability } from '@/hooks/use-bookings';
 import { BookingService } from '@/lib/booking-service';
+import { supabase } from '@/lib/supabase';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -12,7 +13,13 @@ export default function ManageAvailabilityWebPage() {
   const router = useRouter();
   const businessId = params.businessId as string;
 
-  const { availability, exceptions, loading, refresh } = useProviderAvailability(businessId);
+  const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
+  const [staffList, setStaffList] = useState<any[]>([]);
+  useEffect(() => {
+    if (!businessId) return;
+    void (supabase.from('business_staff').select('*').eq('business_id', businessId).order('created_at').then(({ data }: any) => { if (data) setStaffList(data); }) as unknown as Promise<void>);
+  }, [businessId]);
+  const { availability, exceptions, loading, refresh } = useProviderAvailability(businessId, selectedStaffId);
 
   const [schedule, setSchedule] = useState<
     Array<{ day_of_week: number; start_time: string; end_time: string; is_available: boolean }>
@@ -52,7 +59,7 @@ export default function ManageAvailabilityWebPage() {
     setSaving(true);
     setMsg(null);
     try {
-      await BookingService.setProviderAvailability(businessId, schedule);
+      await BookingService.setProviderAvailability(businessId, schedule, selectedStaffId);
       setMsg({ text: 'Weekly working hours saved successfully', type: 'success' });
       refresh();
     } catch (err: any) {
@@ -74,6 +81,7 @@ export default function ManageAvailabilityWebPage() {
       await BookingService.setAvailabilityException({
         business_id: businessId,
         date: blackoutDate.trim(),
+        staff_id: selectedStaffId,
         is_blackout: true,
         reason: blackoutReason.trim() || 'Holiday / Unavailable',
       });
@@ -132,8 +140,17 @@ export default function ManageAvailabilityWebPage() {
           <div className="space-y-8 mt-6">
             {/* Weekly Schedule */}
             <div>
-              <h2 className="text-lg font-bold text-neutral-100 mb-1">Weekly Operating Schedule</h2>
-              <p className="text-xs text-neutral-400 mb-4">Set operating start and end times for each day of the week</p>
+              {staffList.length > 0 && (
+              <div className="mb-4 flex items-center gap-2">
+                <label className="text-xs font-bold text-neutral-300">Staff calendar:</label>
+                <select value={selectedStaffId || ''} onChange={(e) => setSelectedStaffId(e.target.value || null)} className="bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-2 text-sm text-neutral-100">
+                  <option value="">Business hours (legacy)</option>
+                  {staffList.map((s: any) => (<option key={s.id} value={s.id}>{s.name}{s.role ? ` — ${s.role}` : ''}</option>))}
+                </select>
+              </div>
+            )}
+            <h2 className="text-lg font-bold text-neutral-100 mb-1">Weekly Operating Schedule{selectedStaffId ? ' — selected staff' : ''}</h2>
+              <p className="text-xs text-neutral-400 mb-4">Set operating start and end times for each day of the week. {selectedStaffId ? 'Saved per-staff (partial unique on staff_id).' : 'Business default (null staff_id).'}</p>
 
               <div className="space-y-3">
                 {schedule.map((day) => (
