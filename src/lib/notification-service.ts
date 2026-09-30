@@ -56,7 +56,10 @@ export type NotificationType =
   | 'booking_requested'
   | 'booking_confirmed'
   | 'booking_cancelled'
-  | 'booking_no_show';
+  | 'booking_no_show'
+  | 'quote_estimated'
+  | 'quote_converted'
+  | 'appeal_decided';
 
 export interface CreateNotificationParams {
   userId: string;

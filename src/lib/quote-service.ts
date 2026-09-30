@@ -39,6 +39,10 @@ export class QuoteService {
   static async convertQuoteToBooking(quoteId: string, appointmentTime: string): Promise<{ booking: any; quote: QuoteRequest }> {
     const quote = await this.getQuote(quoteId);
     if (!quote) throw new Error('Quote not found');
+    if (quote.expires_at && new Date(quote.expires_at).getTime() < Date.now()) {
+      await this.updateStatus(quoteId, 'expired');
+      throw new Error('This estimate has expired and cannot be converted');
+    }
     // Create booking linked to quote. Business should have a service offering for quotes; we use a placeholder service or first active one.
     const { data: services } = await supabase.from('service_offerings').select('id, duration_minutes').eq('business_id', quote.business_id).eq('is_active', true).limit(1);
     const serviceId = services?.[0]?.id;

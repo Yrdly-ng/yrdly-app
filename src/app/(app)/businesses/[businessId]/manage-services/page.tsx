@@ -20,6 +20,11 @@ export default function ManageServicesWebPage() {
   const [durationMinutes, setDurationMinutes] = useState('60');
   const [price, setPrice] = useState('');
   const [priceIsFrom, setPriceIsFrom] = useState(false);
+  const [depositRequired, setDepositRequired] = useState(false);
+  const [depositAmount, setDepositAmount] = useState('');
+  const [depositPercent, setDepositPercent] = useState('');
+  const [requiresFullPayment, setRequiresFullPayment] = useState(false);
+  const [escrowEnabled, setEscrowEnabled] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -30,6 +35,11 @@ export default function ManageServicesWebPage() {
     setDurationMinutes('60');
     setPrice('');
     setPriceIsFrom(false);
+    setDepositRequired(false);
+    setDepositAmount('');
+    setDepositPercent('');
+    setRequiresFullPayment(false);
+    setEscrowEnabled(false);
     setErrorMsg('');
     setModalVisible(true);
   };
@@ -41,6 +51,11 @@ export default function ManageServicesWebPage() {
     setDurationMinutes(String(offering.duration_minutes));
     setPrice(offering.price ? String(offering.price) : '');
     setPriceIsFrom(offering.price_is_from || false);
+    setDepositRequired(offering.deposit_required || false);
+    setDepositAmount(offering.deposit_amount ? String(offering.deposit_amount) : '');
+    setDepositPercent(offering.deposit_percent ? String(offering.deposit_percent) : '');
+    setRequiresFullPayment(offering.requires_full_payment || false);
+    setEscrowEnabled(offering.escrow_enabled || false);
     setErrorMsg('');
     setModalVisible(true);
   };
@@ -55,22 +70,28 @@ export default function ManageServicesWebPage() {
     setErrorMsg('');
     try {
       const parsedPrice = price.trim() ? parseFloat(price) : undefined;
+      const parsedDepAmt = depositAmount.trim() ? parseFloat(depositAmount) : undefined;
+      const parsedDepPct = depositPercent.trim() ? parseInt(depositPercent, 10) : undefined;
+
+      const payload = {
+        name: name.trim(),
+        description: description.trim() || undefined,
+        duration_minutes: duration,
+        price: parsedPrice,
+        price_is_from: priceIsFrom,
+        deposit_required: depositRequired,
+        deposit_amount: parsedDepAmt,
+        deposit_percent: parsedDepPct,
+        requires_full_payment: requiresFullPayment,
+        escrow_enabled: escrowEnabled,
+      };
+
       if (editingId) {
-        await BookingService.updateServiceOffering(editingId, {
-          name: name.trim(),
-          description: description.trim() || undefined,
-          duration_minutes: duration,
-          price: parsedPrice,
-          price_is_from: priceIsFrom,
-        });
+        await BookingService.updateServiceOffering(editingId, payload);
       } else {
         await BookingService.createServiceOffering({
           business_id: businessId,
-          name: name.trim(),
-          description: description.trim() || undefined,
-          duration_minutes: duration,
-          price: parsedPrice,
-          price_is_from: priceIsFrom,
+          ...payload,
           is_active: true,
         });
       }
@@ -249,8 +270,72 @@ export default function ManageServicesWebPage() {
                     className="w-4 h-4 rounded accent-emerald-500 bg-neutral-950 border-neutral-800"
                   />
                   <span className="text-neutral-300 text-xs">Price is a &quot;Starting from&quot; estimate</span>
-
                 </label>
+
+                {/* Deposit & Escrow Settings */}
+                <div className="pt-3 border-t border-neutral-800/80 space-y-3">
+                  <h4 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Payment & Deposit Settings</h4>
+
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={depositRequired}
+                      onChange={(e) => setDepositRequired(e.target.checked)}
+                      className="w-4 h-4 rounded accent-emerald-500 bg-neutral-950 border-neutral-800"
+                    />
+                    <span className="text-neutral-300 text-xs font-medium">Require Deposit to Book</span>
+                  </label>
+
+                  {depositRequired && (
+                    <div className="grid grid-cols-2 gap-3 pl-6 pt-1">
+                      <div>
+                        <label className="block text-neutral-400 text-xs mb-1">Deposit Amt (₦)</label>
+                        <input
+                          type="number"
+                          min={0}
+                          value={depositAmount}
+                          onChange={(e) => setDepositAmount(e.target.value)}
+                          placeholder="e.g. 1000"
+                          className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-xs text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-neutral-400 text-xs mb-1">Deposit (%)</label>
+                        <input
+                          type="number"
+                          min={0}
+                          max={100}
+                          value={depositPercent}
+                          onChange={(e) => setDepositPercent(e.target.value)}
+                          placeholder="e.g. 20"
+                          className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-xs text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-4 pt-1">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={requiresFullPayment}
+                        onChange={(e) => setRequiresFullPayment(e.target.checked)}
+                        className="w-4 h-4 rounded accent-emerald-500 bg-neutral-950 border-neutral-800"
+                      />
+                      <span className="text-neutral-300 text-xs">Full Payment Upfront</span>
+                    </label>
+
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={escrowEnabled}
+                        onChange={(e) => setEscrowEnabled(e.target.checked)}
+                        className="w-4 h-4 rounded accent-emerald-500 bg-neutral-950 border-neutral-800"
+                      />
+                      <span className="text-neutral-300 text-xs font-semibold text-emerald-400">Escrow Protected</span>
+                    </label>
+                  </div>
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-neutral-800">

@@ -564,5 +564,77 @@ export class NotificationTriggers {
       console.error('Error creating booking_no_show notification:', error);
     }
   }
+
+  /**
+   * Trigger notification when provider submits a quote estimate
+   */
+  static async onQuoteEstimated(params: {
+    quoteId: string;
+    customerId: string;
+    title: string;
+    estimatedPrice: number;
+  }) {
+    try {
+      await NotificationService.createNotification({
+        userId: params.customerId,
+        type: 'quote_estimated',
+        relatedId: params.quoteId,
+        relatedType: 'quote',
+        title: 'New Quote Estimate Received',
+        message: `You received an estimate of ₦${params.estimatedPrice.toLocaleString()} for "${params.title}"`,
+        data: params,
+      });
+    } catch (error) {
+      console.error('Error creating quote_estimated notification:', error);
+    }
+  }
+
+  /**
+   * Trigger notification when payment succeeds
+   */
+  static async onPaymentSuccess(params: {
+    bookingId: string;
+    customerId: string;
+    amount: number;
+    paymentType: string;
+  }) {
+    try {
+      await NotificationService.createNotification({
+        userId: params.customerId,
+        type: 'payment_successful',
+        relatedId: params.bookingId,
+        relatedType: 'booking',
+        title: 'Payment Successful',
+        message: `Your ${params.paymentType} payment of ₦${params.amount.toLocaleString()} was successfully processed.`,
+        data: params,
+      });
+    } catch (error) {
+      console.error('Error creating payment_success notification:', error);
+    }
+  }
+
+  /**
+   * Trigger notification when an appeal is decided
+   */
+  static async onAppealDecided(params: {
+    appealId: string;
+    appellantId: string;
+    decision: 'approved' | 'rejected';
+    resolutionNote?: string;
+  }) {
+    try {
+      await NotificationService.createNotification({
+        userId: params.appellantId,
+        type: 'appeal_decided',
+        relatedId: params.appealId,
+        relatedType: 'appeal',
+        title: `Strike Appeal ${params.decision === 'approved' ? 'Approved' : 'Rejected'}`,
+        message: `Your strike appeal was ${params.decision}.${params.resolutionNote ? ` Note: ${params.resolutionNote}` : ''}`,
+        data: params,
+      });
+    } catch (error) {
+      console.error('Error creating appeal_decided notification:', error);
+    }
+  }
 }
 
