@@ -184,25 +184,32 @@ export function LocationInput({
           autoComplete="off"
         />
       )}
-      {showSuggestions && (
-        <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-md shadow-lg">
+      {showSuggestions && displayValue && displayValue.trim().length > 0 && (
+        <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-xl shadow-xl overflow-hidden max-h-60 overflow-y-auto">
           {isPlacePredictionsLoading ? (
-            <div className="p-2 space-y-2">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-2/3" />
+            <div className="p-3 space-y-2">
+              <Skeleton className="h-4 w-full rounded" />
+              <Skeleton className="h-4 w-3/4 rounded" />
             </div>
-          ) : (
+          ) : placePredictions && placePredictions.length > 0 ? (
             <ul className="py-1">
               {placePredictions.map((prediction) => (
                 <li
                   key={prediction.place_id}
                   onClick={() => handleSelect(prediction)}
-                  className="px-3 py-2 cursor-pointer hover:bg-accent"
+                  className="px-3.5 py-2.5 cursor-pointer hover:bg-accent/80 transition-colors text-xs font-sans text-foreground flex items-center gap-2 border-b border-border/30 last:border-0"
                 >
-                  {prediction.description}
+                  <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
+                    📍
+                  </span>
+                  <span className="truncate">{prediction.description}</span>
                 </li>
               ))}
             </ul>
+          ) : (
+            <div className="p-3 text-xs text-muted-foreground font-sans text-center">
+              Use custom address: <strong className="text-foreground font-semibold">&quot;{displayValue}&quot;</strong>
+            </div>
           )}
         </div>
       )}
