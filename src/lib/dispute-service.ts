@@ -292,12 +292,8 @@ export class DisputeService {
             buyer_id,
             seller_id,
             status,
-            item:posts(
-              id,
-              title,
-              text,
-              image_urls
-            )
+            item_id,
+            item_title
           )
         `)
         .or(`opened_by.eq.${userId},transaction.buyer_id.eq.${userId},transaction.seller_id.eq.${userId}`)
@@ -305,13 +301,13 @@ export class DisputeService {
 
       if (error) {
         console.error('Error fetching user disputes:', error);
-        throw error;
+        return [];
       }
 
       return data || [];
     } catch (error) {
       console.error('Failed to get user disputes:', error);
-      throw new Error('Failed to get user disputes');
+      return [];
     }
   }
 
@@ -348,10 +344,24 @@ export class DisputeService {
   }
 
   /**
-   * Get dispute details
+   * Get dispute details (by dispute ID or transaction ID)
    */
   static async getDisputeDetails(disputeId: string): Promise<DisputeData | null> {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch(`/api/disputes/${disputeId}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {})
+        }
+      });
+
+      if (response.ok) {
+        const disputeData = await response.json();
+        return disputeData;
+      }
+
+      // Fallback query directly via supabase client if API endpoint returns 404 or fails
       const { data, error } = await supabase
         .from('disputes')
         .select(`
@@ -361,36 +371,14 @@ export class DisputeService {
             amount,
             buyer_id,
             seller_id,
-            status,
-            item:posts(
-              id,
-              title,
-              text,
-              image_urls
-            ),
-            buyer:users(
-              id,
-              name,
-              avatar_url,
-              email
-            ),
-            seller:users(
-              id,
-              name,
-              avatar_url,
-              email
-            )
+            status
           )
         `)
-        .eq('id', disputeId)
-        .single();
+        .or(`id.eq.${disputeId},transaction_id.eq.${disputeId}`)
+        .maybeSingle();
 
-      if (error) {
-        console.error('Error fetching dispute details:', error);
-        return null;
-      }
-
-      return data;
+      if (error || !data) return null;
+      return data as any;
     } catch (error) {
       console.error('Failed to get dispute details:', error);
       return null;
