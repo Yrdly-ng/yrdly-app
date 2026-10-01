@@ -42,24 +42,62 @@ export async function GET(request: NextRequest) {
     const itemIds = new Set<string>();
 
     transactions.forEach(tx => {
-      userIds.add(tx.buyer_id);
-      userIds.add(tx.seller_id);
-      itemIds.add(tx.item_id);
+      if (tx.buyer_id) userIds.add(tx.buyer_id);
+      if (tx.seller_id) userIds.add(tx.seller_id);
+      if (tx.item_id) itemIds.add(tx.item_id);
     });
 
-    const { data: users } = await supabaseAdmin
-      .from('users')
-      .select('id, name, avatar_url')
-      .in('id', Array.from(userIds));
-
-    const { data: items } = await supabaseAdmin
-      .from('posts')
-      .select('id, title, text, image_urls, price')
-      .in('id', Array.from(itemIds));
+    const [
+      { data: users },
+      { data: postsItems },
+      { data: catalogItems }
+    ] = await Promise.all([
+      userIds.size > 0
+        ? supabaseAdmin.from('users').select('id, name, avatar_url').in('id', Array.from(userIds))
+        : Promise.resolve({ data: [] }),
+      itemIds.size > 0
+        ? supabaseAdmin.from('posts').select('id, title, text, image_urls, image_url, price').in('id', Array.from(itemIds))
+        : Promise.resolve({ data: [] }),
+      itemIds.size > 0
+        ? supabaseAdmin.from('catalog_items').select('id, title, description, images, price').in('id', Array.from(itemIds))
+        : Promise.resolve({ data: [] }),
+    ]);
 
     // Create lookup maps
     const userMap = new Map(users?.map(u => [u.id, u]) || []);
-    const itemMap = new Map(items?.map(i => [i.id, i]) || []);
+    const itemMap = new Map<string, any>();
+
+    postsItems?.forEach(p => {
+      const imgs = Array.isArray(p.image_urls)
+        ? p.image_urls
+        : typeof p.image_urls === 'string'
+        ? [p.image_urls]
+        : p.image_url
+        ? [p.image_url]
+        : [];
+      itemMap.set(p.id, {
+        id: p.id,
+        title: p.title || p.text || 'Item',
+        image_urls: imgs,
+        images: imgs,
+        price: p.price,
+      });
+    });
+
+    catalogItems?.forEach(c => {
+      const imgs = Array.isArray(c.images)
+        ? c.images
+        : typeof c.images === 'string'
+        ? [c.images]
+        : [];
+      itemMap.set(c.id, {
+        id: c.id,
+        title: c.title || 'Item',
+        image_urls: imgs,
+        images: imgs,
+        price: c.price,
+      });
+    });
 
     // Enrich transactions with related data and camelCase properties
     const enrichedTransactions = transactions.map(tx => {
@@ -77,6 +115,14 @@ export async function GET(request: NextRequest) {
       if (!deliveryDetails.option) {
         deliveryDetails.option = 'face_to_face';
       }
+
+      const item = itemMap.get(tx.item_id) || {
+        id: tx.item_id,
+        title: tx.item_title || tx.purpose || 'Transaction Item',
+        price: tx.amount || 0,
+        images: [],
+        image_urls: [],
+      };
 
       return {
         ...tx,
@@ -97,7 +143,7 @@ export async function GET(request: NextRequest) {
         disputeReason: tx.dispute_reason,
         buyer: userMap.get(tx.buyer_id) || { id: tx.buyer_id, name: 'Unknown' },
         seller: userMap.get(tx.seller_id) || { id: tx.seller_id, name: 'Unknown' },
-        item: itemMap.get(tx.item_id) || { id: tx.item_id, title: 'Unknown', price: 0 },
+        item,
       };
     });
 

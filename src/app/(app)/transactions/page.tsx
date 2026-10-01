@@ -215,15 +215,21 @@ export default function TransactionsPage() {
               const meta = STATUS_MAP[statusKey] || STATUS_MAP.pending;
               const isBuyer = (tx.buyerId || tx.buyer_id) === user?.id;
               const counterparty = isBuyer ? tx.seller : tx.buyer;
-              const imagesArr = Array.isArray(tx.item?.images || tx.item?.image_urls)
-                ? (tx.item?.images || tx.item?.image_urls)
-                : typeof tx.item?.images === 'string'
-                ? [tx.item.images]
+              
+              const rawImgs = tx.item?.images || tx.item?.image_urls || tx.images || tx.image_urls;
+              const imagesArr = Array.isArray(rawImgs)
+                ? rawImgs
+                : typeof rawImgs === 'string'
+                ? [rawImgs]
+                : typeof tx.item?.image_url === 'string'
+                ? [tx.item.image_url]
                 : [];
-              const thumb = imagesArr[0] || tx.item?.image_url || '';
+              const thumb = imagesArr[0] || tx.item?.image_url || tx.image_url || '';
               const dateStr = formatDateStr(tx.created_at || tx.createdAt);
-              const title = tx.item?.title || tx.item?.text || tx.item_title || 'Item';
-              const counterpartyName = counterparty?.name || 'User';
+              const title = tx.item?.title || tx.item?.text || tx.item_title || tx.purpose || 'Transaction Item';
+              const counterpartyName = counterparty?.name && counterparty.name !== 'Unknown' 
+                ? counterparty.name 
+                : (isBuyer ? 'Seller' : 'Buyer');
 
               return (
                 <div
