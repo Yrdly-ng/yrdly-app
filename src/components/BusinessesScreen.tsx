@@ -211,12 +211,23 @@ export function BusinessesScreen({ backTarget = "/businesses" }: { backTarget?: 
           )}
         </div>
 
-        <h1 className="text-3xl mb-1 text-foreground font-yrdly-display font-bold">
-          Business Hub
-        </h1>
-        <p className="text-sm mb-4 text-[var(--yrdly-label)] font-yrdly-body">
-          Discover local businesses in your neighborhood
-        </p>
+        <div className="flex items-center justify-between gap-3 mb-1">
+          <div>
+            <h1 className="text-3xl text-foreground font-yrdly-display font-bold">
+              Business Hub
+            </h1>
+            <p className="text-sm text-[var(--yrdly-label)] font-yrdly-body">
+              Discover local businesses in your neighborhood
+            </p>
+          </div>
+          <Button
+            onClick={handleCreateBusiness}
+            className="flex items-center gap-1.5 h-10 px-4 rounded-xl font-yrdly-body font-bold text-xs text-foreground bg-primary hover:bg-primary/90 transition-all shadow-md active:scale-95 shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            Create Business
+          </Button>
+        </div>
 
         <div className="relative mb-4">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--yrdly-label)]" />

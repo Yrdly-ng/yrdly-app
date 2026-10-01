@@ -101,10 +101,11 @@ export default function AdminDisputesPage() {
   };
 
   const filteredDisputes = disputes.filter(dispute => {
+    const title = dispute.transaction?.item?.title || dispute.transaction?.item?.text || '';
+    const reason = dispute.dispute_reason || (dispute as any).disputeReason || '';
     const matchesSearch = searchTerm === '' || 
-      dispute.transaction?.item?.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      dispute.transaction?.item?.text?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      dispute.disputeReason.toLowerCase().includes(searchTerm.toLowerCase());
+      title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      reason.toLowerCase().includes(searchTerm.toLowerCase());
     
     return matchesSearch;
   });
@@ -198,7 +199,11 @@ export default function AdminDisputesPage() {
           </Card>
         ) : (
           <div className="space-y-4">
-            {filteredDisputes.map((dispute) => (
+            {filteredDisputes.map((dispute) => {
+              const reason = dispute.dispute_reason || (dispute as any).disputeReason || 'Dispute';
+              const txId = (dispute.transaction_id || (dispute as any).transactionId || dispute.id).slice(0, 8);
+              const createdAt = dispute.created_at || (dispute as any).createdAt || new Date().toISOString();
+              return (
               <Card key={dispute.id} className="overflow-hidden border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] backdrop-blur-xl shadow-lg">
                 <CardContent className="p-6">
                   <div className="flex items-start gap-4">
@@ -219,8 +224,8 @@ export default function AdminDisputesPage() {
                             {dispute.transaction?.item?.title || dispute.transaction?.item?.text || "Untitled Item"}
                           </h3>
                           <p className="text-sm text-[var(--yrdly-label)]">
-                            Transaction #{dispute.transactionId.slice(0, 8)} • 
-                            ₦{dispute.transaction?.amount?.toLocaleString()}
+                            Transaction #{txId} • 
+                            ₦{dispute.transaction?.amount?.toLocaleString() || '0'}
                           </p>
                         </div>
                         {getStatusBadge(dispute.status)}
@@ -230,22 +235,22 @@ export default function AdminDisputesPage() {
                         <div className="flex items-center gap-2 text-sm text-foreground">
                           <AlertTriangle className="h-4 w-4 text-amber-500" />
                           <span className="font-medium">Reason:</span>
-                          <span>{getReasonText(dispute.disputeReason)}</span>
+                          <span>{getReasonText(reason)}</span>
                         </div>
 
                         <div className="flex items-center gap-2 text-sm text-[var(--yrdly-label)]">
                           <Calendar className="h-4 w-4" />
-                          <span>Opened {new Date(dispute.createdAt).toLocaleDateString()}</span>
+                          <span>Opened {new Date(createdAt).toLocaleDateString()}</span>
                         </div>
 
                         <div className="flex items-center gap-4 text-sm text-[var(--yrdly-label)]">
                           <div className="flex items-center gap-1">
                             <span>Buyer:</span>
-                            <span className="font-medium text-foreground">{dispute.transaction?.buyer?.name}</span>
+                            <span className="font-medium text-foreground">{dispute.transaction?.buyer?.name || 'Buyer'}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <span>Seller:</span>
-                            <span className="font-medium text-foreground">{dispute.transaction?.seller?.name}</span>
+                            <span className="font-medium text-foreground">{dispute.transaction?.seller?.name || 'Seller'}</span>
                           </div>
                         </div>
 
@@ -271,7 +276,8 @@ export default function AdminDisputesPage() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+            );
+          })}
           </div>
         )}
 

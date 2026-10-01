@@ -61,10 +61,10 @@ export default function AdminDisputeReviewPage() {
         return;
       }
       setDispute(data);
-      setAdminNotes(data.adminNotes || '');
+      setAdminNotes(data.admin_notes || data.adminNotes || '');
       setResolution(data.resolution || '');
-      setRefundAmount(data.refundAmount || 0);
-      setSellerAmount(data.sellerAmount || 0);
+      setRefundAmount(data.refund_amount ?? data.refundAmount ?? 0);
+      setSellerAmount(data.seller_amount ?? data.sellerAmount ?? 0);
     } catch (error) {
       console.error('Error fetching dispute details:', error);
       toast({
@@ -358,8 +358,8 @@ export default function AdminDisputeReviewPage() {
             {/* Evidence Section */}
             <div className="space-y-6">
               <h2 className="text-xl font-bold font-yrdly-display text-foreground">Evidence</h2>
-              {renderEvidence(dispute.buyerEvidence, "Buyer Evidence")}
-              {renderEvidence(dispute.sellerEvidence, "Seller Evidence")}
+              {renderEvidence(dispute.buyer_evidence || dispute.buyerEvidence, "Buyer Evidence")}
+              {renderEvidence(dispute.seller_evidence || dispute.sellerEvidence, "Seller Evidence")}
             </div>
           </div>
 
@@ -376,20 +376,20 @@ export default function AdminDisputeReviewPage() {
               <CardContent className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-[var(--yrdly-label)]">Reason:</span>
-                  <span className="text-foreground">{getReasonText(dispute.disputeReason)}</span>
+                  <span className="text-foreground">{getReasonText(dispute.dispute_reason || dispute.disputeReason || 'Other')}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[var(--yrdly-label)]">Opened:</span>
-                  <span className="text-foreground">{new Date(dispute.createdAt).toLocaleDateString()}</span>
+                  <span className="text-foreground">{new Date(dispute.created_at || dispute.createdAt || Date.now()).toLocaleDateString()}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[var(--yrdly-label)]">Status:</span>
                   {getStatusBadge(dispute.status)}
                 </div>
-                {dispute.resolvedAt && (
+                {(dispute.resolved_at || dispute.resolvedAt) && (
                   <div className="flex justify-between">
                     <span className="text-[var(--yrdly-label)]">Resolved:</span>
-                    <span className="text-foreground">{new Date(dispute.resolvedAt).toLocaleDateString()}</span>
+                    <span className="text-foreground">{new Date(dispute.resolved_at || dispute.resolvedAt!).toLocaleDateString()}</span>
                   </div>
                 )}
               </CardContent>

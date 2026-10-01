@@ -108,6 +108,17 @@ export async function GET(request: NextRequest) {
 
       return {
         ...d,
+        transactionId: d.transaction_id,
+        openedBy: d.opened_by,
+        disputeReason: d.dispute_reason || 'Other',
+        buyerEvidence: d.buyer_evidence || {},
+        sellerEvidence: d.seller_evidence || {},
+        adminNotes: d.admin_notes || '',
+        refundAmount: d.refund_amount || 0,
+        sellerAmount: d.seller_amount || 0,
+        createdAt: d.created_at,
+        updatedAt: d.updated_at,
+        resolvedAt: d.resolved_at,
         transaction: tx ? {
           ...tx,
           buyer: buyer || { id: tx.buyer_id, name: 'Buyer' },
