@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
             updated_at: new Date().toISOString(),
           })
           .eq('id', bodyTxRef)
-          .eq('status', EscrowStatus.PENDING); // optimistic lock — skip if already updated
+          .in('status', [EscrowStatus.PENDING, 'creating_escrow', 'reconciling']);
 
         if (existing.item_id) {
           if (existing.item_type === 'catalog_item') {
@@ -230,7 +230,7 @@ export async function POST(request: NextRequest) {
         updated_at: new Date().toISOString(),
       })
       .eq('id', txRef)
-      .eq('status', EscrowStatus.PENDING)
+      .in('status', [EscrowStatus.PENDING, 'creating_escrow', 'reconciling'])
       .select();
 
     if (updateError) {

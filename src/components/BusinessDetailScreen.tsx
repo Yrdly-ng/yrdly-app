@@ -266,9 +266,9 @@ export function BusinessDetailScreen({
     }
   };
 
-  const filteredCatalogItems = showOutOfStock
-    ? catalogItems
-    : catalogItems.filter(item => item.in_stock);
+  const filteredCatalogItems = isOwner
+    ? (showOutOfStock ? catalogItems : catalogItems.filter(item => item.in_stock && (item.quantity === undefined || item.quantity > 0)))
+    : catalogItems.filter(item => item.in_stock && (item.quantity === undefined || item.quantity > 0));
 
   return (
     <div className="flex flex-col min-h-full bg-[var(--yrdly-dark)] font-yrdly-body text-[var(--yrdly-text-primary)]">
@@ -451,17 +451,6 @@ export function BusinessDetailScreen({
                     />
                   </div>
                 )}
-              </div>
-            )}
-
-            {/* Customer Controls */}
-            {!isOwner && catalogItems.some(item => !item.in_stock) && (
-              <div className="mb-4 flex items-center justify-between p-3 border rounded-lg">
-                <span className="text-sm font-medium">Show Out of Stock Items</span>
-                <Switch
-                  checked={showOutOfStock}
-                  onCheckedChange={setShowOutOfStock}
-                />
               </div>
             )}
 
