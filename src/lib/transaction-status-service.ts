@@ -84,7 +84,9 @@ export class TransactionStatusService {
         throw new Error('Unauthorized: You can only update your own transactions');
       }
 
-      if (transaction.status !== EscrowStatus.PAID) {
+      const currentStatus = (transaction.status || '').toLowerCase();
+      const validPaidStatuses = ['paid', 'ongoing', 'opened'];
+      if (!validPaidStatuses.includes(currentStatus)) {
         throw new Error('Transaction must be paid before marking as shipped');
       }
 

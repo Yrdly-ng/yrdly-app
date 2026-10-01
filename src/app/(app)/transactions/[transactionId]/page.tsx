@@ -234,6 +234,8 @@ export default function TransactionDetailsPage() {
     const meta: Record<string, { label: string; color: string; icon: any }> = {
       pending: { label: 'Awaiting Payment', color: '#FFB648', icon: Clock },
       paid: { label: 'Paid — Awaiting Handover', color: '#00D26A', icon: Package },
+      ongoing: { label: 'Paid — Awaiting Handover', color: '#00D26A', icon: Package },
+      opened: { label: 'Paid — Awaiting Handover', color: '#00D26A', icon: Package },
       shipped: { label: 'Item Sent / Handed Over', color: '#64B5F6', icon: Truck },
       delivered: { label: 'Delivered', color: '#00D26A', icon: CheckCircle },
       completed: { label: 'Completed', color: '#00D26A', icon: CheckCircle },
@@ -282,9 +284,8 @@ export default function TransactionDetailsPage() {
     : [];
   const thumb = imagesArr[0] || '';
 
-  const currentStepIndex = STATUS_ORDER.indexOf(statusStr);
-
-  const canMarkSent = isSeller && statusStr === 'paid';
+  const isPaidState = ['paid', 'ongoing', 'opened'].includes(statusStr) || Boolean(tx.paid_at);
+  const canMarkSent = isSeller && isPaidState && !['shipped', 'delivered', 'completed', 'disputed', 'cancelled'].includes(statusStr);
   const canConfirmReceipt = isBuyer && (statusStr === 'shipped' || statusStr === 'delivered');
 
   const shippedTime = tx.shipped_at ? new Date(tx.shipped_at).getTime() : 0;
