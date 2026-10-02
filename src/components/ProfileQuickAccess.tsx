@@ -14,25 +14,25 @@ interface ProfileQuickAccessProps {
 export function ProfileQuickAccess({ onOpenStore, hasBusiness }: ProfileQuickAccessProps) {
   const items = [
     {
-      label: 'My Tickets',
+      label: 'Tickets',
       icon: Ticket,
       href: '/my-tickets',
       color: 'text-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/20',
     },
     {
-      label: 'My Events',
+      label: 'Events',
       icon: Calendar,
       href: '/my-events',
       color: 'text-blue-500 bg-blue-500/10 hover:bg-blue-500/20',
     },
     {
-      label: hasBusiness ? 'My Business' : 'Create Business',
+      label: hasBusiness ? 'Business' : 'Create Business',
       icon: Store,
       onClick: onOpenStore,
       color: 'text-purple-500 bg-purple-500/10 hover:bg-purple-500/20',
     },
     {
-      label: 'My Listings',
+      label: 'Listings',
       icon: Tag,
       href: '/my-listings',
       color: 'text-amber-500 bg-amber-500/10 hover:bg-amber-500/20',

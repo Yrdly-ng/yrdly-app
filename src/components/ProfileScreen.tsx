@@ -19,6 +19,7 @@ import { ActivityIndicator } from "@/components/ActivityIndicator";
 import Image from "next/image";
 import { ProfileQuickAccess } from "./ProfileQuickAccess";
 import { CreateBusinessDialog } from "./CreateBusinessDialog";
+import { BusinessCreatorOnboarding } from "./BusinessCreatorOnboarding";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { ProfilePostGridItem } from "@/components/ProfilePostGridItem";
 import { RightRail } from "@/components/RightRail";
@@ -129,6 +130,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   const [isCreateBusinessOpen, setIsCreateBusinessOpen] = useState(false);
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [hasBusiness, setHasBusiness] = useState(false);
   const [userBusinessId, setUserBusinessId] = useState<string | null>(null);
 
@@ -516,8 +518,16 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
                 } else if (hasBusiness) {
                   router.push('/businesses');
                 } else {
-                  setIsCreateBusinessOpen(true);
+                  setIsOnboardingOpen(true);
                 }
+              }}
+            />
+            <BusinessCreatorOnboarding
+              isOpen={isOnboardingOpen}
+              onClose={() => setIsOnboardingOpen(false)}
+              onContinue={() => {
+                setIsOnboardingOpen(false);
+                setIsCreateBusinessOpen(true);
               }}
             />
             <CreateBusinessDialog open={isCreateBusinessOpen} onOpenChange={setIsCreateBusinessOpen} />
@@ -617,7 +627,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
             } else if (hasBusiness) {
               router.push('/businesses');
             } else {
-              setIsCreateBusinessOpen(true);
+              setIsOnboardingOpen(true);
             }
           }}
           isOwnProfile={actualIsOwnProfile}
