@@ -68,13 +68,16 @@ export class PayoutService {
 
       let availableBalance = Math.max(0, totalEarnings - completedPayouts - pendingPayouts);
 
-      // Cross-reference with Payluk customer wallet balance if seller has Payluk ID
+      // The Payluk wallet balance is the authoritative source of truth.
+      // The DB seller_amount may not account for Payluk's escrow fees, so the wallet
+      // will always have the real amount the seller can actually withdraw.
       try {
         const sellerPaylukId = await getPaylukCustomerId(sellerId);
         if (sellerPaylukId) {
           const wallet = await PaylukService.getCustomerWallet(sellerPaylukId);
           if (typeof wallet.mainBalance === 'number' && !isNaN(wallet.mainBalance)) {
-            availableBalance = Math.min(availableBalance, wallet.mainBalance);
+            // Use the Payluk wallet balance directly — it's what the seller actually has.
+            availableBalance = wallet.mainBalance;
           }
         }
       } catch (wErr) {
@@ -94,14 +97,16 @@ export class PayoutService {
   }
 
   /**
-   * Initiate automatic payout after transaction completion
+   * Initiate automatic payout after transaction completion.
+   * Uses the seller's actual Payluk wallet balance as the payout amount,
+   * NOT the DB seller_amount (which may be inflated if Payluk took an escrow fee).
    */
   static async initiateAutoPayout(transactionId: string): Promise<void> {
     try {
       // Get transaction details
       const { data: transaction, error: fetchError } = await supabaseAdmin
         .from('escrow_transactions')
-        .select('seller_id, seller_amount, status')
+        .select('seller_id, seller_amount, status, payment_provider')
         .eq('id', transactionId)
         .single();
 
@@ -133,11 +138,32 @@ export class PayoutService {
         return;
       }
 
+      // For Payluk transactions, use the actual Payluk wallet balance as the
+      // payout amount. The DB seller_amount = item price, but Payluk takes an
+      // escrow release fee, so the wallet has less than seller_amount.
+      let payoutAmount = transaction.seller_amount;
+
+      if (transaction.payment_provider === 'payluk') {
+        try {
+          const sellerPaylukId = await getPaylukCustomerId(transaction.seller_id);
+          if (sellerPaylukId) {
+            const wallet = await PaylukService.getCustomerWallet(sellerPaylukId);
+            const walletBalance = wallet.mainBalance ?? 0;
+            if (walletBalance > 0 && walletBalance < payoutAmount) {
+              console.log(`[PayoutService] Auto-payout: Adjusting amount from ₦${payoutAmount} to ₦${walletBalance} (Payluk wallet balance after escrow fee)`);
+              payoutAmount = walletBalance;
+            }
+          }
+        } catch (walletErr) {
+          console.warn('[PayoutService] Auto-payout: Could not check Payluk wallet, using DB seller_amount:', walletErr);
+        }
+      }
+
       // Create payout request
       const payoutData = {
         seller_id: transaction.seller_id,
         account_id: sellerAccount.id,
-        amount: transaction.seller_amount,
+        amount: payoutAmount,
         status: 'pending',
         requested_at: new Date().toISOString(),
       };
@@ -233,22 +259,37 @@ export class PayoutService {
 
           // Fetch current available balance before this payout request was deducted
           const currentBalance = await this.getSellerBalance(payoutRequest.seller_id);
+          // Since getSellerBalance already uses Payluk wallet as the source of truth,
+          // the available balance here reflects what the seller can ACTUALLY withdraw.
+          // Add back the pending payout amount since it was already subtracted.
           const yrdlyAvailableBalance = currentBalance.availableBalance + payoutRequest.amount;
 
           // Check if seller has a Payluk customer ID
           const sellerPaylukId = await getPaylukCustomerId(payoutRequest.seller_id);
 
           if (sellerPaylukId) {
-            console.log(`[PayoutService] Initiating Payluk bank withdrawal for seller ${payoutRequest.seller_id}...`);
+            // Use the Payluk wallet balance as the withdrawal amount, NOT the payout
+            // request amount from the DB. The DB seller_amount may be inflated because
+            // it doesn't account for Payluk's escrow release fee.
+            const wallet = await PaylukService.getCustomerWallet(sellerPaylukId);
+            const paylukWalletBalance = wallet.mainBalance ?? 0;
+            // Withdraw the lesser of: the requested amount, or what's actually in the wallet
+            const withdrawalAmount = Math.min(payoutRequest.amount, paylukWalletBalance);
+
+            if (withdrawalAmount <= 0) {
+              throw new Error(`Seller Payluk wallet balance is ₦${paylukWalletBalance}. Nothing to withdraw.`);
+            }
+
+            console.log(`[PayoutService] Initiating Payluk bank withdrawal for seller ${payoutRequest.seller_id}. Requested: ₦${payoutRequest.amount}, Payluk wallet: ₦${paylukWalletBalance}, Withdrawing: ₦${withdrawalAmount}`);
             const paylukResult = await PaylukService.withdrawToBank({
               sellerPaylukCustomerId: sellerPaylukId,
-              amount: payoutRequest.amount,
+              amount: withdrawalAmount,
               bankCode,
               bankName,
               accountNumber,
               accountName,
               reference: `payout-${payoutRequestId}`,
-              yrdlyAvailableBalance,
+              yrdlyAvailableBalance: paylukWalletBalance,
             });
 
             transferSuccess = paylukResult.success;

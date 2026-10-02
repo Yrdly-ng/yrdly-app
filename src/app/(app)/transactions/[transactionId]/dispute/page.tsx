@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/use-supabase-auth";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Camera, X, AlertTriangle } from "lucide-react";
 import { DisputeService, DisputeEvidence } from "@/lib/dispute-service";
+import { StorageService } from "@/lib/storage-service";
 
 /* ── Design tokens ─────────────────────────────────── */
 const BG    = "var(--c-bg)";
@@ -31,37 +32,54 @@ export default function DisputePage() {
 
   const [selected, setSelected] = useState(0);
   const [detail, setDetail]     = useState("");
-  const [images, setImages]     = useState<string[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
   const [loading, setLoading]   = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleImageAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
-    Array.from(files).forEach((f) => {
-      const url = URL.createObjectURL(f);
-      setImages((prev) => [...prev.slice(0, 4), url]);
-    });
+    const fileList = Array.from(files);
+    setSelectedFiles((prev) => [...prev, ...fileList].slice(0, 5));
+    const newPreviews = fileList.map((f) => URL.createObjectURL(f));
+    setPreviews((prev) => [...prev, ...newPreviews].slice(0, 5));
+  };
+
+  const removeImage = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, idx) => idx !== index));
+    setPreviews((prev) => prev.filter((_, idx) => idx !== index));
   };
 
   const handleSubmit = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     try {
+      const uploadedUrls: string[] = [];
+      for (const file of selectedFiles) {
+        const { url, error } = await StorageService.uploadDisputeEvidence(transactionId, file);
+        if (url) {
+          uploadedUrls.push(url);
+        } else {
+          console.error("Error uploading evidence photo:", error);
+        }
+      }
+
       const reason = `${REASONS[selected]}${detail ? `: ${detail}` : ""}`;
       const evidence: DisputeEvidence = {
         description: reason,
-        photos: images,
+        photos: uploadedUrls,
       };
       await DisputeService.openDispute(transactionId, user.id, reason, evidence);
       toast({ title: "Dispute submitted", description: "Our team will review it within 24–48 hours." });
       router.push(`/transactions/${transactionId}`);
-    } catch {
+    } catch (err) {
+      console.error("Dispute submission error:", err);
       toast({ title: "Error", description: "Could not submit dispute. Try again.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
-  }, [user, transactionId, toast, router, selected, detail, images]);
+  }, [user, transactionId, toast, router, selected, detail, selectedFiles]);
 
   return (
     <div className="bg-background text-on-surface font-body min-h-dvh pb-10">
@@ -148,14 +166,15 @@ export default function DisputePage() {
           <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImageAdd} />
 
           {/* Thumbnail Grid */}
-          {images.length > 0 && (
+          {previews.length > 0 && (
             <div className="grid grid-cols-3 gap-3">
-              {images.map((src, i) => (
+              {previews.map((src, i) => (
                 <div key={i} className="relative aspect-square rounded-[11px] overflow-hidden group">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={src} alt="Evidence" className="w-full h-full object-cover" />
                   <button 
-                    onClick={() => setImages((prev) => prev.filter((_, idx) => idx !== i))}
+                    type="button"
+                    onClick={() => removeImage(i)}
                     className="absolute top-1 right-1 w-6 h-6 bg-black/60 backdrop-blur-md rounded-full flex items-center justify-center text-primary-foreground"
                   >
                     <X className="w-3 h-3" />

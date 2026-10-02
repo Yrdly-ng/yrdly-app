@@ -148,16 +148,51 @@ export default function AdminDisputeReviewPage() {
           {evidence.photos && evidence.photos.length > 0 && (
             <div>
               <h4 className="font-medium mb-2">Evidence Photos</h4>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {evidence.photos.map((photo, index) => (
-                  <div key={index} className="relative aspect-square rounded-lg overflow-hidden">
-                    <Image
-                      src={photo}
-                      alt={`Evidence ${index + 1}`} fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                      className="object-cover"
-                    />
-                  </div>
-                ))}
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {evidence.photos.map((photo, index) => {
+                  const isBlob = typeof photo === 'string' && photo.startsWith('blob:');
+                  if (isBlob) {
+                    return (
+                      <div key={index} className="aspect-square rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 flex flex-col items-center justify-center text-center">
+                        <AlertTriangle className="h-6 w-6 text-amber-500 mb-1" />
+                        <span className="text-xs text-amber-400 font-medium">Unsubmitted Local Blob</span>
+                        <span className="text-[10px] text-muted-foreground mt-1">Photo was not uploaded to server</span>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <a
+                      key={index}
+                      href={photo}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group relative aspect-square rounded-lg overflow-hidden border border-border bg-muted block"
+                      title="Click to view full image"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={photo}
+                        alt={`Evidence ${index + 1}`}
+                        className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          target.style.display = 'none';
+                          const parent = target.parentElement;
+                          if (parent && !parent.querySelector('.img-error-fallback')) {
+                            const fallback = document.createElement('div');
+                            fallback.className = 'img-error-fallback w-full h-full flex flex-col items-center justify-center text-muted-foreground text-xs p-2 text-center';
+                            fallback.innerHTML = '⚠️ Image unavailable';
+                            parent.appendChild(fallback);
+                          }
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs gap-1 font-medium">
+                        <ExternalLink className="h-4 w-4" /> View Full
+                      </div>
+                    </a>
+                  );
+                })}
               </div>
             </div>
           )}
