@@ -147,46 +147,46 @@ export default function AdminDisputesPage() {
         </div>
 
         {/* Summary Stats Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
-          <div className="p-3.5 sm:p-4 rounded-2xl border border-amber-500/20 bg-amber-500/5 backdrop-blur-xl">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="p-3.5 sm:p-4 rounded-2xl border border-amber-500/20 bg-amber-500/5 backdrop-blur-xl min-w-0">
             <p className="text-2xl font-extrabold text-amber-400 font-yrdly-display">
               {disputes.filter(d => d.status === 'open').length}
             </p>
-            <p className="text-xs text-[var(--yrdly-label)] font-medium mt-0.5">Open Disputes</p>
+            <p className="text-xs text-[var(--yrdly-label)] font-medium mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">Open Disputes</p>
           </div>
-          <div className="p-3.5 sm:p-4 rounded-2xl border border-blue-500/20 bg-blue-500/5 backdrop-blur-xl">
+          <div className="p-3.5 sm:p-4 rounded-2xl border border-blue-500/20 bg-blue-500/5 backdrop-blur-xl min-w-0">
             <p className="text-2xl font-extrabold text-blue-400 font-yrdly-display">
               {disputes.filter(d => d.status === 'under_review').length}
             </p>
-            <p className="text-xs text-[var(--yrdly-label)] font-medium mt-0.5">Under Review</p>
+            <p className="text-xs text-[var(--yrdly-label)] font-medium mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">Under Review</p>
           </div>
-          <div className="p-3.5 sm:p-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 backdrop-blur-xl">
+          <div className="p-3.5 sm:p-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 backdrop-blur-xl min-w-0">
             <p className="text-2xl font-extrabold text-emerald-400 font-yrdly-display">
               {disputes.filter(d => d.status === 'resolved').length}
             </p>
-            <p className="text-xs text-[var(--yrdly-label)] font-medium mt-0.5">Resolved</p>
+            <p className="text-xs text-[var(--yrdly-label)] font-medium mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">Resolved</p>
           </div>
-          <div className="p-3.5 sm:p-4 rounded-2xl border border-zinc-500/20 bg-zinc-500/5 backdrop-blur-xl">
+          <div className="p-3.5 sm:p-4 rounded-2xl border border-zinc-500/20 bg-zinc-500/5 backdrop-blur-xl min-w-0">
             <p className="text-2xl font-extrabold text-zinc-400 font-yrdly-display">
               {disputes.filter(d => d.status === 'closed').length}
             </p>
-            <p className="text-xs text-[var(--yrdly-label)] font-medium mt-0.5">Closed</p>
+            <p className="text-xs text-[var(--yrdly-label)] font-medium mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">Closed</p>
           </div>
         </div>
       </div>
 
       {/* Filters Bar */}
-      <div className="p-3.5 rounded-2xl border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] backdrop-blur-xl shadow-sm flex flex-col sm:flex-row gap-3 items-center justify-between">
-        <div className="relative w-full sm:flex-1">
+      <div className="p-3.5 rounded-2xl border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] backdrop-blur-xl shadow-sm flex flex-col md:flex-row gap-3 items-center justify-between">
+        <div className="relative w-full md:flex-1 min-w-0">
           <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[var(--yrdly-label)]" />
           <Input
-            placeholder="Search by title or reason..."
+            placeholder="Search title or reason..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 h-10 rounded-xl border-[var(--yrdly-glass-border)] bg-background/40 text-foreground placeholder:text-[var(--yrdly-label)] text-xs sm:text-sm focus-visible:ring-primary/40"
+            className="pl-10 h-10 rounded-xl border-[var(--yrdly-glass-border)] bg-background/40 text-foreground placeholder:text-[var(--yrdly-label)] text-xs sm:text-sm focus-visible:ring-primary/40 w-full"
           />
         </div>
-        <div className="w-full sm:w-48 shrink-0">
+        <div className="w-full md:w-44 shrink-0">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="h-10 rounded-xl border-[var(--yrdly-glass-border)] bg-background/40 text-foreground text-xs sm:text-sm">
               <SelectValue placeholder="Filter by status" />
@@ -236,11 +236,11 @@ export default function AdminDisputesPage() {
             return (
               <div 
                 key={dispute.id} 
-                className="p-4 rounded-2xl border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] backdrop-blur-xl shadow-sm transition-all hover:border-primary/40 space-y-3.5"
+                className="p-4 rounded-2xl border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] backdrop-blur-xl shadow-sm transition-all hover:border-primary/40 space-y-3.5 overflow-hidden"
               >
                 {/* Header Row: Status Badge + Tx ID + Review Button */}
                 <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 shrink-0">
                     {getStatusMeta(dispute.status)}
                     <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded-md bg-muted/60 text-[var(--yrdly-label)] border border-border/40">
                       #{shortTxId}
@@ -250,7 +250,7 @@ export default function AdminDisputesPage() {
                   <Button 
                     onClick={() => handleViewDispute(dispute.id)}
                     size="sm"
-                    className="h-9 px-4 rounded-xl font-bold bg-primary text-primary-foreground hover:bg-primary/90 text-xs flex items-center gap-1.5 shadow-sm ml-auto"
+                    className="h-9 px-4 rounded-xl font-bold bg-primary text-primary-foreground hover:bg-primary/90 text-xs flex items-center gap-1.5 shadow-sm shrink-0 ml-auto"
                   >
                     Review Dispute
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -258,8 +258,8 @@ export default function AdminDisputesPage() {
                 </div>
 
                 {/* Main Row: Thumbnail + Item Details */}
-                <div className="flex items-start gap-3.5">
-                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-muted/50 border border-border/40 flex-shrink-0 overflow-hidden relative flex items-center justify-center">
+                <div className="flex items-start gap-3.5 min-w-0">
+                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-muted/50 border border-border/40 shrink-0 overflow-hidden relative flex items-center justify-center">
                     {thumb ? (
                       <Image
                         src={thumb}
@@ -272,20 +272,20 @@ export default function AdminDisputesPage() {
                     )}
                   </div>
 
-                  <div className="flex-1 min-w-0 space-y-1">
+                  <div className="flex-1 min-w-0 space-y-1.5">
                     <div className="flex items-baseline justify-between gap-2 flex-wrap">
-                      <h3 className="font-bold text-sm sm:text-base text-foreground font-yrdly-display line-clamp-1">
+                      <h3 className="font-bold text-sm sm:text-base text-foreground font-yrdly-display line-clamp-1 min-w-0">
                         {item?.title || item?.text || "Item Inquiry / Purchase"}
                       </h3>
-                      <span className="font-bold text-sm sm:text-base text-[#00D26A]">
+                      <span className="font-bold text-sm sm:text-base text-[#00D26A] shrink-0">
                         ₦{amount.toLocaleString()}
                       </span>
                     </div>
 
                     {/* Reason Banner */}
-                    <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center gap-2">
-                      <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-400" />
-                      <span className="truncate">
+                    <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-start gap-2">
+                      <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-400 mt-0.5" />
+                      <span className="break-words leading-relaxed min-w-0">
                         <strong className="font-semibold text-amber-200">Reason:</strong> {reasonText}
                       </span>
                     </div>
@@ -293,23 +293,23 @@ export default function AdminDisputesPage() {
                 </div>
 
                 {/* Footer Metadata Row */}
-                <div className="pt-2 border-t border-border/40 flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--yrdly-label)]">
-                  <div className="flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5" />
+                <div className="pt-2.5 border-t border-border/40 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-xs text-[var(--yrdly-label)] w-full">
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Calendar className="w-3.5 h-3.5 shrink-0" />
                     <span>Opened {new Date(createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1">
-                      <User className="w-3.5 h-3.5 text-primary" />
-                      <span className="text-[var(--yrdly-label)]">Buyer:</span>
-                      <strong className="text-foreground font-semibold truncate max-w-[100px] sm:max-w-[140px]">{buyerName}</strong>
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0 max-w-full">
+                    <div className="flex items-center gap-1 min-w-0">
+                      <User className="w-3.5 h-3.5 text-primary shrink-0" />
+                      <span className="text-[var(--yrdly-label)] shrink-0">Buyer:</span>
+                      <strong className="text-foreground font-semibold truncate max-w-[120px] sm:max-w-[180px]">{buyerName}</strong>
                     </div>
-                    <span className="text-muted-foreground">•</span>
-                    <div className="flex items-center gap-1">
-                      <Store className="w-3.5 h-3.5 text-blue-400" />
-                      <span className="text-[var(--yrdly-label)]">Seller:</span>
-                      <strong className="text-foreground font-semibold truncate max-w-[100px] sm:max-w-[140px]">{sellerName}</strong>
+                    <span className="text-muted-foreground hidden sm:inline">•</span>
+                    <div className="flex items-center gap-1 min-w-0">
+                      <Store className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                      <span className="text-[var(--yrdly-label)] shrink-0">Seller:</span>
+                      <strong className="text-foreground font-semibold truncate max-w-[120px] sm:max-w-[180px]">{sellerName}</strong>
                     </div>
                   </div>
                 </div>
