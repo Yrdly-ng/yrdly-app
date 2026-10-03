@@ -10,6 +10,7 @@ package-lock.json
 
 # testing
 /coverage
+.e2e/
 
 # next.js
 .next/
