@@ -9,7 +9,7 @@ import { BusinessesScreen } from "@/components/BusinessesScreen";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMarketplaceActions } from "@/hooks/use-marketplace-actions";
 import { AlertService } from "@/lib/alert-service";
-import { SlidersHorizontal, Compass, ShoppingBag, Calendar, Briefcase } from "lucide-react";
+import { SlidersHorizontal, Compass, ShoppingBag, Calendar, Briefcase, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LocationChip } from "@/components/LocationChip";
 
@@ -17,13 +17,14 @@ const FONT = "var(--font-work-sans)";
 const RALEWAY = "var(--font-raleway)";
 const GREEN = "hsl(var(--primary))";
 
-type ExploreTab = "discover" | "marketplace" | "events" | "businesses";
+type ExploreTab = "discover" | "marketplace" | "events" | "businesses" | "communities";
 
 const TABS: { key: ExploreTab; label: string; icon: any }[] = [
   { key: "discover", label: "Discover", icon: Compass },
   { key: "marketplace", label: "Marketplace", icon: ShoppingBag },
   { key: "events", label: "Events", icon: Calendar },
   { key: "businesses", label: "Business", icon: Briefcase },
+  { key: "communities", label: "Communities", icon: Users },
 ];
 
 function MarketplaceTab() {
@@ -58,7 +59,11 @@ function ExploreContent() {
   }, []);
 
   const selectTab = (tab: ExploreTab) => {
-    router.push(`/explore?tab=${tab}`, { scroll: false });
+    if (tab === "communities") {
+      router.push("/communities");
+    } else {
+      router.push(`/explore?tab=${tab}`, { scroll: false });
+    }
   };
 
   const tabContent = useMemo(() => {

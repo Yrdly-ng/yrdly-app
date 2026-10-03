@@ -35,7 +35,7 @@ const navItems = [
     href: "/explore",
     label: "Explore",
     icon: Compass,
-    matchPaths: ["/explore", "/marketplace", "/events", "/businesses"],
+    matchPaths: ["/explore", "/marketplace", "/events", "/businesses", "/communities"],
   },
   { href: "/map", label: "Map", icon: MapPin },
   { href: "/communities", label: "Communities", icon: UsersThree, matchPaths: ["/communities"] },
