@@ -9,10 +9,18 @@ export const revalidate = 60;
 const SITE_URL = 'https://app.yrdly.ng';
 const FALLBACK_IMAGE = `${SITE_URL}/logo.png`;
 
+// Keeps line breaks (like X does) but trims stray whitespace and clips long text
 function clip(text: string, max: number) {
-  const clean = text.replace(/\s+/g, ' ').trim();
+  const clean = text
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
   return clean.length > max ? clean.slice(0, max - 1).trimEnd() + '\u2026' : clean;
 }
+
+// false = author avatar as a small square thumbnail on the left (exactly like the X preview)
+// true  = use the post photo when there is one (WhatsApp shows it as a big image on top)
+const USE_POST_PHOTO = false;
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
@@ -25,7 +33,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
   const { data: post } = await supabase
     .from('posts')
-    .select('*, user:users!posts_user_id_fkey(name, avatar_url)')
+    .select('*, user:users!posts_user_id_fkey(name, username, avatar_url)')
     .eq('id', id)
     .maybeSingle();
 
@@ -37,14 +45,16 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     };
   }
 
-  // X-style preview: "<Author> on Yrdly", the post text, and the post photo
-  // (or the author's avatar when the post has no photo)
+  // X-style preview: "<Name> (@username) on Yrdly", the full post text,
+  // and the author's avatar as a small thumbnail
   const author = post.user?.name || post.author_name || 'A neighbor';
-  const title = post.title ? clip(post.title, 70) : `${author} on Yrdly`;
-  const description = post.text ? clip(post.text, 200) : 'See this post on Yrdly';
+  const handle = post.user?.username ? ` (@${post.user.username})` : '';
+  const title = `${author}${handle} on Yrdly`;
+  const description = clip(post.text || post.title || 'See this post on Yrdly', 280);
 
   const postImage = post.image_urls?.[0] || post.image_url;
-  const image = postImage || post.user?.avatar_url || FALLBACK_IMAGE;
+  const image =
+    (USE_POST_PHOTO && postImage) || post.user?.avatar_url || FALLBACK_IMAGE;
 
   return {
     title,
@@ -59,7 +69,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       images: [image],
     },
     twitter: {
-      card: postImage ? 'summary_large_image' : 'summary',
+      card: USE_POST_PHOTO && postImage ? 'summary_large_image' : 'summary',
       title,
       description,
       images: [image],

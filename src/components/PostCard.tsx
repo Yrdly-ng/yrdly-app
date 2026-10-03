@@ -849,35 +849,13 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
   };
 
   const handleShare = async () => {
+    // Share ONLY the link. Adding text/title/files makes WhatsApp send a plain
+    // message or an image instead of unfurling the link into the preview card.
     const url = `${window.location.origin}/posts/${post.id}`;
-    const imageUrls = post.image_urls?.length ? post.image_urls : post.image_url ? [post.image_url] : [];
-    const imageUrl = imageUrls[0];
 
     if (navigator.share) {
       try {
-        if (imageUrl && navigator.canShare) {
-          try {
-            const resp = await fetch(imageUrl);
-            const blob = await resp.blob();
-            const ext = blob.type.split("/")[1] || "jpg";
-            const file = new File([blob], `yrdly-post.${ext}`, { type: blob.type });
-            const shareData = {
-              title: post.title || "Post on Yrdly",
-              text: post.text ? post.text.slice(0, 100) : "",
-              url,
-              files: [file],
-            };
-            if (navigator.canShare(shareData)) {
-              await navigator.share(shareData);
-              return;
-            }
-          } catch {}
-        }
-        await navigator.share({
-          title: post.title || "Post on Yrdly",
-          text: post.text ? post.text.slice(0, 100) : "",
-          url,
-        });
+        await navigator.share({ url });
       } catch {}
     } else {
       try {
