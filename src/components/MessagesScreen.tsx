@@ -442,29 +442,19 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
     const loadFriends = async () => {
       setFriendsLoading(true);
       try {
-        const [{ data: followingData }, { data: followersData }] = await Promise.all([
-          supabase.from("followers").select("following_id").eq("follower_id", user.id),
-          supabase.from("followers").select("follower_id").eq("following_id", user.id),
-        ]);
-
-        const followingSet = new Set((followingData || []).map((f) => f.following_id));
-        const followerSet = new Set((followersData || []).map((f) => f.follower_id));
-
-        const connectionIds = Array.from(
-          new Set([...Array.from(followingSet), ...Array.from(followerSet)])
-        ).filter((id) => id && id !== user.id);
-
-        if (connectionIds.length > 0) {
+        const { data: userData } = await supabase.from("users").select("friends").eq("id", user.id).single();
+        const friendIds = userData?.friends || [];
+        if (friendIds.length > 0) {
           const { data: friendsData } = await supabase
             .from("users")
-            .select("id, name, avatar_url, username")
-            .in("id", connectionIds);
+            .select("id, name, avatar_url")
+            .in("id", friendIds);
           setFriends(friendsData || []);
         } else {
           setFriends([]);
         }
       } catch (e) {
-        console.error("Error loading connections:", e);
+        console.error(e);
       } finally {
         setFriendsLoading(false);
       }

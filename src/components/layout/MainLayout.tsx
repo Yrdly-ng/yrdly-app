@@ -267,7 +267,7 @@ export function MainLayout({ children }: MainLayoutProps) {
           onProfile={() => setShowProfile(!showProfile)}
           onCreate={() => setCreateMenuOpen(true)}
           profile={profile}
-          navItems={navItems}
+          navItems={navItems.filter((i) => i.href !== "/profile")}
           pathname={pathname}
         />
       )}

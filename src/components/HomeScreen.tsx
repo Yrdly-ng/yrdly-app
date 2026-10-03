@@ -10,12 +10,9 @@ import { PostSkeleton } from "@/components/PostSkeleton";
 import { LocationChip } from "@/components/LocationChip";
 import { EventCreatorOnboarding } from "@/components/events/EventCreatorOnboarding";
 import { MarketplaceCreatorOnboarding } from "@/components/marketplace/MarketplaceCreatorOnboarding";
-import { Map, Bell, AlertTriangle, X, TrendingUp, CalendarDays, UserPlus, LayoutGrid, Heart, ArrowUp, Plus } from "lucide-react";
+import { Map, Bell, AlertTriangle, X, TrendingUp, LayoutGrid, Heart, ArrowUp } from "lucide-react";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
-import { useCommunityConnections } from "@/hooks/use-community-connections";
-import { getPublishedEvents } from "@/lib/event-service";
-import type { Event } from "@/types/events";
 
 const GREEN = "#82DB7E";
 
@@ -78,7 +75,6 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
   const [activeAlerts, setActiveAlerts] = useState<Alert[]>([]);
 
   // Sidebar data
-  const { discoverUsers, followUser } = useCommunityConnections();
   const [trendingPosts, setTrendingPosts] = useState<
     { id: string; category: string; snippet: string; image: string; like_count: number }[]
   >([]);
@@ -87,7 +83,6 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
   const trendingPrevTops = useRef<Record<string, number>>({});
   const trendingPrevRanks = useRef<Record<string, number>>({});
   const [risingTrendingIds, setRisingTrendingIds] = useState<Set<string>>(new Set());
-  const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
   const [recentListings, setRecentListings] = useState<
     { id: string; title: string; price: number; image: string }[]
   >([]);
@@ -186,31 +181,6 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
       }
     });
   }, [trendingPosts]);
-
-  useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        const events = await getPublishedEvents({ limit: 3 });
-        setUpcomingEvents(events);
-      } catch (e) {
-        console.error("Error fetching upcoming events:", e);
-      }
-    };
-    fetchEvents();
-
-    const ch = supabase
-      .channel(`home_upcoming_events_${Math.random().toString(36).substring(2, 7)}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "events" },
-        fetchEvents
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(ch);
-    };
-  }, []);
 
   useEffect(() => {
     const fetchListings = async () => {
@@ -478,8 +448,8 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
 
     {/* ── Right Sidebar (fixed in place, does not move while the feed scrolls) ── */}
     <div className="hidden lg:block relative shrink-0">
-      <aside className="sticky top-[80px] md:top-[100px] flex min-w-0 w-full max-w-full flex-col gap-4 overflow-x-hidden font-yrdly-body items-start overflow-y-auto max-h-[calc(100dvh-100px)] pb-6 scrollbar-hide">
-      <div className="rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-5 shadow-sm transition-all hover:border-primary/40 hover:shadow-md">
+      <aside className="sticky top-6 flex min-w-0 w-full max-w-full flex-col gap-4 overflow-x-hidden font-yrdly-body items-start overflow-y-auto max-h-[calc(100dvh-24px)] pb-6 scrollbar-hide">
+      <div className="h-[300px] w-full overflow-hidden rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-5 shadow-sm transition-all hover:border-primary/40 hover:shadow-md">
         <div className="flex items-center gap-3 mb-4">
           <span
             className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
@@ -528,7 +498,7 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
         )}
       </div>
 
-      <div className="rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-5 shadow-sm transition-all hover:border-primary/40 hover:shadow-md">
+      <div className="h-[300px] w-full overflow-hidden rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-5 shadow-sm transition-all hover:border-primary/40 hover:shadow-md">
         <div className="flex items-center gap-3 mb-4">
           <span
             className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
@@ -560,103 +530,6 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
           ))
         ) : (
           <p className="text-xs text-[var(--yrdly-label)]">No listings yet.</p>
-        )}
-      </div>
-
-      <div className="rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-5 shadow-sm transition-all hover:border-primary/40 hover:shadow-md">
-        <div className="flex items-center gap-3 mb-4">
-          <span
-            className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-            style={{ backgroundColor: "#C97A2E22" }}
-          >
-            <CalendarDays size={17} style={{ color: "#C97A2E" }} />
-          </span>
-          <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--yrdly-label)] font-yrdly-display">
-            Upcoming events
-          </h3>
-        </div>
-        {upcomingEvents.length > 0 ? (
-          upcomingEvents.map((e: any) => {
-            const d = new Date(e.start_time);
-            const month = d.toLocaleString("en-US", { month: "short" }).toUpperCase();
-            const day = d.getDate();
-            return (
-              <div
-                key={e.id}
-                onClick={() => router.push(`/events/${e.id}`)}
-                className="flex gap-3.5 py-2.5 px-2 -mx-1 rounded-lg border-b border-[var(--yrdly-glass-border)] last:border-b-0 cursor-pointer transition-all hover:bg-[var(--yrdly-glass-border)]/40 hover:ring-1 hover:ring-inset hover:ring-primary/40"
-              >
-                <div
-                  className="text-xs font-bold text-center leading-tight rounded-lg px-2.5 py-1.5 h-fit flex-shrink-0"
-                  style={{ backgroundColor: "#C97A2E1A", color: "#C97A2E" }}
-                >
-                  {month}
-                  <br />
-                  <span className="text-base">{day}</span>
-                </div>
-                <div className="min-w-0">
-                  <div className="text-[15px] font-bold truncate">{e.title}</div>
-                  <div className="text-sm text-[var(--yrdly-label)] mt-0.5 truncate">
-                    📍 {e.location_address || "TBA"} · {e.attendee_count || 0} going
-                  </div>
-                </div>
-              </div>
-            );
-          })
-        ) : (
-          <p className="text-xs text-[var(--yrdly-label)]">No upcoming events nearby.</p>
-        )}
-      </div>
-
-      <div className="rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-5 shadow-sm transition-all hover:border-primary/40 hover:shadow-md">
-        <div className="flex items-center gap-3 mb-4">
-          <span
-            className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-            style={{ backgroundColor: "#2F6FA822" }}
-          >
-            <UserPlus size={17} style={{ color: "#2F6FA8" }} />
-          </span>
-          <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--yrdly-label)] font-yrdly-display">
-            People to follow
-          </h3>
-        </div>
-        {discoverUsers.length > 0 ? (
-          discoverUsers.slice(0, 3).map((u: any) => (
-            <div key={u.id} className="flex flex-col gap-2 py-2.5 px-2 -mx-1 rounded-lg transition-all hover:bg-[var(--yrdly-glass-border)]/40 hover:ring-1 hover:ring-inset hover:ring-primary/40">
-              <div className="flex items-center gap-3 min-w-0">
-                <div
-                  onClick={() => router.push(`/profile/${u.id}`)}
-                  className="w-11 h-11 rounded-full overflow-hidden flex items-center justify-center text-sm font-bold flex-shrink-0 ring-2 cursor-pointer"
-                  style={{ backgroundColor: "var(--yrdly-dark)", color: GREEN, ["--tw-ring-color" as any]: `${GREEN}40` }}
-                >
-                  {u.avatar_url ? (
-                    <Image src={u.avatar_url} alt={u.name} width={44} height={44} className="w-full h-full object-cover" unoptimized />
-                  ) : (
-                    u.name?.charAt(0)?.toUpperCase() || "?"
-                  )}
-                </div>
-                <span
-                  onClick={() => router.push(`/profile/${u.id}`)}
-                  className="flex-1 min-w-0 text-[15px] font-semibold leading-snug break-words cursor-pointer hover:underline"
-                >
-                  {u.name}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => followUser(u.id)}
-                  aria-label={`Follow ${u.name}`}
-                  className="w-7 h-7 rounded-full border flex items-center justify-center flex-shrink-0 transition-colors hover:text-black"
-                  style={{ borderColor: GREEN, color: GREEN }}
-                  onMouseEnter={(ev) => (ev.currentTarget.style.backgroundColor = GREEN)}
-                  onMouseLeave={(ev) => (ev.currentTarget.style.backgroundColor = "transparent")}
-                >
-                  <Plus size={15} strokeWidth={2.5} />
-                </button>
-              </div>
-            </div>
-          ))
-        ) : (
-          <p className="text-xs text-[var(--yrdly-label)]">No suggestions right now.</p>
         )}
       </div>
 

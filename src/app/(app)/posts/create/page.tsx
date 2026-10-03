@@ -18,10 +18,12 @@ import {
   Loader2,
   CheckCircle2,
   Clock,
+  Crop,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import ImageCropDialog from "@/components/ImageCropDialog";
 
 export default function CreatePostPage() {
   const router = useRouter();
@@ -37,6 +39,14 @@ export default function CreatePostPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [posted, setPosted] = useState(false);
   const [moderationStatus, setModerationStatus] = useState<"approved" | "pending">("approved");
+
+  // Crop flow: newly picked photos are queued and cropped one at a time.
+  const [cropQueue, setCropQueue] = useState<File[]>([]);
+  const [cropTotal, setCropTotal] = useState(0);
+  const [recropIndex, setRecropIndex] = useState<number | null>(null);
+
+  const currentCropFile: File | null =
+    recropIndex !== null ? imageFiles[recropIndex] ?? null : cropQueue[0] ?? null;
 
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
@@ -55,7 +65,37 @@ export default function CreatePostPage() {
       return;
     }
     const toAdd = selected.slice(0, available);
-    setImageFiles((prev) => [...prev, ...toAdd]);
+    setCropQueue(toAdd);
+    setCropTotal(toAdd.length);
+    // Allow picking the same file again later
+    e.target.value = "";
+  };
+
+  const handleCropConfirm = (cropped: File) => {
+    if (recropIndex !== null) {
+      setImageFiles((prev) => prev.map((f, i) => (i === recropIndex ? cropped : f)));
+      setRecropIndex(null);
+    } else {
+      setImageFiles((prev) => [...prev, cropped]);
+      setCropQueue((q) => q.slice(1));
+    }
+  };
+
+  const handleCropUseOriginal = (original: File) => {
+    if (recropIndex !== null) {
+      setRecropIndex(null);
+    } else {
+      setImageFiles((prev) => [...prev, original]);
+      setCropQueue((q) => q.slice(1));
+    }
+  };
+
+  const handleCropCancel = () => {
+    if (recropIndex !== null) {
+      setRecropIndex(null);
+    } else {
+      setCropQueue((q) => q.slice(1));
+    }
   };
 
   // Handle Video selection (max 3, 40MB limit each)
@@ -298,6 +338,17 @@ export default function CreatePostPage() {
 
   return (
     <div className="min-h-screen bg-background pb-12">
+      <ImageCropDialog
+        file={currentCropFile}
+        onConfirm={handleCropConfirm}
+        onUseOriginal={handleCropUseOriginal}
+        onCancel={handleCropCancel}
+        progressLabel={
+          recropIndex === null && cropTotal > 1
+            ? `Photo ${cropTotal - cropQueue.length + 1} of ${cropTotal}`
+            : undefined
+        }
+      />
       <div className="max-w-2xl mx-auto border-x border-border min-h-screen bg-card">
         {/* Header */}
         <div className="sticky top-0 z-30 bg-card/95 backdrop-blur border-b border-border px-4 py-3 flex items-center justify-between">
@@ -422,6 +473,15 @@ export default function CreatePostPage() {
                       fill
                       className="object-cover"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setRecropIndex(i)}
+                      disabled={posting}
+                      aria-label="Crop photo"
+                      className="absolute bottom-1.5 right-1.5 p-1 rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
+                    >
+                      <Crop className="w-3.5 h-3.5" />
+                    </button>
                     <button
                       type="button"
                       onClick={() => removeImage(i)}

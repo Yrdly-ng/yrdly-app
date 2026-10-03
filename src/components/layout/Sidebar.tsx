@@ -7,7 +7,6 @@ import {
   Compass,
   ChatCircle,
   User,
-  Gear,
   MagnifyingGlass,
   Bell,
   Plus,
@@ -51,7 +50,6 @@ export function Sidebar({
   navItems,
   pathname,
 }: SidebarProps) {
-  const isSettingsActive = pathname.startsWith("/settings");
   const { theme, setTheme, resolvedTheme } = useTheme();
   const isDark = (theme || resolvedTheme) === "dark";
 
@@ -101,19 +99,6 @@ export function Sidebar({
             </Link>
           );
         })}
-
-        <Link
-          href="/settings"
-          className={cn(
-            "flex items-center gap-3 px-3.5 py-3 rounded-2xl text-sm font-semibold transition-all duration-150",
-            isSettingsActive
-              ? "bg-accent text-accent-foreground shadow-sm font-bold"
-              : "text-[var(--c-text-muted)] hover:bg-secondary hover:text-foreground"
-          )}
-        >
-          <Gear size={22} weight={isSettingsActive ? "fill" : "regular"} className="flex-shrink-0" />
-          <span>Settings</span>
-        </Link>
       </nav>
 
       {/* "+ Create" Action Button */}

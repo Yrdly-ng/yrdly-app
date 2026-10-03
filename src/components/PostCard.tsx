@@ -14,6 +14,7 @@ import {
   MoreHorizontal,
   Trash2,
   Edit,
+  Flag,
   Volume2,
   VolumeX,
   RotateCw,
@@ -572,6 +573,8 @@ function EngagementRow({
 }
 
 /* ─── main PostCard ─────────────────────────────────────────────── */
+const POST_REPORT_REASONS = ["Spam", "Harassment or bullying", "Hate speech", "Inappropriate content", "Scam or fraud", "Other"];
+
 interface PostCardProps {
   post: Post;
   onDelete?: (postId: string) => void;
@@ -610,6 +613,10 @@ function useVisualViewportKeyboard(active: boolean) {
 export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reporting, setReporting] = useState(false);
+  const [selectedReportReason, setSelectedReportReason] = useState<string | null>(null);
+  const [reportDetails, setReportDetails] = useState("");
   const router = useRouter();
   const { activeFilter } = useLocation();
 
@@ -882,6 +889,30 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
     }
   };
 
+  const handleReportPost = async (reason: string) => {
+    if (!currentUser || !post.id || reporting) return;
+    setReporting(true);
+    try {
+      const { error } = await supabase.from("post_reports").insert({
+        post_id: post.id,
+        reporter_id: currentUser.id,
+        reason,
+      });
+      if (error && error.code !== "23505") throw error; // 23505 = already reported
+      setReportOpen(false);
+      setSelectedReportReason(null);
+      setReportDetails("");
+      toast({
+        title: error ? "Already reported" : "Post reported",
+        description: error ? "You've already reported this post." : "Thanks, we'll review it.",
+      });
+    } catch {
+      toast({ variant: "destructive", title: "Error", description: "Could not submit report." });
+    } finally {
+      setReporting(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (!currentUser || !post.id || currentUser.id !== post.user_id) return;
     try {
@@ -1042,6 +1073,96 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
       </div>
       <div className="flex items-center gap-2 flex-shrink-0">
         <CategoryTag category={post.category} />
+        {currentUser && currentUser.id !== post.user_id && (
+          <>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button aria-label="Post options" className="p-2 -m-2 rounded hover:bg-accent text-[var(--yrdly-label)] hover:text-foreground">
+                  <MoreHorizontal className="w-5 h-5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-card border-border font-yrdly-body">
+                <DropdownMenuItem onSelect={() => setReportOpen(true)} className="text-red-400 focus:text-red-400 focus:bg-red-500/10 cursor-pointer">
+                  <Flag className="mr-2 h-4 w-4" /> Report
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <AlertDialog
+              open={reportOpen}
+              onOpenChange={(open) => {
+                setReportOpen(open);
+                if (!open) {
+                  setSelectedReportReason(null);
+                  setReportDetails("");
+                }
+              }}
+            >
+              <AlertDialogContent className="max-h-[85dvh] overflow-y-auto bg-card border-border text-foreground rounded-[24px] max-w-[400px] font-yrdly-body">
+                <AlertDialogHeader className="text-center">
+                  <AlertDialogTitle className="font-yrdly-display">Report post</AlertDialogTitle>
+                  <AlertDialogDescription>Why are you reporting this?</AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="flex flex-col gap-2 mt-2">
+                  {POST_REPORT_REASONS.map((reason) => (
+                    <button
+                      key={reason}
+                      type="button"
+                      disabled={reporting}
+                      onClick={() => setSelectedReportReason(reason)}
+                      aria-pressed={selectedReportReason === reason}
+                      className={`w-full text-left px-4 py-3 rounded-[14px] border border-border hover:bg-accent text-sm font-medium transition-colors disabled:opacity-50 ${
+                        selectedReportReason === reason ? "bg-accent" : ""
+                      }`}
+                    >
+                      {reason}
+                    </button>
+                  ))}
+                </div>
+                {selectedReportReason && (
+                  <div className="mt-3 space-y-2">
+                    <label htmlFor="post-report-details" className="text-sm font-medium">
+                      {selectedReportReason === "Other" ? "Describe what you want to report" : "Additional details (optional)"}
+                    </label>
+                    <textarea
+                      id="post-report-details"
+                      value={reportDetails}
+                      onChange={(event) => setReportDetails(event.target.value)}
+                      placeholder="Add details to help us review this report"
+                      rows={3}
+                      maxLength={1000}
+                      disabled={reporting}
+                      className="w-full resize-y rounded-[14px] border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                )}
+                <AlertDialogFooter className="mt-2">
+                  <button
+                    type="button"
+                    disabled={
+                      reporting ||
+                      !selectedReportReason ||
+                      (selectedReportReason === "Other" && !reportDetails.trim())
+                    }
+                    onClick={() => {
+                      if (!selectedReportReason) return;
+                      const reason =
+                        selectedReportReason === "Other"
+                          ? reportDetails.trim()
+                          : reportDetails.trim()
+                            ? `${selectedReportReason}: ${reportDetails.trim()}`
+                            : selectedReportReason;
+                      void handleReportPost(reason);
+                    }}
+                    className="w-full rounded-[14px] bg-primary px-4 py-3 font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {reporting ? "Submitting..." : "Submit report"}
+                  </button>
+                  <AlertDialogCancel className="w-full mt-0 bg-transparent hover:bg-accent text-foreground border border-border rounded-[14px] h-12 font-semibold">Cancel</AlertDialogCancel>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </>
+        )}
         {currentUser?.id === post.user_id && (
           <AlertDialog>
             <DropdownMenu>

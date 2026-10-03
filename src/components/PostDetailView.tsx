@@ -63,6 +63,8 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
   const [likes, setLikes] = useState(post.liked_by?.length || 0);
   const [commentCount, setCommentCount] = useState(post.comment_count || 0);
   const [isLiked, setIsLiked] = useState(false);
+  const [isLikePending, setIsLikePending] = useState(false);
+  const likePendingRef = useRef(false);
   const [isEventEditDialogOpen, setIsEventEditDialogOpen] = useState(false);
   const [isPostEditDialogOpen, setIsPostEditDialogOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -162,27 +164,33 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
   };
 
   const handleLike = useCallback(async () => {
-    if (!currentUser || !post.id) return;
-    setIsLiked((prevIsLiked) => {
-      const nextIsLiked = !prevIsLiked;
-      setLikes((prevLikes) => (nextIsLiked ? prevLikes + 1 : Math.max(0, prevLikes - 1)));
+    if (!currentUser || !post.id || likePendingRef.current) return;
+    likePendingRef.current = true;
+    setIsLikePending(true);
 
-      supabase.rpc("toggle_post_like", {
+    const previousIsLiked = isLiked;
+    const nextIsLiked = !previousIsLiked;
+    setIsLiked(nextIsLiked);
+    setLikes((previousLikes) => Math.max(0, previousLikes + (nextIsLiked ? 1 : -1)));
+
+    try {
+      const { data, error } = await supabase.rpc("toggle_post_like", {
         p_post_id: post.id,
         p_user_id: currentUser.id,
-      }).then(({ data, error }) => {
-        if (error || !data) {
-          setIsLiked(prevIsLiked);
-          setLikes((prevLikes) => (prevIsLiked ? prevLikes + 1 : Math.max(0, prevLikes - 1)));
-        } else {
-          setIsLiked(data.is_liked);
-          setLikes(data.likes_count);
-        }
       });
-
-      return nextIsLiked;
-    });
-  }, [currentUser, post.id]);
+      if (error || !data) throw error || new Error("Like update returned no data.");
+      setIsLiked(data.is_liked);
+      setLikes(data.likes_count);
+    } catch (error) {
+      console.error("Error updating post like:", error);
+      setIsLiked(previousIsLiked);
+      setLikes((previousLikes) => Math.max(0, previousLikes + (previousIsLiked ? 1 : -1)));
+      toast({ variant: "destructive", title: "Error", description: "Could not update your like." });
+    } finally {
+      likePendingRef.current = false;
+      setIsLikePending(false);
+    }
+  }, [currentUser, isLiked, post.id, toast]);
 
   const handleShare = useCallback(async () => {
     const url = `${window.location.origin}/posts/${post.id}`;
@@ -410,7 +418,9 @@ className="object-cover"
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={handleLike}
-                  className="flex items-center justify-center w-11 h-11 p-2.5 rounded-lg bg-[#D9D9D9]/20 hover:bg-accent"
+                  disabled={isLikePending || !currentUser}
+                  aria-pressed={isLiked}
+                  className="flex items-center justify-center w-11 h-11 p-2.5 rounded-lg bg-[#D9D9D9]/20 hover:bg-accent disabled:cursor-not-allowed"
                 >
                   <Heart className={cn("w-5 h-5", isLiked && "fill-[#82DB7E] text-[#82DB7E]")} />
                 </button>
