@@ -449,7 +449,11 @@ export const usePosts = (filter?: LocationFilter | null) => {
         
         // Update user activity after successful post creation/update
         if (user) {
-          await UserActivityService.updateUserActivity(user.id);
+          try {
+            await UserActivityService.updateUserActivity(user.id);
+          } catch (activityError) {
+            console.warn('Business saved, but user activity could not be updated:', activityError);
+          }
         }
       } catch (error) {
         console.error('Error saving post:', error);
@@ -464,10 +468,10 @@ export const usePosts = (filter?: LocationFilter | null) => {
       businessData: Omit<Business, 'id' | 'owner_id' | 'created_at'>,
       businessIdToUpdate?: string,
       imageFiles?: FileList
-    ) => {
+    ): Promise<string | undefined> => {
       if (!user) {
         toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in.' });
-        return;
+        throw new Error('You must be logged in.');
       }
 
       try {
@@ -514,6 +518,7 @@ export const usePosts = (filter?: LocationFilter | null) => {
             }),
         }
 
+        let savedBusinessId = businessIdToUpdate;
         if (businessIdToUpdate) {
             const { error } = await supabase
                 .from('businesses')
@@ -523,14 +528,18 @@ export const usePosts = (filter?: LocationFilter | null) => {
             if (error) throw error;
             toast({ title: 'Success', description: 'Business updated successfully.' });
         } else {
-            const { error } = await supabase
+            const { data: createdBusiness, error } = await supabase
                 .from('businesses')
                 .insert({
                     ...finalBusinessData,
                     created_at: new Date().toISOString(),
-                });
+                })
+                .select('id')
+                .single();
             
             if (error) throw error;
+            if (!createdBusiness) throw new Error('Business was saved without returning an ID.');
+            savedBusinessId = createdBusiness.id;
             toast({ title: 'Success', description: 'Business added successfully.' });
         }
         
@@ -538,8 +547,10 @@ export const usePosts = (filter?: LocationFilter | null) => {
         if (user) {
           await UserActivityService.updateUserActivity(user.id);
         }
+        return savedBusinessId;
       } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to save business.' });
+        throw error;
       }
     },
     [user, profile, toast, uploadImages]

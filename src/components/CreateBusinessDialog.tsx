@@ -202,8 +202,8 @@ const getFormSchema = (isEditMode: boolean, businessToEdit?: Business) =>
       .or(z.literal("")),
     email: z
       .string()
-      .refine((val) => val === "" || val.toLowerCase().endsWith("@gmail.com"), {
-        message: "Email must end with @gmail.com.",
+      .refine((val) => val === "" || z.string().email().safeParse(val).success, {
+        message: "Enter a valid business email address.",
       })
       .optional()
       .or(z.literal("")),
@@ -237,6 +237,7 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
   const { createBusiness } = usePosts();
   const [internalOpen, setInternalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState('');
   const [activeStep, setActiveStep] = useState<1 | 2>(1);
   const [removedImageIndexes, setRemovedImageIndexes] = useState<number[]>([]);
   const [hoursDays, setHoursDays] = useState<string[]>([]);
@@ -320,6 +321,7 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
+    setSubmitError('');
 
     let filteredImageUrls: string[] = [];
     if (businessToEdit?.image_urls) {
@@ -352,10 +354,16 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
       cover_image: filteredImageUrls[0] || undefined,
     };
 
-    await createBusiness(businessData, businessToEdit?.id, validImageFiles);
-    setLoading(false);
-    handleOpenChange(false);
-    onCreated?.(businessToEdit?.id);
+    try {
+      const savedBusinessId = await createBusiness(businessData, businessToEdit?.id, validImageFiles);
+      if (!savedBusinessId) throw new Error('The business could not be saved. Please try again.');
+      handleOpenChange(false);
+      onCreated?.(savedBusinessId);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : 'Failed to save business. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   const handleOpenChange = useCallback(
@@ -475,6 +483,11 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 min-h-0">
         <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5 min-h-0">
+          {submitError && (
+            <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+              {submitError}
+            </div>
+          )}
           {/* STEP 1: Profile & Type */}
           {activeStep === 1 && (
             <div className="space-y-5 animate-in fade-in-50 duration-200">

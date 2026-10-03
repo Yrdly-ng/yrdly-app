@@ -22,7 +22,9 @@ export default function CreateBookingWebPage() {
     for (let i = 0; i < 14; i++) {
       const d = new Date(today);
       d.setDate(today.getDate() + i);
-      const isoDate = d.toISOString().split('T')[0];
+      // Keep the calendar date in the visitor's local timezone. toISOString()
+      // would turn Lagos midnight into the previous UTC date.
+      const isoDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       const displayDay = d.toLocaleDateString('en-US', { weekday: 'short' });
       const displayNum = d.getDate();
       const displayMonth = d.toLocaleDateString('en-US', { month: 'short' });
@@ -42,6 +44,7 @@ export default function CreateBookingWebPage() {
   const [loadingDetails, setLoadingDetails] = useState(true);
 
   const [staffList, setStaffList] = useState<any[]>([]);
+  const [serviceStaffIds, setServiceStaffIds] = useState<string[] | null>(null);
   const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
   const { slots, loading: slotsLoading } = useAvailableSlots(businessId, serviceId, selectedDate, selectedStaffId);
 
@@ -51,14 +54,19 @@ export default function CreateBookingWebPage() {
   }, [businessId]);
 
   useEffect(() => {
-    if (!serviceId || !staffList.length) return;
-    void (supabase.from('service_staff_assignments').select('staff_id').eq('service_id', serviceId).then(({ data }: any) => {
-      if (data && data.length) {
-        const ids = new Set((data as any[]).map((r:any)=>r.staff_id));
-        setStaffList((prev: any[]) => prev.filter((s:any)=>ids.has(s.id)));
-      }
-    }) as unknown as Promise<void>);
+    if (!serviceId) return;
+    let active = true;
+    void supabase.from('service_staff_assignments').select('staff_id').eq('service_id', serviceId)
+      .then(({ data, error }: any) => {
+        if (!active || error) return;
+        setServiceStaffIds(data?.length ? data.map((row: any) => row.staff_id) : null);
+      });
+    return () => { active = false; };
   }, [serviceId]);
+
+  const eligibleStaff = serviceStaffIds
+    ? staffList.filter((staff) => serviceStaffIds.includes(staff.id))
+    : staffList;
 
   useEffect(() => {
     const fetchDetails = async () => {
@@ -217,12 +225,12 @@ export default function CreateBookingWebPage() {
 
           {/* Slot Picker */}
           <div>
-            {staffList.length > 0 && (
+            {eligibleStaff.length > 0 && (
               <div className="mb-4">
                 <label className="block text-sm font-bold text-neutral-200 mb-2">Staff (optional)</label>
                 <select value={selectedStaffId || ''} onChange={(e)=>{ setSelectedStaffId(e.target.value || null); setSelectedSlotTime(null); }} className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-3 text-sm text-neutral-100">
                   <option value="">Any available staff</option>
-                  {staffList.map((s:any)=>(<option key={s.id} value={s.id}>{s.name}{s.role?` — ${s.role}`:''}</option>))}
+                  {eligibleStaff.map((s:any)=>(<option key={s.id} value={s.id}>{s.name}{s.role?` — ${s.role}`:''}</option>))}
                 </select>
               </div>
             )}

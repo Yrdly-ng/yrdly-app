@@ -71,6 +71,7 @@ export default function BusinessDetailPage() {
             phone: businessData.phone,
             email: businessData.email,
             website: businessData.website,
+            mode: businessData.mode || 'product',
             owner_name: ownerData?.name || businessData.owner_name || "Unknown Owner",
             owner_avatar: ownerData?.avatar_url || businessData.owner_avatar,
             cover_image: businessData.image_urls?.[0],

@@ -34,6 +34,8 @@ import { CatalogService } from "@/lib/catalog-service";
 import { ReviewService } from "@/lib/review-service";
 import { WriteBusinessReviewDialog } from "@/components/reviews/WriteBusinessReviewDialog";
 import { useToast } from "@/hooks/use-toast";
+import { useRouter } from "next/navigation";
+import { useServiceOfferings } from "@/hooks/use-bookings";
 
 interface BusinessDetailScreenProps {
   business: Business;
@@ -48,7 +50,9 @@ export function BusinessDetailScreen({
   onMessageOwner,
   onViewCatalogItem,
 }: BusinessDetailScreenProps) {
-  const [activeTab, setActiveTab] = useState("catalog");
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState(business.mode === 'service' ? 'services' : 'catalog');
+  const { offerings, loading: servicesLoading } = useServiceOfferings(business.id);
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
   const [reviews, setReviews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -392,6 +396,23 @@ export function BusinessDetailScreen({
 
         {/* Action buttons */}
         <div className="flex gap-2">
+          {isOwner && (
+            <div className="flex flex-wrap gap-2 w-full">
+              {(business.mode === 'service' || business.mode === 'both') && (
+                <Button variant="outline" onClick={() => router.push(`/businesses/${business.id}/manage-services`)}>
+                  Manage Services
+                </Button>
+              )}
+              <Button variant="outline" onClick={() => router.push(`/businesses/${business.id}/manage-availability`)}>
+                Manage Availability
+              </Button>
+              {(business.mode === 'service' || business.mode === 'both') && (
+                <Button onClick={() => router.push(`/businesses/${business.id}/bookings`)}>
+                  Booking Requests
+                </Button>
+              )}
+            </div>
+          )}
           {user?.id !== business.owner_id && (
             <Button
               className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
@@ -416,9 +437,16 @@ export function BusinessDetailScreen({
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
         <TabsList className="w-full justify-start rounded-none border-b bg-transparent px-4">
-          <TabsTrigger value="catalog" className="data-[state=active]:border-b-2 data-[state=active]:border-primary">
-            Catalog
-          </TabsTrigger>
+          {(business.mode === 'product' || business.mode === 'both' || !business.mode) && (
+            <TabsTrigger value="catalog" className="data-[state=active]:border-b-2 data-[state=active]:border-primary">
+              Catalog
+            </TabsTrigger>
+          )}
+          {(business.mode === 'service' || business.mode === 'both') && (
+            <TabsTrigger value="services" className="data-[state=active]:border-b-2 data-[state=active]:border-primary">
+              Services
+            </TabsTrigger>
+          )}
           <TabsTrigger value="about" className="data-[state=active]:border-b-2 data-[state=active]:border-primary">
             About
           </TabsTrigger>
@@ -428,7 +456,7 @@ export function BusinessDetailScreen({
         </TabsList>
 
         <div className="flex-1 overflow-y-auto">
-          <TabsContent value="catalog" className="p-4 mt-0">
+          {(business.mode === 'product' || business.mode === 'both' || !business.mode) && <TabsContent value="catalog" className="p-4 mt-0">
             {/* Owner Controls */}
             {isOwner && (
               <div className="mb-4 space-y-3">
@@ -585,7 +613,46 @@ export function BusinessDetailScreen({
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-          </TabsContent>
+          </TabsContent>}
+
+          {(business.mode === 'service' || business.mode === 'both') && (
+            <TabsContent value="services" className="p-4 mt-0 space-y-3">
+              {servicesLoading ? (
+                <div className="py-12 text-center text-muted-foreground">Loading services...</div>
+              ) : offerings.length ? (
+                offerings.map((service) => (
+                  <Card key={service.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <h3 className="font-semibold text-foreground">{service.name}</h3>
+                      {service.description && <p className="text-sm text-muted-foreground mt-1">{service.description}</p>}
+                      <div className="flex flex-wrap gap-3 mt-2 text-sm">
+                        <span className="text-muted-foreground">{service.duration_minutes} min</span>
+                        {service.price != null && (
+                          <span className="font-semibold text-primary">
+                            {service.price_is_from ? 'From ' : ''}₦{Number(service.price).toLocaleString()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {isOwner ? (
+                      <Button variant="outline" onClick={() => router.push(`/businesses/${business.id}/manage-services`)}>
+                        Edit services
+                      </Button>
+                    ) : (
+                      <Button onClick={() => router.push(`/bookings/create?businessId=${encodeURIComponent(business.id)}&serviceId=${encodeURIComponent(service.id)}`)}>
+                        Request booking
+                      </Button>
+                    )}
+                  </Card>
+                ))
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground mb-4">{isOwner ? 'Add a service so customers can book you.' : 'No services are listed yet.'}</p>
+                  {isOwner && <Button onClick={() => router.push(`/businesses/${business.id}/manage-services`)}>Add your first service</Button>}
+                </div>
+              )}
+            </TabsContent>
+          )}
 
           <TabsContent value="about" className="p-4 mt-0 space-y-4">
             <div>

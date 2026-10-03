@@ -109,9 +109,24 @@ export class BookingService {
         updated_at: new Date().toISOString(),
       };
       if (staffId) row.staff_id = staffId;
-      const onConflict = staffId ? 'business_id,staff_id,day_of_week' : 'business_id,day_of_week';
-      const { error } = await supabase.from('provider_availability').upsert(row, { onConflict } as any);
-      if (error) throw error;
+
+      // These calendars use partial unique indexes for legacy (NULL staff_id)
+      // and staff-specific rows. PostgREST cannot infer those indexes from a
+      // plain onConflict column list, so resolve the row and update/insert it.
+      let existingQuery: any = supabase.from('provider_availability')
+        .select('id')
+        .eq('business_id', businessId)
+        .eq('day_of_week', schedule.day_of_week);
+      existingQuery = staffId
+        ? existingQuery.eq('staff_id', staffId)
+        : existingQuery.is('staff_id', null);
+      const { data: existing, error: lookupError } = await existingQuery.maybeSingle();
+      if (lookupError) throw lookupError;
+
+      const result = existing
+        ? await supabase.from('provider_availability').update(row).eq('id', existing.id)
+        : await supabase.from('provider_availability').insert(row);
+      if (result.error) throw result.error;
     }
   }
 
