@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 
 export default function CommunitiesPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [tab, setTab] = useState<"mine" | "discover">("mine");
   const [query, setQuery] = useState("");
   const [myComms, setMyComms] = useState<Community[]>([]);
@@ -18,20 +18,22 @@ export default function CommunitiesPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    const userState = (profile as any)?.home_state;
     const [mine, disc] = await Promise.all([
       CommunityService.listMyCommunities().catch(() => []),
-      CommunityService.discoverCommunities().catch(() => []),
+      CommunityService.discoverCommunities({ state: userState }).catch(() => []),
     ]);
     setMyComms(mine);
     setDiscovered(disc);
     setLoading(false);
-  }, []);
+  }, [profile]);
 
   useEffect(() => { load(); }, [load]);
 
   const onSearch = (q: string) => {
     setQuery(q);
-    CommunityService.discoverCommunities({ query: q }).then(setDiscovered).catch(() => {});
+    const userState = (profile as any)?.home_state;
+    CommunityService.discoverCommunities({ state: userState, query: q }).then(setDiscovered).catch(() => {});
   };
 
   const list = tab === "mine" ? myComms : discovered;

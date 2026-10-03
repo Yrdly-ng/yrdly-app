@@ -90,23 +90,32 @@ export class CommunityService {
     return (data ?? []).map((row: any) => row.community as Community);
   }
 
-  /** Discover open/request communities (directory) — invite-only excluded by RLS */
+  /** Discover open/request communities directory — defaults to nearby state + interest groups */
   static async discoverCommunities(
     opts: { type?: CommunityType; state?: string; lga?: string; query?: string; page?: number } = {}
   ): Promise<Community[]> {
-    const PAGE = 20;
-    let q = supabase
-      .from('communities')
-      .select('*')
+    const PAGE = 30;
+    let q = supabase.from('communities').select('*');
+
+    if (opts.query?.trim()) {
+      // Searching across all communities nationwide
+      q = q.ilike('name', `%${opts.query.trim()}%`);
+    } else {
+      // Default view: filter by nearby state OR interest groups
+      if (opts.type) {
+        q = q.eq('type', opts.type);
+      } else if (opts.state) {
+        q = q.or(`state.eq."${opts.state}",type.eq.interest`);
+      }
+      if (opts.lga && !opts.query) {
+        q = q.eq('lga', opts.lga);
+      }
+    }
+
+    const { data, error } = await q
       .order('member_count', { ascending: false })
       .range((opts.page ?? 0) * PAGE, (opts.page ?? 0) * PAGE + PAGE - 1);
 
-    if (opts.type) q = q.eq('type', opts.type);
-    if (opts.state) q = q.eq('state', opts.state);
-    if (opts.lga) q = q.eq('lga', opts.lga);
-    if (opts.query) q = q.ilike('name', `%${opts.query}%`);
-
-    const { data, error } = await q;
     if (error) throw error;
     return (data ?? []) as Community[];
   }
