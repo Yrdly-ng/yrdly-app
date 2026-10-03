@@ -8,7 +8,6 @@ import {
   MapPin,
   ChatCircle,
   User,
-  UsersThree,
 } from "@phosphor-icons/react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { ProfileDropdown } from "@/components/ProfileDropdown";
@@ -38,7 +37,6 @@ const navItems = [
     matchPaths: ["/explore", "/marketplace", "/events", "/businesses", "/communities"],
   },
   { href: "/map", label: "Map", icon: MapPin },
-  { href: "/communities", label: "Communities", icon: UsersThree, matchPaths: ["/communities"] },
   { href: "/messages", label: "Messages", icon: ChatCircle },
   { href: "/profile", label: "Profile", icon: User },
 ];
