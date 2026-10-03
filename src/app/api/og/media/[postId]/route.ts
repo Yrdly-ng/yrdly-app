@@ -3,10 +3,12 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 
 // Large link-preview image for posts that have a photo or a video.
 // Photo posts use their first photo; video posts use the saved thumbnail with a play badge.
-// Output is 1200x630 (the size X uses) and kept under ~280 KB because WhatsApp
-// skips preview images bigger than about 300 KB.
+// Output is 1200x630 (the size X, YouTube and Instagram previews use) and kept under
+// ~280 KB because WhatsApp skips preview images bigger than about 300 KB.
+//
+// Add ?debug=1 to the URL to see what the route found instead of an image.
 export const runtime = 'nodejs';
-export const revalidate = 300;
+export const maxDuration = 20;
 
 const W = 1200;
 const H = 630;
@@ -14,7 +16,7 @@ const MAX_BYTES = 280 * 1024;
 
 function firstUrl(value: unknown): string | null {
   if (!value) return null;
-  if (Array.isArray(value)) return typeof value[0] === 'string' ? value[0] : null;
+  if (Array.isArray(value)) return typeof value[0] === 'string' && value[0] ? value[0] : null;
   if (typeof value === 'string') {
     const t = value.trim();
     if (t.startsWith('[')) {
@@ -52,24 +54,39 @@ export async function GET(
   { params }: { params: Promise<{ postId: string }> }
 ) {
   const { postId } = await params;
-
-  const { data: post } = await supabaseAdmin
-    .from('posts')
-    .select('image_url, image_urls, video_url, video_thumbnail_url')
-    .eq('id', postId)
-    .maybeSingle();
-
-  const photo = firstUrl(post?.image_urls) || firstUrl(post?.image_url);
-  const isVideo = !photo && !!post?.video_url && !!post?.video_thumbnail_url;
-  const source = photo || (isVideo ? (post?.video_thumbnail_url as string) : null);
+  const debug = new URL(req.url).searchParams.get('debug') === '1';
+  const info: Record<string, unknown> = { postId };
 
   try {
-    if (!source) throw new Error('no media');
-    const input = await loadImage(source);
+    // select('*') so a missing column can't break the lookup
+    const { data: post, error } = await supabaseAdmin
+      .from('posts')
+      .select('*')
+      .eq('id', postId)
+      .maybeSingle();
 
-    let pipeline = sharp(input)
+    info.postFound = !!post;
+    info.queryError = error?.message ?? null;
+
+    const photo = firstUrl(post?.image_urls) || firstUrl(post?.image_url);
+    const hasVideoThumb = !!post?.video_url && !!post?.video_thumbnail_url;
+    const isVideo = !photo && hasVideoThumb;
+    const source = photo || (isVideo ? (post?.video_thumbnail_url as string) : null);
+
+    info.photo = photo;
+    info.hasVideo = !!post?.video_url;
+    info.hasVideoThumbnail = !!post?.video_thumbnail_url;
+    info.using = photo ? 'photo' : isVideo ? 'video thumbnail' : 'nothing (text-only post)';
+
+    if (!source) throw new Error('post has no photo or video thumbnail');
+
+    const input = await loadImage(source);
+    info.sourceBytes = input.length;
+
+    // Center crop (fast). failOn:'none' tolerates slightly broken phone photos.
+    let pipeline = sharp(input, { failOn: 'none' })
       .rotate()
-      .resize(W, H, { fit: 'cover', position: sharp.strategy.attention })
+      .resize(W, H, { fit: 'cover', position: 'centre' })
       .flatten({ background: '#000000' });
 
     if (isVideo) {
@@ -78,10 +95,13 @@ export async function GET(
     }
 
     let out: Buffer = Buffer.alloc(0);
-    for (const quality of [80, 70, 60, 50]) {
-      out = await pipeline.clone().jpeg({ quality, mozjpeg: true }).toBuffer();
+    for (const quality of [80, 70, 60, 50, 40]) {
+      out = await pipeline.clone().jpeg({ quality }).toBuffer();
       if (out.length <= MAX_BYTES) break;
     }
+    info.outputBytes = out.length;
+
+    if (debug) return Response.json({ ok: true, ...info });
 
     return new Response(new Uint8Array(out), {
       headers: {
@@ -89,8 +109,10 @@ export async function GET(
         'Cache-Control': 'public, max-age=300, s-maxage=300, stale-while-revalidate=86400',
       },
     });
-  } catch {
-    // Anything goes wrong: fall back to the author's avatar image
+  } catch (err: any) {
+    console.error('og media route failed', info, err);
+    if (debug) return Response.json({ ok: false, error: String(err?.message || err), ...info });
+    // Normal requests: fall back to the author's avatar image
     return Response.redirect(new URL(`/api/og/avatar/${postId}`, req.url), 302);
   }
 }
