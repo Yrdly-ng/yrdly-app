@@ -1,7 +1,8 @@
 -- =============================================================================
 -- Communities Fix Migration 20261003010002
 -- 1. Grant SELECT to both authenticated and anon roles for open/request communities
--- 2. Fix empty string home_ward/home_lga matching in auto-join trigger & backfill
+-- 2. Explicitly qualify outer table columns in RLS subqueries (avoid self-reference shadowing)
+-- 3. Fix empty string home_ward/home_lga matching in auto-join trigger & backfill
 -- =============================================================================
 
 DROP POLICY IF EXISTS "communities_select" ON public.communities;
@@ -9,7 +10,30 @@ CREATE POLICY "communities_select" ON public.communities FOR SELECT TO authentic
   privacy IN ('open','request')
   OR EXISTS (
     SELECT 1 FROM public.community_memberships m
-    WHERE m.community_id = id AND m.user_id = auth.uid() AND m.status = 'active'
+    WHERE m.community_id = public.communities.id AND m.user_id = auth.uid() AND m.status = 'active'
+  )
+);
+
+DROP POLICY IF EXISTS "memberships_select_own" ON public.community_memberships;
+CREATE POLICY "memberships_select_own" ON public.community_memberships FOR SELECT TO authenticated USING (
+  user_id = auth.uid()
+  OR EXISTS (
+    SELECT 1 FROM public.community_memberships m2
+    WHERE m2.community_id = community_memberships.community_id
+      AND m2.user_id = auth.uid()
+      AND m2.role IN ('moderator','admin')
+      AND m2.status = 'active'
+  )
+);
+
+DROP POLICY IF EXISTS "memberships_mod_update" ON public.community_memberships;
+CREATE POLICY "memberships_mod_update" ON public.community_memberships FOR UPDATE TO authenticated USING (
+  EXISTS (
+    SELECT 1 FROM public.community_memberships m2
+    WHERE m2.community_id = community_memberships.community_id
+      AND m2.user_id = auth.uid()
+      AND m2.role IN ('moderator','admin')
+      AND m2.status = 'active'
   )
 );
 
