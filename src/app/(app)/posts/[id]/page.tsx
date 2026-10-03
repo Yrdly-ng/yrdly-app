@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
 import { Suspense } from 'react';
 import { PostPageClient } from './PostPageClient';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 
 // Re-generate previews at most once a minute so edited posts refresh
 export const revalidate = 60;
@@ -26,12 +26,10 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   const url = `${SITE_URL}/posts/${id}`;
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-
-  const { data: post } = await supabase
+  // Server-side lookup with the admin client: link-preview crawlers aren't logged in,
+  // so the public (anon) client can't read the author's row and the preview loses
+  // the username and avatar. Only public fields are used below.
+  const { data: post } = await supabaseAdmin
     .from('posts')
     .select('*, user:users!posts_user_id_fkey(name, username, avatar_url)')
     .eq('id', id)
@@ -47,14 +45,20 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
   // X-style preview: "<Name> (@username) on Yrdly", the full post text,
   // and the author's avatar as a small thumbnail
-  const author = post.user?.name || post.author_name || 'A neighbor';
-  const handle = post.user?.username ? ` (@${post.user.username})` : '';
+  const user = Array.isArray(post.user) ? post.user[0] : post.user;
+  const author = user?.name || post.author_name || 'A neighbor';
+  const handle = user?.username ? ` (@${user.username})` : '';
   const title = `${author}${handle} on Yrdly`;
   const description = clip(post.text || post.title || 'See this post on Yrdly', 280);
 
   const postImage = post.image_urls?.[0] || post.image_url;
-  const image =
-    (USE_POST_PHOTO && postImage) || post.user?.avatar_url || FALLBACK_IMAGE;
+  const usePhoto = USE_POST_PHOTO && !!postImage;
+  // The avatar goes through a route that resizes it to 200x200 so WhatsApp shows it
+  // as a small thumbnail on the left, like X (big images become a large card on top)
+  const image = usePhoto ? postImage : `${SITE_URL}/api/og/avatar/${id}`;
+  const ogImage = usePhoto
+    ? { url: image }
+    : { url: image, width: 200, height: 200, alt: author };
 
   return {
     title,
@@ -66,10 +70,10 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       url,
       siteName: 'Yrdly',
       type: 'article',
-      images: [image],
+      images: [ogImage],
     },
     twitter: {
-      card: USE_POST_PHOTO && postImage ? 'summary_large_image' : 'summary',
+      card: usePhoto ? 'summary_large_image' : 'summary',
       title,
       description,
       images: [image],
