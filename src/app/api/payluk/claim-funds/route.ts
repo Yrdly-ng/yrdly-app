@@ -90,16 +90,13 @@ export async function POST(request: NextRequest) {
     const msg: string = e?.message ?? '';
     console.error('[claim-funds] PaylukService.claimFunds failed:', msg);
 
-    if (msg.includes('Action not allowed')) {
-      await supabaseAdmin
-        .from('escrow_transactions')
-        .update({
-          status: EscrowStatus.COMPLETED,
-          completed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', transactionId);
-
+    const escrow = await PaylukService.verifyEscrow(tx.payluk_tx_ref).catch(() => null);
+    const providerStatuses = [escrow?.status, escrow?.state].map(value => String(value || '').toLowerCase());
+    if (providerStatuses.some(value => ['completed', 'claimed'].includes(value))) {
+      const { error: syncError } = await supabaseAdmin.from('escrow_transactions')
+        .update({ status: EscrowStatus.COMPLETED, completed_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .eq('id', transactionId).eq('status', EscrowStatus.PAID);
+      if (syncError) return NextResponse.json({ error: 'CLAIM_RECORDED_FAILED' }, { status: 500 });
       return NextResponse.json({ success: true, alreadyCompleted: true });
     }
 

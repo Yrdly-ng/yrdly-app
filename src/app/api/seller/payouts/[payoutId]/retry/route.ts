@@ -40,17 +40,22 @@ export async function POST(
     }
 
     // Reset status to pending so processPayout can pick it up
-    const { error: updateError } = await supabaseAdmin
+    const { data: resetRows, error: updateError } = await supabaseAdmin
       .from('payout_requests')
       .update({ status: 'pending', failure_reason: null })
-      .eq('id', payoutId);
+      .eq('id', payoutId)
+      .eq('status', 'failed')
+      .select('id');
 
     if (updateError) {
       return NextResponse.json({ error: 'Failed to reset payout status' }, { status: 500 });
     }
+    if (!resetRows?.length) {
+      return NextResponse.json({ error: 'Payout is already being retried' }, { status: 409 });
+    }
 
     // Attempt to process again
-    await PayoutService.processPayout(payoutId);
+    const result = await PayoutService.processPayout(payoutId);
 
     // Fetch the updated payout to return the new status
     const { data: updatedPayout } = await supabaseAdmin
@@ -60,9 +65,10 @@ export async function POST(
       .single();
 
     return NextResponse.json({ 
-      success: true, 
+      success: result.success,
+      error: result.success ? undefined : result.error,
       payout: updatedPayout 
-    });
+    }, { status: result.success ? 200 : 502 });
 
   } catch (error: any) {
     console.error('Error retrying payout:', error);

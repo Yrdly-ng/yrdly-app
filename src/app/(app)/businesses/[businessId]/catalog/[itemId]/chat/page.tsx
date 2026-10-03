@@ -86,6 +86,8 @@ export default function ItemChatPage() {
     fetchData();
   }, [businessId, itemId]);
 
+  const [conversationId, setConversationId] = useState<string | null>(null);
+
   // Create or get conversation entry for catalog item chat
   // Use ref to prevent multiple simultaneous creations
   const conversationCreationRef = useRef(false);
@@ -99,9 +101,6 @@ export default function ItemChatPage() {
 
     const createOrGetConversation = async () => {
       try {
-        // Check if conversation already exists for this catalog item
-        // Note: item_id references posts table, so for catalog items we use context JSONB
-        // Query all business conversations for this user and business, then filter by context
         const { data: existingConversations, error: fetchError } = await supabase
           .from('conversations')
           .select('id, participant_ids, context')
@@ -115,48 +114,35 @@ export default function ItemChatPage() {
           return;
         }
 
-        // Filter to find conversations with matching catalog_item_id in context
-        // Also check that item_id is null (catalog items don't use item_id)
         const matchingConversations = existingConversations?.filter(conv => {
           const context = conv.context as { catalog_item_id?: string } | null;
           return context?.catalog_item_id === itemId;
         }) || [];
 
         if (matchingConversations.length > 0) {
-          console.log('Using existing catalog item conversation:', matchingConversations[0].id);
+          setConversationId(matchingConversations[0].id);
           conversationCreationRef.current = false;
           return;
         }
 
-        // Only create if no matching conversation exists
         if (matchingConversations.length === 0) {
-          // Create new business conversation with catalog item context
-          // Note: item_id references posts table, so we omit it entirely for catalog items
-          // and store catalog item info in context JSONB instead
-          // Build insert data, explicitly setting item_id to null for catalog items
-          // (item_id foreign key references posts table, not catalog_items)
           const insertData = {
             participant_ids: [user.id, business.owner_id],
             type: 'business' as const,
             business_id: businessId,
             business_name: business.name,
             business_logo: business.logo,
-            item_id: null, // Explicitly null - references posts table, not catalog_items
+            item_id: null,
             item_title: catalogItem.title,
             item_image: catalogItem.images?.[0] || "/placeholder.svg",
             item_price: catalogItem.price,
             context: {
-              catalog_item_id: itemId, // Store catalog item ID in context
+              catalog_item_id: itemId,
               catalog_item_business_id: businessId
             },
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           };
-          
-          console.log('Inserting conversation with item_id explicitly set to null:', {
-            ...insertData,
-            context: insertData.context
-          });
           
           const { data: newConv, error: createError } = await supabase
             .from('conversations')
@@ -166,14 +152,9 @@ export default function ItemChatPage() {
 
           if (createError) {
             console.error('Error creating catalog item conversation:', createError);
-            console.error('Insert data (without item_id):', { ...insertData, context: insertData.context });
-            // Show user-friendly error
-            if (createError.code === '23503') {
-              console.error('Foreign key constraint violation - item_id field may have been included incorrectly');
-            }
             conversationCreationRef.current = false;
-          } else {
-            console.log('Created catalog item conversation:', newConv.id);
+          } else if (newConv) {
+            setConversationId(newConv.id);
             conversationCreationRef.current = false;
           }
         }
@@ -185,7 +166,6 @@ export default function ItemChatPage() {
 
     createOrGetConversation();
     
-    // Reset ref when dependencies change
     return () => {
       conversationCreationRef.current = false;
     };
@@ -229,6 +209,7 @@ export default function ItemChatPage() {
     <BusinessChatScreen
       business={business}
       item={catalogItem}
+      conversationId={conversationId || undefined}
       onBack={handleBack}
     />
   );

@@ -89,28 +89,16 @@ export async function POST(request: NextRequest) {
     const msg: string = e?.message ?? '';
     console.error('[confirm-delivery] PaylukService.confirmDelivery failed:', msg);
 
-    // If Payluk says "Action not allowed", the escrow is already completed/closed on Payluk's side.
-    if (msg.includes('Action not allowed')) {
-      await supabaseAdmin
-        .from('escrow_transactions')
-        .update({
-          status: EscrowStatus.COMPLETED,
-          completed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', transactionId);
-
-      return NextResponse.json({ success: true, alreadyCompleted: true });
+    const escrow = await PaylukService.verifyEscrow(tx.payluk_escrow_id).catch(() => null);
+    const providerStatuses = [escrow?.status, escrow?.state].map(value => String(value || '').toLowerCase());
+    if (!providerStatuses.some(value => ['completed', 'claimed'].includes(value))) {
+      return NextResponse.json({ error: msg || 'Failed to confirm delivery with Payluk' }, { status: 502 });
     }
 
-    return NextResponse.json(
-      { error: msg || 'Failed to confirm delivery with Payluk' },
-      { status: 502 }
-    );
   }
 
   // 8. Update local DB — must not silently fail after Payluk has already released funds.
-  const { error: updateError } = await supabaseAdmin
+  const { data: updated, error: updateError } = await supabaseAdmin
     .from('escrow_transactions')
     .update({
       status: EscrowStatus.COMPLETED,
@@ -118,7 +106,8 @@ export async function POST(request: NextRequest) {
       updated_at: new Date().toISOString(),
     })
     .eq('id', transactionId)
-    .in('status', [EscrowStatus.PAID, EscrowStatus.SHIPPED, EscrowStatus.DELIVERED]); // optimistic-lock: skip if already updated by concurrent webhook
+    .in('status', [EscrowStatus.PAID, EscrowStatus.SHIPPED, EscrowStatus.DELIVERED])
+    .select('id');
 
   if (updateError) {
     console.error(
@@ -128,6 +117,10 @@ export async function POST(request: NextRequest) {
     // Payluk has already released — return a specific error code so mobile can surface
     // a reconciliation warning, same pattern as pay-escrow.
     return NextResponse.json({ error: 'DELIVERY_RECORDED_FAILED' }, { status: 500 });
+  }
+  if (!updated?.length) {
+    const { data: current } = await supabaseAdmin.from('escrow_transactions').select('status').eq('id', transactionId).single();
+    if (current?.status !== EscrowStatus.COMPLETED) return NextResponse.json({ error: 'Transaction state changed; reconciliation needed' }, { status: 409 });
   }
 
   return NextResponse.json({ success: true });

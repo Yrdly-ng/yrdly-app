@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
       .select('id')
       .eq('buyer_id', user.id)
       .eq('tier_id', tier_id)
-      .neq('status', 'CANCELLED');
+      .in('status', ['PAID', 'USED']);
 
     const userOwnedCount = existingUserTickets?.length || 0;
     if (userOwnedCount + quantity > MAX_TICKETS_PER_TIER) {
@@ -107,13 +107,10 @@ export async function POST(request: NextRequest) {
         .insert(ticketsToInsert)
         .select('id, ticket_code, qr_data');
 
+      if (ticketError?.message?.includes('ticket_tier_sold_out')) {
+        return NextResponse.json({ error: 'SOLD_OUT', message: 'This ticket tier just sold out.' }, { status: 409 });
+      }
       if (ticketError) throw ticketError;
-
-      // Increment sold count
-      await supabaseAdmin
-        .from('ticket_tiers')
-        .update({ sold: tier.sold + quantity })
-        .eq('id', tier_id);
 
       // Increment event attendee_count
       try {
@@ -222,7 +219,10 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Paid ticket — Check configured payment provider ────────────────────
-    const provider = (process.env.NEXT_PUBLIC_PAYMENT_PROVIDER || process.env.PAYMENT_PROVIDER || 'payluk').toLowerCase();
+    const provider = (process.env.EVENT_TICKET_PAYMENT_PROVIDER || 'paystack').toLowerCase();
+    if (provider !== 'paystack' && provider !== 'payluk') {
+      return NextResponse.json({ error: 'Invalid event ticket payment provider configuration' }, { status: 500 });
+    }
     const txRef = `evt-${event_id.substring(0, 8)}-${Date.now()}`;
     const totalAmount = tier.price * quantity;
 
@@ -292,7 +292,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, payment_link: paymentLink, tx_ref: txRef, provider: 'paystack' });
     }
 
-    // ── Payluk Escrow payment (Default) ───────────────────────────────────
+    // ── Payluk Escrow payment ─────────────────────────────────────────────
     // Fetch or provision Payluk Customer IDs for buyer & organizer
     let buyerPaylukId: string;
     let organizerPaylukId: string;
@@ -425,4 +425,3 @@ export async function POST(request: NextRequest) {
     }, { status: 500 });
   }
 }
-

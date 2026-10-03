@@ -355,6 +355,10 @@ export class BookingService {
 
     if (fetchErr || !booking) throw new Error('Booking not found');
 
+    if (['deposit_paid', 'fully_paid', 'escrow_held', 'escrow_released'].includes(booking.payment_status)) {
+      throw new Error('Paid bookings need support-assisted cancellation so the Payluk escrow and refund can be resolved.');
+    }
+
     const appointmentTimeMs = new Date(booking.appointment_time).getTime();
     const nowMs = Date.now();
     const hoursUntilAppointment = (appointmentTimeMs - nowMs) / (1000 * 60 * 60);
@@ -590,4 +594,3 @@ export class BookingService {
     return data || [];
   }
 }
-

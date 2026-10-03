@@ -123,6 +123,22 @@ export function EventsScreen({ className }: EventsScreenProps) {
   const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
   const [activeQuickFilters, setActiveQuickFilters] = useState<Set<QuickFilter>>(new Set());
   const [savedEvents, setSavedEvents] = useState<Set<string>>(new Set());
+  const [paymentError, setPaymentError] = useState<{ message: string; reference?: string } | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const error = params.get('error');
+    if (!error) return;
+    const messages: Record<string, string> = {
+      sold_out_refunded: 'The ticket tier sold out before confirmation. A refund was requested through Paystack.',
+      sold_out_refund_required: 'The ticket tier sold out, but the automatic refund failed. Contact support with the payment reference below.',
+      sold_out_payluk_refund_required: 'The ticket tier sold out after payment. Contact support with the payment reference below to resolve the Payluk escrow.',
+      payment_failed: 'Your payment could not be confirmed. Please check your payment status before trying again.',
+      verification_failed: 'We could not verify the ticket payment. Contact support if you were charged.',
+      payment_cancelled: 'Payment was cancelled.',
+    };
+    setPaymentError({ message: messages[error] || 'Ticket checkout could not be completed.', reference: params.get('tx_ref') || undefined });
+  }, []);
 
   const toggleQuickFilter = (filter: QuickFilter) => {
     setActiveQuickFilters((prev) => {
@@ -234,6 +250,13 @@ export function EventsScreen({ className }: EventsScreenProps) {
 
   return (
     <div className={cn("min-h-[100dvh] bg-[var(--yrdly-dark)] text-foreground font-yrdly-body p-3 sm:p-4 md:p-6 space-y-6 md:space-y-8 pb-20 lg:pb-8", className)}>
+
+      {paymentError && (
+        <div role="alert" className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-foreground">
+          <p>{paymentError.message}</p>
+          {paymentError.reference && <p className="mt-1 font-mono text-xs">Payment reference: {paymentError.reference}</p>}
+        </div>
+      )}
 
       {/* Quick filter bar */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">

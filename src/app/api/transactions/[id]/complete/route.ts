@@ -20,8 +20,6 @@ export async function POST(
       );
     }
 
-    // Auth verification should be done via Authorization header in a production environment.
-    // For now, we rely on the client sending a POST request to complete the transaction.
     const authHeader = request.headers.get('Authorization');
     if (!authHeader) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -68,8 +66,9 @@ export async function POST(
         await PaylukService.confirmDelivery(buyerPaylukId, transaction.payluk_escrow_id);
       } catch (paylukErr: any) {
         const msg: string = paylukErr?.message ?? '';
-        // If Payluk says the escrow is already closed/completed, treat as success
-        if (!msg.includes('Action not allowed')) {
+        const escrow = await PaylukService.verifyEscrow(transaction.payluk_escrow_id).catch(() => null);
+        const providerStatuses = [escrow?.status, escrow?.state].map(value => String(value || '').toLowerCase());
+        if (!providerStatuses.some(value => ['completed', 'claimed'].includes(value))) {
           console.error('[complete] PaylukService.confirmDelivery failed:', msg);
           return NextResponse.json({ error: msg || 'Failed to release Payluk escrow' }, { status: 502 });
         }
@@ -103,23 +102,32 @@ export async function POST(
     }
 
     // 2. Update transaction status
-    const { error: updateError } = await supabaseAdmin
+    const { data: updated, error: updateError } = await supabaseAdmin
       .from('escrow_transactions')
       .update({
         status: EscrowStatus.COMPLETED,
         completed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
-      .eq('id', transactionId);
+      .eq('id', transactionId)
+      .in('status', confirmableStatuses)
+      .select('id');
 
     if (updateError) {
       console.error('Error completing transaction:', updateError);
       return NextResponse.json({ error: 'Failed to complete transaction' }, { status: 500 });
     }
+    if (!updated?.length) {
+      const { data: current } = await supabaseAdmin.from('escrow_transactions').select('status').eq('id', transactionId).single();
+      if (current?.status === EscrowStatus.COMPLETED) return NextResponse.json({ success: true, alreadyCompleted: true });
+      return NextResponse.json({ error: 'Transaction state changed; refresh and try again' }, { status: 409 });
+    }
 
     // 3. Initiate payout to seller now that buyer has confirmed receipt
+    let payoutSucceeded = false;
     try {
       await PayoutService.initiateAutoPayout(transactionId);
+      payoutSucceeded = true;
     } catch (payoutError) {
       console.error('Payout initiation failed after buyer confirmation:', payoutError);
       // Don't throw — transaction is still completed even if payout initiation fails
@@ -127,7 +135,7 @@ export async function POST(
 
 
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, payoutSucceeded });
   } catch (error: any) {
     console.error('Complete transaction error:', error);
     return NextResponse.json(

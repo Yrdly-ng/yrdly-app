@@ -118,6 +118,7 @@ export default function CommunityFeedPage() {
   const [postText, setPostText] = useState("");
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!id || !user) return;
@@ -169,6 +170,7 @@ export default function CommunityFeedPage() {
     if (!postText.trim() || !user || !community || !membership) return;
     setPosting(true);
     setError(null);
+    setNotice(null);
     try {
       await CommunityService.createPost({
         communityId: community.id,
@@ -180,6 +182,7 @@ export default function CommunityFeedPage() {
         memberRole: membership.role,
       });
       setPostText("");
+      setNotice("Your post was submitted for review and will appear once approved.");
       load();
     } catch (e: any) {
       setError(e.message ?? "Could not post");
@@ -264,6 +267,7 @@ export default function CommunityFeedPage() {
             maxLength={1000}
           />
           {error && <p className="text-xs text-destructive mb-2">{error}</p>}
+          {notice && <p role="status" className="text-xs text-primary mb-2">{notice}</p>}
           <div className="flex justify-end">
             <button
               onClick={handlePost}

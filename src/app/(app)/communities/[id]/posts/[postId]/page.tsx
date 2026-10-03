@@ -28,6 +28,7 @@ export default function CommunityPostPage() {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const loadComments = useCallback(async () => {
     if (!postId) return;
@@ -60,6 +61,7 @@ export default function CommunityPostPage() {
     if (!text.trim() || !user || !post || !id) return;
     setSending(true);
     setError(null);
+    setNotice(null);
     try {
       await CommunityService.createComment({
         postId: post.id,
@@ -71,6 +73,7 @@ export default function CommunityPostPage() {
         phoneVerified: (profile as any)?.phone_verified ?? false,
       });
       setText("");
+      setNotice("Your reply was submitted for review and will appear once approved.");
     } catch (e: any) {
       setError(e.message ?? "Could not send reply");
     } finally {
@@ -119,6 +122,7 @@ export default function CommunityPostPage() {
           maxLength={500}
         />
         {error && <p className="text-xs text-destructive mb-2">{error}</p>}
+        {notice && <p role="status" className="text-xs text-primary mb-2">{notice}</p>}
         <div className="flex justify-end">
           <button
             onClick={handleSend}

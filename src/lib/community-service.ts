@@ -1,5 +1,4 @@
 import { supabase } from './supabase';
-import { ModerationService } from './moderation-service';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export type CommunityType = 'ward' | 'lga' | 'interest';
@@ -205,9 +204,7 @@ export class CommunityService {
 
   /**
    * Create a top-level community post.
-   * - Runs ModerationService.checkText before insert.
-   * - Sets moderation_status based on caller's phone_verified status.
-   * - Inserts into moderation_queue when pending.
+   * New posts enter the database-backed moderation queue before appearing in feeds.
    */
   static async createPost(params: {
     communityId: string;
@@ -220,17 +217,6 @@ export class CommunityService {
     phoneVerified?: boolean;
     memberRole?: MemberRole;
   }): Promise<CommunityPost> {
-    const { isSafe, reason } = await ModerationService.checkText(params.content);
-
-    let moderationStatus: CommunityPost['moderation_status'] = 'approved';
-
-    if (!isSafe) {
-      moderationStatus = reason === 'moderation_error' ? 'moderation_error' : 'pending';
-    } else if (!params.phoneVerified && params.memberRole === 'member') {
-      // Unverified users' posts go to queue regardless
-      moderationStatus = 'pending';
-    }
-
     const { data, error } = await supabase
       .from('community_posts')
       .insert({
@@ -241,23 +227,12 @@ export class CommunityService {
         content: params.content,
         image_urls: params.imageUrls?.length ? params.imageUrls : null,
         video_urls: params.videoUrls?.length ? params.videoUrls : null,
-        moderation_status: moderationStatus,
+        moderation_status: 'pending',
       })
       .select('*')
       .single();
 
     if (error) throw error;
-
-    if (moderationStatus === 'pending') {
-      await supabase.from('moderation_queue').insert({
-        content_id: (data as any).id,
-        table_name: 'community_posts',
-        user_id: params.authorId,
-        status: 'pending',
-        reason: !isSafe ? (reason ?? 'moderation_failed') : 'unverified_user',
-        text_content: params.content,
-      });
-    }
 
     return data as CommunityPost;
   }
@@ -272,14 +247,12 @@ export class CommunityService {
       .maybeSingle();
 
     if (existing) {
-      await supabase.from('community_post_likes').delete().eq('post_id', postId).eq('user_id', userId);
-      await supabase.from('community_posts').update({ like_count: supabase.rpc('greatest', { a: 0 }) }).eq('id', postId);
-      // decrement via rpc not available inline; use raw update
-      await supabase.rpc('community_toggle_post_like', { p_post_id: postId, p_user_id: userId, p_action: 'unlike' });
+      const { error } = await supabase.rpc('community_toggle_post_like', { p_post_id: postId, p_user_id: userId, p_action: 'unlike' });
+      if (error) throw error;
       return { liked: false };
     } else {
-      await supabase.from('community_post_likes').insert({ post_id: postId, user_id: userId });
-      await supabase.rpc('community_toggle_post_like', { p_post_id: postId, p_user_id: userId, p_action: 'like' });
+      const { error } = await supabase.rpc('community_toggle_post_like', { p_post_id: postId, p_user_id: userId, p_action: 'like' });
+      if (error) throw error;
       return { liked: true };
     }
   }
@@ -315,11 +288,6 @@ export class CommunityService {
     parentCommentId?: string | null;
     phoneVerified?: boolean;
   }): Promise<CommunityComment> {
-    const { isSafe, reason } = await ModerationService.checkText(params.content);
-    const moderationStatus = !isSafe
-      ? reason === 'moderation_error' ? 'moderation_error' : 'pending'
-      : 'approved';
-
     const { data, error } = await supabase
       .from('community_comments')
       .insert({
@@ -330,23 +298,12 @@ export class CommunityService {
         author_image: params.authorImage ?? null,
         parent_comment_id: params.parentCommentId ?? null,
         content: params.content,
-        moderation_status: moderationStatus,
+        moderation_status: 'pending',
       })
       .select('*')
       .single();
 
     if (error) throw error;
-
-    if (moderationStatus === 'pending') {
-      await supabase.from('moderation_queue').insert({
-        content_id: (data as any).id,
-        table_name: 'community_comments',
-        user_id: params.authorId,
-        status: 'pending',
-        reason: reason ?? 'moderation_failed',
-        text_content: params.content,
-      });
-    }
 
     return data as CommunityComment;
   }

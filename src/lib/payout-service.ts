@@ -29,15 +29,6 @@ export class PayoutService {
    */
   static async getSellerBalance(sellerId: string): Promise<SellerBalance> {
     try {
-      // Auto-cleanup stale pending/processing payout requests older than 1 minute
-      const oneMinAgo = new Date(Date.now() - 60 * 1000).toISOString();
-      await supabaseAdmin
-        .from('payout_requests')
-        .update({ status: 'failed', failure_reason: 'Request timed out' })
-        .eq('seller_id', sellerId)
-        .in('status', ['pending', 'processing'])
-        .lt('requested_at', oneMinAgo);
-
       // Get completed transactions for this seller
       const { data: transactions, error } = await supabaseAdmin
         .from('escrow_transactions')
@@ -119,6 +110,17 @@ export class PayoutService {
         throw new Error('Transaction must be completed before payout');
       }
 
+      const { data: priorPayout, error: priorError } = await supabaseAdmin
+        .from('payout_requests')
+        .select('id, status')
+        .eq('transaction_id', transactionId)
+        .maybeSingle();
+      if (priorError) throw priorError;
+      if (priorPayout) {
+        if (priorPayout.status === 'completed') return;
+        throw new Error(`Automatic payout ${priorPayout.id} is ${priorPayout.status}; review or retry that request`);
+      }
+
       // Get seller's primary account
       const { data: sellerAccount, error: accountError } = await supabaseAdmin
         .from('seller_accounts')
@@ -129,13 +131,11 @@ export class PayoutService {
         .single();
 
       if (accountError || !sellerAccount) {
-        console.log('No primary seller account found, skipping auto payout');
-        return;
+        throw new Error('No active primary seller account for automatic payout');
       }
 
       if (sellerAccount.verification_status !== 'verified') {
-        console.log('Seller account not verified, skipping auto payout');
-        return;
+        throw new Error('Seller account is not verified for automatic payout');
       }
 
       // For Payluk transactions, use the actual Payluk wallet balance as the
@@ -161,6 +161,7 @@ export class PayoutService {
 
       // Create payout request
       const payoutData = {
+        transaction_id: transactionId,
         seller_id: transaction.seller_id,
         account_id: sellerAccount.id,
         amount: payoutAmount,
@@ -180,7 +181,8 @@ export class PayoutService {
       }
 
       // Process the payout
-      await this.processPayout(payoutRequest.id);
+      const result = await this.processPayout(payoutRequest.id);
+      if (!result.success) throw new Error(result.error || 'Automatic payout failed');
 
     } catch (error) {
       console.error('Failed to initiate auto payout:', error);
@@ -325,7 +327,7 @@ export class PayoutService {
             ? actualNetPayoutAmount
             : payoutRequest.amount;
 
-          await supabaseAdmin
+          const { data: finalized, error: finalizeError } = await supabaseAdmin
             .from('payout_requests')
             .update({
               amount: finalPayoutAmount,
@@ -333,7 +335,15 @@ export class PayoutService {
               transaction_reference: transactionReference,
               processed_at: new Date().toISOString(),
             })
-            .eq('id', payoutRequestId);
+            .eq('id', payoutRequestId)
+            .eq('status', 'processing')
+            .select('id');
+          if (finalizeError || !finalized?.length) {
+            console.error('[PayoutService] Transfer accepted but payout record needs manual reconciliation', {
+              payoutRequestId, transactionReference, finalizeError,
+            });
+            return { success: false, error: 'Transfer accepted; payout status needs reconciliation. Do not retry this payout.' };
+          }
 
           // Send success notification
           try {
@@ -451,7 +461,8 @@ export class PayoutService {
       }
 
       // Process the payout
-      await this.processPayout(payoutRequest.id);
+      const result = await this.processPayout(payoutRequest.id);
+      if (!result.success) throw new Error(result.error || 'Manual payout failed');
 
       return payoutRequest.id;
     } catch (error) {

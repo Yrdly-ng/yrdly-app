@@ -1,4 +1,4 @@
-import { createHmac } from 'crypto';
+import { createHmac, timingSafeEqual } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { EscrowStatus } from '@/types/escrow';
@@ -30,7 +30,8 @@ export async function POST(request: NextRequest) {
       .update(rawBody)
       .digest('hex');
 
-    if (!signature || signature !== expectedSignature) {
+    if (!signature || !/^[a-f0-9]{128}$/i.test(signature) ||
+        !timingSafeEqual(Buffer.from(signature, 'hex'), Buffer.from(expectedSignature, 'hex'))) {
       console.error('[Webhook] Invalid Paystack signature');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -39,6 +40,11 @@ export async function POST(request: NextRequest) {
     const { event, data } = payload;
 
     console.log(`[Webhook] Received event: ${event}, status: ${data?.status}`);
+
+    if (typeof event === 'string' && event.startsWith('refund.')) {
+      await handleTicketRefundEvent(event, data);
+      return NextResponse.json({ status: 'ok' });
+    }
 
     // ── Handle charge.success ─────────────────────────────
     if (event === 'charge.success' && data?.status === 'success') {
@@ -65,6 +71,10 @@ export async function POST(request: NextRequest) {
           console.log(`[Webhook] Event ticket verify successful for ${txRef}`);
         } catch (e) {
           console.error('[Webhook] Failed to verify event ticket', e);
+          const code = e instanceof Error ? e.message : '';
+          if (!['sold_out_refunded', 'sold_out_refund_required', 'sold_out_payluk_refund_required'].includes(code)) {
+            return NextResponse.json({ error: 'Ticket processing failed' }, { status: 500 });
+          }
         }
         return NextResponse.json({ status: 'ok' });
       }
@@ -107,7 +117,7 @@ export async function POST(request: NextRequest) {
 
       if (updateError) {
         console.error(`[Webhook] Failed to update escrow transaction ${txRef}:`, updateError);
-        return NextResponse.json({ status: 'ok' });
+        return NextResponse.json({ error: 'Transaction update failed' }, { status: 500 });
       } else if (!updateData || updateData.length === 0) {
         console.log(`[Webhook] Transaction ${txRef} already processed (race condition avoided)`);
         return NextResponse.json({ status: 'ok' });
@@ -253,7 +263,54 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ status: 'ok' }, { status: 200 });
   } catch (error) {
     console.error('[Webhook] Critical error:', error instanceof Error ? error.stack : error);
-    // Always return 200 to prevent Paystack retries on our logic errors
-    return NextResponse.json({ status: 'ok' }, { status: 200 });
+    return NextResponse.json({ error: 'Webhook processing failed' }, { status: 500 });
+  }
+}
+
+async function handleTicketRefundEvent(event: string, data: any): Promise<void> {
+  const refundStatus = event.slice('refund.'.length);
+  if (!['pending', 'processing', 'needs-attention', 'failed', 'processed'].includes(refundStatus)) return;
+  const paymentReference = data?.transaction_reference;
+  if (typeof paymentReference !== 'string') throw new Error('Refund webhook has no transaction reference');
+  const allowedPrevious = refundStatus === 'pending'
+    ? ['initiating', 'pending']
+    : refundStatus === 'processing'
+      ? ['initiating', 'pending', 'processing']
+      : ['initiating', 'pending', 'processing', 'needs-attention', 'failed'];
+
+  const { data: tickets, error: lookupError } = await supabaseAdmin.from('tickets')
+    .select('id, buyer_id, amount_paid')
+    .eq('payment_provider_ref', paymentReference).eq('status', 'PAID')
+    .in('refund_status', allowedPrevious);
+  if (lookupError) throw lookupError;
+  if (!tickets?.length) return;
+
+  const expectedKobo = Math.round(tickets.reduce((sum, ticket) => sum + Number(ticket.amount_paid), 0) * 100);
+  if (Number(data.amount) !== expectedKobo) {
+    throw new Error(`Refund amount mismatch for ${paymentReference}`);
+  }
+
+  const { error: updateError } = await supabaseAdmin.from('tickets')
+    .update({
+      refund_status: refundStatus,
+      ...(refundStatus === 'processed' ? { status: 'REFUNDED', updated_at: new Date().toISOString() } : {}),
+    })
+    .in('id', tickets.map(ticket => ticket.id))
+    .eq('status', 'PAID')
+    .in('refund_status', allowedPrevious);
+  if (updateError) throw updateError;
+
+  if (['processed', 'failed', 'needs-attention'].includes(refundStatus)) {
+    const title = refundStatus === 'processed' ? 'Ticket refund processed' : 'Ticket refund needs attention';
+    const message = refundStatus === 'processed'
+      ? 'Paystack has processed your ticket refund. The credit may still take time to reach your payment method.'
+      : 'Your ticket refund needs support review. Please contact Yrdly support with your payment reference.';
+    for (const ticket of tickets) {
+      await supabaseAdmin.from('notifications').insert({
+        user_id: ticket.buyer_id, type: 'event_cancelled', title, message,
+        related_id: ticket.id, related_type: 'ticket',
+        data: { ticketId: ticket.id, paymentReference, refundStatus },
+      });
+    }
   }
 }

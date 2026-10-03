@@ -171,7 +171,12 @@ export default function MyTicketsPage() {
             const tier = ticket.tier as any;
             const isExpired = ticket.expires_at && new Date(ticket.expires_at) < new Date();
             let ss = statusStyle[ticket.status] || statusStyle.CANCELLED;
-            if (isExpired && ticket.status !== 'USED' && ticket.status !== 'CANCELLED' && ticket.status !== 'REFUNDED') {
+            if (ticket.status === 'PAID' && ticket.refund_status) {
+              ss = ['failed', 'needs-attention'].includes(ticket.refund_status)
+                ? { label: 'Refund needs support', cls: 'bg-red-500/20 text-red-400 border-red-500/30' }
+                : { label: 'Refund pending', cls: 'bg-amber-500/20 text-amber-400 border-amber-500/30' };
+            }
+            if (isExpired && !ticket.refund_status && ticket.status !== 'USED' && ticket.status !== 'CANCELLED' && ticket.status !== 'REFUNDED') {
               ss = { label: "Expired", cls: "bg-orange-500/20 text-orange-400 border-orange-500/30" };
             }
             return (
@@ -234,7 +239,7 @@ export default function MyTicketsPage() {
             </div>
 
             {/* QR Code */}
-            {selected.qr_data ? (
+            {selected.qr_data && !selected.refund_status ? (
               <div className="flex flex-col items-center gap-3 py-4">
                 {/* We show a generated QR using an img tag with a QR service fallback */}
                 <Image
@@ -260,7 +265,9 @@ export default function MyTicketsPage() {
                 { label: "Ticket Type", value: (selected.tier as any)?.name || "—" },
                 { label: "Attendee", value: selected.attendee_name },
                 { label: "Amount Paid", value: selected.amount_paid === 0 ? "Free" : `₦${Number(selected.amount_paid).toLocaleString()}` },
-                { label: "Status", value: (selected.expires_at && new Date(selected.expires_at) < new Date() && selected.status !== 'USED' && selected.status !== 'CANCELLED' && selected.status !== 'REFUNDED') ? "Expired" : (statusStyle[selected.status]?.label || selected.status) },
+                { label: "Status", value: selected.refund_status && selected.status === 'PAID'
+                  ? ['failed', 'needs-attention'].includes(selected.refund_status) ? 'Refund needs support' : 'Refund pending'
+                  : (selected.expires_at && new Date(selected.expires_at) < new Date() && selected.status !== 'USED' && selected.status !== 'CANCELLED' && selected.status !== 'REFUNDED') ? "Expired" : (statusStyle[selected.status]?.label || selected.status) },
               ].map(({ label, value }) => (
                 <div key={label} className="flex items-center justify-between">
                   <span className="font-sans text-xs text-muted-foreground">{label}</span>

@@ -44,9 +44,9 @@ export async function GET(request: NextRequest) {
     console.error('Ticket verify error:', error);
     
     // Redirect based on error type
-    if (error.message === 'sold_out_refunded') {
+    if (error.message === 'sold_out_refunded' || error.message === 'sold_out_refund_required' || error.message === 'sold_out_payluk_refund_required') {
       // Need event_id to redirect properly, but if it failed here, we just go to events list or my-tickets
-      return NextResponse.redirect(`${appUrl}/events?error=sold_out_refunded`);
+      return NextResponse.redirect(`${appUrl}/events?error=${error.message}&tx_ref=${encodeURIComponent(txRef)}`);
     } else if (error.message === 'payment_failed') {
       return NextResponse.redirect(`${appUrl}/events?error=payment_failed`);
     }

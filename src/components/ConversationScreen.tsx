@@ -193,12 +193,56 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
         .from("messages").select("*")
         .eq("conversation_id", conversation.id)
         .order("created_at", { ascending: true });
-      const visible = (data || []).filter((m: any) => !m.deleted_by?.includes(user?.id || ''));
+
+      let mainMsgs: ChatMessage[] = (data || []).map((m: any) => ({
+        ...m,
+        text: m.text || m.content || "",
+      }));
+
+      // If business conversation, also fetch from business_messages table for completeness/legacy support
+      const bizId = conversation.context?.catalog_item_business_id || (conversation as any).business_id;
+      if (bizId || (conversation.type as string) === 'business' || conversation.type === 'briefcase') {
+        const queryBizId = bizId || conversation.item_id;
+        let query = supabase.from("business_messages").select("*");
+        if (bizId) {
+          query = query.eq("business_id", bizId);
+        } else {
+          query = query.in("sender_id", conversation.participant_ids);
+        }
+
+        const { data: bizMsgs } = await query;
+        if (bizMsgs && bizMsgs.length > 0) {
+          const formattedBiz: ChatMessage[] = bizMsgs.map((bm: any) => ({
+            id: bm.id,
+            conversation_id: conversation.id,
+            sender_id: bm.sender_id,
+            text: bm.content || "",
+            content: bm.content || "",
+            image_url: null,
+            created_at: bm.created_at,
+            is_read: bm.is_read || false,
+          }));
+
+          const map = new Map<string, ChatMessage>();
+          [...formattedBiz, ...mainMsgs].forEach((msg) => {
+            const key = `${msg.sender_id}_${(msg.text || '').trim()}_${new Date(msg.created_at).getTime()}`;
+            if (!map.has(key)) {
+              map.set(key, msg);
+            }
+          });
+
+          mainMsgs = Array.from(map.values()).sort(
+            (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
+        }
+      }
+
+      const visible = mainMsgs.filter((m: any) => !m.deleted_by?.includes(user?.id || ''));
       setMessages(visible);
       setLoading(false);
     };
     fetch();
-  }, [conversation]);
+  }, [conversation, user]);
 
   /* ── Mark as read ── */
   useEffect(() => {
@@ -249,11 +293,15 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
   /* ── Real-time messages ── */
   useEffect(() => {
     if (!conversation || !user) return;
+    const channels: any[] = [];
     const ch = supabase.channel(`messages-${conversation.id}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "messages", filter: `conversation_id=eq.${conversation.id}` },
         (payload) => {
           if (payload.eventType === "INSERT") {
-            setMessages((p) => [...p, payload.new as ChatMessage]);
+            setMessages((p) => {
+              if (p.some(m => m.id === payload.new.id || (m.sender_id === payload.new.sender_id && (m.text === payload.new.text || m.content === payload.new.content)))) return p;
+              return [...p, payload.new as ChatMessage];
+            });
             // Clear notification if a new message arrives while we are in the chat
             if (payload.new.sender_id !== user.id) {
               supabase.from("notifications").delete()
@@ -266,7 +314,35 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
           else if (payload.eventType === "DELETE") setMessages((p) => p.filter((m) => m.id !== payload.old.id));
         })
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    channels.push(ch);
+
+    const bizId = conversation.context?.catalog_item_business_id || (conversation as any).business_id;
+    if (bizId) {
+      const bizCh = supabase.channel(`biz-messages-${conversation.id}`)
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "business_messages", filter: `business_id=eq.${bizId}` },
+          (payload) => {
+            const bm = payload.new as any;
+            if (bm.sender_id === user.id) return;
+            const formatted: ChatMessage = {
+              id: bm.id,
+              conversation_id: conversation.id,
+              sender_id: bm.sender_id,
+              text: bm.content || "",
+              content: bm.content || "",
+              image_url: null,
+              created_at: bm.created_at,
+              is_read: bm.is_read || false,
+            };
+            setMessages((p) => {
+              if (p.some(m => m.id === formatted.id || (m.sender_id === formatted.sender_id && m.text === formatted.text))) return p;
+              return [...p, formatted];
+            });
+          })
+        .subscribe();
+      channels.push(bizCh);
+    }
+
+    return () => { channels.forEach(c => supabase.removeChannel(c)); };
   }, [conversation, user]);
 
   /* ── Activity ── */
@@ -308,16 +384,30 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
         }
         videoUrl = url;
       }
+
+      const sentText = newMessage.trim() || "";
       await supabase.from("messages").insert({
         conversation_id: conversation.id, sender_id: user.id,
-        text: newMessage.trim() || "", image_url: imageUrl, video_url: videoUrl,
+        text: sentText, content: sentText, image_url: imageUrl, video_url: videoUrl,
         media_url: imageUrl || videoUrl,
         media_type: videoUrl ? 'video' : (imageUrl ? 'image' : null),
         created_at: new Date().toISOString(), is_read: true, read_by: [user.id],
       });
+
+      const bizId = conversation.context?.catalog_item_business_id || (conversation as any).business_id;
+      if (bizId && sentText) {
+        await supabase.from("business_messages").insert({
+          business_id: bizId,
+          sender_id: user.id,
+          content: sentText,
+          is_read: false,
+          created_at: new Date().toISOString()
+        }).then();
+      }
+
       await supabase.from("conversations").update({
         updated_at: new Date().toISOString(),
-        last_message_text: newMessage.trim() || (videoUrl ? "🎬 Video" : imageUrl ? "📷 Photo" : ""),
+        last_message_text: sentText || (videoUrl ? "🎬 Video" : imageUrl ? "📷 Photo" : ""),
         last_message_timestamp: new Date().toISOString(),
         last_message_sender_id: user.id,
         deleted_by: [],

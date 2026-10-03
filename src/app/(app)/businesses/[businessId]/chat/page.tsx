@@ -74,6 +74,8 @@ export default function BusinessChatPage() {
     }
   };
 
+  const [conversationId, setConversationId] = useState<string | null>(null);
+
   // Create or get conversation entry for business chat
   useEffect(() => {
     if (!business || !user) return;
@@ -93,7 +95,9 @@ export default function BusinessChatPage() {
           return;
         }
 
-        if (!existingConversations || existingConversations.length === 0) {
+        if (existingConversations && existingConversations.length > 0) {
+          setConversationId(existingConversations[0].id);
+        } else {
           // Create new business conversation
           const { data: newConv, error: createError } = await supabase
             .from('conversations')
@@ -111,7 +115,8 @@ export default function BusinessChatPage() {
 
           if (createError) {
             console.error('Error creating business conversation:', createError);
-          } else {
+          } else if (newConv) {
+            setConversationId(newConv.id);
           }
         }
       } catch (error) {
@@ -151,6 +156,7 @@ export default function BusinessChatPage() {
   return (
     <BusinessChatScreen
       business={business}
+      conversationId={conversationId || undefined}
       onBack={handleBack}
     />
   );

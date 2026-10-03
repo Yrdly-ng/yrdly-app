@@ -78,6 +78,7 @@ export interface Ticket {
   ticket_code: string;
   qr_data: string | null;
   status: TicketStatus;
+  refund_status?: 'initiating' | 'pending' | 'processing' | 'needs-attention' | 'failed' | 'processed' | null;
   payment_tx_ref: string | null;
   payment_provider_ref: string | null;
   amount_paid: number;

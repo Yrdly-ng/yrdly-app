@@ -39,6 +39,9 @@ export class QuoteService {
   static async convertQuoteToBooking(quoteId: string, appointmentTime: string): Promise<{ booking: any; quote: QuoteRequest }> {
     const quote = await this.getQuote(quoteId);
     if (!quote) throw new Error('Quote not found');
+    if (quote.status !== 'accepted' || !quote.estimated_price || quote.estimated_price < 1000) {
+      throw new Error('Accept a valid estimate before converting it to a booking');
+    }
     if (quote.expires_at && new Date(quote.expires_at).getTime() < Date.now()) {
       await this.updateStatus(quoteId, 'expired');
       throw new Error('This estimate has expired and cannot be converted');

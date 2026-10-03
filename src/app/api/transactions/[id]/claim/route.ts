@@ -3,6 +3,8 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { EscrowStatus } from '@/types/escrow';
 import { MARKETPLACE_CONSTANTS } from '@/lib/constants';
 import { PayoutService } from '@/lib/payout-service';
+import { PaylukService } from '@/lib/payluk-service';
+import { getPaylukCustomerId } from '@/lib/payluk-onboarding';
 
 export async function POST(
   request: Request,
@@ -30,7 +32,7 @@ export async function POST(
 
     const { data: transaction, error: fetchError } = await supabaseAdmin
       .from('escrow_transactions')
-      .select('status, seller_id, shipped_at, payment_provider')
+      .select('status, seller_id, shipped_at, payment_provider, payluk_tx_ref')
       .eq('id', transactionId)
       .single();
 
@@ -53,30 +55,53 @@ export async function POST(
       return NextResponse.json({ error: 'Delivery window has not elapsed yet' }, { status: 403 });
     }
 
-    // Update status to COMPLETED
-    const { error: updateError } = await supabaseAdmin
+    if (transaction.payment_provider === 'payluk') {
+      if (!transaction.payluk_tx_ref) return NextResponse.json({ error: 'Payluk payment token missing' }, { status: 409 });
+      try {
+        const sellerPaylukId = await getPaylukCustomerId(user.id);
+        await PaylukService.claimFunds(sellerPaylukId, transaction.payluk_tx_ref);
+      } catch (claimError) {
+        const escrow = await PaylukService.verifyEscrow(transaction.payluk_tx_ref).catch(() => null);
+        const providerStatuses = [escrow?.status, escrow?.state].map(value => String(value || '').toLowerCase());
+        if (!providerStatuses.some(value => ['completed', 'claimed'].includes(value))) {
+          console.error('Payluk claim failed:', claimError);
+          return NextResponse.json({ error: 'Payluk escrow could not be released yet' }, { status: 502 });
+        }
+      }
+    }
+
+    const { data: updated, error: updateError } = await supabaseAdmin
       .from('escrow_transactions')
       .update({
         status: EscrowStatus.COMPLETED,
         completed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
-      .eq('id', transactionId);
+      .eq('id', transactionId)
+      .in('status', [EscrowStatus.SHIPPED, EscrowStatus.DELIVERED])
+      .select('id');
 
     if (updateError) {
       console.error('Error completing transaction:', updateError);
       return NextResponse.json({ error: 'Failed to update transaction' }, { status: 500 });
     }
+    if (!updated?.length) {
+      const { data: current } = await supabaseAdmin.from('escrow_transactions').select('status').eq('id', transactionId).single();
+      if (current?.status === EscrowStatus.COMPLETED) return NextResponse.json({ success: true, alreadyCompleted: true });
+      return NextResponse.json({ error: 'Transaction state changed; refresh and try again' }, { status: 409 });
+    }
 
     // Trigger auto payout 
+    let payoutSucceeded = false;
     try {
       await PayoutService.initiateAutoPayout(transactionId);
+      payoutSucceeded = true;
     } catch (payoutError) {
       console.error('Payout initiation failed during manual claim:', payoutError);
       // Even if it fails, the transaction is marked completed. Cron job or manual retry handles failures.
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, payoutSucceeded });
   } catch (error: any) {
     console.error('Claim transaction error:', error);
     return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });

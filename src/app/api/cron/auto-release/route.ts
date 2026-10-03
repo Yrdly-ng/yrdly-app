@@ -3,6 +3,8 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { EscrowStatus } from '@/types/escrow';
 import { MARKETPLACE_CONSTANTS } from '@/lib/constants';
 import { PayoutService } from '@/lib/payout-service';
+import { PaylukService } from '@/lib/payluk-service';
+import { getPaylukCustomerId } from '@/lib/payluk-onboarding';
 
 /**
  * POST /api/cron/auto-release
@@ -35,7 +37,7 @@ async function handler(request: NextRequest) {
     // ── Find SHIPPED transactions older than 48h ──────────
     const { data: staleTransactions, error: fetchError } = await supabaseAdmin
       .from('escrow_transactions')
-      .select('id, buyer_id, seller_id, item_id, amount, seller_amount, shipped_at')
+      .select('id, buyer_id, seller_id, item_id, amount, seller_amount, shipped_at, payment_provider, payluk_tx_ref')
       .eq('status', EscrowStatus.SHIPPED)
       .lt('shipped_at', cutoffDate.toISOString());
 
@@ -53,6 +55,19 @@ async function handler(request: NextRequest) {
 
     for (const tx of staleTransactions) {
       try {
+        // Release a Payluk escrow at the provider before changing our local ledger.
+        if (tx.payment_provider === 'payluk') {
+          if (!tx.payluk_tx_ref) throw new Error('Payluk payment token is missing');
+          const sellerPaylukId = await getPaylukCustomerId(tx.seller_id);
+          try {
+            await PaylukService.claimFunds(sellerPaylukId, tx.payluk_tx_ref);
+          } catch (claimError) {
+            const escrow = await PaylukService.verifyEscrow(tx.payluk_tx_ref);
+            const providerStatuses = [escrow.status, escrow.state].map(value => String(value || '').toLowerCase());
+            if (!providerStatuses.some(value => ['completed', 'claimed'].includes(value))) throw claimError;
+          }
+        }
+
         // ── Auto-complete: SHIPPED → DELIVERED → COMPLETED ──
         const { data: updated, error: updateError } = await supabaseAdmin
           .from('escrow_transactions')
@@ -72,14 +87,13 @@ async function handler(request: NextRequest) {
         }
 
         // CAS guard check — if 0 rows updated another process already completed this tx
-        if (!updated?.length) {
-          console.log(`Auto-release: transaction ${tx.id} already completed by another process, skipping payout`);
-          continue;
-        }
+        if (!updated?.length) continue;
 
         // ── Initiate Payout ───────────────────────────────
+        let payoutSucceeded = false;
         try {
           await PayoutService.initiateAutoPayout(tx.id);
+          payoutSucceeded = true;
         } catch (payoutError) {
           console.error(`Auto-release payout initiation error for ${tx.id}:`, payoutError);
           errors.push(`${tx.id}: payout failed`);
@@ -94,12 +108,14 @@ async function handler(request: NextRequest) {
 
         const itemTitle = item?.title || item?.text || 'an item';
 
-        // Notify seller: funds released
+        // Report a bank payout only when the payout service confirms success.
         await supabaseAdmin.from('notifications').insert({
           user_id: tx.seller_id,
-          type: 'funds_released',
-          title: 'Funds Auto-Released! 🎉',
-          message: `₦${(tx.seller_amount || tx.amount).toLocaleString()} for "${itemTitle}" has been auto-released after 48 hours.`,
+          type: payoutSucceeded ? 'funds_released' : 'payout_failed',
+          title: payoutSucceeded ? 'Funds Auto-Released! 🎉' : 'Payout needs attention',
+          message: payoutSucceeded
+            ? `₦${(tx.seller_amount || tx.amount).toLocaleString()} for "${itemTitle}" has been sent to your payout account.`
+            : `Your transaction for "${itemTitle}" is complete, but the bank payout needs attention. Check your payout settings or contact support.`,
           related_id: tx.id,
           related_type: 'escrow_transaction',
           data: { amount: tx.seller_amount || tx.amount, itemTitle, transactionId: tx.id },
@@ -110,7 +126,7 @@ async function handler(request: NextRequest) {
           user_id: tx.buyer_id,
           type: 'delivery_confirmed',
           title: 'Transaction Auto-Completed',
-          message: `Your transaction for "${itemTitle}" has been auto-completed after 48 hours. Funds have been released to the seller.`,
+          message: `Your transaction for "${itemTitle}" has been auto-completed after 48 hours.`,
           related_id: tx.id,
           related_type: 'escrow_transaction',
           data: { itemTitle, transactionId: tx.id },

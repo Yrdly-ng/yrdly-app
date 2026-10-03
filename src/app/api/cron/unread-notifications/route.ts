@@ -10,9 +10,9 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
 export async function GET(request: Request) {
-  // Optional: Verify a cron secret to prevent unauthorized execution
+  // Require a cron secret before reading notifications or sending email.
   const authHeader = request.headers.get('authorization');
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return new Response('Unauthorized', { status: 401 });
   }
 
@@ -72,7 +72,6 @@ export async function GET(request: Request) {
     return NextResponse.json({
       success: true,
       message: `Sent reminders to ${emailsSent.length} users.`,
-      emails: emailsSent
     });
 
   } catch (error: any) {

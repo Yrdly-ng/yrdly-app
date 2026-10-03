@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { getAuthenticatedUser } from "@/lib/supabase-server";
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { getPostHogClient } from '@/lib/posthog-server';
-import { PaystackService } from '@/lib/paystack-service';
+import { isPaylukTicket } from '@/lib/ticket-payment-provider';
+import { requestPaystackTicketRefund } from '@/lib/ticket-refunds';
 
 /**
  * POST /api/events/tickets/refund
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     const { data: ticket } = await supabaseAdmin
       .from('tickets')
       .select(`
-        id, status, payment_provider_ref, amount_paid, buyer_id,
+        id, status, refund_status, payment_provider_ref, payment_tx_ref, amount_paid, buyer_id,
         attendee_name, attendee_email,
         event:events!tickets_event_id_fkey(id, title, organizer_id)
       `)
@@ -40,34 +40,46 @@ export async function POST(request: NextRequest) {
     if (ticket.status !== 'PAID') {
       return NextResponse.json({ error: `Ticket status is "${ticket.status}" — cannot refund` }, { status: 400 });
     }
-
-    // ── Call Paystack refund API ─────────────────────────────────────
-    if (ticket.payment_provider_ref && ticket.amount_paid > 0) {
-      const refunded = await PaystackService.refundTransaction(
-        ticket.payment_provider_ref,
-        ticket.amount_paid
-      );
-      if (!refunded) {
-        return NextResponse.json(
-          { error: 'Refund failed — please try again or contact support' },
-          { status: 502 }
-        );
-      }
+    if (ticket.refund_status) {
+      return NextResponse.json({ error: `This ticket's refund is ${ticket.refund_status}; contact support if it needs attention.` }, { status: 409 });
     }
 
-    // ── Update ticket status ─────────────────────────────────────────────────
-    await supabaseAdmin
-      .from('tickets')
-      .update({ status: 'REFUNDED', updated_at: new Date().toISOString() })
-      .eq('id', ticket_id);
+    if (await isPaylukTicket(ticket.payment_tx_ref)) {
+      return NextResponse.json({ error: 'This Payluk escrow requires a dispute or support-assisted refund. The ticket remains valid until that refund is confirmed.' }, { status: 409 });
+    }
+    if (ticket.amount_paid > 0 && !ticket.payment_provider_ref) {
+      return NextResponse.json({ error: 'Payment reference missing; contact support before changing the ticket.' }, { status: 409 });
+    }
+
+    // Paystack refunds are asynchronous. Keep the ticket active in the ledger
+    // until refund.processed arrives, while check-in blocks pending refunds.
+    if (ticket.payment_provider_ref && ticket.amount_paid > 0) {
+      const { data: orderTickets, error: orderError } = await supabaseAdmin.from('tickets')
+        .select('id').eq('payment_provider_ref', ticket.payment_provider_ref);
+      if (orderError) throw orderError;
+      if ((orderTickets?.length || 0) > 1) {
+        return NextResponse.json({ error: 'This ticket belongs to a multi-ticket payment. Contact support to refund the order together.' }, { status: 409 });
+      }
+      try {
+        await requestPaystackTicketRefund(ticket.payment_provider_ref, [{ id: ticket.id, amount_paid: ticket.amount_paid }]);
+      } catch (error) {
+        console.error('Ticket refund request needs attention:', error);
+        return NextResponse.json({ error: 'Refund state needs support review before any retry.' }, { status: 502 });
+      }
+    } else {
+      const { error: updateError } = await supabaseAdmin.from('tickets')
+        .update({ status: 'REFUNDED', refund_status: 'processed', updated_at: new Date().toISOString() })
+        .eq('id', ticket_id).eq('status', 'PAID');
+      if (updateError) throw updateError;
+    }
 
     // ── Notify buyer ─────────────────────────────────────────────────────────
     try {
       await supabaseAdmin.from('notifications').insert({
         user_id: ticket.buyer_id,
         type: 'event_cancelled',
-        title: '💰 Refund Issued',
-        message: `Your ticket for "${event.title}" has been refunded. ₦${Number(ticket.amount_paid).toLocaleString()} will appear within 3–5 business days.`,
+        title: '💰 Refund Requested',
+        message: `A refund of ₦${Number(ticket.amount_paid).toLocaleString()} was requested for your ticket to "${event.title}". Check your payment method for the final credit.`,
         related_id: event.id,
         related_type: 'event',
         data: { ticket_id, event_id: event.id, amount: ticket.amount_paid },
@@ -87,7 +99,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ success: true, message: 'Refund processed successfully' });
+    return NextResponse.json({ success: true, message: 'Refund requested successfully' });
   } catch (error) {
     console.error('Ticket refund error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     // Find ticket
     const { data: ticket } = await supabaseAdmin
       .from('tickets')
-      .select('id, status, attendee_name, attendee_email, expires_at, tier:ticket_tiers!tickets_tier_id_fkey(name)')
+      .select('id, status, refund_status, attendee_name, attendee_email, expires_at, tier:ticket_tiers!tickets_tier_id_fkey(name)')
       .eq('ticket_code', ticket_code.trim().toUpperCase())
       .eq('event_id', event_id)
       .single();
@@ -50,13 +50,19 @@ export async function POST(request: NextRequest) {
     if (ticket.status !== 'PAID') {
       return NextResponse.json({ valid: false, error: 'TICKET_INVALID', message: `Ticket is ${ticket.status.toLowerCase()}` }, { status: 400 });
     }
+    if (ticket.refund_status) {
+      return NextResponse.json({ valid: false, error: 'REFUND_IN_PROGRESS', message: 'This ticket has a refund request or review in progress' }, { status: 409 });
+    }
 
     // Mark as USED
     const now = new Date().toISOString();
-    await supabaseAdmin
+    const { data: updated, error: updateError } = await supabaseAdmin
       .from('tickets')
       .update({ status: 'USED', scanned_at: now, scanned_by: user.id, updated_at: now })
-      .eq('id', ticket.id);
+      .eq('id', ticket.id).eq('status', 'PAID').is('refund_status', null)
+      .select('id');
+    if (updateError) throw updateError;
+    if (!updated?.length) return NextResponse.json({ valid: false, error: 'TICKET_CHANGED', message: 'Ticket status changed; scan again' }, { status: 409 });
 
     const posthog = getPostHogClient();
     posthog.capture({

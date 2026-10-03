@@ -14,22 +14,53 @@ import Image from "next/image";
 interface BusinessChatScreenProps {
   business: Business;
   item?: CatalogItem;
+  conversationId?: string;
   onBack: () => void;
 }
 
-export function BusinessChatScreen({ business, item, onBack }: BusinessChatScreenProps) {
+export function BusinessChatScreen({ business, item, conversationId: initialConvId, onBack }: BusinessChatScreenProps) {
   const { user, profile } = useAuth();
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<BusinessMessage[]>([]);
   const [loading, setLoading] = useState(true);
+  const [convId, setConvId] = useState<string | undefined>(initialConvId);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Obtain conversationId if not passed in props
+  useEffect(() => {
+    if (convId || !user || !business) return;
+    const findConv = async () => {
+      const { data } = await supabase
+        .from('conversations')
+        .select('id')
+        .contains('participant_ids', [user.id])
+        .eq('type', 'business')
+        .eq('business_id', business.id)
+        .maybeSingle();
+      if (data?.id) {
+        setConvId(data.id);
+      }
+    };
+    findConv();
+  }, [user, business, convId]);
 
   useEffect(() => {
     if (!user || !business) return;
 
     const fetchMessages = async () => {
       try {
-        const { data, error } = await supabase
+        let mainMsgs: any[] = [];
+        const activeConvId = convId || initialConvId;
+        if (activeConvId) {
+          const { data: dbMsgs } = await supabase
+            .from('messages')
+            .select('*')
+            .eq('conversation_id', activeConvId)
+            .order('created_at', { ascending: true });
+          if (dbMsgs) mainMsgs = dbMsgs;
+        }
+
+        const { data: bizMsgs } = await supabase
           .from('business_messages')
           .select(`
             *,
@@ -41,33 +72,72 @@ export function BusinessChatScreen({ business, item, onBack }: BusinessChatScree
           .eq('business_id', business.id)
           .order('created_at', { ascending: true });
 
-        // Filter by item_id if provided
-        let filteredData = data;
+        // Filter bizMsgs by item_id if provided
+        let filteredBizData = bizMsgs || [];
         if (item?.id) {
-          filteredData = data?.filter(msg => msg.item_id === item.id) || [];
+          filteredBizData = filteredBizData.filter(msg => msg.item_id === item.id);
         } else {
-          filteredData = data?.filter(msg => !msg.item_id) || [];
+          filteredBizData = filteredBizData.filter(msg => !msg.item_id);
         }
 
-        if (error) {
-          setMessages([]);
-        } else {
-          const transformedMessages: BusinessMessage[] = (filteredData || []).map(msg => ({
-            id: msg.id,
-            business_id: msg.business_id,
-            sender_id: msg.sender_id,
-            sender_name: msg.users?.name || "Unknown User",
-            sender_avatar: msg.users?.avatar_url,
-            content: msg.content,
-            timestamp: new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-            is_read: msg.is_read,
-            item_id: msg.item_id,
-            created_at: msg.created_at
-          }));
-          setMessages(transformedMessages);
+        // Fetch user data for senders in mainMsgs
+        const mainSenderIds = Array.from(new Set(mainMsgs.map(m => m.sender_id))).filter(Boolean);
+        let usersMap = new Map();
+        if (mainSenderIds.length > 0) {
+          const { data: usersData } = await supabase
+            .from('users')
+            .select('id, name, avatar_url')
+            .in('id', mainSenderIds);
+          if (usersData) {
+            usersMap = new Map(usersData.map(u => [u.id, u]));
+          }
         }
+
+        const formattedMain: BusinessMessage[] = mainMsgs.map(m => {
+          const sender = usersMap.get(m.sender_id);
+          return {
+            id: m.id,
+            business_id: business.id,
+            sender_id: m.sender_id,
+            sender_name: sender?.name || (m.sender_id === user.id ? (profile?.name || "You") : "User"),
+            sender_avatar: sender?.avatar_url || (m.sender_id === user.id ? profile?.avatar_url : undefined),
+            content: m.text || m.content || "",
+            timestamp: new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            is_read: m.is_read || false,
+            created_at: m.created_at
+          };
+        });
+
+        const formattedBiz: BusinessMessage[] = filteredBizData.map(msg => ({
+          id: msg.id,
+          business_id: msg.business_id,
+          sender_id: msg.sender_id,
+          sender_name: msg.users?.name || (msg.sender_id === user.id ? (profile?.name || "You") : "User"),
+          sender_avatar: msg.users?.avatar_url || (msg.sender_id === user.id ? profile?.avatar_url : undefined),
+          content: msg.content,
+          timestamp: new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          is_read: msg.is_read,
+          item_id: msg.item_id,
+          created_at: msg.created_at
+        }));
+
+        // Merge both message arrays and deduplicate by content + timestamp proximity
+        const map = new Map<string, BusinessMessage>();
+        [...formattedBiz, ...formattedMain].forEach(msg => {
+          const createdTime = msg.created_at ? new Date(msg.created_at).getTime() : Date.now();
+          const key = `${msg.sender_id}_${msg.content.trim()}_${createdTime}`;
+          if (!map.has(key)) {
+            map.set(key, msg);
+          }
+        });
+
+        const merged = Array.from(map.values()).sort(
+          (a, b) => (a.created_at ? new Date(a.created_at).getTime() : 0) - (b.created_at ? new Date(b.created_at).getTime() : 0)
+        );
+
+        setMessages(merged);
       } catch (error) {
-        setMessages([]);
+        console.error("Error fetching messages:", error);
       } finally {
         setLoading(false);
       }
@@ -75,9 +145,44 @@ export function BusinessChatScreen({ business, item, onBack }: BusinessChatScree
 
     fetchMessages();
 
-    // Set up real-time subscription (only if table exists)
-    const channel = supabase
-      .channel(`business_messages_${business.id}_${item?.id || 'general'}`)
+    const activeConvId = convId || initialConvId;
+    const channels: any[] = [];
+
+    if (activeConvId) {
+      const msgChannel = supabase
+        .channel(`messages_channel_${activeConvId}`)
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${activeConvId}`
+        }, async (payload) => {
+          const newM = payload.new as any;
+          if (user && newM.sender_id === user.id) return;
+
+          const { data: uData } = await supabase.from('users').select('name, avatar_url').eq('id', newM.sender_id).maybeSingle();
+          const transformed: BusinessMessage = {
+            id: newM.id,
+            business_id: business.id,
+            sender_id: newM.sender_id,
+            sender_name: uData?.name || "User",
+            sender_avatar: uData?.avatar_url,
+            content: newM.text || newM.content || "",
+            timestamp: new Date(newM.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            is_read: newM.is_read || false,
+            created_at: newM.created_at
+          };
+          setMessages(prev => {
+            if (prev.some(m => m.id === transformed.id || (m.sender_id === transformed.sender_id && m.content === transformed.content))) return prev;
+            return [...prev, transformed];
+          });
+        })
+        .subscribe();
+      channels.push(msgChannel);
+    }
+
+    const bizChannel = supabase
+      .channel(`biz_messages_${business.id}_${item?.id || 'gen'}`)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
@@ -85,90 +190,35 @@ export function BusinessChatScreen({ business, item, onBack }: BusinessChatScree
         filter: `business_id=eq.${business.id}`
       }, async (payload) => {
         const newMessage = payload.new as any;
-        
-        // Skip messages sent by current user - we handle those optimistically
-        if (user && newMessage.sender_id === user.id) {
-          return;
-        }
-        
-        // Filter by item_id if provided
-        if (item?.id && newMessage.item_id !== item.id) {
-          return;
-        } else if (!item?.id && newMessage.item_id) {
-          return;
-        }
+        if (user && newMessage.sender_id === user.id) return;
+        if (item?.id && newMessage.item_id !== item.id) return;
+        if (!item?.id && newMessage.item_id) return;
 
-        // Check if message already exists (to prevent duplicates)
+        const { data: userData } = await supabase.from('users').select('name, avatar_url').eq('id', newMessage.sender_id).maybeSingle();
+        const transformed: BusinessMessage = {
+          id: newMessage.id,
+          business_id: newMessage.business_id,
+          sender_id: newMessage.sender_id,
+          sender_name: userData?.name || "User",
+          sender_avatar: userData?.avatar_url,
+          content: newMessage.content,
+          timestamp: new Date(newMessage.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          is_read: newMessage.is_read,
+          item_id: newMessage.item_id,
+          created_at: newMessage.created_at
+        };
         setMessages(prev => {
-          const messageExists = prev.some(msg => msg.id === newMessage.id);
-          if (messageExists) {
-            return prev;
-          }
-
-          // Fetch user data for the sender
-          void (async () => {
-            try {
-              const { data: userData } = await supabase
-                .from('users')
-                .select('name, avatar_url')
-                .eq('id', newMessage.sender_id)
-                .maybeSingle();
-
-              const transformedMessage: BusinessMessage = {
-                id: newMessage.id,
-                business_id: newMessage.business_id,
-                sender_id: newMessage.sender_id,
-                sender_name: userData?.name || newMessage.sender_name || "Unknown User",
-                sender_avatar: userData?.avatar_url || newMessage.sender_avatar,
-                content: newMessage.content,
-                timestamp: new Date(newMessage.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-                is_read: newMessage.is_read,
-                item_id: newMessage.item_id,
-                created_at: newMessage.created_at
-              };
-
-              setMessages(prevMsgs => {
-                // Double-check message doesn't already exist
-                const alreadyExists = prevMsgs.some(msg => msg.id === transformedMessage.id);
-                if (alreadyExists) {
-                  return prevMsgs;
-                }
-                return [...prevMsgs, transformedMessage];
-              });
-            } catch {
-              // If user fetch fails, still add message with available data
-              const transformedMessage: BusinessMessage = {
-                id: newMessage.id,
-                business_id: newMessage.business_id,
-                sender_id: newMessage.sender_id,
-                sender_name: newMessage.sender_name || "Unknown User",
-                sender_avatar: newMessage.sender_avatar,
-                content: newMessage.content,
-                timestamp: new Date(newMessage.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-                is_read: newMessage.is_read,
-                item_id: newMessage.item_id,
-                created_at: newMessage.created_at
-              };
-
-              setMessages(prevMsgs => {
-                const alreadyExists = prevMsgs.some(msg => msg.id === transformedMessage.id);
-                if (alreadyExists) {
-                  return prevMsgs;
-                }
-                return [...prevMsgs, transformedMessage];
-              });
-            }
-          })();
-
-          return prev;
+          if (prev.some(m => m.id === transformed.id || (m.sender_id === transformed.sender_id && m.content === transformed.content))) return prev;
+          return [...prev, transformed];
         });
       })
       .subscribe();
+    channels.push(bizChannel);
 
     return () => {
-      supabase.removeChannel(channel);
+      channels.forEach(ch => supabase.removeChannel(ch));
     };
-  }, [user, business, item]);
+  }, [user, business, item, convId, initialConvId, profile]);
 
   useEffect(() => {
     scrollToBottom();
@@ -183,6 +233,7 @@ export function BusinessChatScreen({ business, item, onBack }: BusinessChatScree
 
     const messageContent = message.trim();
     const tempId = `temp-${Date.now()}`;
+    const activeConvId = convId || initialConvId;
     
     const optimisticMessage: BusinessMessage = {
       id: tempId,
@@ -192,16 +243,31 @@ export function BusinessChatScreen({ business, item, onBack }: BusinessChatScree
       sender_avatar: profile?.avatar_url || user.user_metadata?.avatar_url,
       content: messageContent,
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      is_read: true, // Mark as read for the sender
+      is_read: true,
       item_id: item?.id,
       created_at: new Date().toISOString()
     };
 
-    // Add optimistic message to local state immediately for better UX
     setMessages(prev => [...prev, optimisticMessage]);
     setMessage("");
 
     try {
+      // 1. Insert into main messages table if conversationId exists
+      if (activeConvId) {
+        await supabase
+          .from('messages')
+          .insert({
+            conversation_id: activeConvId,
+            sender_id: user.id,
+            text: messageContent,
+            content: messageContent,
+            is_read: true,
+            read_by: [user.id],
+            created_at: new Date().toISOString()
+          });
+      }
+
+      // 2. Insert into business_messages table for fallback/backwards compatibility
       const { data: insertedMessage, error } = await supabase
         .from('business_messages')
         .insert({
@@ -209,32 +275,29 @@ export function BusinessChatScreen({ business, item, onBack }: BusinessChatScree
           sender_id: user.id,
           content: messageContent,
           item_id: item?.id || null,
-          is_read: true // Mark as read for the sender
+          is_read: true
         })
         .select()
         .single();
 
-      if (error) {
-        // Remove optimistic message on error
+      if (error && !activeConvId) {
         setMessages(prev => prev.filter(msg => msg.id !== tempId));
         throw error;
       }
 
       if (insertedMessage) {
-        // Fetch user data to ensure we have the latest profile info
         const { data: userData } = await supabase
           .from('users')
           .select('name, avatar_url')
           .eq('id', user.id)
           .single();
 
-        // Replace optimistic message with real message from database
         const realMessage: BusinessMessage = {
           id: insertedMessage.id,
           business_id: insertedMessage.business_id,
           sender_id: insertedMessage.sender_id,
-          sender_name: userData?.name || profile?.name || user.user_metadata?.name || "You",
-          sender_avatar: userData?.avatar_url || profile?.avatar_url || user.user_metadata?.avatar_url,
+          sender_name: userData?.name || profile?.name || "You",
+          sender_avatar: userData?.avatar_url || profile?.avatar_url,
           content: insertedMessage.content,
           timestamp: new Date(insertedMessage.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
           is_read: insertedMessage.is_read,
@@ -242,24 +305,35 @@ export function BusinessChatScreen({ business, item, onBack }: BusinessChatScree
           created_at: insertedMessage.created_at
         };
 
-        // Replace the optimistic message with the real one
         setMessages(prev => 
           prev.map(msg => msg.id === tempId ? realMessage : msg)
         );
       }
 
-      // Update the conversation's last message
-      await supabase
-        .from('conversations')
-        .update({
-          last_message_text: messageContent,
-          last_message_timestamp: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .eq('business_id', business.id)
-        .contains('participant_ids', [user.id]);
+      // 3. Update conversation's last message
+      if (activeConvId) {
+        await supabase
+          .from('conversations')
+          .update({
+            last_message_text: messageContent,
+            last_message_timestamp: new Date().toISOString(),
+            last_message_sender_id: user.id,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', activeConvId);
+      } else {
+        await supabase
+          .from('conversations')
+          .update({
+            last_message_text: messageContent,
+            last_message_timestamp: new Date().toISOString(),
+            last_message_sender_id: user.id,
+            updated_at: new Date().toISOString()
+          })
+          .eq('business_id', business.id)
+          .contains('participant_ids', [user.id]);
+      }
     } catch (error) {
-      // Remove optimistic message on error
       setMessages(prev => prev.filter(msg => msg.id !== tempId));
       console.error('Error sending message:', error);
     }

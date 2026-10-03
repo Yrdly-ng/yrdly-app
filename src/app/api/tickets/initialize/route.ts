@@ -4,7 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { PaylukService } from '@/lib/payluk-service';
 import { getPaylukCustomerId } from '@/lib/payluk-onboarding';
 import { EscrowStatus } from '@/types/escrow';
-import { MARKETPLACE_CONSTANTS } from '@/lib/constants';
+import { MARKETPLACE_CONSTANTS, EVENT_CONSTANTS } from '@/lib/constants';
 
 /**
  * POST /api/tickets/initialize
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
       .select('id')
       .eq('buyer_id', user.id)
       .eq('tier_id', tierId)
-      .neq('status', 'CANCELLED');
+      .in('status', ['PAID', 'USED']);
 
     const userOwnedCount = existingUserTickets?.length || 0;
     if (userOwnedCount + 1 > MAX_TICKETS_PER_TIER) {
@@ -64,28 +64,23 @@ export async function POST(request: NextRequest) {
     const txRef = `evt-tkt-${tierId.substring(0,6)}-${user.id.substring(0,4)}-${Date.now()}`;
     const price = Number(tier.price);
 
-    // ── Free ticket — skip Payluk ────────────────────
+    // ── Free ticket — capacity is reserved by the ticket insert trigger ──
     if (price === 0) {
-      const { data: ticketId, error: rpcErr } = await supabaseAdmin.rpc('purchase_ticket', {
-        p_tier_id: tierId,
-        p_buyer_id: user.id,
-        p_event_id: eventId,
-        p_attendee_name: attendeeName,
-        p_attendee_email: attendeeEmail,
-        p_attendee_phone: attendeePhone || null,
-        p_amount_paid: 0,
-        p_tx_ref: txRef,
-        p_flw_ref: null,
-      });
-
-      if (rpcErr) {
-        if (rpcErr.message?.includes('TICKET_SOLD_OUT')) {
-          return NextResponse.json({ error: 'Sold out' }, { status: 409 });
-        }
-        throw rpcErr;
+      const ticketCode = `${EVENT_CONSTANTS.TICKET_CODE_PREFIX}-${crypto.randomUUID().slice(0, 12).toUpperCase()}`;
+      const { data: ticket, error: ticketError } = await supabaseAdmin.from('tickets')
+        .insert({
+          buyer_id: user.id, event_id: eventId, tier_id: tierId,
+          attendee_name: attendeeName, attendee_email: attendeeEmail,
+          attendee_phone: attendeePhone || null, ticket_code: ticketCode,
+          qr_data: JSON.stringify({ ticket_code: ticketCode, event_id: eventId, tier_id: tierId }),
+          status: 'PAID', amount_paid: 0, expires_at: tier.event.end_time || null,
+        })
+        .select('id').single();
+      if (ticketError?.message?.includes('ticket_tier_sold_out')) {
+        return NextResponse.json({ error: 'Sold out' }, { status: 409 });
       }
-
-      return NextResponse.json({ success: true, free: true, ticketId });
+      if (ticketError || !ticket) throw ticketError || new Error('Ticket creation failed');
+      return NextResponse.json({ success: true, free: true, ticketId: ticket.id });
     }
 
     // ── Paid ticket — initialise Payluk Escrow ──────────────────────────
@@ -201,4 +196,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-

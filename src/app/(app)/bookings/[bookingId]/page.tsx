@@ -1,4 +1,3 @@
-'use me';
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -184,6 +183,26 @@ export default function BookingDetailWebPage() {
     }
   };
 
+  const handleCheckout = async () => {
+    setActionLoading(true);
+    setMsg(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error('Please sign in again to pay for this booking.');
+      const response = await fetch('/api/bookings/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ bookingId: booking.id }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.url) throw new Error(result.error || 'Could not start checkout.');
+      window.location.assign(result.url);
+    } catch (error) {
+      setMsg({ text: error instanceof Error ? error.message : 'Could not start checkout.', type: 'error' });
+      setActionLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100 p-4 sm:p-6 lg:p-8">
       <div className="max-w-4xl mx-auto">
@@ -307,6 +326,18 @@ export default function BookingDetailWebPage() {
 
           {/* Action Buttons */}
           <div className="pt-4 flex flex-wrap gap-3">
+            {isCustomer && ['requested', 'confirmed'].includes(booking.status)
+              && (!!booking.quote_id || !!booking.service?.price)
+              && (!!booking.quote_id || booking.service?.deposit_required || booking.service?.requires_full_payment || booking.service?.escrow_enabled)
+              && !['deposit_paid', 'fully_paid', 'escrow_held', 'escrow_released'].includes(booking.payment_status || 'unpaid') && (
+              <button
+                onClick={handleCheckout}
+                disabled={actionLoading}
+                className="flex-1 py-3 px-4 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-bold rounded-xl text-sm disabled:opacity-50"
+              >
+                {actionLoading ? 'Opening checkout…' : 'Pay for booking'}
+              </button>
+            )}
             {isProvider && booking.status === 'requested' && (
               <>
                 <button
@@ -390,4 +421,3 @@ export default function BookingDetailWebPage() {
     </div>
   );
 }
-

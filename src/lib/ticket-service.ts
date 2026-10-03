@@ -53,6 +53,10 @@ export class TicketService {
       throw new Error('event_not_found');
     }
 
+    if (tier.capacity !== null && (tier.sold || 0) + quantity > tier.capacity) {
+      throw new Error('sold_out_payluk_refund_required');
+    }
+
     // ── Generate ticket codes & QR ────────────────────────────────────────────
     const ticketsToInsert = [];
     for (let i = 0; i < quantity; i++) {
@@ -82,13 +86,10 @@ export class TicketService {
       .insert(ticketsToInsert)
       .select('id, ticket_code, qr_data');
 
+    if (ticketError?.message?.includes('ticket_tier_sold_out')) {
+      throw new Error('sold_out_payluk_refund_required');
+    }
     if (ticketError) throw ticketError;
-
-    // ── Increment sold count atomically ──────────────────────────────────────
-    await supabaseAdmin
-      .from('ticket_tiers')
-      .update({ sold: (tier.sold || 0) + quantity })
-      .eq('id', tier_id);
 
     try {
       const { data: eData } = await supabaseAdmin.from('events').select('attendee_count').eq('id', event_id).single();
@@ -276,12 +277,11 @@ export class TicketService {
     // ── Check Capacity ───────────────────────────────────────────────────────
     if (tier.capacity !== null && (tier.sold || 0) + quantity > tier.capacity) {
       console.warn(`[TicketService] Tier ${tier_id} is sold out. Refunding transaction ${txRef}`);
-      try {
-        await PaystackService.refundTransaction(txRef, amount);
-      } catch (e) {
-        console.error('[TicketService] Failed to refund oversold ticket', e);
-      }
-      throw new Error('sold_out_refunded');
+      const refunded = await PaystackService.refundTransaction(txRef, amount).catch(error => {
+        console.error('[TicketService] Failed to refund oversold ticket', error);
+        return false;
+      });
+      throw new Error(refunded ? 'sold_out_refunded' : 'sold_out_refund_required');
     }
 
     // ── Generate ticket codes & QR ────────────────────────────────────────────
@@ -313,13 +313,11 @@ export class TicketService {
       .insert(ticketsToInsert)
       .select('id, ticket_code, qr_data');
 
+    if (ticketError?.message?.includes('ticket_tier_sold_out')) {
+      const refunded = await PaystackService.refundTransaction(txRef, amount);
+      throw new Error(refunded ? 'sold_out_refunded' : 'sold_out_refund_required');
+    }
     if (ticketError) throw ticketError;
-
-    // ── Increment sold count ─────────────────────────────────────────────────
-    await supabaseAdmin
-      .from('ticket_tiers')
-      .update({ sold: (tier.sold || 0) + quantity })
-      .eq('id', tier_id);
 
     try {
       const { data: eData } = await supabaseAdmin.from('events').select('attendee_count').eq('id', event_id).single();
@@ -331,4 +329,3 @@ export class TicketService {
     return { ...insertedTickets[0], event_id, quantity };
   }
 }
-

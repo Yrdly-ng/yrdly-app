@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import crypto from 'crypto';
+import { verifyPaylukWebhookSignature } from '@/lib/payluk-webhook';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { EscrowStatus } from '@/types/escrow';
 import { NotificationService } from '@/lib/notification-service';
 import { TicketService } from '@/lib/ticket-service';
 import { PaylukService } from '@/lib/payluk-service';
+import { handlePaylukWebhookEvent as handleBookingPaymentEvent } from '@/lib/booking-payments';
+import { PayoutService } from '@/lib/payout-service';
 
 // ── Signature verification ───────────────────────────────────────────────────
 //
@@ -19,20 +21,6 @@ import { PaylukService } from '@/lib/payluk-service';
 // and invalidate the signature.
 
 const PAYLUK_SECRET_KEY = process.env.PAYLUK_SECRET_KEY;
-
-function verifySignature(rawBody: Buffer, receivedSig: string | null): boolean {
-  if (!PAYLUK_SECRET_KEY || !receivedSig) return false;
-  const expected = crypto
-    .createHmac('sha512', PAYLUK_SECRET_KEY)
-    .update(rawBody)
-    .digest('hex');
-  try {
-    return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(receivedSig));
-  } catch {
-    // Buffer lengths differ → signature is definitely wrong
-    return false;
-  }
-}
 
 // ── Payload types ────────────────────────────────────────────────────────────
 
@@ -67,7 +55,8 @@ export async function POST(request: NextRequest) {
   const rawBody = Buffer.from(await request.arrayBuffer());
   const receivedSig = request.headers.get('x-payluk-signature');
 
-  if (!verifySignature(rawBody, receivedSig)) {
+  if (!PAYLUK_SECRET_KEY) return NextResponse.json({ error: 'Webhook is not configured' }, { status: 503 });
+  if (!verifyPaylukWebhookSignature(rawBody, receivedSig, PAYLUK_SECRET_KEY)) {
     console.warn('[PaylukWebhook] Signature verification failed');
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
   }
@@ -144,10 +133,10 @@ export async function POST(request: NextRequest) {
         break;
       }
     }
+    await handleBookingPaymentEvent(payload);
   } catch (err) {
-    // Log the error but still return 200 — we must not trigger Payluk retries
-    // for errors that are our own logic failures rather than delivery failures.
     console.error(`[PaylukWebhook] Error processing event ${event}:`, err);
+    return NextResponse.json({ error: 'Webhook processing failed' }, { status: 500 });
   }
 
   return NextResponse.json({ status: 'ok' }, { status: 200 });
@@ -279,68 +268,12 @@ async function handleEscrowOngoing(data: PaylukEscrowData) {
   }
 }
 
-async function createFallbackTransaction(data: PaylukEscrowData) {
-  try {
-    if (!data.sellerId) return null;
-    const customer = await PaylukService.getCustomerById(data.sellerId).catch(() => null);
-    if (!customer || !customer.email) return null;
-
-    const { data: user } = await supabaseAdmin
-      .from('users')
-      .select('id')
-      .eq('email', customer.email)
-      .maybeSingle();
-
-    if (!user) return null;
-
-    // Get fallback post ID
-    const { data: posts } = await supabaseAdmin.from('posts').select('id').limit(1);
-    const fallbackItemId = posts?.[0]?.id || '00000000-0000-0000-0000-000000000000';
-
-    const amount = Number(data.amount || 0);
-
-    const { data: newTx, error } = await supabaseAdmin
-      .from('escrow_transactions')
-      .insert({
-        seller_id: user.id,
-        buyer_id: user.id,
-        item_id: fallbackItemId,
-        amount: amount,
-        commission: 0,
-        seller_amount: amount,
-        total_amount: amount,
-        status: EscrowStatus.COMPLETED,
-        payment_method: 'card',
-        payment_provider: 'payluk',
-        delivery_details: {},
-        payluk_escrow_id: data.id,
-        payluk_tx_ref: data.paymentToken || data.id,
-        completed_at: new Date().toISOString(),
-        metadata: { note: 'Auto-created by Payluk webhook fallback' },
-      })
-      .select('id, status, buyer_id, seller_id, item_id, item_type, amount, payluk_tx_ref, payluk_escrow_id, metadata')
-      .single();
-
-    if (error) {
-      console.error('[PaylukWebhook] Failed to create fallback transaction:', error.message);
-      return null;
-    }
-
-    console.log(`[PaylukWebhook] Successfully created fallback transaction ${newTx.id} for seller ${user.id}`);
-    return newTx;
-  } catch (err: any) {
-    console.error('[PaylukWebhook] Error in createFallbackTransaction:', err?.message);
-    return null;
-  }
-}
-
 async function handleEscrowCompleted(data: PaylukEscrowData) {
   let { data: tx, error } = await findTransactionByPaylukData(data);
 
   if (error || !tx) {
-    console.warn(`[PaylukWebhook] escrow.completed: no local transaction for escrow id=${data.id}, attempting fallback creation...`);
-    tx = await createFallbackTransaction(data);
-    if (!tx) return;
+    console.warn(`[PaylukWebhook] escrow.completed: no marketplace transaction for escrow id=${data.id}`);
+    return;
   }
 
   // Idempotent: if already COMPLETED, skip.
@@ -360,8 +293,31 @@ async function handleEscrowCompleted(data: PaylukEscrowData) {
 
   if (updateError) {
     console.error(`[PaylukWebhook] escrow.completed: failed to update tx ${tx.id}:`, updateError.message);
+    throw updateError;
   } else {
     console.log(`[PaylukWebhook] escrow.completed: tx ${tx.id} → COMPLETED`);
+  }
+  await tryMarketplacePayout(tx);
+}
+
+async function tryMarketplacePayout(tx: { id: string; seller_id: string; item_type: string | null }) {
+  if (tx.item_type === 'ticket') return;
+  try {
+    await PayoutService.initiateAutoPayout(tx.id);
+  } catch (error) {
+    console.error(`[PaylukWebhook] Automatic payout needs attention for ${tx.id}:`, error);
+    const { data: payout } = await supabaseAdmin.from('payout_requests')
+      .select('id').eq('transaction_id', tx.id).maybeSingle();
+    if (payout) return;
+    await supabaseAdmin.from('notifications').insert({
+      user_id: tx.seller_id,
+      type: 'payout_failed',
+      title: 'Payout needs attention',
+      message: 'Your escrow was released, but the bank payout needs attention. Check your payout settings or contact support.',
+      related_id: tx.id,
+      related_type: 'escrow_transaction',
+      data: { transactionId: tx.id },
+    });
   }
 }
 
@@ -371,9 +327,8 @@ async function handleEscrowClaimed(data: PaylukEscrowData) {
   let { data: tx, error } = await findTransactionByPaylukData(data);
 
   if (error || !tx) {
-    console.warn(`[PaylukWebhook] escrow.claimed: no local transaction for escrow id=${data.id}, attempting fallback creation...`);
-    tx = await createFallbackTransaction(data);
-    if (!tx) return;
+    console.warn(`[PaylukWebhook] escrow.claimed: no marketplace transaction for escrow id=${data.id}`);
+    return;
   }
 
   if (tx.status === EscrowStatus.COMPLETED) {
@@ -392,10 +347,11 @@ async function handleEscrowClaimed(data: PaylukEscrowData) {
 
   if (updateError) {
     console.error(`[PaylukWebhook] escrow.claimed: failed to update tx ${tx.id}:`, updateError.message);
-    return;
+    throw updateError;
   }
 
   console.log(`[PaylukWebhook] escrow.claimed: tx ${tx.id} → COMPLETED (seller-initiated claim)`);
+  await tryMarketplacePayout(tx);
 
   // Notify the seller that their funds have been released.
   try {
@@ -567,4 +523,3 @@ async function handleEscrowRefunded(data: PaylukEscrowData) {
     console.error(`[PaylukWebhook] Error sending refund notifications for tx ${tx.id}:`, notifErr);
   }
 }
-

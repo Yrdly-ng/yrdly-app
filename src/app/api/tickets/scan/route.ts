@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from "@/lib/supabase-server";
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { createClient } from '@supabase/supabase-js';
 
 /**
  * POST /api/tickets/scan
@@ -18,6 +17,12 @@ export async function POST(request: NextRequest) {
     if (!input || !eventId) {
       return NextResponse.json({ error: 'Ticket code/ID and eventId are required' }, { status: 400 });
     }
+
+    const { data: event, error: eventError } = await supabaseAdmin.from('events')
+      .select('organizer_id, status').eq('id', eventId).single();
+    if (eventError || !event) return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+    if (event.organizer_id !== user.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (event.status === 'CANCELLED') return NextResponse.json({ error: 'Event is cancelled' }, { status: 409 });
 
     const { data: result, error: rpcError } = await supabaseAdmin.rpc('scan_ticket', {
       p_ticket_input: input,

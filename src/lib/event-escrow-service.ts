@@ -10,6 +10,8 @@ import { PaylukService } from './payluk-service';
 import { getPaylukCustomerId } from './payluk-onboarding';
 import { EVENT_CONSTANTS } from './constants';
 import type { EventPayout } from '@/types/events';
+import { isPaylukTicket } from './ticket-payment-provider';
+import { requestPaystackTicketRefund } from './ticket-refunds';
 
 // Service-role client for writes that bypass RLS
 const adminSupabase = createClient(
@@ -236,7 +238,7 @@ export class EventEscrowService {
   }> {
     const { data: tickets, error } = await adminSupabase
       .from('tickets')
-      .select('id, payment_tx_ref, amount_paid, buyer_id')
+      .select('id, payment_tx_ref, payment_provider_ref, refund_status, amount_paid, buyer_id')
       .eq('event_id', eventId)
       .eq('status', 'PAID');
 
@@ -245,29 +247,30 @@ export class EventEscrowService {
     let refunded = 0;
     let failed = 0;
 
-    for (const ticket of tickets) {
+    const groups = [...new Set(tickets.filter(ticket => Number(ticket.amount_paid) > 0)
+      .map(ticket => ticket.payment_provider_ref))];
+    for (const paymentRef of groups) {
+      const orderTickets = tickets.filter(ticket => ticket.payment_provider_ref === paymentRef);
       try {
-        if (ticket.amount_paid > 0 && ticket.payment_tx_ref) {
-          // Refund via Paystack using the stored payment reference
-          const refunded = await PaystackService.refundTransaction(
-            ticket.payment_tx_ref,
-            ticket.amount_paid
-          );
-          if (!refunded) {
-            throw new Error(`Paystack refund failed for ticket ${ticket.id}`);
-          }
+        const paylukChecks = await Promise.all(orderTickets.map(ticket => isPaylukTicket(ticket.payment_tx_ref)));
+        if (!paymentRef || paylukChecks.some(Boolean)) {
+          throw new Error('Payluk escrow refunds need support review');
         }
-
-        // Mark as refunded in DB
-        await adminSupabase
-          .from('tickets')
-          .update({ status: 'REFUNDED' })
-          .eq('id', ticket.id);
-        refunded++;
+        if (orderTickets.some(ticket => ticket.refund_status)) throw new Error('Refund already in progress');
+        await requestPaystackTicketRefund(paymentRef, orderTickets);
+        refunded += orderTickets.length;
       } catch (err) {
-        console.error(`[Escrow] Failed to refund ticket ${ticket.id}`, err);
-        failed++;
+        console.error(`[Escrow] Failed to request refund for payment ${paymentRef}`, err);
+        failed += orderTickets.length;
       }
+    }
+
+    for (const ticket of tickets.filter(ticket => Number(ticket.amount_paid) <= 0)) {
+      const { error: updateError } = await adminSupabase.from('tickets')
+        .update({ status: 'REFUNDED', refund_status: 'processed' })
+        .eq('id', ticket.id).eq('status', 'PAID');
+      if (updateError) failed++;
+      else refunded++;
     }
 
     return { refunded, failed };
