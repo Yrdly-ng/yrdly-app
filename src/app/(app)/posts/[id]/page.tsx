@@ -48,11 +48,12 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const description = clip(post.text || post.title || 'See this post on Yrdly', 280);
 
   // Posts with a photo or a video get a big image on top (like X's large card).
-  // Videos use their saved thumbnail. Text-only posts get the small avatar thumbnail.
+  // Videos use their saved thumbnail (or a poster card if there isn't one). Text-only posts get the small avatar thumbnail.
   const hasPhoto =
     (Array.isArray(post.image_urls) ? post.image_urls.length > 0 : !!post.image_urls) || !!post.image_url;
-  const hasVideoThumb = !!post.video_url && !!post.video_thumbnail_url;
-  const hasMedia = hasPhoto || hasVideoThumb;
+  const hasVideo =
+    !!post.video_url || (Array.isArray(post.video_urls) ? post.video_urls.length > 0 : !!post.video_urls);
+  const hasMedia = hasPhoto || hasVideo;
 
   const image = hasMedia ? `${SITE_URL}/api/og/media/${id}` : `${SITE_URL}/api/og/avatar/${id}`;
   const ogImage = hasMedia

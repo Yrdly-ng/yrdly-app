@@ -49,6 +49,27 @@ const PLAY_BADGE = Buffer.from(
   </svg>`
 );
 
+// Used when a video post has no saved thumbnail: the author's avatar, blurred and darkened,
+// with a play button on top, so video posts still get the big card.
+async function buildPoster(avatarUrl: string | null): Promise<ReturnType<typeof sharp>> {
+  if (avatarUrl) {
+    try {
+      const avatar = await loadImage(avatarUrl);
+      const bg = await sharp(avatar, { failOn: 'none' })
+        .resize(W, H, { fit: 'cover', position: 'centre' })
+        .blur(28)
+        .modulate({ brightness: 0.6 })
+        .flatten({ background: '#000000' })
+        .png()
+        .toBuffer();
+      return sharp(bg).composite([{ input: PLAY_BADGE }]);
+    } catch {}
+  }
+  return sharp({ create: { width: W, height: H, channels: 3, background: '#0b6b30' } }).composite([
+    { input: PLAY_BADGE },
+  ]);
+}
+
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ postId: string }> }
@@ -69,29 +90,49 @@ export async function GET(
     info.queryError = error?.message ?? null;
 
     const photo = firstUrl(post?.image_urls) || firstUrl(post?.image_url);
-    const hasVideoThumb = !!post?.video_url && !!post?.video_thumbnail_url;
-    const isVideo = !photo && hasVideoThumb;
-    const source = photo || (isVideo ? (post?.video_thumbnail_url as string) : null);
+    const hasVideo = !!post?.video_url || !!firstUrl(post?.video_urls);
+    const hasVideoThumb = !!post?.video_thumbnail_url;
 
     info.photo = photo;
-    info.hasVideo = !!post?.video_url;
-    info.hasVideoThumbnail = !!post?.video_thumbnail_url;
-    info.using = photo ? 'photo' : isVideo ? 'video thumbnail' : 'nothing (text-only post)';
+    info.hasVideo = hasVideo;
+    info.hasVideoThumbnail = hasVideoThumb;
 
-    if (!source) throw new Error('post has no photo or video thumbnail');
+    let pipeline: ReturnType<typeof sharp>;
 
-    const input = await loadImage(source);
-    info.sourceBytes = input.length;
-
-    // Center crop (fast). failOn:'none' tolerates slightly broken phone photos.
-    let pipeline = sharp(input, { failOn: 'none' })
-      .rotate()
-      .resize(W, H, { fit: 'cover', position: 'centre' })
-      .flatten({ background: '#000000' });
-
-    if (isVideo) {
-      const base = await pipeline.png().toBuffer();
+    if (photo) {
+      info.using = 'photo';
+      const input = await loadImage(photo);
+      info.sourceBytes = input.length;
+      // Center crop (fast). failOn:'none' tolerates slightly broken phone photos.
+      pipeline = sharp(input, { failOn: 'none' })
+        .rotate()
+        .resize(W, H, { fit: 'cover', position: 'centre' })
+        .flatten({ background: '#000000' });
+    } else if (hasVideo && hasVideoThumb) {
+      info.using = 'video thumbnail';
+      const input = await loadImage(post?.video_thumbnail_url as string);
+      info.sourceBytes = input.length;
+      const base = await sharp(input, { failOn: 'none' })
+        .resize(W, H, { fit: 'cover', position: 'centre' })
+        .flatten({ background: '#000000' })
+        .png()
+        .toBuffer();
       pipeline = sharp(base).composite([{ input: PLAY_BADGE }]);
+    } else if (hasVideo) {
+      info.using = 'video poster (no saved thumbnail)';
+      let avatarUrl: string | null = post?.author_image || null;
+      if (post?.user_id) {
+        const { data: u } = await supabaseAdmin
+          .from('users')
+          .select('avatar_url')
+          .eq('id', post.user_id)
+          .maybeSingle();
+        avatarUrl = u?.avatar_url || avatarUrl;
+      }
+      pipeline = await buildPoster(avatarUrl);
+    } else {
+      info.using = 'nothing (text-only post)';
+      throw new Error('post has no photo or video');
     }
 
     let out: Buffer = Buffer.alloc(0);
