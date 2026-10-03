@@ -11,6 +11,10 @@ ALTER TABLE public.conversations
   ADD COLUMN IF NOT EXISTS invite_code TEXT UNIQUE,
   ADD COLUMN IF NOT EXISTS is_invite_link_active BOOLEAN NOT NULL DEFAULT true;
 
+ALTER TABLE public.conversations DROP CONSTRAINT IF EXISTS conversations_type_check;
+ALTER TABLE public.conversations ADD CONSTRAINT conversations_type_check 
+  CHECK (type = ANY (ARRAY['friend'::text, 'marketplace'::text, 'business'::text, 'briefcase'::text, 'event'::text, 'group'::text]));
+
 CREATE INDEX IF NOT EXISTS idx_conversations_type ON public.conversations(type);
 CREATE INDEX IF NOT EXISTS idx_conversations_invite_code ON public.conversations(invite_code) WHERE invite_code IS NOT NULL;
 
