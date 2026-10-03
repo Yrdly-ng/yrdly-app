@@ -286,17 +286,31 @@ export function CommentSection({
     const handleReportComment = useCallback(async (commentId: string, reason: string) => {
         if (!currentUser) return;
         try {
-            const { error } = await supabase.from('comment_reports').insert({
+            const { error: primaryErr } = await supabase.from('comment_reports').insert({
                 comment_id: commentId,
                 post_id: postId,
                 reporter_id: currentUser.id,
                 reason,
             });
-            if (error) throw error;
+
+            if (primaryErr) {
+                console.warn('[CommentSection] comment_reports insert failed, falling back to reports table:', primaryErr.message);
+                const { error: fallbackErr } = await supabase.from('reports').insert({
+                    reporter_id: currentUser.id,
+                    user_id: currentUser.id,
+                    category: 'comment_report',
+                    subject: `Comment Report: ${reason}`,
+                    description: `Reported comment ${commentId} on post ${postId}. Reason: ${reason}`,
+                    status: 'open',
+                });
+                if (fallbackErr) throw fallbackErr;
+            }
+
             setComments(prev => prev.filter(c => c.id !== commentId));
             setReportTarget(null);
             toast({ title: 'Comment reported', description: "Thanks, we'll review it." });
-        } catch {
+        } catch (err: any) {
+            console.error('[CommentSection] Report submission error:', err);
             toast({ variant: 'destructive', title: 'Error', description: 'Could not submit report.' });
         }
     }, [currentUser, postId, toast]);
