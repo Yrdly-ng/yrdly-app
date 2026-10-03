@@ -18,10 +18,6 @@ function clip(text: string, max: number) {
   return clean.length > max ? clean.slice(0, max - 1).trimEnd() + '\u2026' : clean;
 }
 
-// false = author avatar as a small square thumbnail on the left (exactly like the X preview)
-// true  = use the post photo when there is one (WhatsApp shows it as a big image on top)
-const USE_POST_PHOTO = false;
-
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
   const url = `${SITE_URL}/posts/${id}`;
@@ -51,13 +47,16 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const title = `${author}${handle} on Yrdly`;
   const description = clip(post.text || post.title || 'See this post on Yrdly', 280);
 
-  const postImage = post.image_urls?.[0] || post.image_url;
-  const usePhoto = USE_POST_PHOTO && !!postImage;
-  // The avatar goes through a route that resizes it to 200x200 so WhatsApp shows it
-  // as a small thumbnail on the left, like X (big images become a large card on top)
-  const image = usePhoto ? postImage : `${SITE_URL}/api/og/avatar/${id}`;
-  const ogImage = usePhoto
-    ? { url: image }
+  // Posts with a photo or a video get a big image on top (like X's large card).
+  // Videos use their saved thumbnail. Text-only posts get the small avatar thumbnail.
+  const hasPhoto =
+    (Array.isArray(post.image_urls) ? post.image_urls.length > 0 : !!post.image_urls) || !!post.image_url;
+  const hasVideoThumb = !!post.video_url && !!post.video_thumbnail_url;
+  const hasMedia = hasPhoto || hasVideoThumb;
+
+  const image = hasMedia ? `${SITE_URL}/api/og/media/${id}` : `${SITE_URL}/api/og/avatar/${id}`;
+  const ogImage = hasMedia
+    ? { url: image, width: 1200, height: 630, alt: title }
     : { url: image, width: 200, height: 200, alt: author };
 
   return {
@@ -73,7 +72,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       images: [ogImage],
     },
     twitter: {
-      card: usePhoto ? 'summary_large_image' : 'summary',
+      card: hasMedia ? 'summary_large_image' : 'summary',
       title,
       description,
       images: [image],
