@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
 import { Suspense } from 'react';
 import { PostPageClient } from './PostPageClient';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 
 // Re-generate previews at most once a minute so edited posts refresh
 export const revalidate = 60;
@@ -9,8 +9,12 @@ export const revalidate = 60;
 const SITE_URL = 'https://app.yrdly.ng';
 const FALLBACK_IMAGE = `${SITE_URL}/logo.png`;
 
+// Keeps line breaks (like X does) but trims stray whitespace and clips long text
 function clip(text: string, max: number) {
-  const clean = text.replace(/\s+/g, ' ').trim();
+  const clean = text
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
   return clean.length > max ? clean.slice(0, max - 1).trimEnd() + '\u2026' : clean;
 }
 
@@ -18,14 +22,12 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   const url = `${SITE_URL}/posts/${id}`;
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-
-  const { data: post } = await supabase
+  // Server-side lookup with the admin client: link-preview crawlers aren't logged in,
+  // so the public (anon) client can't read the author's row and the preview loses
+  // the username and avatar. Only public fields are used below.
+  const { data: post } = await supabaseAdmin
     .from('posts')
-    .select('*, user:users!posts_user_id_fkey(name, avatar_url)')
+    .select('*, user:users!posts_user_id_fkey(name, username, avatar_url)')
     .eq('id', id)
     .maybeSingle();
 
@@ -37,14 +39,26 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     };
   }
 
-  // X-style preview: "<Author> on Yrdly", the post text, and the post photo
-  // (or the author's avatar when the post has no photo)
-  const author = post.user?.name || post.author_name || 'A neighbor';
-  const title = post.title ? clip(post.title, 70) : `${author} on Yrdly`;
-  const description = post.text ? clip(post.text, 200) : 'See this post on Yrdly';
+  // X-style preview: "<Name> (@username) on Yrdly", the full post text,
+  // and the author's avatar as a small thumbnail
+  const user = Array.isArray(post.user) ? post.user[0] : post.user;
+  const author = user?.name || post.author_name || 'A neighbor';
+  const handle = user?.username ? ` (@${user.username})` : '';
+  const title = `${author}${handle} on Yrdly`;
+  const description = clip(post.text || post.title || 'See this post on Yrdly', 280);
 
-  const postImage = post.image_urls?.[0] || post.image_url;
-  const image = postImage || post.user?.avatar_url || FALLBACK_IMAGE;
+  // Posts with a photo or a video get a big image on top (like X's large card).
+  // Videos use their saved thumbnail (or a poster card if there isn't one). Text-only posts get the small avatar thumbnail.
+  const hasPhoto =
+    (Array.isArray(post.image_urls) ? post.image_urls.length > 0 : !!post.image_urls) || !!post.image_url;
+  const hasVideo =
+    !!post.video_url || (Array.isArray(post.video_urls) ? post.video_urls.length > 0 : !!post.video_urls);
+  const hasMedia = hasPhoto || hasVideo;
+
+  const image = hasMedia ? `${SITE_URL}/api/og/media/${id}` : `${SITE_URL}/api/og/avatar/${id}`;
+  const ogImage = hasMedia
+    ? { url: image, width: 1200, height: 630, alt: title }
+    : { url: image, width: 200, height: 200, alt: author };
 
   return {
     title,
@@ -56,10 +70,10 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       url,
       siteName: 'Yrdly',
       type: 'article',
-      images: [image],
+      images: [ogImage],
     },
     twitter: {
-      card: postImage ? 'summary_large_image' : 'summary',
+      card: hasMedia ? 'summary_large_image' : 'summary',
       title,
       description,
       images: [image],
