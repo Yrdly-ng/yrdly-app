@@ -871,20 +871,34 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
     if (!currentUser || !post.id || reporting) return;
     setReporting(true);
     try {
-      const { error } = await supabase.from("post_reports").insert({
+      const { error: primaryErr } = await supabase.from("post_reports").insert({
         post_id: post.id,
         reporter_id: currentUser.id,
         reason,
       });
-      if (error && error.code !== "23505") throw error; // 23505 = already reported
+
+      if (primaryErr && primaryErr.code !== "23505") {
+        console.warn('[PostCard] post_reports insert failed, falling back to reports table:', primaryErr.message);
+        const { error: fallbackErr } = await supabase.from("reports").insert({
+          reporter_id: currentUser.id,
+          user_id: currentUser.id,
+          category: 'post_report',
+          subject: `Post Report: ${reason}`,
+          description: `Reported post ${post.id}. Reason: ${reason}`,
+          status: 'open',
+        });
+        if (fallbackErr) throw fallbackErr;
+      }
+
       setReportOpen(false);
       setSelectedReportReason(null);
       setReportDetails("");
       toast({
-        title: error ? "Already reported" : "Post reported",
-        description: error ? "You've already reported this post." : "Thanks, we'll review it.",
+        title: primaryErr && primaryErr.code === "23505" ? "Already reported" : "Post reported",
+        description: primaryErr && primaryErr.code === "23505" ? "You've already reported this post." : "Thanks, we'll review it.",
       });
-    } catch {
+    } catch (err: any) {
+      console.error('[PostCard] Report submission error:', err);
       toast({ variant: "destructive", title: "Error", description: "Could not submit report." });
     } finally {
       setReporting(false);
