@@ -6,7 +6,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 export const runtime = 'nodejs';
 export const revalidate = 300;
 
-const SIZE = 200;
+const SIZE = 120;
 const FALLBACK_LOGO = 'https://app.yrdly.ng/logo.png';
 
 async function fetchBuffer(url: string) {
