@@ -449,7 +449,7 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
     {/* ── Right Sidebar (fixed in place, does not move while the feed scrolls) ── */}
     <div className="hidden lg:block relative shrink-0">
       <aside className="sticky top-6 flex min-w-0 w-full max-w-full flex-col gap-4 overflow-x-hidden font-yrdly-body items-start overflow-y-auto max-h-[calc(100dvh-24px)] pb-6 scrollbar-hide">
-      <div className="h-[300px] w-full overflow-hidden rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-5 shadow-sm transition-all hover:border-primary/40 hover:shadow-md">
+      <div className="h-[340px] w-full overflow-hidden rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-5 shadow-sm transition-all hover:border-primary/40 hover:shadow-md">
         <div className="flex items-center gap-3 mb-4">
           <span
             className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
@@ -498,7 +498,7 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
         )}
       </div>
 
-      <div className="h-[300px] w-full overflow-hidden rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-5 shadow-sm transition-all hover:border-primary/40 hover:shadow-md">
+      <div className="h-[340px] w-full overflow-hidden rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-5 shadow-sm transition-all hover:border-primary/40 hover:shadow-md">
         <div className="flex items-center gap-3 mb-4">
           <span
             className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"

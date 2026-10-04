@@ -22,6 +22,8 @@ export function ImageSwiper({ images, isOpen, onClose, initialIndex = 0 }: Image
 
   const containerRef = useRef<HTMLDivElement>(null);
   const dragStartX = useRef(0);
+  const dragStartY = useRef(0);
+  const dragAxis = useRef<'x' | 'y' | null>(null);
   const lastX = useRef(0);
   const lastTime = useRef(0);
   const velocity = useRef(0);
@@ -74,17 +76,34 @@ export function ImageSwiper({ images, isOpen, onClose, initialIndex = 0 }: Image
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose, goToNext, goToPrevious]);
 
-  const startDrag = (clientX: number) => {
+  const startDrag = (clientX: number, clientY: number) => {
+    // Swiping only makes sense when there is more than one picture
+    if (images.length <= 1) return;
     setIsAnimating(false);
     setIsDragging(true);
     dragStartX.current = clientX;
+    dragStartY.current = clientY;
+    dragAxis.current = null;
     lastX.current = clientX;
     lastTime.current = performance.now();
     velocity.current = 0;
   };
 
-  const moveDrag = (clientX: number) => {
+  const moveDrag = (clientX: number, clientY: number) => {
     if (!isDragging) return;
+
+    // Lock to one direction after a few pixels: only sideways swipes move the pictures
+    if (dragAxis.current === null) {
+      const dx = Math.abs(clientX - dragStartX.current);
+      const dy = Math.abs(clientY - dragStartY.current);
+      if (Math.max(dx, dy) < 8) return;
+      dragAxis.current = dx > dy ? 'x' : 'y';
+    }
+    if (dragAxis.current === 'y') {
+      setIsDragging(false);
+      setDragOffset(0);
+      return;
+    }
 
     const now = performance.now();
     const dt = now - lastTime.current;
@@ -127,16 +146,18 @@ export function ImageSwiper({ images, isOpen, onClose, initialIndex = 0 }: Image
     setDragOffset(0);
   };
 
-  const handleTouchStart = (e: React.TouchEvent) => startDrag(e.targetTouches[0].clientX);
-  const handleTouchMove = (e: React.TouchEvent) => moveDrag(e.targetTouches[0].clientX);
+  const handleTouchStart = (e: React.TouchEvent) =>
+    startDrag(e.targetTouches[0].clientX, e.targetTouches[0].clientY);
+  const handleTouchMove = (e: React.TouchEvent) =>
+    moveDrag(e.targetTouches[0].clientX, e.targetTouches[0].clientY);
   const handleTouchEnd = () => endDrag();
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
-    startDrag(e.clientX);
+    startDrag(e.clientX, e.clientY);
   };
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (isDragging) moveDrag(e.clientX);
+    if (isDragging) moveDrag(e.clientX, e.clientY);
   };
   const handleMouseUp = () => endDrag();
   const handleMouseLeave = () => {

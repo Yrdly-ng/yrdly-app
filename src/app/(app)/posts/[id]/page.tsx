@@ -9,7 +9,8 @@ export const revalidate = 60;
 const SITE_URL = 'https://app.yrdly.ng';
 const FALLBACK_IMAGE = `${SITE_URL}/logo.png`;
 
-// Keeps line breaks (like X does) but trims stray whitespace and clips long text
+// Keeps line breaks (like X does) but trims stray whitespace. The limit is high on purpose:
+// WhatsApp decides how many lines of the description it actually shows.
 function clip(text: string, max: number) {
   const clean = text
     .replace(/[ \t]+/g, ' ')
@@ -45,7 +46,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const author = user?.name || post.author_name || 'A neighbor';
   const handle = user?.username ? ` (@${user.username})` : '';
   const title = `${author}${handle} on Yrdly`;
-  const description = clip(post.text || post.title || 'See this post on Yrdly', 280);
+  const description = clip(post.text || post.title || 'See this post on Yrdly', 1500);
 
   // Posts with a photo or a video get a big image on top (like X's large card).
   // Videos use their saved thumbnail (or a poster card if there isn't one). Text-only posts get the small avatar thumbnail.
