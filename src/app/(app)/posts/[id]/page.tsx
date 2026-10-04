@@ -59,7 +59,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const image = hasMedia ? `${SITE_URL}/api/og/media/${id}` : `${SITE_URL}/api/og/avatar/${id}`;
   const ogImage = hasMedia
     ? { url: image, width: 1200, height: 630, alt: title }
-    : { url: image, width: 64, height: 64, alt: author };
+    : { url: image, width: 200, height: 200, alt: author };
 
   return {
     title,
