@@ -2,11 +2,12 @@ import sharp from 'sharp';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
 // Small square avatar used as the link-preview thumbnail (WhatsApp, iMessage, etc.).
-// Images under ~300px wide are shown as a small thumbnail beside the text, like X.
+// X sends a tiny avatar (about 64px). WhatsApp then shows it as a small round profile picture
+// in the header, with the full text underneath. Bigger images become a large square thumbnail.
 export const runtime = 'nodejs';
 export const revalidate = 300;
 
-const SIZE = 120;
+const SIZE = 64;
 const FALLBACK_LOGO = 'https://app.yrdly.ng/logo.png';
 
 async function fetchBuffer(url: string) {
@@ -43,7 +44,7 @@ export async function GET(
   const jpeg = await sharp(input)
     .resize(SIZE, SIZE, { fit: 'cover' })
     .flatten({ background: '#ffffff' })
-    .jpeg({ quality: 82 })
+    .jpeg({ quality: 90 })
     .toBuffer();
 
   return new Response(new Uint8Array(jpeg), {
