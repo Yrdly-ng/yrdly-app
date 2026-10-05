@@ -74,6 +74,11 @@ export default function WithdrawPage() {
   }, [fetchData]);
 
   const [previewing, setPreviewing] = useState(false);
+  const [successDetails, setSuccessDetails] = useState<{
+    amountSentToBank: number;
+    fee: number;
+    totalDebited: number;
+  } | null>(null);
   const [previewData, setPreviewData] = useState<{
     amount: number;
     fee: number;
@@ -155,10 +160,16 @@ export default function WithdrawPage() {
         throw new Error(displayMsg);
       }
 
+      const resultData = await res.json();
+      setSuccessDetails({
+        amountSentToBank: resultData.amountSentToBank ?? numAmount,
+        fee: resultData.fee ?? 0,
+        totalDebited: resultData.totalDebited ?? numAmount,
+      });
       setStep('success');
       toast({
         title: "Withdrawal Successful",
-        description: "Your payout request has been processed.",
+        description: `₦${(resultData.amountSentToBank ?? numAmount).toLocaleString()} sent to your bank. ₦${(resultData.totalDebited ?? numAmount).toLocaleString()} deducted from your balance.`,
       });
     } catch (e: any) {
       toast({
@@ -190,7 +201,7 @@ export default function WithdrawPage() {
         <div className="space-y-2">
           <h2 className="text-2xl font-bold font-yrdly-display text-foreground">Withdrawal Submitted!</h2>
           <p className="text-[var(--yrdly-label)] text-sm">
-            Your withdrawal of ₦{numAmount.toLocaleString()} has been processed. Funds will be transferred to your registered bank account.
+            ₦{(successDetails?.amountSentToBank ?? numAmount).toLocaleString()} was sent to your registered bank account. The ₦{(successDetails?.fee ?? 0).toLocaleString()} Payluk fee was deducted from your ₦{(successDetails?.totalDebited ?? numAmount).toLocaleString()} balance withdrawal.
           </p>
         </div>
         <Button className="w-full" onClick={() => router.push('/profile')}>
@@ -257,7 +268,7 @@ export default function WithdrawPage() {
           {step === 'amount' && bankInfo && (
             <div className="space-y-4 pt-2">
               <div className="space-y-2">
-                <Label htmlFor="withdraw-amount" className="text-foreground">Amount (₦)</Label>
+                <Label htmlFor="withdraw-amount" className="text-foreground">Total to deduct from balance (₦)</Label>
                 <Input
                   id="withdraw-amount"
                   type="number"
@@ -285,7 +296,7 @@ export default function WithdrawPage() {
               <div className="space-y-2">
                 <p className="text-sm font-medium text-foreground">Confirm Withdrawal Details</p>
                 <div className="flex justify-between text-sm py-1 border-b border-[var(--yrdly-glass-border)]">
-                  <span className="text-[var(--yrdly-label)]">Amount to withdraw:</span>
+                  <span className="text-[var(--yrdly-label)]">Requested balance deduction:</span>
                   <span className="font-semibold text-foreground">₦{numAmount.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-sm py-1 border-b border-[var(--yrdly-glass-border)]">

@@ -12,6 +12,12 @@ export default function VerifyPhonePage() {
   const [error, setError] = useState("");
   const { sendPhoneOtp } = useAuth();
 
+  const getNextParam = () => {
+    if (typeof window === "undefined") return "";
+    const next = new URLSearchParams(window.location.search).get("next");
+    return next?.startsWith("/") && !next.startsWith("//") ? next : "";
+  };
+
   const handleSendOtp = async () => {
     if (phone.length < 10) return;
 
@@ -28,7 +34,7 @@ export default function VerifyPhonePage() {
         router.push(
           `/onboarding/verify-phone-otp?phone=${encodeURIComponent(
             phone
-          )}&pinId=${encodeURIComponent(pinId)}`
+          )}&pinId=${encodeURIComponent(pinId)}${getNextParam() ? `&next=${encodeURIComponent(getNextParam())}` : ""}`
         );
       }
     } catch (err: any) {
@@ -101,7 +107,10 @@ export default function VerifyPhonePage() {
             </button>
             <button
               type="button"
-              onClick={() => router.push("/onboarding/profile?phoneSkipped=true")}
+              onClick={() => {
+                const next = getNextParam();
+                router.push(`/onboarding/profile?phoneSkipped=true${next ? `&next=${encodeURIComponent(next)}` : ""}`);
+              }}
               className="text-xs font-bold text-[#82DB7E] hover:underline"
             >
               Skip for now

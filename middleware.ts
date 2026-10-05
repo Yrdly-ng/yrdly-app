@@ -19,7 +19,9 @@ export function middleware(request: NextRequest) {
   // Nextdoor-style handoff: redirect the app's /login page back to the marketing site
   if (pathname === '/login' || pathname === '/signup') {
     const marketingUrl = process.env.NEXT_PUBLIC_MARKETING_URL || 'https://yrdly.ng';
-    return NextResponse.redirect(marketingUrl);
+    const redirectUrl = new URL(marketingUrl);
+    request.nextUrl.searchParams.forEach((value, key) => redirectUrl.searchParams.set(key, value));
+    return NextResponse.redirect(redirectUrl);
   }
 
   const maintenanceEnabled = process.env.MAINTENANCE_MODE === 'true';
@@ -51,5 +53,4 @@ export function middleware(request: NextRequest) {
 export const config = {
   matcher: ['/((?!_next|static|images|favicon\.ico|robots\.txt|sitemap\.xml|monitoring|maintenance).*)'],
 };
-
 

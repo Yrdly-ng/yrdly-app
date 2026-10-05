@@ -128,6 +128,8 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
   const hasTriggeredViewRef = reactUseRef<boolean>(false);
 
   const [isFollowing, setIsFollowing] = useState(false);
+  const [targetFollowsMe, setTargetFollowsMe] = useState(false);
+  const [isMutualFollow, setIsMutualFollow] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   const [isCreateBusinessOpen, setIsCreateBusinessOpen] = useState(false);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
@@ -235,8 +237,16 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
       ]);
 
       if (currentUser?.id && targetUser.id !== currentUser.id) {
-        const { data: fData } = await supabase.from('followers').select('id').eq('follower_id', currentUser.id).eq('following_id', targetUser.id).maybeSingle();
+        const [{ data: fData }, { data: reciprocalFollow }] = await Promise.all([
+          supabase.from('followers').select('id').eq('follower_id', currentUser.id).eq('following_id', targetUser.id).maybeSingle(),
+          supabase.from('followers').select('id').eq('follower_id', targetUser.id).eq('following_id', currentUser.id).maybeSingle(),
+        ]);
         setIsFollowing(!!fData);
+        setTargetFollowsMe(!!reciprocalFollow);
+        setIsMutualFollow(!!fData && !!reciprocalFollow);
+      } else {
+        setTargetFollowsMe(false);
+        setIsMutualFollow(false);
       }
 
       setUserPosts(postsRes.data || []);
@@ -261,16 +271,51 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
     setFollowLoading(true);
     try {
       if (isFollowing) {
-        await supabase.from('followers').delete().eq('follower_id', currentUser.id).eq('following_id', targetUser.id);
+        const { error } = await supabase.from('followers').delete().eq('follower_id', currentUser.id).eq('following_id', targetUser.id);
+        if (error) throw error;
         setIsFollowing(false);
+        setIsMutualFollow(false);
       } else {
-        await supabase.from('followers').insert({ follower_id: currentUser.id, following_id: targetUser.id });
+        const { error } = await supabase.from('followers').insert({ follower_id: currentUser.id, following_id: targetUser.id });
+        if (error) throw error;
         setIsFollowing(true);
+        setIsMutualFollow(targetFollowsMe);
       }
     } catch (e: any) {
       toast({ variant: 'destructive', description: e.message });
     } finally {
       setFollowLoading(false);
+    }
+  };
+
+  const handleMessageMutual = async () => {
+    if (!currentUser || !targetUser || !isMutualFollow) return;
+    const participantIds = [currentUser.id, targetUser.id].sort();
+    try {
+      const { data: conversations, error: lookupError } = await supabase
+        .from('conversations')
+        .select('id, participant_ids, type')
+        .contains('participant_ids', [currentUser.id]);
+      if (lookupError) throw lookupError;
+      const existing = conversations?.find((conversation) =>
+        conversation.type === 'friend' &&
+        conversation.participant_ids?.length === 2 &&
+        participantIds.every((id) => conversation.participant_ids.includes(id))
+      );
+      let conversationId = existing?.id;
+      if (!conversationId) {
+        const { data, error } = await supabase
+          .from('conversations')
+          .insert({ participant_ids: participantIds, type: 'friend' })
+          .select('id')
+          .single();
+        if (error) throw error;
+        conversationId = data.id;
+      }
+      router.push(`/messages/${conversationId}`);
+    } catch (error) {
+      console.error('Unable to start mutual-follow conversation:', error);
+      toast({ variant: 'destructive', title: 'Could not start a conversation', description: 'Please try again.' });
     }
   };
 
@@ -362,7 +407,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
                 </div>
 
                 {/* Desktop Action Button */}
-                <div className="hidden lg:block">
+                <div className="hidden lg:flex lg:items-center lg:gap-2">
                   {actualIsOwnProfile ? (
                     <button
                       onClick={() => router.push("/settings/profile")}
@@ -387,6 +432,14 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
                       ) : (
                         "Follow"
                       )}
+                    </button>
+                  )}
+                  {!actualIsOwnProfile && isMutualFollow && (
+                    <button
+                      onClick={handleMessageMutual}
+                      className="h-9 px-4 rounded-full border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] text-xs font-semibold text-foreground font-yrdly-body transition-colors hover:bg-white/10 flex items-center gap-1.5"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" /> Message
                     </button>
                   )}
                 </div>
@@ -441,7 +494,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
           )}
 
           {/* Mobile Action Button */}
-          <div className="lg:hidden">
+          <div className="lg:hidden flex items-center gap-2">
             {actualIsOwnProfile ? (
               <button
                 onClick={() => router.push("/settings/profile")}
@@ -466,6 +519,14 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
                 ) : (
                   "Follow"
                 )}
+              </button>
+            )}
+            {!actualIsOwnProfile && isMutualFollow && (
+              <button
+                onClick={handleMessageMutual}
+                className="h-9 px-4 rounded-full border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] text-xs font-semibold text-foreground font-yrdly-body transition-colors hover:bg-white/10 flex items-center gap-1.5"
+              >
+                <MessageCircle className="w-3.5 h-3.5" /> Message
               </button>
             )}
           </div>

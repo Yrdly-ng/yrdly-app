@@ -174,19 +174,23 @@ async function handleEscrowOngoing(data: PaylukEscrowData) {
   }
 
   // 1. Mark transaction as PAID
-  const { error: updateError } = await supabaseAdmin
+  const { data: updatedTransaction, error: updateError } = await supabaseAdmin
     .from('escrow_transactions')
     .update({
       status: EscrowStatus.PAID,
       paid_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })
-    .eq('id', tx.id);
+    .eq('id', tx.id)
+    .in('status', [EscrowStatus.PENDING, 'creating_escrow'])
+    .select('id')
+    .maybeSingle();
 
   if (updateError) {
     console.error(`[PaylukWebhook] escrow.ongoing: failed to update tx ${tx.id}:`, updateError.message);
     return;
   }
+  if (!updatedTransaction) return;
 
   console.log(`[PaylukWebhook] escrow.ongoing: tx ${tx.id} → PAID`);
 
@@ -253,16 +257,48 @@ async function handleEscrowOngoing(data: PaylukEscrowData) {
 
     const buyerName = buyer?.name || 'A buyer';
 
-    await supabaseAdmin.rpc('create_notification', {
+    const message = `${buyerName} has paid for your item. Arrange handover with the buyer.`;
+    const { data: notification, error: notificationError } = await supabaseAdmin.rpc('create_notification', {
       p_user_id: tx.seller_id,
       p_type: 'payment_successful',
       p_title: 'Payment Received! 💰',
-      p_message: `${buyerName} has paid for your item. Arrange handover with the buyer.`,
+      p_message: message,
       p_sender_id: null,
       p_related_id: tx.id,
       p_related_type: 'escrow_transaction',
       p_data: { buyerName, transactionId: tx.id },
     });
+    let shouldPush = true;
+    if (notificationError) {
+      console.error(`[PaylukWebhook] Notification RPC failed for tx ${tx.id}:`, notificationError.message);
+      const { error: insertError } = await supabaseAdmin.from('notifications').insert({
+        user_id: tx.seller_id,
+        type: 'payment_successful',
+        title: 'Payment Received! 💰',
+        message,
+        related_id: tx.id,
+        related_type: 'escrow_transaction',
+        data: { buyerName, transactionId: tx.id },
+      });
+      if (insertError) throw insertError;
+    } else if (notification && typeof notification === 'object') {
+      shouldPush = (notification as any).should_push ?? true;
+    }
+    if (shouldPush) {
+      const { error: pushError } = await supabaseAdmin.functions.invoke('send-push-notification', {
+        body: {
+          userId: tx.seller_id,
+          payload: {
+            title: 'Payment Received! 💰',
+            body: message,
+            data: { buyerName, transactionId: tx.id },
+            url: `/transactions/${tx.id}`,
+          },
+          type: 'payment_successful',
+        },
+      });
+      if (pushError) console.error(`[PaylukWebhook] Push notification failed for tx ${tx.id}:`, pushError.message);
+    }
   } catch (notifErr) {
     console.error(`[PaylukWebhook] Error sending seller notification for tx ${tx.id}:`, notifErr);
   }

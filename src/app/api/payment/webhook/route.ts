@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
 
     const { data: tx, error: txError } = await supabaseAdmin
       .from('escrow_transactions')
-      .select('id, buyer_id, item_id, status')
+      .select('id, buyer_id, seller_id, item_id, status')
       .or(`id.eq.${reference},payluk_escrow_id.eq.${reference},payluk_tx_ref.eq.${reference}`)
       .maybeSingle();
 
@@ -61,8 +61,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ received: true });
     }
 
-    if (tx.status === EscrowStatus.PAID) {
-      console.log('[Webhook] Already PAID (idempotent):', reference);
+    if (![EscrowStatus.PENDING, 'creating_escrow'].includes(tx.status as any)) {
+      console.log('[Webhook] Transaction is no longer awaiting payment (idempotent):', reference, tx.status);
       return NextResponse.json({ received: true });
     }
 
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
         updated_at: new Date().toISOString(),
       })
       .eq('id', tx.id)
-      .eq('status', EscrowStatus.PENDING)
+      .in('status', [EscrowStatus.PENDING, 'creating_escrow'])
       .select('id');
 
     if (updateError) {
@@ -94,6 +94,56 @@ export async function POST(request: NextRequest) {
           updated_at: new Date().toISOString(),
         })
         .eq('id', tx.item_id);
+    }
+
+    try {
+      const [{ data: buyer }, { data: item }] = await Promise.all([
+        supabaseAdmin.from('users').select('name').eq('id', tx.buyer_id).maybeSingle(),
+        tx.item_id
+          ? supabaseAdmin.from('posts').select('title, text').eq('id', tx.item_id).maybeSingle()
+          : Promise.resolve({ data: null }),
+      ]);
+      const buyerName = buyer?.name || 'A buyer';
+      const itemTitle = item?.title || item?.text || 'your item';
+      const message = `${buyerName} has paid for "${itemTitle}". Arrange handover with the buyer.`;
+      const { data: notification, error: notificationError } = await supabaseAdmin.rpc('create_notification', {
+        p_user_id: tx.seller_id,
+        p_type: 'payment_successful',
+        p_title: 'Payment Received! 💰',
+        p_message: message,
+        p_sender_id: null,
+        p_related_id: tx.id,
+        p_related_type: 'escrow_transaction',
+        p_data: { buyerName, itemTitle, transactionId: tx.id },
+      });
+      let shouldPush = true;
+      if (notificationError) {
+        console.error('[Webhook] Seller notification RPC failed:', notificationError.message);
+        const { error: insertError } = await supabaseAdmin.from('notifications').insert({
+          user_id: tx.seller_id,
+          type: 'payment_successful',
+          title: 'Payment Received! 💰',
+          message,
+          related_id: tx.id,
+          related_type: 'escrow_transaction',
+          data: { buyerName, itemTitle, transactionId: tx.id },
+        });
+        if (insertError) throw insertError;
+      } else if (notification && typeof notification === 'object') {
+        shouldPush = (notification as any).should_push ?? true;
+      }
+      if (shouldPush) {
+        const { error: pushError } = await supabaseAdmin.functions.invoke('send-push-notification', {
+          body: {
+            userId: tx.seller_id,
+            payload: { title: 'Payment Received! 💰', body: message, data: { transactionId: tx.id }, url: `/transactions/${tx.id}` },
+            type: 'payment_successful',
+          },
+        });
+        if (pushError) console.error('[Webhook] Seller push notification failed:', pushError.message);
+      }
+    } catch (notificationError) {
+      console.error('[Webhook] Failed to notify seller about payment:', notificationError);
     }
 
     console.log('[Webhook] ✅ Transaction marked PAID via webhook:', reference);

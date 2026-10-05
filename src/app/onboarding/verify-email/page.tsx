@@ -9,6 +9,8 @@ function VerifyEmailForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email") || "";
+  const requestedNext = searchParams.get("next");
+  const nextPath = requestedNext?.startsWith("/") && !requestedNext.startsWith("//") ? requestedNext : "";
   const [digits, setDigits] = useState(["", "", "", "", "", ""]);
   const [countdown, setCountdown] = useState(45);
   const [error, setError] = useState("");
@@ -58,7 +60,7 @@ function VerifyEmailForm() {
       if (err) {
         setError(err.message || "Invalid verification code");
       } else {
-        router.push("/onboarding/verify-phone");
+        router.push(`/onboarding/verify-phone${nextPath ? `?next=${encodeURIComponent(nextPath)}` : ""}`);
       }
     } catch (e: any) {
       setVerifying(false);

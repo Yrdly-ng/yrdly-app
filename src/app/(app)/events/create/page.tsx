@@ -99,7 +99,7 @@ export default function CreateEventPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      setHasSellerAccount(!!data?.account);
+      setHasSellerAccount(data?.account?.isVerified === true);
     } catch {
       setHasSellerAccount(false);
     } finally {

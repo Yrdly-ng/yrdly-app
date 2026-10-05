@@ -18,7 +18,6 @@ export async function POST(request: NextRequest) {
     if (!amount || amount <= 0) {
       return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
     }
-
     // Validate seller's current available balance
     const currentBalance = await PayoutService.getSellerBalance(user.id);
     if (amount > currentBalance.availableBalance) {
@@ -87,7 +86,7 @@ export async function POST(request: NextRequest) {
         amount,
         fee: previewResult.intentFee,
         totalDebit: previewResult.totalPaylukDebit,
-        netToBank: amount,
+        netToBank: previewResult.intentAmount,
         availableBalance: currentBalance.availableBalance,
         maximumWithdrawable: previewResult.maximumWithdrawable,
       });

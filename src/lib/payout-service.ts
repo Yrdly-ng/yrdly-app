@@ -199,6 +199,8 @@ export class PayoutService {
     reason?: string;
     maximumWithdrawable?: number;
     intentFee?: number;
+    netAmount?: number;
+    totalPaylukDebit?: number;
   }> {
     try {
       // Get payout request details
@@ -247,6 +249,7 @@ export class PayoutService {
       let maximumWithdrawable: number | undefined;
       let intentFee: number | undefined;
       let actualNetPayoutAmount: number | undefined;
+      let actualTotalDebit: number | undefined;
 
       try {
         if (accountType === 'bank_account' || accountType === 'mobile_money' || accountType === 'digital_wallet') {
@@ -295,14 +298,15 @@ export class PayoutService {
             });
 
             transferSuccess = paylukResult.success;
+            actualNetPayoutAmount = paylukResult.intentAmount;
+            intentFee = paylukResult.intentFee;
+            actualTotalDebit = paylukResult.totalPaylukDebit;
             if (!transferSuccess && paylukResult.error) {
               transferErrorMsg = paylukResult.error;
               transferReason = paylukResult.reason || paylukResult.error;
               maximumWithdrawable = paylukResult.maximumWithdrawable;
-              intentFee = paylukResult.intentFee;
             }
             transactionReference = paylukResult.reference || `payout-${payoutRequestId}`;
-            actualNetPayoutAmount = paylukResult.intentAmount;
           } else {
             console.log(`[PayoutService] Seller ${payoutRequest.seller_id} has no Payluk ID, using Paystack transfer...`);
             const transferResult = await PaystackService.transferToSeller({
@@ -314,6 +318,8 @@ export class PayoutService {
             });
 
             transferSuccess = transferResult.success;
+            actualNetPayoutAmount = payoutRequest.amount;
+            actualTotalDebit = payoutRequest.amount;
             if (!transferSuccess && transferResult.error) {
               transferErrorMsg = transferResult.error;
             }
@@ -323,8 +329,8 @@ export class PayoutService {
 
         if (transferSuccess) {
           // Update payout request as completed with final net amount
-          const finalPayoutAmount = (actualNetPayoutAmount && actualNetPayoutAmount > 0)
-            ? actualNetPayoutAmount
+          const finalPayoutAmount = (actualTotalDebit && actualTotalDebit > 0)
+            ? actualTotalDebit
             : payoutRequest.amount;
 
           const { data: finalized, error: finalizeError } = await supabaseAdmin
@@ -349,14 +355,19 @@ export class PayoutService {
           try {
             await NotificationService.createPayoutProcessedNotification(
               payoutRequest.seller_id,
-              payoutRequest.amount,
+              actualNetPayoutAmount || finalPayoutAmount,
               payoutRequestId
             );
           } catch (notificationError) {
             console.error('Failed to send payout success notification:', notificationError);
           }
 
-          return { success: true };
+          return {
+            success: true,
+            netAmount: actualNetPayoutAmount,
+            intentFee,
+            totalPaylukDebit: actualTotalDebit,
+          };
         } else {
           // Update payout request as failed (releasing Yrdly available balance)
           await supabaseAdmin

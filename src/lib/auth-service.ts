@@ -96,10 +96,12 @@ export class AuthService {
   }
 
   // Sign in with Google
-  static async signInWithGoogle() {
+  static async signInWithGoogle(next?: string) {
     try {
       // Always redirect back to the current origin (works for any domain)
-      const redirectUrl = `${window.location.origin}/auth/callback`;
+      const callbackUrl = new URL('/auth/callback', window.location.origin);
+      if (next?.startsWith('/') && !next.startsWith('//')) callbackUrl.searchParams.set('next', next);
+      const redirectUrl = callbackUrl.toString();
         
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -118,10 +120,12 @@ export class AuthService {
   }
 
   // Sign in with Apple
-  static async signInWithApple() {
+  static async signInWithApple(next?: string) {
     try {
       // Always redirect back to the current origin (works for any domain)
-      const redirectUrl = `${window.location.origin}/auth/callback`;
+      const callbackUrl = new URL('/auth/callback', window.location.origin);
+      if (next?.startsWith('/') && !next.startsWith('//')) callbackUrl.searchParams.set('next', next);
+      const redirectUrl = callbackUrl.toString();
         
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'apple',

@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import React, { Suspense, useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AuthService } from "@/lib/auth-service";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { supabase } from "@/lib/supabase";
@@ -43,8 +43,11 @@ function PasswordStrengthIndicator({ value }: { value: string }) {
   );
 }
 
-export default function LoginPage() {
+function LoginFormPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedNext = searchParams.get("next");
+  const nextPath = requestedNext?.startsWith("/") && !requestedNext.startsWith("//") ? requestedNext : "/home";
   const { user, profile, loading: authLoading, signIn, signUp, signInWithGoogle } = useAuth();
 
   const [isSignUp, setIsSignUp] = useState(false);
@@ -59,16 +62,16 @@ export default function LoginPage() {
   useEffect(() => {
     if (!authLoading && user) {
       if (profile?.profile_completed) {
-        router.replace("/home");
+        router.replace(nextPath);
       } else {
-        router.replace("/onboarding/profile");
+        router.replace(`/onboarding/profile?next=${encodeURIComponent(nextPath)}`);
       }
     }
-  }, [user, profile, authLoading, router]);
+  }, [user, profile, authLoading, router, nextPath]);
 
   const handleGoogle = async () => {
     setError("");
-    const { error: err } = await signInWithGoogle();
+    const { error: err } = await signInWithGoogle(nextPath);
     if (err) setError(err.message);
   };
 
@@ -98,14 +101,14 @@ export default function LoginPage() {
             try {
               await supabase.auth.resend({ type: "signup", email });
             } catch {}
-            router.push(`/onboarding/verify-email?email=${encodeURIComponent(email)}`);
+            router.push(`/onboarding/verify-email?email=${encodeURIComponent(email)}&next=${encodeURIComponent(nextPath)}`);
             return;
           }
           setError(err.message);
         } else if (signedUser) {
           posthog.identify(signedUser.id, { email: signedUser.email });
           posthog.capture("user_signed_in", { method: "email" });
-          router.push("/home");
+          router.push(nextPath);
         }
       } else {
         const { user: newUser, error: err } = await signUp(email, password, name);
@@ -121,15 +124,15 @@ export default function LoginPage() {
             try {
               await supabase.auth.resend({ type: "signup", email });
             } catch {}
-            router.push(`/onboarding/verify-email?email=${encodeURIComponent(email)}`);
+            router.push(`/onboarding/verify-email?email=${encodeURIComponent(email)}&next=${encodeURIComponent(nextPath)}`);
             return;
           }
           setError(err.message || "An error occurred during sign up.");
         } else if (newUser) {
           posthog.identify(newUser.id, { email: newUser.email, name });
           posthog.capture("user_signed_up", { method: "email" });
-          if (newUser.email_confirmed_at) router.push("/home");
-          else router.push(`/onboarding/verify-email?email=${encodeURIComponent(email)}`);
+          if (newUser.email_confirmed_at) router.push(nextPath);
+          else router.push(`/onboarding/verify-email?email=${encodeURIComponent(email)}&next=${encodeURIComponent(nextPath)}`);
         }
       }
     } catch {
@@ -400,5 +403,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-[100dvh] bg-[#0b0c0f]" />}>
+      <LoginFormPage />
+    </Suspense>
   );
 }

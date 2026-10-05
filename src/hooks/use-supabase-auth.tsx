@@ -13,8 +13,8 @@ interface AuthContextType {
   loading: boolean;
   signUp: (email: string, password: string, name: string, username?: string) => Promise<{ user: User | null; error: any }>;
   signIn: (email: string, password: string) => Promise<{ user: User | null; error: any }>;
-  signInWithGoogle: () => Promise<{ data: any; error: any }>;
-  signInWithApple: () => Promise<{ data: any; error: any }>;
+  signInWithGoogle: (next?: string) => Promise<{ data: any; error: any }>;
+  signInWithApple: (next?: string) => Promise<{ data: any; error: any }>;
   signOut: () => Promise<{ error: any }>;
   resetPassword: (email: string) => Promise<{ error: any }>;
   updatePassword: (newPassword: string) => Promise<{ error: any }>;
@@ -229,20 +229,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (next?: string) => {
     setLoading(true);
     try {
-      const result = await AuthService.signInWithGoogle();
+      const result = await AuthService.signInWithGoogle(next);
       return result;
     } finally {
       setLoading(false);
     }
   };
 
-  const signInWithApple = async () => {
+  const signInWithApple = async (next?: string) => {
     setLoading(true);
     try {
-      const result = await AuthService.signInWithApple();
+      const result = await AuthService.signInWithApple(next);
       return result;
     } finally {
       setLoading(false);
@@ -361,4 +361,3 @@ export function useAuth() {
   }
   return context;
 }
-

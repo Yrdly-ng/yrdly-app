@@ -223,6 +223,51 @@ export interface PaylukResolvedAccount {
 
 export type PaylukDisputeResolutionStatus = 'COMPLETED' | 'REFUNDED' | 'SPLIT';
 
+interface PaylukWithdrawalIntent {
+  amount: number;
+  fee: number;
+  reference: string;
+}
+
+async function createPaylukWithdrawalIntent(params: {
+  customerId: string;
+  amount: number;
+  reference: string;
+  bankCode: string;
+  bankName?: string;
+  accountNumber: string;
+  accountName?: string;
+}): Promise<PaylukWithdrawalIntent> {
+  const response = await paylukRequest<PaylukWithdrawalIntent>('/v1/payment/create-intent', {
+    method: 'POST',
+    customerId: params.customerId,
+    body: JSON.stringify({
+      amount: params.amount,
+      reference: params.reference,
+      transactionType: 'withdrawal',
+      currency: 'NGN',
+      withdrawalDetails: {
+        bankCode: params.bankCode,
+        bankName: params.bankName || 'Bank',
+        accountNumber: params.accountNumber,
+        ...(params.accountName ? { accountName: params.accountName } : {}),
+      },
+    }),
+  });
+
+  const intent = response?.data;
+  if (
+    !intent ||
+    typeof intent.amount !== 'number' || !Number.isFinite(intent.amount) || intent.amount < 0 ||
+    typeof intent.fee !== 'number' || !Number.isFinite(intent.fee) || intent.fee < 0 ||
+    typeof intent.reference !== 'string' || !intent.reference
+  ) {
+    throw new Error('Payluk create-intent response is invalid or missing required fee/amount fields.');
+  }
+
+  return intent;
+}
+
 // ── Service ─────────────────────────────────────────────────────────────────
 
 export class PaylukService {
@@ -827,54 +872,74 @@ export class PaylukService {
         };
       }
 
-      const intentResponse = await paylukRequest<{
-        amount?: number;
-        fee?: number;
-        reference?: string;
-        status?: string;
-      }>(
-        '/v1/payment/create-intent',
-        {
-          method: 'POST',
-          customerId: params.sellerPaylukCustomerId,
-          body: JSON.stringify({
-            amount: params.amount,
-            reference: params.reference,
-            transactionType: 'withdrawal',
-            currency: 'NGN',
-            withdrawalDetails: {
-              bankCode: resolvedBankCode,
-              bankName: params.bankName || 'Bank',
-              accountNumber: params.accountNumber,
-              ...(params.accountName ? { accountName: params.accountName } : {}),
-            },
-          }),
-        }
-      );
-
-      const intentData = intentResponse?.data;
-      const intentAmount = intentData?.amount;
-      const intentFee = intentData?.fee;
-      const intentRef = intentData?.reference || params.reference;
-
-      if (
-        !intentData ||
-        typeof intentAmount !== 'number' || isNaN(intentAmount) || intentAmount < 0 ||
-        typeof intentFee !== 'number' || isNaN(intentFee) || intentFee < 0 ||
-        !intentRef || typeof intentRef !== 'string'
-      ) {
+      // The entered amount is the seller's total debit budget. Quote Payluk's
+      // fee, then stage the bank payout for budget minus that fee.
+      const feeQuote = await createPaylukWithdrawalIntent({
+        customerId: params.sellerPaylukCustomerId,
+        amount: params.amount,
+        reference: `${params.reference}-quote`,
+        bankCode: resolvedBankCode,
+        bankName: params.bankName,
+        accountNumber: params.accountNumber,
+        accountName: params.accountName,
+      });
+      let netAmount = Math.max(0, Math.floor((params.amount - feeQuote.fee) * 100) / 100);
+      if (netAmount <= 0) {
         return {
           success: false,
-          reference: params.reference,
-          error: 'Payluk create-intent response is invalid or missing required fee/amount fields.',
+          reference: feeQuote.reference,
+          intentFee: feeQuote.fee,
+          totalPaylukDebit: feeQuote.fee,
+          maximumWithdrawable: 0,
+          error: 'Payluk fee consumes the requested withdrawal amount.',
+          reason: `Payluk's fee is ₦${feeQuote.fee.toLocaleString()}, which leaves no amount to send to your bank.`,
         };
       }
 
-      const totalPaylukDebit = intentAmount + intentFee;
+      let intent = await createPaylukWithdrawalIntent({
+        customerId: params.sellerPaylukCustomerId,
+        amount: netAmount,
+        reference: `${params.reference}-net`,
+        bankCode: resolvedBankCode,
+        bankName: params.bankName,
+        accountNumber: params.accountNumber,
+        accountName: params.accountName,
+      });
+      let totalPaylukDebit = intent.amount + intent.fee;
+      if (totalPaylukDebit > params.amount) {
+        netAmount = Math.max(0, Math.floor((params.amount - intent.fee) * 100) / 100);
+        if (netAmount <= 0) {
+          return {
+            success: false,
+            reference: intent.reference,
+            intentAmount: intent.amount,
+            intentFee: intent.fee,
+            totalPaylukDebit,
+            maximumWithdrawable: 0,
+            error: 'Payluk fee consumes the requested withdrawal amount.',
+            reason: `Payluk's fee is ₦${intent.fee.toLocaleString()}, which leaves no amount to send to your bank.`,
+          };
+        }
+        intent = await createPaylukWithdrawalIntent({
+          customerId: params.sellerPaylukCustomerId,
+          amount: netAmount,
+          reference: `${params.reference}-net-adjusted`,
+          bankCode: resolvedBankCode,
+          bankName: params.bankName,
+          accountNumber: params.accountNumber,
+          accountName: params.accountName,
+        });
+        totalPaylukDebit = intent.amount + intent.fee;
+      }
 
-      if (totalPaylukDebit > effectiveAvailableBalance) {
-        const maximumWithdrawable = Math.max(0, effectiveAvailableBalance - intentFee);
-        const reasonMsg = `Your available balance is ₦${effectiveAvailableBalance.toLocaleString()}. Payluk's withdrawal fee is ₦${intentFee.toLocaleString()}. The maximum you can withdraw is ₦${maximumWithdrawable.toLocaleString()}.`;
+      const intentAmount = intent.amount;
+      const intentFee = intent.fee;
+      const intentRef = intent.reference;
+
+      if (totalPaylukDebit > params.amount || totalPaylukDebit > effectiveAvailableBalance) {
+        const spendLimit = Math.min(params.amount, effectiveAvailableBalance);
+        const maximumWithdrawable = Math.max(0, Math.floor((spendLimit - intentFee) * 100) / 100);
+        const reasonMsg = `Your requested balance deduction is ₦${params.amount.toLocaleString()}. Payluk's fee for the bank transfer is ₦${intentFee.toLocaleString()}. The amount to send to the bank must be no more than ₦${maximumWithdrawable.toLocaleString()}.`;
         return {
           success: false,
           reference: intentRef,
@@ -893,7 +958,7 @@ export class PaylukService {
         intentAmount,
         intentFee,
         totalPaylukDebit,
-        maximumWithdrawable: Math.max(0, effectiveAvailableBalance - intentFee),
+        maximumWithdrawable: intentAmount,
       };
     } catch (err: any) {
       console.error('[PaylukService] previewWithdrawal error:', err);
@@ -994,134 +1059,89 @@ export class PaylukService {
         };
       }
 
-      // 2. Create withdrawal intent
-      const intentResponse = await paylukRequest<{
-        amount?: number;
-        fee?: number;
-        reference?: string;
-        status?: string;
-      }>(
-        '/v1/payment/create-intent',
-        {
-          method: 'POST',
-          customerId: params.sellerPaylukCustomerId,
-          body: JSON.stringify({
-            amount: params.amount,
-            reference: params.reference,
-            transactionType: 'withdrawal',
-            currency: 'NGN',
-            withdrawalDetails: {
-              bankCode: resolvedBankCode,
-              bankName: params.bankName || 'Bank',
-              accountNumber: params.accountNumber,
-              ...(params.accountName ? { accountName: params.accountName } : {}),
-            },
-          }),
-        }
-      );
-
-      // 3. Strict response validation (Case 5: HTTP 200 with malformed/missing data.fee must reject safely)
-      const intentData = intentResponse?.data;
-      const intentAmount = intentData?.amount;
-      const intentFee = intentData?.fee;
-      const intentRef = intentData?.reference || params.reference;
-
-      if (
-        !intentData ||
-        typeof intentAmount !== 'number' || isNaN(intentAmount) || intentAmount < 0 ||
-        typeof intentFee !== 'number' || isNaN(intentFee) || intentFee < 0 ||
-        !intentRef || typeof intentRef !== 'string'
-      ) {
+      // The seller's requested amount is their total wallet-debit budget.
+      // Quote the fee, then create the final intent for budget minus fee.
+      const intentAttemptReference = `${params.reference}-${Date.now()}`;
+      const feeQuote = await createPaylukWithdrawalIntent({
+        customerId: params.sellerPaylukCustomerId,
+        amount: params.amount,
+        reference: `${intentAttemptReference}-quote`,
+        bankCode: resolvedBankCode,
+        bankName: params.bankName,
+        accountNumber: params.accountNumber,
+        accountName: params.accountName,
+      });
+      let netAmount = Math.max(0, Math.floor((params.amount - feeQuote.fee) * 100) / 100);
+      if (netAmount <= 0) {
         return {
           success: false,
-          reference: params.reference,
-          error: 'Payluk create-intent response is invalid or missing required fee/amount fields.',
+          reference: feeQuote.reference,
+          intentFee: feeQuote.fee,
+          totalPaylukDebit: feeQuote.fee,
+          maximumWithdrawable: 0,
+          error: 'Payluk fee consumes the requested withdrawal amount.',
+          reason: `Payluk's fee is ₦${feeQuote.fee.toLocaleString()}, which leaves no amount to send to your bank.`,
         };
       }
 
-      // 4. Calculate total debit required by Payluk
-      let activeIntentData = intentData;
-      let activeIntentAmount = intentAmount;
-      let activeIntentFee = intentFee;
-      let activeIntentRef = intentRef;
-      let totalPaylukDebit = activeIntentAmount + activeIntentFee;
+      let intent = await createPaylukWithdrawalIntent({
+        customerId: params.sellerPaylukCustomerId,
+        amount: netAmount,
+        reference: `${intentAttemptReference}-net`,
+        bankCode: resolvedBankCode,
+        bankName: params.bankName,
+        accountNumber: params.accountNumber,
+        accountName: params.accountName,
+      });
+      let totalPaylukDebit = intent.amount + intent.fee;
 
-      // 5. Auto-deduct Payluk fee from requested amount if total debit exceeds available balance
-      if (totalPaylukDebit > effectiveAvailableBalance) {
-        const netAmount = Math.floor((effectiveAvailableBalance - activeIntentFee) * 100) / 100;
-        
+      // The fee can depend on the payout amount. If the net intent's fee quote
+      // differs, make one adjusted intent and use only its exact returned fee.
+      if (totalPaylukDebit > params.amount) {
+        netAmount = Math.max(0, Math.floor((params.amount - intent.fee) * 100) / 100);
         if (netAmount <= 0) {
-          const reasonMsg = `Your available balance (₦${effectiveAvailableBalance.toLocaleString()}) cannot cover Payluk's withdrawal fee (₦${activeIntentFee.toLocaleString()}).`;
           return {
             success: false,
-            reference: activeIntentRef,
-            intentAmount: activeIntentAmount,
-            intentFee: activeIntentFee,
+            reference: intent.reference,
+            intentAmount: intent.amount,
+            intentFee: intent.fee,
             totalPaylukDebit,
             maximumWithdrawable: 0,
-            error: 'Insufficient balance to cover Payluk withdrawal fee.',
-            reason: reasonMsg,
+            error: 'Payluk fee consumes the requested withdrawal amount.',
+            reason: `Payluk's fee is ₦${intent.fee.toLocaleString()}, which leaves no amount to send to your bank.`,
           };
         }
 
-        console.log(`[PaylukService] Total debit (₦${totalPaylukDebit}) exceeds balance (₦${effectiveAvailableBalance}). Auto-deducting fee (₦${activeIntentFee}): creating adjusted intent for net amount ₦${netAmount}...`);
-        
-        // Re-create intent with auto-deducted fee net amount
-        const adjustedIntentResponse = await paylukRequest<{
-          amount?: number;
-          fee?: number;
-          reference?: string;
-          status?: string;
-        }>(
-          '/v1/payment/create-intent',
-          {
-            method: 'POST',
-            customerId: params.sellerPaylukCustomerId,
-            body: JSON.stringify({
-              amount: netAmount,
-              reference: `${params.reference}-adj`,
-              transactionType: 'withdrawal',
-              currency: 'NGN',
-              withdrawalDetails: {
-                bankCode: resolvedBankCode,
-                bankName: params.bankName || 'Bank',
-                accountNumber: params.accountNumber,
-                ...(params.accountName ? { accountName: params.accountName } : {}),
-              },
-            }),
-          }
-        );
-
-        const adjData = adjustedIntentResponse?.data;
-        if (
-          adjData &&
-          typeof adjData.amount === 'number' &&
-          typeof adjData.fee === 'number' &&
-          adjData.reference
-        ) {
-          activeIntentData = adjData;
-          activeIntentAmount = adjData.amount;
-          activeIntentFee = adjData.fee;
-          activeIntentRef = adjData.reference;
-          totalPaylukDebit = activeIntentAmount + activeIntentFee;
-        }
-
-        // If after auto-deduct it still exceeds, reject with maximum withdrawable
-        if (totalPaylukDebit > effectiveAvailableBalance) {
-          const maximumWithdrawable = Math.max(0, Math.floor((effectiveAvailableBalance - activeIntentFee) * 100) / 100);
-          const reasonMsg = `Your available balance is ₦${effectiveAvailableBalance.toLocaleString()}. Payluk's withdrawal fee is ₦${activeIntentFee.toLocaleString()}. The maximum you can withdraw is ₦${maximumWithdrawable.toLocaleString()}.`;
-          return {
-            success: false,
-            reference: activeIntentRef,
-            intentAmount: activeIntentAmount,
-            intentFee: activeIntentFee,
-            totalPaylukDebit,
-            maximumWithdrawable,
-            error: 'Withdrawal amount plus Payluk fee exceeds available balance.',
-            reason: reasonMsg,
-          };
-        }
+        intent = await createPaylukWithdrawalIntent({
+          customerId: params.sellerPaylukCustomerId,
+          amount: netAmount,
+          reference: `${intentAttemptReference}-net-adjusted`,
+          bankCode: resolvedBankCode,
+          bankName: params.bankName,
+          accountNumber: params.accountNumber,
+          accountName: params.accountName,
+        });
+        totalPaylukDebit = intent.amount + intent.fee;
       }
+
+      const spendLimit = Math.min(params.amount, effectiveAvailableBalance);
+      if (totalPaylukDebit > spendLimit) {
+        const maximumWithdrawable = Math.max(0, Math.floor((spendLimit - intent.fee) * 100) / 100);
+        return {
+          success: false,
+          reference: intent.reference,
+          intentAmount: intent.amount,
+          intentFee: intent.fee,
+          totalPaylukDebit,
+          maximumWithdrawable,
+          error: 'Withdrawal amount plus Payluk fee exceeds the requested balance deduction.',
+          reason: `Your requested balance deduction is ₦${params.amount.toLocaleString()}. Payluk's fee is ₦${intent.fee.toLocaleString()}; the bank transfer would be ₦${intent.amount.toLocaleString()} and debit ₦${totalPaylukDebit.toLocaleString()}. Please try again with a lower amount.`,
+        };
+      }
+
+      const activeIntentAmount = intent.amount;
+      const activeIntentFee = intent.fee;
+      const activeIntentRef = intent.reference;
 
       // 6. Execute / verify payment intent (totalPaylukDebit <= effectiveAvailableBalance)
       const verifyResponse = await paylukRequest<any>(

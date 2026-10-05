@@ -16,7 +16,6 @@ export async function POST(request: NextRequest) {
     if (!amount || amount <= 0) {
       return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
     }
-
     // Get seller account ID
     const { data: sellerAccount, error: saError } = await supabaseAdmin
       .from('seller_accounts')
@@ -64,7 +63,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Process payout immediately
-    let processResult: { success: boolean; error?: string; reason?: string; maximumWithdrawable?: number; intentFee?: number } | undefined;
+    let processResult: {
+      success: boolean;
+      error?: string;
+      reason?: string;
+      maximumWithdrawable?: number;
+      intentFee?: number;
+      netAmount?: number;
+      totalPaylukDebit?: number;
+    } | undefined;
     try {
       processResult = await PayoutService.processPayout(payout.id);
     } catch (e) {
@@ -86,7 +93,13 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    return NextResponse.json({ success: true, payoutId: payout.id });
+    return NextResponse.json({
+      success: true,
+      payoutId: payout.id,
+      amountSentToBank: processResult?.netAmount ?? amount,
+      fee: processResult?.intentFee ?? 0,
+      totalDebited: processResult?.totalPaylukDebit ?? amount,
+    });
   } catch (error) {
     console.error('Payout request error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

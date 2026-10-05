@@ -3,7 +3,7 @@
 import Script from 'next/script';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/use-supabase-auth';
 import { PushNotificationManager } from '@/components/PushNotificationManager';
 import Image from 'next/image';
@@ -22,6 +22,7 @@ import { LocationProvider } from '@/contexts/LocationContext';
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const { user, profile, loading } = useAuth(); // Using Supabase auth
   const router = useRouter();
+  const pathname = usePathname();
   const [profileUser, setProfileUser] = useState<User | null>(null);
 
   // Initialize activity tracking
@@ -31,9 +32,10 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!loading && !user) {
-      router.replace('/login');
+      const next = typeof window === 'undefined' ? pathname : `${pathname}${window.location.search}`;
+      router.replace(`/login?next=${encodeURIComponent(next)}`);
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, pathname]);
 
   // Only block on the auth check itself (user), not on profile.
   // Profile is allowed to arrive after first paint so the app shell

@@ -49,9 +49,13 @@ export default function TourPage() {
       if (user) {
         if (profile?.profile_completed) {
           await completeTour();
-          router.replace('/home');
+          const requestedNext = typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('next');
+          const nextPath = requestedNext?.startsWith('/') && !requestedNext.startsWith('//') ? requestedNext : '/home';
+          router.replace(nextPath);
         } else {
-          router.replace('/onboarding/profile');
+          const requestedNext = typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('next');
+          const nextPath = requestedNext?.startsWith('/') && !requestedNext.startsWith('//') ? requestedNext : null;
+          router.replace(`/onboarding/profile${nextPath ? `?next=${encodeURIComponent(nextPath)}` : ''}`);
         }
       } else {
         router.push('/login');

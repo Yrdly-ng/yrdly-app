@@ -43,6 +43,9 @@ export async function POST(request: NextRequest) {
         .from('seller_accounts')
         .select('id')
         .eq('user_id', user.id)
+        .eq('is_active', true)
+        .eq('is_primary', true)
+        .eq('verification_status', 'verified')
         .maybeSingle();
       if (!sellerAccount) {
         return NextResponse.json(
@@ -86,9 +89,12 @@ export async function POST(request: NextRequest) {
         start_time: startTime,
         end_time: endTime,
         timezone: 'Africa/Lagos',
-        status,
-        visibility: visibility ? visibility.toUpperCase() : 'PUBLIC',
-        payout_mode: 'POST_EVENT',
+        visibility: (() => {
+          const v = (visibility || 'PUBLIC').toUpperCase();
+          if (v === 'PRIVATE' || v === 'FRIENDS' || v === 'UNLISTED') return 'UNLISTED';
+          if (['PUBLIC', 'WARD_ONLY', 'LGA_ONLY'].includes(v)) return v;
+          return 'PUBLIC';
+        })(),
         published_at: publishedAt,
         moderation_status: moderationStatus,
       })

@@ -36,6 +36,8 @@ function OnboardingProfileContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const phoneSkipped = searchParams.get('phoneSkipped') === 'true';
+  const requestedNext = searchParams.get('next');
+  const nextPath = requestedNext?.startsWith('/') && !requestedNext.startsWith('//') ? requestedNext : '';
   const { user } = useAuth();
   const [step, setStep] = useState<1 | 2>(1);
   const gps = useGpsLocation();
@@ -313,7 +315,7 @@ function OnboardingProfileContent() {
         welcome_message_sent: true,
       } as any);
 
-      router.replace('/onboarding/tour');
+      router.replace(`/onboarding/tour${nextPath ? `?next=${encodeURIComponent(nextPath)}` : ''}`);
     } catch (err: any) {
       setSaveError(err?.message || 'Something went wrong. Please try again.');
     } finally {
