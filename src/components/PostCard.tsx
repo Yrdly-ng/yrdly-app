@@ -159,14 +159,14 @@ function MediaCollage({
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="flex w-full h-full overflow-x-auto snap-x snap-mandatory scrollbar-hide select-none"
+        className={`flex w-full h-full overflow-y-hidden overscroll-x-contain snap-x snap-mandatory scrollbar-hide select-none ${items.length > 1 ? "overflow-x-auto" : "overflow-x-hidden"}`}
       >
         {items.map((item, i) => {
           if (item.type === "image") {
             return (
               <div
                 key={i}
-                className="relative flex-shrink-0 w-full h-full snap-center cursor-pointer"
+                className="relative flex-shrink-0 w-full h-full snap-center cursor-pointer overflow-hidden"
                 onPointerDown={(e) => {
                   dragStartPos.current = { x: e.clientX, y: e.clientY };
                   isSwiping.current = false;
@@ -413,10 +413,10 @@ function ModalMediaCarousel({
         onPointerMove={handlePointerMove}
         onPointerUp={endDrag}
         onPointerLeave={endDrag}
-        className="flex w-full h-full overflow-x-auto snap-x snap-mandatory scrollbar-hide select-none cursor-grab active:cursor-grabbing"
+        className={`flex w-full h-full overflow-y-hidden overscroll-x-contain snap-x snap-mandatory scrollbar-hide select-none ${items.length > 1 ? "overflow-x-auto cursor-grab active:cursor-grabbing" : "overflow-x-hidden"}`}
       >
         {items.map((item, i) => (
-          <div key={i} className="relative flex-shrink-0 w-full h-full snap-center bg-black">
+          <div key={i} className="relative flex-shrink-0 w-full h-full snap-center bg-black overflow-hidden">
             {item.type === "image" ? (
               <Image
                 src={item.url}

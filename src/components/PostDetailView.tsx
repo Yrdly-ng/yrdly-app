@@ -314,13 +314,13 @@ className="object-cover"
                   <div
                     ref={carouselRef}
                     onScroll={handleScroll}
-                    className="flex w-full h-full overflow-x-auto snap-x snap-mandatory scroll-smooth"
+                    className="flex w-full h-full overflow-x-auto overflow-y-hidden overscroll-x-contain snap-x snap-mandatory scroll-smooth"
                     style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                   >
                     {urls.map((u, i) => (
                       <div
                         key={i}
-                        className="relative w-full h-full flex-shrink-0 snap-start cursor-pointer"
+                        className="relative w-full h-full flex-shrink-0 snap-start cursor-pointer overflow-hidden"
                         onClick={() => setLightboxIndex(i)}
                       >
                         <Image
