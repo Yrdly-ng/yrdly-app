@@ -276,7 +276,6 @@ export default function WithdrawPage() {
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   max={balance}
-                  min={100}
                   className="border-[var(--yrdly-glass-border)] bg-background/50 text-foreground"
                 />
               </div>
