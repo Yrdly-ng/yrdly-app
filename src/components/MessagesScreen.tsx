@@ -17,8 +17,8 @@ import { VerifiedBadge } from "@/components/VerifiedBadge";
 
 const GREEN = "#82DB7E";
 
-type ConvType = "friend" | "marketplace" | "briefcase" | "group";
-type FilterTab = "all" | "groups" | "friends" | "marketplace" | "business";
+type ConvType = "friend" | "marketplace" | "briefcase";
+type FilterTab = "all" | "friends" | "marketplace" | "business";
 
 interface Conversation {
   id: string;
@@ -65,7 +65,6 @@ function ConversationItem({
   onDelete: (id: string, e: React.MouseEvent) => void;
 }) {
   const isUnread = item.unreadCount > 0;
-  const isGroup = item.type === "group";
 
   return (
     <div
@@ -88,11 +87,8 @@ function ConversationItem({
             unoptimized
           />
         ) : (
-          <div className={cn(
-            "w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg font-yrdly-display",
-            isGroup ? "bg-[#82DB7E]/20 text-[#82DB7E]" : "bg-[#82DB7E]/10 text-[#82DB7E]"
-          )}>
-            {isGroup ? "👥" : item.participantName.charAt(0).toUpperCase()}
+          <div className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg font-yrdly-display bg-[#82DB7E]/10 text-[#82DB7E]">
+            {item.participantName.charAt(0).toUpperCase()}
           </div>
         )}
         <div className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-[#82DB7E] border-2 border-[var(--yrdly-dark)]" />
@@ -110,12 +106,7 @@ function ConversationItem({
             >
               {item.participantName}
             </span>
-            {isGroup && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#82DB7E]/10 text-[#82DB7E] font-medium border border-[#82DB7E]/20">
-                Group
-              </span>
-            )}
-            {item.isVerified && !isGroup && (
+            {item.isVerified && (
               <VerifiedBadge size={15} type={item.isSeller ? "seller" : "user"} />
             )}
           </div>
@@ -178,15 +169,9 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
   const [friends, setFriends] = useState<{ id: string; name: string; avatar_url: string }[]>([]);
   const [friendsLoading, setFriendsLoading] = useState(false);
   const [isNewMessageOpen, setIsNewMessageOpen] = useState(false);
-  const [newChatTab, setNewChatTab] = useState<"dm" | "group" | "join">("dm");
-  const [groupTitle, setGroupTitle] = useState("");
-  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
-  const [inviteCodeInput, setInviteCodeInput] = useState("");
-  const [actionLoading, setActionLoading] = useState(false);
 
   const FILTERS: { key: FilterTab; label: string }[] = [
     { key: "all", label: "All" },
-    { key: "groups", label: "Groups" },
     { key: "friends", label: "Friends" },
     { key: "marketplace", label: "Marketplace" },
     { key: "business", label: "Business" },
@@ -205,6 +190,7 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
         .from("conversations")
         .select("*")
         .contains("participant_ids", [user.id])
+        .neq("type", "group")
         .order("updated_at", { ascending: false });
 
       if (error || !data) return;
@@ -252,21 +238,15 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
           const otherUser = usersMap.get(otherId);
 
           let convType: ConvType = "friend";
-          if (c.type === "group") convType = "group";
-          else if (c.type === "marketplace" || (c.item_id && c.type !== "briefcase" && c.type !== "business"))
+          if (c.type === "marketplace" || (c.item_id && c.type !== "briefcase" && c.type !== "business"))
             convType = "marketplace";
           else if (c.type === "briefcase" || c.type === "business" || c.business_id) convType = "briefcase";
 
           const isBiz = convType === "briefcase" || !!c.business_id;
-          const isGroup = convType === "group";
-          const participantName = isGroup
-            ? c.title || "Group Chat"
-            : isBiz
+          const participantName = isBiz
             ? c.business_name || c.item_title || otherUser?.name || "Business"
             : otherUser?.name || c.item_title || "Neighbour";
-          const participantAvatar = isGroup
-            ? c.avatar_url || null
-            : isBiz && (c.business_image || c.item_image)
+          const participantAvatar = isBiz && (c.business_image || c.item_image)
             ? c.business_image || c.item_image
             : otherUser?.avatar_url && !otherUser.avatar_url.startsWith("file://")
             ? otherUser.avatar_url
@@ -327,7 +307,6 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
 
   const filteredConversations = useMemo(() => {
     return conversations.filter((c) => {
-      if (activeFilter === "groups" && c.type !== "group") return false;
       if (activeFilter === "friends" && c.type !== "friend") return false;
       if (activeFilter === "marketplace" && c.type !== "marketplace") return false;
       if (activeFilter === "business" && c.type !== "briefcase") return false;
@@ -339,54 +318,6 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
       return true;
     });
   }, [conversations, activeFilter, searchQuery]);
-
-  const handleCreateGroup = async () => {
-    if (!user || !groupTitle.trim()) {
-      toast({ title: "Please enter a group title", variant: "destructive" });
-      return;
-    }
-    setActionLoading(true);
-    try {
-      const { data, error } = await supabase.rpc("create_group_conversation", {
-        p_title: groupTitle.trim(),
-        p_avatar_url: null,
-        p_participant_ids: selectedMemberIds,
-      });
-      if (error) throw error;
-      toast({ title: "Group chat created!" });
-      setIsNewMessageOpen(false);
-      setGroupTitle("");
-      setSelectedMemberIds([]);
-      if (data) handleSelectConv(data);
-    } catch (e: any) {
-      toast({ title: e.message || "Failed to create group", variant: "destructive" });
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleJoinGroup = async () => {
-    if (!user || !inviteCodeInput.trim()) {
-      toast({ title: "Please enter a valid invite code", variant: "destructive" });
-      return;
-    }
-    setActionLoading(true);
-    try {
-      const cleanCode = inviteCodeInput.trim().toLowerCase().replace(/.*code=/, "");
-      const { data, error } = await supabase.rpc("join_group_via_invite_code", {
-        p_invite_code: cleanCode,
-      });
-      if (error) throw error;
-      toast({ title: "Joined group chat!" });
-      setIsNewMessageOpen(false);
-      setInviteCodeInput("");
-      if (data) handleSelectConv(data);
-    } catch (e: any) {
-      toast({ title: e.message || "Invalid or expired invite code", variant: "destructive" });
-    } finally {
-      setActionLoading(false);
-    }
-  };
 
   const totalUnread = useMemo(() => {
     return conversations.reduce((sum, c) => sum + c.unreadCount, 0);
@@ -577,48 +508,7 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
                       <DialogTitle className="font-yrdly-display font-bold text-lg">New Chat</DialogTitle>
                     </DialogHeader>
 
-                    {/* Action Tabs */}
-                    <div className="flex items-center gap-1 border-b border-[var(--yrdly-glass-border)] pb-2 mb-3">
-                      <button
-                        type="button"
-                        onClick={() => setNewChatTab("dm")}
-                        className={cn(
-                          "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
-                          newChatTab === "dm"
-                            ? "bg-[#82DB7E]/10 text-[#82DB7E]"
-                            : "text-[var(--yrdly-label)] hover:text-foreground"
-                        )}
-                      >
-                        Direct Message
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setNewChatTab("group")}
-                        className={cn(
-                          "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
-                          newChatTab === "group"
-                            ? "bg-[#82DB7E]/10 text-[#82DB7E]"
-                            : "text-[var(--yrdly-label)] hover:text-foreground"
-                        )}
-                      >
-                        Create Group
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setNewChatTab("join")}
-                        className={cn(
-                          "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
-                          newChatTab === "join"
-                            ? "bg-[#82DB7E]/10 text-[#82DB7E]"
-                            : "text-[var(--yrdly-label)] hover:text-foreground"
-                        )}
-                      >
-                        Join Code
-                      </button>
-                    </div>
-
-                    {newChatTab === "dm" && (
-                      <div className="py-1 max-h-[280px] overflow-y-auto space-y-1">
+                    <div className="py-1 max-h-[280px] overflow-y-auto space-y-1">
                         {friendsLoading ? (
                           <div className="flex justify-center py-6">
                             <Skeleton className="w-6 h-6 rounded-full" />
@@ -648,93 +538,7 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
                             </button>
                           ))
                         )}
-                      </div>
-                    )}
-
-                    {newChatTab === "group" && (
-                      <div className="space-y-4 py-1">
-                        <div>
-                          <label className="text-xs font-semibold text-[var(--yrdly-label)] mb-1 block">Group Title</label>
-                          <input
-                            type="text"
-                            value={groupTitle}
-                            onChange={(e) => setGroupTitle(e.target.value)}
-                            placeholder="e.g. Ward 4 Youth Association"
-                            className="w-full bg-surface border border-[var(--yrdly-glass-border)] rounded-xl px-3.5 py-2 text-sm text-foreground placeholder:text-[var(--yrdly-label)] outline-none focus:border-[#82DB7E]"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="text-xs font-semibold text-[var(--yrdly-label)] mb-1 block">Add Members</label>
-                          <div className="max-h-[160px] overflow-y-auto space-y-1">
-                            {friends.map((friend) => {
-                              const isSelected = selectedMemberIds.includes(friend.id);
-                              return (
-                                <div
-                                  key={friend.id}
-                                  onClick={() => {
-                                    setSelectedMemberIds((prev) =>
-                                      isSelected ? prev.filter((id) => id !== friend.id) : [...prev, friend.id]
-                                    );
-                                  }}
-                                  className={cn(
-                                    "flex items-center justify-between p-2 rounded-xl cursor-pointer transition-colors border",
-                                    isSelected
-                                      ? "bg-[#82DB7E]/10 border-[#82DB7E]/30"
-                                      : "bg-surface/50 border-[var(--yrdly-glass-border)] hover:bg-white/5"
-                                  )}
-                                >
-                                  <div className="flex items-center gap-2.5">
-                                    <Avatar className="w-8 h-8">
-                                      <AvatarImage src={friend.avatar_url} />
-                                      <AvatarFallback className="text-xs">{friend.name?.charAt(0)}</AvatarFallback>
-                                    </Avatar>
-                                    <span className="text-xs font-semibold text-foreground">{friend.name}</span>
-                                  </div>
-                                  <span className={cn("text-xs font-bold px-2 py-0.5 rounded", isSelected ? "bg-[#82DB7E] text-black" : "text-[var(--yrdly-label)]")}>
-                                    {isSelected ? "Selected" : "Add"}
-                                  </span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-
-                        <button
-                          type="button"
-                          disabled={actionLoading || !groupTitle.trim()}
-                          onClick={handleCreateGroup}
-                          className="w-full py-2.5 rounded-xl font-bold text-sm text-black transition-opacity disabled:opacity-50"
-                          style={{ backgroundColor: GREEN }}
-                        >
-                          {actionLoading ? "Creating..." : "Create Group Chat"}
-                        </button>
-                      </div>
-                    )}
-
-                    {newChatTab === "join" && (
-                      <div className="space-y-4 py-2">
-                        <div>
-                          <label className="text-xs font-semibold text-[var(--yrdly-label)] mb-1 block">Group Invite Code or Link</label>
-                          <input
-                            type="text"
-                            value={inviteCodeInput}
-                            onChange={(e) => setInviteCodeInput(e.target.value)}
-                            placeholder="e.g. a1b2c3d4"
-                            className="w-full bg-surface border border-[var(--yrdly-glass-border)] rounded-xl px-3.5 py-2.5 text-sm text-foreground placeholder:text-[var(--yrdly-label)] outline-none focus:border-[#82DB7E]"
-                          />
-                        </div>
-                        <button
-                          type="button"
-                          disabled={actionLoading || !inviteCodeInput.trim()}
-                          onClick={handleJoinGroup}
-                          className="w-full py-2.5 rounded-xl font-bold text-sm text-black transition-opacity disabled:opacity-50"
-                          style={{ backgroundColor: GREEN }}
-                        >
-                          {actionLoading ? "Joining..." : "Join Group"}
-                        </button>
-                      </div>
-                    )}
+                    </div>
                   </DialogContent>
                 </Dialog>
               </div>

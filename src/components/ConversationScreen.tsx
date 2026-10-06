@@ -27,12 +27,7 @@ interface ConversationRow {
   created_at: string;
   updated_at: string;
   context?: any;
-  type?: 'friend' | 'marketplace' | 'briefcase' | 'group';
-  title?: string;
-  avatar_url?: string;
-  created_by?: string;
-  admin_ids?: string[];
-  invite_code?: string;
+  type?: 'friend' | 'marketplace' | 'briefcase';
   item_id?: string;
   item_title?: string;
   item_image?: string;
@@ -162,6 +157,7 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
       const { data } = await supabase
         .from("conversations").select("*")
         .contains("participant_ids", [user.id])
+        .neq("type", "group")
         .order("updated_at", { ascending: false });
       const conv = data?.find((c) => c.id === conversationId) || null;
       setConversation(conv);
@@ -404,7 +400,6 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
     return () => { clearInterval(interval); document.removeEventListener("visibilitychange", onVisible); };
   }, [user]);
 
-  const isGroup = conversation?.type === 'group';
   const otherParticipant = conversation
     ? participants[conversation.participant_ids.find((id) => id !== user?.id) || ""]
     : null;
@@ -531,7 +526,7 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
     );
   }
 
-  if (!conversation || (!isGroup && !otherParticipant)) {
+  if (!conversation || !otherParticipant) {
     return (
       <div className="flex flex-col h-full items-center justify-center bg-[var(--yrdly-dark)] text-foreground font-yrdly-body">
         <MessageCircle className="w-12 h-12 mb-4 text-primary opacity-40" />
@@ -543,12 +538,10 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
     );
   }
 
-  const activityStatus = isGroup
-    ? `${conversation.participant_ids?.length || 0} members`
-    : getActivityStatus((otherParticipant as any)?.last_seen);
+  const activityStatus = getActivityStatus((otherParticipant as any)?.last_seen);
 
-  const titleName = isGroup ? conversation.title || "Group Chat" : otherParticipant?.name || "Neighbour";
-  const avatarSrc = isGroup ? conversation.avatar_url : otherParticipant?.avatar_url;
+  const titleName = otherParticipant.name || "Neighbour";
+  const avatarSrc = otherParticipant.avatar_url;
 
   return (
     <div className="w-full h-full flex-1 flex flex-col min-h-0 bg-[var(--yrdly-dark)] text-foreground font-yrdly-body relative">
@@ -572,11 +565,11 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
                   <AvatarImage src={avatarSrc} />
                 ) : (
                   <AvatarFallback className="bg-primary text-black font-bold font-yrdly-display text-xs">
-                    {isGroup ? "👥" : titleName.charAt(0).toUpperCase()}
+                    {titleName.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 )}
               </Avatar>
-              {!isGroup && otherParticipant && (
+              {otherParticipant && (
                 <div className="absolute -bottom-0.5 -right-0.5">
                   <ActivityIndicator userId={otherParticipant.id} size="sm" />
                 </div>
@@ -587,13 +580,8 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
                 <h2 className="text-sm font-bold text-foreground font-yrdly-display truncate max-w-[160px]">
                   {titleName}
                 </h2>
-                {!isGroup && otherParticipant && ((otherParticipant as any)?.verified_seller || (otherParticipant as any)?.is_verified || (otherParticipant as any)?.phone_verified) && (
+                {otherParticipant && ((otherParticipant as any)?.verified_seller || (otherParticipant as any)?.is_verified || (otherParticipant as any)?.phone_verified) && (
                   <VerifiedBadge size={15} type={(otherParticipant as any)?.verified_seller ? "seller" : "user"} />
-                )}
-                {isGroup && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#82DB7E]/10 text-[#82DB7E] font-medium border border-[#82DB7E]/20">
-                    Group
-                  </span>
                 )}
               </div>
               <p className="text-[0.65rem] text-[var(--yrdly-label)] font-yrdly-body">
@@ -615,20 +603,7 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
           </button>
 
           <GlassCard className="options-menu hidden absolute right-0 top-11 w-48 py-1.5 z-40 rounded-xl p-0 shadow-xl border border-[var(--yrdly-glass-border)]">
-            {isGroup && conversation?.invite_code && (
-              <button
-                className="w-full text-left px-4 py-2.5 text-xs text-[#82DB7E] hover:bg-white/5 transition-colors font-yrdly-body flex items-center gap-2 border-b border-[var(--yrdly-glass-border)]"
-                onClick={() => {
-                  navigator.clipboard.writeText(conversation.invite_code || '');
-                  toast({ title: "Invite code copied!", description: conversation.invite_code });
-                }}
-              >
-                <Copy className="w-3.5 h-3.5" />
-                Copy Invite Code
-              </button>
-            )}
-            {!isGroup && (
-              <button
+            <button
                 className="w-full text-left px-4 py-2.5 text-xs text-[var(--yrdly-label)] hover:text-foreground hover:bg-white/5 transition-colors font-yrdly-body"
                 onClick={async () => {
                   if (confirm('Report this user?')) {
@@ -637,8 +612,7 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
                 }}
               >
                 Report User
-              </button>
-            )}
+            </button>
             <button
               className="w-full text-left px-4 py-2.5 text-xs text-red-500 hover:bg-red-500/10 transition-colors flex items-center gap-2 font-yrdly-body"
               onClick={handleDeleteConversation}
@@ -646,7 +620,7 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
               <Trash2 className="w-3.5 h-3.5" />
               Delete Conversation
             </button>
-            {!isGroup && otherParticipant && (
+            {otherParticipant && (
               <button
                 className="w-full text-left px-4 py-2.5 text-xs text-red-500 hover:bg-red-500/10 transition-colors font-yrdly-body"
                 onClick={async () => {
