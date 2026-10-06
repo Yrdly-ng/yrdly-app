@@ -89,6 +89,7 @@ export async function POST(request: NextRequest) {
         start_time: startTime,
         end_time: endTime,
         timezone: 'Africa/Lagos',
+        status,
         visibility: (() => {
           const v = (visibility || 'PUBLIC').toUpperCase();
           if (v === 'PRIVATE' || v === 'FRIENDS' || v === 'UNLISTED') return 'UNLISTED';
