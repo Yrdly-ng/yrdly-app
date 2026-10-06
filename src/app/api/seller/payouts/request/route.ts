@@ -16,6 +16,17 @@ export async function POST(request: NextRequest) {
     if (!amount || amount <= 0) {
       return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
     }
+
+    const PAYLUK_MINIMUM_WITHDRAWAL = 1000;
+    if (amount < PAYLUK_MINIMUM_WITHDRAWAL) {
+      return NextResponse.json(
+        {
+          error: 'BELOW_MINIMUM',
+          message: `Minimum withdrawal amount is ₦${PAYLUK_MINIMUM_WITHDRAWAL.toLocaleString()}. Your balance of ₦${amount.toLocaleString()} is too low to withdraw.`,
+        },
+        { status: 400 }
+      );
+    }
     // Get seller account ID
     const { data: sellerAccount, error: saError } = await supabaseAdmin
       .from('seller_accounts')

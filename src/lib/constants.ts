@@ -81,7 +81,7 @@ export const MARKETPLACE_CONSTANTS = {
   COMMISSION_RATE: 0.03, // 3% platform commission
   AUTO_RELEASE_HOURS: 48, // Hours before auto-releasing funds to seller
   CURRENCY: 'NGN',
-  MIN_PRICE: 100, // Minimum item price in NGN
+  MIN_PRICE: 1053, // Minimum item price in NGN to guarantee seller receives >= NGN 1,000 net payout
 };
 
 // Events & Ticketing
@@ -89,7 +89,7 @@ export const EVENT_CONSTANTS = {
   COMMISSION_RATE: MARKETPLACE_CONSTANTS.COMMISSION_RATE,  // 3% platform commission on ticket sales
   AUTO_RELEASE_HOURS: 24, // Hours after event ends before payout is released
   CURRENCY: 'NGN',
-  MIN_TICKET_PRICE: 100,  // Minimum paid ticket price in NGN
+  MIN_TICKET_PRICE: 1053,  // Minimum paid ticket price in NGN to guarantee seller receives >= NGN 1,000 net payout
   MAX_TICKET_TIERS: 5,    // Maximum number of ticket tiers per event
   TICKET_CODE_PREFIX: 'YRD',
 };

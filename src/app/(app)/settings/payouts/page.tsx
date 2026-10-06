@@ -261,7 +261,7 @@ export default function PayoutsDashboardPage() {
           {/* Withdraw Button */}
           <button
             onClick={handleRequestPayout}
-            disabled={balance <= 0 || requesting || !bankInfo}
+            disabled={balance < 1000 || requesting || !bankInfo}
             className="w-full py-3.5 rounded-[16px] bg-[#82DB7E] text-black font-bold text-[16px] font-yrdly-display hover:opacity-90 disabled:opacity-50 transition-all flex items-center justify-center"
           >
             {requesting ? (
@@ -270,6 +270,11 @@ export default function PayoutsDashboardPage() {
               "Withdraw Funds"
             )}
           </button>
+          {balance > 0 && balance < 1000 && (
+            <p className="text-center text-[12px] text-[var(--yrdly-label)] font-yrdly-body">
+              Minimum withdrawal is ₦1,000. Earn more to unlock payouts.
+            </p>
+          )}
         </div>
 
         {/* Payout History Section */}

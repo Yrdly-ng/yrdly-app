@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { EVENT_CONSTANTS } from '@/lib/constants';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,6 +35,19 @@ export async function POST(request: NextRequest) {
         { error: 'Missing required fields: title, startTime, endTime' },
         { status: 400 }
       );
+    }
+
+    // Validate minimum price for paid ticket tiers
+    if (Array.isArray(ticketTiers)) {
+      for (const tier of ticketTiers) {
+        const tierPrice = Number(tier.price) || 0;
+        if (tierPrice > 0 && tierPrice < EVENT_CONSTANTS.MIN_TICKET_PRICE) {
+          return NextResponse.json(
+            { error: `Paid ticket tiers must be at least ₦${EVENT_CONSTANTS.MIN_TICKET_PRICE.toLocaleString()}.` },
+            { status: 400 }
+          );
+        }
+      }
     }
 
     // Block paid events if no payout account linked

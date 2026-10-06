@@ -1035,6 +1035,18 @@ export class PaylukService {
 
       const resolvedBankCode = PAYSTACK_TO_PAYLUK_BANK_MAP[params.bankCode] || params.bankCode;
 
+      // 0. Hard minimum — Payluk rejects any withdrawal intent below ₦1,000
+      const PAYLUK_MINIMUM = 1000;
+      if (params.amount < PAYLUK_MINIMUM) {
+        return {
+          success: false,
+          reference: params.reference,
+          error: `Minimum withdrawal amount is ₦${PAYLUK_MINIMUM.toLocaleString()}.`,
+          reason: `Your available balance of ₦${params.amount.toLocaleString()} is below Payluk's minimum withdrawal of ₦${PAYLUK_MINIMUM.toLocaleString()}.`,
+          maximumWithdrawable: 0,
+        };
+      }
+
       // 1. Fetch seller's Payluk wallet to check mainBalance (ignoring escrowBalance for withdrawals)
       let paylukMainBalance = Infinity;
       try {

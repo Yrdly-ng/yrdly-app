@@ -32,6 +32,7 @@ import type { CatalogItem } from "@/types";
 import Image from "next/image";
 import { CatalogService } from "@/lib/catalog-service";
 import { useToast } from "@/hooks/use-toast";
+import { MARKETPLACE_CONSTANTS } from "@/lib/constants";
 
 /* ─── design tokens (shared with CreateItemDialog) ─────────────────── */
 const BG_DARK = "var(--c-bg)";
@@ -68,7 +69,7 @@ const getFormSchema = (existingImageCount: number) =>
     description: z.string().min(1, "Description is required.").max(1000, "Description too long"),
     price: z.preprocess(
       (val) => (val === "" || val === null || val === undefined ? undefined : Number(val)),
-      z.number().positive("Price must be positive.")
+      z.number().min(MARKETPLACE_CONSTANTS.MIN_PRICE, `Price must be at least ₦${MARKETPLACE_CONSTANTS.MIN_PRICE.toLocaleString()}`)
     ),
     category: z.string().min(1, "Category is required."),
     in_stock: z.boolean().default(true),

@@ -299,6 +299,13 @@ export async function POST(request: NextRequest) {
     // ── Create escrow transaction (admin client bypasses RLS) ──
     // Always use the price from the database — never trust the client-supplied value
     const authorizedPrice = itemData.price;
+
+    if (authorizedPrice < MARKETPLACE_CONSTANTS.MIN_PRICE) {
+      return NextResponse.json(
+        { error: `Item price must be at least ₦${MARKETPLACE_CONSTANTS.MIN_PRICE.toLocaleString()} for escrow payment processing.` },
+        { status: 400 }
+      );
+    }
     // Yrdly's 3% commission is collected from the buyer as an additional fee.
     // Payluk's own escrow fee is charged to the seller via whoPays: 'seller' below,
     // while the escrow principal remains the seller's item price.
