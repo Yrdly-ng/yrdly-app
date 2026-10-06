@@ -23,6 +23,10 @@ export interface Community {
   member_count: number;
   post_daily_limit: number;
   created_at: string;
+  approval_status?: 'pending' | 'approved' | 'rejected';
+  reviewed_by?: string | null;
+  reviewed_at?: string | null;
+  rejection_reason?: string | null;
 }
 
 export interface CommunityMembership {
@@ -94,7 +98,7 @@ export class CommunityService {
     opts: { type?: CommunityType; state?: string; lga?: string; query?: string; page?: number } = {}
   ): Promise<Community[]> {
     const PAGE = 30;
-    let q = supabase.from('communities').select('*');
+    let q = supabase.from('communities').select('*').eq('approval_status', 'approved');
 
     if (opts.query?.trim()) {
       // Searching across all communities nationwide
@@ -117,6 +121,49 @@ export class CommunityService {
 
     if (error) throw error;
     return (data ?? []) as Community[];
+  }
+
+  static async listMyCommunitySubmissions(userId: string): Promise<Community[]> {
+    const { data, error } = await supabase.from('communities').select('*')
+      .eq('created_by', userId).in('approval_status', ['pending', 'rejected'])
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data ?? []) as Community[];
+  }
+
+  static async submitCommunity(input: {
+    createdBy: string;
+    name: string;
+    description: string;
+    avatarUrl?: string;
+    bannerUrl?: string;
+    privacy: CommunityPrivacy;
+  }): Promise<Community> {
+    const slugBase = input.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48) || 'community';
+    const { data, error } = await supabase.from('communities').insert({
+      name: input.name.trim(),
+      slug: `${slugBase}-${Date.now().toString(36)}`,
+      description: input.description.trim(),
+      avatar_url: input.avatarUrl?.trim() || null,
+      banner_url: input.bannerUrl?.trim() || null,
+      type: 'interest',
+      privacy: input.privacy,
+      created_by: input.createdBy,
+      is_official: false,
+      approval_status: 'pending',
+    }).select('*').single();
+    if (error) throw error;
+    return data as Community;
+  }
+
+  static async reviewCommunity(communityId: string, reviewerId: string, decision: 'approved' | 'rejected', rejectionReason?: string): Promise<void> {
+    const { error } = await supabase.from('communities').update({
+      approval_status: decision,
+      reviewed_by: reviewerId,
+      reviewed_at: new Date().toISOString(),
+      rejection_reason: decision === 'rejected' ? (rejectionReason?.trim() || 'Does not meet community guidelines.') : null,
+    }).eq('id', communityId).eq('approval_status', 'pending');
+    if (error) throw error;
   }
 
   /** Load a community by id (respects RLS invite-only) */

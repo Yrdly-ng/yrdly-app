@@ -180,6 +180,7 @@ export default function AdminModerationPage() {
         <p className="text-[var(--yrdly-label)] text-sm">
           Review automated flags, community user reports, and reported comments across Yrdly.
         </p>
+        <Button className="mt-3" variant="outline" onClick={() => router.push("/admin/communities")}>Review community submissions</Button>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
