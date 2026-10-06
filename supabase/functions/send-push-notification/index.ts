@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import webpush from 'npm:web-push@3.6.7';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,6 +10,7 @@ const corsHeaders = {
 interface PushPayload {
   title: string;
   body: string;
+  icon?: string;
   data?: Record<string, unknown>;
   url?: string;
   badge?: number;
@@ -47,14 +49,31 @@ serve(async (req) => {
       .eq('id', userId)
       .single();
 
-    // Fetch all active device push tokens for this user from user_push_tokens table
-    const { data: tokenRows, error: tokenError } = await supabaseAdmin
-      .from('user_push_tokens')
-      .select('push_token')
-      .eq('user_id', userId);
+    // Fetch native device tokens and browser subscriptions. Web subscriptions
+    // are separate from Expo tokens and must be sent with the Web Push protocol.
+    const [tokenResult, webSubscriptionResult] = await Promise.all([
+      supabaseAdmin
+        .from('user_push_tokens')
+        .select('push_token')
+        .eq('user_id', userId),
+      supabaseAdmin
+        .from('push_subscriptions')
+        .select('id, subscription')
+        .eq('user_id', userId),
+    ]);
+    const { data: tokenRows, error: tokenError } = tokenResult;
+    const { data: webSubscriptionRows, error: webSubscriptionError } = webSubscriptionResult;
 
-    if (tokenError || !tokenRows || tokenRows.length === 0) {
-      console.log(`No push tokens found for user ${userId}:`, tokenError?.message);
+    if (tokenError) console.error(`Could not load Expo tokens for ${userId}:`, tokenError.message);
+    if (webSubscriptionError) console.error(`Could not load web subscriptions for ${userId}:`, webSubscriptionError.message);
+
+    const validTokens = (tokenRows ?? [])
+      .map((r) => r.push_token)
+      .filter((t) => t.startsWith('ExponentPushToken[') || t.startsWith('ExpoPushToken['));
+    const webSubscriptions = webSubscriptionRows ?? [];
+
+    if (validTokens.length === 0 && webSubscriptions.length === 0) {
+      console.log(`No push subscriptions found for user ${userId}`);
       return new Response(JSON.stringify({ success: false, reason: 'no_token' }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -97,19 +116,6 @@ serve(async (req) => {
       }
     }
 
-    // Filter valid Expo push tokens
-    const validTokens = tokenRows
-      .map((r) => r.push_token)
-      .filter((t) => t.startsWith('ExponentPushToken[') || t.startsWith('ExpoPushToken['));
-
-    if (validTokens.length === 0) {
-      console.log(`No valid push token format found for user ${userId}`);
-      return new Response(JSON.stringify({ success: false, reason: 'invalid_token_format' }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
     // Construct batch payload (array of push messages matching validTokens order)
     const expoPayloads = validTokens.map((pushToken) => ({
       to: pushToken,
@@ -125,19 +131,59 @@ serve(async (req) => {
       priority: 'high',
     }));
 
-    // Send batch via Expo Push Notification Service
-    const expoResponse = await fetch('https://exp.host/--/api/v2/push/send', {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Accept-Encoding': 'gzip, deflate',
-      },
-      body: JSON.stringify(expoPayloads),
+    const webPayload = JSON.stringify({
+      title: payload.title,
+      body: payload.body,
+      icon: payload.icon ?? '/icon-192x192.png',
+      badge: '/icon-192x192.png',
+      data: { ...(payload.data ?? {}), url: payload.url ?? '/' },
     });
 
-    const expoResult = await expoResponse.json();
-    console.log('Expo push result:', JSON.stringify(expoResult));
+    let webSent = 0;
+    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY') ?? Deno.env.get('NEXT_PUBLIC_VAPID_PUBLIC_KEY');
+    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
+    const vapidSubject = Deno.env.get('VAPID_SUBJECT') ?? 'mailto:support@yrdly.ng';
+
+    if (webSubscriptions.length > 0 && vapidPublicKey && vapidPrivateKey) {
+      try {
+        webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
+        const results = await Promise.allSettled(webSubscriptions.map(async (row) => {
+          try {
+            await webpush.sendNotification(row.subscription, webPayload);
+            webSent += 1;
+          } catch (error) {
+            const statusCode = (error as { statusCode?: number }).statusCode;
+            if (statusCode === 404 || statusCode === 410) {
+              await supabaseAdmin.from('push_subscriptions').delete().eq('id', row.id);
+            }
+            throw error;
+          }
+        }));
+        const failures = results.filter((result) => result.status === 'rejected').length;
+        if (failures > 0) console.error(`Web push failed for ${failures} subscription(s) for user ${userId}`);
+      } catch (error) {
+        console.error('Could not send web push notifications:', error);
+      }
+    } else if (webSubscriptions.length > 0) {
+      console.error('Web push subscriptions exist but VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY are not configured');
+    }
+
+    let expoResult: { data?: Array<{ status?: string; details?: { error?: string } }> } | null = null;
+    if (expoPayloads.length > 0) {
+      const expoResponse = await fetch('https://exp.host/--/api/v2/push/send', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Accept-Encoding': 'gzip, deflate',
+        },
+        body: JSON.stringify(expoPayloads),
+      });
+
+      if (!expoResponse.ok) throw new Error(`Expo push service returned ${expoResponse.status}`);
+      expoResult = await expoResponse.json();
+      console.log('Expo push result:', JSON.stringify(expoResult));
+    }
 
     // Match batch ticket responses back to validTokens by array index
     // Expo returns an array of ticket objects in the exact order of the submitted payload array
@@ -157,7 +203,13 @@ serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ success: true, result: expoResult }), {
+    const expoAccepted = expoResult?.data?.some((ticket) => ticket?.status === 'ok') ?? false;
+    return new Response(JSON.stringify({
+      success: webSent > 0 || expoAccepted,
+      webSent,
+      expoResult,
+      reason: webSent === 0 && !expoAccepted ? 'delivery_failed' : undefined,
+    }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

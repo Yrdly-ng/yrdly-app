@@ -6,6 +6,7 @@ import { ResendEmailService } from '@/lib/resend-service';
 import { emailTemplates } from '@/lib/email-templates';
 import { PaystackService } from '@/lib/paystack-service';
 import { TicketService } from '@/lib/ticket-service';
+import { sendPushNotification } from '@/lib/server-push-notification';
 
 /**
  * POST /api/webhooks/paystack
@@ -306,11 +307,19 @@ async function handleTicketRefundEvent(event: string, data: any): Promise<void> 
       ? 'Paystack has processed your ticket refund. The credit may still take time to reach your payment method.'
       : 'Your ticket refund needs support review. Please contact Yrdly support with your payment reference.';
     for (const ticket of tickets) {
-      await supabaseAdmin.from('notifications').insert({
+      const notification = {
         user_id: ticket.buyer_id, type: 'event_cancelled', title, message,
         related_id: ticket.id, related_type: 'ticket',
         data: { ticketId: ticket.id, paymentReference, refundStatus },
-      });
+      };
+      const { error } = await supabaseAdmin.from('notifications').insert(notification);
+      if (error) throw error;
+      await sendPushNotification(supabaseAdmin, ticket.buyer_id, {
+        title: notification.title,
+        body: notification.message,
+        data: notification.data,
+        url: '/my-events',
+      }, notification.type);
     }
   }
 }

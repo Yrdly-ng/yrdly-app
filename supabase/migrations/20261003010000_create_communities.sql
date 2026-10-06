@@ -169,6 +169,7 @@ ALTER TABLE public.community_join_requests   ENABLE ROW LEVEL SECURITY;
 -- COMMUNITIES —————————————————————————————————————————
 -- open + request: visible to all authenticated users
 -- invite: only active members can see it
+DROP POLICY IF EXISTS "communities_select" ON public.communities;
 CREATE POLICY "communities_select" ON public.communities FOR SELECT TO authenticated USING (
   privacy IN ('open','request')
   OR EXISTS (
@@ -177,9 +178,11 @@ CREATE POLICY "communities_select" ON public.communities FOR SELECT TO authentic
   )
 );
 -- Only admins can create/update communities (interest groups); ward/lga created by seeder
+DROP POLICY IF EXISTS "communities_admin_insert" ON public.communities;
 CREATE POLICY "communities_admin_insert" ON public.communities FOR INSERT TO authenticated WITH CHECK (
   EXISTS (SELECT 1 FROM public.users u WHERE u.id = auth.uid() AND (u.is_admin = true OR u.role = 'admin'))
 );
+DROP POLICY IF EXISTS "communities_admin_update" ON public.communities;
 CREATE POLICY "communities_admin_update" ON public.communities FOR UPDATE TO authenticated USING (
   EXISTS (SELECT 1 FROM public.users u WHERE u.id = auth.uid() AND (u.is_admin = true OR u.role = 'admin'))
 );

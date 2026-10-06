@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { getPostHogClient } from '@/lib/posthog-server';
 import { isPaylukTicket } from '@/lib/ticket-payment-provider';
 import { requestPaystackTicketRefund } from '@/lib/ticket-refunds';
+import { sendPushNotification } from '@/lib/server-push-notification';
 
 /**
  * POST /api/events/tickets/refund
@@ -75,7 +76,7 @@ export async function POST(request: NextRequest) {
 
     // ── Notify buyer ─────────────────────────────────────────────────────────
     try {
-      await supabaseAdmin.from('notifications').insert({
+      const notification = {
         user_id: ticket.buyer_id,
         type: 'event_cancelled',
         title: '💰 Refund Requested',
@@ -83,7 +84,15 @@ export async function POST(request: NextRequest) {
         related_id: event.id,
         related_type: 'event',
         data: { ticket_id, event_id: event.id, amount: ticket.amount_paid },
-      });
+      };
+      const { error: notificationError } = await supabaseAdmin.from('notifications').insert(notification);
+      if (notificationError) throw notificationError;
+      await sendPushNotification(supabaseAdmin, ticket.buyer_id, {
+        title: notification.title,
+        body: notification.message,
+        data: notification.data,
+        url: `/events/${event.id}`,
+      }, notification.type);
     } catch (e) {
       console.error('Failed to send refund notification:', e);
     }

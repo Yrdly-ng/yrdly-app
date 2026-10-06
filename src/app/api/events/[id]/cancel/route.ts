@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { getPostHogClient } from '@/lib/posthog-server';
 import { isPaylukTicket } from '@/lib/ticket-payment-provider';
 import { requestPaystackTicketRefund } from '@/lib/ticket-refunds';
+import { sendPushNotification } from '@/lib/server-push-notification';
 
 /**
  * POST /api/events/[id]/cancel
@@ -71,13 +72,21 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         await requestPaystackTicketRefund(paymentRef, orderTickets);
         refundsRequested += orderTickets.length;
         for (const ticket of orderTickets) {
-          await supabaseAdmin.from('notifications').insert({
+          const notification = {
             user_id: ticket.buyer_id, type: 'event_cancelled',
             title: 'Event Cancelled — Refund Requested 💰',
             message: `"${event.title}" has been cancelled. A refund of ₦${Number(ticket.amount_paid).toLocaleString()} was requested; check your payment method for the final credit.`,
             related_id: id, related_type: 'event',
             data: { eventId: id, eventTitle: event.title, amount: ticket.amount_paid },
-          });
+          };
+          const { error: notificationError } = await supabaseAdmin.from('notifications').insert(notification);
+          if (notificationError) throw notificationError;
+          await sendPushNotification(supabaseAdmin, ticket.buyer_id, {
+            title: notification.title,
+            body: notification.message,
+            data: notification.data,
+            url: `/events/${id}`,
+          }, notification.type);
         }
       } catch (err) {
         errors.push(`Payment ${paymentRef}: ${(err as Error).message}`);

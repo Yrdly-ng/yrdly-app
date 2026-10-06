@@ -5,6 +5,7 @@ import { MARKETPLACE_CONSTANTS } from '@/lib/constants';
 import { PayoutService } from '@/lib/payout-service';
 import { PaylukService } from '@/lib/payluk-service';
 import { getPaylukCustomerId } from '@/lib/payluk-onboarding';
+import { sendPushNotification } from '@/lib/server-push-notification';
 
 /**
  * POST /api/cron/auto-release
@@ -109,7 +110,7 @@ async function handler(request: NextRequest) {
         const itemTitle = item?.title || item?.text || 'an item';
 
         // Report a bank payout only when the payout service confirms success.
-        await supabaseAdmin.from('notifications').insert({
+        const sellerNotification = {
           user_id: tx.seller_id,
           type: payoutSucceeded ? 'funds_released' : 'payout_failed',
           title: payoutSucceeded ? 'Funds Auto-Released! 🎉' : 'Payout needs attention',
@@ -119,10 +120,18 @@ async function handler(request: NextRequest) {
           related_id: tx.id,
           related_type: 'escrow_transaction',
           data: { amount: tx.seller_amount || tx.amount, itemTitle, transactionId: tx.id },
-        });
+        };
+        const { error: sellerNotificationError } = await supabaseAdmin.from('notifications').insert(sellerNotification);
+        if (sellerNotificationError) throw sellerNotificationError;
+        await sendPushNotification(supabaseAdmin, tx.seller_id, {
+          title: sellerNotification.title,
+          body: sellerNotification.message,
+          data: sellerNotification.data,
+          url: `/transactions/${tx.id}`,
+        }, sellerNotification.type);
 
         // Notify buyer: auto-completed
-        await supabaseAdmin.from('notifications').insert({
+        const buyerNotification = {
           user_id: tx.buyer_id,
           type: 'delivery_confirmed',
           title: 'Transaction Auto-Completed',
@@ -130,7 +139,15 @@ async function handler(request: NextRequest) {
           related_id: tx.id,
           related_type: 'escrow_transaction',
           data: { itemTitle, transactionId: tx.id },
-        });
+        };
+        const { error: buyerNotificationError } = await supabaseAdmin.from('notifications').insert(buyerNotification);
+        if (buyerNotificationError) throw buyerNotificationError;
+        await sendPushNotification(supabaseAdmin, tx.buyer_id, {
+          title: buyerNotification.title,
+          body: buyerNotification.message,
+          data: buyerNotification.data,
+          url: `/transactions/${tx.id}`,
+        }, buyerNotification.type);
 
         released++;
       } catch (txError) {

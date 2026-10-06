@@ -17,57 +17,13 @@ export class PushNotificationService {
   static async sendToUser(userId: string, payload: PushNotificationPayload): Promise<boolean> {
     try {
       const { type, ...restPayload } = payload;
-      // Invoke the Edge function to send push notification to mobile users
-      supabase.functions.invoke('send-push-notification', {
+      // The Edge Function delivers to both native Expo tokens and browser
+      // subscriptions, including when this page is closed.
+      const { data, error } = await supabase.functions.invoke('send-push-notification', {
         body: { userId, payload: restPayload, type }
-      }).catch((err) => {
-        console.error('Edge function error:', err);
       });
-
-      // Handle local web notification on client ONLY if target userId matches current logged in user
-      if (typeof window !== 'undefined' && 'Notification' in window) {
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          const currentUserId = session?.user?.id;
-
-          // Only display local notification if the notification is for the current user (e.g. test notifications)
-          if (currentUserId && currentUserId === userId) {
-            let perm = Notification.permission;
-            if (perm === 'default') {
-              perm = await Notification.requestPermission();
-            }
-
-            if (perm === 'granted') {
-              const title = payload.title || 'Yrdly';
-              const options: NotificationOptions = {
-                body: payload.body || '',
-                icon: payload.icon || '/icon-192x192.png',
-                badge: payload.badge || '/icon-192x192.png',
-                data: {
-                  ...payload.data,
-                  url: payload.url,
-                  timestamp: Date.now(),
-                },
-              };
-
-              if ('serviceWorker' in navigator) {
-                const registration = await navigator.serviceWorker.ready;
-                if (registration && registration.showNotification) {
-                  await registration.showNotification(title, options);
-                } else {
-                  new Notification(title, options);
-                }
-              } else {
-                new Notification(title, options);
-              }
-            }
-          }
-        } catch (swError) {
-          console.error('Error displaying web notification:', swError);
-        }
-      }
-
-      return true;
+      if (error) throw error;
+      return data?.success === true;
     } catch (error) {
       console.error('Error sending push notification:', error);
       return false;
@@ -127,4 +83,3 @@ export class PushNotificationService {
     });
   }
 }
-

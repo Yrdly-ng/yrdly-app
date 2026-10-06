@@ -21,9 +21,9 @@ export function PushNotificationManager() {
         }
     }, []);
 
-    const subscribeUser = async () => {
+    const subscribeUser = async (): Promise<boolean> => {
         try {
-            if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || !user || !profile) return;
+            if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || !user || !profile) return false;
 
             const registration = await navigator.serviceWorker.ready;
             
@@ -39,22 +39,27 @@ export function PushNotificationManager() {
                 keyArray[i] = binaryString.charCodeAt(i);
             }
             
-            const subscription = await registration.pushManager.subscribe({
-                userVisibleOnly: true,
-                applicationServerKey: keyArray
-            });
+            const subscription = await registration.pushManager.getSubscription()
+                ?? await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: keyArray
+                });
 
-            await supabase
+            const { error } = await supabase
                 .from('push_subscriptions')
                 .upsert({
                     user_id: user.id,
-                    subscription: subscription,
+                    subscription: subscription.toJSON(),
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString()
                 });
 
+            if (error) throw error;
+            return true;
+
         } catch (error) {
             console.error("Push notification setup error:", error);
+            return false;
         }
     };
 
@@ -91,30 +96,6 @@ export function PushNotificationManager() {
                         description: newNotif.message || '',
                     });
 
-                    // 2. Deliver Native OS / Device Push Notification
-                    if ('Notification' in window && Notification.permission === 'granted') {
-                        try {
-                            const url = newNotif.data?.url || '/notifications';
-                            const title = newNotif.title || 'Yrdly';
-                            const options: any = {
-                                body: newNotif.message || '',
-                                icon: '/icon-192x192.png',
-                                badge: '/icon-192x192.png',
-                                data: { url, ...newNotif.data },
-                            };
-
-                            if ('serviceWorker' in navigator) {
-                                const reg = await navigator.serviceWorker.ready;
-                                if (reg && reg.showNotification) {
-                                    await reg.showNotification(title, options);
-                                    return;
-                                }
-                            }
-                            new Notification(title, options);
-                        } catch (err) {
-                            console.error('Real-time native push error:', err);
-                        }
-                    }
                 }
             )
             .subscribe();
@@ -130,11 +111,15 @@ export function PushNotificationManager() {
             const result = await Notification.requestPermission();
             setPermission(result);
             if (result === 'granted') {
-                toast({
+                const subscribed = await subscribeUser();
+                toast(subscribed ? {
                     title: "Notifications Enabled",
                     description: "You'll now receive updates and messages in real time.",
+                } : {
+                    variant: "destructive",
+                    title: "Notifications couldn't be set up",
+                    description: "Please try again. If the issue continues, refresh the app and retry.",
                 });
-                await subscribeUser();
             } else if (result === 'denied') {
                 toast({
                     variant: "destructive",
@@ -148,30 +133,6 @@ export function PushNotificationManager() {
             setShowBanner(false);
         }
     };
-
-    // Handle notification clicks
-    useEffect(() => {
-        if (!isSupported) return;
-
-        const handleNotificationClick = (event: any) => {
-            event.notification.close();
-            
-            const data = event.notification.data;
-            if (data && data.url) {
-                window.location.href = data.url;
-            }
-        };
-
-        navigator.serviceWorker.addEventListener('message', (event) => {
-            if (event.data && event.data.type === 'NOTIFICATION_CLICK') {
-                handleNotificationClick(event.data);
-            }
-        });
-
-        return () => {
-            navigator.serviceWorker.removeEventListener('message', handleNotificationClick);
-        };
-    }, [isSupported]);
 
     // Render interactive prompt banner if permission is default and user profile exists
     if (permission === 'default' && showBanner && isSupported && user && profile) {

@@ -4,6 +4,7 @@ import QRCode from 'qrcode';
 import { EVENT_CONSTANTS } from '@/lib/constants';
 import { PaystackService } from '@/lib/paystack-service';
 import { PaylukService } from '@/lib/payluk-service';
+import { sendPushNotification } from '@/lib/server-push-notification';
 
 export class TicketService {
   /**
@@ -172,7 +173,7 @@ export class TicketService {
 
     // ── In-app notification ──────────────────────────────────────────────────
     try {
-      await supabaseAdmin.from('notifications').insert({
+      const notification = {
         user_id: buyer_id,
         type: 'ticket_confirmed',
         title: `🎟️ Ticket Confirmed!`,
@@ -180,7 +181,15 @@ export class TicketService {
         related_id: insertedTickets[0].id,
         related_type: 'ticket',
         data: { ticket_id: insertedTickets[0].id, event_id, ticket_code: insertedTickets[0].ticket_code },
-      });
+      };
+      const { error } = await supabaseAdmin.from('notifications').insert(notification);
+      if (error) throw error;
+      await sendPushNotification(supabaseAdmin, buyer_id, {
+        title: notification.title,
+        body: notification.message,
+        data: notification.data,
+        url: '/my-events',
+      }, notification.type);
     } catch (e) {
       // Ignore
     }

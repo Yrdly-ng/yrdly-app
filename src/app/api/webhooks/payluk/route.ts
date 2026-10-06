@@ -7,6 +7,7 @@ import { TicketService } from '@/lib/ticket-service';
 import { PaylukService } from '@/lib/payluk-service';
 import { handlePaylukWebhookEvent as handleBookingPaymentEvent } from '@/lib/booking-payments';
 import { PayoutService } from '@/lib/payout-service';
+import { sendPushNotification } from '@/lib/server-push-notification';
 
 // ── Signature verification ───────────────────────────────────────────────────
 //
@@ -345,7 +346,7 @@ async function tryMarketplacePayout(tx: { id: string; seller_id: string; item_ty
     const { data: payout } = await supabaseAdmin.from('payout_requests')
       .select('id').eq('transaction_id', tx.id).maybeSingle();
     if (payout) return;
-    await supabaseAdmin.from('notifications').insert({
+    const notification = {
       user_id: tx.seller_id,
       type: 'payout_failed',
       title: 'Payout needs attention',
@@ -353,7 +354,15 @@ async function tryMarketplacePayout(tx: { id: string; seller_id: string; item_ty
       related_id: tx.id,
       related_type: 'escrow_transaction',
       data: { transactionId: tx.id },
-    });
+    };
+    const { error: notificationError } = await supabaseAdmin.from('notifications').insert(notification);
+    if (notificationError) throw notificationError;
+    await sendPushNotification(supabaseAdmin, tx.seller_id, {
+      title: notification.title,
+      body: notification.message,
+      data: notification.data,
+      url: `/transactions/${tx.id}`,
+    }, notification.type);
   }
 }
 
