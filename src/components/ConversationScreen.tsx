@@ -199,6 +199,26 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
         text: m.text || m.content || "",
       }));
 
+      // Also fetch from legacy/marketplace chat_messages table
+      const { data: legacyData } = await supabase
+        .from("chat_messages").select("*")
+        .eq("chat_id", conversation.id)
+        .order("created_at", { ascending: true });
+
+      if (legacyData && legacyData.length > 0) {
+        const formattedLegacy: ChatMessage[] = legacyData.map((cm: any) => ({
+          id: cm.id,
+          conversation_id: conversation.id,
+          sender_id: cm.sender_id,
+          text: cm.content || (cm.metadata?.imageUrl ? "📷 Photo" : ""),
+          content: cm.content || "",
+          image_url: cm.metadata?.imageUrl || (cm.message_type === 'image' ? cm.content : null),
+          created_at: cm.created_at || cm.timestamp,
+          is_read: cm.metadata?.isRead || false,
+        }));
+        mainMsgs = [...mainMsgs, ...formattedLegacy];
+      }
+
       // If business conversation, also fetch from business_messages table for completeness/legacy support
       const bizId = conversation.context?.catalog_item_business_id || (conversation as any).business_id;
       if (bizId || (conversation.type as string) === 'business' || conversation.type === 'briefcase') {
@@ -222,22 +242,24 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
             created_at: bm.created_at,
             is_read: bm.is_read || false,
           }));
-
-          const map = new Map<string, ChatMessage>();
-          [...formattedBiz, ...mainMsgs].forEach((msg) => {
-            const key = `${msg.sender_id}_${(msg.text || '').trim()}_${new Date(msg.created_at).getTime()}`;
-            if (!map.has(key)) {
-              map.set(key, msg);
-            }
-          });
-
-          mainMsgs = Array.from(map.values()).sort(
-            (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-          );
+          mainMsgs = [...mainMsgs, ...formattedBiz];
         }
       }
 
-      const visible = mainMsgs.filter((m: any) => !m.deleted_by?.includes(user?.id || ''));
+      // Deduplicate and sort by creation timestamp
+      const map = new Map<string, ChatMessage>();
+      mainMsgs.forEach((msg) => {
+        const key = msg.id || `${msg.sender_id}_${(msg.text || '').trim()}_${new Date(msg.created_at).getTime()}`;
+        if (!map.has(key)) {
+          map.set(key, msg);
+        }
+      });
+
+      const sorted = Array.from(map.values()).sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
+
+      const visible = sorted.filter((m: any) => !m.deleted_by?.includes(user?.id || ''));
       setMessages(visible);
       setLoading(false);
     };
@@ -315,6 +337,30 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
         })
       .subscribe();
     channels.push(ch);
+
+    // Subscribe to legacy chat_messages table
+    const chatCh = supabase.channel(`chat_messages-${conversation.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "chat_messages", filter: `chat_id=eq.${conversation.id}` },
+        (payload) => {
+          if (payload.eventType === "INSERT") {
+            const formatted: ChatMessage = {
+              id: payload.new.id,
+              conversation_id: conversation.id,
+              sender_id: payload.new.sender_id,
+              text: payload.new.content || "",
+              content: payload.new.content || "",
+              image_url: payload.new.metadata?.imageUrl || null,
+              created_at: payload.new.created_at || payload.new.timestamp,
+              is_read: false,
+            };
+            setMessages((p) => {
+              if (p.some(m => m.id === formatted.id || (m.sender_id === formatted.sender_id && m.text === formatted.text))) return p;
+              return [...p, formatted];
+            });
+          }
+        })
+      .subscribe();
+    channels.push(chatCh);
 
     const bizId = conversation.context?.catalog_item_business_id || (conversation as any).business_id;
     if (bizId) {
