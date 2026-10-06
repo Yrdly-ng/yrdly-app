@@ -25,7 +25,6 @@ import { Button } from '@/components/ui/button';
 import { GlassCard } from '@/components/ui/glass-card';
 import { SupabaseChatService } from '@/lib/supabase-chat-service';
 import { MARKETPLACE_CONSTANTS } from '@/lib/constants';
-import { OpenDisputeDialog } from '@/components/disputes/OpenDisputeDialog';
 import { SubmitReviewDialog } from '@/components/reviews/SubmitReviewDialog';
 import { ReviewService } from '@/lib/review-service';
 
@@ -560,4 +559,3 @@ export default function TransactionDetailsPage() {
       </div>
   );
 }
-

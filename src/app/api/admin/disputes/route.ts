@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { signDisputeEvidence } from '@/lib/dispute-evidence-server';
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,8 +24,8 @@ export async function GET(request: NextRequest) {
     // 2. Parse Query Parameters
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get('status') || 'all';
-    const page = parseInt(searchParams.get('page') || '1', 10);
-    const limit = parseInt(searchParams.get('limit') || '20', 10);
+    const page = Math.max(1, Math.min(10000, Number.parseInt(searchParams.get('page') || '1', 10) || 1));
+    const limit = Math.max(1, Math.min(100, Number.parseInt(searchParams.get('limit') || '20', 10) || 20));
 
     const from = (page - 1) * limit;
     const to = from + limit - 1;
@@ -100,7 +101,7 @@ export async function GET(request: NextRequest) {
     });
 
     // 6. Enrich disputes
-    const enrichedDisputes = disputes.map(d => {
+    const enrichedDisputes = await Promise.all(disputes.map(async d => {
       const tx = txMap.get(d.transaction_id);
       const buyer = tx ? userMap.get(tx.buyer_id) : null;
       const seller = tx ? userMap.get(tx.seller_id) : null;
@@ -111,8 +112,8 @@ export async function GET(request: NextRequest) {
         transactionId: d.transaction_id,
         openedBy: d.opened_by,
         disputeReason: d.dispute_reason || 'Other',
-        buyerEvidence: d.buyer_evidence || {},
-        sellerEvidence: d.seller_evidence || {},
+        buyerEvidence: await signDisputeEvidence(d.buyer_evidence || {}),
+        sellerEvidence: await signDisputeEvidence(d.seller_evidence || {}),
         adminNotes: d.admin_notes || '',
         refundAmount: d.refund_amount || 0,
         sellerAmount: d.seller_amount || 0,
@@ -126,7 +127,7 @@ export async function GET(request: NextRequest) {
           item,
         } : null
       };
-    });
+    }));
 
     return NextResponse.json({ data: enrichedDisputes, count: count || 0 });
   } catch (error: any) {

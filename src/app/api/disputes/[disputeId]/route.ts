@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { signDisputeEvidence } from '@/lib/dispute-evidence-server';
 
 export async function GET(
   request: NextRequest,
@@ -131,6 +132,29 @@ export async function GET(
     }
 
     // 7. Format output
+    let resolutionOperation = null;
+    if (isAdmin) {
+      const { data: operation } = await supabaseAdmin
+        .from('dispute_resolution_operations')
+        .select('status, error_message, created_at, updated_at, provider_reference, resolution, refund_amount, seller_amount')
+        .eq('dispute_id', dispute.id)
+        .maybeSingle();
+      resolutionOperation = operation ? {
+        status: operation.status,
+        errorMessage: operation.error_message,
+        createdAt: operation.created_at,
+        updatedAt: operation.updated_at,
+        providerReference: operation.provider_reference,
+        resolution: operation.resolution,
+        refundAmount: Number(operation.refund_amount),
+        sellerAmount: Number(operation.seller_amount),
+      } : null;
+    }
+
+    const [buyerEvidence, sellerEvidence] = await Promise.all([
+      signDisputeEvidence(dispute.buyer_evidence || {}),
+      signDisputeEvidence(dispute.seller_evidence || {}),
+    ]);
     const enrichedDispute = {
       id: dispute.id,
       transactionId: dispute.transaction_id,
@@ -139,12 +163,19 @@ export async function GET(
       opened_by: dispute.opened_by,
       disputeReason: dispute.dispute_reason,
       dispute_reason: dispute.dispute_reason,
-      buyerEvidence: dispute.buyer_evidence || {},
-      buyer_evidence: dispute.buyer_evidence || {},
-      sellerEvidence: dispute.seller_evidence || {},
-      seller_evidence: dispute.seller_evidence || {},
-      adminNotes: dispute.admin_notes,
-      admin_notes: dispute.admin_notes,
+      buyerEvidence,
+      buyer_evidence: buyerEvidence,
+      sellerEvidence,
+      seller_evidence: sellerEvidence,
+      reason: dispute.dispute_reason,
+      description: buyerEvidence?.description || sellerEvidence?.description || '',
+      evidence_urls: [...(buyerEvidence?.photos || []), ...(sellerEvidence?.photos || [])],
+      ...(isAdmin ? { adminNotes: dispute.admin_notes, admin_notes: dispute.admin_notes } : {}),
+      ...(isAdmin ? {
+        providerSubmissionStatus: dispute.provider_submission_status,
+        providerSubmissionError: dispute.provider_submission_error,
+      } : {}),
+      ...(isAdmin ? { resolutionOperation } : {}),
       resolution: dispute.resolution,
       status: dispute.status,
       resolvedBy: dispute.resolved_by,
@@ -166,6 +197,7 @@ export async function GET(
         seller_id: transaction.seller_id,
         status: transaction.status,
         item: itemData,
+        catalog_item: itemData,
         buyer: buyer || { id: transaction.buyer_id, name: 'Buyer', email: '' },
         seller: seller || { id: transaction.seller_id, name: 'Seller', email: '' },
       }

@@ -647,6 +647,25 @@ export class PaylukService {
   }
 
   /**
+   * POST /v1/escrow/submit-dispute/{paymentToken} (multipart/form-data).
+   * The buyer opens the provider dispute; the seller may use the same route to reply.
+   */
+  static async submitDispute(
+    customerId: string,
+    paymentToken: string,
+    message: string,
+  ): Promise<PaylukEscrow> {
+    const formData = new FormData();
+    formData.append('message', message);
+    const response = await paylukFormRequest<PaylukEscrow>(
+      `/v1/escrow/submit-dispute/${encodeURIComponent(paymentToken)}`,
+      formData,
+      { customerId },
+    );
+    return response.data;
+  }
+
+  /**
    * POST /v1/escrow/dispute/resolve/{escrowId}  (multipart/form-data)
    * Merchant resolves a dispute.
    *   COMPLETED -> releases funds to seller

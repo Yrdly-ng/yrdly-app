@@ -353,25 +353,21 @@ export class StorageService {
   // Upload dispute evidence
   static async uploadDisputeEvidence(
     transactionId: string,
+    userId: string,
     file: File
-  ): Promise<{ url: string | null; error: any }> {
+  ): Promise<{ path: string | null; error: any }> {
     try {
-      const fileName = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
-      const path = `${transactionId}/${fileName}`;
+      const safeName = file.name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9._-]/g, '');
+      const path = `${transactionId}/${userId}/${Date.now()}_${safeName}`;
 
       const { data, error } = await this.uploadFile('dispute-evidence', path, file, {
-        cacheControl: '86400',
+        cacheControl: '3600',
       });
-      
-      if (error) {
-        return { url: null, error };
-      }
-
-      const publicUrl = this.getPublicUrl('dispute-evidence', path);
-      return { url: publicUrl, error: null };
+      if (error || !data) return { path: null, error: error || new Error('Upload returned no object') };
+      return { path: data.path || path, error: null };
     } catch (error) {
       console.error('Upload dispute evidence error:', error);
-      return { url: null, error };
+      return { path: null, error };
     }
   }
 

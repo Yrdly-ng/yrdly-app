@@ -1,5 +1,4 @@
 import { supabase } from './supabase';
-import { NotificationService } from './notification-service';
 
 export interface DisputeData {
   id: string;
@@ -29,6 +28,9 @@ export interface DisputeData {
   updated_at?: string;
   resolvedAt?: string;
   resolved_at?: string;
+  resolutionOperation?: { status: string; errorMessage?: string | null; createdAt?: string; updatedAt?: string; providerReference?: string | null; resolution?: string; refundAmount?: number; sellerAmount?: number } | null;
+  providerSubmissionStatus?: 'not_required' | 'processing' | 'submitted' | 'needs_reconciliation';
+  providerSubmissionError?: string | null;
   transaction?: {
     id: string;
     amount: number;
@@ -63,6 +65,18 @@ export interface DisputeEvidence {
 }
 
 export class DisputeService {
+  private static async authenticatedFetch(path: string, init: RequestInit = {}) {
+    const { data: { session } } = await supabase.auth.getSession();
+    return fetch(path, {
+      ...init,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        ...init.headers,
+      },
+    });
+  }
+
   /**
    * Open a new dispute
    */
@@ -71,123 +85,15 @@ export class DisputeService {
     userId: string,
     reason: string,
     evidence: DisputeEvidence
-  ): Promise<string> {
-    try {
-      // Verify user has access to this transaction
-      const { data: transaction, error: fetchError } = await supabase
-        .from('escrow_transactions')
-        .select('buyer_id, seller_id, status')
-        .eq('id', transactionId)
-        .single();
-
-      if (fetchError) {
-        throw new Error('Transaction not found');
-      }
-
-      if (transaction.buyer_id !== userId && transaction.seller_id !== userId) {
-        throw new Error('Unauthorized: You can only dispute your own transactions');
-      }
-
-      if (transaction.status === 'completed' || transaction.status === 'cancelled') {
-        throw new Error('Cannot dispute completed or cancelled transactions');
-      }
-
-      // Check if dispute already exists
-      const { data: existingDispute } = await supabase
-        .from('disputes')
-        .select('id')
-        .eq('transaction_id', transactionId)
-        .maybeSingle();
-
-      if (existingDispute) {
-        throw new Error('A dispute already exists for this transaction');
-      }
-
-      // Create dispute
-      const disputeData = {
-        transaction_id: transactionId,
-        opened_by: userId,
-        dispute_reason: reason,
-        buyer_evidence: transaction.buyer_id === userId ? evidence : {},
-        seller_evidence: transaction.seller_id === userId ? evidence : {},
-        status: 'open',
-        refund_amount: 0,
-        seller_amount: 0,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-
-      const { data, error } = await supabase
-        .from('disputes')
-        .insert(disputeData)
-        .select('id')
-        .single();
-
-      if (error) {
-        console.error('Error creating dispute:', error);
-        throw error;
-      }
-
-      // Update escrow transaction status to disputed
-      const { error: updateError } = await supabase
-        .from('escrow_transactions')
-        .update({
-          status: 'disputed',
-          dispute_reason: reason,
-        })
-        .eq('id', transactionId);
-
-      if (updateError) {
-        console.error('Error updating escrow status:', updateError);
-        throw updateError;
-      }
-
-
-      // Send notifications to both parties
-      try {
-        const { data: transaction } = await supabase
-          .from('escrow_transactions')
-          .select(`
-            buyer_id,
-            seller_id,
-            item:posts(title, text)
-          `)
-          .eq('id', transactionId)
-          .single();
-
-        if (transaction) {
-          const { data: openedByUser } = await supabase
-            .from('users')
-            .select('name')
-            .eq('id', userId)
-            .single();
-
-          const itemTitle = transaction.item?.[0]?.title || transaction.item?.[0]?.text || 'Item';
-          const openedByName = openedByUser?.name || 'User';
-
-          // Notify the other party
-          const otherUserId = userId === transaction.buyer_id 
-            ? transaction.seller_id 
-            : transaction.buyer_id;
-
-          await NotificationService.createDisputeOpenedNotification(
-            otherUserId,
-            openedByName,
-            itemTitle,
-            data.id,
-            transactionId
-          );
-        }
-      } catch (notificationError) {
-        console.error('Failed to send dispute notification:', notificationError);
-        // Don't throw error - dispute is still created
-      }
-
-      return data.id;
-    } catch (error) {
-      console.error('Failed to open dispute:', error);
-      throw new Error('Failed to open dispute');
-    }
+  ): Promise<{ id: string; providerSubmissionStatus?: string }> {
+    void userId;
+    const response = await this.authenticatedFetch('/api/disputes', {
+      method: 'POST',
+      body: JSON.stringify({ transactionId, reason, evidence }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || 'Could not open dispute.');
+    return result;
   }
 
   /**
@@ -198,58 +104,13 @@ export class DisputeService {
     userId: string,
     evidence: DisputeEvidence
   ): Promise<void> {
-    try {
-      // Get dispute details
-      const { data: dispute, error: fetchError } = await supabase
-        .from('disputes')
-        .select('transaction_id, opened_by')
-        .eq('id', disputeId)
-        .single();
-
-      if (fetchError) {
-        throw new Error('Dispute not found');
-      }
-
-      // Get transaction to determine user role
-      const { data: transaction } = await supabase
-        .from('escrow_transactions')
-        .select('buyer_id, seller_id')
-        .eq('id', dispute.transaction_id)
-        .single();
-
-      if (!transaction) {
-        throw new Error('Transaction not found');
-      }
-
-      // Verify user has access to this dispute
-      if (transaction.buyer_id !== userId && transaction.seller_id !== userId) {
-        throw new Error('Unauthorized: You can only submit evidence for your own disputes');
-      }
-
-      // Update evidence based on user role
-      const updateData: any = {
-        updated_at: new Date().toISOString(),
-      };
-
-      if (transaction.buyer_id === userId) {
-        updateData.buyer_evidence = evidence;
-      } else if (transaction.seller_id === userId) {
-        updateData.seller_evidence = evidence;
-      }
-
-      const { error } = await supabase
-        .from('disputes')
-        .update(updateData)
-        .eq('id', disputeId);
-
-      if (error) {
-        console.error('Error submitting evidence:', error);
-        throw error;
-      }
-    } catch (error) {
-      console.error('Failed to submit evidence:', error);
-      throw new Error('Failed to submit evidence');
-    }
+    void userId;
+    const response = await this.authenticatedFetch(`/api/disputes/${disputeId}/evidence`, {
+      method: 'POST',
+      body: JSON.stringify(evidence),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || 'Failed to submit evidence.');
   }
 
   /**
@@ -261,17 +122,11 @@ export class DisputeService {
     resolution: string,
     refundAmount: number,
     sellerAmount: number
-  ): Promise<void> {
+  ): Promise<{ success: boolean; resolutionStatus?: string; error?: string }> {
+    void adminId;
     try {
-      // Get the current session to pass the access token
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      const response = await fetch(`/api/admin/disputes/${disputeId}/resolve`, {
+      const response = await this.authenticatedFetch(`/api/admin/disputes/${disputeId}/resolve`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {})
-        },
         body: JSON.stringify({
           resolution,
           refundAmount,
@@ -279,10 +134,9 @@ export class DisputeService {
         })
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to resolve dispute securely');
-      }
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok && response.status !== 202) throw new Error(result.error || 'Failed to resolve dispute securely');
+      return { success: Boolean(result.success), resolutionStatus: result.resolutionStatus, error: result.error };
     } catch (error) {
       console.error('Failed to resolve dispute:', error);
       throw error;
@@ -293,34 +147,11 @@ export class DisputeService {
    * Get disputes by user
    */
   static async getDisputesByUser(userId: string): Promise<DisputeData[]> {
-    try {
-      const { data, error } = await supabase
-        .from('disputes')
-        .select(`
-          *,
-          transaction:escrow_transactions(
-            id,
-            amount,
-            buyer_id,
-            seller_id,
-            status,
-            item_id,
-            item_title
-          )
-        `)
-        .or(`opened_by.eq.${userId},transaction.buyer_id.eq.${userId},transaction.seller_id.eq.${userId}`)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching user disputes:', error);
-        return [];
-      }
-
-      return data || [];
-    } catch (error) {
-      console.error('Failed to get user disputes:', error);
-      return [];
-    }
+    void userId;
+    const response = await this.authenticatedFetch('/api/disputes');
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || 'Failed to load disputes.');
+    return result.data || [];
   }
 
   /**
@@ -359,60 +190,52 @@ export class DisputeService {
    * Get dispute details (by dispute ID or transaction ID)
    */
   static async getDisputeDetails(disputeId: string): Promise<DisputeData | null> {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const response = await fetch(`/api/disputes/${disputeId}`, {
-        headers: {
-          'Content-Type': 'application/json',
-          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {})
-        }
-      });
-
-      if (response.ok) {
-        const disputeData = await response.json();
-        return disputeData;
+    const { data: { session } } = await supabase.auth.getSession();
+    const response = await fetch(`/api/disputes/${disputeId}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {})
       }
+    });
 
-      // Fallback query directly via supabase client if API endpoint returns 404 or fails
-      const { data, error } = await supabase
-        .from('disputes')
-        .select(`
-          *,
-          transaction:escrow_transactions(
-            id,
-            amount,
-            buyer_id,
-            seller_id,
-            status
-          )
-        `)
-        .or(`id.eq.${disputeId},transaction_id.eq.${disputeId}`)
-        .maybeSingle();
-
-      if (error || !data) return null;
-      return data as any;
-    } catch (error) {
-      console.error('Failed to get dispute details:', error);
-      return null;
-    }
+    if (response.status === 404) return null;
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || 'Failed to load dispute details.');
+    return result;
   }
   static async addAdminNotes(disputeId: string, notes: string): Promise<void> {
-    try {
-      const { error } = await supabase
-        .from('disputes')
-        .update({
-          admin_notes: notes,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', disputeId);
+    const response = await this.authenticatedFetch(`/api/admin/disputes/${disputeId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ notes }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || 'Failed to save admin notes.');
+  }
 
-      if (error) {
-        console.error('Error adding admin notes:', error);
-        throw error;
-      }
-    } catch (error) {
-      console.error('Failed to add admin notes:', error);
-      throw new Error('Failed to add admin notes');
-    }
+  static async reconcileResolution(disputeId: string, outcome: 'applied' | 'not_applied', providerReference?: string): Promise<void> {
+    const response = await this.authenticatedFetch(`/api/admin/disputes/${disputeId}/reconcile`, {
+      method: 'POST',
+      body: JSON.stringify({ outcome, providerReference }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || 'Could not reconcile payment.');
+  }
+
+  static async confirmPaylukSubmission(disputeId: string): Promise<void> {
+    const response = await this.authenticatedFetch(`/api/admin/disputes/${disputeId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ providerSubmissionStatus: 'submitted' }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || 'Could not confirm Payluk submission.');
+  }
+
+  static async retryPaylukSubmission(disputeId: string): Promise<void> {
+    const response = await this.authenticatedFetch(`/api/admin/disputes/${disputeId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ providerSubmissionStatus: 'retry' }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || 'Could not retry Payluk submission.');
   }
 }

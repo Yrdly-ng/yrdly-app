@@ -275,10 +275,10 @@ export class AuthService {
     try {
       // Check for pending escrow transactions
       const { data: pendingTx } = await supabase
-        .from('transactions')
+        .from('escrow_transactions')
         .select('id')
         .or(`buyer_id.eq.${userId},seller_id.eq.${userId}`)
-        .eq('status', 'pending_escrow')
+        .in('status', ['pending', 'paid', 'shipped', 'delivered', 'disputed'])
         .limit(1);
 
       if (pendingTx && pendingTx.length > 0) {
@@ -287,10 +287,10 @@ export class AuthService {
 
       // Check for open disputes
       const { data: openDisputes } = await supabase
-        .from('disputes')
+        .from('escrow_transactions')
         .select('id')
         .or(`buyer_id.eq.${userId},seller_id.eq.${userId}`)
-        .eq('status', 'open')
+        .eq('status', 'disputed')
         .limit(1);
 
       if (openDisputes && openDisputes.length > 0) {

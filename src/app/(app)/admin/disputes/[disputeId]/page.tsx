@@ -45,6 +45,7 @@ export default function AdminDisputeReviewPage() {
   const [resolution, setResolution] = useState('');
   const [refundAmount, setRefundAmount] = useState(0);
   const [sellerAmount, setSellerAmount] = useState(0);
+  const [providerReference, setProviderReference] = useState('');
 
   const disputeId = params.disputeId as string;
 
@@ -62,9 +63,9 @@ export default function AdminDisputeReviewPage() {
       }
       setDispute(data);
       setAdminNotes(data.admin_notes || data.adminNotes || '');
-      setResolution(data.resolution || '');
-      setRefundAmount(data.refund_amount ?? data.refundAmount ?? 0);
-      setSellerAmount(data.seller_amount ?? data.sellerAmount ?? 0);
+      setResolution(data.resolutionOperation?.resolution || data.resolution || '');
+      setRefundAmount(data.resolutionOperation?.refundAmount ?? data.refund_amount ?? data.refundAmount ?? 0);
+      setSellerAmount(data.resolutionOperation?.sellerAmount ?? data.seller_amount ?? data.sellerAmount ?? 0);
     } catch (error) {
       console.error('Error fetching dispute details:', error);
       toast({
@@ -243,7 +244,7 @@ export default function AdminDisputeReviewPage() {
     }
 
     const totalAmount = dispute.transaction?.amount || 0;
-    if (refundAmount + sellerAmount !== totalAmount) {
+    if (Math.round((refundAmount + sellerAmount) * 100) !== Math.round(totalAmount * 100)) {
       toast({
         title: "Invalid Amounts",
         description: `Refund amount (₦${refundAmount.toLocaleString()}) + Seller amount (₦${sellerAmount.toLocaleString()}) must equal total transaction amount (₦${totalAmount.toLocaleString()}).`,
@@ -254,7 +255,7 @@ export default function AdminDisputeReviewPage() {
 
     setSaving(true);
     try {
-      await DisputeService.resolveDispute(
+      const result = await DisputeService.resolveDispute(
         disputeId,
         user.id,
         resolution,
@@ -262,10 +263,15 @@ export default function AdminDisputeReviewPage() {
         sellerAmount
       );
 
-      toast({
-        title: "Dispute Resolved",
-        description: "The dispute has been resolved successfully.",
-      });
+      if (!result.success) {
+        toast({
+          title: "Payment needs reconciliation",
+          description: "The provider outcome is uncertain. Do not retry; verify the payment provider and reconcile this operation.",
+          variant: "destructive",
+        });
+      } else {
+        toast({ title: "Dispute Resolved", description: "The dispute has been resolved successfully." });
+      }
 
       // Refresh dispute details
       await fetchDisputeDetails();
@@ -313,6 +319,10 @@ export default function AdminDisputeReviewPage() {
 
   const transaction = dispute.transaction;
   const totalAmount = transaction?.amount || 0;
+  const resolutionOperation = dispute.resolutionOperation;
+  const staleProcessing = resolutionOperation?.status === 'processing'
+    && Date.now() - new Date(resolutionOperation.updatedAt || resolutionOperation.createdAt || 0).getTime() > 5 * 60 * 1000;
+  const canReconcile = resolutionOperation?.status === 'needs_reconciliation' || staleProcessing;
 
   if (!transaction) {
     return (
@@ -400,6 +410,59 @@ export default function AdminDisputeReviewPage() {
 
           {/* Sidebar */}
           <div className="space-y-6">
+            {dispute.providerSubmissionStatus && !['submitted', 'not_required'].includes(dispute.providerSubmissionStatus) && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  Payluk dispute submission status: {dispute.providerSubmissionStatus.replace(/_/g, ' ')}. Resolve this provider sync before attempting settlement. {dispute.providerSubmissionError || ''}
+                  {dispute.providerSubmissionStatus !== 'submitted' && <Button className="mt-3 block" size="sm" disabled={saving} onClick={async () => {
+                    if (!window.confirm('Confirm that Payluk shows this escrow as DISPUTED or INVESTIGATING?')) return;
+                    setSaving(true);
+                    try { await DisputeService.confirmPaylukSubmission(disputeId); await fetchDisputeDetails(); }
+                    catch (error) { toast({ title: 'Could not confirm provider state', description: error instanceof Error ? error.message : 'Try again.', variant: 'destructive' }); }
+                    finally { setSaving(false); }
+                  }}>I verified the dispute exists in Payluk</Button>}
+                  {dispute.providerSubmissionStatus === 'needs_reconciliation' && <Button className="mt-2 block" size="sm" variant="outline" disabled={saving} onClick={async () => {
+                    if (!window.confirm('Confirm you checked Payluk and this escrow has no submitted dispute? This will submit the saved buyer claim to Payluk now.')) return;
+                    setSaving(true);
+                    try { await DisputeService.retryPaylukSubmission(disputeId); await fetchDisputeDetails(); }
+                    catch (error) { toast({ title: 'Payluk retry failed', description: error instanceof Error ? error.message : 'Verify provider state before retrying.', variant: 'destructive' }); }
+                    finally { setSaving(false); }
+                  }}>Payluk shows no dispute; submit the saved claim</Button>}
+                </AlertDescription>
+              </Alert>
+            )}
+            {dispute.resolutionOperation && dispute.resolutionOperation.status !== 'succeeded' && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  Payment operation status: {dispute.resolutionOperation.status.replace(/_/g, ' ')}. {dispute.resolutionOperation.status === 'retryable' ? 'The provider was verified as having made no payment; retry the saved resolution.' : 'Check the provider dashboard before marking this operation as applied or allowing a retry.'} {dispute.resolutionOperation.errorMessage || ''}
+                </AlertDescription>
+              </Alert>
+            )}
+            {canReconcile && (
+              <Card className="border border-amber-500/30 bg-amber-500/5">
+                <CardHeader><CardTitle className="text-base">Reconcile provider result</CardTitle></CardHeader>
+                <CardContent className="space-y-3">
+                  <Label htmlFor="providerReference">Provider reference (optional)</Label>
+                  <Input id="providerReference" value={providerReference} onChange={(event) => setProviderReference(event.target.value)} placeholder="Payment, refund, or payout reference" />
+                  <Button disabled={saving} onClick={async () => {
+                    if (!window.confirm('Confirm the provider shows the full saved resolution was applied?')) return;
+                    setSaving(true);
+                    try { await DisputeService.reconcileResolution(disputeId, 'applied', providerReference); await fetchDisputeDetails(); }
+                    catch (error) { toast({ title: 'Reconciliation failed', description: error instanceof Error ? error.message : 'Try again.', variant: 'destructive' }); }
+                    finally { setSaving(false); }
+                  }}>Provider shows the full resolution was applied</Button>
+                  <Button variant="outline" disabled={saving} onClick={async () => {
+                    if (!window.confirm('Confirm the provider shows no refund or payout was applied and none is pending? The saved resolution will become retryable.')) return;
+                    setSaving(true);
+                    try { await DisputeService.reconcileResolution(disputeId, 'not_applied'); await fetchDisputeDetails(); }
+                    catch (error) { toast({ title: 'Reconciliation failed', description: error instanceof Error ? error.message : 'Try again.', variant: 'destructive' }); }
+                    finally { setSaving(false); }
+                  }}>Provider shows no payment was applied</Button>
+                </CardContent>
+              </Card>
+            )}
             {/* Dispute Information */}
             <Card className="border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] backdrop-blur-xl shadow-lg">
               <CardHeader>
@@ -556,7 +619,7 @@ export default function AdminDisputeReviewPage() {
                       <span className="text-[var(--yrdly-label)]">Refund + Seller:</span>
                       <span className="font-medium text-foreground">₦{(refundAmount + sellerAmount).toLocaleString()}</span>
                     </div>
-                    {refundAmount + sellerAmount !== totalAmount && (
+                    {Math.round((refundAmount + sellerAmount) * 100) !== Math.round(totalAmount * 100) && (
                       <p className="text-xs text-red-500 mt-1">
                         Amounts must equal total transaction amount
                       </p>
@@ -565,7 +628,7 @@ export default function AdminDisputeReviewPage() {
 
                   <Button 
                     onClick={handleResolveDispute}
-                    disabled={saving || !resolution.trim() || refundAmount + sellerAmount !== totalAmount}
+                    disabled={saving || !resolution.trim() || Math.round((refundAmount + sellerAmount) * 100) !== Math.round(totalAmount * 100) || ['processing', 'succeeded', 'needs_reconciliation'].includes(dispute.resolutionOperation?.status || '')}
                     className="w-full"
                   >
                     <CheckCircle className="mr-2 h-4 w-4" />

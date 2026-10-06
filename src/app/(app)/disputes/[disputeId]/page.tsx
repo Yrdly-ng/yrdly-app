@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { 
@@ -27,6 +28,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
 import { AppHeader } from '@/components/AppHeader';
 import { SupabaseChatService } from '@/lib/supabase-chat-service';
+import { StorageService } from '@/lib/storage-service';
 
 export default function DisputeDetailsPage() {
   const params = useParams();
@@ -36,6 +38,9 @@ export default function DisputeDetailsPage() {
   
   const [dispute, setDispute] = useState<DisputeData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [newEvidenceText, setNewEvidenceText] = useState('');
+  const [newEvidenceFile, setNewEvidenceFile] = useState<File | null>(null);
+  const [savingEvidence, setSavingEvidence] = useState(false);
 
   const disputeId = params.disputeId as string;
 
@@ -220,6 +225,31 @@ export default function DisputeDetailsPage() {
         description: 'Failed to open chat. Please try again.',
         variant: 'destructive',
       });
+    }
+  };
+
+  const handleSubmitEvidence = async () => {
+    if (!user || !dispute || (!newEvidenceFile && newEvidenceText.trim().length < 20)) return;
+    setSavingEvidence(true);
+    try {
+      const paths: string[] = [];
+      if (newEvidenceFile) {
+        const { path, error } = await StorageService.uploadDisputeEvidence(dispute.transactionId, user.id, newEvidenceFile);
+        if (error || !path) throw error || new Error('Evidence upload failed.');
+        paths.push(path);
+      }
+      await DisputeService.submitEvidence(dispute.id, user.id, {
+        description: newEvidenceText.trim(),
+        photos: paths,
+      });
+      setNewEvidenceText('');
+      setNewEvidenceFile(null);
+      await fetchDisputeDetails();
+      toast({ title: 'Evidence submitted', description: 'Your new evidence has been added to the dispute.' });
+    } catch (error) {
+      toast({ title: 'Could not submit evidence', description: error instanceof Error ? error.message : 'Please try again.', variant: 'destructive' });
+    } finally {
+      setSavingEvidence(false);
     }
   };
 
@@ -420,6 +450,28 @@ export default function DisputeDetailsPage() {
           {renderEvidence(dispute.buyerEvidence, "Buyer Evidence")}
           {renderEvidence(dispute.sellerEvidence, "Seller Evidence")}
         </div>
+
+        {['open', 'under_review'].includes(dispute.status) && (
+          <Card>
+            <CardHeader><CardTitle>Add Evidence</CardTitle><CardDescription>Only you can add evidence to your side of this dispute.</CardDescription></CardHeader>
+            <CardContent className="space-y-3">
+              <Textarea value={newEvidenceText} onChange={(event) => setNewEvidenceText(event.target.value.slice(0, 4000))} placeholder="Add context or a statement (at least 20 characters unless attaching a file)…" rows={4} />
+              <input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf" onChange={(event) => {
+                const file = event.target.files?.[0] || null;
+                if (file && file.size > 10 * 1024 * 1024) {
+                  toast({ title: 'File too large', description: 'Evidence files must be 10 MB or smaller.', variant: 'destructive' });
+                  event.target.value = '';
+                  return;
+                }
+                setNewEvidenceFile(file);
+              }} />
+              {newEvidenceFile && <p className="text-sm text-muted-foreground">Selected: {newEvidenceFile.name}</p>}
+              <Button onClick={handleSubmitEvidence} disabled={savingEvidence || (!newEvidenceFile && newEvidenceText.trim().length < 20)}>
+                {savingEvidence ? 'Submitting…' : 'Submit Evidence'}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Resolution Section */}
         {dispute.resolution && (

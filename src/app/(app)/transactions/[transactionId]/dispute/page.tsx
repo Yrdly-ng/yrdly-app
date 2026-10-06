@@ -4,7 +4,7 @@ import { useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Camera, X, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Camera, X, AlertTriangle, FileText } from "lucide-react";
 import { DisputeService, DisputeEvidence } from "@/lib/dispute-service";
 import { StorageService } from "@/lib/storage-service";
 
@@ -17,11 +17,11 @@ const RED   = "#E53935";
 const MUTED = "var(--c-text-muted)";
 
 const REASONS = [
-  "Item not as described",
-  "Item not received after meetup",
-  "Item is damaged / defective",
-  "Seller is unresponsive",
-  "Other (provide details)",
+  { value: "item_different", label: "Item not as described" },
+  { value: "item_not_received", label: "Item not received after meetup" },
+  { value: "item_damaged", label: "Item is damaged / defective" },
+  { value: "seller_unresponsive", label: "Seller is unresponsive" },
+  { value: "other", label: "Other (provide details)" },
 ];
 
 export default function DisputePage() {
@@ -40,38 +40,49 @@ export default function DisputePage() {
   const handleImageAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
-    const fileList = Array.from(files);
-    setSelectedFiles((prev) => [...prev, ...fileList].slice(0, 5));
-    const newPreviews = fileList.map((f) => URL.createObjectURL(f));
-    setPreviews((prev) => [...prev, ...newPreviews].slice(0, 5));
+    const fileList = Array.from(files).slice(0, 5 - selectedFiles.length);
+    if (fileList.some((file) => file.size > 10 * 1024 * 1024)) {
+      toast({ title: "File too large", description: "Each evidence file must be 10 MB or smaller.", variant: "destructive" });
+      return;
+    }
+    setSelectedFiles((prev) => [...prev, ...fileList]);
+    setPreviews((prev) => [...prev, ...fileList.map((f) => URL.createObjectURL(f))]);
   };
 
   const removeImage = (index: number) => {
+    URL.revokeObjectURL(previews[index]);
     setSelectedFiles((prev) => prev.filter((_, idx) => idx !== index));
     setPreviews((prev) => prev.filter((_, idx) => idx !== index));
   };
 
   const handleSubmit = useCallback(async () => {
     if (!user) return;
+    if (detail.trim().length < 20) {
+      toast({ title: "Add more detail", description: "Please describe what happened in at least 20 characters.", variant: "destructive" });
+      return;
+    }
     setLoading(true);
     try {
-      const uploadedUrls: string[] = [];
+      const uploadedPaths: string[] = [];
       for (const file of selectedFiles) {
-        const { url, error } = await StorageService.uploadDisputeEvidence(transactionId, file);
-        if (url) {
-          uploadedUrls.push(url);
-        } else {
-          console.error("Error uploading evidence photo:", error);
-        }
+        const { path, error } = await StorageService.uploadDisputeEvidence(transactionId, user.id, file);
+        if (error || !path) throw error || new Error("Evidence upload failed");
+        uploadedPaths.push(path);
       }
 
-      const reason = `${REASONS[selected]}${detail ? `: ${detail}` : ""}`;
+      const reason = REASONS[selected].value;
       const evidence: DisputeEvidence = {
-        description: reason,
-        photos: uploadedUrls,
+        description: detail.trim(),
+        photos: uploadedPaths,
       };
-      await DisputeService.openDispute(transactionId, user.id, reason, evidence);
-      toast({ title: "Dispute submitted", description: "Our team will review it within 24–48 hours." });
+      const opened = await DisputeService.openDispute(transactionId, user.id, reason, evidence);
+      toast({
+        title: opened.providerSubmissionStatus === 'needs_reconciliation' ? "Dispute filed; payment provider sync needs review" : "Dispute submitted",
+        description: opened.providerSubmissionStatus === 'needs_reconciliation'
+          ? "Your dispute is saved locally. Support will reconcile the Payluk submission before settlement."
+          : "Our team will review it within 24–48 hours.",
+        variant: opened.providerSubmissionStatus === 'needs_reconciliation' ? 'destructive' : 'default',
+      });
       router.push(`/transactions/${transactionId}`);
     } catch (err) {
       console.error("Dispute submission error:", err);
@@ -119,7 +130,7 @@ export default function DisputePage() {
                   }`}
                 >
                   <span className={`font-raleway text-sm ${active ? 'text-on-surface' : 'text-on-surface-variant group-hover:text-on-surface'}`} style={{ fontFamily: "Raleway, sans-serif" }}>
-                    {r}
+                    {r.label}
                   </span>
                   <input
                     type="radio"
@@ -142,11 +153,11 @@ export default function DisputePage() {
         <section className="space-y-2">
           <div className="flex justify-between items-center px-1">
             <label className="text-on-surface-variant font-raleway text-xs uppercase tracking-widest font-bold" style={{ fontFamily: "Raleway, sans-serif" }}>Details</label>
-            <span className="text-[0.625rem] text-outline">{detail.length} / 150</span>
+            <span className="text-[0.625rem] text-outline">{detail.length} / 2000</span>
           </div>
           <textarea
             value={detail}
-            onChange={(e) => setDetail(e.target.value.slice(0, 150))}
+            onChange={(e) => setDetail(e.target.value.slice(0, 2000))}
             className="w-full h-32 bg-[#1B2B3A] border-none focus:ring-1 focus:ring-primary rounded-[11px] p-4 font-raleway text-sm text-on-surface placeholder:italic placeholder:font-light placeholder:text-outline/50 transition-all resize-none"
             style={{ fontFamily: "Raleway, sans-serif" }}
             placeholder="Tell us what happened..."
@@ -163,15 +174,19 @@ export default function DisputePage() {
             <Camera className="text-primary w-6 h-6" />
             <p className="font-raleway text-[0.75rem] text-[#bfcab9]" style={{ fontFamily: "Raleway, sans-serif" }}>Upload photos or screenshots</p>
           </button>
-          <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImageAdd} />
+          <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf" multiple className="hidden" onChange={handleImageAdd} />
 
           {/* Thumbnail Grid */}
           {previews.length > 0 && (
             <div className="grid grid-cols-3 gap-3">
               {previews.map((src, i) => (
                 <div key={i} className="relative aspect-square rounded-[11px] overflow-hidden group">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={src} alt="Evidence" className="w-full h-full object-cover" />
+                  {selectedFiles[i]?.type === 'application/pdf' ? (
+                    <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-surface-container text-primary"><FileText className="w-8 h-8" /><span className="text-xs">PDF evidence</span></div>
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={src} alt="Evidence" className="w-full h-full object-cover" />
+                  )}
                   <button 
                     type="button"
                     onClick={() => removeImage(i)}
@@ -189,7 +204,7 @@ export default function DisputePage() {
         <footer className="pt-6 space-y-4">
           <button 
             onClick={handleSubmit}
-            disabled={loading}
+            disabled={loading || detail.trim().length < 20}
             className="w-full py-4 bg-[#E53935] text-primary-foreground font-raleway font-bold rounded-full shadow-lg shadow-[#E53935]/20 active:scale-95 transition-all"
             style={{ fontFamily: "Raleway, sans-serif" }}
           >
