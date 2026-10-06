@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { StorageService } from './storage-service';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export type CommunityType = 'ward' | 'lga' | 'interest';
@@ -135,17 +136,20 @@ export class CommunityService {
     createdBy: string;
     name: string;
     description: string;
-    avatarUrl?: string;
-    bannerUrl?: string;
+    avatarFile?: File | null;
+    bannerFile?: File | null;
     privacy: CommunityPrivacy;
   }): Promise<Community> {
+    const submissionId = crypto.randomUUID();
+    const avatarUrl = input.avatarFile ? await this.uploadCommunityImage(input.createdBy, submissionId, 'avatar', input.avatarFile) : null;
+    const bannerUrl = input.bannerFile ? await this.uploadCommunityImage(input.createdBy, submissionId, 'banner', input.bannerFile) : null;
     const slugBase = input.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48) || 'community';
     const { data, error } = await supabase.from('communities').insert({
       name: input.name.trim(),
       slug: `${slugBase}-${Date.now().toString(36)}`,
       description: input.description.trim(),
-      avatar_url: input.avatarUrl?.trim() || null,
-      banner_url: input.bannerUrl?.trim() || null,
+      avatar_url: avatarUrl,
+      banner_url: bannerUrl,
       type: 'interest',
       privacy: input.privacy,
       created_by: input.createdBy,
@@ -154,6 +158,16 @@ export class CommunityService {
     }).select('*').single();
     if (error) throw error;
     return data as Community;
+  }
+
+  private static async uploadCommunityImage(userId: string, submissionId: string, kind: 'avatar' | 'banner', file: File): Promise<string> {
+    if (!file.type.startsWith('image/')) throw new Error('Choose an image file.');
+    if (file.size > 10 * 1024 * 1024) throw new Error('Each image must be 10 MB or smaller.');
+    const extension = file.type.split('/')[1]?.replace('jpeg', 'jpg') || 'jpg';
+    const path = `${userId}/${submissionId}/${kind}.${extension}`;
+    const { error } = await StorageService.uploadFile('community-images', path, file, { contentType: file.type, cacheControl: '31536000' });
+    if (error) throw error;
+    return StorageService.getPublicUrl('community-images', path);
   }
 
   static async reviewCommunity(communityId: string, reviewerId: string, decision: 'approved' | 'rejected', rejectionReason?: string): Promise<void> {

@@ -19,6 +19,24 @@ export default function CommunitiesPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [bannerFile, setBannerFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!avatarFile) { setAvatarPreview(null); return; }
+    const url = URL.createObjectURL(avatarFile);
+    setAvatarPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [avatarFile]);
+
+  useEffect(() => {
+    if (!bannerFile) { setBannerPreview(null); return; }
+    const url = URL.createObjectURL(bannerFile);
+    setBannerPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [bannerFile]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -53,11 +71,13 @@ export default function CommunitiesPage() {
         createdBy: user.id,
         name: String(formData.get("name") || ""),
         description: String(formData.get("description") || ""),
-        avatarUrl: String(formData.get("avatarUrl") || ""),
-        bannerUrl: String(formData.get("bannerUrl") || ""),
+        avatarFile: formData.get("avatarImage") instanceof File ? formData.get("avatarImage") as File : null,
+        bannerFile: formData.get("bannerImage") instanceof File ? formData.get("bannerImage") as File : null,
         privacy: String(formData.get("privacy") || "open") as "open" | "request" | "invite",
       });
       setShowCreate(false);
+      setAvatarFile(null);
+      setBannerFile(null);
       await load();
     } catch (error: any) {
       setFormError(error.message || "Could not submit this community.");
@@ -114,8 +134,8 @@ export default function CommunitiesPage() {
             </div>
             <label className="block text-sm text-foreground">Name<input name="name" required maxLength={60} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2" /></label>
             <label className="block text-sm text-foreground">Description<textarea name="description" required maxLength={500} rows={3} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2" /></label>
-            <label className="block text-sm text-foreground">Profile image URL<input name="avatarUrl" type="url" className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2" placeholder="https://…" /></label>
-            <label className="block text-sm text-foreground">Banner image URL (optional)<input name="bannerUrl" type="url" className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2" placeholder="https://…" /></label>
+            <label className="block text-sm text-foreground">Profile image <span className="text-xs text-muted-foreground">(optional, up to 10 MB)</span><div className="mt-2 flex items-center gap-3 rounded-xl border border-dashed border-border p-3">{avatarPreview ? <img src={avatarPreview} alt="Profile image preview" className="h-14 w-14 rounded-full object-cover" /> : <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted text-xs text-muted-foreground">Logo</div>}<input name="avatarImage" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" onChange={(event) => setAvatarFile(event.target.files?.[0] ?? null)} className="min-w-0 flex-1 text-xs text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-primary" /></div></label>
+            <label className="block text-sm text-foreground">Banner image <span className="text-xs text-muted-foreground">(optional, up to 10 MB)</span><div className="mt-2 flex items-center gap-3 rounded-xl border border-dashed border-border p-3">{bannerPreview ? <img src={bannerPreview} alt="Banner image preview" className="h-14 w-24 rounded-lg object-cover" /> : <div className="flex h-14 w-24 items-center justify-center rounded-lg bg-muted text-xs text-muted-foreground">Banner</div>}<input name="bannerImage" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" onChange={(event) => setBannerFile(event.target.files?.[0] ?? null)} className="min-w-0 flex-1 text-xs text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-primary" /></div></label>
             <label className="block text-sm text-foreground">Who can join?<select name="privacy" className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2"><option value="open">Anyone</option><option value="request">By request</option><option value="invite">Invite only</option></select></label>
             {formError && <p className="text-sm text-red-500">{formError}</p>}
             <div className="flex justify-end gap-2"><button type="button" onClick={() => setShowCreate(false)} className="rounded-lg px-4 py-2 text-sm text-muted-foreground">Cancel</button><button disabled={saving} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">{saving ? "Submitting…" : "Send for review"}</button></div>
