@@ -211,15 +211,16 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
 
       const { data: unreadData } = await supabase
         .from("messages")
-        .select("conversation_id")
-        .eq("is_read", false)
+        .select("conversation_id, read_by, sender_id")
         .neq("sender_id", user.id)
         .in(
           "conversation_id",
           data.map((c: any) => c.id)
         );
 
-      const unreadCounts = (unreadData || []).reduce((acc: Record<string, number>, curr: any) => {
+      const unreadCounts = (unreadData || [])
+        .filter((curr: any) => !curr.read_by?.includes(user.id))
+        .reduce((acc: Record<string, number>, curr: any) => {
         acc[curr.conversation_id] = (acc[curr.conversation_id] || 0) + 1;
         return acc;
       }, {});
