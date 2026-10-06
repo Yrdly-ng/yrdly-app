@@ -45,16 +45,50 @@ export function PushNotificationManager() {
                     applicationServerKey: keyArray
                 });
 
-            const { error } = await supabase
+            const subscriptionJson = subscription.toJSON();
+            const { data: existing, error: lookupError } = await supabase
                 .from('push_subscriptions')
-                .upsert({
+                .select('id')
+                .eq('user_id', user.id)
+                .filter('subscription->>endpoint', 'eq', subscription.endpoint)
+                .maybeSingle();
+
+            if (lookupError) throw lookupError;
+
+            if (existing) {
+                const { error } = await supabase
+                    .from('push_subscriptions')
+                    .update({ subscription: subscriptionJson, updated_at: new Date().toISOString() })
+                    .eq('id', existing.id);
+                if (error) throw error;
+            } else {
+                const { error } = await supabase.from('push_subscriptions').insert({
                     user_id: user.id,
-                    subscription: subscription.toJSON(),
+                    subscription: subscriptionJson,
                     created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
+                    updated_at: new Date().toISOString(),
                 });
 
-            if (error) throw error;
+                // Strict Mode or two tabs can race the lookup. If the other
+                // request inserted the endpoint first, refresh that row.
+                if (error?.code === '23505') {
+                    const { data: racedRow, error: raceLookupError } = await supabase
+                        .from('push_subscriptions')
+                        .select('id')
+                        .eq('user_id', user.id)
+                        .filter('subscription->>endpoint', 'eq', subscription.endpoint)
+                        .maybeSingle();
+                    if (raceLookupError || !racedRow) throw error;
+
+                    const { error: updateError } = await supabase
+                        .from('push_subscriptions')
+                        .update({ subscription: subscriptionJson, updated_at: new Date().toISOString() })
+                        .eq('id', racedRow.id);
+                    if (updateError) throw updateError;
+                } else if (error) {
+                    throw error;
+                }
+            }
             return true;
 
         } catch (error) {
