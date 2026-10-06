@@ -84,17 +84,21 @@ export default function CommunitiesPage() {
           </button>
         )}
       </div>
+      {(profile as any)?.role === "admin" || (profile as any)?.role === "moderator" || (profile as any)?.is_admin ? (
+        <button onClick={() => router.push("/community-review")} className="mb-4 rounded-lg border border-border px-3 py-2 text-xs font-medium text-muted-foreground">Review community submissions</button>
+      ) : null}
 
       {submissions.length > 0 && (
         <div className="mb-5 rounded-xl border border-border bg-card p-4">
           <h2 className="text-sm font-semibold text-foreground mb-2">Your submissions</h2>
           <div className="space-y-2">
             {submissions.map((submission) => (
-              <div key={submission.id} className="flex items-center justify-between gap-3 text-sm">
+              <div key={submission.id} className="flex flex-wrap items-center justify-between gap-3 text-sm">
                 <span className="truncate text-foreground">{submission.name}</span>
                 <span className={cn("shrink-0 text-xs font-medium", submission.approval_status === "pending" ? "text-amber-500" : "text-red-500")}>
-                  {submission.approval_status === "pending" ? "Awaiting review" : "Needs changes"}
+                  {submission.approval_status === "pending" ? "Awaiting review" : "Rejected"}
                 </span>
+                {submission.approval_status === "rejected" && submission.rejection_reason && <span className="basis-full text-xs text-muted-foreground">{submission.rejection_reason}</span>}
               </div>
             ))}
           </div>

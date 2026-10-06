@@ -13,11 +13,17 @@ type PendingCommunity = Community & { creator?: { name?: string; phone_verified?
 
 export default function CommunityApprovalPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [items, setItems] = useState<PendingCommunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!authLoading && (!profile || !((profile as any).is_admin || (profile as any).role === "admin" || (profile as any).role === "moderator"))) {
+      router.replace("/home");
+    }
+  }, [authLoading, profile, router]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -59,7 +65,7 @@ export default function CommunityApprovalPage() {
           <div className="space-y-4 p-5">
             <div className="flex items-center gap-3">
               {item.avatar_url ? <img src={item.avatar_url} alt="" className="h-14 w-14 rounded-full object-cover" /> : <div className="h-14 w-14 rounded-full bg-muted" />}
-              <div><h2 className="text-lg font-semibold">{item.name}</h2><p className="text-xs text-muted-foreground">Submitted by {item.creator?.name || "Unknown user"} · {item.privacy} · {new Date(item.created_at).toLocaleString()}</p></div>
+              <div><h2 className="text-lg font-semibold">{item.name}</h2><p className="text-xs text-muted-foreground">Submitted by {item.creator?.name || "Unknown user"} · {item.creator?.phone_verified ? "Phone verified" : "Unverified"} · {item.privacy} · {new Date(item.created_at).toLocaleString()}</p></div>
             </div>
             <p className="whitespace-pre-wrap text-sm">{item.description || "No description"}</p>
             <div className="flex justify-end gap-2">

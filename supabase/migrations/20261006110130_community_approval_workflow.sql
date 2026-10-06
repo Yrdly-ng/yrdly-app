@@ -38,6 +38,8 @@ CREATE POLICY "communities_verified_submission" ON public.communities FOR INSERT
   AND type = 'interest'
   AND is_official = false
   AND approval_status = 'pending'
+  AND char_length(btrim(name)) BETWEEN 3 AND 60
+  AND char_length(btrim(coalesce(description, ''))) BETWEEN 1 AND 500
   AND EXISTS (
     SELECT 1 FROM public.users u WHERE u.id = (SELECT auth.uid()) AND u.phone_verified = true
   )
@@ -55,6 +57,15 @@ WITH CHECK (
   EXISTS (
     SELECT 1 FROM public.users u
     WHERE u.id = (SELECT auth.uid()) AND (u.is_admin = true OR u.role IN ('admin', 'moderator'))
+  )
+);
+
+DROP POLICY IF EXISTS "memberships_insert_open" ON public.community_memberships;
+CREATE POLICY "memberships_insert_open" ON public.community_memberships FOR INSERT TO authenticated WITH CHECK (
+  user_id = (SELECT auth.uid()) AND status = 'active' AND role = 'member' AND
+  EXISTS (
+    SELECT 1 FROM public.communities c
+    WHERE c.id = community_id AND c.privacy = 'open' AND c.approval_status = 'approved'
   )
 );
 
@@ -78,3 +89,5 @@ DROP TRIGGER IF EXISTS tr_community_owner_on_approval ON public.communities;
 CREATE TRIGGER tr_community_owner_on_approval
   AFTER UPDATE OF approval_status ON public.communities
   FOR EACH ROW EXECUTE FUNCTION public.fn_community_owner_on_approval();
+
+REVOKE ALL ON FUNCTION public.fn_community_owner_on_approval() FROM PUBLIC, anon, authenticated;
