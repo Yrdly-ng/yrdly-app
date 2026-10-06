@@ -654,9 +654,11 @@ export class PaylukService {
     customerId: string,
     paymentToken: string,
     message: string,
+    attachment?: { blob: Blob; filename: string },
   ): Promise<PaylukEscrow> {
     const formData = new FormData();
     formData.append('message', message);
+    if (attachment) formData.append('file', attachment.blob, attachment.filename);
     const response = await paylukFormRequest<PaylukEscrow>(
       `/v1/escrow/submit-dispute/${encodeURIComponent(paymentToken)}`,
       formData,

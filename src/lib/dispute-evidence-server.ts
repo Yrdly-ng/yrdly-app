@@ -26,3 +26,9 @@ export async function signDisputeEvidence<T>(evidence: T): Promise<T> {
   return { ...payload, photos, chatScreenshots } as T;
 }
 
+export async function downloadDisputeEvidence(path: string): Promise<{ blob: Blob; filename: string } | null> {
+  const { data, error } = await supabaseAdmin.storage.from('dispute-evidence').download(path);
+  if (error || !data) return null;
+  const filename = path.split('/').pop()?.replace(/[^a-zA-Z0-9._-]/g, '_') || 'evidence';
+  return { blob: data, filename };
+}

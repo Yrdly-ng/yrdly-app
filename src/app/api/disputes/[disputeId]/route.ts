@@ -141,6 +141,8 @@ export async function GET(
         .maybeSingle();
       resolutionOperation = operation ? {
         status: operation.status,
+        isStale: operation.status === 'processing'
+          && new Date(operation.updated_at).getTime() < Date.now() - 5 * 60 * 1000,
         errorMessage: operation.error_message,
         createdAt: operation.created_at,
         updatedAt: operation.updated_at,
@@ -174,6 +176,8 @@ export async function GET(
       ...(isAdmin ? {
         providerSubmissionStatus: dispute.provider_submission_status,
         providerSubmissionError: dispute.provider_submission_error,
+        providerSellerReplyStatus: dispute.provider_seller_reply_status,
+        providerSellerReplyError: dispute.provider_seller_reply_error,
       } : {}),
       ...(isAdmin ? { resolutionOperation } : {}),
       resolution: dispute.resolution,

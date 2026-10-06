@@ -31,6 +31,8 @@ export interface DisputeData {
   resolutionOperation?: { status: string; errorMessage?: string | null; createdAt?: string; updatedAt?: string; providerReference?: string | null; resolution?: string; refundAmount?: number; sellerAmount?: number } | null;
   providerSubmissionStatus?: 'not_required' | 'processing' | 'submitted' | 'needs_reconciliation';
   providerSubmissionError?: string | null;
+  providerSellerReplyStatus?: 'not_required' | 'processing' | 'submitted' | 'needs_reconciliation';
+  providerSellerReplyError?: string | null;
   transaction?: {
     id: string;
     amount: number;
@@ -237,5 +239,23 @@ export class DisputeService {
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(result.error || 'Could not retry Payluk submission.');
+  }
+
+  static async confirmPaylukSellerReply(disputeId: string): Promise<void> {
+    const response = await this.authenticatedFetch(`/api/admin/disputes/${disputeId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ providerSellerReplyStatus: 'submitted' }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || 'Could not confirm Payluk seller reply.');
+  }
+
+  static async retryPaylukSellerReply(disputeId: string): Promise<void> {
+    const response = await this.authenticatedFetch(`/api/admin/disputes/${disputeId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ providerSellerReplyStatus: 'retry' }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || 'Could not retry Payluk seller reply.');
   }
 }

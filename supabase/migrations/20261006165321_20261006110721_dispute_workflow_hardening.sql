@@ -37,7 +37,7 @@ BEGIN
   END LOOP;
 END;
 $$;
-REVOKE SELECT, INSERT, UPDATE ON public.disputes FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON public.disputes FROM PUBLIC, anon, authenticated;
 GRANT SELECT (
   id, transaction_id, opened_by, dispute_reason, buyer_evidence, seller_evidence,
   resolution, status, resolved_by, refund_amount, seller_amount,
@@ -46,7 +46,9 @@ GRANT SELECT (
 
 ALTER TABLE public.disputes
   ADD COLUMN IF NOT EXISTS provider_submission_status text NOT NULL DEFAULT 'not_required',
-  ADD COLUMN IF NOT EXISTS provider_submission_error text;
+  ADD COLUMN IF NOT EXISTS provider_submission_error text,
+  ADD COLUMN IF NOT EXISTS provider_seller_reply_status text NOT NULL DEFAULT 'not_required',
+  ADD COLUMN IF NOT EXISTS provider_seller_reply_error text;
 
 DO $$
 BEGIN
@@ -61,6 +63,41 @@ BEGIN
   END IF;
 END;
 $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'public.disputes'::regclass
+      AND conname = 'disputes_provider_seller_reply_status_check'
+  ) THEN
+    ALTER TABLE public.disputes
+      ADD CONSTRAINT disputes_provider_seller_reply_status_check
+      CHECK (provider_seller_reply_status IN ('not_required', 'processing', 'submitted', 'needs_reconciliation'));
+  END IF;
+END;
+$$;
+
+-- Existing unresolved Payluk disputes predate local provider status tracking.
+-- Require an administrator to verify or retry the provider submission before
+-- these disputes can be resolved under the new gate.
+UPDATE public.disputes d
+SET provider_submission_status = 'needs_reconciliation',
+    provider_submission_error = 'Pre-migration Payluk dispute requires provider verification.',
+    provider_seller_reply_status = CASE
+      WHEN coalesce(d.seller_evidence, '{}'::jsonb) <> '{}'::jsonb THEN 'needs_reconciliation'
+      ELSE d.provider_seller_reply_status
+    END,
+    provider_seller_reply_error = CASE
+      WHEN coalesce(d.seller_evidence, '{}'::jsonb) <> '{}'::jsonb
+        THEN 'Pre-migration seller evidence requires provider verification.'
+      ELSE d.provider_seller_reply_error
+    END
+FROM public.escrow_transactions tx
+WHERE tx.id = d.transaction_id
+  AND tx.payment_provider = 'payluk'
+  AND d.status IN ('open', 'under_review')
+  AND d.provider_submission_status = 'not_required';
 
 CREATE TABLE IF NOT EXISTS public.dispute_resolution_operations (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -272,6 +309,10 @@ BEGIN
   END IF;
   IF v_transaction.payment_provider = 'payluk' AND v_dispute.provider_submission_status <> 'submitted' THEN
     RAISE EXCEPTION 'Payluk dispute must be submitted successfully before resolution' USING ERRCODE = '22023';
+  END IF;
+  IF v_transaction.payment_provider = 'payluk'
+     AND v_dispute.provider_seller_reply_status IN ('processing', 'needs_reconciliation') THEN
+    RAISE EXCEPTION 'Payluk seller reply must be reconciled before resolution' USING ERRCODE = '22023';
   END IF;
   IF v_dispute.status NOT IN ('open', 'under_review') THEN
     RAISE EXCEPTION 'Dispute is not open for resolution' USING ERRCODE = '22023';

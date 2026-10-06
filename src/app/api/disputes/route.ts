@@ -3,7 +3,7 @@ import { getAuthenticatedUser } from '@/lib/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
-import { signDisputeEvidence } from '@/lib/dispute-evidence-server';
+import { downloadDisputeEvidence, signDisputeEvidence } from '@/lib/dispute-evidence-server';
 import { NotificationService } from '@/lib/notification-service';
 import { PaylukService } from '@/lib/payluk-service';
 
@@ -53,7 +53,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to load disputes' }, { status: 500 });
   }
 
-  const rows = data || [];
+  const rows = (data || []).map((row) => ({
+    ...row,
+    transaction: Array.isArray(row.transaction) ? row.transaction[0] : row.transaction,
+  }));
   const itemIds = Array.from(new Set(rows.map((row) => row.transaction?.item_id).filter(Boolean)));
   const [{ data: posts }, { data: catalogItems }] = await Promise.all([
     itemIds.length ? supabaseAdmin.from('posts').select('id, title, text, image_urls, image_url, price').in('id', itemIds) : Promise.resolve({ data: [] }),
@@ -114,6 +117,15 @@ export async function POST(request: NextRequest) {
     if (fileError) return NextResponse.json({ error: 'One or more evidence files could not be verified.' }, { status: 400 });
   }
 
+  const { data: targetTransaction } = await supabaseAdmin
+    .from('escrow_transactions')
+    .select('buyer_id, payment_provider, payluk_tx_ref')
+    .eq('id', transactionId)
+    .maybeSingle();
+  if (targetTransaction?.payment_provider === 'payluk' && evidence.photos.length + (evidence.chatScreenshots?.length || 0) > 1) {
+    return NextResponse.json({ error: 'Payluk accepts one evidence attachment per dispute filing. Select one file.' }, { status: 400 });
+  }
+
   const { data: disputeId, error: openError } = await supabaseAdmin.rpc('open_marketplace_dispute', {
     p_transaction_id: transactionId,
     p_opened_by: user.id,
@@ -130,11 +142,7 @@ export async function POST(request: NextRequest) {
   }
 
   let providerSubmissionStatus: 'not_required' | 'submitted' | 'needs_reconciliation' = 'not_required';
-  const { data: openedTransaction } = await supabaseAdmin
-    .from('escrow_transactions')
-    .select('buyer_id, payment_provider, payluk_tx_ref')
-    .eq('id', transactionId)
-    .maybeSingle();
+  const openedTransaction = targetTransaction;
   if (openedTransaction?.payment_provider === 'payluk') {
     providerSubmissionStatus = 'needs_reconciliation';
     const message = `${reason}: ${evidence.description}`.slice(0, 4000);
@@ -152,7 +160,10 @@ export async function POST(request: NextRequest) {
       if (!buyer?.payluk_customer_id || !openedTransaction.payluk_tx_ref) {
         throw new Error('Missing buyer Payluk account or escrow payment token.');
       }
-      await PaylukService.submitDispute(buyer.payluk_customer_id, openedTransaction.payluk_tx_ref, message);
+      const evidencePath = evidence.photos[0] || evidence.chatScreenshots?.[0];
+      const attachment = evidencePath ? await downloadDisputeEvidence(evidencePath) : undefined;
+      if (evidencePath && !attachment) throw new Error('Could not load the saved evidence attachment for Payluk.');
+      await PaylukService.submitDispute(buyer.payluk_customer_id, openedTransaction.payluk_tx_ref, message, attachment || undefined);
       const { error: persistError } = await supabaseAdmin.from('disputes').update({
         provider_submission_status: 'submitted',
         provider_submission_error: null,

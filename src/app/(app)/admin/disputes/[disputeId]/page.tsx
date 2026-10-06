@@ -432,6 +432,28 @@ export default function AdminDisputeReviewPage() {
                 </AlertDescription>
               </Alert>
             )}
+            {dispute.providerSellerReplyStatus && !['submitted', 'not_required'].includes(dispute.providerSellerReplyStatus) && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  Payluk seller reply status: {dispute.providerSellerReplyStatus.replace(/_/g, ' ')}. {dispute.providerSellerReplyError || ''}
+                  {dispute.providerSellerReplyStatus !== 'submitted' && <Button className="mt-3 block" size="sm" disabled={saving} onClick={async () => {
+                    if (!window.confirm('Confirm that Payluk shows the seller reply on this dispute?')) return;
+                    setSaving(true);
+                    try { await DisputeService.confirmPaylukSellerReply(disputeId); await fetchDisputeDetails(); }
+                    catch (error) { toast({ title: 'Could not confirm seller reply', description: error instanceof Error ? error.message : 'Try again.', variant: 'destructive' }); }
+                    finally { setSaving(false); }
+                  }}>I verified the seller reply in Payluk</Button>}
+                  {dispute.providerSellerReplyStatus === 'needs_reconciliation' && <Button className="mt-2 block" size="sm" variant="outline" disabled={saving} onClick={async () => {
+                    if (!window.confirm('Confirm you checked Payluk and the seller reply was not submitted? Retrying may use the seller’s one allowed reply.')) return;
+                    setSaving(true);
+                    try { await DisputeService.retryPaylukSellerReply(disputeId); await fetchDisputeDetails(); }
+                    catch (error) { toast({ title: 'Payluk seller reply retry failed', description: error instanceof Error ? error.message : 'Verify provider state before retrying.', variant: 'destructive' }); }
+                    finally { setSaving(false); }
+                  }}>Payluk shows no seller reply; retry submission</Button>}
+                </AlertDescription>
+              </Alert>
+            )}
             {dispute.resolutionOperation && dispute.resolutionOperation.status !== 'succeeded' && (
               <Alert variant="destructive">
                 <AlertTriangle className="h-4 w-4" />
