@@ -131,8 +131,11 @@ function LoginFormPage() {
         } else if (newUser) {
           posthog.identify(newUser.id, { email: newUser.email, name });
           posthog.capture("user_signed_up", { method: "email" });
-          if (newUser.email_confirmed_at) router.push(nextPath);
-          else router.push(`/onboarding/verify-email?email=${encodeURIComponent(email)}&next=${encodeURIComponent(nextPath)}`);
+          if (newUser.email_confirmed_at) {
+            router.push(`/onboarding/verify-phone?next=${encodeURIComponent(nextPath)}`);
+          } else {
+            router.push(`/onboarding/verify-email?email=${encodeURIComponent(email)}&next=${encodeURIComponent(nextPath)}`);
+          }
         }
       }
     } catch {
