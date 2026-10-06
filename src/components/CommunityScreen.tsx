@@ -279,6 +279,12 @@ export function CommunityScreen({ className }: { className?: string }) {
             Nearby
           </button>
           <button
+            onClick={() => router.push("/communities")}
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full text-xs font-extrabold font-yrdly-display transition-all text-[var(--yrdly-text-secondary)] hover:text-foreground font-medium"
+          >
+            Communities
+          </button>
+          <button
             onClick={() => setActiveTab("friends")}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full text-xs font-extrabold font-yrdly-display transition-all ${
               activeTab === "friends"
