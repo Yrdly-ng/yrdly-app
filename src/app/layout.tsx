@@ -12,6 +12,7 @@ import Script from "next/script";
 import { AmbientBackground } from '@/components/ui/AmbientBackground';
 import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister';
 import { PushNotificationManager } from '@/components/PushNotificationManager';
+import { CrispChat } from '@/components/CrispChat';
 
 const raleway = Raleway({
   subsets: ['latin'],
@@ -88,6 +89,7 @@ export default function RootLayout({
           <AuthProvider>
             {children}
             <PushNotificationManager />
+            <CrispChat />
           </AuthProvider>
           <Toaster />
           <Analytics />

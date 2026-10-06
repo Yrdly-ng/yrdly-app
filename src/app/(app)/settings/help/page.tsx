@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronDown, ChevronUp, Mail } from 'lucide-react';
+import { isCrispEnabled, openCrispChat } from '@/components/CrispChat';
 
 interface FAQItem {
   q: string;
@@ -93,12 +94,22 @@ export default function HelpCenterPage() {
           <p className="text-xs sm:text-sm text-muted-foreground mb-4 max-w-sm">
             Our support team is available to assist you with any questions or account issues.
           </p>
-          <button
-            onClick={handleContactSupport}
-            className="h-11 px-6 rounded-full bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-opacity"
-          >
-            Email Support
-          </button>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            {isCrispEnabled && (
+              <button
+                onClick={openCrispChat}
+                className="h-11 px-6 rounded-full border border-border bg-background text-foreground font-semibold text-sm hover:bg-muted transition-colors"
+              >
+                Chat with support
+              </button>
+            )}
+            <button
+              onClick={handleContactSupport}
+              className="h-11 px-6 rounded-full bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-opacity"
+            >
+              Email Support
+            </button>
+          </div>
         </div>
       </main>
     </div>
