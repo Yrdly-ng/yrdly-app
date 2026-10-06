@@ -315,34 +315,39 @@ export default function TransactionDetailsPage() {
       </div>
 
       <div className="max-w-xl mx-auto px-4 py-4 space-y-4">
-        {/* Status Banner */}
-        <div
-          className="p-4 rounded-2xl border flex items-center gap-3.5"
+        {/* Status Card */}
+        <div 
+          className="p-5 rounded-2xl border backdrop-blur-md transition-all shadow-sm flex items-center justify-between gap-4"
           style={{
-            borderColor: `${meta.color}50`,
-            backgroundColor: `${meta.color}10`,
+            borderColor: `${meta.color}40`,
+            backgroundColor: `${meta.color}0D`,
           }}
         >
-          <div
-            className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
-            style={{ backgroundColor: `${meta.color}20` }}
-          >
-            <StatusIconComponent className="w-5 h-5" style={{ color: meta.color }} />
-          </div>
-          <div>
-            <h2 className="font-bold text-base" style={{ color: meta.color }}>
-              {meta.label}
-            </h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Transaction #{tx.id.slice(0, 8).toUpperCase()}
-            </p>
+          <div className="flex items-center gap-3.5">
+            <div 
+              className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-inner"
+              style={{ backgroundColor: `${meta.color}20`, border: `1px solid ${meta.color}30` }}
+            >
+              <StatusIconComponent className="w-6 h-6" style={{ color: meta.color }} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="font-bold text-base tracking-tight" style={{ color: meta.color }}>
+                  {meta.label}
+                </h2>
+                <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: meta.color }} />
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5 font-mono">
+                Transaction #{tx.id.slice(0, 8).toUpperCase()}
+              </p>
+            </div>
           </div>
         </div>
 
         {/* Item Card */}
-        <div className="p-4 rounded-2xl bg-card border border-border space-y-3">
-          <div className="flex items-center gap-3.5">
-            <div className="w-16 h-16 rounded-xl bg-muted flex-shrink-0 overflow-hidden relative border border-border/40">
+        <div className="p-5 rounded-2xl bg-card/70 backdrop-blur-md border border-border/70 space-y-4 shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-xl bg-muted/40 shrink-0 overflow-hidden relative border border-border/60 shadow-inner">
               {thumb ? (
                 <Image src={thumb} alt={tx.item?.title || 'Item'} fill className="object-cover" />
               ) : (
@@ -355,23 +360,23 @@ export default function TransactionDetailsPage() {
               <h3 className="font-bold text-base text-foreground truncate">
                 {tx.item?.title || tx.item?.text || 'Item'}
               </h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <p className="text-xs text-muted-foreground mt-0.5 font-mono">
                 ID: {tx.id.slice(0, 8)}…
               </p>
             </div>
           </div>
 
-          <div className="h-px bg-border" />
+          <div className="h-px bg-border/50" />
 
-          <div className="space-y-1.5 text-sm">
-            <div className="flex justify-between items-center text-muted-foreground">
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between items-center text-muted-foreground font-medium">
               <span>Item price</span>
-              <span className="font-bold text-foreground">{formatPrice(tx.amount)}</span>
+              <span className="font-bold text-foreground text-base">{formatPrice(tx.amount)}</span>
             </div>
             {isSeller && (
               <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">You&apos;ll receive</span>
-                <span className="font-bold text-[#00D26A]">
+                <span className="text-muted-foreground font-medium">You&apos;ll receive</span>
+                <span className="font-bold text-primary text-base">
                   {formatPrice(tx.seller_amount || tx.amount - tx.commission)}
                 </span>
               </div>
@@ -380,21 +385,21 @@ export default function TransactionDetailsPage() {
         </div>
 
         {/* Counterparty Card */}
-        <div className="p-4 rounded-2xl bg-card border border-border space-y-3">
-          <h4 className="font-bold text-xs uppercase text-muted-foreground tracking-wider">
+        <div className="p-5 rounded-2xl bg-card/70 backdrop-blur-md border border-border/70 space-y-3 shadow-sm">
+          <h4 className="font-bold text-[0.6875rem] uppercase text-muted-foreground/80 tracking-widest">
             {isBuyer ? 'Seller' : 'Buyer'}
           </h4>
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center font-bold text-primary text-sm">
+            <div className="flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-full bg-primary/15 border border-primary/30 flex items-center justify-center font-bold text-primary text-base shadow-sm">
                 {counterparty?.name?.[0]?.toUpperCase() || 'U'}
               </div>
-              <div>
-                <p className="font-bold text-sm text-foreground">
+              <div className="min-w-0">
+                <p className="font-bold text-sm text-foreground truncate">
                   {counterparty?.name || 'User'}
                 </p>
                 {counterparty?.email && (
-                  <p className="text-xs text-muted-foreground">{counterparty.email}</p>
+                  <p className="text-xs text-muted-foreground truncate">{counterparty.email}</p>
                 )}
               </div>
             </div>
@@ -402,7 +407,7 @@ export default function TransactionDetailsPage() {
               onClick={handleMessageCounterparty}
               disabled={actionLoading}
               size="sm"
-              className="h-9 px-3.5 rounded-xl font-bold bg-primary text-primary-foreground hover:bg-primary/90 text-xs flex items-center gap-1.5"
+              className="h-9 px-4 rounded-xl font-bold bg-primary text-primary-foreground hover:bg-primary/90 text-xs shadow-md active:scale-95 transition-all flex items-center gap-1.5 shrink-0"
             >
               {actionLoading ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -415,39 +420,39 @@ export default function TransactionDetailsPage() {
         </div>
 
         {/* Transaction Timeline */}
-        <GlassCard className="overflow-hidden p-5 sm:p-6">
-          <div className="mb-5 flex items-center justify-between gap-3">
-            <h3 className="flex items-center gap-2 font-yrdly-display font-bold text-lg text-foreground">
+        <div className="p-5 sm:p-6 rounded-2xl bg-card/70 backdrop-blur-md border border-border/70 space-y-5 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="flex items-center gap-2.5 font-yrdly-display font-bold text-lg text-foreground">
               <Clock className="h-5 w-5 text-primary" />
               Transaction Timeline
             </h3>
-            <span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-primary">
+            <span className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-primary">
               {meta.label}
             </span>
           </div>
-          <div className="font-yrdly-body">
+          <div className="font-yrdly-body pt-1">
             {[
-              { label: 'Transaction Created', date: tx.created_at, color: 'bg-primary', visible: true },
-              { label: 'Payment Confirmed', date: tx.paid_at, color: 'bg-blue-500', visible: Boolean(tx.paid_at) },
-              { label: 'Item Shipped', date: tx.shipped_at, color: 'bg-purple-500', visible: Boolean(tx.shipped_at) },
-              { label: 'Delivery Confirmed', date: tx.delivered_at, color: 'bg-emerald-500', visible: Boolean(tx.delivered_at) },
-              { label: 'Transaction Completed', date: tx.completed_at, color: 'bg-green-600', visible: Boolean(tx.completed_at) },
+              { label: 'Transaction Created', date: tx.created_at, color: 'bg-primary', ring: 'ring-primary/20', visible: true },
+              { label: 'Payment Confirmed', date: tx.paid_at, color: 'bg-blue-500', ring: 'ring-blue-500/20', visible: Boolean(tx.paid_at) },
+              { label: 'Item Shipped', date: tx.shipped_at, color: 'bg-purple-500', ring: 'ring-purple-500/20', visible: Boolean(tx.shipped_at) },
+              { label: 'Delivery Confirmed', date: tx.delivered_at, color: 'bg-emerald-500', ring: 'ring-emerald-500/20', visible: Boolean(tx.delivered_at) },
+              { label: 'Transaction Completed', date: tx.completed_at, color: 'bg-green-600', ring: 'ring-green-600/20', visible: Boolean(tx.completed_at) },
             ].filter((step) => step.visible).map((step, index, steps) => (
-              <div key={step.label} className="relative flex gap-4 pb-5 last:pb-0">
+              <div key={step.label} className="relative flex gap-4 pb-6 last:pb-0">
                 {index < steps.length - 1 && (
-                  <span className="absolute left-[5px] top-3 h-[calc(100%-8px)] w-px bg-border" aria-hidden="true" />
+                  <span className="absolute left-[7px] top-3.5 h-[calc(100%-8px)] w-0.5 bg-border/60" aria-hidden="true" />
                 )}
-                <span className={`relative z-10 mt-1.5 h-3 w-3 shrink-0 rounded-full ring-4 ring-card ${step.color}`} />
+                <span className={`relative z-10 mt-1 h-3.5 w-3.5 shrink-0 rounded-full ring-4 ${step.ring} ${step.color} shadow-sm`} />
                 <div className="min-w-0">
-                  <p className="font-semibold text-foreground">{step.label}</p>
-                  <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
+                  <p className="font-bold text-sm text-foreground">{step.label}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground font-mono">
                     {new Date(step.date as string).toLocaleString()}
                   </p>
                 </div>
               </div>
             ))}
           </div>
-        </GlassCard>
+        </div>
 
         {/* Action Buttons */}
         <div className="flex flex-col gap-3 font-sans">

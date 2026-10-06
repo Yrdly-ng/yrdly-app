@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { X, Lock, Info, ChevronRight } from "lucide-react";
+import { X, Lock, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useRouter } from "next/navigation";
@@ -237,23 +237,23 @@ export function BuyButton({
               <div className="flex items-center gap-4 w-full">
                 <button 
                   onClick={() => setOpen(false)}
-                  className="hover:opacity-80 transition-opacity active:scale-95 flex items-center justify-center p-2 rounded-full text-foreground"
+                  className="hover:bg-accent/50 transition-all active:scale-95 flex items-center justify-center w-9 h-9 rounded-full text-foreground/80 hover:text-foreground border border-border/40"
                 >
-                  <X className="w-5 h-5 text-primary" />
+                  <X className="w-5 h-5" />
                 </button>
-                <h1 className="font-yrdly-display font-bold text-2xl tracking-tight text-foreground">
+                <h1 className="font-yrdly-display font-bold text-xl tracking-tight text-foreground">
                   Order Summary
                 </h1>
               </div>
             </header>
 
             {/* Scrollable content */}
-            <div className="flex-1 overflow-y-auto px-6 pt-6 pb-10 custom-scrollbar font-yrdly-body">
+            <div className="flex-1 overflow-y-auto px-6 pt-6 pb-8 custom-scrollbar font-yrdly-body space-y-5">
 
               {/* Item card */}
-              <GlassCard className="p-4 flex gap-4 mb-6">
+              <div className="p-4 rounded-2xl bg-gradient-to-b from-card/80 to-card/40 border border-border/60 backdrop-blur-md flex gap-4 items-center shadow-sm">
                 {itemImageUrl && (
-                  <div className="w-14 h-14 shrink-0 rounded-lg overflow-hidden border border-[var(--yrdly-glass-border)]">
+                  <div className="w-14 h-14 shrink-0 rounded-xl overflow-hidden border border-border/80 bg-muted/30 shadow-inner">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={itemImageUrl}
@@ -262,100 +262,71 @@ export function BuyButton({
                     />
                   </div>
                 )}
-                <div className="flex flex-col gap-1.5 flex-1">
-                  <div className="flex justify-between items-start">
-                    <h2 className="font-editorial font-bold text-[0.875rem] text-foreground leading-tight line-clamp-2">
-                      {itemTitle}
-                    </h2>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] text-[0.625rem] font-editorial px-2 py-0.5 rounded-full text-[var(--yrdly-label)] uppercase tracking-wider">
+                <div className="flex flex-col gap-1 flex-1 min-w-0">
+                  <h2 className="font-bold text-sm text-foreground leading-snug truncate">
+                    {itemTitle}
+                  </h2>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="bg-primary/10 border border-primary/20 text-[0.625rem] font-bold px-2 py-0.5 rounded-md text-primary uppercase tracking-wider">
                       {condition}
                     </span>
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-editorial text-[0.75rem] text-[var(--yrdly-label)]">
-                        Sold by {sellerName}
-                      </span>
-                    </div>
+                    <span className="text-xs text-muted-foreground truncate">
+                      Sold by <span className="font-semibold text-foreground/90">{sellerName}</span>
+                    </span>
                   </div>
                 </div>
-              </GlassCard>
+              </div>
 
               {/* Price breakdown */}
-              <GlassCard className="p-4 mb-6 flex flex-col gap-3">
-                <div className="flex justify-between items-center">
-                  <span className="font-editorial text-[0.8125rem] text-[var(--yrdly-label)]">
-                    Item Price
-                  </span>
-                  <span className="font-editorial text-[0.875rem] text-foreground">
-                    ₦{price.toLocaleString()}
-                  </span>
+              <div className="p-5 rounded-2xl bg-gradient-to-b from-card/80 to-card/40 border border-border/60 backdrop-blur-md flex flex-col gap-3.5 shadow-sm">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground font-medium">Item Price</span>
+                  <span className="font-semibold text-foreground">₦{price.toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center text-sm">
                   <div className="flex items-center gap-1.5">
-                    <span className="font-editorial text-[0.8125rem] text-[var(--yrdly-label)]">
-                      Platform Fee
-                    </span>
-                    <Info className="w-[14px] h-[14px] text-[var(--yrdly-label)]/60" />
+                    <span className="text-muted-foreground font-medium">Platform Fee</span>
+                    <div className="group relative cursor-help">
+                      <Info className="w-3.5 h-3.5 text-muted-foreground/70 hover:text-foreground transition-colors" />
+                    </div>
                   </div>
-                  <span className="font-editorial text-[0.875rem] text-[var(--yrdly-label)]">
-                    ₦{commission.toLocaleString()}
-                  </span>
+                  <span className="font-semibold text-muted-foreground">₦{commission.toLocaleString()}</span>
                 </div>
-                <div className="h-[1px] w-full bg-[var(--yrdly-glass-border)] my-1" />
-                <div className="flex justify-between items-center py-1">
-                  <span className="font-editorial font-bold text-[0.9375rem] text-foreground">
-                    You Pay
-                  </span>
-                  <span className="font-editorial font-bold text-[1.125rem] text-primary">
+
+                <div className="h-px w-full bg-border/50 my-0.5" />
+
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-base text-foreground">You Pay</span>
+                  <span className="font-bold text-xl text-primary tracking-tight">
                     ₦{totalPay.toLocaleString()}
                   </span>
                 </div>
-                <p className="font-editorial text-[0.6875rem] text-[var(--yrdly-label)] mt-1 leading-normal">
-                  Funds are held securely until you confirm receipt
+                <p className="text-[0.7rem] text-muted-foreground/80 leading-normal">
+                  Funds are held securely in escrow until you confirm item receipt
                 </p>
-              </GlassCard>
+              </div>
 
               {/* Escrow explainer */}
-              <GlassCard className="p-4 mb-8 flex gap-3 border-emerald-500/30 bg-emerald-500/10">
-                <div className="shrink-0 mt-0.5">
-                  <Lock className="w-[20px] h-[20px] text-emerald-400" />
+              <div className="p-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 backdrop-blur-md flex gap-3.5 items-start">
+                <div className="shrink-0 p-2 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400">
+                  <Lock className="w-4 h-4" />
                 </div>
                 <div className="flex flex-col gap-0.5">
-                  <h3 className="font-editorial font-bold text-[0.8125rem] text-foreground">
+                  <h3 className="font-bold text-xs text-emerald-300 uppercase tracking-wider">
                     Your payment is held in escrow
                   </h3>
-                  <p className="font-editorial text-[0.6875rem] text-[var(--yrdly-label)] leading-relaxed">
-                    Release funds only after you confirm the item is in good condition.
+                  <p className="text-xs text-foreground/80 leading-relaxed">
+                    Release funds only after you receive and inspect the item.
                   </p>
                 </div>
-              </GlassCard>
-
-              {/* Payment Method */}
-              <div className="mb-10 font-yrdly-body">
-                <label className="block font-editorial font-medium text-[0.75rem] text-[var(--yrdly-label)] mb-3 px-1">
-                  Pay with
-                </label>
-                <GlassCard className="p-4 flex items-center justify-between group cursor-pointer active:scale-[0.98] transition-all border-primary">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 flex items-center justify-center bg-background/50 rounded-md p-1.5">
-                      <svg className="w-full h-full" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" fill="#00315f"></path>
-                        <path d="M12 6c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm0 10c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4z" fill="#00315f"></path>
-                      </svg>
-                    </div>
-                    <span className="font-editorial text-[0.875rem] text-foreground">Debit/Credit Card</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-primary" />
-                </GlassCard>
               </div>
 
               {/* CTA */}
-              <div className="flex flex-col items-center gap-4">
+              <div className="pt-2 flex flex-col items-center gap-3">
                 <button
                   onClick={handleBuy}
                   disabled={loading}
-                  className="w-full h-14 bg-primary rounded-full flex items-center justify-center font-editorial font-bold text-[0.875rem] text-primary-foreground shadow-lg active:scale-95 transition-transform hover:opacity-90 disabled:opacity-75"
+                  className="w-full h-13 py-3.5 bg-primary text-primary-foreground rounded-2xl font-bold text-sm shadow-[0_4px_24px_rgba(0,210,106,0.25)] hover:shadow-[0_6px_28px_rgba(0,210,106,0.35)] active:scale-[0.98] transition-all flex items-center justify-center disabled:opacity-60"
                 >
                   {loading ? (
                     <span className="flex items-center gap-2">
@@ -363,16 +334,16 @@ export function BuyButton({
                         <circle cx="12" cy="12" r="10" strokeOpacity=".3" />
                         <path d="M12 2a10 10 0 0 1 10 10" />
                       </svg>
-                      Processing...
+                      Processing Payment...
                     </span>
                   ) : (
                     `Pay ₦${totalPay.toLocaleString()} Securely`
                   )}
                 </button>
-                <div className="flex items-center gap-1.5 opacity-60">
-                  <Lock className="w-[14px] h-[14px] text-[var(--yrdly-label)]" />
-                  <span className="font-editorial text-[0.6875rem] text-[var(--yrdly-label)]">
-                    256-bit SSL secured
+                <div className="flex items-center gap-1.5 text-muted-foreground/70">
+                  <Lock className="w-3.5 h-3.5" />
+                  <span className="text-[0.6875rem] font-medium">
+                    256-bit SSL Bank-Grade Security
                   </span>
                 </div>
               </div>
