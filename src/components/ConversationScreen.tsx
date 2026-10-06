@@ -299,8 +299,8 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
         (payload) => {
           if (payload.eventType === "INSERT") {
             setMessages((p) => {
-              if (p.some(m => m.id === payload.new.id || (m.sender_id === payload.new.sender_id && (m.text === payload.new.text || m.content === payload.new.content)))) return p;
-              return [...p, payload.new as ChatMessage];
+              if (p.some(m => m.id === payload.new.id)) return p;
+              return [...p, { ...payload.new as ChatMessage, text: (payload.new as any).text || (payload.new as any).content || "" }];
             });
             // Clear notification if a new message arrives while we are in the chat
             if (payload.new.sender_id !== user.id) {
@@ -386,13 +386,21 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
       }
 
       const sentText = newMessage.trim() || "";
-      await supabase.from("messages").insert({
+      const { data: insertedMsg, error: insertError } = await supabase.from("messages").insert({
         conversation_id: conversation.id, sender_id: user.id,
         text: sentText, content: sentText, image_url: imageUrl, video_url: videoUrl,
         media_url: imageUrl || videoUrl,
         media_type: videoUrl ? 'video' : (imageUrl ? 'image' : null),
         created_at: new Date().toISOString(), is_read: true, read_by: [user.id],
-      });
+      }).select().single();
+
+      // Optimistically append the sent message so it shows immediately
+      if (!insertError && insertedMsg) {
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === insertedMsg.id)) return prev;
+          return [...prev, { ...insertedMsg, text: insertedMsg.text || insertedMsg.content || "" }];
+        });
+      }
 
       const bizId = conversation.context?.catalog_item_business_id || (conversation as any).business_id;
       if (bizId && sentText) {
