@@ -109,9 +109,9 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
   const handleEditMessage = async (msgId: string, newText: string) => {
     if (!user || !newText.trim()) return;
     try {
-      const { error } = await supabase.from("messages").update({ text: newText.trim(), content: newText.trim() }).eq("id", msgId);
+      const { error } = await supabase.from("messages").update({ text: newText.trim() }).eq("id", msgId);
       if (error) throw error;
-      setMessages((prev) => prev.map((m) => m.id === msgId ? { ...m, text: newText.trim(), content: newText.trim() } : m));
+      setMessages((prev) => prev.map((m) => m.id === msgId ? { ...m, text: newText.trim() } : m));
       toast({ title: "Message edited" });
     } catch (e) {
       toast({ title: "Error editing message", variant: "destructive" });
@@ -434,7 +434,7 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
       const sentText = newMessage.trim() || "";
       const { data: insertedMsg, error: insertError } = await supabase.from("messages").insert({
         conversation_id: conversation.id, sender_id: user.id,
-        text: sentText, content: sentText, image_url: imageUrl, video_url: videoUrl,
+        text: sentText, image_url: imageUrl, video_url: videoUrl,
         media_url: imageUrl || videoUrl,
         media_type: videoUrl ? 'video' : (imageUrl ? 'image' : null),
         created_at: new Date().toISOString(), is_read: true, read_by: [user.id],
