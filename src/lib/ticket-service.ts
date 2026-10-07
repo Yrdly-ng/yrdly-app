@@ -188,7 +188,7 @@ export class TicketService {
         title: notification.title,
         body: notification.message,
         data: notification.data,
-        url: '/my-events',
+        url: '/my-tickets',
       }, notification.type);
     } catch (e) {
       // Ignore

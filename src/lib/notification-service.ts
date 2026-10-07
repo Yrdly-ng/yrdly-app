@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { PushNotificationService } from './push-notification-service';
+import { getNotificationDestination } from './notification-routing';
 
 export interface NotificationData {
   id: string;
@@ -43,6 +44,7 @@ export type NotificationType =
   | 'profile_view'
   | 'mention'
   | 'payment_successful'
+  | 'payment_refunded'
   | 'item_shipped'
   | 'delivery_confirmed'
   | 'funds_released'
@@ -847,52 +849,5 @@ function getNotificationUrl(
   relatedId?: string | null,
   data?: Record<string, any> | null
 ): string {
-  switch (type) {
-    case 'friend_request':
-    case 'friend_request_accepted':
-    case 'friend_request_declined':
-      return '/community';
-    case 'message':
-    case 'message_reaction':
-      return relatedId ? `/messages/${relatedId}` : '/messages';
-    case 'post_like':
-    case 'post_comment':
-    case 'post_share':
-      return relatedId ? `/posts/${relatedId}` : '/home';
-    case 'event_invite':
-    case 'event_reminder':
-    case 'event_cancelled':
-    case 'event_updated':
-      return relatedId ? `/events/${relatedId}` : '/events';
-    case 'ticket':
-    case 'ticket_purchase':
-    case 'ticket_confirmed':
-    case 'event_rsvp':
-      return '/my-tickets';
-    case 'marketplace_item_sold':
-    case 'marketplace_item_interest':
-    case 'marketplace_message':
-      return '/marketplace';
-    case 'catalog_item_inquiry':
-    case 'catalog_item_out_of_stock':
-      return relatedId ? `/businesses/catalog/${relatedId}` : '/home';
-    case 'business_review_received':
-      return data?.businessId ? `/businesses/${data.businessId}` : '/home';
-    case 'payment_successful':
-    case 'item_shipped':
-    case 'delivery_confirmed':
-    case 'funds_released':
-    case 'dispute_opened':
-    case 'dispute_resolved':
-    case 'payout_processed':
-    case 'payout_failed':
-      return relatedId ? `/transactions/${relatedId}` : '/transactions';
-    case 'community_update':
-    case 'system_announcement':
-    case 'profile_view':
-    case 'mention':
-    case 'welcome':
-    default:
-      return '/home';
-  }
+  return getNotificationDestination({ type, relatedId, data });
 }

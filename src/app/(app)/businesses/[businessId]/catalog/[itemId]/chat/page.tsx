@@ -4,6 +4,7 @@ import { BusinessChatScreen } from "@/components/BusinessChatScreen";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
+import { NotificationService } from "@/lib/notification-service";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import type { Business, CatalogItem } from "@/types";
 
@@ -27,6 +28,7 @@ export default function ItemChatPage() {
           .from('businesses')
           .select('*')
           .eq('id', businessId)
+          .eq('is_active', true)
           .single();
 
         if (businessError) {
@@ -156,6 +158,24 @@ export default function ItemChatPage() {
           } else if (newConv) {
             setConversationId(newConv.id);
             conversationCreationRef.current = false;
+            if (user.id !== business.owner_id) {
+              const { data: customer } = await supabase
+                .from('users')
+                .select('name')
+                .eq('id', user.id)
+                .maybeSingle();
+              try {
+                await NotificationService.createCatalogItemInquiryNotification(
+                  business.owner_id,
+                  customer?.name || user.user_metadata?.name || user.email || 'A customer',
+                  catalogItem.title,
+                  businessId,
+                  itemId,
+                );
+              } catch (notificationError) {
+                console.error('Could not notify business owner about the catalog inquiry:', notificationError);
+              }
+            }
           }
         }
       } catch (error) {

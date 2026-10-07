@@ -2,7 +2,7 @@
 
 import { BusinessDetailScreen } from "@/components/BusinessDetailScreen";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import type { Business } from "@/types";
@@ -15,82 +15,93 @@ export default function BusinessDetailPage() {
   const [business, setBusiness] = useState<Business | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchBusiness = useCallback(async () => {
+    if (!businessId) return;
+    setLoading(true);
+    try {
+      const { data: businessData, error: businessError } = await supabase
+        .from('businesses')
+        .select('*')
+        .eq('id', businessId)
+        .maybeSingle();
+
+      if (businessError) throw businessError;
+      if (!businessData) {
+        setBusiness(null);
+        return;
+      }
+
+      const isOwner = user?.id === businessData.owner_id;
+      if (!businessData.is_active && !isOwner) {
+        setBusiness(null);
+        return;
+      }
+
+      let ownerData = null;
+      if (businessData.owner_id) {
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('name, avatar_url')
+          .eq('id', businessData.owner_id)
+          .single();
+        if (!userError && userData) ownerData = userData;
+      }
+
+      const business: Business = {
+        id: businessData.id,
+        owner_id: businessData.owner_id,
+        name: businessData.name,
+        category: businessData.category,
+        description: businessData.description,
+        location: businessData.location,
+        image_urls: businessData.image_urls,
+        created_at: businessData.created_at,
+        state: businessData.state,
+        lga: businessData.lga,
+        ward: businessData.ward,
+        rating: businessData.rating || 0,
+        review_count: businessData.review_count || 0,
+        hours: businessData.hours || "Hours not specified",
+        phone: businessData.phone,
+        email: businessData.email,
+        website: businessData.website,
+        mode: businessData.mode || 'product',
+        owner_name: ownerData?.name || businessData.owner_name || "Unknown Owner",
+        owner_avatar: ownerData?.avatar_url || businessData.owner_avatar,
+        cover_image: businessData.image_urls?.[0],
+        logo: businessData.image_urls?.[0],
+        distance: "0.5 km away",
+        catalog: []
+      };
+
+      setBusiness(business);
+    } catch (error) {
+      console.error('Error fetching business:', error);
+      setBusiness(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [businessId, user?.id]);
+
+  useEffect(() => {
+    fetchBusiness();
+  }, [fetchBusiness]);
+
   useEffect(() => {
     if (!businessId) return;
+    const channel = supabase
+      .channel(`business-detail:${businessId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'businesses', filter: `id=eq.${businessId}` },
+        () => fetchBusiness()
+      )
+      .subscribe();
 
-    const fetchBusiness = async () => {
-      try {
-        // First fetch the business data
-        const { data: businessData, error: businessError } = await supabase
-          .from('businesses')
-          .select('*')
-          .eq('id', businessId)
-          .single();
-
-        if (businessError) {
-          console.error('Error fetching business:', businessError);
-          return;
-        }
-
-        if (businessData) {
-          const isOwner = user?.id === businessData.owner_id;
-          const isArchivedOrInactive = businessData.is_active === false || businessData.is_archived === true || businessData.status === 'archived';
-
-          if (isArchivedOrInactive && !isOwner) {
-            setBusiness(null);
-            setLoading(false);
-            return;
-          }
-          // Then fetch the owner data separately
-          let ownerData = null;
-          if (businessData.owner_id) {
-            const { data: userData, error: userError } = await supabase
-              .from('users')
-              .select('name, avatar_url')
-              .eq('id', businessData.owner_id)
-              .single();
-            
-            if (!userError && userData) {
-              ownerData = userData;
-            }
-          }
-
-          // Transform the data to match our Business interface
-          const business: Business = {
-            id: businessData.id,
-            owner_id: businessData.owner_id,
-            name: businessData.name,
-            category: businessData.category,
-            description: businessData.description,
-            location: businessData.location,
-            image_urls: businessData.image_urls,
-            created_at: businessData.created_at,
-            rating: businessData.rating || 0,
-            review_count: businessData.review_count || 0,
-            hours: businessData.hours || "Hours not specified",
-            phone: businessData.phone,
-            email: businessData.email,
-            website: businessData.website,
-            mode: businessData.mode || 'product',
-            owner_name: ownerData?.name || businessData.owner_name || "Unknown Owner",
-            owner_avatar: ownerData?.avatar_url || businessData.owner_avatar,
-            cover_image: businessData.image_urls?.[0],
-            logo: businessData.image_urls?.[0],
-            distance: "0.5 km away", // This would be calculated based on user location
-            catalog: [] // Will be fetched separately
-          };
-
-          setBusiness(business);
-        }
-      } catch (error) {
-        console.error('Error fetching business:', error);
-      } finally {
-        setLoading(false);
-      }
+    return () => {
+      supabase.removeChannel(channel);
     };
-
-    fetchBusiness();
-  }, [businessId]);
+  }, [businessId, fetchBusiness]);
 
   const handleMessageOwner = (business: Business, item?: any) => {
     if (item) {
@@ -139,6 +150,11 @@ export default function BusinessDetailPage() {
   return (
     <BusinessDetailScreen
       business={business}
+      onBusinessUpdated={fetchBusiness}
+      onBusinessDeleted={() => {
+        setBusiness(null);
+        router.push('/businesses');
+      }}
       onBack={() => {
         if (business?.category) {
           router.push(`/businesses?category=${encodeURIComponent(business.category)}`);

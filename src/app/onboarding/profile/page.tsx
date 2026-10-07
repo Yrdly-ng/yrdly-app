@@ -315,6 +315,9 @@ function OnboardingProfileContent() {
         welcome_message_sent: true,
       } as any);
 
+      const { NotificationTriggers } = await import('@/lib/notification-triggers');
+      await NotificationTriggers.onUserSignup(user.id, handle.trim() || user.user_metadata?.name || 'neighbor');
+
       router.replace(`/onboarding/tour${nextPath ? `?next=${encodeURIComponent(nextPath)}` : ''}`);
     } catch (err: any) {
       setSaveError(err?.message || 'Something went wrong. Please try again.');

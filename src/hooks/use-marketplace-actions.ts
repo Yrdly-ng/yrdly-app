@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import type { Post as PostType } from "@/types";
 import posthog from "@/lib/posthog";
+import { NotificationTriggers } from "@/lib/notification-triggers";
 
 export function useMarketplaceActions() {
   const router = useRouter();
@@ -74,6 +75,7 @@ export function useMarketplaceActions() {
 
         if (createError) throw createError;
         conversationId = newConv.id;
+        await NotificationTriggers.onMarketplaceItemInterest(item.id, user.id);
       } else {
         conversationId = existingConversations[0].id;
       }

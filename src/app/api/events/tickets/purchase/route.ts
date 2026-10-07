@@ -10,6 +10,7 @@ import { PaylukService } from '@/lib/payluk-service';
 import { PaystackService } from '@/lib/paystack-service';
 import { getPaylukCustomerId } from '@/lib/payluk-onboarding';
 import { EscrowStatus } from '@/types/escrow';
+import { sendPushNotification } from '@/lib/server-push-notification';
 
 /**
  * POST /api/events/tickets/purchase
@@ -199,6 +200,39 @@ export async function POST(request: NextRequest) {
           }
         }
       } catch (emailErr) {}
+
+      try {
+        const notification = {
+          title: '🎟️ Ticket Confirmed!',
+          message: `Your ${quantity}x ${tier.name} ticket(s) for "${event.title}" are ready. Check My Tickets.`,
+          data: {
+            ticket_id: insertedTickets[0].id,
+            event_id,
+            ticket_code: insertedTickets[0].ticket_code,
+          },
+        };
+        const { data: result, error: notificationError } = await supabaseAdmin.rpc('create_notification', {
+          p_user_id: user.id,
+          p_type: 'ticket_confirmed',
+          p_title: notification.title,
+          p_message: notification.message,
+          p_sender_id: null,
+          p_related_id: insertedTickets[0].id,
+          p_related_type: 'ticket',
+          p_data: notification.data,
+        });
+        if (notificationError) throw notificationError;
+        if ((result as { should_push?: boolean } | null)?.should_push !== false) {
+          await sendPushNotification(supabaseAdmin, user.id, {
+            title: notification.title,
+            body: notification.message,
+            data: notification.data,
+            url: '/my-tickets',
+          }, 'ticket_confirmed');
+        }
+      } catch (notificationError) {
+        console.error('[Tickets] Could not send free-ticket confirmation notification:', notificationError);
+      }
 
       const posthog = getPostHogClient();
       posthog.capture({

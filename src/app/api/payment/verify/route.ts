@@ -4,6 +4,7 @@ import { EscrowStatus } from '@/types/escrow';
 import { getAuthenticatedUser } from "@/lib/supabase-server";
 import { PaystackService } from '@/lib/paystack-service';
 import { PaylukService } from '@/lib/payluk-service';
+import { notifyCatalogItemOutOfStock } from '@/lib/server-notifications';
 
 export async function POST(request: NextRequest) {
   try {
@@ -94,7 +95,7 @@ export async function POST(request: NextRequest) {
             try {
               const { data: catItem } = await supabaseAdmin
                 .from('catalog_items')
-                .select('id, quantity, in_stock')
+                .select('id, business_id, title, quantity, in_stock')
                 .eq('id', existing.item_id)
                 .maybeSingle();
 
@@ -109,6 +110,13 @@ export async function POST(request: NextRequest) {
                     updated_at: new Date().toISOString(),
                   })
                   .eq('id', existing.item_id);
+                if (currentQty > 0 && newQty === 0) {
+                  await notifyCatalogItemOutOfStock(supabaseAdmin, {
+                    itemId: catItem.id,
+                    businessId: catItem.business_id,
+                    itemTitle: catItem.title,
+                  });
+                }
               }
             } catch (catErr) {
               console.error('[PaymentVerify] Error updating catalog stock:', catErr);
@@ -269,7 +277,7 @@ export async function POST(request: NextRequest) {
       try {
         const { data: catItem } = await supabaseAdmin
           .from('catalog_items')
-          .select('id, quantity, in_stock')
+          .select('id, business_id, title, quantity, in_stock')
           .eq('id', txRow.item_id)
           .maybeSingle();
 
@@ -286,6 +294,13 @@ export async function POST(request: NextRequest) {
               updated_at: new Date().toISOString(),
             })
             .eq('id', txRow.item_id);
+          if (currentQty > 0 && newQty === 0) {
+            await notifyCatalogItemOutOfStock(supabaseAdmin, {
+              itemId: catItem.id,
+              businessId: catItem.business_id,
+              itemTitle: catItem.title,
+            });
+          }
 
           console.log(`[PaymentVerify] Catalog item ${txRow.item_id} stock decremented to ${newQty}`);
         }

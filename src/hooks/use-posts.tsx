@@ -443,6 +443,8 @@ export const usePosts = (filter?: LocationFilter | null) => {
                 if (prev.some(p => p.id === newPost.id)) return prev;
                 return [newPost as Post, ...prev];
               });
+              const { NotificationTriggers } = await import('@/lib/notification-triggers');
+              await NotificationTriggers.onMentionsInContent(user.id, newPost.id, postData.text || '');
             }
             toast({ title: 'Success', description: 'Post created successfully.' });
         }
@@ -506,6 +508,7 @@ export const usePosts = (filter?: LocationFilter | null) => {
         const finalBusinessData = {
             ...businessData,
             owner_id: user.id,
+            is_active: true,
             image_urls: imageUrls,
             lga: resolvedLga,
             ward: resolvedWard,
@@ -523,7 +526,10 @@ export const usePosts = (filter?: LocationFilter | null) => {
             const { error } = await supabase
                 .from('businesses')
                 .update(finalBusinessData)
-                .eq('id', businessIdToUpdate);
+                .eq('id', businessIdToUpdate)
+                .eq('owner_id', user.id)
+                .select('id')
+                .single();
             
             if (error) throw error;
             toast({ title: 'Success', description: 'Business updated successfully.' });

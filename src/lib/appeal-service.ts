@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import type { StrikeAppeal } from '@/types';
 import { BookingService } from './booking-service';
+import { NotificationTriggers } from './notification-triggers';
 
 export class AppealService {
   static async createAppeal(p: { booking_id: string; appellant_type: 'customer'|'provider'; reason: string; evidence_urls?: string[] }): Promise<StrikeAppeal> {
@@ -28,6 +29,13 @@ export class AppealService {
     if (fetchErr || !appeal) throw new Error('Appeal not found');
     const { data, error } = await supabase.from('strike_appeals').update({ status: decision, reviewed_by: user?.id||null, reviewed_at: new Date().toISOString(), resolution_note: resolution_note||null }).eq('id', id).select('*').single();
     if (error) throw error;
+    await NotificationTriggers.onAppealDecided({
+      appealId: appeal.id,
+      bookingId: appeal.booking_id,
+      appellantId: appeal.appellant_id,
+      decision,
+      resolutionNote: resolution_note,
+    });
     if (decision === 'approved') {
       // Decrement counts and re-evaluate flag for the struck party stored on booking
       const { data: booking } = await supabase.from('bookings').select('customer_id, business_id, strike_party, strike_type').eq('id', appeal.booking_id).single();

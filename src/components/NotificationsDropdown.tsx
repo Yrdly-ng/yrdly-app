@@ -11,6 +11,7 @@ import { useFriendshipContext } from "@/contexts/FriendshipContext";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNowStrict } from 'date-fns';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { getNotificationDestination } from "@/lib/notification-routing";
 
 const GREEN = "hsl(var(--primary))";
 const GREEN_LIGHT = "#82DB7E";
@@ -80,72 +81,11 @@ function NotificationItem({ notification, onMarkAsRead, onDelete, onClose }: {
     // Close the dropdown
     onClose();
 
-    // Route based on type
-    switch (notification.type) {
-      case 'friend_request':
-      case 'friend_request_accepted':
-      case 'friend_request_declined': {
-        const targetId = notification.from_user_id || notification.related_id || notification.data?.fromUserId;
-        router.push(targetId ? `/profile/${targetId}` : '/community');
-        break;
-      }
-      case 'message':
-      case 'message_reaction': {
-        const convId = notification.related_id || notification.data?.conversation_id || notification.data?.conversationId;
-        router.push(convId ? `/messages/${convId}` : '/messages');
-        break;
-      }
-      case 'post_like':
-      case 'post_comment':
-      case 'post_share': {
-        const postId = notification.related_id || notification.data?.post_id || notification.data?.postId;
-        router.push(postId ? `/posts/${postId}` : '/home');
-        break;
-      }
-      case 'event_invite':
-      case 'event_reminder':
-      case 'event_cancelled':
-      case 'event_updated': {
-        const eventId = notification.related_id || notification.data?.eventId || notification.data?.event_id;
-        router.push(eventId ? `/events/${eventId}` : '/events');
-        break;
-      }
-      case 'marketplace_item_sold':
-      case 'marketplace_item_interest':
-      case 'marketplace_message':
-      case 'catalog_item_inquiry':
-      case 'catalog_item_out_of_stock': {
-        const itemId = notification.related_id || notification.data?.item_id || notification.data?.itemId;
-        router.push(itemId ? `/marketplace/${itemId}` : '/marketplace');
-        break;
-      }
-      case 'payment_successful':
-      case 'item_shipped':
-      case 'delivery_confirmed':
-      case 'funds_released': {
-        const txId = notification.related_id || notification.data?.transactionId;
-        router.push(txId ? `/transactions/${txId}` : '/marketplace');
-        break;
-      }
-      case 'dispute_opened':
-      case 'dispute_resolved': {
-        const disputeId = notification.related_id || notification.data?.disputeId;
-        router.push(disputeId ? `/disputes/${disputeId}` : '/disputes');
-        break;
-      }
-      case 'business_review_received': {
-        const bizId = notification.data?.businessId || notification.related_id;
-        router.push(bizId ? `/businesses/${bizId}` : '/businesses');
-        break;
-      }
-      case 'payout_processed':
-      case 'payout_failed': {
-        router.push('/profile/payout-settings');
-        break;
-      }
-      default:
-        router.push('/notifications');
-    }
+    router.push(getNotificationDestination({
+      type: notification.type,
+      relatedId: notification.related_id,
+      data: notification.data,
+    }));
   };
 
   const handleAction = async (action: string) => {
@@ -236,6 +176,8 @@ function NotificationItem({ notification, onMarkAsRead, onDelete, onClose }: {
               await supabase.from('friend_requests').delete().eq('from_user_id', senderId).eq('to_user_id', toUserId).eq('status', 'pending');
             } catch {}
 
+            const { NotificationTriggers } = await import('@/lib/notification-triggers');
+            await NotificationTriggers.onFriendRequestDeclined(senderId, toUserId);
             if (senderId) await refreshUserStatus(senderId);
             await onMarkAsRead(notification.id);
             toast({ title: "Friend request declined." });

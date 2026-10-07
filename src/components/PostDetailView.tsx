@@ -197,13 +197,21 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
     if (navigator.share) {
       try {
         await navigator.share({ title: "Post on Yrdly", url });
+        if (currentUser?.id) {
+          const { NotificationTriggers } = await import("@/lib/notification-triggers");
+          await NotificationTriggers.onPostShared(post.id, currentUser.id);
+        }
         toast({ title: "Post shared!" });
       } catch {}
     } else {
       await navigator.clipboard.writeText(url);
+      if (currentUser?.id) {
+        const { NotificationTriggers } = await import("@/lib/notification-triggers");
+        await NotificationTriggers.onPostShared(post.id, currentUser.id);
+      }
       toast({ title: "Link copied!" });
     }
-  }, [post.id, toast]);
+  }, [currentUser?.id, post.id, toast]);
 
   const handleDelete = useCallback(async () => {
     if (!currentUser || currentUser.id !== post.user_id) return;

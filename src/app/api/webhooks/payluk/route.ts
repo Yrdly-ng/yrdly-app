@@ -8,6 +8,7 @@ import { PaylukService } from '@/lib/payluk-service';
 import { handlePaylukWebhookEvent as handleBookingPaymentEvent } from '@/lib/booking-payments';
 import { PayoutService } from '@/lib/payout-service';
 import { sendPushNotification } from '@/lib/server-push-notification';
+import { notifyCatalogItemOutOfStock } from '@/lib/server-notifications';
 
 // ── Signature verification ───────────────────────────────────────────────────
 //
@@ -208,7 +209,7 @@ async function handleEscrowOngoing(data: PaylukEscrowData) {
       try {
         const { data: catItem } = await supabaseAdmin
           .from('catalog_items')
-          .select('id, quantity, in_stock')
+          .select('id, business_id, title, quantity, in_stock')
           .eq('id', tx.item_id)
           .maybeSingle();
 
@@ -223,6 +224,13 @@ async function handleEscrowOngoing(data: PaylukEscrowData) {
               updated_at: new Date().toISOString(),
             })
             .eq('id', tx.item_id);
+          if (currentQty > 0 && newQty === 0) {
+            await notifyCatalogItemOutOfStock(supabaseAdmin, {
+              itemId: catItem.id,
+              businessId: catItem.business_id,
+              itemTitle: catItem.title,
+            });
+          }
           console.log(`[PaylukWebhook] Decremented catalog_items stock for ${tx.item_id} (new qty: ${newQty})`);
         }
       } catch (catErr) {

@@ -137,14 +137,33 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
   const [userBusinessId, setUserBusinessId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (currentUser?.id) {
-      supabase.from("businesses").select("id").eq("owner_id", currentUser.id).then(({ data }) => {
-        if (data && data.length > 0) {
-          setHasBusiness(true);
-          setUserBusinessId(data[0].id);
-        }
-      });
-    }
+    if (!currentUser?.id) return;
+
+    const refreshOwnedBusiness = async () => {
+      const { data } = await supabase
+        .from("businesses")
+        .select("id")
+        .eq("owner_id", currentUser.id)
+        .eq("is_active", true)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      setHasBusiness(!!data?.length);
+      setUserBusinessId(data?.[0]?.id || null);
+    };
+
+    refreshOwnedBusiness();
+    const channel = supabase
+      .channel(`owned-business:${currentUser.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "businesses", filter: `owner_id=eq.${currentUser.id}` },
+        () => refreshOwnedBusiness()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [currentUser?.id]);
 
   const targetUser = externalTargetUser || user || currentUser;

@@ -856,11 +856,19 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
     if (navigator.share) {
       try {
         await navigator.share({ url });
+        if (currentUser?.id) {
+          const { NotificationTriggers } = await import("@/lib/notification-triggers");
+          await NotificationTriggers.onPostShared(post.id, currentUser.id);
+        }
       } catch {}
     } else {
       try {
         await navigator.clipboard.writeText(url);
         toast({ title: "Link copied!", description: "Post link copied to clipboard." });
+        if (currentUser?.id) {
+          const { NotificationTriggers } = await import("@/lib/notification-triggers");
+          await NotificationTriggers.onPostShared(post.id, currentUser.id);
+        }
       } catch {
         toast({ variant: "destructive", title: "Error", description: "Could not copy link." });
       }

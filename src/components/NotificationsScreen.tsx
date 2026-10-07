@@ -22,6 +22,8 @@ import { useFriendshipContext } from "@/contexts/FriendshipContext";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { getNotificationDestination } from "@/lib/notification-routing";
+import { AlertService } from "@/lib/alert-service";
 
 const GREEN = "#82DB7E";
 
@@ -119,18 +121,13 @@ export function NotificationsScreen() {
         };
       }) as Notification[];
 
-      // 2. Fetch active community safety alerts (matching mobile AlertService)
-      const { data: activeAlerts } = await supabase
-        .from("alerts")
-        .select("*")
-        .eq("is_active", true)
-        .order("created_at", { ascending: false });
-
-      const mappedAlerts = (activeAlerts || []).map((a: any) => ({
+      // Include approved neighborhood alerts and admin alert broadcasts.
+      const activeAlerts = await AlertService.getActiveAlerts();
+      const mappedAlerts = activeAlerts.filter((alert) => alert.status === "active").map((a) => ({
         id: `mapped_alert_${a.id}`,
         type: "safety_alert",
         title: a.title || "Community Safety Alert",
-        message: a.description || a.message || "New safety alert in your area.",
+        message: a.description || "New safety alert in your area.",
         is_read: false,
         created_at: a.created_at,
         related_id: a.id,
@@ -163,6 +160,11 @@ export function NotificationsScreen() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "alerts" },
+        () => fetchNotifications()
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "safety_alerts" },
         () => fetchNotifications()
       )
       .subscribe();
@@ -203,6 +205,9 @@ export function NotificationsScreen() {
         following_id: fromUserId,
       });
 
+      const { NotificationTriggers } = await import("@/lib/notification-triggers");
+      await NotificationTriggers.onFriendRequestAccepted(fromUserId, user.id);
+
       await refreshUserStatus(fromUserId);
       await handleMarkAsRead(notification.id);
       toast({ title: "Friend request accepted! 🎉" });
@@ -221,6 +226,9 @@ export function NotificationsScreen() {
         .eq("follower_id", notification.from_user_id)
         .eq("following_id", user.id);
 
+      const { NotificationTriggers } = await import("@/lib/notification-triggers");
+      await NotificationTriggers.onFriendRequestDeclined(notification.from_user_id, user.id);
+
       await refreshUserStatus(notification.from_user_id);
       await handleMarkAsRead(notification.id);
       toast({ title: "Request declined" });
@@ -231,42 +239,11 @@ export function NotificationsScreen() {
 
   const handleNotificationClick = (item: Notification) => {
     if (!item.is_read) handleMarkAsRead(item.id);
-    const t = item.type || "";
-    if (t.includes("event")) {
-      if (item.related_id) router.push(`/events/${item.related_id}`);
-      else router.push("/events");
-    } else if (t.includes("marketplace") || t.includes("escrow")) {
-      if (item.related_id) router.push(`/marketplace/${item.related_id}`);
-      else router.push("/marketplace");
-    } else if (t === "message") {
-      if (item.related_id) router.push(`/messages/${item.related_id}`);
-      else router.push("/messages");
-    } else if (
-      [
-        "payment_successful",
-        "item_shipped",
-        "delivery_confirmed",
-        "funds_released",
-        "dispute_opened",
-        "dispute_resolved",
-        "payout_processed",
-        "payout_failed",
-      ].includes(t)
-    ) {
-      if (item.related_id) router.push(`/transactions/${item.related_id}`);
-      else router.push("/transactions");
-    } else if (["friend_request", "friend_request_accepted", "new_follower"].includes(t)) {
-      const profileId = item.from_user_id || item.related_id;
-      if (profileId) router.push(`/profile/${profileId}`);
-      else router.push("/explore");
-    } else if (t.includes("alert") || t.includes("safety")) {
-      if (item.related_id) router.push(`/admin/create-alert`);
-      else router.push("/explore");
-    } else if (t === "post_comment" || t === "post_like") {
-      if (item.related_id) router.push(`/posts/${item.related_id}`);
-    } else {
-      router.push("/explore");
-    }
+    router.push(getNotificationDestination({
+      type: item.type,
+      relatedId: item.related_id,
+      data: item.data,
+    }));
   };
 
   const filteredNotifications = useMemo(() => {

@@ -67,6 +67,30 @@ export class NotificationTriggers {
     }
   }
 
+  /** Trigger notification when a friend request is declined. */
+  static async onFriendRequestDeclined(fromUserId: string, toUserId: string) {
+    try {
+      const { data: recipient } = await supabase
+        .from('users')
+        .select('name')
+        .eq('id', toUserId)
+        .maybeSingle();
+
+      await NotificationService.createNotification({
+        userId: fromUserId,
+        type: 'friend_request_declined',
+        senderId: toUserId,
+        relatedId: toUserId,
+        relatedType: 'user',
+        title: 'Friend Request Declined',
+        message: `${recipient?.name || 'A user'} declined your friend request`,
+        data: { fromUserId: toUserId, fromUserName: recipient?.name },
+      });
+    } catch (error) {
+      console.error('Error creating friend request declined notification:', error);
+    }
+  }
+
   /**
    * Trigger notification when a message is sent
    */
@@ -74,7 +98,8 @@ export class NotificationTriggers {
     toUserId: string,
     fromUserId: string,
     conversationId: string,
-    messageContent: string
+    messageContent: string,
+    notificationType: 'message' | 'marketplace_message' = 'message'
   ) {
     try {
       
@@ -84,7 +109,7 @@ export class NotificationTriggers {
         .from('notifications')
         .select('id')
         .eq('user_id', toUserId)
-        .eq('type', 'message')
+        .eq('type', notificationType)
         .eq('sender_id', fromUserId)
         .eq('related_id', conversationId)
         .gte('created_at', oneMinuteAgo)
@@ -109,7 +134,7 @@ export class NotificationTriggers {
 
         await NotificationService.createNotification({
           userId: toUserId,
-          type: 'message',
+          type: notificationType,
           senderId: fromUserId,
           relatedId: conversationId,
           relatedType: 'conversation',
@@ -118,7 +143,7 @@ export class NotificationTriggers {
           data: { 
             fromUserName: senderData.name, 
             conversationId, 
-            messagePreview 
+            messagePreview,
           }
         });
       } else {
@@ -181,6 +206,27 @@ export class NotificationTriggers {
       });
     } catch (e) {
       console.error('Error removing like notification actor:', e);
+    }
+  }
+
+  /** Notify a post owner when another user shares their post link. */
+  static async onPostShared(postId: string, sharerId: string) {
+    try {
+      const { data: post } = await supabase.from('posts').select('user_id').eq('id', postId).maybeSingle();
+      if (!post?.user_id || post.user_id === sharerId) return;
+      const { data: sharer } = await supabase.from('users').select('name').eq('id', sharerId).maybeSingle();
+      await NotificationService.createNotification({
+        userId: post.user_id,
+        type: 'post_share',
+        senderId: sharerId,
+        relatedId: postId,
+        relatedType: 'post',
+        title: 'Your post was shared',
+        message: `${sharer?.name || 'Someone'} shared your post.`,
+        data: { postId, sharerName: sharer?.name },
+      });
+    } catch (error) {
+      console.error('Error creating post share notification:', error);
     }
   }
 
@@ -267,6 +313,7 @@ export class NotificationTriggers {
    */
   static async onUserMentioned(mentionedUserId: string, mentionerId: string, postId: string, content: string) {
     try {
+      if (mentionedUserId === mentionerId) return;
       // Get mentioner's name
       const { data: mentionerData } = await supabase
         .from('users')
@@ -288,6 +335,28 @@ export class NotificationTriggers {
       }
     } catch (error) {
       console.error('Error creating mention notification:', error);
+    }
+  }
+
+  /** Notify users whose @username appears in post or comment content. */
+  static async onMentionsInContent(mentionerId: string, postId: string, content: string) {
+    const handles = Array.from(new Set(
+      Array.from(content.matchAll(/(?:^|\s)@([a-zA-Z0-9_.-]+)/g), (match) => match[1].toLowerCase())
+    ));
+    if (!handles.length) return;
+
+    try {
+      const { data: mentionedUsers, error } = await supabase
+        .from('users')
+        .select('id, username')
+        .in('username', handles);
+      if (error) throw error;
+
+      await Promise.all((mentionedUsers || [])
+        .filter((mentionedUser) => mentionedUser.id !== mentionerId)
+        .map((mentionedUser) => this.onUserMentioned(mentionedUser.id, mentionerId, postId, content)));
+    } catch (error) {
+      console.error('Error resolving mentioned users:', error);
     }
   }
 
@@ -591,6 +660,30 @@ export class NotificationTriggers {
     }
   }
 
+  /** Notify the business owner when a customer converts an accepted quote. */
+  static async onQuoteConverted(params: {
+    quoteId: string;
+    businessOwnerId: string;
+    customerId: string;
+    title: string;
+    bookingId: string;
+  }) {
+    try {
+      await NotificationService.createNotification({
+        userId: params.businessOwnerId,
+        type: 'quote_converted',
+        senderId: params.customerId,
+        relatedId: params.quoteId,
+        relatedType: 'quote',
+        title: 'Estimate Accepted',
+        message: `A customer accepted your estimate for "${params.title}" and created a booking.`,
+        data: params,
+      });
+    } catch (error) {
+      console.error('Error creating quote_converted notification:', error);
+    }
+  }
+
   /**
    * Trigger notification when payment succeeds
    */
@@ -620,6 +713,7 @@ export class NotificationTriggers {
    */
   static async onAppealDecided(params: {
     appealId: string;
+    bookingId?: string;
     appellantId: string;
     decision: 'approved' | 'rejected';
     resolutionNote?: string;

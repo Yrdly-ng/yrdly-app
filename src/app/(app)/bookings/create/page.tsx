@@ -74,7 +74,7 @@ export default function CreateBookingWebPage() {
         setLoadingDetails(true);
         const [serviceRes, bizRes] = await Promise.all([
           supabase.from('service_offerings').select('*').eq('id', serviceId).single(),
-          supabase.from('businesses').select('*').eq('id', businessId).single(),
+          supabase.from('businesses').select('*').eq('id', businessId).eq('is_active', true).single(),
         ]);
         if (serviceRes.data) setService(serviceRes.data);
         if (bizRes.data) setBusiness(bizRes.data);

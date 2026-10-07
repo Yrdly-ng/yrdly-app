@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { ArrowLeft, Search, Star, MapPin, X, Plus, BadgeCheck } from "lucide-react";
@@ -63,11 +63,12 @@ export function BusinessesScreen({ backTarget = "/businesses" }: { backTarget?: 
   const filterLga = activeFilter?.lga;
   const filterWard = activeFilter?.ward;
 
-  const fetchBusinesses = async () => {
+  const fetchBusinesses = useCallback(async () => {
     try {
       let query = supabase
         .from("businesses")
         .select("*")
+        .eq("is_active", true)
         .order("created_at", { ascending: false });
 
       if (filterState) query = query.eq("state", filterState);
@@ -82,42 +83,30 @@ export function BusinessesScreen({ backTarget = "/businesses" }: { backTarget?: 
         return;
       }
 
-      const list: Business[] = data || [];
-
-      if (list.length > 0) {
-        const { data: reviewRows, error: reviewsError } = await supabase
-          .from("business_reviews")
-          .select("business_id, rating")
-          .in("business_id", list.map((b) => b.id));
-
-        if (!reviewsError && reviewRows) {
-          const stats = new Map<string, { total: number; count: number }>();
-          for (const row of reviewRows) {
-            const entry = stats.get(row.business_id) || { total: 0, count: 0 };
-            entry.total += row.rating || 0;
-            entry.count += 1;
-            stats.set(row.business_id, entry);
-          }
-          for (const biz of list) {
-            const entry = stats.get(biz.id);
-            biz.rating = entry ? entry.total / entry.count : 0;
-            biz.review_count = entry ? entry.count : 0;
-          }
-        }
-      }
-
-      setBusinesses(list);
+      setBusinesses((data as Business[]) || []);
     } catch (err) {
       console.error("Error fetching businesses:", err);
       setBusinesses([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [filterState, filterLga, filterWard]);
 
   useEffect(() => {
     fetchBusinesses();
-  }, [filterState, filterLga, filterWard]);
+  }, [fetchBusinesses]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("business-list-updates")
+      .on("postgres_changes", { event: "*", schema: "public", table: "businesses" }, () => fetchBusinesses())
+      .on("postgres_changes", { event: "*", schema: "public", table: "business_reviews" }, () => fetchBusinesses())
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchBusinesses]);
 
   // Group businesses into category tiles
   const categoryTiles = useMemo<CategoryTile[]>(() => {

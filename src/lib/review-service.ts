@@ -3,6 +3,13 @@ import { supabase } from './supabase';
 import { NotificationService } from './notification-service';
 import { EscrowStatus } from '@/types/escrow';
 
+function throwReviewInsertError(error: { code?: string; message?: string }): never {
+  if (error.code === '23505') {
+    throw new Error('You have already reviewed this business.');
+  }
+  throw error;
+}
+
 export class ReviewService {
   /**
    * Check if a user can review a business based on a transaction
@@ -32,6 +39,19 @@ export class ReviewService {
       // Check if transaction is completed
       if (transaction.status !== EscrowStatus.COMPLETED) {
         return { canReview: false, reason: 'Transaction must be completed' };
+      }
+
+      const { data: business, error: businessError } = await supabase
+        .from('businesses')
+        .select('owner_id')
+        .eq('id', businessId)
+        .maybeSingle();
+
+      if (businessError || !business) {
+        return { canReview: false, reason: 'Business not found' };
+      }
+      if (business.owner_id === userId) {
+        return { canReview: false, reason: 'You cannot review your own business' };
       }
 
       // Check if user already reviewed this transaction
@@ -78,6 +98,18 @@ export class ReviewService {
 
       if (booking.status !== 'completed') {
         return { canReview: false, reason: 'Reviews can only be submitted for completed bookings' };
+      }
+
+      const { data: business, error: businessError } = await supabase
+        .from('businesses')
+        .select('owner_id')
+        .eq('id', booking.business_id)
+        .maybeSingle();
+      if (businessError || !business) {
+        return { canReview: false, reason: 'Business not found' };
+      }
+      if (business.owner_id === userId) {
+        return { canReview: false, reason: 'You cannot review your own business' };
       }
 
       const { data: existingReview } = await supabase
@@ -128,7 +160,7 @@ export class ReviewService {
       .select('id')
       .single();
 
-    if (error) throw error;
+    if (error) throwReviewInsertError(error);
     return data.id;
   }
 
@@ -161,6 +193,16 @@ export class ReviewService {
             throw new Error(reason || 'Cannot review this business');
           }
 
+          const { data: business, error: businessError } = await supabase
+            .from('businesses')
+            .select('owner_id')
+            .eq('id', businessId)
+            .maybeSingle();
+          if (businessError || !business) throw new Error('Business not found');
+          if (business.owner_id === userId) {
+            throw new Error('You cannot review your own business');
+          }
+
           // Insert review
           const { data, error } = await supabase
             .from('business_reviews')
@@ -175,10 +217,7 @@ export class ReviewService {
             .select('id')
             .single();
 
-          if (error) throw error;
-
-          // Update business rating and count
-          await this.updateBusinessRating(businessId);
+          if (error) throwReviewInsertError(error);
 
           // Send notification to business owner
           try {
@@ -214,7 +253,7 @@ export class ReviewService {
         } catch (error) {
 
           console.error('Error submitting review:', error);
-          throw new Error('Failed to submit review');
+          throw error instanceof Error ? error : new Error('Failed to submit review');
         }
       }
     )();
@@ -268,9 +307,7 @@ export class ReviewService {
             .select('id')
             .single();
 
-          if (error) throw error;
-
-          await this.updateBusinessRating(businessId);
+          if (error) throwReviewInsertError(error);
 
           try {
             const { data: reviewer } = await supabase
@@ -319,13 +356,13 @@ export class ReviewService {
         .eq('business_id', businessId)
         .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') throw error;
+      if (error) throw error;
 
       return !!data;
     } catch (error) {
 
       console.error('Error checking existing review:', error);
-      return false;
+      throw error instanceof Error ? error : new Error('Could not verify prior reviews');
     }
   }
 

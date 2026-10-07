@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import type { QuoteRequest, QuoteMessage } from '@/types';
+import { NotificationTriggers } from './notification-triggers';
 
 export class QuoteService {
   static async createQuoteRequest(p: { business_id: string; category: string; title: string; description: string; images?: string[]; location_text?: string; urgency?: string; staff_id?: string | null }): Promise<QuoteRequest> {
@@ -27,8 +28,20 @@ export class QuoteService {
     return data;
   }
   static async submitEstimate(id: string, p: { estimated_price: number; estimated_duration_minutes?: number; estimate_notes?: string; expires_at?: string }): Promise<QuoteRequest> {
+    const { data: existingQuote, error: quoteError } = await supabase
+      .from('quote_requests')
+      .select('id, customer_id, title')
+      .eq('id', id)
+      .single();
+    if (quoteError) throw quoteError;
     const { data, error } = await supabase.from('quote_requests').update({ estimated_price: p.estimated_price, estimated_duration_minutes: p.estimated_duration_minutes, estimate_notes: p.estimate_notes, expires_at: p.expires_at, status: 'estimated' }).eq('id', id).select('*').single();
     if (error) throw error;
+    await NotificationTriggers.onQuoteEstimated({
+      quoteId: id,
+      customerId: existingQuote.customer_id,
+      title: existingQuote.title,
+      estimatedPrice: p.estimated_price,
+    });
     return data;
   }
   static async updateStatus(id: string, status: string): Promise<QuoteRequest> {
@@ -55,6 +68,22 @@ export class QuoteService {
     const { BookingService } = await import('./booking-service');
     const booking = await BookingService.createBookingRequest({ customerId: user!.id, businessId: quote.business_id, serviceId, appointmentTime, staffId: quote.staff_id, quoteId });
     const { data: updated } = await supabase.from('quote_requests').update({ status: 'converted', converted_booking_id: booking.id }).eq('id', quoteId).select('*').single();
+    if (updated) {
+      const { data: business } = await supabase
+        .from('businesses')
+        .select('owner_id')
+        .eq('id', quote.business_id)
+        .maybeSingle();
+      if (business?.owner_id && user?.id) {
+        await NotificationTriggers.onQuoteConverted({
+          quoteId,
+          businessOwnerId: business.owner_id,
+          customerId: user.id,
+          title: quote.title,
+          bookingId: booking.id,
+        });
+      }
+    }
     return { booking, quote: updated };
   }
   // Messages

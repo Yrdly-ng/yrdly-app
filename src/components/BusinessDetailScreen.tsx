@@ -30,6 +30,7 @@ import { useAuth } from "@/hooks/use-supabase-auth";
 import Image from "next/image";
 import { shortenAddress } from "@/lib/utils";
 import { CreateCatalogItemDialog } from "@/components/CreateCatalogItemDialog";
+import { CreateBusinessDialog } from "@/components/CreateBusinessDialog";
 import { CatalogService } from "@/lib/catalog-service";
 import { ReviewService } from "@/lib/review-service";
 import { WriteBusinessReviewDialog } from "@/components/reviews/WriteBusinessReviewDialog";
@@ -40,6 +41,8 @@ import { useServiceOfferings } from "@/hooks/use-bookings";
 interface BusinessDetailScreenProps {
   business: Business;
   onBack: () => void;
+  onBusinessUpdated: () => void;
+  onBusinessDeleted: () => void;
   onMessageOwner: (business: Business, item?: CatalogItem) => void;
   onViewCatalogItem: (item: CatalogItem) => void;
 }
@@ -47,6 +50,8 @@ interface BusinessDetailScreenProps {
 export function BusinessDetailScreen({
   business,
   onBack,
+  onBusinessUpdated,
+  onBusinessDeleted,
   onMessageOwner,
   onViewCatalogItem,
 }: BusinessDetailScreenProps) {
@@ -58,6 +63,9 @@ export function BusinessDetailScreen({
   const [loading, setLoading] = useState(true);
   const [showOutOfStock, setShowOutOfStock] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+  const [isEditBusinessOpen, setIsEditBusinessOpen] = useState(false);
+  const [isDeleteBusinessOpen, setIsDeleteBusinessOpen] = useState(false);
+  const [isDeletingBusiness, setIsDeletingBusiness] = useState(false);
   const [isFavorited, setIsFavorited] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
   const [hasReviewed, setHasReviewed] = useState(false);
@@ -68,6 +76,12 @@ export function BusinessDetailScreen({
   const averageRating = reviewCount > 0
     ? reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviewCount
     : 0;
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("tab") === "reviews") {
+      setActiveTab("reviews");
+    }
+  }, []);
 
   useEffect(() => {
     const fetchCatalogItems = async () => {
@@ -138,15 +152,20 @@ export function BusinessDetailScreen({
         setHasReviewed(false);
         return;
       }
-      const reviewed = await ReviewService.hasUserReviewedBusiness(user.id, business.id);
-      setHasReviewed(reviewed);
+      try {
+        const reviewed = await ReviewService.hasUserReviewedBusiness(user.id, business.id);
+        setHasReviewed(reviewed);
+      } catch (error) {
+        console.error('Could not verify business review eligibility:', error);
+        setHasReviewed(true);
+      }
     };
 
     fetchCatalogItems();
     fetchReviews();
     fetchFavoriteStatus();
     fetchReviewEligibility();
-  }, [business.id, user]);
+  }, [business.id, business.owner_id, user]);
 
   const handleToggleFavorite = async () => {
     if (!user) {
@@ -267,6 +286,32 @@ export function BusinessDetailScreen({
         description: "Failed to delete item",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleDeleteBusiness = async () => {
+    if (!user || !isOwner) return;
+    setIsDeletingBusiness(true);
+    try {
+      const { data, error } = await supabase
+        .from("businesses")
+        .update({ is_active: false })
+        .eq("id", business.id)
+        .eq("owner_id", user.id)
+        .select("id")
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!data) throw new Error("Business not found or you do not have permission to delete it.");
+
+      toast({ title: "Business deleted", description: "This business is no longer visible to customers." });
+      setIsDeleteBusinessOpen(false);
+      onBusinessDeleted();
+    } catch (error) {
+      console.error("Error deleting business:", error);
+      toast({ title: "Error", description: "Failed to delete business.", variant: "destructive" });
+    } finally {
+      setIsDeletingBusiness(false);
     }
   };
 
@@ -398,6 +443,12 @@ export function BusinessDetailScreen({
         <div className="flex gap-2">
           {isOwner && (
             <div className="flex flex-wrap gap-2 w-full">
+              <Button variant="outline" onClick={() => setIsEditBusinessOpen(true)}>
+                <Edit className="w-4 h-4 mr-2" /> Edit Business
+              </Button>
+              <Button variant="destructive" onClick={() => setIsDeleteBusinessOpen(true)}>
+                <Trash2 className="w-4 h-4 mr-2" /> Delete Business
+              </Button>
               {(business.mode === 'service' || business.mode === 'both') && (
                 <Button variant="outline" onClick={() => router.push(`/businesses/${business.id}/manage-services`)}>
                   Manage Services
@@ -775,6 +826,30 @@ export function BusinessDetailScreen({
           </TabsContent>
         </div>
       </Tabs>
+
+      <CreateBusinessDialog
+        open={isEditBusinessOpen}
+        onOpenChange={setIsEditBusinessOpen}
+        businessToEdit={business}
+        onCreated={onBusinessUpdated}
+      />
+
+      <AlertDialog open={isDeleteBusinessOpen} onOpenChange={setIsDeleteBusinessOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {business.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The business will be removed from customer listings. Its bookings, reviews, and business records will be preserved.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingBusiness}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteBusiness} disabled={isDeletingBusiness}>
+              {isDeletingBusiness ? "Deleting..." : "Delete Business"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

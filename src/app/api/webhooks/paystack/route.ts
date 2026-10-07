@@ -7,6 +7,7 @@ import { emailTemplates } from '@/lib/email-templates';
 import { PaystackService } from '@/lib/paystack-service';
 import { TicketService } from '@/lib/ticket-service';
 import { sendPushNotification } from '@/lib/server-push-notification';
+import { notifyCatalogItemOutOfStock } from '@/lib/server-notifications';
 
 /**
  * POST /api/webhooks/paystack
@@ -130,7 +131,7 @@ export async function POST(request: NextRequest) {
           try {
             const { data: catItem } = await supabaseAdmin
               .from('catalog_items')
-              .select('id, quantity, in_stock')
+              .select('id, business_id, title, quantity, in_stock')
               .eq('id', txRow.item_id)
               .maybeSingle();
 
@@ -147,6 +148,13 @@ export async function POST(request: NextRequest) {
                   updated_at: new Date().toISOString(),
                 })
                 .eq('id', txRow.item_id);
+              if (currentQty > 0 && newQty === 0) {
+                await notifyCatalogItemOutOfStock(supabaseAdmin, {
+                  itemId: catItem.id,
+                  businessId: catItem.business_id,
+                  itemTitle: catItem.title,
+                });
+              }
             } else {
               await supabaseAdmin
                 .from('catalog_items')

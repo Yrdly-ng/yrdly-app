@@ -256,6 +256,11 @@ export default function CreatePostPage() {
 
       if (insertErr) throw insertErr;
 
+      if (newPost) {
+        const { NotificationTriggers } = await import('@/lib/notification-triggers');
+        await NotificationTriggers.onMentionsInContent(user.id, newPost.id, trimmedText);
+      }
+
       if (modStatus === "pending" && newPost) {
         await supabase.from("moderation_queue").insert({
           content_id: newPost.id,

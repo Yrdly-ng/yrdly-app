@@ -24,6 +24,7 @@ export default function BusinessChatPage() {
           .from('businesses')
           .select('*')
           .eq('id', businessId)
+          .eq('is_active', true)
           .single();
 
         if (error) {

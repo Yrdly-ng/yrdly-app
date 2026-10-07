@@ -42,6 +42,7 @@ export function BusinessHub({ searchQuery = '' }: { searchQuery?: string }) {
       let q = supabase
         .from('businesses')
         .select('*')
+        .eq('is_active', true)
         .order('created_at', { ascending: false });
 
       const { data, error } = await q;

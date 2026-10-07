@@ -335,7 +335,8 @@ export function MarketplaceChatLayout({
             buyer.uid,
             user.id,
             selectedChat.id,
-            newMessage.trim() || (imageUrl ? "📷 Photo" : "")
+            newMessage.trim() || (imageUrl ? "📷 Photo" : ""),
+            'marketplace_message'
           );
         } catch (error) {
           console.error("Error triggering notification:", error);
@@ -654,4 +655,3 @@ export function MarketplaceChatLayout({
     </div>
   );
 }
-

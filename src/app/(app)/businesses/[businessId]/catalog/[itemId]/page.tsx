@@ -25,6 +25,7 @@ export default function CatalogItemPage() {
           .from('businesses')
           .select('*')
           .eq('id', businessId)
+          .eq('is_active', true)
           .single();
 
         if (businessError) {

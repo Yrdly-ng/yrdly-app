@@ -14,6 +14,10 @@
     {
       "path": "/api/cron/unread-notifications",
       "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/cron/event-reminders",
+      "schedule": "0 * * * *"
     }
   ]
 }
