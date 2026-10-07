@@ -19,6 +19,7 @@ import {
   Users,
   Clock,
   RefreshCw,
+  XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -70,6 +71,29 @@ export default function ManageEventPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [accessDenied, setAccessDenied] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelling, setCancelling] = useState(false);
+
+  const handleCancelEvent = async () => {
+    if (!id) return;
+    setCancelling(true);
+    try {
+      const res = await fetch("/api/events/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ eventId: id, reason: cancelReason }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to cancel event");
+      setCancelModalOpen(false);
+      fetchData();
+    } catch (err: any) {
+      alert(err.message || "Failed to cancel event");
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   const fetchData = useCallback(async () => {
     if (!id || !user) return;
@@ -254,6 +278,22 @@ export default function ManageEventPage() {
               </div>
             </div>
           </div>
+
+          {event.status !== "CANCELLED" ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCancelModalOpen(true)}
+              className="rounded-full border-destructive/40 text-destructive hover:bg-destructive/10 text-xs gap-1.5 font-bold shrink-0"
+            >
+              <XCircle className="w-4 h-4" />
+              Cancel Event
+            </Button>
+          ) : (
+            <span className="px-3 py-1 rounded-full text-xs font-bold bg-destructive/10 text-destructive border border-destructive/30">
+              CANCELLED
+            </span>
+          )}
         </div>
 
         {/* 3 KPI Metrics Cards */}
@@ -368,6 +408,53 @@ export default function ManageEventPage() {
           )}
         </div>
       </div>
+
+      {/* Cancel Event Confirmation Modal */}
+      {cancelModalOpen && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-3xl p-6 max-w-md w-full space-y-4 shadow-xl">
+            <div className="flex items-center gap-3 text-destructive">
+              <XCircle className="w-6 h-6 shrink-0" />
+              <h3 className="text-lg font-bold font-sans">Cancel Event</h3>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Are you sure you want to cancel <strong className="text-foreground">{event?.title}</strong>?
+              This will notify attendees, stop ticket purchases, and mark existing tickets as cancelled.
+            </p>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted-foreground">Reason for Cancellation (Optional)</label>
+              <Input
+                placeholder="e.g. Unexpected weather, scheduling conflict..."
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                className="rounded-xl text-xs"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setCancelModalOpen(false)}
+                disabled={cancelling}
+                className="rounded-full text-xs"
+              >
+                Go Back
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleCancelEvent}
+                disabled={cancelling}
+                className="rounded-full text-xs gap-1.5 font-bold"
+              >
+                {cancelling ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Yes, Cancel Event"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
