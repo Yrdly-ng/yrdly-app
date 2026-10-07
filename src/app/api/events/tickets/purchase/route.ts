@@ -25,6 +25,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
     }
 
+    const { isUserSuspendedOrBanned } = await import('@/lib/user-suspension');
+    const { suspended: buyerSuspended } = await isUserSuspendedOrBanned(user.id);
+    if (buyerSuspended) {
+      return NextResponse.json(
+        { error: 'Your account is suspended or banned. You cannot perform transactions.' },
+        { status: 403 }
+      );
+    }
+
     const { event_id, tier_id, attendee_name, attendee_email, attendee_phone, callbackUrl, quantity: rawQuantity } = await request.json();
     const quantity = Math.max(1, parseInt(rawQuantity || '1', 10));
 

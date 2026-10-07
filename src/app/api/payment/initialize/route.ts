@@ -117,6 +117,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const { isUserSuspendedOrBanned } = await import('@/lib/user-suspension');
+    const { suspended: buyerSuspended } = await isUserSuspendedOrBanned(buyerId);
+    if (buyerSuspended) {
+      return NextResponse.json(
+        { error: "Your account is suspended or banned. You cannot perform transactions." },
+        { status: 403 }
+      );
+    }
+
     if (buyerId === sellerId) {
       return NextResponse.json(
         { error: "You cannot buy your own item" },

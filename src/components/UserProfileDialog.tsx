@@ -42,10 +42,17 @@ interface UserProfileDialogProps {
 }
 
 export function UserProfileDialog({ user: profileUser, open, onOpenChange }: UserProfileDialogProps) {
-    const { user: currentUser } = useAuth();
+    const { user: currentUser, profile: currentUserProfile } = useAuth();
+    const isAdmin = Boolean((currentUserProfile as any)?.is_admin);
     const { toast } = useToast();
     const router = useRouter();
     const isDesktop = useMediaQuery("(min-width: 768px)");
+
+    const [adminModalOpen, setAdminModalOpen] = useState(false);
+    const [adminAction, setAdminAction] = useState<'suspend' | 'ban' | 'unsuspend'>('suspend');
+    const [adminReason, setAdminReason] = useState('');
+    const [adminLoading, setAdminLoading] = useState(false);
+    const [userStatus, setUserStatus] = useState<string>((profileUser as any)?.status || 'active');
     
     // Ensure we only trigger the notification once per open session
     const hasTriggeredViewRef = reactUseRef<boolean>(false);
@@ -57,6 +64,38 @@ export function UserProfileDialog({ user: profileUser, open, onOpenChange }: Use
     // ── Block state ──
     const [isBlocked, setIsBlocked] = useState(false);
     const [reviews, setReviews] = useState<any[]>([]);
+
+    const handleAdminSuspendAction = async () => {
+        if (!profileUser?.id) return;
+        setAdminLoading(true);
+        try {
+            const res = await fetch('/api/admin/users/suspend', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    targetUserId: profileUser.id,
+                    action: adminAction,
+                    reason: adminReason,
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Failed to perform admin action');
+            toast({
+                title: 'User Status Updated',
+                description: `User ${profileUser.name} has been ${adminAction}ed.`,
+            });
+            setUserStatus(adminAction === 'unsuspend' ? 'active' : adminAction);
+            setAdminModalOpen(false);
+        } catch (err: any) {
+            toast({
+                title: 'Action Failed',
+                description: err.message || 'Failed to update status',
+                variant: 'destructive',
+            });
+        } finally {
+            setAdminLoading(false);
+        }
+    };
 
     useEffect(() => {
         if (!open || !currentUser || !profileUser) return;
@@ -272,6 +311,31 @@ export function UserProfileDialog({ user: profileUser, open, onOpenChange }: Use
                                                     <ShieldBan className="mr-2 h-4 w-4" /> {isBlocked ? "Unblock" : "Block"} User
                                                 </DropdownMenuItem>
                                             </AlertDialogTrigger>
+                                            {isAdmin && (
+                                                <>
+                                                    <DropdownMenuItem
+                                                        onSelect={() => {
+                                                            setAdminAction(userStatus === 'suspended' || userStatus === 'banned' ? 'unsuspend' : 'suspend');
+                                                            setAdminModalOpen(true);
+                                                        }}
+                                                        className="text-amber-500 font-bold"
+                                                    >
+                                                        <ShieldBan className="mr-2 h-4 w-4 text-amber-500" />
+                                                        {userStatus === 'suspended' || userStatus === 'banned' ? 'Unsuspend / Lift Ban' : 'Suspend User (Admin)'}
+                                                    </DropdownMenuItem>
+                                                    {userStatus !== 'banned' && (
+                                                        <DropdownMenuItem
+                                                            onSelect={() => {
+                                                                setAdminAction('ban');
+                                                                setAdminModalOpen(true);
+                                                            }}
+                                                            className="text-destructive font-bold"
+                                                        >
+                                                            <ShieldBan className="mr-2 h-4 w-4 text-destructive" /> Ban User (Admin)
+                                                        </DropdownMenuItem>
+                                                    )}
+                                                </>
+                                            )}
                                         </DropdownMenuContent>
                                     </DropdownMenu>
 
@@ -405,16 +469,64 @@ export function UserProfileDialog({ user: profileUser, open, onOpenChange }: Use
     }
 
     return (
-        <Drawer open={open} onOpenChange={() => onOpenChange(false)}>
-            <DrawerContent className="p-0 border-none">
-                <DrawerHeader className="sr-only">
-                    <DrawerTitle>{profileUser?.name ? `Profile of ${profileUser.name}` : "User Profile"}</DrawerTitle>
-                    <DrawerDescription>View user profile details.</DrawerDescription>
-                </DrawerHeader>
-                <div className="overflow-y-auto max-h-[85vh] pb-8">
-                    <ProfileContent />
-                </div>
-            </DrawerContent>
-        </Drawer>
+        <>
+            <Drawer open={open} onOpenChange={() => onOpenChange(false)}>
+                <DrawerContent className="p-0 border-none">
+                    <DrawerHeader className="sr-only">
+                        <DrawerTitle>{profileUser?.name ? `Profile of ${profileUser.name}` : "User Profile"}</DrawerTitle>
+                        <DrawerDescription>View user profile details.</DrawerDescription>
+                    </DrawerHeader>
+                    <div className="overflow-y-auto max-h-[85vh] pb-8">
+                        <ProfileContent />
+                    </div>
+                </DrawerContent>
+            </Drawer>
+
+            {/* Admin Suspend / Ban Confirmation Dialog */}
+            {adminModalOpen && (
+                <Dialog open={adminModalOpen} onOpenChange={setAdminModalOpen}>
+                    <DialogContent className="sm:max-w-md bg-card border-border">
+                        <DialogHeader>
+                            <DialogTitle className="text-lg font-bold font-sans flex items-center gap-2 text-destructive">
+                                <ShieldBan className="w-5 h-5" />
+                                {adminAction === 'suspend' ? 'Suspend User Account' : adminAction === 'ban' ? 'Ban User Account' : 'Lift Suspension'}
+                            </DialogTitle>
+                            <DialogDescription className="text-xs text-muted-foreground pt-1">
+                                {adminAction === 'unsuspend'
+                                    ? `Reactivate ${profileUser?.name}'s account and allow login/transactions.`
+                                    : `Prevent ${profileUser?.name} from logging in or making transactions.`}
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        {adminAction !== 'unsuspend' && (
+                            <div className="space-y-2 py-2">
+                                <label className="text-xs font-semibold text-muted-foreground">Reason for {adminAction}</label>
+                                <textarea
+                                    value={adminReason}
+                                    onChange={(e) => setAdminReason(e.target.value)}
+                                    placeholder="e.g. Terms violation, fraudulent transactions, spam..."
+                                    className="w-full h-20 p-2.5 rounded-xl bg-muted border border-border text-xs focus:outline-none"
+                                />
+                            </div>
+                        )}
+
+                        <div className="flex justify-end gap-2 pt-3">
+                            <Button variant="ghost" size="sm" onClick={() => setAdminModalOpen(false)} disabled={adminLoading}>
+                                Cancel
+                            </Button>
+                            <Button
+                                variant={adminAction === 'unsuspend' ? 'default' : 'destructive'}
+                                size="sm"
+                                onClick={handleAdminSuspendAction}
+                                disabled={adminLoading}
+                                className="font-bold"
+                            >
+                                {adminLoading ? 'Processing...' : adminAction === 'unsuspend' ? 'Reactivate Account' : `Confirm ${adminAction.toUpperCase()}`}
+                            </Button>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+            )}
+        </>
     );
 }

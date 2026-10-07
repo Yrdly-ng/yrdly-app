@@ -103,6 +103,22 @@ export class AuthService {
 
       if (error) throw error;
 
+      if (data.user) {
+        const { data: profile } = await supabase
+          .from('users')
+          .select('is_suspended, is_banned, status, suspension_reason')
+          .eq('id', data.user.id)
+          .maybeSingle();
+
+        if (profile && (profile.is_suspended || profile.is_banned || profile.status === 'suspended' || profile.status === 'banned')) {
+          await supabase.auth.signOut();
+          return {
+            user: null,
+            error: new Error('Your account has been suspended or banned. You cannot log in or transact.'),
+          };
+        }
+      }
+
       return { user: data.user, error: null };
     } catch (error) {
       console.error('Sign in error:', error);
