@@ -37,6 +37,10 @@ export function openCrispChat() {
 export function CrispChat() {
   const { user, profile } = useAuth();
   const previousUserId = useRef<string | null>(null);
+  const activeUserId = useRef<string | null>(user?.id ?? null);
+  const activeEmail = useRef<string | null>(user?.email ?? null);
+  activeUserId.current = user?.id ?? null;
+  activeEmail.current = user?.email ?? null;
 
   useEffect(() => {
     if (!websiteId) {
@@ -74,7 +78,6 @@ export function CrispChat() {
     const currentProfile = profile?.id === user.id ? profile : null;
     const nickname = currentProfile?.name?.trim() || currentProfile?.username?.trim();
 
-    if (user.email) crisp.push(['set', 'user:email', [user.email]]);
     if (nickname) crisp.push(['set', 'user:nickname', [nickname]]);
 
     const sessionData: [string, string | boolean][] = [['user_id', user.id]];
@@ -97,6 +100,40 @@ export function CrispChat() {
 
     crisp.push(['set', 'session:data', [sessionData]]);
   }, [user, profile]);
+
+  useEffect(() => {
+    if (!websiteId || !user?.id || !user.email) return;
+
+    const userId = user.id;
+    const requestedEmail = user.email;
+    let isCurrentRequest = true;
+
+    const crisp = getCrispQueue();
+    crisp.push(['set', 'user:email', [requestedEmail]]);
+
+    fetch('/api/crisp/identity', { cache: 'no-store' })
+      .then(async (response) => {
+        if (!response.ok) throw new Error('Identity signature unavailable');
+        return response.json() as Promise<{ email?: string; signature?: string }>;
+      })
+      .then(({ email, signature }) => {
+        if (
+          !isCurrentRequest ||
+          activeUserId.current !== userId ||
+          activeEmail.current !== requestedEmail ||
+          !email ||
+          !signature
+        ) return;
+        getCrispQueue().push(['set', 'user:email', [email, signature]]);
+      })
+      .catch(() => {
+        // The unsigned email was already set above and remains the fallback.
+      });
+
+    return () => {
+      isCurrentRequest = false;
+    };
+  }, [user?.id, user?.email]);
 
   if (!websiteId) return null;
 

@@ -204,3 +204,35 @@ EXECUTE FUNCTION public.handle_user_nin_protection();
 -- 6. Reload PostgREST schema cache
 NOTIFY pgrst, 'reload schema';
 ```
+
+---
+
+# Crisp Live Chat — Current Task
+
+## Pre-task status
+
+`git status --short` in `yrdly-app/` was empty before this task.
+
+## Scope and constraints
+
+- Use Crisp's official web script through `next/script` with `strategy="lazyOnload"`; do not install a package or edit package manifests/lockfiles.
+- Implement only the Crisp client component, root layout/provider file, one existing support entry-point file, and a CSP config file only if current policy blocks Crisp.
+- Read user identity from the existing Supabase client auth context. Send email, nickname from `name` then `username`, `user_id`, `phone_verified`, and existing area fields only. Never use `legal_name`, phone, coordinates, tokens, or credentials.
+- Keep Crisp's default bubble hidden; expose an explicit open-chat helper/button, hide the bubble after close, and reset the session without reloading only after an authenticated user signs out or changes IDs.
+- Preserve all files that were already changed at task start. No commit, push, deployment, or build.
+
+## Phase 0 / Phase 1
+
+Phase 0 confirmed that this is an App Router application with `src/app/layout.tsx` as the root layout. It mounts `AuthProvider` around the route children and global client components. The client auth context is `useAuth` from `src/hooks/use-supabase-auth.tsx`; profile shape is `AuthUser` in `src/lib/auth-service.ts`. Sign-out is `signOut` in the auth context at `src/hooks/use-supabase-auth.tsx`.
+
+The selected support entry point is `src/app/(app)/settings/help/page.tsx`, beside the existing Email Support action. The inspected `next.config.mjs` headers only set JSON content types for two well-known files; `middleware.ts` and `vercel.json` do not set a CSP. No CSP change is needed.
+
+Official docs reviewed:
+
+- Web SDK install snippet and script URL: https://docs.crisp.chat/guides/chatbox-sdks/web-sdk/language-customization/
+- `$crisp` API methods for user identity, session data, chat open/show/hide, `chat:closed`, and `session:reset`: https://docs.crisp.chat/guides/chatbox-sdks/web-sdk/dollar-crisp/
+- Crisp domain allowlist/CSP guidance: https://docs.crisp.chat/guides/others/whitelisting-our-systems/crisp-domain-names/
+
+Phase 1 is implemented in `src/components/CrispChat.tsx`, `src/app/layout.tsx`, and `src/app/(app)/settings/help/page.tsx`. The integration uses `next/script` with `lazyOnload`, keeps the bubble hidden until the support action opens it, identifies only the approved fields from a profile matching the auth user ID, and queues the documented non-reloading session reset only after a previous signed-in ID is cleared or replaced. Email Support remains intact. No CSP or package files were changed.
+
+Validation: `./node_modules/.bin/tsc --noEmit` completed with no output and exit code 0. Final scoped diff and Git status were reviewed; no commit, push, install, build, or deployment was run.
