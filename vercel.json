@@ -17,7 +17,7 @@
     },
     {
       "path": "/api/cron/event-reminders",
-      "schedule": "0 * * * *"
+      "schedule": "0 9 * * *"
     }
   ]
 }

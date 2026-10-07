@@ -9,15 +9,16 @@ export async function GET(request: Request) {
   }
 
   const now = new Date();
-  const windowStart = new Date(now.getTime() - 60 * 60 * 1000);
-  const windowEnd = new Date(now.getTime() + 60 * 60 * 1000);
+  // Hobby cron runs once daily and can be delayed by up to 59 minutes.
+  // Look ahead 25 hours so each event is still picked up around a day ahead.
+  const windowEnd = new Date(now.getTime() + 25 * 60 * 60 * 1000);
 
   try {
     const { data: events, error: eventError } = await supabaseAdmin
       .from('events')
       .select('id, title, start_time')
       .in('status', ['PUBLISHED', 'published'])
-      .gte('start_time', windowStart.toISOString())
+      .gte('start_time', now.toISOString())
       .lte('start_time', windowEnd.toISOString());
     if (eventError) throw eventError;
     if (!events?.length) return NextResponse.json({ success: true, remindersSent: 0 });
@@ -53,7 +54,7 @@ export async function GET(request: Request) {
       if (!event || alreadySent.has(`${userId}:${eventId}`)) continue;
 
       const title = 'Event starting soon';
-      const message = `"${event.title}" starts within the next hour.`;
+      const message = `"${event.title}" is coming up soon. Check the event details.`;
       const data = { eventId, eventTitle: event.title, startTime: event.start_time };
       const { data: notification, error } = await supabaseAdmin.rpc('create_notification', {
         p_user_id: userId,
