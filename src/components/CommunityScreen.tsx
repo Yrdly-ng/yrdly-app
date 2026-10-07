@@ -44,10 +44,18 @@ function UserActionButton({
           className="rounded-full px-5 py-1.5 text-xs font-extrabold transition-all active:scale-95 disabled:opacity-50 font-yrdly-display border border-[var(--primary)] text-[var(--primary)] hover:bg-[var(--primary)]/10"
           disabled={isLoading}
         >
-          {isLoading ? "..." : "Follow"}
+          {isLoading ? "..." : "Add Friend"}
         </button>
       );
     case "request_sent":
+      return (
+        <button
+          className="rounded-full px-5 py-1.5 text-xs font-extrabold font-yrdly-display bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] text-foreground"
+          disabled
+        >
+          Pending
+        </button>
+      );
     case "friends":
       return (
         <button
@@ -55,7 +63,7 @@ function UserActionButton({
           className="rounded-full px-5 py-1.5 text-xs font-extrabold transition-all active:scale-95 disabled:opacity-50 font-yrdly-display bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] text-foreground hover:border-red-500/40 hover:text-red-500 flex items-center gap-1"
           disabled={isLoading}
         >
-          {isLoading ? "..." : "✓ Following"}
+          {isLoading ? "..." : "✓ Friends"}
         </button>
       );
     case "request_received":
@@ -202,6 +210,28 @@ export function CommunityScreen({ className }: { className?: string }) {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const channel = supabase
+      .channel(`community-requests:${currentUser.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "followers",
+          filter: `following_id=eq.${currentUser.id}`,
+        },
+        () => fetchData()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentUser, fetchData]);
 
   const handleMessageFriend = async (friendId: string) => {
     if (!currentUser) return;

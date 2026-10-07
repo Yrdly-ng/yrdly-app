@@ -196,7 +196,7 @@ export function UserProfileDialog({ user: profileUser, open, onOpenChange }: Use
                 return (
                     <div className="flex gap-2 w-full">
                         <Button disabled className="rounded-lg flex-1">
-                            <Clock className="mr-2 h-4 w-4" /> Request Sent
+                            <Clock className="mr-2 h-4 w-4" /> Pending
                         </Button>
                         <Button
                             variant="outline"

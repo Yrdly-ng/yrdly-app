@@ -6,7 +6,7 @@ import { AuthService } from "@/lib/auth-service";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { supabase } from "@/lib/supabase";
 import { User, AtSign, Mail, Lock, Eye, EyeOff, Loader2, AlertCircle } from "lucide-react";
-import posthog from "@/lib/posthog";
+import { ErrorMessageFormatter } from "@/lib/error-messages";
 
 const isPasswordStrong = (pwd: string) =>
   pwd.length >= 8 && /[A-Z]/.test(pwd) && /[0-9]/.test(pwd) && /[^A-Za-z0-9]/.test(pwd);
@@ -58,6 +58,8 @@ function LoginFormPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [lockedUntil, setLockedUntil] = useState<number | null>(null);
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -77,6 +79,13 @@ function LoginFormPage() {
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (lockedUntil && Date.now() < lockedUntil) {
+      const secondsLeft = Math.ceil((lockedUntil - Date.now()) / 1000);
+      setError(`Too many attempts. You have been rate-limited for security reasons. Please wait ${secondsLeft}s before trying again.`);
+      return;
+    }
+
     if (!email || !password || (isSignUp && !name)) {
       setError("Please fill in all required fields");
       return;
@@ -94,9 +103,27 @@ function LoginFormPage() {
       if (!isSignUp) {
         const { user: signedUser, error: err } = await signIn(email, password);
         if (err) {
+          const newAttempts = failedAttempts + 1;
+          setFailedAttempts(newAttempts);
+
+          const errMsg = (err.message || "").toLowerCase();
+          const isRateLimited =
+            newAttempts >= 5 ||
+            errMsg.includes("rate limit") ||
+            errMsg.includes("rate_limit") ||
+            errMsg.includes("too many") ||
+            errMsg.includes("429") ||
+            errMsg.includes("security_purposes");
+
+          if (isRateLimited) {
+            setLockedUntil(Date.now() + 60000);
+            setError("Too many attempts. You have been rate-limited for security reasons. Please wait a few minutes before trying again.");
+            return;
+          }
+
           if (
-            err.message.toLowerCase().includes("email not confirmed") ||
-            err.message.toLowerCase().includes("unconfirmed")
+            errMsg.includes("email not confirmed") ||
+            errMsg.includes("unconfirmed")
           ) {
             try {
               await supabase.auth.resend({ type: "signup", email });
@@ -104,8 +131,10 @@ function LoginFormPage() {
             router.push(`/onboarding/verify-email?email=${encodeURIComponent(email)}&next=${encodeURIComponent(nextPath)}`);
             return;
           }
-          setError(err.message);
+          setError(ErrorMessageFormatter.formatAuthError(err.message || "Sign in failed"));
         } else if (signedUser) {
+          setFailedAttempts(0);
+          setLockedUntil(null);
           posthog.identify(signedUser.id, { email: signedUser.email });
           posthog.capture("user_signed_in", { method: "email" });
           router.push(nextPath);
@@ -117,6 +146,13 @@ function LoginFormPage() {
           if (
             errMsg.includes("already registered") ||
             errMsg.includes("already in use") ||
+            errMsg.includes("already exists") ||
+            errMsg.includes("user_already_exists")
+          ) {
+            setError("An account with this email address already exists. Please log in instead.");
+            return;
+          }
+          if (
             errMsg.includes("confirmation email") ||
             errMsg.includes("unexpected_failure") ||
             errMsg.includes("error sending")

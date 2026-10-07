@@ -13,26 +13,28 @@ export class NotificationTriggers {
   static async onFriendRequestSent(fromUserId: string, toUserId: string) {
     try {
       // Get sender's name
-      const { data: senderData } = await supabase
+      const { data: senderData, error } = await supabase
         .from('users')
         .select('name')
         .eq('id', fromUserId)
         .single();
 
-      if (senderData) {
-        await NotificationService.createNotification({
-          userId: toUserId,
-          type: 'friend_request',
-          senderId: fromUserId,
-          relatedId: fromUserId,
-          relatedType: 'user',
-          title: 'New Friend Request',
-          message: `New friend request from ${senderData.name}`,
-          data: { fromUserName: senderData.name }
-        });
-      }
+      if (error) throw error;
+      if (!senderData) throw new Error('Could not load the friend request sender.');
+
+      await NotificationService.createNotification({
+        userId: toUserId,
+        type: 'friend_request',
+        senderId: fromUserId,
+        relatedId: fromUserId,
+        relatedType: 'user',
+        title: 'New Friend Request',
+        message: `New friend request from ${senderData.name}`,
+        data: { fromUserName: senderData.name }
+      });
     } catch (error) {
       console.error('Error creating friend request notification:', error);
+      throw error;
     }
   }
 
@@ -637,4 +639,3 @@ export class NotificationTriggers {
     }
   }
 }
-

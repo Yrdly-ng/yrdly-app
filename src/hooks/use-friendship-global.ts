@@ -54,9 +54,10 @@ export function useFriendshipGlobal(targetUserId: string | undefined): UseFriend
         .maybeSingle();
 
       if (existing) {
+        await refreshUserStatus(targetUserId);
         toast({
-          title: "Already following",
-          description: "You have already sent a request or followed this user.",
+          title: "Request pending",
+          description: "You have already sent a friend request.",
         });
         return;
       }
@@ -83,17 +84,33 @@ export function useFriendshipGlobal(targetUserId: string | undefined): UseFriend
 
       await refreshUserStatus(targetUserId);
 
+      const { NotificationTriggers } = await import("@/lib/notification-triggers");
+      try {
+        await NotificationTriggers.onFriendRequestSent(user.id, targetUserId);
+      } catch (notificationError) {
+        // Keep the request state and notification in sync if delivery cannot be recorded.
+        const { error: rollbackError } = await supabase
+          .from("followers")
+          .delete()
+          .eq("follower_id", user.id)
+          .eq("following_id", targetUserId);
+        if (rollbackError) console.error("Could not roll back friend request:", rollbackError);
+
+        await supabase
+          .from("friend_requests")
+          .delete()
+          .eq("from_user_id", user.id)
+          .eq("to_user_id", targetUserId)
+          .eq("status", "pending");
+
+        await refreshUserStatus(targetUserId);
+        throw notificationError;
+      }
+
       toast({
         title: "Success",
         description: "Friend request sent!",
       });
-
-      try {
-        const { NotificationTriggers } = await import("@/lib/notification-triggers");
-        await NotificationTriggers.onFriendRequestSent(user.id, targetUserId);
-      } catch {
-        // Non-fatal
-      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Could not send friend request";
       setError(errorMessage);

@@ -57,8 +57,20 @@ export class ErrorMessageFormatter {
       return 'Network error. Please check your internet connection and try again.';
     }
     
-    if (errorLower.includes('rate limit') || errorLower.includes('too many')) {
-      return 'Too many attempts. Please wait a few minutes before trying again.';
+    if (
+      errorLower.includes('rate limit') ||
+      errorLower.includes('rate_limit') ||
+      errorLower.includes('too many') ||
+      errorLower.includes('too_many') ||
+      errorLower.includes('over_email_send_rate_limit') ||
+      errorLower.includes('over_sms_send_rate_limit') ||
+      errorLower.includes('security_purposes') ||
+      errorLower.includes('security purposes') ||
+      errorLower.includes('429') ||
+      errorLower.includes('attempts') ||
+      errorLower.includes('locked')
+    ) {
+      return 'Too many attempts. You have been rate-limited for security reasons. Please wait a few minutes before trying again.';
     }
     
     if (errorLower.includes('timeout')) {

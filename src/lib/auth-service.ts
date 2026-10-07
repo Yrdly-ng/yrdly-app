@@ -68,7 +68,22 @@ export class AuthService {
         if (data?.user) {
           return { user: data.user, error: null };
         }
+        const errMsg = (error.message || "").toLowerCase();
+        if (errMsg.includes("already registered") || errMsg.includes("already in use") || errMsg.includes("user_already_exists")) {
+          return {
+            user: null,
+            error: new Error("An account with this email address already exists. Please log in instead."),
+          };
+        }
         throw error;
+      }
+
+      // Supabase email enumeration protection returns empty identities array for existing users
+      if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+        return {
+          user: null,
+          error: new Error("An account with this email address already exists. Please log in instead."),
+        };
       }
 
       return { user: data.user, error: null };
