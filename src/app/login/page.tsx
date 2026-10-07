@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/use-supabase-auth";
 import { supabase } from "@/lib/supabase";
 import { User, AtSign, Mail, Lock, Eye, EyeOff, Loader2, AlertCircle } from "lucide-react";
 import { ErrorMessageFormatter } from "@/lib/error-messages";
+import posthog from "posthog-js";
 
 const isPasswordStrong = (pwd: string) =>
   pwd.length >= 8 && /[A-Z]/.test(pwd) && /[0-9]/.test(pwd) && /[^A-Za-z0-9]/.test(pwd);
