@@ -7,7 +7,6 @@ import { useAuth } from "@/hooks/use-supabase-auth";
 import { supabase } from "@/lib/supabase";
 import { User, AtSign, Mail, Lock, Eye, EyeOff, Loader2, AlertCircle } from "lucide-react";
 import { ErrorMessageFormatter } from "@/lib/error-messages";
-import posthog from "posthog-js";
 
 const isPasswordStrong = (pwd: string) =>
   pwd.length >= 8 && /[A-Z]/.test(pwd) && /[0-9]/.test(pwd) && /[^A-Za-z0-9]/.test(pwd);
@@ -136,8 +135,6 @@ function LoginFormPage() {
         } else if (signedUser) {
           setFailedAttempts(0);
           setLockedUntil(null);
-          posthog.identify(signedUser.id, { email: signedUser.email });
-          posthog.capture("user_signed_in", { method: "email" });
           router.push(nextPath);
         }
       } else {
@@ -166,8 +163,6 @@ function LoginFormPage() {
           }
           setError(err.message || "An error occurred during sign up.");
         } else if (newUser) {
-          posthog.identify(newUser.id, { email: newUser.email, name });
-          posthog.capture("user_signed_up", { method: "email" });
           if (newUser.email_confirmed_at) {
             router.push(`/onboarding/verify-phone?next=${encodeURIComponent(nextPath)}`);
           } else {

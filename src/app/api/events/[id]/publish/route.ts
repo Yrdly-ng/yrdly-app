@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from "@/lib/supabase-server";
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { createClient } from '@supabase/supabase-js';
-import { getPostHogClient } from '@/lib/posthog-server';
 
 /**
  * POST /api/events/[id]/publish
@@ -30,13 +29,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       .eq('id', id);
 
     if (error) return NextResponse.json({ error: 'Failed to publish' }, { status: 500 });
-
-    const posthog = getPostHogClient();
-    posthog.capture({
-      distinctId: user.id,
-      event: 'event_published',
-      properties: { event_id: id },
-    });
 
     return NextResponse.json({ success: true });
   } catch (e) {

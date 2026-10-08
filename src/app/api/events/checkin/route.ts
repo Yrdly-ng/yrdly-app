@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getAuthenticatedUser } from "@/lib/supabase-server";
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { getPostHogClient } from '@/lib/posthog-server';
 
 /**
  * POST /api/events/checkin
@@ -63,17 +62,6 @@ export async function POST(request: NextRequest) {
       .select('id');
     if (updateError) throw updateError;
     if (!updated?.length) return NextResponse.json({ valid: false, error: 'TICKET_CHANGED', message: 'Ticket status changed; scan again' }, { status: 409 });
-
-    const posthog = getPostHogClient();
-    posthog.capture({
-      distinctId: user.id,
-      event: 'ticket_checked_in',
-      properties: {
-        event_id,
-        ticket_id: ticket.id,
-        tier_name: (ticket.tier as any)?.name,
-      },
-    });
 
     return NextResponse.json({
       valid: true,

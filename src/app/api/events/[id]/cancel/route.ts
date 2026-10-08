@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from "@/lib/supabase-server";
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { getPostHogClient } from '@/lib/posthog-server';
 import { isPaylukTicket } from '@/lib/ticket-payment-provider';
 import { requestPaystackTicketRefund } from '@/lib/ticket-refunds';
 import { sendPushNotification } from '@/lib/server-push-notification';
@@ -113,17 +112,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       .update({ status: 'CANCELLED', updated_at: new Date().toISOString() })
       .eq('id', id);
     if (cancelError) throw cancelError;
-
-    const posthog = getPostHogClient();
-    posthog.capture({
-      distinctId: user.id,
-      event: 'event_cancelled',
-      properties: {
-        event_id: id,
-        refunds_requested: refundsRequested,
-        refund_errors: errors.length,
-      },
-    });
 
     return NextResponse.json({
       success: true,

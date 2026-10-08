@@ -3,7 +3,6 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 import { DeliveryOption, PaymentMethod, EscrowStatus } from "@/types/escrow";
 import { MARKETPLACE_CONSTANTS } from "@/lib/constants";
 import { getAuthenticatedUser } from "@/lib/supabase-server";
-import { getPostHogClient } from "@/lib/posthog-server";
 import { PaylukService } from "@/lib/payluk-service";
 import { getPaylukCustomerId } from "@/lib/payluk-onboarding";
 
@@ -623,19 +622,6 @@ export async function POST(request: NextRequest) {
           .eq('id', itemId);
       }
     }
-
-    const posthog = getPostHogClient();
-    posthog.capture({
-      distinctId: user.id,
-      event: 'payment_initialized',
-      properties: {
-        transaction_id: transactionId,
-        item_id: itemId,
-        amount: totalAmount,
-        currency: MARKETPLACE_CONSTANTS.CURRENCY,
-        seller_id: sellerId,
-      },
-    });
 
     // Return initialized escrow transaction details
     return NextResponse.json({

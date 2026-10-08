@@ -4,7 +4,6 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { AuthService, AuthUser } from '@/lib/auth-service';
 import { supabase } from '@/lib/supabase';
-import posthog from '@/lib/posthog';
 
 
 interface AuthContextType {
@@ -44,10 +43,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           
           if (currentUser) {
             try {
-              if (currentUser.email) {
-                // Posthog handles identity tracking
-              }
-
               // First, try to get existing profile
               let userProfile = await AuthService.getUserProfile(currentUser.id);
               
@@ -142,15 +137,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(user);
 
         if (user) {
-          posthog.identify(user.id, {
-            email: user.email,
-            name: user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split('@')[0],
-          });
-
-          if (user.email) {
-            // Posthog handles identity tracking
-          }
-
           try {
             // First, try to get existing profile
             let userProfile = await AuthService.getUserProfile(user.id);
@@ -252,8 +238,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     setLoading(true);
     try {
-      posthog.capture('user_signed_out');
-      posthog.reset();
       const result = await AuthService.signOut();
       setUser(null);
       setProfile(null);

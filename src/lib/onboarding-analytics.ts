@@ -238,11 +238,6 @@ class OnboardingAnalytics {
       (window as any).mixpanel.track(event.event, event.properties);
     }
 
-    // PostHog
-    if (typeof window !== 'undefined' && (window as any).posthog) {
-      (window as any).posthog.capture(event.event, event.properties);
-    }
-
     // Custom analytics endpoint
     // To be implemented when custom analytics backend is ready
   }

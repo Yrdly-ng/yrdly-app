@@ -5,7 +5,6 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { EVENT_CONSTANTS } from '@/lib/constants';
 import { ResendEmailService } from '@/lib/resend-service';
 import QRCode from 'qrcode';
-import { getPostHogClient } from '@/lib/posthog-server';
 import { PaylukService } from '@/lib/payluk-service';
 import { PaystackService } from '@/lib/paystack-service';
 import { getPaylukCustomerId } from '@/lib/payluk-onboarding';
@@ -243,21 +242,6 @@ export async function POST(request: NextRequest) {
         console.error('[Tickets] Could not send free-ticket confirmation notification:', notificationError);
       }
 
-      const posthog = getPostHogClient();
-      posthog.capture({
-        distinctId: user.id,
-        event: 'ticket_purchased',
-        properties: {
-          ticket_id: insertedTickets[0].id,
-          event_id,
-          tier_id,
-          tier_name: tier.name,
-          quantity,
-          amount: 0,
-          is_free: true,
-        },
-      });
-
       return NextResponse.json({ success: true, free: true, ticket_id: insertedTickets[0].id, quantity });
     }
 
@@ -315,22 +299,6 @@ export async function POST(request: NextRequest) {
           details: paystackError?.message || 'Paystack API error',
         }, { status: 502 });
       }
-
-      const posthog = getPostHogClient();
-      posthog.capture({
-        distinctId: user.id,
-        event: 'ticket_purchased_initiated',
-        properties: {
-          event_id,
-          tier_id,
-          tier_name: tier.name,
-          quantity,
-          amount: totalAmount,
-          is_free: false,
-          tx_ref: txRef,
-          provider: 'paystack',
-        },
-      });
 
       return NextResponse.json({ success: true, payment_link: paymentLink, tx_ref: txRef, provider: 'paystack' });
     }
@@ -433,23 +401,6 @@ export async function POST(request: NextRequest) {
     const isLive = process.env.PAYLUK_SECRET_KEY?.startsWith('sk_live_');
     const paylukHost = isLive ? 'https://payluk.ng' : 'https://staging.api.payluk.ng';
     const paymentLink = `${paylukHost}/escrow/${paylukEscrow.paymentToken}`;
-
-    const posthog = getPostHogClient();
-    posthog.capture({
-      distinctId: user.id,
-      event: 'ticket_purchased_initiated',
-      properties: {
-        event_id,
-        tier_id,
-        tier_name: tier.name,
-        quantity,
-        amount: totalAmount,
-        is_free: false,
-        tx_ref: txRef,
-        payluk_escrow_id: paylukEscrow.id,
-        provider: 'payluk',
-      },
-    });
 
     return NextResponse.json({
       success: true,
