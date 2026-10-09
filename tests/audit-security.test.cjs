@@ -29,7 +29,7 @@ function load(file, mocks = {}) {
 
 function chain(result) {
   const query = {};
-  for (const method of ['select','eq','neq','is','in','or','limit','update','insert','single','maybeSingle','delete']) query[method] = () => query;
+  for (const method of ['select','eq','neq','is','in','or','limit','update','insert','single','maybeSingle','delete','order']) query[method] = () => query;
   query.then = (resolve, reject) => Promise.resolve(result).then(resolve, reject);
   return query;
 }
@@ -232,4 +232,48 @@ test('event creation removes incomplete event when tier save fails', async () =>
   const result = await POST(new Request('http://localhost', { method: 'POST', body: JSON.stringify({ title: 'Test', startTime: '2026-11-01', endTime: '2026-11-02', publish: true, ticketTiers: [{ name: 'Free', price: 0, capacity: 10 }] }) }));
   assert.equal(result.status, 500);
   assert.equal(removed, true);
+});
+
+
+test('checkout retry reconciles a funded prior escrow without cancelling or charging again', async () => {
+  let writes = 0;
+  const { POST } = load('src/app/api/payment/initialize/route.ts', {
+    '@/lib/supabase-server': { getAuthenticatedUser: async () => ({ data: { user: { id: 'buyer',email:'test@example.invalid' } } }) },
+    '@/lib/user-suspension': { isUserSuspendedOrBanned: async () => ({ suspended:false }) },
+    '@/lib/payluk-onboarding': {},
+    '@/lib/escrow-payment': { applyEscrowPayment: async id => { assert.equal(id,'prior');return true; } },
+    '@/lib/payment-reconciliation': { flagPayment: async () => {} },
+    '@/lib/payluk-service': { PaylukService: { verifyEscrow: async () => ({ status:'ONGOING',state:'OPENED' }),createEscrow: () => { throw Error('Must not charge twice'); } } },
+    '@/lib/supabase-admin': { supabaseAdmin: {
+      rpc: async name => { assert.equal(name,'consume_rate_limit');return { data:true }; },
+      from(table) {
+        const query = chain({ data: table === 'posts' ? { id:'item',user_id:'seller',price:1000,is_sold:false,category:'For Sale',moderation_status:'approved' }
+          : [{ id:'prior',buyer_id:'buyer',status:'pending',payluk_tx_ref:'token',payluk_escrow_id:'remote',total_amount:1030 }] });
+        query.update = () => { writes++;return query; };query.insert=query.update;
+        return query;
+      },
+    } },
+  });
+  const response = await POST(new Request('http://localhost',{ method:'POST',body:JSON.stringify({ itemId:'item',buyerId:'buyer',sellerId:'seller',price:1000 }) }));
+  assert.equal(response.status,200);
+  assert.equal((await response.json()).alreadyPaid,true);
+  assert.equal(writes,0);
+});
+
+test('late payment is held for reconciliation instead of reporting success', async () => {
+  const { applyEscrowPayment } = load('src/lib/escrow-payment.ts', {
+    './supabase-admin': { supabaseAdmin: { rpc: async () => ({ data:'review' }) } },
+    './payment-reconciliation': {},
+  });
+  await assert.rejects(applyEscrowPayment('cancelled','payluk','reference'),/reconciliation/);
+});
+
+test('payment write failure records a durable reconciliation flag before returning failure', async () => {
+  let flagged = false;
+  const { applyEscrowPayment } = load('src/lib/escrow-payment.ts', {
+    './supabase-admin': { supabaseAdmin: { rpc: async () => ({ error:{ code:'db-error' } }) } },
+    './payment-reconciliation': { flagPayment: async () => { flagged = true; } },
+  });
+  await assert.rejects(applyEscrowPayment('tx','payluk','reference'),/reconciliation/);
+  assert.equal(flagged,true);
 });

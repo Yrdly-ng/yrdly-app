@@ -1,3 +1,4 @@
+import { applyEscrowPayment } from '@/lib/escrow-payment';
 import { ESCROW_ALLOWED_FROM, paymentReferenceFilter } from '@/lib/payment-state';
 import { flagPayment } from '@/lib/payment-reconciliation';
 import { NextRequest, NextResponse } from 'next/server';
@@ -10,7 +11,6 @@ import { PaylukService } from '@/lib/payluk-service';
 import { handlePaylukWebhookEvent as handleBookingPaymentEvent } from '@/lib/booking-payments';
 import { PayoutService } from '@/lib/payout-service';
 import { sendPushNotification } from '@/lib/server-push-notification';
-import { notifyCatalogItemOutOfStock } from '@/lib/server-notifications';
 
 // ── Signature verification ───────────────────────────────────────────────────
 //
@@ -75,8 +75,7 @@ export async function POST(request: NextRequest) {
   const { event, data } = payload;
   console.log(`[PaylukWebhook] Received event: ${event} for escrow ${data?.id}`);
 
-  // Always ack quickly — heavy work below, but never let Payluk retry on our logic errors.
-  // We handle each event in-place (fast DB writes) so returning after processing is fine.
+  // Acknowledge only after durable financial effects or reconciliation flags commit.
 
   try {
     switch (event) {
@@ -115,7 +114,18 @@ export async function POST(request: NextRequest) {
       case 'payment.escrow.success':
       case 'escrow.paid':
       case 'escrow.opened': {
+        if (!['ONGOING','COMPLETED','CLAIMED'].includes((data.status || '').toUpperCase())) break;
         await handleEscrowOngoing(data);
+        break;
+      }
+
+      case 'payment.success': {
+        const payment = data as any;
+        if (payment.transactionType !== 'escrow' || payment.status !== 'success') break;
+        const id = payment.escrowDetails?.id;
+        if (!id) { await flagPayment('payluk', payment.reference || payment.id, null, 'missing_escrow_reference'); break; }
+        const verified = await PaylukService.verifyEscrow(id);
+        if (['ONGOING','COMPLETED','CLAIMED'].includes((verified.status || '').toUpperCase())) await handleEscrowOngoing(verified);
         break;
       }
 
@@ -148,7 +158,7 @@ export async function POST(request: NextRequest) {
 
 // ── Handlers ─────────────────────────────────────────────────────────────────
 
-async function findTransactionByPaylukData(data: PaylukEscrowData) {
+async function findTransactionByPaylukData(data: Pick<PaylukEscrowData, 'id' | 'paymentToken'>) {
   const targetId = data.id;
   const token = data.paymentToken;
 
@@ -162,7 +172,7 @@ async function findTransactionByPaylukData(data: PaylukEscrowData) {
     .maybeSingle();
 }
 
-async function handleEscrowOngoing(data: PaylukEscrowData) {
+async function handleEscrowOngoing(data: Pick<PaylukEscrowData, 'id' | 'paymentToken'>) {
   const { data: tx, error } = await findTransactionByPaylukData(data);
 
   if (error || !tx) {
@@ -171,92 +181,17 @@ async function handleEscrowOngoing(data: PaylukEscrowData) {
     return;
   }
 
-  // Idempotent: if already PAID, SHIPPED, DELIVERED, or COMPLETED, skip.
-  if (![...ESCROW_ALLOWED_FROM.paid].includes(tx.status as any)) {
-    if (tx.status === EscrowStatus.CANCELLED || tx.status === EscrowStatus.DISPUTED) await flagPayment('payluk', data.id, tx.id, 'late_success');
-    return;
-  }
-
-  // 1. Mark transaction as PAID
-  const { data: updatedTransaction, error: updateError } = await supabaseAdmin
-    .from('escrow_transactions')
-    .update({
-      status: EscrowStatus.PAID,
-      paid_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', tx.id)
-    .in('status', [...ESCROW_ALLOWED_FROM.paid])
-    .select('id')
-    .maybeSingle();
-
-  if (updateError) {
-    await flagPayment('payluk', data.id, tx.id, 'payment_database_error');
-    throw updateError;
-  }
-  if (!updatedTransaction) return;
-
-  console.log(`[PaylukWebhook] escrow.ongoing: tx ${tx.id} → PAID`);
-
-  // 2. Handle tickets or products
-  if (tx.item_type === 'ticket' || tx.metadata?.event_id) {
-    try {
-      await TicketService.processTicketPaymentFromTransaction(tx);
-      console.log(`[PaylukWebhook] Minted tickets for ticket escrow tx ${tx.id}`);
-    } catch (tktErr) {
-      console.error(`[PaylukWebhook] Error minting tickets for tx ${tx.id}:`, tktErr);
-    }
-  } else if (tx.item_id) {
-    if (tx.item_type === 'catalog_item') {
-      try {
-        const { data: catItem } = await supabaseAdmin
-          .from('catalog_items')
-          .select('id, business_id, title, quantity, in_stock')
-          .eq('id', tx.item_id)
-          .maybeSingle();
-
-        if (catItem) {
-          const currentQty = typeof catItem.quantity === 'number' ? catItem.quantity : 1;
-          const newQty = Math.max(0, currentQty - 1);
-          await supabaseAdmin
-            .from('catalog_items')
-            .update({
-              quantity: newQty,
-              in_stock: newQty > 0,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', tx.item_id);
-          if (currentQty > 0 && newQty === 0) {
-            await notifyCatalogItemOutOfStock(supabaseAdmin, {
-              itemId: catItem.id,
-              businessId: catItem.business_id,
-              itemTitle: catItem.title,
-            });
-          }
-          console.log(`[PaylukWebhook] Decremented catalog_items stock for ${tx.item_id} (new qty: ${newQty})`);
-        }
-      } catch (catErr) {
-        console.error(`[PaylukWebhook] Error updating catalog stock for ${tx.item_id}:`, catErr);
-      }
-    } else {
-      const { error: saleError } = await supabaseAdmin
-        .from('posts')
-        .update({
-          is_sold: true,
-          sold_to_user_id: tx.buyer_id,
-          sold_at: new Date().toISOString(),
-          transaction_id: tx.id,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', tx.item_id);
-
-      if (saleError) {
-        console.error(`[PaylukWebhook] Error marking post ${tx.item_id} as sold:`, saleError);
-      } else {
-        console.log(`[PaylukWebhook] Marked post ${tx.item_id} as sold to buyer ${tx.buyer_id}`);
-      }
+  const applied = await applyEscrowPayment(tx.id,'payluk',data.id);
+  // Ticket issuance is separately idempotent and must be retried after a crash.
+  if ((tx.item_type === 'ticket' || tx.metadata?.event_id) &&
+      (applied || ['paid','shipped','delivered','completed'].includes(tx.status))) {
+    try { await TicketService.processTicketPaymentFromTransaction(tx); }
+    catch (error) {
+      await flagPayment('payluk',data.id,tx.id,'ticket_fulfillment_failed');
+      throw error;
     }
   }
+  if (!applied) return;
 
   // 3. Notify seller
   try {
@@ -319,7 +254,8 @@ async function handleEscrowCompleted(data: PaylukEscrowData) {
   let { data: tx, error } = await findTransactionByPaylukData(data);
 
   if (error || !tx) {
-    console.warn(`[PaylukWebhook] escrow.completed: no marketplace transaction for escrow id=${data.id}`);
+    if (error) throw error;
+    await flagPayment('payluk',data.id,null,'unknown_completion');
     return;
   }
 
@@ -344,7 +280,7 @@ async function handleEscrowCompleted(data: PaylukEscrowData) {
   } else {
     console.log(`[PaylukWebhook] escrow.completed: tx ${tx.id} → COMPLETED`);
   }
-  if (!transitioned?.length) return;
+  if (!transitioned?.length) { await flagPayment('payluk',data.id,tx.id,'invalid_transition'); return; }
   await tryMarketplacePayout(tx);
 }
 
@@ -383,7 +319,8 @@ async function handleEscrowClaimed(data: PaylukEscrowData) {
   let { data: tx, error } = await findTransactionByPaylukData(data);
 
   if (error || !tx) {
-    console.warn(`[PaylukWebhook] escrow.claimed: no marketplace transaction for escrow id=${data.id}`);
+    if (error) throw error;
+    await flagPayment('payluk',data.id,null,'unknown_claim');
     return;
   }
 
@@ -407,7 +344,7 @@ async function handleEscrowClaimed(data: PaylukEscrowData) {
   }
 
   console.log(`[PaylukWebhook] escrow.claimed: tx ${tx.id} → COMPLETED (seller-initiated claim)`);
-  if (!transitioned?.length) return;
+  if (!transitioned?.length) { await flagPayment('payluk',data.id,tx.id,'invalid_transition'); return; }
   await tryMarketplacePayout(tx);
 
   // Notify the seller that their funds have been released.
@@ -432,7 +369,8 @@ async function handleEscrowDisputed(data: PaylukEscrowData) {
   const { data: tx, error } = await findTransactionByPaylukData(data);
 
   if (error || !tx) {
-    console.warn(`[PaylukWebhook] escrow.disputed: no local transaction for escrow id=${data.id}`);
+    if (error) throw error;
+    await flagPayment('payluk',data.id,null,'unknown_dispute');
     return;
   }
 
@@ -452,7 +390,7 @@ async function handleEscrowDisputed(data: PaylukEscrowData) {
     console.log(`[PaylukWebhook] escrow.disputed: tx ${tx.id} → DISPUTED`);
   }
 
-  if (!transitioned?.length) return;
+  if (!transitioned?.length) { await flagPayment('payluk',data.id,tx.id,'invalid_transition'); return; }
   // Fetch item title for the notification message.
   let itemTitle = 'an item';
   try {
@@ -494,7 +432,8 @@ async function handleEscrowRefunded(data: PaylukEscrowData) {
   const { data: tx, error } = await findTransactionByPaylukData(data);
 
   if (error || !tx) {
-    console.warn(`[PaylukWebhook] escrow.refunded/cancelled: no local transaction for escrow id=${data.id}`);
+    if (error) throw error;
+    await flagPayment('payluk',data.id,null,'unknown_refund');
     return;
   }
 

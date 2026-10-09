@@ -15,6 +15,16 @@ export async function getPaylukCustomerId(userId: string): Promise<string> {
 /** Never recover a financial identity by name or unverified profile email. */
 export async function ensurePaylukCustomer(userId: string): Promise<string> {
   const deadline = AbortSignal.timeout(10_000);
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      ensureWithinDeadline(userId,deadline),
+      new Promise<never>((_,reject) => { timeout = setTimeout(() => reject(new Error('Payment identity lookup timed out. Please retry.')),10_000); }),
+    ]);
+  } finally { if (timeout) clearTimeout(timeout); }
+}
+
+async function ensureWithinDeadline(userId: string, deadline: AbortSignal): Promise<string> {
   const { data: user, error } = await supabaseAdmin.from('users')
     .select('payluk_customer_id, name, legal_name, phone, phone_verified')
     .eq('id', userId).single();
@@ -45,6 +55,7 @@ export async function ensurePaylukCustomer(userId: string): Promise<string> {
     customer = await PaylukService.createCustomer({ firstname, lastname: rest.join(' ') || 'User', email: auth.user.email, phone }, deadline);
   }
   const customerId = await validate(customer);
+  deadline.throwIfAborted();
   const { data: saved, error: saveError } = await supabaseAdmin.from('users')
     .update({ payluk_customer_id: customerId }).eq('id', userId)
     .is('payluk_customer_id', null).select('payluk_customer_id').maybeSingle();

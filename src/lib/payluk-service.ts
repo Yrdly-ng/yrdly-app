@@ -67,7 +67,7 @@ async function paylukRequest<T>(
     data = JSON.parse(rawBody) as PaylukEnvelope<T>;
   } catch {
     throw new Error(
-      `[Payluk] ${fetchOptions.method || 'GET'} ${endpoint} — HTTP ${res.status}: non-JSON response body: ${rawBody?.slice(0, 200)}`
+      `[Payluk] ${fetchOptions.method || 'GET'} ${endpoint} — HTTP ${res.status}: non-JSON response`
     );
   }
 
@@ -75,7 +75,7 @@ async function paylukRequest<T>(
     const errMsg = data.message || data.status?.toString() || 'Payluk API error';
     throw new Error(
       `[Payluk] ${fetchOptions.method || 'GET'} ${endpoint} — HTTP ${res.status}` +
-      ` (Payluk status: ${data.status}): ${errMsg} | body: ${rawBody?.slice(0, 400)}`
+      ` (Payluk status: ${data.status}): ${errMsg}`
     );
   }
 
@@ -85,7 +85,7 @@ async function paylukRequest<T>(
 async function paylukFormRequest<T>(
   endpoint: string,
   formData: FormData,
-  options: { customerId?: string; method?: string } = {}
+  options: { customerId?: string; method?: string; signal?: AbortSignal } = {}
 ): Promise<PaylukEnvelope<T>> {
   if (!PAYLUK_SECRET_KEY) {
     throw new Error('Payluk service not available - PAYLUK_SECRET_KEY is not set');
@@ -103,7 +103,7 @@ async function paylukFormRequest<T>(
     method: options.method || 'POST',
     body: formData,
     headers,
-    signal: AbortSignal.timeout(10_000),
+    signal: options.signal || AbortSignal.timeout(10_000),
   });
 
   let data: PaylukEnvelope<T>;
@@ -113,7 +113,7 @@ async function paylukFormRequest<T>(
     data = JSON.parse(rawBody) as PaylukEnvelope<T>;
   } catch {
     throw new Error(
-      `[Payluk] ${options.method || 'POST'} ${endpoint} — HTTP ${res.status}: non-JSON response body: ${rawBody?.slice(0, 200)}`
+      `[Payluk] ${options.method || 'POST'} ${endpoint} — HTTP ${res.status}: non-JSON response`
     );
   }
 
@@ -121,7 +121,7 @@ async function paylukFormRequest<T>(
     const errMsg = data.message || data.status?.toString() || 'Payluk API error';
     throw new Error(
       `[Payluk] ${options.method || 'POST'} ${endpoint} — HTTP ${res.status}` +
-      ` (Payluk status: ${data.status}): ${errMsg} | body: ${rawBody?.slice(0, 400)}`
+      ` (Payluk status: ${data.status}): ${errMsg}`
     );
   }
 
@@ -305,13 +305,14 @@ export class PaylukService {
    */
   static async updateCustomerPermissions(
     customerId: string,
-    permissions: { canBuy?: boolean; canSell?: boolean; canWithdraw?: boolean }
+    permissions: { canBuy?: boolean; canSell?: boolean; canWithdraw?: boolean },
+    signal?: AbortSignal
   ): Promise<PaylukCustomer> {
     const response = await paylukRequest<PaylukCustomer>(
       `/v1/customer/permissions/${encodeURIComponent(customerId)}`,
       {
         method: 'PUT',
-        body: JSON.stringify(permissions),
+        body: JSON.stringify(permissions), signal,
       }
     );
     return response.data;
@@ -522,7 +523,8 @@ export class PaylukService {
       deliveryTimeline: 'minutes' | 'hours' | 'days';
       totalQuantity?: number;
       categoryId?: string;
-    }
+    },
+    signal?: AbortSignal
   ): Promise<PaylukEscrow> {
     const formData = new FormData();
     formData.append('amount', String(params.amount));
@@ -535,7 +537,7 @@ export class PaylukService {
     if (params.categoryId) formData.append('categoryId', params.categoryId);
 
     const response = await paylukFormRequest<PaylukEscrow>('/v1/escrow/create', formData, {
-      customerId,
+      customerId, signal,
     });
     return response.data;
   }
@@ -546,13 +548,14 @@ export class PaylukService {
    */
   static async addAdditionalFee(
     paymentToken: string,
-    additionalFee: number
+    additionalFee: number,
+    signal?: AbortSignal
   ): Promise<PaylukEscrow> {
     const response = await paylukRequest<PaylukEscrow>(
       `/v1/escrow/additional-fee/${encodeURIComponent(paymentToken)}`,
       {
         method: 'PUT',
-        body: JSON.stringify({ additionalFee }),
+        body: JSON.stringify({ additionalFee }), signal,
       }
     );
     return response.data;

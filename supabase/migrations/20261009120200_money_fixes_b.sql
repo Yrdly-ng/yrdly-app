@@ -82,17 +82,20 @@ BEGIN
   IF v_new_status = 'cancelled' AND v_transaction.item_id IS NOT NULL THEN
     IF v_transaction.item_type = 'ticket' OR v_transaction.metadata ? 'event_id' THEN
       UPDATE public.tickets
-      SET status = 'CANCELLED', updated_at = now()
+      SET status = 'REFUNDED', refund_status = 'processed', updated_at = now()
       WHERE payment_tx_ref = v_transaction.id::text
          OR payment_provider_ref IN (v_transaction.payluk_escrow_id, v_transaction.payment_reference);
     ELSIF v_transaction.item_type = 'catalog_item' THEN
-      UPDATE public.catalog_items
-      SET quantity = coalesce(quantity, 0) + 1, in_stock = true, updated_at = now()
-      WHERE id::text = v_transaction.item_id;
+      IF v_transaction.metadata->>'inventory_reserved' = 'true' THEN
+        PERFORM public.release_catalog_stock(v_transaction.item_id::uuid,1);
+      ELSE
+        INSERT INTO public.payment_reconciliation_flags(provider,reference,transaction_id,reason)
+        VALUES('payluk',coalesce(p_provider_reference,v_transaction.id::text),v_transaction.id,'legacy_stock_refund') ON CONFLICT DO NOTHING;
+      END IF;
     ELSE
       UPDATE public.posts
       SET is_sold = false, sold_to_user_id = NULL, sold_at = NULL, transaction_id = NULL
-      WHERE id::text = v_transaction.item_id;
+      WHERE id::text = v_transaction.item_id AND transaction_id = v_transaction.id;
     END IF;
   END IF;
 
@@ -126,6 +129,11 @@ BEGIN
    RETURN false;
  END IF;
  IF p_refund_amount IS NULL OR p_refund_amount < 0 OR p_refund_amount > tx.amount THEN RAISE EXCEPTION 'Invalid refund amount'; END IF;
+ IF p_refund_amount <> tx.amount THEN
+  INSERT INTO public.payment_reconciliation_flags(provider,reference,transaction_id,reason)
+  VALUES('payluk',p_provider_reference,tx.id,'partial_refund_requires_resolution') ON CONFLICT DO NOTHING;
+  RETURN false;
+ END IF;
  UPDATE public.escrow_transactions SET status = 'cancelled', updated_at = now() WHERE id = tx.id;
  UPDATE public.disputes SET refund_amount = p_refund_amount, status = 'resolved', resolution = 'refund',
    resolved_at = now(), updated_at = now() WHERE transaction_id = tx.id;

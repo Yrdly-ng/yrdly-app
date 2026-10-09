@@ -1,13 +1,14 @@
+import { applyEscrowPayment } from '@/lib/escrow-payment';
+import { flagPayment } from '@/lib/payment-reconciliation';
+import { paymentReferenceFilter } from '@/lib/payment-state';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { EscrowStatus } from '@/types/escrow';
 import { ResendEmailService } from '@/lib/resend-service';
 import { emailTemplates } from '@/lib/email-templates';
 import { PaystackService } from '@/lib/paystack-service';
 import { TicketService } from '@/lib/ticket-service';
 import { sendPushNotification } from '@/lib/server-push-notification';
-import { notifyCatalogItemOutOfStock } from '@/lib/server-notifications';
 
 /**
  * POST /api/webhooks/paystack
@@ -54,8 +55,7 @@ export async function POST(request: NextRequest) {
       const amount = (data.amount as number) / 100; // Convert kobo → NGN
 
       if (!txRef) {
-        console.error('[Webhook] Missing reference in payload');
-        return NextResponse.json({ status: 'ok' });
+        return NextResponse.json({ error:'Missing reference' },{ status:400 });
       }
 
       // ── Server-side re-verification ───────────────────
@@ -85,101 +85,22 @@ export async function POST(request: NextRequest) {
       const { data: txRow, error: fetchError } = await supabaseAdmin
         .from('escrow_transactions')
         .select('id, status, item_id, buyer_id, seller_id, total_amount, item_type')
-        .eq('id', txRef)
-        .single();
+        .or(paymentReferenceFilter(txRef,['id','payment_reference'])).maybeSingle();
 
       if (fetchError || !txRow) {
-        console.error(`[Webhook] Transaction not found for ref: ${txRef}`, fetchError);
+        if (fetchError) throw fetchError;
+        await flagPayment('paystack',txRef,null,'unknown_success');
         return NextResponse.json({ status: 'ok' });
       }
 
       // Verify amount matches to prevent crafted payloads
-      if (Math.abs(amount - txRow.total_amount) > 1) {
+      if (Math.round(Number(verification.amount)*100) !== Math.round(Number(txRow.total_amount)*100)) {
+        await flagPayment('paystack',txRef,txRow.id,'amount_mismatch');
         console.error(`[Webhook] Amount mismatch for ${txRef}. Expected ${txRow.total_amount}, got ${amount}`);
         return NextResponse.json({ status: 'ok' });
       }
 
-      if (txRow.status !== EscrowStatus.PENDING) {
-        console.log(`[Webhook] Transaction ${txRef} already ${txRow.status}, skipping`);
-        return NextResponse.json({ status: 'ok' });
-      }
-
-      // ── Update to PAID ────────────────────────────────
-      const { data: updateData, error: updateError } = await supabaseAdmin
-        .from('escrow_transactions')
-        .update({
-          status: EscrowStatus.PAID,
-          payment_reference: txRef,
-          paid_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', txRef)
-        .eq('status', EscrowStatus.PENDING)
-        .select();
-
-      if (updateError) {
-        console.error(`[Webhook] Failed to update escrow transaction ${txRef}:`, updateError);
-        return NextResponse.json({ error: 'Transaction update failed' }, { status: 500 });
-      } else if (!updateData || updateData.length === 0) {
-        console.log(`[Webhook] Transaction ${txRef} already processed (race condition avoided)`);
-        return NextResponse.json({ status: 'ok' });
-      }
-
-      // ── Mark item as sold ─────────────────────────────
-      if (txRow.item_id) {
-        if (txRow.item_type === 'catalog_item') {
-          try {
-            const { data: catItem } = await supabaseAdmin
-              .from('catalog_items')
-              .select('id, business_id, title, quantity, in_stock')
-              .eq('id', txRow.item_id)
-              .maybeSingle();
-
-            if (catItem) {
-              const currentQty = typeof catItem.quantity === 'number' ? catItem.quantity : 1;
-              const newQty = Math.max(0, currentQty - 1);
-              const inStock = newQty > 0;
-
-              await supabaseAdmin
-                .from('catalog_items')
-                .update({
-                  quantity: newQty,
-                  in_stock: inStock,
-                  updated_at: new Date().toISOString(),
-                })
-                .eq('id', txRow.item_id);
-              if (currentQty > 0 && newQty === 0) {
-                await notifyCatalogItemOutOfStock(supabaseAdmin, {
-                  itemId: catItem.id,
-                  businessId: catItem.business_id,
-                  itemTitle: catItem.title,
-                });
-              }
-            } else {
-              await supabaseAdmin
-                .from('catalog_items')
-                .update({
-                  in_stock: false,
-                  updated_at: new Date().toISOString(),
-                })
-                .eq('id', txRow.item_id);
-            }
-          } catch (e) {
-            console.error('[Webhook] Error updating catalog stock:', e);
-          }
-        } else {
-          await supabaseAdmin
-            .from('posts')
-            .update({
-              is_sold: true,
-              sold_to_user_id: txRow.buyer_id,
-              sold_at: new Date().toISOString(),
-              transaction_id: txRef,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', txRow.item_id);
-        }
-      }
+      if (!await applyEscrowPayment(txRow.id,'paystack',txRef)) return NextResponse.json({ status:'ok' });
 
       // ── Fetch buyer, seller, item for notifications ───
       let buyer, seller, item;
