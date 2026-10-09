@@ -18,6 +18,7 @@ export default function MyListingsPage() {
 
   const [activeTab, setActiveTab] = useState<"active" | "sold">("active");
   const [listings, setListings] = useState<any[]>([]);
+  const [paidListingIds, setPaidListingIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -35,6 +36,22 @@ export default function MyListingsPage() {
 
       if (error) throw error;
       setListings(data || []);
+
+      const itemIds = (data || []).map((item) => item.id);
+      if (itemIds.length) {
+        const { data: transactions } = await supabase
+          .from("escrow_transactions")
+          .select("item_id, status, paid_at")
+          .eq("seller_id", user.id)
+          .eq("item_type", "post")
+          .in("item_id", itemIds);
+        const paidStatuses = new Set(["paid", "funds_held", "disputed", "shipped", "delivered", "completed", "refunded"]);
+        setPaidListingIds(new Set((transactions || [])
+          .filter((tx) => tx.paid_at || paidStatuses.has(tx.status))
+          .map((tx) => tx.item_id)));
+      } else {
+        setPaidListingIds(new Set());
+      }
     } catch (err) {
       console.error("Error fetching my listings:", err);
     } finally {
@@ -189,14 +206,16 @@ export default function MyListingsPage() {
                     >
                       <Edit className="w-4 h-4" />
                     </button>
-                    <button
-                      onClick={() => handleDelete(item.id)}
-                      disabled={deletingId === item.id}
-                      className="p-2 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
-                      title="Delete"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {!paidListingIds.has(item.id) && (
+                      <button
+                        onClick={() => handleDelete(item.id)}
+                        disabled={deletingId === item.id}
+                        className="p-2 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
 
                   {activeTab === "active" && (

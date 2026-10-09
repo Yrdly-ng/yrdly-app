@@ -1,0 +1,538 @@
+{
+	"info": {
+		"_postman_id": "3c23bc9a-8db2-431e-a667-ea67452015a1",
+		"name": "Lockers Integration",
+		"description": "API for Lockers Microservice\n\nContact Support:  \nEmail: [hello@motions.space](https://mailto:hello@lara.ng)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "15121888"
+	},
+	"item": [
+		{
+			"name": "Search nearby lockers",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "api-key",
+						"value": "string",
+						"description": "(Required) Your API key"
+					},
+					{
+						"key": "Accept",
+						"value": "application/json"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/integration/lockers/nearby?lat=6.627683580910164&lng=3.3659057347491776&radius=1000",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"integration",
+						"lockers",
+						"nearby"
+					],
+					"query": [
+						{
+							"key": "lat",
+							"value": "6.627683580910164",
+							"description": "Latitude"
+						},
+						{
+							"key": "lng",
+							"value": "3.3659057347491776",
+							"description": "Longitude"
+						},
+						{
+							"key": "radius",
+							"value": "1000",
+							"description": "Search radius in meters"
+						}
+					]
+				},
+				"description": "Returns a list of lockers near a given location. If no query params are provided, all lockers are returned."
+			},
+			"response": [
+				{
+					"name": "List of nearby lockers",
+					"originalRequest": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "api-key",
+								"value": "string",
+								"description": "(Required) Your API key"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/integration/lockers/nearby?lat=string&lng=string&radius=1000",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"integration",
+								"lockers",
+								"nearby"
+							],
+							"query": [
+								{
+									"key": "lat",
+									"value": "string",
+									"description": "Latitude"
+								},
+								{
+									"key": "lng",
+									"value": "string",
+									"description": "Longitude"
+								},
+								{
+									"key": "radius",
+									"value": "1000",
+									"description": "Search radius in meters"
+								}
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n  \"data\": [\n    {\n      \"address\": \"12 Admiralty Way, Lekki\",\n      \"available_slots\": {\n        \"large\": 2,\n        \"medium\": 3,\n        \"small\": 5\n      },\n      \"distance_km\": 1.2,\n      \"locker_id\": \"locker_lekki_001\",\n      \"name\": \"Lekki Phase 1 Hub\"\n    }\n  ],\n  \"message\": \"Locker created\",\n  \"status\": \"success\"\n}"
+				}
+			]
+		},
+		{
+			"name": "Reserve a Locker.",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "api-key",
+						"value": "string",
+						"description": "(Required) Your API key"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "Accept",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"locker_id\": \"d78259e2-5793-4050-b4f9-b89af7d84834\",\n  \"size\": \"large\",\n  \"recipient_phone\": \"string\",\n  \"duration_hours\": 3\n}",
+					"options": {
+						"raw": {
+							"headerFamily": "json",
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/integration/reservations",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"integration",
+						"reservations"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "Creates a reservation.",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "api-key",
+								"value": "string",
+								"description": "(Required) Your API key"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"locker_id\": \"d78259e2-5793-4050-b4f9-b89af7d84834\",\n  \"size\": \"large\",\n  \"recipient_phone\": \"string\",\n  \"duration_hours\": 3\n}",
+							"options": {
+								"raw": {
+									"headerFamily": "json",
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/integration/reservations",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"integration",
+								"reservations"
+							]
+						}
+					},
+					"status": "Created",
+					"code": 201,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n  \"data\": {\n    \"reservation_id\": \"res_ab12cd\",\n    \"status\": \"active\",\n    \"compartment\": \"M-12\",\n    \"expires_at\": \"2026-09-22T17:00:00+01:00\"\n  },\n  \"message\": \"Reservation created\",\n  \"status\": \"success\"\n}"
+				},
+				{
+					"name": "Bad Request.",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "api-key",
+								"value": "string",
+								"description": "(Required) Your API key"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"locker_id\": \"d78259e2-5793-4050-b4f9-b89af7d84834\",\n  \"size\": \"large\",\n  \"recipient_phone\": \"string\",\n  \"duration_hours\": 3\n}",
+							"options": {
+								"raw": {
+									"headerFamily": "json",
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/integration/reservations",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"integration",
+								"reservations"
+							]
+						}
+					},
+					"status": "Bad Request",
+					"code": 400,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n  \"data\": null,\n  \"message\": \"Bad data sent.\",\n  \"status\": \"error\"\n}"
+				},
+				{
+					"name": "Resource not found.",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "api-key",
+								"value": "string",
+								"description": "(Required) Your API key"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"locker_id\": \"d78259e2-5793-4050-b4f9-b89af7d84834\",\n  \"size\": \"large\",\n  \"recipient_phone\": \"string\",\n  \"duration_hours\": 3\n}",
+							"options": {
+								"raw": {
+									"headerFamily": "json",
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/integration/reservations",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"integration",
+								"reservations"
+							]
+						}
+					},
+					"status": "Not Found",
+					"code": 404,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n  \"data\": null,\n  \"message\": \"Resource not found.\",\n  \"status\": \"error\"\n}"
+				},
+				{
+					"name": "Internal server error.",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "api-key",
+								"value": "string",
+								"description": "(Required) Your API key"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"locker_id\": \"d78259e2-5793-4050-b4f9-b89af7d84834\",\n  \"size\": \"large\",\n  \"recipient_phone\": \"string\",\n  \"duration_hours\": 3\n}",
+							"options": {
+								"raw": {
+									"headerFamily": "json",
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/integration/reservations",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"integration",
+								"reservations"
+							]
+						}
+					},
+					"status": "Internal Server Error",
+					"code": 500,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n  \"data\": null,\n  \"message\": \"Internal server error.\",\n  \"status\": \"error\"\n}"
+				}
+			]
+		},
+		{
+			"name": "Get Locker Reservation",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "api-key",
+						"value": "string",
+						"description": "(Required) Your API key"
+					},
+					{
+						"key": "Accept",
+						"value": "application/json"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/integration/reservations/:id",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"integration",
+						"reservations",
+						":id"
+					],
+					"variable": [
+						{
+							"key": "id",
+							"value": "res_rem1wu",
+							"description": "(Required) Reservation Id"
+						}
+					]
+				},
+				"description": "Returns a Reservation"
+			},
+			"response": [
+				{
+					"name": "List of nearby lockers",
+					"originalRequest": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "api-key",
+								"value": "string",
+								"description": "(Required) Your API key"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/integration/reservations/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"integration",
+								"reservations",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id"
+								}
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n  \"data\": {\n    \"reservation_id\": \"res_ab12cd\",\n    \"status\": \"active\",\n    \"compartment\": \"medium\",\n    \"expires_at\": \"Tue Sep 22 17:00:00 2026\"\n  },\n  \"message\": \"Reservation details\",\n  \"status\": \"success\"\n}"
+				}
+			]
+		},
+		{
+			"name": "Cancel / Release Reservation",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "api-key",
+						"value": "string",
+						"description": "(Required) Your API key"
+					},
+					{
+						"key": "Accept",
+						"value": "application/json"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/integration/reservations/:id/complete",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"integration",
+						"reservations",
+						":id",
+						"complete"
+					],
+					"variable": [
+						{
+							"key": "id",
+							"value": "res_rem1wu",
+							"description": "(Required) Reservation Id"
+						}
+					]
+				},
+				"description": "Release a reserved compartment before pickup. Use this to cancel a reservation if the delivery is no longer needed. Completed pickups are detected automatically by Motions hardware."
+			},
+			"response": [
+				{
+					"name": "Locker released successfully",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "api-key",
+								"value": "string",
+								"description": "(Required) Your API key"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/integration/reservations/:id/complete",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"integration",
+								"reservations",
+								":id",
+								"complete"
+							],
+							"variable": [
+								{
+									"key": "id"
+								}
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n  \"data\": null,\n  \"message\": \"Locker released successfully\",\n  \"status\": \"completed\"\n}"
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "https://dev-api.motions.space/api/v1/lockers-service"
+		}
+	]
+}

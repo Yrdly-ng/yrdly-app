@@ -71,13 +71,13 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
         .eq("user_id", user.id);
 
       if (error) {
-        toast({ variant: "destructive", title: "Error", description: "Failed to delete item." });
+        toast({ variant: "destructive", title: "Error", description: error.message || "Failed to delete item." });
         return;
       }
       setItems((prev) => prev.filter((i) => i.id !== itemId));
       toast({ title: "Item Deleted", description: "Your item has been deleted successfully." });
-    } catch {
-      toast({ variant: "destructive", title: "Error", description: "Failed to delete item." });
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to delete item." });
     }
   };
 

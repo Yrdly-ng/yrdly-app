@@ -41,6 +41,14 @@ export interface CommunityMembership {
   joined_at: string;
 }
 
+export interface CommunityJoinRequest {
+  id: string;
+  community_id: string;
+  user_id: string;
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: string;
+}
+
 export interface CommunityPost {
   id: string;
   community_id: string;
@@ -188,14 +196,27 @@ export class CommunityService {
   }
 
   /** Get current user's membership for a community */
-  static async getMyMembership(communityId: string): Promise<CommunityMembership | null> {
+  static async getMyMembership(communityId: string, userId: string): Promise<CommunityMembership | null> {
     const { data, error } = await supabase
       .from('community_memberships')
       .select('*')
       .eq('community_id', communityId)
+      .eq('user_id', userId)
       .maybeSingle();
     if (error) return null;
     return data as CommunityMembership | null;
+  }
+
+  /** Get the current user's request status for a community. */
+  static async getMyJoinRequest(communityId: string, userId: string): Promise<CommunityJoinRequest | null> {
+    const { data, error } = await supabase
+      .from('community_join_requests')
+      .select('id, community_id, user_id, status, created_at')
+      .eq('community_id', communityId)
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (error) return null;
+    return data as CommunityJoinRequest | null;
   }
 
   // ── Membership ────────────────────────────────────────────────────────────

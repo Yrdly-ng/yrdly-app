@@ -215,7 +215,11 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
 
   const handleDelete = useCallback(async () => {
     if (!currentUser || currentUser.id !== post.user_id) return;
-    await supabase.from("posts").delete().eq("id", post.id);
+    const { error } = await supabase.from("posts").delete().eq("id", post.id);
+    if (error) {
+      toast({ variant: "destructive", title: "Delete failed", description: error.message });
+      return;
+    }
     await supabase.from("comments").delete().eq("post_id", post.id);
     toast({ title: "Post deleted" });
     router.push("/home");

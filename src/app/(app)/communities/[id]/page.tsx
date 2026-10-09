@@ -8,7 +8,7 @@ import {
 } from "@phosphor-icons/react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/use-supabase-auth";
-import { CommunityService, Community, CommunityPost, CommunityMembership } from "@/lib/community-service";
+import { CommunityService, Community, CommunityPost, CommunityMembership, CommunityJoinRequest } from "@/lib/community-service";
 import { cn } from "@/lib/utils";
 
 function timeAgo(dateStr: string) {
@@ -112,6 +112,7 @@ export default function CommunityFeedPage() {
 
   const [community, setCommunity] = useState<Community | null>(null);
   const [membership, setMembership] = useState<CommunityMembership | null>(null);
+  const [joinRequest, setJoinRequest] = useState<CommunityJoinRequest | null>(null);
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSparse, setIsSparse] = useState(false);
@@ -119,16 +120,20 @@ export default function CommunityFeedPage() {
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [joining, setJoining] = useState(false);
+  const [joinError, setJoinError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!id || !user) return;
-    const [comm, mem, postsData] = await Promise.all([
+    const [comm, mem, request, postsData] = await Promise.all([
       CommunityService.getCommunity(id),
-      CommunityService.getMyMembership(id),
+      CommunityService.getMyMembership(id, user.id),
+      CommunityService.getMyJoinRequest(id, user.id),
       CommunityService.fetchPosts(id),
     ]);
     setCommunity(comm);
     setMembership(mem);
+    setJoinRequest(request);
     if (postsData.length) {
       const { data: likedRows } = await supabase
         .from("community_post_likes")
@@ -160,10 +165,22 @@ export default function CommunityFeedPage() {
   }, [id, load]);
 
   const handleJoin = async () => {
-    if (!user || !community) return;
-    if (community.privacy === "open") await CommunityService.joinCommunity(community.id, user.id);
-    else if (community.privacy === "request") await CommunityService.requestToJoin(community.id, user.id);
-    load();
+    if (!user || !community || joining || joinRequest) return;
+    setJoining(true);
+    setJoinError(null);
+    try {
+      if (community.privacy === "open") {
+        await CommunityService.joinCommunity(community.id, user.id);
+      } else if (community.privacy === "request") {
+        await CommunityService.requestToJoin(community.id, user.id);
+        setJoinRequest({ id: '', community_id: community.id, user_id: user.id, status: 'pending', created_at: new Date().toISOString() });
+      }
+      await load();
+    } catch (e: any) {
+      setJoinError(e.message ?? "Could not join community. Please try again.");
+    } finally {
+      setJoining(false);
+    }
   };
 
   const handlePost = async () => {
@@ -243,16 +260,18 @@ export default function CommunityFeedPage() {
 
       {/* Join CTA */}
       {!isMember && community.privacy !== "invite" && (
-        <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 mb-5 flex items-center justify-between gap-3">
+        <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 mb-5 flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="font-semibold text-sm text-foreground">{community.description ?? `Join ${community.name} to see posts`}</p>
           </div>
           <button
             onClick={handleJoin}
-            className="px-4 py-2 bg-primary text-primary-foreground text-sm font-semibold rounded-lg flex-shrink-0 hover:opacity-90 transition-opacity"
+            disabled={joining || !!joinRequest}
+            className="px-4 py-2 bg-primary text-primary-foreground text-sm font-semibold rounded-lg flex-shrink-0 hover:opacity-90 transition-opacity disabled:opacity-60"
           >
-            {community.privacy === "open" ? "Join" : "Request"}
+            {joining ? "Sending…" : community.privacy === "open" ? "Join" : joinRequest?.status === 'pending' ? "Request Pending" : joinRequest?.status === 'rejected' ? "Request Declined" : "Request to Join"}
           </button>
+          {joinError && <p role="alert" className="text-xs text-destructive basis-full">{joinError}</p>}
         </div>
       )}
 

@@ -917,12 +917,12 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
     if (!currentUser || !post.id || currentUser.id !== post.user_id) return;
     try {
       const { error } = await supabase.from("posts").delete().eq("id", post.id);
-      if (error) { toast({ variant: "destructive", title: "Error", description: "Failed to delete post." }); return; }
+      if (error) { toast({ variant: "destructive", title: "Error", description: error.message || "Failed to delete post." }); return; }
       await supabase.from("comments").delete().eq("post_id", post.id);
       toast({ title: "Post deleted" });
       if (onDelete) await onDelete(post.id);
-    } catch {
-      toast({ variant: "destructive", title: "Error", description: "Failed to delete post." });
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to delete post." });
     }
   };
 

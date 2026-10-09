@@ -627,7 +627,8 @@ export const usePosts = (filter?: LocationFilter | null) => {
 
             toast({ title: 'Success', description: 'Post deleted successfully.' });
         } catch (error) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete post.' });
+            toast({ variant: 'destructive', title: 'Error', description: error instanceof Error ? error.message : 'Failed to delete post.' });
+            throw error;
         }
     },
     [user, toast]
