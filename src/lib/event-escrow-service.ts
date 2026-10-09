@@ -112,7 +112,8 @@ export class EventEscrowService {
       .from('tickets')
       .select('amount_paid')
       .eq('event_id', eventId)
-      .eq('status', 'PAID');
+      .eq('status', 'PAID')
+      .is('refund_status', null);
 
     if (ticketsError) throw ticketsError;
     if (!tickets?.length) return; // No tickets sold — nothing to payout
@@ -161,6 +162,10 @@ export class EventEscrowService {
       .select('id')
       .single();
 
+    if (payoutError?.code === '23505') {
+      // Another worker reserved this event payout after our initial lookup.
+      return;
+    }
     if (payoutError || !payout) throw payoutError || new Error('Failed to create payout record');
 
     // Execute transfer using the configured payment provider.

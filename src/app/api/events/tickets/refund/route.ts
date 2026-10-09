@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
       .select(`
         id, status, refund_status, payment_provider_ref, payment_tx_ref, amount_paid, buyer_id,
         attendee_name, attendee_email,
-        event:events!tickets_event_id_fkey(id, title, organizer_id)
+        event:events!tickets_event_id_fkey(id, title, organizer_id, payout_released_at)
       `)
       .eq('id', ticket_id)
       .single();
@@ -35,6 +35,21 @@ export async function POST(request: NextRequest) {
     const event = ticket.event as any;
     if (event.organizer_id !== user.id) {
       return NextResponse.json({ error: 'Only the event organizer can issue refunds' }, { status: 403 });
+    }
+
+    const { data: payout, error: payoutError } = await supabaseAdmin
+      .from('event_payouts')
+      .select('id, status')
+      .eq('event_id', event.id)
+      .in('status', ['PENDING', 'PROCESSING', 'COMPLETED'])
+      .limit(1)
+      .maybeSingle();
+    if (payoutError) throw payoutError;
+    if (event.payout_released_at || payout) {
+      return NextResponse.json(
+        { error: 'This event payout has started or completed. Contact support to resolve the refund safely.' },
+        { status: 409 }
+      );
     }
 
     if (ticket.status !== 'PAID') {

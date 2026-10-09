@@ -7,6 +7,7 @@ import {
   ModerationQueueItem,
   UserReportItem,
   CommentReportItem,
+  PostReportItem,
 } from '@/lib/moderation-admin';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
@@ -44,6 +45,12 @@ export default function AdminModerationPage() {
   const [commentReports, setCommentReports] = useState<CommentReportItem[]>([]);
   const [commentReportPage, setCommentReportPage] = useState(1);
   const [commentReportTotalCount, setCommentReportTotalCount] = useState(0);
+
+  // State for Post Reports
+  const [postReports, setPostReports] = useState<PostReportItem[]>([]);
+  const [postReportStatusFilter, setPostReportStatusFilter] = useState<string>('open');
+  const [postReportPage, setPostReportPage] = useState(1);
+  const [postReportTotalCount, setPostReportTotalCount] = useState(0);
 
   const limit = 20;
 
@@ -92,6 +99,20 @@ export default function AdminModerationPage() {
     }
   }, [commentReportPage, toast]);
 
+  const fetchPostReports = useCallback(async () => {
+    try {
+      setLoading(true);
+      const { data, count } = await ModerationAdminService.getPostReports(postReportStatusFilter, postReportPage, limit);
+      setPostReports(data);
+      setPostReportTotalCount(count);
+    } catch (error) {
+      console.error('Error fetching post reports:', error);
+      toast({ title: 'Error', description: 'Failed to load post reports.', variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  }, [postReportStatusFilter, postReportPage, toast]);
+
   useEffect(() => {
     if (!user) {
       router.push('/login');
@@ -101,7 +122,8 @@ export default function AdminModerationPage() {
     if (activeTab === 'auto_flags') fetchAutoQueue();
     else if (activeTab === 'user_reports') fetchUserReports();
     else if (activeTab === 'comment_reports') fetchCommentReports();
-  }, [user, activeTab, fetchAutoQueue, fetchUserReports, fetchCommentReports, router]);
+    else if (activeTab === 'post_reports') fetchPostReports();
+  }, [user, activeTab, fetchAutoQueue, fetchUserReports, fetchCommentReports, fetchPostReports, router]);
 
   // Actions for Automated Queue
   const handleAutoAction = async (queueId: string, action: 'approve' | 'reject') => {
@@ -150,6 +172,19 @@ export default function AdminModerationPage() {
     }
   };
 
+  const handlePostReportAction = async (reportId: string, status: 'resolved' | 'dismissed') => {
+    try {
+      setActionLoading(reportId);
+      await ModerationAdminService.updatePostReportStatus(reportId, status);
+      toast({ title: 'Updated', description: `Post report marked as ${status}.` });
+      fetchPostReports();
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message || 'Failed to update post report.', variant: 'destructive' });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       'pending': { color: 'bg-yellow-500 text-black', text: 'Pending', icon: Clock },
@@ -178,16 +213,17 @@ export default function AdminModerationPage() {
           <ShieldAlert className="h-7 w-7 text-primary" /> Moderation Center
         </h1>
         <p className="text-[var(--yrdly-label)] text-sm">
-          Review automated flags, community user reports, and reported comments across Yrdly.
+          Review automated flags, user reports, and reported posts and comments across Yrdly.
         </p>
         <Button className="mt-3" variant="outline" onClick={() => router.push("/community-review")}>Review community submissions</Button>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-3 w-full max-w-md mb-6">
+        <TabsList className="grid grid-cols-4 w-full max-w-xl mb-6">
           <TabsTrigger value="auto_flags">Automated Flags</TabsTrigger>
           <TabsTrigger value="user_reports">User Reports</TabsTrigger>
           <TabsTrigger value="comment_reports">Comment Reports</TabsTrigger>
+          <TabsTrigger value="post_reports">Post Reports</TabsTrigger>
         </TabsList>
 
         {/* ── TAB 1: AUTOMATED FLAGS ─────────────────────────────────── */}
@@ -273,6 +309,64 @@ export default function AdminModerationPage() {
                   </CardContent>
                 </Card>
               ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="post_reports" className="space-y-4">
+          <Card>
+            <CardContent className="p-4 flex justify-between items-center">
+              <span className="text-sm font-medium">Filter Status</span>
+              <Select value={postReportStatusFilter} onValueChange={(value) => { setPostReportStatusFilter(value); setPostReportPage(1); }}>
+                <SelectTrigger className="w-44"><SelectValue placeholder="Status" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="open">Open</SelectItem>
+                  <SelectItem value="resolved">Resolved</SelectItem>
+                  <SelectItem value="dismissed">Dismissed</SelectItem>
+                </SelectContent>
+              </Select>
+            </CardContent>
+          </Card>
+
+          {loading ? (
+            <div className="space-y-3">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-28 w-full rounded-xl" />)}</div>
+          ) : postReports.length === 0 ? (
+            <Card className="text-center p-8">
+              <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-2" />
+              <h3 className="font-semibold text-base">No post reports</h3>
+              <p className="text-sm text-muted-foreground">No reports matching this status.</p>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {postReports.map((report) => (
+                <Card key={report.id} className="overflow-hidden border border-border">
+                  <CardContent className="p-5 flex flex-col sm:flex-row items-start gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="font-semibold">Reported Post</h3>
+                        {getStatusBadge(report.status)}
+                      </div>
+                      <p className="text-sm mt-2">Reason: {report.reason}</p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Post ID: {report.post_id} • Reporter ID: {report.reporter_id} • Reported: {new Date(report.created_at).toLocaleString()}
+                      </p>
+                    </div>
+                    {report.status === 'open' && (
+                      <div className="flex sm:flex-col gap-2 w-full sm:w-auto">
+                        <Button size="sm" onClick={() => handlePostReportAction(report.id, 'resolved')} disabled={actionLoading === report.id} className="bg-green-600 hover:bg-green-700 text-white flex-1">Resolve</Button>
+                        <Button size="sm" variant="outline" onClick={() => handlePostReportAction(report.id, 'dismissed')} disabled={actionLoading === report.id} className="flex-1">Dismiss</Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+          {postReportTotalCount > 20 && (
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" disabled={postReportPage <= 1} onClick={() => setPostReportPage((page) => page - 1)}>Previous</Button>
+              <Button variant="outline" size="sm" disabled={postReportPage * 20 >= postReportTotalCount} onClick={() => setPostReportPage((page) => page + 1)}>Next</Button>
             </div>
           )}
         </TabsContent>

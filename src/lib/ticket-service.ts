@@ -75,6 +75,7 @@ export class TicketService {
         qr_data: qrPayload,
         status: 'PAID',
         payment_tx_ref: txRef,
+        purchase_ticket_index: i,
         payment_provider_ref: tx.payluk_escrow_id || tx.payluk_tx_ref || txRef,
         amount_paid: amount / quantity,
         expires_at: event.end_time || null,
@@ -87,6 +88,14 @@ export class TicketService {
       .insert(ticketsToInsert)
       .select('id, ticket_code, qr_data');
 
+    if (ticketError?.code === '23505') {
+      const { data: duplicateTickets, error: duplicateLookupError } = await supabaseAdmin
+        .from('tickets')
+        .select('id, event_id, ticket_code, qr_data')
+        .or(`payment_tx_ref.eq.${txRef},payment_tx_ref.eq.${tx.id}`);
+      if (duplicateLookupError) throw duplicateLookupError;
+      if (duplicateTickets?.length) return { ...duplicateTickets[0], event_id, quantity };
+    }
     if (ticketError?.message?.includes('ticket_tier_sold_out')) {
       throw new Error('sold_out_payluk_refund_required');
     }
@@ -310,6 +319,7 @@ export class TicketService {
         qr_data: qrPayload,
         status: 'PAID',
         payment_tx_ref: txRef,
+        purchase_ticket_index: i,
         payment_provider_ref: transactionReference || txRef,
         amount_paid: amount / quantity,
         expires_at: event.end_time || null,
@@ -322,6 +332,14 @@ export class TicketService {
       .insert(ticketsToInsert)
       .select('id, ticket_code, qr_data');
 
+    if (ticketError?.code === '23505') {
+      const { data: duplicateTickets, error: duplicateLookupError } = await supabaseAdmin
+        .from('tickets')
+        .select('id, event_id, ticket_code, qr_data')
+        .eq('payment_tx_ref', txRef);
+      if (duplicateLookupError) throw duplicateLookupError;
+      if (duplicateTickets?.length) return { ...duplicateTickets[0], event_id, quantity };
+    }
     if (ticketError?.message?.includes('ticket_tier_sold_out')) {
       const refunded = await PaystackService.refundTransaction(txRef, amount);
       throw new Error(refunded ? 'sold_out_refunded' : 'sold_out_refund_required');

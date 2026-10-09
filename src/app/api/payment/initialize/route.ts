@@ -8,7 +8,7 @@ import { getPaylukCustomerId } from "@/lib/payluk-onboarding";
 
 // Rate limiting constants
 const RATE_LIMIT_MAX = 10;
-const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+const RATE_LIMIT_WINDOW_SECONDS = 60;
 
 
 /**
@@ -32,45 +32,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ── Rate Limiting (keyed by user_id, not IP) ──────────────────────────────
-    // IP-based limiting breaks on shared carrier NAT (common with Nigerian mobile networks)
+    // ── Atomic rate limiting (keyed by user_id, not IP) ──────────────────────
+    // IP-based limiting breaks on shared carrier NAT (common on mobile networks).
     const endpoint = "/api/payment/initialize";
-    const now = new Date();
-
-    const { data: rlData } = await supabaseAdmin
-      .from('rate_limits')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('endpoint', endpoint)
-      .single();
-
-    if (rlData) {
-      const windowStart = new Date(rlData.window_start).getTime();
-      if (now.getTime() - windowStart < RATE_LIMIT_WINDOW_MS) {
-        if (rlData.request_count >= RATE_LIMIT_MAX) {
-          return NextResponse.json({ error: "Too many requests" }, { status: 429 });
-        }
-        await supabaseAdmin
-          .from('rate_limits')
-          .update({ request_count: rlData.request_count + 1 })
-          .eq('user_id', user.id)
-          .eq('endpoint', endpoint);
-      } else {
-        await supabaseAdmin
-          .from('rate_limits')
-          .update({ request_count: 1, window_start: now.toISOString() })
-          .eq('user_id', user.id)
-          .eq('endpoint', endpoint);
-      }
-    } else {
-      await supabaseAdmin
-        .from('rate_limits')
-        .insert({
-          user_id: user.id,
-          endpoint: endpoint,
-          request_count: 1,
-          window_start: now.toISOString()
-        });
+    const { data: withinRateLimit, error: rateLimitError } = await supabaseAdmin.rpc('consume_rate_limit', {
+      p_user_id: user.id,
+      p_endpoint: endpoint,
+      p_max_requests: RATE_LIMIT_MAX,
+      p_window_seconds: RATE_LIMIT_WINDOW_SECONDS,
+    });
+    if (rateLimitError) {
+      console.error('[PaymentInit] Rate limit check failed:', rateLimitError.message);
+      return NextResponse.json({ error: 'Unable to authorize payment request' }, { status: 503 });
+    }
+    if (!withinRateLimit) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
 
     const body = await request.json();
@@ -193,6 +169,13 @@ export async function POST(request: NextRequest) {
         ...data,
         item_type: 'post'
       };
+    }
+
+    if (itemData.user_id !== sellerId) {
+      return NextResponse.json(
+        { error: 'Seller does not own this item.' },
+        { status: 403 }
+      );
     }
 
     console.log("[PaymentInit] itemData:", JSON.stringify(itemData));

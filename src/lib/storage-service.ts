@@ -449,8 +449,27 @@ export class StorageService {
     file: File
   ): Promise<{ url: string | null; error: any }> {
     try {
+      if (!file || !file.name) {
+        return { url: null, error: new Error('Choose a report image to upload.') };
+      }
+      const maxBytes = 5 * 1024 * 1024;
+      const extension = file.name.split('.').pop()?.toLowerCase() || '';
+      const expectedTypeByExtension: Record<string, string> = {
+        jpg: 'image/jpeg',
+        jpeg: 'image/jpeg',
+        png: 'image/png',
+        webp: 'image/webp',
+      };
+      const isHeic = extension === 'heic' || extension === 'heif';
+      const expectedType = expectedTypeByExtension[extension];
+      const typeMatches = isHeic
+        ? !file.type || file.type === 'image/heic' || file.type === 'image/heif'
+        : !!expectedType && (!file.type || file.type === expectedType);
+      if (file.size > maxBytes || !typeMatches) {
+        return { url: null, error: new Error('Report images must be JPEG, PNG, or WebP and no larger than 5 MB.') };
+      }
       const fileExt = file.name.split('.').pop() || 'jpg';
-      const filePath = `reports/${userId}/${Date.now()}.${fileExt}`;
+      const filePath = `${userId}/${Date.now()}.${fileExt}`;
       const { data, error } = await this.uploadFile('reports', filePath, file);
       if (error) return { url: null, error };
       return { url: this.getPublicUrl('reports', data.path), error: null };

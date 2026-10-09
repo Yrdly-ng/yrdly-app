@@ -34,6 +34,15 @@ export interface CommentReportItem {
   status?: string;
 }
 
+export interface PostReportItem {
+  id: string;
+  post_id: string;
+  reporter_id: string;
+  reason: string;
+  status: 'open' | 'resolved' | 'dismissed';
+  created_at: string;
+}
+
 export class ModerationAdminService {
   static async getQueue(status: string = 'pending', page: number = 1, limit: number = 20) {
     const from = (page - 1) * limit;
@@ -107,6 +116,29 @@ export class ModerationAdminService {
 
     if (error) throw error;
     return { data: (data || []) as CommentReportItem[], count: count || 0 };
+  }
+
+  static async getPostReports(status: string = 'open', page: number = 1, limit: number = 20) {
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+    let query = supabase
+      .from('post_reports')
+      .select('*', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(from, to);
+
+    if (status !== 'all') query = query.eq('status', status);
+    const { data, count, error } = await query;
+    if (error) throw error;
+    return { data: (data || []) as PostReportItem[], count: count || 0 };
+  }
+
+  static async updatePostReportStatus(reportId: string, status: 'resolved' | 'dismissed') {
+    const { error } = await supabase
+      .from('post_reports')
+      .update({ status })
+      .eq('id', reportId);
+    if (error) throw error;
   }
 
   static async deleteReportedComment(commentId: string, reportId: string) {

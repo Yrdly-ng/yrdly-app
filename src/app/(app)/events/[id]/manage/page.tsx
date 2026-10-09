@@ -79,7 +79,7 @@ export default function ManageEventPage() {
     if (!id) return;
     setCancelling(true);
     try {
-      const res = await fetch("/api/events/cancel", {
+      const res = await fetch(`/api/events/${id}/cancel`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ eventId: id, reason: cancelReason }),
