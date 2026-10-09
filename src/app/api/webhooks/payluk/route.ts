@@ -1,3 +1,5 @@
+import { ESCROW_ALLOWED_FROM, paymentReferenceFilter } from '@/lib/payment-state';
+import { flagPayment } from '@/lib/payment-reconciliation';
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyPaylukWebhookSignature } from '@/lib/payluk-webhook';
 import { supabaseAdmin } from '@/lib/supabase-admin';
@@ -150,9 +152,8 @@ async function findTransactionByPaylukData(data: PaylukEscrowData) {
   const targetId = data.id;
   const token = data.paymentToken;
 
-  const orClause = token
-    ? `payluk_escrow_id.eq.${targetId},payluk_tx_ref.eq.${targetId},payluk_tx_ref.eq.${token},id.eq.${targetId},payment_reference.eq.${targetId},payment_reference.eq.${token}`
-    : `payluk_escrow_id.eq.${targetId},payluk_tx_ref.eq.${targetId},id.eq.${targetId},payment_reference.eq.${targetId}`;
+  const columns = ['payluk_escrow_id', 'payluk_tx_ref', 'id', 'payment_reference'];
+  const orClause = paymentReferenceFilter(targetId, columns) + (token ? `,${paymentReferenceFilter(token, columns)}` : '');
 
   return await supabaseAdmin
     .from('escrow_transactions')
@@ -165,13 +166,14 @@ async function handleEscrowOngoing(data: PaylukEscrowData) {
   const { data: tx, error } = await findTransactionByPaylukData(data);
 
   if (error || !tx) {
-    console.warn(`[PaylukWebhook] escrow.ongoing: no local transaction for escrow id=${data.id}`);
+    if (error) throw error;
+    await flagPayment('payluk', data.id, null, 'unknown_success');
     return;
   }
 
   // Idempotent: if already PAID, SHIPPED, DELIVERED, or COMPLETED, skip.
-  if (tx.status !== EscrowStatus.PENDING && tx.status !== ('creating_escrow' as any)) {
-    console.log(`[PaylukWebhook] escrow.ongoing: tx ${tx.id} status is ${tx.status}, skipping`);
+  if (![...ESCROW_ALLOWED_FROM.paid].includes(tx.status as any)) {
+    if (tx.status === EscrowStatus.CANCELLED || tx.status === EscrowStatus.DISPUTED) await flagPayment('payluk', data.id, tx.id, 'late_success');
     return;
   }
 
@@ -184,13 +186,13 @@ async function handleEscrowOngoing(data: PaylukEscrowData) {
       updated_at: new Date().toISOString(),
     })
     .eq('id', tx.id)
-    .in('status', [EscrowStatus.PENDING, 'creating_escrow'])
+    .in('status', [...ESCROW_ALLOWED_FROM.paid])
     .select('id')
     .maybeSingle();
 
   if (updateError) {
-    console.error(`[PaylukWebhook] escrow.ongoing: failed to update tx ${tx.id}:`, updateError.message);
-    return;
+    await flagPayment('payluk', data.id, tx.id, 'payment_database_error');
+    throw updateError;
   }
   if (!updatedTransaction) return;
 
@@ -327,14 +329,14 @@ async function handleEscrowCompleted(data: PaylukEscrowData) {
     return;
   }
 
-  const { error: updateError } = await supabaseAdmin
+  const { data: transitioned, error: updateError } = await supabaseAdmin
     .from('escrow_transactions')
     .update({
       status: EscrowStatus.COMPLETED,
       updated_at: new Date().toISOString(),
     })
     .eq('id', tx.id)
-    .neq('status', EscrowStatus.COMPLETED); // optimistic-lock: skip if already done
+    .in('status', [...ESCROW_ALLOWED_FROM.completed]).select('id');
 
   if (updateError) {
     console.error(`[PaylukWebhook] escrow.completed: failed to update tx ${tx.id}:`, updateError.message);
@@ -342,6 +344,7 @@ async function handleEscrowCompleted(data: PaylukEscrowData) {
   } else {
     console.log(`[PaylukWebhook] escrow.completed: tx ${tx.id} → COMPLETED`);
   }
+  if (!transitioned?.length) return;
   await tryMarketplacePayout(tx);
 }
 
@@ -389,14 +392,14 @@ async function handleEscrowClaimed(data: PaylukEscrowData) {
     return;
   }
 
-  const { error: updateError } = await supabaseAdmin
+  const { data: transitioned, error: updateError } = await supabaseAdmin
     .from('escrow_transactions')
     .update({
       status: EscrowStatus.COMPLETED,
       updated_at: new Date().toISOString(),
     })
     .eq('id', tx.id)
-    .neq('status', EscrowStatus.COMPLETED);
+    .in('status', [...ESCROW_ALLOWED_FROM.completed]).select('id');
 
   if (updateError) {
     console.error(`[PaylukWebhook] escrow.claimed: failed to update tx ${tx.id}:`, updateError.message);
@@ -404,6 +407,7 @@ async function handleEscrowClaimed(data: PaylukEscrowData) {
   }
 
   console.log(`[PaylukWebhook] escrow.claimed: tx ${tx.id} → COMPLETED (seller-initiated claim)`);
+  if (!transitioned?.length) return;
   await tryMarketplacePayout(tx);
 
   // Notify the seller that their funds have been released.
@@ -433,21 +437,22 @@ async function handleEscrowDisputed(data: PaylukEscrowData) {
   }
 
   // Update the transaction status to DISPUTED.
-  const { error: updateError } = await supabaseAdmin
+  const { data: transitioned, error: updateError } = await supabaseAdmin
     .from('escrow_transactions')
     .update({
       status: EscrowStatus.DISPUTED,
       updated_at: new Date().toISOString(),
     })
-    .eq('id', tx.id);
+    .eq('id', tx.id).in('status', [...ESCROW_ALLOWED_FROM.disputed]).select('id');
 
   if (updateError) {
     console.error(`[PaylukWebhook] escrow.disputed: failed to update tx ${tx.id}:`, updateError.message);
-    // Continue to notifications even if status update fails — do not swallow the event entirely.
+    throw updateError;
   } else {
     console.log(`[PaylukWebhook] escrow.disputed: tx ${tx.id} → DISPUTED`);
   }
 
+  if (!transitioned?.length) return;
   // Fetch item title for the notification message.
   let itemTitle = 'an item';
   try {
@@ -493,70 +498,14 @@ async function handleEscrowRefunded(data: PaylukEscrowData) {
     return;
   }
 
-  if (tx.status === EscrowStatus.REFUNDED || tx.status === EscrowStatus.CANCELLED) {
-    console.log(`[PaylukWebhook] escrow.refunded/cancelled: tx ${tx.id} already ${tx.status}, skipping`);
-    return;
+  const { data: applied, error: refundError } = await supabaseAdmin.rpc('apply_escrow_refund', {
+    p_transaction_id: tx.id, p_provider_reference: data.id, p_refund_amount: Number(data.amount ?? tx.amount),
+  });
+  if (refundError) {
+    await flagPayment('payluk', data.id, tx.id, 'refund_database_error');
+    throw refundError;
   }
-
-  // 1. Update transaction status
-  const { error: updateError } = await supabaseAdmin
-    .from('escrow_transactions')
-    .update({
-      status: EscrowStatus.REFUNDED,
-      refunded_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', tx.id);
-
-  if (updateError) {
-    console.error(`[PaylukWebhook] escrow.refunded: failed to update tx ${tx.id}:`, updateError.message);
-  } else {
-    console.log(`[PaylukWebhook] escrow.refunded: tx ${tx.id} → REFUNDED`);
-  }
-
-  // 2. Revert item availability or cancel tickets
-  if (tx.item_type === 'ticket' || tx.metadata?.event_id) {
-    // Cancel issued tickets
-    const txRef = tx.id;
-    await supabaseAdmin
-      .from('tickets')
-      .update({ status: 'CANCELLED', updated_at: new Date().toISOString() })
-      .or(`payment_tx_ref.eq.${txRef},payment_provider_ref.eq.${data.id}`);
-    console.log(`[PaylukWebhook] Cancelled tickets for refunded tx ${tx.id}`);
-  } else if (tx.item_id) {
-    if (tx.item_type === 'catalog_item') {
-      const { data: catItem } = await supabaseAdmin
-        .from('catalog_items')
-        .select('id, quantity')
-        .eq('id', tx.item_id)
-        .maybeSingle();
-
-      if (catItem) {
-        const currentQty = typeof catItem.quantity === 'number' ? catItem.quantity : 0;
-        await supabaseAdmin
-          .from('catalog_items')
-          .update({
-            quantity: currentQty + 1,
-            in_stock: true,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', tx.item_id);
-      }
-    } else {
-      // Post listing: restore availability
-      await supabaseAdmin
-        .from('posts')
-        .update({
-          is_sold: false,
-          sold_to_user_id: null,
-          sold_at: null,
-          transaction_id: null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', tx.item_id);
-      console.log(`[PaylukWebhook] Restored post ${tx.item_id} availability after refund`);
-    }
-  }
+  if (!applied) return;
 
   // 3. Notify buyer
   try {

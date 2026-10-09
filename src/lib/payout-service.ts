@@ -232,6 +232,7 @@ export class PayoutService {
         .from('payout_requests')
         .update({
           status: 'processing',
+          transaction_reference: `payout-${payoutRequestId}`,
         })
         .eq('id', payoutRequestId)
         .eq('status', 'pending')
@@ -247,6 +248,7 @@ export class PayoutService {
       const accountType = payoutRequest.seller_account?.account_type;
 
       let transferSuccess = false;
+      let transferPending = false;
       let transferErrorMsg = 'Transfer failed';
       let transferReason = '';
       let transactionReference = '';
@@ -298,10 +300,16 @@ export class PayoutService {
               accountNumber,
               accountName,
               reference: `payout-${payoutRequestId}`,
-              yrdlyAvailableBalance: paylukWalletBalance,
+              yrdlyAvailableBalance: yrdlyAvailableBalance,
+              onIntentReady: async reference => {
+                const { data: saved, error } = await supabaseAdmin.from('payout_requests')
+                  .update({ transaction_reference: reference }).eq('id', payoutRequestId).eq('status', 'processing').select('id').maybeSingle();
+                if (error || !saved) throw new Error('Could not persist withdrawal reference; transfer was not executed.');
+              },
             });
 
-            transferSuccess = paylukResult.success;
+            transferSuccess = paylukResult.outcome === 'success';
+            transferPending = paylukResult.outcome === 'pending';
             actualNetPayoutAmount = paylukResult.intentAmount;
             intentFee = paylukResult.intentFee;
             actualTotalDebit = paylukResult.totalPaylukDebit;
@@ -321,7 +329,8 @@ export class PayoutService {
               narration: `Yrdly payout for transaction ${payoutRequestId}`,
             });
 
-            transferSuccess = transferResult.success;
+            transferSuccess = transferResult.outcome === 'success';
+            transferPending = transferResult.outcome === 'pending';
             actualNetPayoutAmount = payoutRequest.amount;
             actualTotalDebit = payoutRequest.amount;
             if (!transferSuccess && transferResult.error) {
@@ -377,7 +386,8 @@ export class PayoutService {
           await supabaseAdmin
             .from('payout_requests')
             .update({
-              status: 'failed',
+              status: transferPending ? 'processing' : 'failed',
+              transaction_reference: transactionReference,
               failure_reason: transferReason || transferErrorMsg,
               processed_at: new Date().toISOString(),
             })
@@ -411,8 +421,8 @@ export class PayoutService {
         await supabaseAdmin
           .from('payout_requests')
           .update({
-            status: 'failed',
-            failure_reason: errorMsg,
+            status: 'processing',
+            failure_reason: `Uncertain transfer; reconcile before retry: ${errorMsg}`,
             processed_at: new Date().toISOString(),
           })
           .eq('id', payoutRequestId);

@@ -4,7 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { data: { user }, error: authError } = await getAuthenticatedUser(request);
-  if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: authError?.status === 403 ? 403 : authError?.status === 503 ? 503 : 401 });
   const { id } = await params;
   const body = await request.json().catch(() => null);
   if (!['shipped', 'delivered'].includes(body?.action)) return NextResponse.json({ error: 'Invalid action' }, { status: 400 });

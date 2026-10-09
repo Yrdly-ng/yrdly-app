@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
     const { data: { user }, error: authError } = await getAuthenticatedUser(request);
 
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: authError?.status === 403 ? 403 : authError?.status === 503 ? 503 : 401 });
     }
 
     const balanceData = await PayoutService.getSellerBalance(user.id);

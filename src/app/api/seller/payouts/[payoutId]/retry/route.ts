@@ -1,3 +1,6 @@
+import { PaylukService } from '@/lib/payluk-service';
+import { getPaylukCustomerId } from '@/lib/payluk-onboarding';
+import { getAuthenticatedUser } from '@/lib/supabase-server';
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { PayoutService } from '@/lib/payout-service';
@@ -15,10 +18,10 @@ export async function POST(
     const token = authHeader.split(' ')[1];
     
     // Validate user via Supabase Auth
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    const { data: { user }, error: authError } = await getAuthenticatedUser(request);
     
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: authError?.status === 403 ? 403 : authError?.status === 503 ? 503 : 401 });
     }
 
     const { payoutId } = await params;
@@ -35,16 +38,26 @@ export async function POST(
       return NextResponse.json({ error: 'Payout not found or unauthorized' }, { status: 404 });
     }
 
-    if (payout.status !== 'failed') {
-      return NextResponse.json({ error: 'Only failed payouts can be retried' }, { status: 400 });
+    if (!['failed', 'processing'].includes(payout.status)) {
+      return NextResponse.json({ error: 'Only failed or processing payouts can be reconciled' }, { status: 409 });
     }
-
+    if (payout.transaction_reference) {
+      const outcome = await PaylukService.getWithdrawalStatus(await getPaylukCustomerId(user.id), payout.transaction_reference);
+      if (outcome === 'pending') return NextResponse.json({ error: 'Transfer is uncertain or still processing; funds remain reserved.' }, { status: 409 });
+      if (outcome === 'success') {
+        const { error } = await supabaseAdmin.from('payout_requests').update({ status: 'completed', processed_at: new Date().toISOString() }).eq('id', payoutId).in('status', ['failed','processing']);
+        if (error) throw error;
+        return NextResponse.json({ success: true, reconciled: true });
+      }
+    } else {
+      return NextResponse.json({ error: 'Legacy payout has no durable provider reference. Support must reconcile it before retry.' }, { status: 409 });
+    }
     // Reset status to pending so processPayout can pick it up
     const { data: resetRows, error: updateError } = await supabaseAdmin
       .from('payout_requests')
       .update({ status: 'pending', failure_reason: null })
       .eq('id', payoutId)
-      .eq('status', 'failed')
+      .in('status', ['failed','processing'])
       .select('id');
 
     if (updateError) {

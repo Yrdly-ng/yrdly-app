@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     // ── Auth ────────────────────────────────────────────────────────────────
     const { data: { user }, error: authError } = await getAuthenticatedUser(request);
     if (authError || !user) {
-      return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
+      return NextResponse.json({ error: 'Invalid session' }, { status: authError?.status === 403 ? 403 : authError?.status === 503 ? 503 : 401 });
     }
 
     const { isUserSuspendedOrBanned } = await import('@/lib/user-suspension');
@@ -107,6 +107,7 @@ export async function POST(request: NextRequest) {
           qr_data: qrData,
           status: 'PAID',
           amount_paid: 0,
+          payment_provider: null, settlement_mode: 'free',
           expires_at: event.end_time || null,
         });
       }
@@ -289,7 +290,8 @@ export async function POST(request: NextRequest) {
             buyer_id: user.id,
             attendee_name,
             attendee_email,
-            attendee_phone: attendee_phone || null
+            attendee_phone: attendee_phone || null,
+            payment_provider: 'paystack', settlement_mode: organizerSubaccount ? 'split' : 'held',
           }
         });
       } catch (paystackError: any) {

@@ -5,6 +5,7 @@ import { EVENT_CONSTANTS } from '@/lib/constants';
 import { PaystackService } from '@/lib/paystack-service';
 import { PaylukService } from '@/lib/payluk-service';
 import { sendPushNotification } from '@/lib/server-push-notification';
+import { paymentReferenceFilter } from './payment-state';
 
 export class TicketService {
   /**
@@ -76,6 +77,7 @@ export class TicketService {
         status: 'PAID',
         payment_tx_ref: txRef,
         purchase_ticket_index: i,
+        payment_provider: 'payluk', settlement_mode: 'held',
         payment_provider_ref: tx.payluk_escrow_id || tx.payluk_tx_ref || txRef,
         amount_paid: amount / quantity,
         expires_at: event.end_time || null,
@@ -211,7 +213,7 @@ export class TicketService {
     const { data: paylukTx } = await supabaseAdmin
       .from('escrow_transactions')
       .select('*')
-      .or(`id.eq.${txRef},payment_reference.eq.${txRef},payluk_tx_ref.eq.${txRef},payluk_escrow_id.eq.${txRef}`)
+      .or(paymentReferenceFilter(txRef, ['id', 'payment_reference', 'payluk_tx_ref', 'payluk_escrow_id']))
       .maybeSingle();
 
     if (paylukTx) {
@@ -320,6 +322,7 @@ export class TicketService {
         status: 'PAID',
         payment_tx_ref: txRef,
         purchase_ticket_index: i,
+        payment_provider: 'paystack', settlement_mode: metadata?.settlement_mode || 'unknown',
         payment_provider_ref: transactionReference || txRef,
         amount_paid: amount / quantity,
         expires_at: event.end_time || null,

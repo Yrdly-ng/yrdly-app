@@ -1,3 +1,4 @@
+import { withdrawalOutcome, type WithdrawalOutcome } from './payment-state';
 // Server-side only - Payluk service
 // This service should only be used in API routes, not in client components.
 //
@@ -987,6 +988,15 @@ export class PaylukService {
     return Number.isFinite(balance) ? balance : null;
   }
 
+  static async getWithdrawalStatus(customerId: string, reference: string): Promise<WithdrawalOutcome> {
+    const response = await paylukRequest<any>(`/v1/payment/history?reference=${encodeURIComponent(reference)}`, { customerId, method: 'GET' });
+    const entries = Array.isArray(response.data) ? response.data : response.data?.data;
+    if (!Array.isArray(entries)) throw new Error('Invalid Payluk reconciliation response');
+    const matches = entries.filter((entry: any) => entry.reference === reference && entry.transactionType === 'withdrawal');
+    if (matches.length !== 1) return 'pending';
+    return withdrawalOutcome(matches[0].status);
+  }
+
   static async withdrawToBank(params: {
     sellerPaylukCustomerId: string;
     amount: number;
@@ -996,7 +1006,9 @@ export class PaylukService {
     accountName?: string;
     reference: string;
     yrdlyAvailableBalance?: number;
+    onIntentReady: (reference: string) => Promise<void>;
   }): Promise<{
+    outcome: WithdrawalOutcome;
     success: boolean;
     reference?: string;
     intentAmount?: number;
@@ -1007,6 +1019,8 @@ export class PaylukService {
     reason?: string;
     paylukStatus?: string;
   }> {
+    let executionStarted = false;
+    let activeReference = params.reference;
     try {
       // Map Paystack/CBN bank codes to Payluk's internal codes
       const PAYSTACK_TO_PAYLUK_BANK_MAP: Record<string, string> = {
@@ -1037,6 +1051,7 @@ export class PaylukService {
       const PAYLUK_MINIMUM = 1000;
       if (params.amount < PAYLUK_MINIMUM) {
         return {
+          outcome: 'failed',
           success: false,
           reference: params.reference,
           error: `Minimum withdrawal amount is ₦${PAYLUK_MINIMUM.toLocaleString()}.`,
@@ -1046,13 +1061,8 @@ export class PaylukService {
       }
 
       // 1. Fetch seller's Payluk wallet to check mainBalance (ignoring escrowBalance for withdrawals)
-      let paylukMainBalance = Infinity;
-      try {
-        const wallet = await this.getCustomerWallet(params.sellerPaylukCustomerId);
-        paylukMainBalance = wallet.mainBalance ?? 0;
-      } catch (walletErr) {
-        console.warn('[PaylukService] Could not fetch Payluk customer wallet balance, proceeding with Yrdly balance validation:', walletErr);
-      }
+      const wallet = await this.getCustomerWallet(params.sellerPaylukCustomerId);
+      const paylukMainBalance = wallet.mainBalance ?? 0;
 
       const effectiveAvailableBalance = params.yrdlyAvailableBalance !== undefined
         ? Math.min(params.yrdlyAvailableBalance, paylukMainBalance)
@@ -1061,6 +1071,7 @@ export class PaylukService {
       // If requested amount already exceeds effective available balance, reject before staging
       if (params.amount > effectiveAvailableBalance) {
         return {
+          outcome: 'failed',
           success: false,
           reference: params.reference,
           intentAmount: params.amount,
@@ -1071,7 +1082,7 @@ export class PaylukService {
 
       // The seller's requested amount is their total wallet-debit budget.
       // Quote the fee, then create the final intent for budget minus fee.
-      const intentAttemptReference = `${params.reference}-${Date.now()}`;
+      const intentAttemptReference = params.reference;
       const feeQuote = await createPaylukWithdrawalIntent({
         customerId: params.sellerPaylukCustomerId,
         amount: params.amount,
@@ -1084,6 +1095,7 @@ export class PaylukService {
       let netAmount = Math.max(0, Math.floor((params.amount - feeQuote.fee) * 100) / 100);
       if (netAmount <= 0) {
         return {
+          outcome: 'failed',
           success: false,
           reference: feeQuote.reference,
           intentFee: feeQuote.fee,
@@ -1111,7 +1123,8 @@ export class PaylukService {
         netAmount = Math.max(0, Math.floor((params.amount - intent.fee) * 100) / 100);
         if (netAmount <= 0) {
           return {
-            success: false,
+            outcome: 'failed',
+          success: false,
             reference: intent.reference,
             intentAmount: intent.amount,
             intentFee: intent.fee,
@@ -1138,6 +1151,7 @@ export class PaylukService {
       if (totalPaylukDebit > spendLimit) {
         const maximumWithdrawable = Math.max(0, Math.floor((spendLimit - intent.fee) * 100) / 100);
         return {
+          outcome: 'failed',
           success: false,
           reference: intent.reference,
           intentAmount: intent.amount,
@@ -1153,6 +1167,10 @@ export class PaylukService {
       const activeIntentFee = intent.fee;
       const activeIntentRef = intent.reference;
 
+      activeReference = activeIntentRef;
+      await params.onIntentReady(activeIntentRef);
+      executionStarted = true;
+
       // 6. Execute / verify payment intent (totalPaylukDebit <= effectiveAvailableBalance)
       const verifyResponse = await paylukRequest<any>(
         '/v1/payment/verify',
@@ -1163,37 +1181,20 @@ export class PaylukService {
         }
       );
 
-      const verifyDataStatus = verifyResponse?.data?.status;
-      const isSuccess = verifyResponse.status >= 200 && verifyResponse.status < 300 && (
-        verifyDataStatus === 'successful' || verifyDataStatus === 'success' || verifyDataStatus === 'completed' || verifyResponse.status === 200
-      );
-
-      if (isSuccess) {
-        return {
-          success: true,
-          reference: activeIntentRef,
-          intentAmount: activeIntentAmount,
-          intentFee: activeIntentFee,
-          totalPaylukDebit,
-          maximumWithdrawable: activeIntentAmount,
-          paylukStatus: 'successful',
-        };
-      } else {
-        return {
-          success: false,
-          reference: activeIntentRef,
-          intentAmount: activeIntentAmount,
-          intentFee: activeIntentFee,
-          totalPaylukDebit,
-          error: verifyResponse.message || 'Withdrawal verification failed',
-          paylukStatus: String(verifyDataStatus || 'failed'),
-        };
-      }
+      const outcome = withdrawalOutcome(verifyResponse?.data?.status);
+      return {
+        outcome, success: outcome === 'success', reference: activeIntentRef,
+        intentAmount: activeIntentAmount, intentFee: activeIntentFee, totalPaylukDebit,
+        maximumWithdrawable: activeIntentAmount,
+        ...(outcome === 'success' ? {} : { error: outcome === 'pending' ? 'Transfer pending; do not submit another withdrawal.' : 'Transfer failed.' }),
+        paylukStatus: String(verifyResponse?.data?.status || 'unknown'),
+      };
     } catch (err: any) {
       console.error('[PaylukService] withdrawToBank error:', err);
       return {
+        outcome: executionStarted ? 'pending' : 'failed',
         success: false,
-        reference: params.reference,
+        reference: activeReference,
         error: err.message || 'Withdrawal request failed',
       };
     }

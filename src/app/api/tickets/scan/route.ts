@@ -9,7 +9,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 export async function POST(request: NextRequest) {
   try {
     const { data: { user }, error: authError } = await getAuthenticatedUser(request);
-    if (authError || !user) return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
+    if (authError || !user) return NextResponse.json({ error: 'Invalid session' }, { status: authError?.status === 403 ? 403 : authError?.status === 503 ? 503 : 401 });
 
     const { ticketId, ticketCode, ticketInput, eventId } = await request.json();
     const input = ticketInput || ticketCode || ticketId;

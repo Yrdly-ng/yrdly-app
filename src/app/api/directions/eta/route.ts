@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     // ── Auth ─────────────────────────────────────────────────────────────────
     const { data: { user }, error: authError } = await getAuthenticatedUser(request);
     if (!user || authError) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: authError?.status === 403 ? 403 : authError?.status === 503 ? 503 : 401 });
     }
 
     // ── Rate limiting ──────────────────────────────────────────────────────────

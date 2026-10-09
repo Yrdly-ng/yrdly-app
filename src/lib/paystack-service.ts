@@ -1,3 +1,4 @@
+import { withdrawalOutcome, type WithdrawalOutcome } from './payment-state';
 // Server-side only - Paystack service
 // This service should only be used in API routes, not in client components
 
@@ -18,6 +19,7 @@ async function paystackRequest<T>(
 
   const res = await fetch(`${PAYSTACK_BASE_URL}${endpoint}`, {
     ...options,
+    signal: options.signal || AbortSignal.timeout(10_000),
     headers: {
       Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
       'Content-Type': 'application/json',
@@ -161,6 +163,11 @@ export class PaystackService {
    * Transfer funds to a seller's bank account.
    * Paystack requires creating a "transfer recipient" first, then initiating the transfer.
    */
+  static async getTransferStatus(reference: string): Promise<WithdrawalOutcome> {
+    const response = await paystackRequest<{ status: boolean; data?: { status?: string } }>(`/transfer/verify/${encodeURIComponent(reference)}`);
+    return response.status ? withdrawalOutcome(response.data?.status) : 'pending';
+  }
+
   static async transferToSeller(params: {
     bankCode: string;
     accountNumber: string;
@@ -168,7 +175,8 @@ export class PaystackService {
     reference: string;
     narration: string;
     accountName?: string;
-  }): Promise<{ success: boolean; error?: string }> {
+  }): Promise<{ success: boolean; outcome: WithdrawalOutcome; error?: string }> {
+    let submitted = false;
     try {
       // Step 1: Create a transfer recipient
       const recipientResponse = await paystackRequest<{
@@ -186,13 +194,14 @@ export class PaystackService {
       });
 
       if (!recipientResponse.status || !recipientResponse.data?.recipient_code) {
-        return { success: false, error: 'Failed to create transfer recipient' };
+        return { success: false, outcome: 'failed', error: 'Failed to create transfer recipient' };
       }
 
       const recipientCode = recipientResponse.data.recipient_code;
 
       // Step 2: Initiate the transfer
-      const transferResponse = await paystackRequest<{ status: boolean; message?: string }>(
+      submitted = true;
+      const transferResponse = await paystackRequest<{ status: boolean; message?: string; data?: { status?: string } }>(
         '/transfer',
         {
           method: 'POST',
@@ -207,14 +216,11 @@ export class PaystackService {
         }
       );
 
-      if (transferResponse.status) {
-        return { success: true };
-      }
-
-      return { success: false, error: transferResponse.message || 'Transfer failed' };
+      const outcome = transferResponse.status ? withdrawalOutcome(transferResponse.data?.status) : 'failed';
+      return { success: outcome === 'success', outcome, error: outcome === 'success' ? undefined : `Transfer ${outcome}` };
     } catch (error: any) {
       console.error('[PaystackService] transferToSeller error:', error);
-      return { success: false, error: error?.message || 'Unknown transfer error' };
+      return { success: false, outcome: submitted ? 'pending' : 'failed', error: 'Transfer requires reconciliation' };
     }
   }
 

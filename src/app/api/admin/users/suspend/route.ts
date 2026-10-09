@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     // 1. Verify Admin Authentication
     const { data: { user }, error: authError } = await getAuthenticatedUser(request);
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: authError?.status === 403 ? 403 : authError?.status === 503 ? 503 : 401 });
     }
 
     const { data: adminProfile } = await supabaseAdmin
@@ -74,14 +74,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to update user status' }, { status: 500 });
     }
 
-    // 4. Force sign-out target user sessions if suspended or banned
-    if (action === 'suspend' || action === 'ban') {
-      try {
-        await supabaseAdmin.auth.admin.signOut(targetUserId);
-      } catch (signOutErr) {
-        console.warn('[AdminUserSuspend] Session signout warning:', signOutErr);
-      }
-    }
+    // The shared authentication helper enforces suspension on every server operation.
+    // Supabase admin.signOut expects a user's access token, never a user UUID.
 
     return NextResponse.json({
       success: true,

@@ -18,7 +18,7 @@ export async function POST(
   context: { params: Promise<{ disputeId: string }> },
 ) {
   const { data: { user }, error: authError } = await getAuthenticatedUser(request);
-  if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: authError?.status === 403 ? 403 : authError?.status === 503 ? 503 : 401 });
 
   const { data: profile } = await supabaseAdmin.from('users').select('is_admin').eq('id', user.id).maybeSingle();
   if (!profile?.is_admin) return NextResponse.json({ error: 'Admin access required.' }, { status: 403 });
