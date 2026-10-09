@@ -29,7 +29,7 @@ function load(file, mocks = {}) {
 
 function chain(result) {
   const query = {};
-  for (const method of ['select','eq','neq','is','in','or','limit','update','insert','single','maybeSingle']) query[method] = () => query;
+  for (const method of ['select','eq','neq','is','in','or','limit','update','insert','single','maybeSingle','delete']) query[method] = () => query;
   query.then = (resolve, reject) => Promise.resolve(result).then(resolve, reject);
   return query;
 }
@@ -141,7 +141,7 @@ test('event payout includes USED tickets and keeps pending withdrawals unrelease
   const admin = { from(table) {
     const operations = [];
     const query = {};
-    for (const method of ['select','eq','in','is','single','maybeSingle','insert','update']) query[method] = (...args) => { operations.push([method,...args]); return query; };
+    for (const method of ['select','eq','in','is','single','maybeSingle','delete','insert','update']) query[method] = (...args) => { operations.push([method,...args]); return query; };
     query.then = (resolve, reject) => {
       let data;
       if (table === 'tickets') {
@@ -171,4 +171,65 @@ test('event payout includes USED tickets and keeps pending withdrawals unrelease
   assert.equal(updates.some(update => update.table === 'events'), false);
   assert.equal(updates.some(update => update.status === 'PROCESSING'), true);
   assert.equal(updates.some(update => update.status === 'COMPLETED'), false);
+});
+
+
+test('ticket verification rejects anonymous callers before fulfillment', async () => {
+  const { POST } = load('src/app/api/events/tickets/verify/route.ts', {
+    '@/lib/supabase-server': { getAuthenticatedUser: async () => ({ data: { user: null } }) },
+    '@/lib/ticket-service': { TicketService: { verifyAndProcessTicket: () => { throw new Error('Must not run'); } } },
+  });
+  assert.equal((await POST(new Request('http://localhost', { method: 'POST', body: '{"tx_ref":"known"}' }))).status, 401);
+});
+
+test('ticket verification checks buyer and strips credentials', async () => {
+  const { POST } = load('src/app/api/events/tickets/verify/route.ts', {
+    '@/lib/supabase-server': { getAuthenticatedUser: async () => ({ data: { user: { id: 'buyer' } } }) },
+    '@/lib/ticket-service': { TicketService: { verifyAndProcessTicket: async (ref, buyer) => {
+      assert.equal(buyer, 'buyer');
+      if (ref === 'other') throw new Error('ticket_buyer_mismatch');
+      return { id: 'ticket', event_id: 'event', ticket_code: 'secret', qr_data: 'secret' };
+    } } },
+  });
+  const request = ref => new Request('http://localhost', { method: 'POST', body: JSON.stringify({ tx_ref: ref }) });
+  assert.equal((await POST(request('other'))).status, 403);
+  assert.deepEqual(await (await POST(request('own'))).json(), { success: true, ticket: { id: 'ticket', event_id: 'event' } });
+});
+
+for (const [scenario, expected] of [['outsider',403],['wrong-event',404],['refunded',409],['expired',400],['used',409],['race-lost',409],['valid',200]]) {
+  test(`check-in ${scenario} yields ${expected}`, async () => {
+    let writes = 0;
+    const { POST } = load('src/app/api/events/checkin/route.ts', {
+      '@/lib/supabase-server': { getAuthenticatedUser: async () => ({ data: { user: { id: scenario === 'outsider' ? 'other' : 'organizer' } } }) },
+      '@/lib/supabase-admin': { supabaseAdmin: { from(table) {
+        if (table === 'events') return chain({ data: { organizer_id: 'organizer', status: 'PUBLISHED' } });
+        const query = chain({ data: scenario === 'wrong-event' ? null : { id: 'ticket', status: scenario === 'used' ? 'USED' : 'PAID', refund_status: scenario === 'refunded' ? 'requested' : null, expires_at: scenario === 'expired' ? '2020-01-01' : null } });
+        query.update = () => { writes++; return chain({ data: scenario === 'race-lost' ? [] : [{ id: 'ticket' }] }); };
+        return query;
+      } } },
+    });
+    const result = await POST(new Request('http://localhost', { method: 'POST', body: JSON.stringify({ ticket_code: 'TC-TEST', event_id: '00000000-0000-0000-0000-000000000001' }) }));
+    assert.equal(result.status, expected);
+    assert.equal(writes, ['valid','race-lost'].includes(scenario) ? 1 : 0);
+  });
+}
+
+test('event creation removes incomplete event when tier save fails', async () => {
+  let removed = false;
+  const { POST } = load('src/app/api/events/create/route.ts', {
+    '@/lib/supabase-server': { getAuthenticatedUser: async () => ({ data: { user: { id: 'organizer' } } }) },
+    '@/lib/supabase-admin': { supabaseAdmin: {
+      functions: { invoke: async () => ({ data: { isSafe: true } }) },
+      from(table) {
+        if (table === 'ticket_tiers') return chain({ error: { code: 'test-failure' } });
+        const query = chain({ data: { id: 'draft' } });
+        query.insert = payload => { assert.equal(payload.status, 'DRAFT'); return query; };
+        query.delete = () => { removed = true; return query; };
+        return query;
+      },
+    } },
+  });
+  const result = await POST(new Request('http://localhost', { method: 'POST', body: JSON.stringify({ title: 'Test', startTime: '2026-11-01', endTime: '2026-11-02', publish: true, ticketTiers: [{ name: 'Free', price: 0, capacity: 10 }] }) }));
+  assert.equal(result.status, 500);
+  assert.equal(removed, true);
 });

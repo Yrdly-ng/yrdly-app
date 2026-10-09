@@ -40,6 +40,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate minimum price for paid ticket tiers
+    if (!Array.isArray(ticketTiers) || ticketTiers.length < 1 || ticketTiers.length > 30) {
+      return NextResponse.json({ error: 'Provide between 1 and 30 ticket tiers.' }, { status: 400 });
+    }
     if (Array.isArray(ticketTiers)) {
       for (const tier of ticketTiers) {
         const tierPrice = Number(tier.price);
@@ -106,14 +109,14 @@ export async function POST(request: NextRequest) {
         start_time: startTime,
         end_time: endTime,
         timezone: 'Africa/Lagos',
-        status,
+        status: 'DRAFT',
         visibility: (() => {
           const v = (visibility || 'PUBLIC').toUpperCase();
           if (v === 'PRIVATE' || v === 'FRIENDS' || v === 'UNLISTED') return 'UNLISTED';
           if (['PUBLIC', 'WARD_ONLY', 'LGA_ONLY'].includes(v)) return v;
           return 'PUBLIC';
         })(),
-        published_at: publishedAt,
+        published_at: null,
         moderation_status: moderationStatus,
       })
       .select('id')
@@ -142,6 +145,18 @@ export async function POST(request: NextRequest) {
       const { error: tiersError } = await supabaseAdmin.from('ticket_tiers').insert(tiersToInsert);
       if (tiersError) {
         console.error('[events/create] Ticket tiers insert error:', tiersError);
+        const { error: cleanupError } = await supabaseAdmin.from('events').delete().eq('id', eventId);
+        if (cleanupError) console.error('[events/create] Failed to remove incomplete draft:', { eventId, code: cleanupError.code });
+        return NextResponse.json({ error: 'Ticket tiers could not be saved. The event was not published. Please retry.' }, { status: 500 });
+      }
+    }
+
+    if (status === 'PUBLISHED') {
+      const { data: published, error: publishError } = await supabaseAdmin.from('events')
+        .update({ status, published_at: publishedAt }).eq('id', eventId).eq('status', 'DRAFT')
+        .eq('moderation_status', 'approved').select('id').single();
+      if (publishError || !published) {
+        return NextResponse.json({ error: 'Event saved as a draft, but could not be published.', eventId }, { status: 500 });
       }
     }
 

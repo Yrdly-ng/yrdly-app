@@ -1,5 +1,7 @@
 "use client";
 
+import { authenticatedFetch } from "@/lib/authenticated-fetch";
+
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
@@ -146,7 +148,7 @@ export default function EventDetailPage() {
               customerId: data.buyerPaylukId,
               callback: async () => {
                 try {
-                  await fetch('/api/events/tickets/verify', {
+                  await authenticatedFetch('/api/events/tickets/verify', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ tx_ref: data.tx_ref }),
