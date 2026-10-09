@@ -153,6 +153,7 @@ export async function POST(request: NextRequest) {
           account_name: accountName,
         },
         verification_status: 'verified',
+        verified_at: now,
         is_active: true,
         is_primary: true,
         // ✅ Only set account_updated_at for account updates, not initial setup

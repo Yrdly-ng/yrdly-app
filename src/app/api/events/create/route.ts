@@ -30,7 +30,9 @@ export async function POST(request: NextRequest) {
       ticketTiers,
     } = body;
 
-    if (!title || !startTime || !endTime) {
+    if (typeof title !== 'string' || !title.trim() || title.length > 200 ||
+        !Number.isFinite(Date.parse(startTime)) || !Number.isFinite(Date.parse(endTime)) ||
+        Date.parse(endTime) <= Date.parse(startTime)) {
       return NextResponse.json(
         { error: 'Missing required fields: title, startTime, endTime' },
         { status: 400 }
@@ -40,7 +42,12 @@ export async function POST(request: NextRequest) {
     // Validate minimum price for paid ticket tiers
     if (Array.isArray(ticketTiers)) {
       for (const tier of ticketTiers) {
-        const tierPrice = Number(tier.price) || 0;
+        const tierPrice = Number(tier.price);
+        if (!Number.isFinite(tierPrice) || tierPrice < 0 ||
+            !Number.isInteger(Number(tier.capacity)) || Number(tier.capacity) < 1 ||
+            typeof tier.name !== 'string' || !tier.name.trim()) {
+          return NextResponse.json({ error: 'Each tier needs a name, a non-negative price and an integer capacity of at least 1.' }, { status: 400 });
+        }
         if (tierPrice > 0 && tierPrice < EVENT_CONSTANTS.MIN_TICKET_PRICE) {
           return NextResponse.json(
             { error: `Paid ticket tiers must be at least ₦${EVENT_CONSTANTS.MIN_TICKET_PRICE.toLocaleString()}.` },
@@ -69,16 +76,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    let status = reqStatus;
-    if (!status) {
-      status = publish ? 'PUBLISHED' : 'DRAFT';
-    }
-
-    let moderationStatus = 'approved';
-    if (status === 'PENDING_MODERATION' || status === 'PENDING') {
-      status = 'DRAFT';
-      moderationStatus = 'pending';
-    }
+    const { data: moderation, error: moderationError } = await supabaseAdmin.functions.invoke('moderate-content', {
+      body: { type: 'text', content: `${title}\n${typeof description === 'string' ? description : ''}` },
+    });
+    const moderationStatus = !moderationError && moderation?.isSafe === true ? 'approved' : 'pending';
+    // Flagged or unavailable moderation stays DRAFT, even if the caller says approved.
+    const status = moderationStatus === 'approved' && (publish === true || reqStatus === 'PUBLISHED') ? 'PUBLISHED' : 'DRAFT';
 
     const publishedAt = (status === 'PUBLISHED') ? new Date().toISOString() : null;
 

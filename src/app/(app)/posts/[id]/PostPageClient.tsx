@@ -34,7 +34,7 @@ export function PostPageClient({ postId }: { postId: string }) {
     const fetchPost = async () => {
       const { data, error } = await supabase
         .from("posts")
-        .select(`*, user:users!posts_user_id_fkey(id, name, avatar_url)`)
+        .select(`*, user:public_profiles!posts_user_id_fkey(id, name, avatar_url)`)
         .eq("id", postId)
         .single();
 

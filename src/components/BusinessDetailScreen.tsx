@@ -108,7 +108,7 @@ export function BusinessDetailScreen({
           .from('business_reviews')
           .select(`
             *,
-            users!business_reviews_user_id_fkey(
+            users:public_profiles!business_reviews_user_id_fkey(
               name,
               avatar_url
             )
@@ -209,7 +209,7 @@ export function BusinessDetailScreen({
     setHasReviewed(true);
     const { data } = await supabase
       .from('business_reviews')
-      .select(`*, users!business_reviews_user_id_fkey(name, avatar_url)`)
+      .select(`*, users:public_profiles!business_reviews_user_id_fkey(name, avatar_url)`)
       .eq('business_id', business.id)
       .order('created_at', { ascending: false });
     setReviews(data || []);

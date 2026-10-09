@@ -1,5 +1,5 @@
+import { authenticatedFetch } from './authenticated-fetch';
 import { supabase } from './supabase';
-import { PushNotificationService } from './push-notification-service';
 import { getNotificationDestination } from './notification-routing';
 
 export interface NotificationData {
@@ -79,111 +79,12 @@ export class NotificationService {
    * Remove an actor from a notification (e.g. on unlike)
    */
   static async removeNotificationActor(params: { userId: string, type: string, senderId: string, relatedId: string }) {
-    await supabase.rpc('remove_notification_actor', {
-      p_user_id: params.userId,
-      p_type: params.type,
-      p_sender_id: params.senderId,
-      p_related_id: params.relatedId
-    });
+    await authenticatedFetch('/api/notifications/actor', { ...params, remove: true });
   }
 
-  /**
-   * Create a new notification
-   */
   static async createNotification(params: CreateNotificationParams): Promise<string> {
-    try {
-      console.log('Creating notification:', params);
-      
-      // Try using the RPC function first
-      const { data, error } = await supabase.rpc('create_notification', {
-        p_user_id: params.userId,
-        p_type: params.type,
-        p_title: params.title,
-        p_message: params.message,
-        p_sender_id: params.senderId || null,
-        p_related_id: params.relatedId || null,
-        p_related_type: params.relatedType || null,
-        p_data: params.data || {}
-      });
-
-      if (error) {
-        console.error('Error creating notification via RPC:', error);
-        throw error;
-      }
-
-      let notificationId = '';
-      let shouldPush = true;
-      let pushMessage = params.message;
-      
-      if (typeof data === 'object' && data !== null) {
-        notificationId = (data as any).id;
-        shouldPush = (data as any).should_push ?? true;
-        if ((data as any).message) pushMessage = (data as any).message;
-      } else {
-        notificationId = data as unknown as string;
-      }
-
-      console.log('Notification created successfully via RPC, ID:', notificationId);
-
-      // Send push notification
-      if (shouldPush) {
-        try {
-          await PushNotificationService.sendToUser(params.userId, {
-            title: params.title,
-            body: pushMessage,
-            data: params.data,
-            url: getNotificationUrl(params.type, params.relatedId, params.data),
-            type: params.type
-          });
-        } catch (pushError) {
-          console.error('Error sending push notification:', pushError);
-          // Don't throw error - notification was created successfully
-        }
-      }
-
-      return notificationId;
-    } catch (rpcError) {
-      console.log('RPC function failed, falling back to direct insert:', rpcError);
-      
-      // Fallback to direct insert if RPC function doesn't exist
-      const { data, error } = await supabase
-        .from('notifications')
-        .insert({
-          user_id: params.userId,
-          type: params.type,
-          sender_id: params.senderId || null,
-          related_id: params.relatedId || null,
-          related_type: params.relatedType || null,
-          title: params.title,
-          message: params.message,
-          data: params.data || {}
-        })
-        .select('id')
-        .single();
-
-      if (error) {
-        console.error('Error creating notification via direct insert:', error);
-        throw error;
-      }
-
-      console.log('Notification created successfully via direct insert, ID:', data?.id);
-
-      // Send push notification
-      try {
-        await PushNotificationService.sendToUser(params.userId, {
-          title: params.title,
-          body: params.message,
-          data: params.data,
-          url: getNotificationUrl(params.type, params.relatedId, params.data),
-          type: params.type
-        });
-      } catch (pushError) {
-        console.error('Error sending push notification:', pushError);
-        // Don't throw error - notification was created successfully
-      }
-
-      return data?.id;
-    }
+    const result = await authenticatedFetch<{ id: string }>('/api/notifications/actor', params);
+    return result.id;
   }
 
   /**

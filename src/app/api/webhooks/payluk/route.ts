@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyPaylukWebhookSignature } from '@/lib/payluk-webhook';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { EscrowStatus } from '@/types/escrow';
-import { NotificationService } from '@/lib/notification-service';
+import { NotificationService } from '@/lib/server-notification-service';
 import { TicketService } from '@/lib/ticket-service';
 import { PaylukService } from '@/lib/payluk-service';
 import { handlePaylukWebhookEvent as handleBookingPaymentEvent } from '@/lib/booking-payments';

@@ -1,5 +1,7 @@
 "use client";
 
+import { authenticatedFetch } from "@/lib/authenticated-fetch";
+
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ShieldAlert, CheckCircle2, XCircle, Clock, MapPin, AlertTriangle } from "lucide-react";
@@ -51,12 +53,7 @@ export default function SafetyAlertsAdminQueuePage() {
   const handleAction = async (alertId: string, status: "approved" | "rejected") => {
     setProcessingId(alertId);
     try {
-      const { error } = await supabase
-        .from("safety_alerts")
-        .update({ status, updated_at: new Date().toISOString() })
-        .eq("id", alertId);
-
-      if (error) throw error;
+      await authenticatedFetch('/api/safety-alerts', { id: alertId, status }, 'PATCH');
 
       setAlerts((prev) => prev.filter((a) => a.id !== alertId));
       toast({ title: `Alert ${status} successfully` });

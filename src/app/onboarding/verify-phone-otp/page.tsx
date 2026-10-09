@@ -4,7 +4,6 @@ import React, { useState, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Loader2, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/hooks/use-supabase-auth";
-import { supabase } from "@/lib/supabase";
 
 function VerifyPhoneOtpForm() {
   const router = useRouter();
@@ -58,13 +57,7 @@ function VerifyPhoneOtpForm() {
       if (otpError || !verified) {
         setError(otpError || "Invalid verification code");
       } else {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error("Your session expired. Please sign in again.");
-        const { error: profileError } = await supabase
-          .from("users")
-          .update({ phone: `+234${phone}`, phone_verified: true, phone_verified_at: new Date().toISOString() })
-          .eq("id", user.id);
-        if (profileError) throw profileError;
+        // Termii's verified number is stored by the OTP function, never by query string.
         router.push(`/onboarding/profile${nextPath ? `?next=${encodeURIComponent(nextPath)}` : ""}`);
       }
     } catch (e: any) {

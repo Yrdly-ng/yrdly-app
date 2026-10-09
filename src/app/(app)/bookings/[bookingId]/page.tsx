@@ -24,7 +24,7 @@ export default function BookingDetailWebPage() {
       setLoading(true);
       const { data, error } = await supabase
         .from('bookings')
-        .select('*, service:service_offerings(*), business:businesses(*), customer:users(*)')
+        .select('*, service:service_offerings(*), business:businesses(*), customer:public_profiles(*)')
         .eq('id', bookingId)
         .single();
 

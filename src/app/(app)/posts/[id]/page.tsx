@@ -28,7 +28,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   // the username and avatar. Only public fields are used below.
   const { data: post } = await supabaseAdmin
     .from('posts')
-    .select('*, user:users!posts_user_id_fkey(name, username, avatar_url)')
+    .select('*, user:public_profiles!posts_user_id_fkey(name, username, avatar_url)')
     .eq('id', id)
     .maybeSingle();
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { authenticatedFetch } from '@/lib/authenticated-fetch';
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
@@ -233,25 +234,12 @@ export default function EditMarketplaceItemPage() {
         lng: selectedLocation?.lng || null,
       };
 
-      const { error: updateErr } = await supabase
-        .from("posts")
-        .update(updatePayload)
-        .eq("id", itemId);
+      const { error: updateErr } = await authenticatedFetch('/api/posts', { id: itemId, post: updatePayload }, 'PATCH');
 
       if (updateErr) throw updateErr;
 
       // 4. Insert into moderation_queue if flagged
-      if (modStatus === "pending") {
-        await supabase.from("moderation_queue").insert({
-          content_id: itemId,
-          table_name: "posts",
-          user_id: user!.id,
-          status: "pending",
-          reason: modReason,
-          text_content: textToModerate,
-          image_urls: finalImageUrls,
-        });
-      }
+
 
       toast({
         title: "Listing Updated",

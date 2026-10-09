@@ -1,5 +1,7 @@
 "use client";
 
+import { authenticatedFetch } from "@/lib/authenticated-fetch";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-supabase-auth";
@@ -58,18 +60,9 @@ export default function AdminCreateAlertPage() {
     if (!user) return;
     setIsSubmitting(true);
     try {
-      const { error } = await supabase.from("safety_alerts").insert({
-        user_id: user.id,
-        title,
-        description: desc,
-        severity,
-        type,
-        area_name: area,
-        ...(action ? { action } : {}),
-        status: "approved",
+      await authenticatedFetch('/api/safety-alerts', {
+        title, description: desc, severity, type, area_name: area, action, publish: true,
       });
-
-      if (error) throw error;
       setPublished(true);
     } catch (err: any) {
       console.error(err);

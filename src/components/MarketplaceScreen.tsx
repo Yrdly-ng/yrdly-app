@@ -86,7 +86,7 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
       try {
         let query = supabase
           .from("posts")
-          .select(`*, user:users!posts_user_id_fkey(id, name, avatar_url, verified_seller)`)
+          .select(`*, user:public_profiles!posts_user_id_fkey(id, name, avatar_url, verified_seller)`)
           .eq("category", "For Sale")
           .eq("is_sold", false);
 

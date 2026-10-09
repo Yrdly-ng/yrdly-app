@@ -85,7 +85,7 @@ export function BusinessChatScreen({ business, item, conversationId: initialConv
         let usersMap = new Map();
         if (mainSenderIds.length > 0) {
           const { data: usersData } = await supabase
-            .from('users')
+            .from('public_profiles')
             .select('id, name, avatar_url')
             .in('id', mainSenderIds);
           if (usersData) {
@@ -160,7 +160,7 @@ export function BusinessChatScreen({ business, item, conversationId: initialConv
           const newM = payload.new as any;
           if (user && newM.sender_id === user.id) return;
 
-          const { data: uData } = await supabase.from('users').select('name, avatar_url').eq('id', newM.sender_id).maybeSingle();
+          const { data: uData } = await supabase.from('public_profiles').select('name, avatar_url').eq('id', newM.sender_id).maybeSingle();
           const transformed: BusinessMessage = {
             id: newM.id,
             business_id: business.id,
@@ -194,7 +194,7 @@ export function BusinessChatScreen({ business, item, conversationId: initialConv
         if (item?.id && newMessage.item_id !== item.id) return;
         if (!item?.id && newMessage.item_id) return;
 
-        const { data: userData } = await supabase.from('users').select('name, avatar_url').eq('id', newMessage.sender_id).maybeSingle();
+        const { data: userData } = await supabase.from('public_profiles').select('name, avatar_url').eq('id', newMessage.sender_id).maybeSingle();
         const transformed: BusinessMessage = {
           id: newMessage.id,
           business_id: newMessage.business_id,
@@ -287,7 +287,7 @@ export function BusinessChatScreen({ business, item, conversationId: initialConv
 
       if (insertedMessage) {
         const { data: userData } = await supabase
-          .from('users')
+          .from('public_profiles')
           .select('name, avatar_url')
           .eq('id', user.id)
           .single();

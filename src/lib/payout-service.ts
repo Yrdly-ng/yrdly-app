@@ -2,7 +2,8 @@ import { supabaseAdmin } from './supabase-admin';
 import { PaystackService } from './paystack-service';
 import { PaylukService } from './payluk-service';
 import { getPaylukCustomerId } from './payluk-onboarding';
-import { NotificationService } from './notification-service';
+import { NotificationService } from './server-notification-service';
+import { payoutAccountError } from './payout-account';
 
 export interface PayoutRequest {
   id: string;
@@ -68,7 +69,7 @@ export class PayoutService {
           const wallet = await PaylukService.getCustomerWallet(sellerPaylukId);
           if (typeof wallet.mainBalance === 'number' && !isNaN(wallet.mainBalance)) {
             // Use the Payluk wallet balance directly — it's what the seller actually has.
-            availableBalance = wallet.mainBalance;
+            availableBalance = Math.max(0, wallet.mainBalance - pendingPayouts);
           }
         }
       } catch (wErr) {
@@ -222,6 +223,9 @@ export class PayoutService {
         console.log(`[PayoutService] Payout ${payoutRequestId} is already completed. Skipping.`);
         return { success: true };
       }
+
+      const accountError = payoutAccountError(payoutRequest.seller_account);
+      if (accountError) return { success: false, error: accountError };
 
       // CAS guard: update status from 'pending' to 'processing' atomically
       const { data: updatedRows, error: casError } = await supabaseAdmin

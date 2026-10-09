@@ -4,7 +4,7 @@ import { getAuthenticatedUser } from '@/lib/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { PaystackService } from '@/lib/paystack-service';
 import { PayoutService } from '@/lib/payout-service';
-import { NotificationService } from '@/lib/notification-service';
+import { NotificationService } from '@/lib/server-notification-service';
 import { PaylukService } from '@/lib/payluk-service';
 
 const resolveSchema = z.object({

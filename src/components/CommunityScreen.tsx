@@ -110,11 +110,11 @@ export function CommunityScreen({ className }: { className?: string }) {
       const [{ data: followingData }, { data: followersData }] = await Promise.all([
         supabase
           .from("followers")
-          .select("following_id, following:users!followers_following_id_fkey(id, name, avatar_url, location)")
+          .select("following_id, following:public_profiles!followers_following_id_fkey(id, name, avatar_url, location)")
           .eq("follower_id", currentUser.id),
         supabase
           .from("followers")
-          .select("follower_id, follower:users!followers_follower_id_fkey(id, name, avatar_url, location)")
+          .select("follower_id, follower:public_profiles!followers_follower_id_fkey(id, name, avatar_url, location)")
           .eq("following_id", currentUser.id),
       ]);
 

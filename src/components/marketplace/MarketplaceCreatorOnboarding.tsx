@@ -37,7 +37,7 @@ export function MarketplaceCreatorOnboarding({ isOpen, onClose, onContinue }: Ma
       setCheckingPayout(true);
       const [{ data: userData }, { data: sellerData }] = await Promise.all([
         supabase
-          .from("users")
+          .from('public_profiles')
           .select("verified_seller")
           .eq("id", user.id)
           .single(),

@@ -237,8 +237,8 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
 
   const refreshProfileData = useCallback(async () => {
     if (!targetUser) return;
-    const { data } = await supabase.from("users").select("*, friends").eq("id", targetUser.id).single();
-    if (data) { setStats((p) => ({ ...p, friends: data.friends?.length || 0 })); setProfileData(data); }
+    const { data } = await supabase.from('public_profiles').select('*').eq("id", targetUser.id).single();
+    if (data) { setStats((p) => ({ ...p, friends: data.friend_count || 0 })); setProfileData(data); }
   }, [targetUser]);
 
   useEffect(() => { if (targetUser) refreshProfileData(); }, [targetUser?.id, refreshProfileData, targetUser]);
@@ -246,7 +246,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
   useEffect(() => {
     if (!targetUser) return;
     const fetch = async () => {
-      const { data: userData } = await supabase.from("users").select("*, friends").eq("id", targetUser.id).single();
+      const { data: userData } = await supabase.from('public_profiles').select('*').eq("id", targetUser.id).single();
       if (userData) setProfileData(userData);
 
       const [postsRes, followersRes, followingRes] = await Promise.all([

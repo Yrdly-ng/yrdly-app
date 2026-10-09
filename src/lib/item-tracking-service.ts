@@ -105,7 +105,7 @@ export class ItemTrackingService {
           timestamp,
           sold_at,
           transaction_id,
-          user:users!posts_user_id_fkey(
+          user:public_profiles!posts_user_id_fkey(
             id,
             name,
             avatar_url
@@ -186,7 +186,7 @@ export class ItemTrackingService {
             .single();
 
           const { data: buyer } = await supabase
-            .from('users')
+            .from('public_profiles')
             .select('id, name, avatar_url')
             .eq('id', item.sold_to_user_id)
             .single();

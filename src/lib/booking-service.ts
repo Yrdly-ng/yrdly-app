@@ -1,3 +1,4 @@
+import { authenticatedFetch } from './authenticated-fetch';
 import { supabase } from './supabase';
 import {
   ServiceOffering,
@@ -286,35 +287,7 @@ export class BookingService {
     staffId?: string | null;
     quoteId?: string | null;
   }): Promise<Booking> {
-    const { data: service } = await supabase
-      .from('service_offerings')
-      .select('duration_minutes')
-      .eq('id', params.serviceId)
-      .single();
-
-    const durationMinutes = service?.duration_minutes || 60;
-    const startTimeDate = new Date(params.appointmentTime);
-    const endTimeDate = new Date(startTimeDate.getTime() + durationMinutes * 60 * 1000);
-
-    const { data, error } = await supabase
-      .from('bookings')
-      .insert([
-        {
-          customer_id: params.customerId,
-          business_id: params.businessId,
-          service_id: params.serviceId,
-          staff_id: params.staffId || null,
-          quote_id: params.quoteId || null,
-          appointment_time: params.appointmentTime,
-          end_time: endTimeDate.toISOString(),
-          notes: params.notes,
-          status: 'requested',
-        },
-      ])
-      .select('*, service:service_offerings(*), business:businesses(*)')
-      .single();
-
-    if (error) throw error;
+    const { data } = await authenticatedFetch('/api/bookings/create', params);
     return data;
   }
 
@@ -336,7 +309,7 @@ export class BookingService {
       .from('bookings')
       .update({ status: 'confirmed', updated_at: new Date().toISOString() })
       .eq('id', bookingId)
-      .select('*, service:service_offerings(*), business:businesses(*), customer:users(*)')
+      .select('*, service:service_offerings(*), business:businesses(*), customer:public_profiles(*)')
       .single();
     if (error) throw error;
     return data;
@@ -601,7 +574,7 @@ export class BookingService {
   static async getBusinessBookings(businessId: string): Promise<Booking[]> {
     const { data, error } = await supabase
       .from('bookings')
-      .select('*, service:service_offerings(*), business:businesses(*), customer:users(*)')
+      .select('*, service:service_offerings(*), business:businesses(*), customer:public_profiles(*)')
       .eq('business_id', businessId)
       .order('appointment_time', { ascending: false });
 

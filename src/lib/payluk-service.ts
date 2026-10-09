@@ -56,6 +56,7 @@ async function paylukRequest<T>(
   const res = await fetch(`${PAYLUK_BASE_URL}${endpoint}`, {
     ...fetchOptions,
     headers,
+    signal: fetchOptions.signal || AbortSignal.timeout(10_000),
   });
 
   let data: PaylukEnvelope<T>;
@@ -101,6 +102,7 @@ async function paylukFormRequest<T>(
     method: options.method || 'POST',
     body: formData,
     headers,
+    signal: AbortSignal.timeout(10_000),
   });
 
   let data: PaylukEnvelope<T>;
@@ -285,9 +287,10 @@ export class PaylukService {
     phone?: string;
     countryId?: string;
     bvn?: string;
-  }): Promise<PaylukCustomer> {
+  }, signal?: AbortSignal): Promise<PaylukCustomer> {
     const response = await paylukRequest<PaylukCustomer>('/v1/customer/create', {
       method: 'POST',
+      signal,
       body: JSON.stringify(params),
     });
     return response.data;
@@ -318,41 +321,15 @@ export class PaylukService {
    * Looks up a customer by phone number. If multiple matches are found, it uses the provided email to disambiguate.
    * Throws an error if ambiguity cannot be resolved. Returns null if not found.
    */
-  static async getCustomerByPhone(phone: string, email?: string): Promise<PaylukCustomer | null> {
-    try {
-      const response = await paylukRequest<{
-        pagination: any;
-        data: PaylukCustomer[];
-      }>(`/v1/customers?phone=${encodeURIComponent(phone)}`, {
-        method: 'GET',
-      });
-      
-      const matches = response.data?.data || [];
-      
-      if (matches.length === 0) {
-        return null;
-      }
-      
-      if (email) {
-        const exactMatches = matches.filter(c => c.email.toLowerCase() === email.toLowerCase());
-        if (exactMatches.length === 1) {
-          return exactMatches[0];
-        }
-        throw new Error(`Found ${matches.length} customers with phone ${phone}, and ${exactMatches.length} with email ${email}. Cannot disambiguate safely.`);
-      }
-      
-      if (matches.length === 1) {
-        return matches[0];
-      }
-      
-      throw new Error(`Found ${matches.length} customers with phone ${phone} and no email provided for disambiguation.`);
-    } catch (error: any) {
-      if (error.message.includes('Cannot disambiguate safely') || error.message.includes('no email provided')) {
-        throw error;
-      }
-      console.warn(`[PaylukService] getCustomerByPhone failed for ${phone}:`, error?.message);
-      return null;
-    }
+  static async getCustomerByPhone(phone: string, email?: string, signal?: AbortSignal): Promise<PaylukCustomer | null> {
+    const response = await paylukRequest<{ data: PaylukCustomer[] }>(
+      `/v1/customers?phone=${encodeURIComponent(phone)}`, { method: 'GET', signal });
+    const normalized = (value: string) => value.replace(/\D/g, '').replace(/^234/, '0');
+    const matches = (response.data?.data || []).filter(customer =>
+      normalized(customer.phone || '') === normalized(phone) &&
+      (!email || customer.email?.toLowerCase() === email.toLowerCase()));
+    if (matches.length > 1) throw new Error('Ambiguous verified payment identity. Contact support.');
+    return matches[0] || null;
   }
 
   /**
@@ -360,10 +337,10 @@ export class PaylukService {
    * Fetches a single customer by their Payluk customer ID.
    * Throws if the customer doesn't exist (used to verify stored IDs).
    */
-  static async getCustomerById(customerId: string): Promise<PaylukCustomer> {
+  static async getCustomerById(customerId: string, signal?: AbortSignal): Promise<PaylukCustomer> {
     const response = await paylukRequest<PaylukCustomer>(
       `/v1/customer/get/${encodeURIComponent(customerId)}`,
-      { method: 'GET' }
+      { method: 'GET', signal }
     );
     return response.data;
   }

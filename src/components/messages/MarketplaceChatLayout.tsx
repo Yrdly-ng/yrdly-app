@@ -152,7 +152,7 @@ export function MarketplaceChatLayout({
         for (const userId of participantIds) {
           try {
             const { data: userData, error } = await supabase
-              .from('users')
+              .from('public_profiles')
               .select('*')
               .eq('id', userId)
               .single();
@@ -250,7 +250,7 @@ export function MarketplaceChatLayout({
         const otherParticipantId = isCurrentUserBuyer ? selectedChat.sellerId : selectedChat.buyerId;
         
         const { data: userData, error } = await supabase
-          .from('users')
+          .from('public_profiles')
           .select('*')
           .eq('id', otherParticipantId)
           .single();

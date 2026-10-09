@@ -114,7 +114,7 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
         setLoadingAuthor(false);
         return;
       }
-      const { data } = await supabase.from("users").select("id, name, avatar_url, created_at").eq("id", post.user_id).single();
+      const { data } = await supabase.from('public_profiles').select("id, name, avatar_url, created_at").eq("id", post.user_id).single();
       if (data) {
         setAuthor({
           id: data.id,

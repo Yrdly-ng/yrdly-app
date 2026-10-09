@@ -94,7 +94,7 @@ export function NotificationsScreen() {
       let senderMap = new Map();
       if (senderIds.length > 0) {
         const { data: senders } = await supabase
-          .from("users")
+          .from('public_profiles')
           .select("id, name, avatar_url")
           .in("id", senderIds);
         if (senders) {

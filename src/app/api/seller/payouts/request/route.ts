@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { PayoutService } from '@/lib/payout-service';
+import { payoutAccountError } from '@/lib/payout-account';
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,7 +14,7 @@ export async function POST(request: NextRequest) {
 
     const { amount } = await request.json();
 
-    if (!amount || amount <= 0) {
+    if (typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0) {
       return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
     }
 
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
     // Get seller account ID
     const { data: sellerAccount, error: saError } = await supabaseAdmin
       .from('seller_accounts')
-      .select('id')
+      .select('id,is_active,verification_status,account_updated_at')
       .eq('user_id', user.id)
       .eq('is_active', true)
       .maybeSingle();
@@ -41,6 +42,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    const accountError = payoutAccountError(sellerAccount);
+    if (accountError) return NextResponse.json({ error: accountError }, { status: 403 });
 
     // Validate requested amount against server-computed seller available balance
     const currentBalance = await PayoutService.getSellerBalance(user.id);

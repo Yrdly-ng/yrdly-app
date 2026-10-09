@@ -282,8 +282,12 @@ export class AuthService {
   // Update user profile
   static async updateUserProfile(userId: string, updates: Partial<AuthUser> & Record<string, any>) {
     try {
-      const cleanUpdates = { ...updates };
-      delete cleanUpdates.home_location_geom;
+      const allowed = new Set(['name', 'legal_name', 'username', 'avatar_url', 'bio',
+        'interests', 'notification_settings', 'share_location', 'current_location',
+        'location_updated_at', 'location', 'home_state', 'home_lga', 'home_ward',
+        'home_lat', 'home_lng', 'profile_completed', 'onboarding_status',
+        'onboarding_completed_at', 'tour_completed', 'discoverable', 'is_online', 'last_seen']);
+      const cleanUpdates = Object.fromEntries(Object.entries(updates).filter(([key]) => allowed.has(key)));
 
       if (cleanUpdates.username) {
         cleanUpdates.username = cleanUpdates.username.replace(/^@/, '').trim().toLowerCase();
@@ -341,7 +345,7 @@ export class AuthService {
       if (!clean) return true;
 
       let query = supabase
-        .from('users')
+        .from('public_profiles')
         .select('id')
         .ilike('username', clean);
 

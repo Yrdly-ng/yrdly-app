@@ -1,5 +1,6 @@
 "use client";
 
+import { authenticatedFetch } from '@/lib/authenticated-fetch';
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -196,26 +197,12 @@ export default function CreateMarketplaceListingPage() {
         comment_count: 0,
       };
 
-      const { data: newPost, error: insertErr } = await supabase
-        .from("posts")
-        .insert(postPayload)
-        .select()
-        .single();
+      const { data: newPost, error: insertErr } = await authenticatedFetch('/api/posts', { post: postPayload });
 
       if (insertErr) throw insertErr;
 
       // 5. Insert into moderation_queue if flagged
-      if (modStatus === "pending" && newPost) {
-        await supabase.from("moderation_queue").insert({
-          content_id: newPost.id,
-          table_name: "posts",
-          user_id: user.id,
-          status: "pending",
-          reason: modReason,
-          text_content: textToModerate,
-          image_urls: uploadedImageUrls,
-        });
-      }
+
 
       setPosting(false);
       setUploadProgress(100);

@@ -148,23 +148,9 @@ export function useFriendshipGlobal(targetUserId: string | undefined): UseFriend
 
       // Legacy cleanup for friend_requests & users.friends
       try {
-        const [{ data: meData }, { data: themData }] = await Promise.all([
-          supabase.from("users").select("friends").eq("id", user.id).single(),
-          supabase.from("users").select("friends").eq("id", targetUserId).single(),
-        ]);
-        const updatedMyFriends = (meData?.friends || []).filter((id: string) => id !== targetUserId);
-        const updatedTheirFriends = (themData?.friends || []).filter((id: string) => id !== user.id);
-        await Promise.all([
-          supabase.from("users").update({ friends: updatedMyFriends }).eq("id", user.id),
-          supabase.from("users").update({ friends: updatedTheirFriends }).eq("id", targetUserId),
-          supabase
-            .from("friend_requests")
-            .delete()
-            .or(
-              `and(from_user_id.eq.${user.id},to_user_id.eq.${targetUserId}),` +
-              `and(from_user_id.eq.${targetUserId},to_user_id.eq.${user.id})`
-            ),
-        ]);
+        await supabase.from("friend_requests").delete().or(
+          `and(from_user_id.eq.${user.id},to_user_id.eq.${targetUserId}),and(from_user_id.eq.${targetUserId},to_user_id.eq.${user.id})`
+        );
       } catch {
         // Non-fatal
       }
@@ -260,16 +246,6 @@ export function useFriendshipGlobal(targetUserId: string | undefined): UseFriend
           .eq("from_user_id", targetUserId)
           .eq("to_user_id", user.id);
 
-        const [{ data: meData }, { data: themData }] = await Promise.all([
-          supabase.from("users").select("friends").eq("id", user.id).single(),
-          supabase.from("users").select("friends").eq("id", targetUserId).single(),
-        ]);
-        const myFriends = Array.from(new Set([...(meData?.friends || []), targetUserId]));
-        const theirFriends = Array.from(new Set([...(themData?.friends || []), user.id]));
-        await Promise.all([
-          supabase.from("users").update({ friends: myFriends }).eq("id", user.id),
-          supabase.from("users").update({ friends: theirFriends }).eq("id", targetUserId),
-        ]);
       } catch {
         // Non-fatal
       }

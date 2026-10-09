@@ -1,3 +1,4 @@
+import { authenticatedFetch } from '@/lib/authenticated-fetch';
 import { useState, useEffect, useCallback, useRef } from 'react';
 // Removed Firebase imports - now using Supabase
 import { useAuth } from '@/hooks/use-supabase-auth';
@@ -37,7 +38,7 @@ export const usePosts = (filter?: LocationFilter | null) => {
       .from('posts')
       .select(`
         *,
-        user:users!posts_user_id_fkey(
+        user:public_profiles!posts_user_id_fkey(
           id,
           name,
           avatar_url,
@@ -167,7 +168,7 @@ export const usePosts = (filter?: LocationFilter | null) => {
           const fetchUserData = async () => {
             try {
               const { data: userData, error: userError } = await supabase
-                .from('users')
+                .from('public_profiles')
                 .select('id, name, avatar_url, created_at')
                 .eq('id', newPost.user_id)
                 .single();
@@ -201,7 +202,7 @@ export const usePosts = (filter?: LocationFilter | null) => {
           const fetchUserData = async () => {
             try {
               const { data: userData, error: userError } = await supabase
-                .from('users')
+                .from('public_profiles')
                 .select('id, name, avatar_url, created_at')
                 .eq('id', updatedPost.user_id)
                 .single();
@@ -414,12 +415,7 @@ export const usePosts = (filter?: LocationFilter | null) => {
         };
 
         if (postIdToUpdate) {
-            const { data: updatedPost, error } = await supabase
-              .from('posts')
-              .update(finalPostData)
-              .eq('id', postIdToUpdate)
-              .select(`*, user:users!posts_user_id_fkey(id, name, avatar_url, created_at, verified_seller, phone_verified)`)
-              .single();
+            const { data: updatedPost, error } = await authenticatedFetch('/api/posts', { id: postIdToUpdate, post: finalPostData }, 'PATCH');
             
             if (error) throw error;
             if (updatedPost) {
@@ -427,15 +423,7 @@ export const usePosts = (filter?: LocationFilter | null) => {
             }
             toast({ title: 'Success', description: 'Post updated successfully.' });
         } else {
-            const { data: newPost, error } = await supabase
-              .from('posts')
-              .insert({
-                ...finalPostData,
-                comment_count: 0,
-                liked_by: [],
-              })
-              .select(`*, user:users!posts_user_id_fkey(id, name, avatar_url, created_at, verified_seller, phone_verified)`)
-              .single();
+            const { data: newPost, error } = await authenticatedFetch('/api/posts', { post: finalPostData });
             
             if (error) throw error;
             if (newPost) {

@@ -38,7 +38,7 @@ export default function BlockedUsersPage() {
       try {
         setLoading(true);
         const { data, error } = await supabase
-          .from('users')
+          .from('public_profiles')
           .select('id, name, username, avatar_url')
           .in('id', blockedIds);
 
