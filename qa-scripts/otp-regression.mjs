@@ -1,11 +1,12 @@
 // Exercises the deployed guards without sending SMS or calling OTP verification.
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { writeFile } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { createClient } from '@supabase/supabase-js';
 import { readQaEnv, readOutput, createAdminClient } from './qa-common.mjs';
 
 const { env } = await readQaEnv();
+await mkdir('.qa-artifacts', { recursive: true });
 const seed = await readOutput();
 const admin = createAdminClient(env);
 const actors = {};

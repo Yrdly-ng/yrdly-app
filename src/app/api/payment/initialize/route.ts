@@ -208,7 +208,7 @@ export async function POST(request: NextRequest) {
       if (existing.buyer_id !== buyerId) return NextResponse.json({ error:'Item reserved by another buyer' },{ status:409 });
       if (['paid','shipped','delivered'].includes(existing.status)) return NextResponse.json({ success:true,alreadyPaid:true,transactionId:existing.id,totalAmount:existing.total_amount });
       if (existing.status === 'pending' && existing.payluk_escrow_id && existing.payluk_tx_ref) {
-        const remote = await PaylukService.verifyEscrow(existing.payluk_escrow_id);
+        const remote = await PaylukService.verifyEscrow(existing.payluk_tx_ref);
         const status = (remote.status || '').toUpperCase();
         if (['ONGOING','COMPLETED','CLAIMED'].includes(status)) {
           await applyEscrowPayment(existing.id,'payluk',existing.payluk_escrow_id);
@@ -340,10 +340,9 @@ export async function POST(request: NextRequest) {
           getPaylukCustomerId(buyerId),getPaylukCustomerId(sellerId),
         ]);
 
-        await Promise.all([
-          PaylukService.updateCustomerPermissions(buyerPaylukId,{ canBuy:true },setupDeadline),
-          PaylukService.updateCustomerPermissions(sellerPaylukId,{ canSell:true },setupDeadline),
-        ]);
+        // Payluk can lock concurrent permission writes under the same merchant.
+        await PaylukService.updateCustomerPermissions(buyerPaylukId,{ canBuy:true },setupDeadline);
+        await PaylukService.updateCustomerPermissions(sellerPaylukId,{ canSell:true },setupDeadline);
         submittedToProvider = true;
         const paylukEscrow = await PaylukService.createEscrow(sellerPaylukId, {
           amount: authorizedPrice,

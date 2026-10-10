@@ -69,6 +69,10 @@ not evidence that a payment settled or that production has the matching code.
   Concurrent requests allowed only one account to verify the same phone and
   consumed one challenge only once; the temporary profile changes were restored.
   The expanded local unit/regression suite passed all 149 tests.
+- The first expanded CI run passed all 149 unit tests and all 20 OTP checks,
+  then failed saving evidence because `.qa-artifacts` did not exist on a fresh
+  runner. The harness now creates its evidence directory before running. A new
+  complete CI result is required before calling that revision green.
 
 ## Regressions found and corrected during QA
 
@@ -107,6 +111,19 @@ not evidence that a payment settled or that production has the matching code.
    limits, store requester/phone/expiry, bound attempts and atomically consume
    successful challenges. Live cross-account/replay tests and a real Termii
    verification passed. Production has not received this change yet.
+10. **VERIFIED by hosted checkout:** simultaneous buyer/seller permission
+    updates returned Payluk HTTP 423 and made checkout return HTTP 502. The
+    marketplace route now sends those updates sequentially under its existing
+    deadline. Hosted verification of the corrected revision is pending.
+11. **VERIFIED against Payluk sandbox:** escrow verification by escrow ID
+    returned HTTP 400, while the same escrow's payment token returned HTTP 200.
+    Checkout retry, both delivery timeout-recovery paths and the legacy payment
+    callback now use payment tokens; confirm-payment continues using escrow IDs.
+    The diagnostic unpaid escrow was deleted successfully.
+
+The permission-lock and token-addressing fixes passed all 153 local regression
+tests, typecheck and lint (the same 19 warnings). Full CI and a repeat hosted
+checkout on the corrected deployment are pending.
 
 ## Remaining release requirements
 

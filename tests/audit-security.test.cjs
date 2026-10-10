@@ -438,7 +438,7 @@ test('checkout retry reconciles a funded prior escrow without cancelling or char
     '@/lib/payluk-onboarding': {},
     '@/lib/escrow-payment': { applyEscrowPayment: async id => { assert.equal(id,'prior');return true; } },
     '@/lib/payment-reconciliation': { flagPayment: async () => {} },
-    '@/lib/payluk-service': { PaylukService: { verifyEscrow: async () => ({ status:'ONGOING',state:'OPENED' }),createEscrow: () => { throw Error('Must not charge twice'); } } },
+    '@/lib/payluk-service': { PaylukService: { verifyEscrow: async token => { assert.equal(token,'token'); return { status:'ONGOING',state:'OPENED' }; },createEscrow: () => { throw Error('Must not charge twice'); } } },
     '@/lib/supabase-admin': { supabaseAdmin: {
       rpc: async name => { assert.equal(name,'consume_rate_limit');return { data:true }; },
       from(table) {
@@ -461,6 +461,73 @@ test('late payment is held for reconciliation instead of reporting success', asy
     './payment-reconciliation': {},
   });
   await assert.rejects(applyEscrowPayment('cancelled','payluk','reference'),/reconciliation/);
+});
+
+test('marketplace checkout succeeds when Payluk rejects overlapping permission writes', async () => {
+  let permissionBusy = false, permissionCalls = 0, escrowReads = 0;
+  const { POST } = load('src/app/api/payment/initialize/route.ts', {
+    '@/lib/supabase-server': { getAuthenticatedUser: async () => ({ data: { user: { id: 'buyer', email: 'qa@example.invalid' } } }) },
+    '@/lib/user-suspension': { isUserSuspendedOrBanned: async () => ({ suspended: false }) },
+    '@/lib/escrow-payment': {},
+    '@/lib/payluk-onboarding': { getPaylukCustomerId: async id => `provider-${id}` },
+    '@/lib/payment-reconciliation': { flagPayment: async () => assert.fail('Successful setup must not require reconciliation') },
+    '@/lib/payluk-service': { PaylukService: {
+      updateCustomerPermissions: async () => {
+        assert.equal(permissionBusy, false, 'Provider returns HTTP 423 for overlapping writes');
+        permissionBusy = true;
+        permissionCalls++;
+        await new Promise(resolve => setImmediate(resolve));
+        permissionBusy = false;
+      },
+      createEscrow: async (seller, params) => { assert.equal(seller, 'provider-seller'); assert.equal(params.amount, 2500); return { id: 'remote-id', paymentToken: 'PY_TOKEN' }; },
+      addAdditionalFee: async (token, fee) => { assert.equal(token, 'PY_TOKEN'); assert.equal(fee, 75); },
+    } },
+    '@/lib/supabase-admin': { supabaseAdmin: {
+      rpc: async name => ({ data: name === 'consume_rate_limit' ? true : 'local-tx' }),
+      from: table => chain({ data: table === 'posts' ? { id: 'item', user_id: 'seller', price: 2500, is_sold: false, category: 'For Sale', moderation_status: 'approved' }
+        : escrowReads++ === 0 ? [] : { id: 'local-tx' } }),
+    } },
+  });
+  const response = await POST(new Request('http://localhost', { method: 'POST', body: JSON.stringify({ itemId: 'item', buyerId: 'buyer', sellerId: 'seller', price: 1 }) }));
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).totalAmount, 2575);
+  assert.equal(permissionCalls, 2);
+});
+
+for (const route of ['src/app/api/payluk/confirm-delivery/route.ts', 'src/app/api/transactions/[id]/complete/route.ts']) {
+  test(`delivery timeout recovers using the stored payment token: ${route}`, async () => {
+    let reads = 0, verified = 0;
+    const tx = { id: 'local-tx', buyer_id: 'buyer', seller_id: 'seller', status: 'paid', payment_provider: 'payluk', payluk_escrow_id: 'remote-id', payluk_tx_ref: 'PY_TOKEN', amount: 2500, seller_amount: 2500 };
+    const { POST } = load(route, {
+      '@/lib/supabase-server': { getAuthenticatedUser: async () => ({ data: { user: { id: 'buyer' } } }) },
+      '@/lib/payluk-onboarding': { getPaylukCustomerId: async id => `provider-${id}` },
+      '@/lib/payluk-service': { PaylukService: {
+        confirmDelivery: async (_buyer, id) => { assert.equal(id, 'remote-id'); throw new Error('Provider response lost after release'); },
+        verifyEscrow: async token => { verified++; assert.equal(token, 'PY_TOKEN'); return { status: 'COMPLETED', state: 'CLOSED' }; },
+        getCustomerWallet: async () => ({ mainBalance: 10000 }),
+      } },
+      '@/lib/payout-service': { PayoutService: { initiateAutoPayout: async () => {} } },
+      '@/lib/supabase-admin': { supabaseAdmin: { from: () => chain({ data: reads++ === 0 ? tx : [{ id: 'local-tx' }] }) } },
+    });
+    const response = await POST(new Request('http://localhost', { method: 'POST', headers: { authorization: 'Bearer fixture' }, body: JSON.stringify({ transactionId: 'local-tx' }) }), { params: Promise.resolve({ id: 'local-tx' }) });
+    assert.equal(response.status, 200);
+    assert.equal(verified, 1);
+  });
+}
+
+test('legacy payment success webhook verifies escrowDetails.paymentToken', async () => {
+  let verified = 0;
+  const { POST } = load('src/app/api/webhooks/payluk/route.ts', {
+    '@/lib/payluk-service': { PaylukService: { verifyEscrow: async token => { verified++; assert.equal(token, 'PY_TOKEN'); return { status: 'PENDING' }; } } },
+    '@/lib/booking-payments': { handlePaylukWebhookEvent: async () => {} },
+    '@/lib/supabase-admin': {}, '@/lib/escrow-payment': {}, '@/lib/payment-reconciliation': {},
+    '@/lib/server-notification-service': {}, '@/lib/ticket-service': {}, '@/lib/payout-service': {}, '@/lib/server-push-notification': {},
+  });
+  const body = JSON.stringify({ event: 'payment.success', data: { transactionType: 'escrow', status: 'success', escrowDetails: { id: 'remote-id', paymentToken: 'PY_TOKEN' } } });
+  const signature = require('node:crypto').createHmac('sha512', 'test-only').update(body).digest('hex');
+  const response = await POST(new Request('http://localhost', { method: 'POST', headers: { 'x-payluk-signature': signature }, body }));
+  assert.equal(response.status, 200);
+  assert.equal(verified, 1);
 });
 
 test('payment write failure records a durable reconciliation flag before returning failure', async () => {

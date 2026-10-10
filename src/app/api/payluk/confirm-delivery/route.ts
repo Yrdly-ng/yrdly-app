@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
   // 1. Load the transaction — all values come from the DB, not from the client.
   const { data: tx, error: fetchError } = await supabaseAdmin
     .from('escrow_transactions')
-    .select('id, buyer_id, seller_id, status, payluk_escrow_id, payment_provider')
+    .select('id, buyer_id, seller_id, status, payluk_escrow_id, payluk_tx_ref, payment_provider')
     .eq('id', transactionId)
     .maybeSingle();
 
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
     const msg: string = e?.message ?? '';
     console.error('[confirm-delivery] PaylukService.confirmDelivery failed:', msg);
 
-    const escrow = await PaylukService.verifyEscrow(tx.payluk_escrow_id).catch(() => null);
+    const escrow = tx.payluk_tx_ref ? await PaylukService.verifyEscrow(tx.payluk_tx_ref).catch(() => null) : null;
     const providerStatuses = [escrow?.status, escrow?.state].map(value => String(value || '').toLowerCase());
     if (!providerStatuses.some(value => ['completed', 'claimed'].includes(value))) {
       return NextResponse.json({ error: msg || 'Failed to confirm delivery with Payluk' }, { status: 502 });

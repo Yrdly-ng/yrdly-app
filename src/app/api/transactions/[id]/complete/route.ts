@@ -36,7 +36,7 @@ export async function POST(
     // 1. Get the transaction using admin client to bypass RLS for this specific secure flow
     const { data: transaction, error: fetchError } = await supabaseAdmin
       .from('escrow_transactions')
-      .select('status, amount, seller_amount, seller_id, buyer_id, payment_provider, payluk_escrow_id')
+      .select('status, amount, seller_amount, seller_id, buyer_id, payment_provider, payluk_escrow_id, payluk_tx_ref')
       .eq('id', transactionId)
       .single();
 
@@ -67,7 +67,7 @@ export async function POST(
         await PaylukService.confirmDelivery(buyerPaylukId, transaction.payluk_escrow_id);
       } catch (paylukErr: any) {
         const msg: string = paylukErr?.message ?? '';
-        const escrow = await PaylukService.verifyEscrow(transaction.payluk_escrow_id).catch(() => null);
+        const escrow = transaction.payluk_tx_ref ? await PaylukService.verifyEscrow(transaction.payluk_tx_ref).catch(() => null) : null;
         const providerStatuses = [escrow?.status, escrow?.state].map(value => String(value || '').toLowerCase());
         if (!providerStatuses.some(value => ['completed', 'claimed'].includes(value))) {
           console.error('[complete] PaylukService.confirmDelivery failed:', msg);

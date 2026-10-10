@@ -123,9 +123,9 @@ export async function POST(request: NextRequest) {
       case 'payment.success': {
         const payment = data as any;
         if (payment.transactionType !== 'escrow' || payment.status !== 'success') break;
-        const id = payment.escrowDetails?.id;
-        if (!id) { await flagPayment('payluk', payment.reference || payment.id, null, 'missing_escrow_reference'); break; }
-        const verified = await PaylukService.verifyEscrow(id);
+        const token = payment.escrowDetails?.paymentToken;
+        if (!token) { await flagPayment('payluk', payment.reference || payment.id, null, 'missing_escrow_reference'); break; }
+        const verified = await PaylukService.verifyEscrow(token);
         if (['ONGOING','COMPLETED','CLAIMED'].includes((verified.status || '').toUpperCase())) await handleEscrowOngoing(verified);
         break;
       }
