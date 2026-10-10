@@ -19,6 +19,7 @@ import { AlertTriangle, Clock, CheckCircle, XCircle, ImageIcon, MessageSquare, S
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { PrivateMediaImage } from '@/components/PrivateMedia';
 
 export default function AdminModerationPage() {
   const { user } = useAuth();
@@ -409,7 +410,7 @@ export default function AdminModerationPage() {
                   <CardContent className="p-5 flex flex-col sm:flex-row items-start gap-4">
                     {report.image_url && (
                       <div className="w-24 h-24 relative rounded-lg overflow-hidden border flex-shrink-0 bg-muted">
-                        <Image src={report.image_url} alt="Attached image" fill className="object-cover" />
+                        <PrivateMediaImage src={report.image_url} alt="Attached image" fill className="object-cover" />
                       </div>
                     )}
                     <div className="flex-1 min-w-0">

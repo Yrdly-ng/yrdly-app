@@ -15,6 +15,7 @@ import { SupabaseChatService } from "@/lib/supabase-chat-service";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { PrivateMediaImage } from '@/components/PrivateMedia';
 import { Progress } from "../ui/progress";
 import { OnlineStatusService } from "@/lib/online-status";
 import { AvatarOnlineIndicator } from "../ui/online-indicator";
@@ -311,7 +312,7 @@ export function MarketplaceChatLayout({
       
       // Upload image if one is selected
       if (imageFile) {
-        const { url, error: uploadError } = await StorageService.uploadChatImage(user?.id!, imageFile);
+        const { url, error: uploadError } = await StorageService.uploadChatImage(selectedChat.id, imageFile);
         if (uploadError) {
           console.error('Image upload error:', uploadError);
           throw uploadError;
@@ -590,7 +591,7 @@ export function MarketplaceChatLayout({
                     <div className={cn("rounded-2xl px-4 py-2.5 max-w-xs lg:max-w-md break-words text-sm font-yrdly-body shadow-sm", msg.senderId === user?.id ? "bg-primary text-primary-foreground" : "bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] text-foreground")}>
                       {msg.metadata?.imageUrl && (
                         <div className="relative w-48 h-48 mb-2">
-                          <Image src={msg.metadata.imageUrl} alt="Chat image" layout="fill" className="rounded-md object-cover" />
+                          <PrivateMediaImage src={msg.metadata.imageUrl} alt="Chat image" fill className="rounded-md object-cover" />
                         </div>
                       )}
                       {msg.content && <p>{msg.content}</p>}

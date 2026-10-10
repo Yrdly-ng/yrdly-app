@@ -11,6 +11,8 @@ import { ActivityIndicator } from "@/components/ActivityIndicator";
 import { useTypingDetection } from "@/hooks/use-typing-detection";
 import type { User } from "@/types";
 import Image from "next/image";
+import { PrivateMediaImage, PrivateMediaVideo } from '@/components/PrivateMedia';
+import { resolvePrivateMediaSource } from '@/hooks/use-private-media';
 import { useToast } from "@/hooks/use-toast";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
@@ -415,16 +417,12 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
       let videoUrl: string | null = null;
       if (selectedFile) {
         const { url, error } = await StorageService.uploadChatImage(conversation.id, selectedFile);
-        if (!error) imageUrl = url;
+        if (error || !url) throw new Error('Image upload failed. Please try again.');
+        imageUrl = url;
       }
       if (videoFile) {
         const { url, error } = await StorageService.uploadChatVideo(conversation.id, videoFile);
-        if (error) {
-          const msg = typeof error === 'string' ? error : 'Video upload failed.';
-          alert(msg);
-          setSending(false);
-          return;
-        }
+        if (error || !url) throw new Error('Video upload failed. Please try again.');
         videoUrl = url;
       }
 
@@ -465,8 +463,10 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
       setNewMessage(""); setSelectedFile(null); setImagePreview(null);
       setVideoFile(null); setVideoPreview(null);
       stopTyping();
-    } catch (e) { console.error(e); } finally { setSending(false); }
-  }, [user, conversation, newMessage, selectedFile, videoFile, stopTyping]);
+    } catch {
+      toast({ title: 'Message could not be sent', description: 'Please try again. Your draft has been kept.', variant: 'destructive' });
+    } finally { setSending(false); }
+  }, [user, conversation, newMessage, selectedFile, videoFile, stopTyping, toast]);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -490,7 +490,8 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
 
   const handleDownload = async (url: string, defaultFilename: string) => {
     try {
-      const response = await fetch(url);
+      const response = await fetch(await resolvePrivateMediaSource(url), { cache: 'no-store' });
+      if (!response.ok) throw new Error('Download unavailable');
       const blob = await response.blob();
       const blobUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -501,7 +502,7 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
       document.body.removeChild(link);
       window.URL.revokeObjectURL(blobUrl);
     } catch (e) {
-      window.open(url, '_blank');
+      toast({ title: 'Download unavailable', description: 'Please try again.', variant: 'destructive' });
     }
   };
 
@@ -771,7 +772,7 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
                   <div className="flex flex-col gap-1">
                     {(msg.image_url || (msg.media_type === 'image' && msg.media_url)) && (
                       <div className="relative group rounded-2xl overflow-hidden border border-[var(--yrdly-glass-border)] cursor-pointer" style={{ maxWidth: 280 }} onClick={() => setFullscreenImage(msg.image_url || msg.media_url!)}>
-                        <Image src={msg.image_url || msg.media_url!} alt="Message image" width={280} height={280} className="w-full h-auto object-cover" />
+                        <PrivateMediaImage src={msg.image_url || msg.media_url!} alt="Message image" width={280} height={280} className="w-full h-auto object-cover" />
                         <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                           <span className="bg-black/50 text-white p-2 rounded-full backdrop-blur-sm">
                             <ImagePlus className="w-5 h-5" />
@@ -781,8 +782,8 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
                     )}
                     {msg.video_url && (
                       <div className="rounded-2xl overflow-hidden relative group border border-[var(--yrdly-glass-border)]" style={{ maxWidth: 280, width: "100%", background: "#000" }}>
-                        <video
-                          src={msg.video_url.includes('#t=') ? msg.video_url : `${msg.video_url}#t=0.001`}
+                        <PrivateMediaVideo
+                          src={msg.video_url}
                           controls
                           playsInline
                           disablePictureInPicture
@@ -929,10 +930,11 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
               <X className="w-6 h-6" />
             </button>
           </div>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img 
+          <PrivateMediaImage
             src={fullscreenImage} 
             alt="Fullscreen" 
+            width={1200}
+            height={1200}
             className="max-w-full max-h-[90vh] object-contain rounded-md" 
             onClick={(e) => e.stopPropagation()} 
           />

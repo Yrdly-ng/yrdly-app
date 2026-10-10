@@ -30,7 +30,7 @@ function load(file, mocks = {}) {
 
 function chain(result) {
   const query = {};
-  for (const method of ['select','eq','neq','is','in','or','limit','update','insert','single','maybeSingle','delete','order']) query[method] = () => query;
+  for (const method of ['select','eq','neq','is','in','or','contains','limit','update','insert','single','maybeSingle','delete','order']) query[method] = () => query;
   query.then = (resolve, reject) => Promise.resolve(result).then(resolve, reject);
   return query;
 }
@@ -442,3 +442,182 @@ test('push edge function rejects a regular user token before reading subscriptio
   const response = await handler(new Request('http://localhost',{ method:'POST',headers:{ authorization:'Bearer user-token' },body:'{}' }));
   assert.equal(response.status,403);
 });
+
+test('private media references preserve object names and recognize historical project URLs', () => {
+  const media = load('src/lib/private-media.ts');
+  const objectPath = 'chat/12345678-1234-1234-1234-123456789abc/photo with space.png';
+  const reference = media.privateMediaReference('chat-images', objectPath);
+  assert.equal(media.parsePrivateMediaReference(reference).path, objectPath);
+  const legacy = media.parsePrivateMediaReference(`https://yoiyqxtpmxnrrbqqidcs.supabase.co/storage/v1/object/public/chat-images/${encodeURI(objectPath)}`);
+  assert.equal(legacy.bucket, 'chat-images');
+  assert.equal(legacy.path, objectPath);
+  const signed = media.parsePrivateMediaReference(`https://api.yrdly.ng/storage/v1/object/sign/chat-images/${encodeURI(objectPath)}?token=expired`);
+  assert.equal(signed.path, objectPath);
+  assert.equal(media.parsePrivateMediaReference('https://example.com/photo.png'), null);
+  assert.equal(media.parsePrivateMediaReference('https://api.yrdly.ng/storage/v1/object/public/post-images/photo.png'), null);
+});
+
+for (const objectPath of ['../secret', 'chat//photo', 'chat/./photo', 'chat/%2e%2e/photo', 'chat/\\photo', 'chat/photo?token=x', 'chat/photo#fragment', 'chat/\u0000photo']) {
+  test(`private media rejects unsafe object path ${JSON.stringify(objectPath)}`, () => {
+    const { validatePrivateMediaPath } = load('src/lib/private-media.ts');
+    assert.throws(() => validatePrivateMediaPath(objectPath), /Invalid media path/);
+  });
+}
+
+const mediaConversation = '12345678-1234-1234-1234-123456789abc';
+const mediaUser = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+for (const scenario of ['anonymous','outsider','member','legacy-member','own-report','admin-report','outsider-report','lookup-error','admin-error','limiter-error','rate-limited','missing-object','bad-bucket','bad-path','bad-conversation']) {
+  test(`media signing authorizes ${scenario} without exposing durable URLs`, async () => {
+    let signed = 0;
+    let dbReads = 0;
+    const { POST } = load('src/app/api/media/sign/route.ts', {
+      '@/lib/supabase-server': { getAuthenticatedUser: async () => ({ data: { user: scenario === 'anonymous' ? null : { id: mediaUser } } }) },
+      '@/lib/supabase-admin': { supabaseAdmin: {
+        rpc: async () => ({ data: scenario !== 'rate-limited', error: scenario === 'limiter-error' ? { code:'unavailable' } : null }),
+        from: table => {
+          dbReads++;
+          const query = chain({ data: table === 'users' ? { is_admin: scenario === 'admin-report' }
+            : ['member','legacy-member','missing-object'].includes(scenario) ? { id:mediaConversation } : null,
+            error: ['lookup-error','admin-error'].includes(scenario) ? { code:'unavailable' } : null });
+          query.contains = (column, ids) => { assert.equal(column, 'participant_ids'); assert.equal(ids[0], mediaUser); return query; };
+          return query;
+        },
+        storage: { from: bucket => ({ createSignedUrl: async (objectPath, ttl) => {
+          signed++; assert.equal(ttl, 300);
+          assert.equal(bucket, scenario.includes('report') ? 'reports' : 'chat-images');
+          assert.equal(objectPath.includes('..'), false);
+          return scenario === 'missing-object' ? { error:{ code:'404' } } : { data:{ signedUrl:'https://signed.example/private' } };
+        } }) },
+      } },
+    });
+    const body = { bucket: scenario.includes('report') || scenario === 'admin-error' ? 'reports' : scenario === 'bad-bucket' ? 'post-images' : 'chat-images',
+      path: scenario === 'own-report' ? `${mediaUser}/photo.png` : scenario.includes('report') || scenario === 'admin-error' ? 'other-user/photo.png'
+        : scenario === 'bad-path' ? '../photo.png' : scenario === 'bad-conversation' ? 'unknown/photo.png'
+        : `${scenario === 'legacy-member' ? 'chat/' : ''}${mediaConversation}/photo.png` };
+    const response = await POST(new Request('http://localhost/api/media/sign', { method:'POST', body:JSON.stringify(body) }));
+    const expected = ['member','legacy-member','own-report','admin-report'].includes(scenario) ? 200
+      : scenario === 'anonymous' ? 401 : ['outsider','outsider-report'].includes(scenario) ? 403
+      : ['bad-bucket','bad-path','bad-conversation'].includes(scenario) ? 400
+      : scenario === 'missing-object' ? 404 : scenario === 'rate-limited' ? 429 : 503;
+    assert.equal(response.status, expected);
+    assert.equal(response.headers.get('cache-control'), 'private, no-store');
+    assert.match(response.headers.get('vary'), /Authorization/);
+    assert.equal(signed, expected === 200 || scenario === 'missing-object' ? 1 : 0);
+    if (scenario === 'anonymous' || scenario === 'own-report') assert.equal(dbReads, 0);
+    if (expected !== 200) assert.equal((await response.json()).url, undefined);
+  });
+}
+
+test('private media resolver reauthorizes an expired URL instead of fetching it publicly', async () => {
+  let requests = 0;
+  const { resolvePrivateMediaSource } = load('src/hooks/use-private-media.ts', {
+    './use-supabase-auth': { useAuth:()=>({}) },
+    '@/lib/authenticated-fetch': { authenticatedFetch: async (endpoint, body) => {
+      requests++; assert.equal(endpoint, '/api/media/sign'); assert.equal(body.bucket, 'chat-images');
+      assert.equal(body.path, `${mediaConversation}/photo.png`);
+      return { url:'https://signed.example/refreshed' };
+    } },
+  });
+  assert.equal(await resolvePrivateMediaSource(`https://api.yrdly.ng/storage/v1/object/sign/chat-images/${mediaConversation}/photo.png?token=expired`), 'https://signed.example/refreshed');
+  assert.equal(await resolvePrivateMediaSource('blob:local-preview'), 'blob:local-preview');
+  assert.equal(requests, 1);
+});
+
+test('private media clears access on account changes and discards stale signer responses', async () => {
+  let auth = { user:{ id:mediaUser } };
+  let state;
+  let effect;
+  let resolveSigning;
+  let requests = 0;
+  const { usePrivateMedia } = load('src/hooks/use-private-media.ts', {
+    react: { useState:()=>[state, value=>{ state=value; }], useEffect:callback=>{ effect=callback; } },
+    './use-supabase-auth': { useAuth:()=>auth },
+    '@/lib/authenticated-fetch': { authenticatedFetch:()=> { requests++; return new Promise(resolve=>{ resolveSigning=resolve; }); } },
+    globals: { setTimeout:()=>1, clearTimeout:()=>{} },
+  });
+  const source = `storage://chat-images/${mediaConversation}/photo.png`;
+  usePrivateMedia(source);
+  const cleanup = effect();
+  cleanup();
+  auth = { user:null };
+  assert.equal(usePrivateMedia(source).url, null);
+  effect();
+  resolveSigning({ url:'https://signed.example/previous-user' });
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(usePrivateMedia(source).url, null);
+  assert.equal(state.error, true);
+  assert.equal(requests, 1);
+});
+
+for (const missing of ['NEXT_PUBLIC_SUPABASE_URL','SUPABASE_SERVICE_ROLE_KEY']) {
+  test(`admin client refuses missing ${missing} without an anonymous fallback`, () => {
+    let creations = 0;
+    assert.throws(()=>load('src/lib/supabase-admin.ts', {
+      env:{ NEXT_PUBLIC_SUPABASE_URL:'https://test.invalid', SUPABASE_SERVICE_ROLE_KEY:'server-test', NEXT_PUBLIC_SUPABASE_ANON_KEY:'anonymous-test', [missing]:'' },
+      '@supabase/supabase-js': { createClient:()=>{ creations++; return {}; } },
+    }), /Server Supabase configuration is missing/);
+    assert.equal(creations, 0);
+  });
+}
+
+test('sandbox smoke refuses live or ambiguous keys before any network request', async () => {
+  const { runSandboxSmoke } = await import('../scripts/qa-payluk-sandbox.mjs');
+  let calls = 0;
+  for (const contents of ['PAYLUK_SECRET_KEY=sk_live_fake', 'sk_test_first\nsk_test_second', 'PAYLUK_SECRET_KEY=missing']) {
+    await assert.rejects(runSandboxSmoke(contents, async()=>{ calls++; }), /sandbox key is required/);
+  }
+  assert.equal(calls, 0);
+});
+
+test('sandbox smoke accepts QA-file keys only on staging and returns no provider data', async () => {
+  const { runSandboxSmoke } = await import('../scripts/qa-payluk-sandbox.mjs');
+  for (const contents of ['PAYLUK_SECRET_KEY=sk_test_fake', 'sk_test_fake', 'Payluk test key = sk_test_fake']) {
+    const result = await runSandboxSmoke(contents, async(url, options)=>{
+      assert.equal(url, 'https://staging.api.payluk.ng/v1/countries');
+      assert.equal(options.headers.Authorization, 'Bearer sk_test_fake');
+      assert.equal(options.redirect, 'error');
+      return Response.json({ status:200, data:{ private:'never log this' } });
+    });
+    assert.equal(result.passed, true);
+    assert.equal(result.data, undefined);
+    assert.equal(JSON.stringify(result).includes('sk_test_'), false);
+  }
+});
+
+test('service worker never caches private storage URLs or signing responses', () => {
+  const handlers = {};
+  load('public/sw.js', { globals:{ self:{ addEventListener:(name, handler)=>{ handlers[name]=handler; } } } });
+  for (const url of ['https://api.yrdly.ng/storage/v1/object/sign/chat-images/file?token=test',
+    'https://yoiyqxtpmxnrrbqqidcs.supabase.co/storage/v1/object/sign/reports/file?token=test',
+    'https://app.yrdly.ng/api/media/sign']) {
+    handlers.fetch({ request:new Request(url), respondWith:()=>{ assert.fail('Private requests must bypass caches'); } });
+  }
+});
+
+test('private image rendering bypasses the shared Next.js image cache', () => {
+  const { PrivateMediaImage } = load('src/components/PrivateMedia.tsx', {
+    '@/hooks/use-private-media':{ usePrivateMedia:()=>({ url:'https://signed.example/private',error:false }) },
+    'next/image':{ __esModule:true,default:'image' }, 'react/jsx-runtime':{ jsx:(type,props)=>({ type,props }) },
+  });
+  const rendered = PrivateMediaImage({ src:'storage://reports/owner/file',alt:'Evidence',width:100,height:100 });
+  assert.equal(rendered.props.unoptimized, true);
+  assert.equal(rendered.props.src, 'https://signed.example/private');
+});
+
+for (const enabled of [false,true]) {
+  test(`private media reference rollout ${enabled ? 'enabled' : 'disabled'} preserves shared-client compatibility`, () => {
+    let publicUrls = 0;
+    const { StorageService } = load('src/lib/storage-service.ts', {
+      env:{ NEXT_PUBLIC_PRIVATE_MEDIA_REFERENCES:String(enabled) },
+      './supabase':{ supabase:{ storage:{ from:bucket=>({ getPublicUrl:objectPath=>{
+        publicUrls++; return { data:{ publicUrl:`https://api.yrdly.ng/storage/v1/object/public/${bucket}/${objectPath}` } };
+      } }) } } },
+    });
+    const source = StorageService.getPublicUrl('chat-images', `${mediaConversation}/photo.png`);
+    assert.equal(source.startsWith('storage://'), enabled);
+    assert.equal(publicUrls, enabled ? 0 : 1);
+    const parsed = load('src/lib/private-media.ts').parsePrivateMediaReference(source);
+    assert.equal(parsed.path, `${mediaConversation}/photo.png`);
+    assert.equal(parsed.bucket, 'chat-images');
+  });
+}
