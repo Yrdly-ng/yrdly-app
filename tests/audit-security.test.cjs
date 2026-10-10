@@ -35,6 +35,27 @@ function chain(result) {
   return query;
 }
 
+for (const scenario of ['no-profile', 'no-phone', 'incomplete-profile', 'anonymous', 'onboarding-next', 'external-next']) {
+  test(`auth callback preserves password recovery and onboarding boundaries: ${scenario}`, async () => {
+    let queries = 0;
+    const profile = scenario === 'no-profile' ? null : { id: 'qa-user', phone: scenario === 'no-phone' ? null : '2347000000001', profile_completed: false };
+    const client = {
+      auth: { getSession: async () => ({ data: { session: scenario === 'anonymous' ? null : { user: { id: 'qa-user', email: 'fixture@example.test' } } } }) },
+      from: () => { queries++; return chain({ data: profile }); },
+    };
+    const { GET } = load('src/app/auth/callback/route.ts', {
+      '@/lib/supabase-server': { createClient: async () => client },
+      'next/server': { NextResponse: { redirect: url => new Response(null, { status: 307, headers: { location: String(url) } }) } },
+    });
+    const next = scenario === 'external-next' ? 'https://external.invalid/reset-password' : scenario === 'onboarding-next' ? '/marketplace' : '/reset-password';
+    const response = await GET(new Request(`https://qa.invalid/auth/callback?next=${encodeURIComponent(next)}`));
+    const target = new URL(response.headers.get('location'));
+    assert.equal(target.origin, 'https://qa.invalid');
+    assert.equal(target.pathname, scenario === 'anonymous' ? '/login' : ['onboarding-next', 'external-next'].includes(scenario) ? '/onboarding/profile' : '/reset-password');
+    if (['no-profile', 'no-phone', 'incomplete-profile', 'anonymous'].includes(scenario)) assert.equal(queries, 0);
+  });
+}
+
 for (const operation of ['send', 'verify']) {
   for (const scenario of ['anonymous', 'invalid-token', 'suspended', 'bad-input', 'rate-limit', 'provider-failure', 'success', ...(operation === 'verify' ? ['other-owner', 'wrong-phone', 'wrong-code', 'replay'] : ['save-failure'])]) {
     test(`phone OTP ${operation} enforces identity and challenge state: ${scenario}`, async () => {
