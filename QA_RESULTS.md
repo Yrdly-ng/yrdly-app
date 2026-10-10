@@ -32,13 +32,14 @@ not evidence that a payment settled or that production has the matching code.
   and payload tests. Backend keys work; publishable keys and user JWTs fail.
 - GitHub CLI has write-capable access. QA-only credentials were encrypted in
   the `yrdly-qa` GitHub environment, restricted to `fix/audit-oct-2026`.
-- Linux CI passed the build, typecheck, lint, 130 regression tests, seven live
+- Linux CI passed the build, typecheck, lint, 153 regression tests, 20 live OTP
+  checks, seven live
   push authorization tests, 50 signed-in API/security checks, five browser
   scenarios and the existing smoke suite. The browser scenarios cover six
   protected routes at 375, 768 and 1440 pixels, wait for loaded content and
   assert visible navigation. Nineteen screenshots were captured; representative
   loaded mobile, tablet and desktop screenshots were visually reviewed.
-  Evidence: https://github.com/Yrdly-ng/yrdly-app/actions/runs/38062580693
+  Evidence: https://github.com/Yrdly-ng/yrdly-app/actions/runs/38082700194
 - Vercel access works. A separate `yrdly-app-qa` project was configured with the
   isolated database and Payluk sandbox keys. It deployed revision `711ec2a9`
   successfully at https://yrdly-app-qa.vercel.app. No production environment
@@ -72,7 +73,7 @@ not evidence that a payment settled or that production has the matching code.
 - The first expanded CI run passed all 149 unit tests and all 20 OTP checks,
   then failed saving evidence because `.qa-artifacts` did not exist on a fresh
   runner. The harness now creates its evidence directory before running. A new
-  complete CI result is required before calling that revision green.
+  complete CI run then passed after this correction (linked above).
 
 ## Regressions found and corrected during QA
 
@@ -120,10 +121,16 @@ not evidence that a payment settled or that production has the matching code.
     Checkout retry, both delivery timeout-recovery paths and the legacy payment
     callback now use payment tokens; confirm-payment continues using escrow IDs.
     The diagnostic unpaid escrow was deleted successfully.
+12. **VERIFIED by exact source:** delivery completion overwrote a sale's
+    `seller_amount` with the seller's aggregate wallet balance when lower.
+    New marketplace checkouts now record principal minus that escrow's Payluk
+    seller fee; completion preserves the recorded amount. Regression tests
+    check fee accounting and prevent wallet reads from rewriting proceeds.
+    Historical proceeds and funded settlement still need reconciliation tests.
 
-The permission-lock and token-addressing fixes passed all 153 local regression
-tests, typecheck and lint (the same 19 warnings). Full CI and a repeat hosted
-checkout on the corrected deployment are pending.
+The permission-lock and token-addressing fixes passed full CI. The additional
+escrow-proceeds change passed all 153 local regression tests, typecheck and lint
+(the same 19 warnings). Its full CI and repeat hosted checkout are pending.
 
 ## Remaining release requirements
 
@@ -153,6 +160,11 @@ checkout on the corrected deployment are pending.
   Include the additive OTP challenge migration before replacing both OTP
   functions. Remove retired provider environment entries only with the matching
   web release; the deployed production version has not been replaced.
+  Read-only inspection confirmed the current mobile source directly updates
+  `escrow_transactions` (`src/lib/escrow-service.ts:89`) and scans tickets using
+  direct `tickets` updates (`src/app/events/scan.tsx:111`). Those paths conflict
+  with the proposed server-only policies; matching mobile changes are required
+  before applying the restrictive migrations to the shared production backend.
 
 No claim of 100% release completion is made while these requirements remain.
 
@@ -186,3 +198,5 @@ differ from local draft names. Apply reviewed changes individually in order.
 secrets. `qa-scripts/vercel-qa.mjs configure` and `deploy` target only the separate
 QA project, archive committed source, and disable scheduled jobs in that copy.
 Neither uploads delivery destinations, local environment files or QA artifacts.
+Use `qa-scripts/vercel-qa.mjs source` to refresh committed QA deployment source
+without rewriting the already configured QA environment variables.

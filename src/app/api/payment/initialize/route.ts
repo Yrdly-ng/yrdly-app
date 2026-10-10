@@ -354,8 +354,13 @@ export async function POST(request: NextRequest) {
 
         paylukPaymentToken = paylukEscrow.paymentToken;
         paylukEscrowId = paylukEscrow.id;
+        const providerFee = paylukEscrow.fee;
+        if (!Number.isFinite(providerFee) || providerFee < 0 || providerFee > authorizedPrice) {
+          throw new Error('Invalid Payluk escrow fee. Checkout requires reconciliation.');
+        }
+        const sellerAmount = Math.round((authorizedPrice - providerFee) * 100) / 100;
         const { data: persisted, error: persistError } = await supabaseAdmin.from('escrow_transactions')
-          .update({ payment_provider:'payluk',payluk_tx_ref:paylukPaymentToken,payluk_escrow_id:paylukEscrowId })
+          .update({ payment_provider:'payluk',payluk_tx_ref:paylukPaymentToken,payluk_escrow_id:paylukEscrowId,seller_amount:sellerAmount })
           .eq('id',transactionId).eq('status','creating_escrow').select('id').maybeSingle();
         if (persistError || !persisted) throw new Error('Could not persist payment setup');
         if (commission > 0) await PaylukService.addAdditionalFee(paylukPaymentToken,commission,setupDeadline);

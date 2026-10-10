@@ -75,6 +75,8 @@ try {
     assert.equal(verifiedEscrow.state, 'AWAITING_PAYMENT');
     assert.equal(verifiedEscrow.amount, 2500);
     assert.equal(verifiedEscrow.additionalFee, 75);
+    const tx = ok(await admin.from('escrow_transactions').select('seller_amount').eq('id', first.transactionId).single(), 'Read escrow proceeds');
+    assert.equal(tx.seller_amount, Math.round((verifiedEscrow.amount - verifiedEscrow.fee) * 100) / 100);
   });
 } catch (error) {
   artifact.failure = error instanceof Error ? error.message : 'Checkout regression failed';

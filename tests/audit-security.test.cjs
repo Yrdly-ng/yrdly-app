@@ -464,7 +464,7 @@ test('late payment is held for reconciliation instead of reporting success', asy
 });
 
 test('marketplace checkout succeeds when Payluk rejects overlapping permission writes', async () => {
-  let permissionBusy = false, permissionCalls = 0, escrowReads = 0;
+  let permissionBusy = false, permissionCalls = 0, escrowReads = 0, proceedsWrites = 0;
   const { POST } = load('src/app/api/payment/initialize/route.ts', {
     '@/lib/supabase-server': { getAuthenticatedUser: async () => ({ data: { user: { id: 'buyer', email: 'qa@example.invalid' } } }) },
     '@/lib/user-suspension': { isUserSuspendedOrBanned: async () => ({ suspended: false }) },
@@ -479,24 +479,29 @@ test('marketplace checkout succeeds when Payluk rejects overlapping permission w
         await new Promise(resolve => setImmediate(resolve));
         permissionBusy = false;
       },
-      createEscrow: async (seller, params) => { assert.equal(seller, 'provider-seller'); assert.equal(params.amount, 2500); return { id: 'remote-id', paymentToken: 'PY_TOKEN' }; },
+      createEscrow: async (seller, params) => { assert.equal(seller, 'provider-seller'); assert.equal(params.amount, 2500); return { id: 'remote-id', paymentToken: 'PY_TOKEN', fee: 50 }; },
       addAdditionalFee: async (token, fee) => { assert.equal(token, 'PY_TOKEN'); assert.equal(fee, 75); },
     } },
     '@/lib/supabase-admin': { supabaseAdmin: {
       rpc: async name => ({ data: name === 'consume_rate_limit' ? true : 'local-tx' }),
-      from: table => chain({ data: table === 'posts' ? { id: 'item', user_id: 'seller', price: 2500, is_sold: false, category: 'For Sale', moderation_status: 'approved' }
-        : escrowReads++ === 0 ? [] : { id: 'local-tx' } }),
+      from: table => {
+        const q = chain({ data: table === 'posts' ? { id: 'item', user_id: 'seller', price: 2500, is_sold: false, category: 'For Sale', moderation_status: 'approved' }
+          : escrowReads++ === 0 ? [] : { id: 'local-tx' } });
+        q.update = row => { if (Object.hasOwn(row, 'seller_amount')) { proceedsWrites++; assert.equal(row.seller_amount, 2450); } return q; };
+        return q;
+      },
     } },
   });
   const response = await POST(new Request('http://localhost', { method: 'POST', body: JSON.stringify({ itemId: 'item', buyerId: 'buyer', sellerId: 'seller', price: 1 }) }));
   assert.equal(response.status, 200);
   assert.equal((await response.json()).totalAmount, 2575);
   assert.equal(permissionCalls, 2);
+  assert.equal(proceedsWrites, 1);
 });
 
 for (const route of ['src/app/api/payluk/confirm-delivery/route.ts', 'src/app/api/transactions/[id]/complete/route.ts']) {
   test(`delivery timeout recovers using the stored payment token: ${route}`, async () => {
-    let reads = 0, verified = 0;
+    let reads = 0, verified = 0, walletReads = 0;
     const tx = { id: 'local-tx', buyer_id: 'buyer', seller_id: 'seller', status: 'paid', payment_provider: 'payluk', payluk_escrow_id: 'remote-id', payluk_tx_ref: 'PY_TOKEN', amount: 2500, seller_amount: 2500 };
     const { POST } = load(route, {
       '@/lib/supabase-server': { getAuthenticatedUser: async () => ({ data: { user: { id: 'buyer' } } }) },
@@ -504,7 +509,7 @@ for (const route of ['src/app/api/payluk/confirm-delivery/route.ts', 'src/app/ap
       '@/lib/payluk-service': { PaylukService: {
         confirmDelivery: async (_buyer, id) => { assert.equal(id, 'remote-id'); throw new Error('Provider response lost after release'); },
         verifyEscrow: async token => { verified++; assert.equal(token, 'PY_TOKEN'); return { status: 'COMPLETED', state: 'CLOSED' }; },
-        getCustomerWallet: async () => ({ mainBalance: 10000 }),
+        getCustomerWallet: async () => { walletReads++; return { mainBalance: 100 }; },
       } },
       '@/lib/payout-service': { PayoutService: { initiateAutoPayout: async () => {} } },
       '@/lib/supabase-admin': { supabaseAdmin: { from: () => chain({ data: reads++ === 0 ? tx : [{ id: 'local-tx' }] }) } },
@@ -512,6 +517,7 @@ for (const route of ['src/app/api/payluk/confirm-delivery/route.ts', 'src/app/ap
     const response = await POST(new Request('http://localhost', { method: 'POST', headers: { authorization: 'Bearer fixture' }, body: JSON.stringify({ transactionId: 'local-tx' }) }), { params: Promise.resolve({ id: 'local-tx' }) });
     assert.equal(response.status, 200);
     assert.equal(verified, 1);
+    assert.equal(walletReads, 0, 'Delivery must preserve escrow proceeds when the wallet balance differs');
   });
 }
 

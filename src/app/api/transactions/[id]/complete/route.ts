@@ -76,30 +76,9 @@ export async function POST(
         console.warn('[complete] Payluk escrow already closed — proceeding to DB update.');
       }
 
-      // After Payluk releases escrow, query the seller's ACTUAL wallet balance.
-      // Payluk takes an escrow fee (e.g. ₦50 on a ₦1,000 escrow), so the seller
-      // receives less than the item price. We must update seller_amount in the DB
-      // to reflect the real amount the seller can actually withdraw.
-      try {
-        const sellerPaylukId = await getPaylukCustomerId(transaction.seller_id);
-        if (sellerPaylukId) {
-          const wallet = await PaylukService.getCustomerWallet(sellerPaylukId);
-          const actualWalletBalance = wallet.mainBalance;
-          // Only adjust if the wallet balance is less than the original seller_amount
-          // (i.e. Payluk took a fee). Use the wallet balance as the true seller_amount.
-          if (typeof actualWalletBalance === 'number' && actualWalletBalance > 0 && actualWalletBalance < transaction.seller_amount) {
-            console.log(`[complete] Adjusting seller_amount from ₦${transaction.seller_amount} to ₦${actualWalletBalance} (Payluk escrow fee deducted)`);
-            await supabaseAdmin
-              .from('escrow_transactions')
-              .update({ seller_amount: actualWalletBalance })
-              .eq('id', transactionId);
-          }
-        }
-      } catch (walletErr) {
-        // Non-fatal — if we can't check the wallet, the downstream withdrawal
-        // flow will still use the Payluk wallet balance as a cap.
-        console.warn('[complete] Could not query seller Payluk wallet to adjust seller_amount:', walletErr);
-      }
+      // seller_amount records this escrow's proceeds, including its provider fee.
+      // A wallet balance also includes other sales and withdrawals; it cannot
+      // replace the transaction amount. Payouts separately cap available funds.
     }
 
     // 2. Update transaction status
