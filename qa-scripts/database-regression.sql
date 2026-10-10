@@ -205,4 +205,3 @@ END;
 $audit$;
 SELECT current_setting('audit.results')::jsonb AS results, current_setting('transaction_read_only') AS transaction_read_only;
 ROLLBACK;
-

@@ -110,4 +110,3 @@ serve(async (req) => {
     return reply({ error: 'Moderation unavailable' }, 503);
   }
 });
-

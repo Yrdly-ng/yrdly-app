@@ -19,6 +19,7 @@ jobs:
     timeout-minutes: 30
     env:
       NEXT_TELEMETRY_DISABLED: '1'
+      E2E_APP_URL: http://localhost:9002
       QA_SUPABASE_URL: ${{ secrets.QA_SUPABASE_URL }}
       QA_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.QA_SUPABASE_PUBLISHABLE_KEY }}
       QA_SUPABASE_SECRET_KEY: ${{ secrets.QA_SUPABASE_SECRET_KEY }}
@@ -58,8 +59,8 @@ jobs:
           done
           node qa-scripts/live-regression.mjs
       - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm test:e2e:smoke
       - run: pnpm exec playwright test --config=playwright.qa.config.ts
+      - run: pnpm test:e2e:smoke
       - name: Upload safe QA evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
