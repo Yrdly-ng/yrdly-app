@@ -1,6 +1,9 @@
 export const PRIVATE_MEDIA_BUCKETS = ['chat-images', 'chat-videos', 'reports'] as const;
 export type PrivateMediaBucket = typeof PRIVATE_MEDIA_BUCKETS[number];
 const storageHosts = new Set(['yoiyqxtpmxnrrbqqidcs.supabase.co', 'api.yrdly.ng']);
+if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+  storageHosts.add(new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname);
+}
 
 export function validatePrivateMediaPath(path: string): string {
   if (!path || path.length > 1024 || /[\\\x00-\x1f\x7f?#]/.test(path) ||

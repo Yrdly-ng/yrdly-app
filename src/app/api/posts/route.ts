@@ -1,3 +1,4 @@
+import { invokeServerFunction } from '@/lib/server-functions';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
@@ -21,8 +22,8 @@ async function save(request: NextRequest, editing: boolean) {
     .select('id,name,avatar_url,home_state,home_lga,home_ward,created_at,verified_seller,phone_verified').eq('id', user.id).single();
   if (profileError || !profile) return NextResponse.json({ error: 'Could not load profile' }, { status: 500 });
   const checks = await Promise.all([
-    supabaseAdmin.functions.invoke('moderate-content', { body: { type: 'text', content: `${input.title || ''}\n${input.text || ''}\n${input.description || ''}` } }),
-    ...(input.image_urls || []).map((url: string) => supabaseAdmin.functions.invoke('moderate-content', { body: { type: 'image', content: url } })),
+    invokeServerFunction(supabaseAdmin, 'moderate-content', { type: 'text', content: `${input.title || ''}\n${input.text || ''}\n${input.description || ''}` }),
+    ...(input.image_urls || []).map((url: string) => invokeServerFunction(supabaseAdmin, 'moderate-content', { type: 'image', content: url })),
   ]);
   const approved = checks.every(check => !check.error && check.data?.isSafe === true);
   const fields = Object.fromEntries(['title', 'text', 'description', 'category', 'sub_category', 'condition', 'price',

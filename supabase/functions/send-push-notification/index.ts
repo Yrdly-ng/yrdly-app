@@ -23,8 +23,15 @@ serve(async (req) => {
   }
 
   if (req.method !== 'POST') return new Response('Method not allowed',{ status:405,headers:corsHeaders });
-  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-  if (!serviceKey || req.headers.get('authorization') !== `Bearer ${serviceKey}`) {
+  const legacyKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  let namedKeys: unknown;
+  try { namedKeys = JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') || '{}'); } catch { namedKeys = {}; }
+  const secretKeys = namedKeys && typeof namedKeys === 'object'
+    ? Object.values(namedKeys).filter((key): key is string => typeof key === 'string' && key.startsWith('sb_secret_')) : [];
+  const apiKey = req.headers.get('apikey');
+  const serviceKey = apiKey && secretKeys.includes(apiKey) ? apiKey
+    : legacyKey && req.headers.get('authorization') === `Bearer ${legacyKey}` ? legacyKey : null;
+  if (!serviceKey) {
     return new Response(JSON.stringify({ error:'Forbidden' }),{ status:403,headers:corsHeaders });
   }
   try {
@@ -58,7 +65,7 @@ serve(async (req) => {
     // Init Supabase admin client to read the user's push token
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+      serviceKey,
     );
 
     // Fetch notification preferences for this user from users table

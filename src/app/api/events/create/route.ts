@@ -1,3 +1,4 @@
+import { invokeServerFunction } from '@/lib/server-functions';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
@@ -79,9 +80,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const { data: moderation, error: moderationError } = await supabaseAdmin.functions.invoke('moderate-content', {
-      body: { type: 'text', content: `${title}\n${typeof description === 'string' ? description : ''}` },
-    });
+    const { data: moderation, error: moderationError } = await invokeServerFunction(supabaseAdmin, 'moderate-content', { type: 'text', content: `${title}\n${typeof description === 'string' ? description : ''}` });
     const moderationStatus = !moderationError && moderation?.isSafe === true ? 'approved' : 'pending';
     // Flagged or unavailable moderation stays DRAFT, even if the caller says approved.
     const status = moderationStatus === 'approved' && (publish === true || reqStatus === 'PUBLISHED') ? 'PUBLISHED' : 'DRAFT';

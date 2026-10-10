@@ -11,9 +11,12 @@ package-lock.json
 # testing
 /coverage
 .e2e/
+.qa-artifacts/
+qa-seed-output.json
 
 # next.js
 .next/
+.next-qa/
 /out/
 
 # production

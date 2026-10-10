@@ -1,3 +1,4 @@
+import { invokeServerFunction } from '@/lib/server-functions';
 import { applyEscrowPayment } from '@/lib/escrow-payment';
 import { ESCROW_ALLOWED_FROM, paymentReferenceFilter } from '@/lib/payment-state';
 import { flagPayment } from '@/lib/payment-reconciliation';
@@ -231,8 +232,7 @@ async function handleEscrowOngoing(data: Pick<PaylukEscrowData, 'id' | 'paymentT
       shouldPush = (notification as any).should_push ?? true;
     }
     if (shouldPush) {
-      const { error: pushError } = await supabaseAdmin.functions.invoke('send-push-notification', {
-        body: {
+      const { error: pushError } = await invokeServerFunction(supabaseAdmin, 'send-push-notification', {
           userId: tx.seller_id,
           payload: {
             title: 'Payment Received! 💰',
@@ -241,7 +241,6 @@ async function handleEscrowOngoing(data: Pick<PaylukEscrowData, 'id' | 'paymentT
             url: `/transactions/${tx.id}`,
           },
           type: 'payment_successful',
-        },
       });
       if (pushError) console.error(`[PaylukWebhook] Push notification failed for tx ${tx.id}:`, pushError.message);
     }

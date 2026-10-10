@@ -20,7 +20,7 @@ function load(file, mocks = {}) {
     return require(id);
   };
   vm.runInNewContext(output, { module, exports: module.exports, require: localRequire,
-    console, AbortSignal, Response, URL, URLSearchParams, Buffer, setTimeout, clearTimeout,
+    console, AbortSignal, Response, URL, URLSearchParams, Buffer, TextDecoder, TextEncoder, FormData, setTimeout, clearTimeout,
     process: { env: { PAYLUK_SECRET_KEY: 'test-only', ...mocks.env } },
     ...mocks.globals,
     fetch: mocks.fetch || (() => { throw new Error('Live network is prohibited in audit tests'); }),
@@ -33,6 +33,71 @@ function chain(result) {
   for (const method of ['select','eq','neq','is','in','or','contains','limit','update','insert','single','maybeSingle','delete','order']) query[method] = () => query;
   query.then = (resolve, reject) => Promise.resolve(result).then(resolve, reject);
   return query;
+}
+
+for (const credential of ['anonymous','publishable','user-jwt','forged-secret','legacy-service','modern-service']) {
+  test(`push Edge authorization accepts only backend credentials: ${credential}`, async () => {
+    let handler;
+    load('supabase/functions/send-push-notification/index.ts', {
+      'https://deno.land/std@0.168.0/http/server.ts': { serve: fn => { handler = fn; } },
+      'https://esm.sh/@supabase/supabase-js@2': { createClient: () => { throw new Error('Invalid payload must fail before database access'); } },
+      'npm:web-push@3.6.7': {},
+      globals: { Deno: { env: { get: name => ({ SUPABASE_SERVICE_ROLE_KEY: 'legacy-service-key', SUPABASE_SECRET_KEYS: JSON.stringify({ default: 'sb_secret_backend-only' }) })[name] } } },
+    });
+    const headers = { 'content-type': 'application/json' };
+    if (credential === 'publishable') headers.apikey = 'sb_publishable_public';
+    if (credential === 'user-jwt') headers.authorization = 'Bearer user-jwt';
+    if (credential === 'forged-secret') headers.apikey = 'sb_secret_forged';
+    if (credential === 'legacy-service') headers.authorization = 'Bearer legacy-service-key';
+    if (credential === 'modern-service') headers.apikey = 'sb_secret_backend-only';
+    const response = await handler(new Request('http://localhost', { method: 'POST', headers, body: '{}' }));
+    assert.equal(response.status, ['legacy-service','modern-service'].includes(credential) ? 400 : 403);
+  });
+}
+
+test('server functions send modern secret only on apikey and preserve timeout/error handling', async () => {
+  const { invokeServerFunction } = load('src/lib/server-functions.ts', {
+    env: { SUPABASE_SERVICE_ROLE_KEY: 'sb_secret_backend-only', NEXT_PUBLIC_SUPABASE_URL: 'https://qa.invalid' },
+    fetch: async (_url, options) => {
+      assert.equal(options.headers.apikey, 'sb_secret_backend-only');
+      assert.equal(options.headers.Authorization, undefined);
+      assert.equal(options.cache, 'no-store');
+      assert.ok(options.signal);
+      return new Response('Provider details must not leak', { status: 503 });
+    },
+  });
+  const result = await invokeServerFunction({}, 'send-push-notification', {});
+  assert.equal(result.data, null);
+  assert.equal(result.error.message, 'Server function returned HTTP 503');
+});
+
+for (const scenario of ['safe-public','unsafe-public','pending-copy-fails','safe-pending','private-bucket','signed-private','foreign-host','other-owner']) {
+  test(`moderation preserves media ownership and source data: ${scenario}`, async () => {
+    let handler;
+    const writes = [], signs = [];
+    const owner = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+    const admin = { storage: { from: bucket => ({
+      createSignedUrl: async path => { signs.push(bucket); return { data: { signedUrl: 'https://signed.invalid/image' } }; },
+      copy: async (...args) => { writes.push('copy'); return { error: scenario === 'pending-copy-fails' ? { code: 'copy_failed' } : null }; },
+      remove: async () => { writes.push('remove'); return {}; },
+      getPublicUrl: path => ({ data: { publicUrl: `https://qa.invalid/storage/v1/object/public/${bucket}/${path}` } }),
+    }) } };
+    load('supabase/functions/moderate-content/index.ts', {
+      'https://deno.land/std@0.168.0/http/server.ts': { serve: fn => { handler = fn; } },
+      'https://esm.sh/@supabase/supabase-js@2': { createClient: () => admin },
+      globals: { Deno: { env: { get: name => ({ SUPABASE_URL: 'https://qa.invalid', SUPABASE_SERVICE_ROLE_KEY: 'legacy-service-key', SIGHTENGINE_API_USER: 'fixture-user', SIGHTENGINE_API_SECRET: 'fixture-secret' })[name] } } },
+      fetch: async () => Response.json({ status: 'success', gore: { prob: scenario === 'unsafe-public' ? 1 : 0 } }),
+    });
+    const path = scenario.includes('pending') ? `${owner}/image.png` : scenario === 'other-owner' ? 'other-owner/image.png'
+      : `https://${scenario === 'foreign-host' ? 'external.invalid' : 'qa.invalid'}/storage/v1/object/${scenario === 'signed-private' ? 'sign' : 'public'}/${scenario === 'private-bucket' ? 'reports' : 'post-images'}/image.png`;
+    const response = await handler(new Request('http://localhost', { method: 'POST', headers: { authorization: 'Bearer legacy-service-key' }, body: JSON.stringify({ type: 'image', content: path, userId: owner }) }));
+    const expected = ['private-bucket','other-owner'].includes(scenario) ? 403 : ['foreign-host','signed-private'].includes(scenario) ? 400 : 200;
+    assert.equal(response.status, expected);
+    if (scenario === 'pending-copy-fails') { assert.deepEqual(writes, ['copy']); assert.equal((await response.json()).isSafe, false); }
+    else if (scenario === 'safe-pending') assert.deepEqual(writes, ['copy','remove']);
+    else assert.deepEqual(writes, []);
+    if (expected !== 200) assert.equal(signs.length, 0);
+  });
 }
 
 test('seller balance excludes ticket revenue and reserves pending withdrawals', async () => {

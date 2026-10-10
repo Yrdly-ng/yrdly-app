@@ -117,8 +117,8 @@ BEGIN
     IS DISTINCT FROM (to_jsonb(OLD) - ARRAY['text','content','image_url','video_url','media_url','media_type','read_by','deleted_by','is_read','updated_at','edited_at']) THEN
     RAISE EXCEPTION 'Message identity is immutable' USING ERRCODE = '42501';
   END IF;
-  IF ROW(NEW.text,NEW.content,NEW.image_url,NEW.video_url,NEW.media_url,NEW.media_type) IS DISTINCT FROM
-     ROW(OLD.text,OLD.content,OLD.image_url,OLD.video_url,OLD.media_url,OLD.media_type) THEN
+  IF ROW(NEW.text,to_jsonb(NEW)->'content',NEW.image_url,NEW.video_url,NEW.media_url,NEW.media_type) IS DISTINCT FROM
+     ROW(OLD.text,to_jsonb(OLD)->'content',OLD.image_url,OLD.video_url,OLD.media_url,OLD.media_type) THEN
     IF OLD.sender_id IS DISTINCT FROM auth.uid() OR OLD.created_at < now() - interval '15 minutes' THEN
       RAISE EXCEPTION 'Only the sender can edit recent content' USING ERRCODE = '42501';
     END IF;
