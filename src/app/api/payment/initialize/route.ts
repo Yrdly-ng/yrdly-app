@@ -21,7 +21,7 @@ const RATE_LIMIT_WINDOW_SECONDS = 60;
  * Creates a reserved escrow transaction in Supabase and a Payluk
  * checkout payment link, then returns the link to the client.
  *
- * This is the server-side entry-point so that the Paystack secret key is
+ * This is the server-side entry-point so that the Payluk secret key is
  * never exposed to the browser.
  */
 export async function POST(request: NextRequest) {

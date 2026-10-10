@@ -1,13 +1,13 @@
 # Yrdly QA Agent Prompt
 
-You are helping me QA the Yrdly web app (Next.js, TypeScript, Supabase, Vercel). Payments run through Payluk (marketplace escrow, payouts) and Paystack (event tickets). Termii handles phone OTP and Resend handles email. Our QA checklist (`yrdly-qa-checklist.xlsx`) has 195 test cases. Human testers have covered part of it, and your job is the items below that can be verified from code and scripted requests.
+You are helping me QA the Yrdly web app (Next.js, TypeScript, Supabase, Vercel). Payments run through Payluk only (marketplace, business and event escrow, payouts). Termii handles phone OTP and Resend handles email. Our QA checklist (`yrdly-qa-checklist.xlsx`) has 195 test cases. Human testers have covered part of it, and your job is the items below that can be verified from code and scripted requests.
 
 ## Environment
 
 - Repo: `[path]`
 - Staging URL: `[url]`
 - Test accounts: `[buyer / seller / organizer / admin / non-admin credentials]`
-- Use staging and test mode only. Never touch production data. Never use real money or live Payluk/Paystack keys.
+- Use staging and test mode only. Never touch production data. Never use real money or live Payluk keys.
 
 ## Ground rules
 

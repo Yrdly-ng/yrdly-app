@@ -737,7 +737,7 @@ export class PaylukService {
         }
       }
 
-      const PAYSTACK_TO_PAYLUK_BANK_MAP: Record<string, string> = {
+      const LEGACY_CBN_TO_PAYLUK_BANK_MAP: Record<string, string> = {
         '999991': '100004', // OPay
         '999992': '100004', // OPay / Test Bank
         '044': '000014',    // Access Bank
@@ -759,7 +759,7 @@ export class PaylukService {
         '100033': '100033', // PalmPay
       };
 
-      const resolvedBankCode = PAYSTACK_TO_PAYLUK_BANK_MAP[bankCode] || bankCode;
+      const resolvedBankCode = LEGACY_CBN_TO_PAYLUK_BANK_MAP[bankCode] || bankCode;
 
       const response = await paylukRequest<PaylukResolvedAccount>(
         '/v1/payment/verify-account',
@@ -781,12 +781,6 @@ export class PaylukService {
       return { valid: false };
     } catch (error: any) {
       console.error('[PaylukService] resolveAccount error:', error);
-
-      // Test-mode fallback — mirrors paystack-service.ts pattern.
-      if (PAYLUK_SECRET_KEY?.startsWith('sk_test_')) {
-        console.warn('[PaylukService] Test mode: resolveAccount failed, using fallback.');
-        return { valid: true, accountName: 'Test Bank Account (Fallback)' };
-      }
 
       return { valid: false };
     }
@@ -843,14 +837,14 @@ export class PaylukService {
     reason?: string;
   }> {
     try {
-      const PAYSTACK_TO_PAYLUK_BANK_MAP: Record<string, string> = {
+      const LEGACY_CBN_TO_PAYLUK_BANK_MAP: Record<string, string> = {
         '999991': '100004', '999992': '100004', '044': '000014', '058': '000013',
         '011': '000016', '057': '000015', '50515': '090405', '50211': '090267',
         '214': '090409', '033': '000040', '035': '000017', '070': '000007',
         '050': '000010', '082': '000002', '232': '000012', '230': '000001',
         '032': '000018', '101': '000023', '100033': '100033',
       };
-      const resolvedBankCode = PAYSTACK_TO_PAYLUK_BANK_MAP[params.bankCode] || params.bankCode;
+      const resolvedBankCode = LEGACY_CBN_TO_PAYLUK_BANK_MAP[params.bankCode] || params.bankCode;
 
       let paylukMainBalance = Infinity;
       try {
@@ -1025,8 +1019,8 @@ export class PaylukService {
     let executionStarted = false;
     let activeReference = params.reference;
     try {
-      // Map Paystack/CBN bank codes to Payluk's internal codes
-      const PAYSTACK_TO_PAYLUK_BANK_MAP: Record<string, string> = {
+      // Map legacy Nigerian bank codes to Payluk's internal codes
+      const LEGACY_CBN_TO_PAYLUK_BANK_MAP: Record<string, string> = {
         '999991': '100004', // OPay
         '999992': '100004', // OPay / Test Bank
         '044': '000014',    // Access Bank
@@ -1048,7 +1042,7 @@ export class PaylukService {
         '100033': '100033', // PalmPay
       };
 
-      const resolvedBankCode = PAYSTACK_TO_PAYLUK_BANK_MAP[params.bankCode] || params.bankCode;
+      const resolvedBankCode = LEGACY_CBN_TO_PAYLUK_BANK_MAP[params.bankCode] || params.bankCode;
 
       // 0. Hard minimum — Payluk rejects any withdrawal intent below ₦1,000
       const PAYLUK_MINIMUM = 1000;

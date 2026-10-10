@@ -167,7 +167,7 @@ async function findTransactionByPaylukData(data: Pick<PaylukEscrowData, 'id' | '
 
   return await supabaseAdmin
     .from('escrow_transactions')
-    .select('id, status, buyer_id, seller_id, item_id, item_type, amount, payluk_tx_ref, payluk_escrow_id, metadata')
+    .select('id, status, buyer_id, seller_id, item_id, item_type, amount, payment_provider, payluk_tx_ref, payluk_escrow_id, metadata')
     .or(orClause)
     .maybeSingle();
 }

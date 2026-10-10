@@ -61,26 +61,15 @@ export default function PayoutSettingsPage() {
 
   const fetchBanks = useCallback(async () => {
     try {
-      const res = await fetch("/api/paystack/banks");
-      if (res.ok) {
-        const data = await res.json();
-        if (data.status) {
-          setBanks(data.data);
-          return;
-        }
-      }
-      // Fallback
-      const fallbackRes = await fetch("https://api.paystack.co/bank?currency=NGN");
-      if (fallbackRes.ok) {
-        const fallbackData = await fallbackRes.json();
-        if (fallbackData.status) {
-          setBanks(fallbackData.data);
-        }
-      }
+      const res = await fetch("/api/seller/banks");
+      const data = await res.json();
+      if (!res.ok || !Array.isArray(data.banks)) throw new Error('Bank list unavailable');
+      setBanks(data.banks);
     } catch (e) {
       console.error("Failed to fetch banks", e);
+      toast({ title: "Banks Unavailable", description: "Could not load banks. Please reload to try again.", variant: "destructive" });
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     fetchExisting();
@@ -100,7 +89,7 @@ export default function PayoutSettingsPage() {
     setStep("verifying");
     setResolvedName("");
     try {
-      const res = await fetch("/api/paystack/resolve-account", {
+      const res = await fetch("/api/seller/resolve-account", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ accountNumber: acctNum, bankCode }),

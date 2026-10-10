@@ -33,7 +33,6 @@ export interface Event {
   visibility: EventVisibility;
   payout_mode: EventPayoutMode;
   payout_released_at: string | null;
-  payment_subaccount_id: string | null;
   published_at: string | null;
   scheduled_publish_at: string | null;
   attendee_count: number;

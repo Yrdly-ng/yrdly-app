@@ -2,7 +2,7 @@ import { supabaseAdmin } from './supabase-admin';
 import { flagPayment } from './payment-reconciliation';
 
 /** State, sale and inventory commit together; replay cannot decrement twice. */
-export async function applyEscrowPayment(transactionId: string, provider: 'payluk' | 'paystack', reference: string): Promise<boolean> {
+export async function applyEscrowPayment(transactionId: string, provider: 'payluk', reference: string): Promise<boolean> {
   const { data, error } = await supabaseAdmin.rpc('apply_escrow_payment', {
     p_transaction_id: transactionId, p_provider: provider, p_reference: reference,
   });

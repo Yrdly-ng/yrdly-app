@@ -3,16 +3,17 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { ResendEmailService } from '@/lib/resend-service';
 import QRCode from 'qrcode';
 import { EVENT_CONSTANTS } from '@/lib/constants';
-import { PaystackService } from '@/lib/paystack-service';
 import { PaylukService } from '@/lib/payluk-service';
 import { sendPushNotification } from '@/lib/server-push-notification';
 import { paymentReferenceFilter } from './payment-state';
+import { flagPayment } from './payment-reconciliation';
 
 export class TicketService {
   /**
    * Processes a ticket purchase from a confirmed escrow_transaction (e.g. via Payluk Webhook or manual verification)
    */
   static async processTicketPaymentFromTransaction(tx: any) {
+    if (tx.payment_provider !== 'payluk') throw new Error('payment_requires_review');
     const txRef = tx.id || tx.payluk_tx_ref;
     const metadata = tx.metadata || {};
     const event_id = tx.event_id || metadata.event_id;
@@ -218,15 +219,20 @@ export class TicketService {
     if (lookupError) throw lookupError;
     if (paylukTx) {
       if (expectedBuyerId && paylukTx.buyer_id !== expectedBuyerId) throw new Error('ticket_buyer_mismatch');
+      if (paylukTx.payment_provider !== 'payluk') throw new Error('payment_requires_review');
       if (paylukTx.item_type !== 'ticket') throw new Error('invalid_metadata');
       if (['cancelled', 'disputed'].includes(paylukTx.status)) throw new Error('payment_requires_review');
       if (['paid', 'shipped', 'delivered', 'completed'].includes(paylukTx.status)) {
         return TicketService.processTicketPaymentFromTransaction(paylukTx);
       }
-      const token = paylukTx.payluk_tx_ref || paylukTx.payluk_escrow_id;
+      const token = paylukTx.payluk_tx_ref;
       if (!token) throw new Error('payment_pending');
       const escrow = await PaylukService.verifyEscrow(token);
-      if (!['ongoing', 'paid', 'completed'].includes((escrow.status || escrow.state || '').toLowerCase())) throw new Error('payment_pending');
+      if (!['ONGOING', 'COMPLETED', 'CLAIMED'].includes((escrow.status || '').toUpperCase())) throw new Error('payment_pending');
+      if (Math.round(Number(escrow.amount) * 100) !== Math.round(Number(paylukTx.amount) * 100)) {
+        await flagPayment('payluk', token, paylukTx.id, 'amount_mismatch');
+        throw new Error('payment_requires_review');
+      }
       const { data: paid, error } = await supabaseAdmin.from('escrow_transactions')
         .update({ status: 'paid', paid_at: new Date().toISOString() }).eq('id', paylukTx.id)
         .in('status', ['pending', 'creating_escrow', 'reconciling']).select('*').maybeSingle();
@@ -235,114 +241,6 @@ export class TicketService {
       return TicketService.processTicketPaymentFromTransaction(paid);
     }
 
-    // 2. Fallback to Paystack verification for legacy transactions
-    const verification = await PaystackService.verifyPayment(txRef);
-
-    if (!verification.success || verification.status !== 'success') {
-      throw new Error('payment_failed');
-    }
-
-    const { transactionReference, metadata } = verification;
-    const amount = verification.amount || 0;
-    const { event_id, tier_id, buyer_id, attendee_name, attendee_email, attendee_phone, quantity: rawQuantity } = metadata || {};
-    const quantity = Number(rawQuantity || 1);
-    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 100) throw new Error('invalid_quantity');
-    if (expectedBuyerId && buyer_id !== expectedBuyerId) throw new Error('ticket_buyer_mismatch');
-
-    if (!event_id || !tier_id || !buyer_id) {
-      console.error('[TicketService] Missing Paystack metadata');
-      throw new Error('invalid_metadata');
-    }
-
-    // ── Idempotency check ───────────────────────────────────────────────────
-    const { data: existing } = await supabaseAdmin
-      .from('tickets')
-      .select('id, event_id')
-      .eq('payment_tx_ref', txRef);
-
-    if (existing && existing.length > 0) {
-      return existing[0];
-    }
-
-    // ── Fetch tier & event ───────────────────────────────────────────────────
-    const { data: tier } = await supabaseAdmin
-      .from('ticket_tiers')
-      .select('id, name, price, sold, capacity')
-      .eq('id', tier_id)
-      .single();
-
-    const { data: event } = await supabaseAdmin
-      .from('events')
-      .select('id, title, start_time, end_time, location_address, organizer_id, state')
-      .eq('id', event_id)
-      .single();
-
-    if (!tier || !event) {
-      throw new Error('event_not_found');
-    }
-
-    // ── Check Capacity ───────────────────────────────────────────────────────
-    if (tier.capacity !== null && (tier.sold || 0) + quantity > tier.capacity) {
-      console.warn(`[TicketService] Tier ${tier_id} is sold out. Refunding transaction ${txRef}`);
-      const refunded = await PaystackService.refundTransaction(txRef, amount).catch(error => {
-        console.error('[TicketService] Failed to refund oversold ticket', error);
-        return false;
-      });
-      throw new Error(refunded ? 'sold_out_refunded' : 'sold_out_refund_required');
-    }
-
-    // ── Generate ticket codes & QR ────────────────────────────────────────────
-    const ticketsToInsert = [];
-    for (let i = 0; i < quantity; i++) {
-      const ticketCode = `${EVENT_CONSTANTS.TICKET_CODE_PREFIX}-${txRef.substring(txRef.length - 8).toUpperCase()}-${randomBytes(12).toString('hex').toUpperCase()}`;
-      const qrPayload = JSON.stringify({ ticket_code: ticketCode, event_id, tier_id, tx_ref: txRef });
-      
-      ticketsToInsert.push({
-        buyer_id,
-        event_id,
-        tier_id,
-        attendee_name,
-        attendee_email,
-        attendee_phone: attendee_phone || null,
-        ticket_code: ticketCode,
-        qr_data: qrPayload,
-        status: 'PAID',
-        payment_tx_ref: txRef,
-        purchase_ticket_index: i,
-        payment_provider: 'paystack', settlement_mode: metadata?.settlement_mode || 'unknown',
-        payment_provider_ref: transactionReference || txRef,
-        amount_paid: amount / quantity,
-        expires_at: event.end_time || null,
-      });
-    }
-
-    // ── Insert tickets ────────────────────────────────────────────────────────
-    const { data: insertedTickets, error: ticketError } = await supabaseAdmin
-      .from('tickets')
-      .insert(ticketsToInsert)
-      .select('id, ticket_code, qr_data');
-
-    if (ticketError?.code === '23505') {
-      const { data: duplicateTickets, error: duplicateLookupError } = await supabaseAdmin
-        .from('tickets')
-        .select('id, event_id, ticket_code, qr_data')
-        .eq('payment_tx_ref', txRef);
-      if (duplicateLookupError) throw duplicateLookupError;
-      if (duplicateTickets?.length) return { ...duplicateTickets[0], event_id, quantity };
-    }
-    if (ticketError?.message?.includes('ticket_tier_sold_out')) {
-      const refunded = await PaystackService.refundTransaction(txRef, amount);
-      throw new Error(refunded ? 'sold_out_refunded' : 'sold_out_refund_required');
-    }
-    if (ticketError) throw ticketError;
-
-    try {
-      const { data: eData } = await supabaseAdmin.from('events').select('attendee_count').eq('id', event_id).single();
-      if (eData) {
-        await supabaseAdmin.from('events').update({ attendee_count: (eData.attendee_count || 0) + quantity }).eq('id', event_id);
-      }
-    } catch (e) { }
-
-    return { ...insertedTickets[0], event_id, quantity };
+    throw new Error('payment_not_found');
   }
 }

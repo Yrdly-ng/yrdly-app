@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { getAuthenticatedUser } from "@/lib/supabase-server";
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { EVENT_CONSTANTS } from '@/lib/constants';
 import { ResendEmailService } from '@/lib/resend-service';
 import QRCode from 'qrcode';
 import { PaylukService } from '@/lib/payluk-service';
-import { PaystackService } from '@/lib/paystack-service';
 import { getPaylukCustomerId } from '@/lib/payluk-onboarding';
 import { EscrowStatus } from '@/types/escrow';
 import { sendPushNotification } from '@/lib/server-push-notification';
@@ -33,7 +31,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { event_id, tier_id, attendee_name, attendee_email, attendee_phone, callbackUrl, quantity: rawQuantity } = await request.json();
+    const { event_id, tier_id, attendee_name, attendee_email, attendee_phone, quantity: rawQuantity } = await request.json();
     const quantity = Math.max(1, parseInt(rawQuantity || '1', 10));
 
     if (!event_id || !tier_id || !attendee_name || !attendee_email) {
@@ -43,7 +41,7 @@ export async function POST(request: NextRequest) {
     // ── Validate event & tier ────────────────────────────────────────────────
     const { data: event } = await supabaseAdmin
       .from('events')
-      .select('id, title, status, organizer_id, payment_subaccount_id, end_time')
+      .select('id, title, status, organizer_id, end_time')
       .eq('id', event_id)
       .single();
 
@@ -246,64 +244,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, free: true, ticket_id: insertedTickets[0].id, quantity });
     }
 
-    // ── Paid ticket — Check configured payment provider ────────────────────
-    const provider = (process.env.EVENT_TICKET_PAYMENT_PROVIDER || 'paystack').toLowerCase();
-    if (provider !== 'paystack' && provider !== 'payluk') {
-      return NextResponse.json({ error: 'Invalid event ticket payment provider configuration' }, { status: 500 });
-    }
-    const txRef = `evt-${event_id.substring(0, 8)}-${Date.now()}`;
+    const txRef = `evt-${crypto.randomUUID()}`;
     const totalAmount = tier.price * quantity;
-
-    if (provider === 'paystack') {
-      // Fetch organizer's Paystack subaccount ID for automatic Split Payment
-      let organizerSubaccount: string | undefined = event.payment_subaccount_id || undefined;
-      if (!organizerSubaccount && event.organizer_id) {
-        const { data: subaccountData } = await supabaseAdmin
-          .from('seller_accounts')
-          .select('paystack_subaccount_id')
-          .eq('user_id', event.organizer_id)
-          .eq('is_primary', true)
-          .eq('is_active', true)
-          .maybeSingle();
-
-        if (subaccountData?.paystack_subaccount_id) {
-          organizerSubaccount = subaccountData.paystack_subaccount_id;
-        }
-      }
-
-      const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'https://app.yrdly.ng';
-      let paymentLink: string;
-      try {
-        paymentLink = await PaystackService.initializePayment({
-          transactionId: txRef,
-          amount: totalAmount,
-          buyerEmail: attendee_email,
-          buyerName: attendee_name,
-          itemTitle: `${quantity}x ${tier.name} — ${event.title}`,
-          sellerName: 'Event Organizer',
-          subaccount: organizerSubaccount,
-          callbackUrl: callbackUrl || `${origin}/api/events/tickets/verify?tx_ref=${txRef}`,
-          metadata: {
-            event_id,
-            tier_id,
-            quantity,
-            buyer_id: user.id,
-            attendee_name,
-            attendee_email,
-            attendee_phone: attendee_phone || null,
-            payment_provider: 'paystack', settlement_mode: organizerSubaccount ? 'split' : 'held',
-          }
-        });
-      } catch (paystackError: any) {
-        console.error('[TicketPurchase] Paystack init error:', paystackError);
-        return NextResponse.json({
-          error: 'Payment initialization failed',
-          details: paystackError?.message || 'Paystack API error',
-        }, { status: 502 });
-      }
-
-      return NextResponse.json({ success: true, payment_link: paymentLink, tx_ref: txRef, provider: 'paystack' });
-    }
 
     // ── Payluk Escrow payment ─────────────────────────────────────────────
     // Fetch or provision Payluk Customer IDs for buyer & organizer
@@ -346,7 +288,7 @@ export async function POST(request: NextRequest) {
         totalQuantity: 1,
       });
 
-      // Event commission is deducted once at organizer payout, as for Paystack.
+      // Event commission is deducted once at organizer payout.
     } catch (paylukError: any) {
       console.error('[TicketPurchase] Payluk createEscrow error:', paylukError);
       return NextResponse.json({

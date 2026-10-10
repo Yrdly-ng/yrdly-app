@@ -207,7 +207,7 @@ export function MarketplaceCreatorOnboarding({ isOpen, onClose, onContinue }: Ma
                 {/* How it works */}
                 <div className="space-y-3">
                   {[
-                    { icon: Zap, label: "Instant setup", desc: "Link your Nigerian bank account via Paystack" },
+                    { icon: Zap, label: "Instant setup", desc: "Link your Nigerian bank account via Payluk" },
                     { icon: Banknote, label: "Escrow Protection", desc: "Funds are held securely until the buyer confirms delivery" },
                     { icon: CheckCircle2, label: `Buyer-paid ${MARKETPLACE_CONSTANTS.COMMISSION_RATE * 100}% platform fee`, desc: `The buyer pays a ${MARKETPLACE_CONSTANTS.COMMISSION_RATE * 100}% platform fee; Payluk processing fees are deducted from the seller` },
                   ].map(({ icon: Icon, label, desc }) => (

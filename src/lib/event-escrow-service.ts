@@ -5,13 +5,9 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { PaystackService } from './paystack-service';
 import { PaylukService } from './payluk-service';
 import { getPaylukCustomerId } from './payluk-onboarding';
 import { EVENT_CONSTANTS } from './constants';
-import type { EventPayout } from '@/types/events';
-import { isPaylukTicket } from './ticket-payment-provider';
-import { requestPaystackTicketRefund } from './ticket-refunds';
 
 // Service-role client for writes that bypass RLS
 const adminSupabase = createClient(
@@ -77,7 +73,7 @@ export class EventEscrowService {
     // Find completed events that ended before the cutoff with no payout yet
     const { data: events, error } = await adminSupabase
       .from('events')
-      .select('id, organizer_id, payment_subaccount_id, title')
+      .select('id, organizer_id, title')
       .eq('status', 'COMPLETED')
       .lt('end_time', cutoff)
       .is('payout_released_at', null);
@@ -118,7 +114,7 @@ export class EventEscrowService {
     const held = tickets.filter(ticket => ticket.settlement_mode === 'held' && Number(ticket.amount_paid) > 0);
     if (!held.length) return; // Free tickets and split-settled revenue require no outbound transfer.
     const providers = new Set(held.map(ticket => ticket.payment_provider));
-    if (providers.size !== 1 || !['payluk', 'paystack'].includes(held[0].payment_provider)) {
+    if (providers.size !== 1 || held[0].payment_provider !== 'payluk') {
       throw new Error('Mixed or unknown payment providers require payout reconciliation.');
     }
     const provider = held[0].payment_provider;
@@ -133,12 +129,10 @@ export class EventEscrowService {
     let outcome: 'success' | 'pending' | 'failed' = 'pending';
     if (payout) {
       if (payout.status === 'COMPLETED') return;
-      if (payout.status !== 'PROCESSING' || !payout.payment_transfer_id || !payout.payment_provider) {
+      if (payout.status !== 'PROCESSING' || !payout.payment_transfer_id || payout.payment_provider !== 'payluk') {
         throw new Error('Existing payout requires reconciliation; no new transfer was attempted.');
       }
-      outcome = payout.payment_provider === 'payluk'
-        ? await PaylukService.getWithdrawalStatus(await getPaylukCustomerId(organizerId), payout.payment_transfer_id)
-        : await PaystackService.getTransferStatus(payout.payment_transfer_id);
+      outcome = await PaylukService.getWithdrawalStatus(await getPaylukCustomerId(organizerId), payout.payment_transfer_id);
     } else {
       const { data: created, error: createError } = await adminSupabase.from('event_payouts').insert({
         event_id: eventId, organizer_id: organizerId, gross_amount: gross, commission_amount: commission,
@@ -151,22 +145,15 @@ export class EventEscrowService {
       const { error: referenceError } = await adminSupabase.from('event_payouts')
         .update({ payment_transfer_id: reference }).eq('id', payout.id).eq('status', 'PROCESSING');
       if (referenceError) throw referenceError;
-      if (provider === 'payluk') {
-        const result = await PaylukService.withdrawToBank({
-          sellerPaylukCustomerId: await getPaylukCustomerId(organizerId), amount: net,
-          bankCode: bank.bankCode, accountNumber: bank.accountNumber, accountName: bank.accountName, reference,
-          onIntentReady: async intentReference => {
-            const { error } = await adminSupabase.from('event_payouts').update({ payment_transfer_id: intentReference }).eq('id', payout.id).eq('status', 'PROCESSING');
-            if (error) throw error;
-          },
-        });
-        outcome = result.outcome;
-      } else {
-        outcome = (await PaystackService.transferToSeller({
-          bankCode: bank.bankCode, accountNumber: bank.accountNumber, amount: net, reference,
-          narration: `Event payout for ${eventId}`,
-        })).outcome;
-      }
+      const result = await PaylukService.withdrawToBank({
+        sellerPaylukCustomerId: await getPaylukCustomerId(organizerId), amount: net,
+        bankCode: bank.bankCode, accountNumber: bank.accountNumber, accountName: bank.accountName, reference,
+        onIntentReady: async intentReference => {
+          const { error } = await adminSupabase.from('event_payouts').update({ payment_transfer_id: intentReference }).eq('id', payout.id).eq('status', 'PROCESSING');
+          if (error) throw error;
+        },
+      });
+      outcome = result.outcome;
     }
     const { data:finalized,error: finalizeError } = await adminSupabase.from('event_payouts').update({
       status: outcome === 'success' ? 'COMPLETED' : outcome === 'failed' ? 'FAILED' : 'PROCESSING',
@@ -181,47 +168,5 @@ export class EventEscrowService {
     }
   }
 
-  static async processCancellationRefunds(eventId: string): Promise<{
-    refunded: number;
-    failed: number;
-  }> {
-    const { data: tickets, error } = await adminSupabase
-      .from('tickets')
-      .select('id, payment_tx_ref, payment_provider_ref, refund_status, amount_paid, buyer_id')
-      .eq('event_id', eventId)
-      .eq('status', 'PAID');
 
-    if (error || !tickets?.length) return { refunded: 0, failed: 0 };
-
-    let refunded = 0;
-    let failed = 0;
-
-    const groups = [...new Set(tickets.filter(ticket => Number(ticket.amount_paid) > 0)
-      .map(ticket => ticket.payment_provider_ref))];
-    for (const paymentRef of groups) {
-      const orderTickets = tickets.filter(ticket => ticket.payment_provider_ref === paymentRef);
-      try {
-        const paylukChecks = await Promise.all(orderTickets.map(ticket => isPaylukTicket(ticket.payment_tx_ref)));
-        if (!paymentRef || paylukChecks.some(Boolean)) {
-          throw new Error('Payluk escrow refunds need support review');
-        }
-        if (orderTickets.some(ticket => ticket.refund_status)) throw new Error('Refund already in progress');
-        await requestPaystackTicketRefund(paymentRef, orderTickets);
-        refunded += orderTickets.length;
-      } catch (err) {
-        console.error(`[Escrow] Failed to request refund for payment ${paymentRef}`, err);
-        failed += orderTickets.length;
-      }
-    }
-
-    for (const ticket of tickets.filter(ticket => Number(ticket.amount_paid) <= 0)) {
-      const { error: updateError } = await adminSupabase.from('tickets')
-        .update({ status: 'REFUNDED', refund_status: 'processed' })
-        .eq('id', ticket.id).eq('status', 'PAID');
-      if (updateError) failed++;
-      else refunded++;
-    }
-
-    return { refunded, failed };
-  }
 }

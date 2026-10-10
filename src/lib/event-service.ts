@@ -1,6 +1,6 @@
 /**
  * Event Service — all Supabase interactions for the events & ticketing system.
- * Server-side safe (no Paystack SDK usage here).
+ * Server-side safe (no Payluk SDK usage here).
  */
 
 import { supabase } from './supabase';

@@ -13,7 +13,7 @@ function load(file, mocks = {}) {
   const module = { exports: {} };
   const localRequire = id => {
     if (Object.hasOwn(mocks, id)) return mocks[id];
-    if (id === 'next/server') return { NextResponse: { json: (body, init) => Response.json(body, init) } };
+    if (id === 'next/server') return { NextRequest: Request, NextResponse: { json: (body, init) => Response.json(body, init) } };
     if (id === 'server-only') return {};
     if (id.startsWith('@/')) return load(`src/${id.slice(2)}.ts`, mocks);
     if (id.startsWith('.')) return load(path.resolve(path.dirname(filename), `${id}.ts`), mocks);
@@ -38,7 +38,7 @@ function chain(result) {
 test('seller balance excludes ticket revenue and reserves pending withdrawals', async () => {
   const { PayoutService } = load('src/lib/payout-service.ts', {
     './supabase-admin': { supabaseAdmin: { from: table => chain({ data: table === 'escrow_transactions'
-      ? [{ seller_amount:1000,status:'completed',item_type:'post',payment_provider:'payluk' },{ seller_amount:9000,status:'completed',item_type:'ticket',payment_provider:'payluk' },{ seller_amount:5000,status:'completed',item_type:'post',payment_provider:'paystack' }]
+      ? [{ seller_amount:1000,status:'completed',item_type:'post',payment_provider:'payluk' },{ seller_amount:9000,status:'completed',item_type:'ticket',payment_provider:'payluk' },{ seller_amount:5000,status:'completed',item_type:'post',payment_provider:'retired-provider' }]
       : [{ amount:100,status:'completed' },{ amount:200,status:'processing' }] }) } },
     './payluk-onboarding':{ getPaylukCustomerId:async ()=>'seller-provider-id' },
     './payluk-service':{ PaylukService:{ getCustomerWallet:async ()=>({ mainBalance:5000 }) } },
@@ -68,30 +68,30 @@ test('authenticated GET sends no request body', async () => {
   assert.ok((await authenticatedFetch('/api/seller/payouts/history',{},'GET')).payouts);
 });
 
-for (const outcome of ['success','pending']) {
-  test(`Paystack dispute settlement stays with Paystack and handles ${outcome}`, async () => {
-    let finalized = false,transfers = 0;
+for (const outcome of ['success', 'uncertain', 'unsupported']) {
+  test(`Payluk dispute settlement handles ${outcome} without a provider fallback`, async () => {
+    let finalized = false, resolutions = 0;
     const { POST } = load('src/app/api/admin/disputes/[disputeId]/resolve/route.ts', {
-      '@/lib/supabase-server':{ getAuthenticatedUser:async ()=>({ data:{ user:{ id:'admin' } } }) },
-      '@/lib/payluk-service':{ PaylukService:{} },
-      '@/lib/server-notification-service':{ NotificationService:{ createDisputeResolvedNotification:async ()=>{} } },
-      '@/lib/paystack-service':{ PaystackService:{ transferToSeller:async params=>{
-        transfers++;assert.equal(params.reference,'dispute-payout-operation');assert.equal(params.amount,1000);return { outcome };
+      '@/lib/supabase-server': { getAuthenticatedUser: async () => ({ data: { user: { id: 'admin' } } }) },
+      '@/lib/payluk-service': { PaylukService: { resolveDispute: async (id, params) => {
+        resolutions++; assert.equal(id, 'escrow-id'); assert.equal(params.status, 'COMPLETED');
+        if (outcome === 'uncertain') throw new Error('Provider timeout');
       } } },
-      '@/lib/supabase-admin':{ supabaseAdmin:{
-        rpc:async name=>{
-          if (name === 'begin_dispute_resolution') return { data:{ newly_created:true,operation:{ id:'operation',refund_amount:0,seller_amount:1000,resolution:'Release' } } };
-          if (name === 'finish_dispute_resolution') finalized = true;
+      '@/lib/server-notification-service': { NotificationService: { createDisputeResolvedNotification: async () => {} } },
+      '@/lib/supabase-admin': { supabaseAdmin: {
+        rpc: async (name, args) => {
+          if (name === 'begin_dispute_resolution') return { data: { newly_created: true, operation: { id: 'operation', refund_amount: 0, seller_amount: 1000, resolution: 'Release' } } };
+          if (name === 'finish_dispute_resolution') { finalized = true; assert.equal(args.p_provider_reference, 'escrow-id'); }
           return {};
         },
-        from:table=>chain({ data: table === 'users' ? { is_admin:true } : table === 'disputes' ? { transaction_id:'transaction' }
-          : table === 'seller_accounts' ? { is_active:true,verification_status:'verified',account_details:{ bank_code:'test',account_number:'test' } }
-          : { id:'transaction',payment_provider:'paystack' } }),
+        from: table => chain({ data: table === 'users' ? { is_admin: true } : table === 'disputes' ? { transaction_id: 'transaction' }
+          : { id: 'transaction', payment_provider: outcome === 'unsupported' ? 'retired-provider' : 'payluk', payluk_escrow_id: 'escrow-id' } }),
       } },
     });
-    const response = await POST(new Request('http://localhost',{ method:'POST',body:JSON.stringify({ resolution:'Release',refundAmount:0,sellerAmount:1000 }) }),{ params:Promise.resolve({ disputeId:'dispute' }) });
-    assert.equal(response.status,outcome === 'success' ? 200 : 202);
-    assert.equal(transfers,1);assert.equal(finalized,outcome === 'success');
+    const response = await POST(new Request('http://localhost', { method: 'POST', body: JSON.stringify({ resolution: 'Release', refundAmount: 0, sellerAmount: 1000 }) }), { params: Promise.resolve({ disputeId: 'dispute' }) });
+    assert.equal(response.status, outcome === 'success' ? 200 : 202);
+    assert.equal(resolutions, outcome === 'unsupported' ? 0 : 1);
+    assert.equal(finalized, outcome === 'success');
   });
 }
 
@@ -241,9 +241,7 @@ test('event payout includes USED tickets and keeps pending withdrawals unrelease
     './payluk-service': { PaylukService: { withdrawToBank: async params => {
       await params.onIntentReady('intent'); return { outcome: 'pending', success: false };
     } } },
-    './paystack-service': { PaystackService: { transferToSeller: async () => { throw new Error('Cross-provider fallback prohibited'); } } },
     './payluk-onboarding': { getPaylukCustomerId: async () => 'customer' },
-    './ticket-payment-provider': {}, './ticket-refunds': {},
   });
   await assert.rejects(EventEscrowService.processEventPayout('event','organizer'), /pending/);
   assert.equal(updates.some(update => update.table === 'events'), false);
@@ -621,3 +619,202 @@ for (const enabled of [false,true]) {
     assert.equal(parsed.bucket, 'chat-images');
   });
 }
+
+for (const scenario of ['anonymous', 'success', 'provider-failure']) {
+  test(`Payluk bank list ${scenario}`, async () => {
+    let calls = 0;
+    const { GET } = load('src/app/api/seller/banks/route.ts', {
+      '@/lib/supabase-server': { getAuthenticatedUser: async () => ({ data: { user: scenario === 'anonymous' ? null : { id: 'seller' } } }) },
+      '@/lib/payluk-service': { PaylukService: { getBankList: async () => {
+        calls++;
+        if (scenario === 'provider-failure') throw new Error('Test provider unavailable');
+        return [{ name: 'Bank', code: 'opaque-bank-code' }];
+      } } },
+    });
+    const response = await GET(new Request('http://localhost'));
+    assert.equal(response.status, scenario === 'anonymous' ? 401 : scenario === 'success' ? 200 : 503);
+    assert.equal(calls, scenario === 'anonymous' ? 0 : 1);
+    if (scenario === 'success') assert.deepEqual(await response.json(), { success: true, banks: [{ name: 'Bank', code: 'opaque-bank-code' }] });
+  });
+}
+
+for (const scenario of ['paid', 'pending', 'amount-mismatch', 'unsupported', 'other-buyer']) {
+  test(`marketplace Payluk verification ${scenario}`, async () => {
+    let applied = 0, verified = 0, flagged = 0;
+    const tx = { id: '00000000-0000-0000-0000-000000000001', buyer_id: scenario === 'other-buyer' ? 'other' : 'buyer',
+      payment_provider: scenario === 'unsupported' ? 'retired-provider' : 'payluk', status: 'pending',
+      payluk_tx_ref: 'PY_TOKEN', payluk_escrow_id: 'escrow-id', amount: 2000, total_amount: 2060 };
+    const { POST } = load('src/app/api/payment/verify/route.ts', {
+      '@/lib/supabase-server': { getAuthenticatedUser: async () => ({ data: { user: { id: 'buyer' } } }) },
+      '@/lib/supabase-admin': { supabaseAdmin: { from: () => chain({ data: tx }) } },
+      '@/lib/payluk-service': { PaylukService: { verifyEscrow: async token => {
+        verified++; assert.equal(token, 'PY_TOKEN');
+        return { status: scenario === 'pending' ? 'PENDING' : 'ONGOING', amount: scenario === 'amount-mismatch' ? 1000 : 2000 };
+      } } },
+      '@/lib/escrow-payment': { applyEscrowPayment: async (id, provider, ref) => {
+        applied++; assert.equal(id, tx.id); assert.equal(provider, 'payluk'); assert.equal(ref, 'escrow-id');
+      } },
+      '@/lib/payment-reconciliation': { flagPayment: async () => { flagged++; } },
+    });
+    const response = await POST(new Request('http://localhost', { method: 'POST', body: JSON.stringify({ txRef: tx.id }) }));
+    assert.equal(response.status, { paid: 200, pending: 402, 'amount-mismatch': 409, unsupported: 409, 'other-buyer': 403 }[scenario]);
+    assert.equal(applied, scenario === 'paid' ? 1 : 0);
+    assert.equal(flagged, scenario === 'amount-mismatch' ? 1 : 0);
+    assert.equal(verified, ['unsupported', 'other-buyer'].includes(scenario) ? 0 : 1);
+  });
+}
+
+for (const scenario of ['missing', 'unsupported', 'other-buyer', 'pending', 'amount-mismatch', 'confirmed', 'replay']) {
+  test(`Payluk ticket verification ${scenario}`, async () => {
+    let verified = 0, fulfilled = 0, updated = 0, flagged = 0;
+    const tx = { id: '00000000-0000-0000-0000-000000000001', buyer_id: scenario === 'other-buyer' ? 'other' : 'buyer',
+      item_type: 'ticket', payment_provider: scenario === 'unsupported' ? 'retired-provider' : 'payluk',
+      payluk_tx_ref: 'PY_TOKEN', status: scenario === 'replay' ? 'paid' : 'pending', amount: 2000 };
+    const { TicketService } = load('src/lib/ticket-service.ts', {
+      '@/lib/supabase-admin': { supabaseAdmin: { from: () => {
+        const q = chain({ data: scenario === 'missing' ? null : tx });
+        q.update = () => { updated++; return chain({ data: { ...tx, status: 'paid' } }); };
+        return q;
+      } } },
+      '@/lib/resend-service': { ResendEmailService: {} }, '@/lib/server-push-notification': {},
+      '@/lib/payluk-service': { PaylukService: { verifyEscrow: async token => {
+        verified++; assert.equal(token, 'PY_TOKEN');
+        return { status: scenario === 'pending' ? 'PENDING' : 'CLAIMED', amount: scenario === 'amount-mismatch' ? 1000 : 2000 };
+      } } },
+      './payment-reconciliation': { flagPayment: async () => { flagged++; } },
+    });
+    TicketService.processTicketPaymentFromTransaction = async paid => { fulfilled++; assert.equal(paid.status, 'paid'); return { id: 'ticket' }; };
+    if (['confirmed', 'replay'].includes(scenario)) {
+      assert.equal((await TicketService.verifyAndProcessTicket('order-reference', 'buyer')).id, 'ticket');
+    } else {
+      await assert.rejects(TicketService.verifyAndProcessTicket('order-reference', 'buyer'), new RegExp({
+        missing: 'payment_not_found', unsupported: 'payment_requires_review', 'other-buyer': 'ticket_buyer_mismatch',
+        pending: 'payment_pending', 'amount-mismatch': 'payment_requires_review',
+      }[scenario]));
+    }
+    assert.equal(fulfilled, ['confirmed', 'replay'].includes(scenario) ? 1 : 0);
+    assert.equal(updated, scenario === 'confirmed' ? 1 : 0);
+    assert.equal(verified, ['pending', 'amount-mismatch', 'confirmed'].includes(scenario) ? 1 : 0);
+    assert.equal(flagged, scenario === 'amount-mismatch' ? 1 : 0);
+  });
+}
+
+for (const scenario of ['success', 'provider-failure']) {
+  test(`event checkout uses Payluk ${scenario} and records one order escrow`, async () => {
+    let created = 0;
+    const inserts = [];
+    const { POST } = load('src/app/api/events/tickets/purchase/route.ts', {
+      globals: { crypto: require('node:crypto') },
+      '@/lib/supabase-server': { getAuthenticatedUser: async () => ({ data: { user: { id: 'buyer' } } }) },
+      '@/lib/user-suspension': { isUserSuspendedOrBanned: async () => ({ suspended: false }) },
+      '@/lib/resend-service': { ResendEmailService: {} }, '@/lib/server-push-notification': {},
+      '@/lib/payluk-onboarding': { getPaylukCustomerId: async id => `provider-${id}` },
+      '@/lib/payluk-service': { PaylukService: { updateCustomerPermissions: async () => {}, createEscrow: async (seller, params) => {
+        created++; assert.equal(seller, 'provider-organizer'); assert.equal(params.amount, 4000); assert.equal(params.totalQuantity, 1);
+        if (scenario === 'provider-failure') throw new Error('Test provider unavailable');
+        return { id: 'escrow-id', paymentToken: 'PY_TOKEN' };
+      } } },
+      '@/lib/supabase-admin': { supabaseAdmin: { from: table => {
+        const q = chain({ data: table === 'events' ? { id: 'event', title: 'Event', status: 'PUBLISHED', organizer_id: 'organizer' }
+          : table === 'ticket_tiers' ? { id: 'tier', name: 'General', price: 2000, capacity: 100, sold: 0, is_visible: true } : [] });
+        q.insert = row => { inserts.push({ table, row }); return chain({ error: null }); };
+        return q;
+      } } },
+    });
+    const response = await POST(new Request('http://localhost', { method: 'POST', body: JSON.stringify({ event_id: 'event', tier_id: 'tier', attendee_name: 'Buyer', attendee_email: 'buyer@example.com', quantity: 2 }) }));
+    assert.equal(response.status, scenario === 'success' ? 200 : 502);
+    assert.equal(created, 1);
+    assert.equal(inserts.length, scenario === 'success' ? 1 : 0);
+    if (scenario === 'success') {
+      const result = await response.json();
+      assert.equal(result.provider, 'payluk'); assert.equal(result.paylukPaymentToken, 'PY_TOKEN');
+      const { row } = inserts[0];
+      assert.equal(row.payment_provider, 'payluk'); assert.equal(row.metadata.quantity, 2);
+      assert.equal(row.commission, 120); assert.equal(row.seller_amount, 3880);
+      assert.equal(row.total_amount, 4000); assert.equal(row.payment_reference, result.tx_ref);
+    }
+  });
+}
+
+test('compatibility ticket checkout preserves auth and uses the canonical Payluk handler', async () => {
+  const { POST } = load('src/app/api/tickets/initialize/route.ts', {
+    '@/app/api/events/tickets/purchase/route': { POST: async request => {
+      assert.equal(request.headers.get('authorization'), 'Bearer test-token');
+      assert.deepEqual(await request.json(), { event_id: 'event', tier_id: 'tier', attendee_name: 'Buyer', attendee_email: 'buyer@example.com', quantity: 1 });
+      return Response.json({ success: true, tx_ref: 'ref', payment_link: 'https://payluk.ng/escrow/token', paylukPaymentToken: 'token' });
+    } },
+  });
+  const response = await POST(new Request('http://localhost', { method: 'POST', headers: { authorization: 'Bearer test-token' }, body: JSON.stringify({ eventId: 'event', tierId: 'tier', attendeeName: 'Buyer', attendeeEmail: 'buyer@example.com' }) }));
+  const result = await response.json();
+  assert.equal(response.status, 200); assert.equal(result.txRef, 'ref'); assert.equal(result.paymentLink, 'https://payluk.ng/escrow/token');
+});
+
+for (const amount of [2000, null, 0]) {
+  test(`ticket refund amount ${amount} never fabricates a paid refund`, async () => {
+    let writes = 0;
+    const { POST } = load('src/app/api/events/tickets/refund/route.ts', {
+      '@/lib/supabase-server': { getAuthenticatedUser: async () => ({ data: { user: { id: 'organizer' } } }) },
+      '@/lib/server-push-notification': { sendPushNotification: async () => {} },
+      '@/lib/supabase-admin': { supabaseAdmin: { from: table => {
+        const q = chain({ data: table === 'tickets' ? { id: 'ticket', status: 'PAID', amount_paid: amount, event: { id: 'event', title: 'Event', organizer_id: 'organizer' } } : null });
+        q.update = () => { writes++; return chain({}); }; q.insert = () => chain({}); return q;
+      } } },
+    });
+    const response = await POST(new Request('http://localhost', { method: 'POST', body: JSON.stringify({ ticket_id: 'ticket' }) }));
+    assert.equal(response.status, amount === 0 ? 200 : 409);
+    assert.equal(writes, amount === 0 ? 1 : 0);
+  });
+}
+
+for (const amount of [2000, null, 0]) {
+  test(`event cancellation amount ${amount} preserves unresolved paid tickets`, async () => {
+    let writes = 0, ticketLookups = 0;
+    const { POST } = load('src/app/api/events/[id]/cancel/route.ts', {
+      '@/lib/supabase-server': { getAuthenticatedUser: async () => ({ data: { user: { id: 'organizer' } } }) },
+      '@/lib/supabase-admin': { supabaseAdmin: { from: table => {
+        const q = chain({ data: table === 'events' ? { id: 'event', status: 'PUBLISHED', organizer_id: 'organizer' }
+          : ticketLookups++ === 0 ? [{ id: 'ticket', amount_paid: amount }] : [] });
+        q.update = () => { writes++; return chain({}); }; return q;
+      } } },
+    });
+    const response = await POST(new Request('http://localhost', { method: 'POST' }), { params: Promise.resolve({ id: 'event' }) });
+    assert.equal(response.status, amount === 0 ? 200 : 409); assert.equal(writes, amount === 0 ? 2 : 0);
+  });
+}
+
+for (const scenario of ['replay', 'fulfillment-failure']) {
+  test(`signed Payluk ticket webhook ${scenario} keeps provider identity and retry behavior`, async () => {
+    let issued = 0, flagged = 0;
+    const fullTx = { id: '00000000-0000-0000-0000-000000000001', status: 'paid', payment_provider: 'payluk', item_type: 'ticket', metadata: { event_id: 'event' } };
+    const { POST } = load('src/app/api/webhooks/payluk/route.ts', {
+      '@/lib/supabase-admin': { supabaseAdmin: { from: () => {
+        let projection;
+        const q = {};
+        q.select = columns => { projection = columns; return q; }; q.or = () => q;
+        q.maybeSingle = async () => ({ data: Object.fromEntries(projection.split(',').map(key => key.trim()).map(key => [key, fullTx[key]])) });
+        return q;
+      } } },
+      '@/lib/escrow-payment': { applyEscrowPayment: async () => false },
+      '@/lib/payment-reconciliation': { flagPayment: async (_provider, _reference, _id, reason) => { flagged++; assert.equal(reason, 'ticket_fulfillment_failed'); } },
+      '@/lib/ticket-service': { TicketService: { processTicketPaymentFromTransaction: async tx => {
+        issued++; assert.equal(tx.payment_provider, 'payluk');
+        if (scenario === 'fulfillment-failure') throw new Error('Test fulfillment unavailable');
+      } } },
+      '@/lib/server-notification-service': {}, '@/lib/payluk-service': {}, '@/lib/payout-service': {}, '@/lib/server-push-notification': {},
+      '@/lib/booking-payments': { handlePaylukWebhookEvent: async () => {} },
+    });
+    const body = JSON.stringify({ event: 'escrow.ongoing', data: { id: 'escrow-id', paymentToken: 'PY_TOKEN', status: 'ONGOING' } });
+    const signature = require('node:crypto').createHmac('sha512', 'test-only').update(body).digest('hex');
+    const response = await POST(new Request('http://localhost', { method: 'POST', headers: { 'x-payluk-signature': signature }, body }));
+    assert.equal(response.status, scenario === 'replay' ? 200 : 500);
+    assert.equal(issued, 1); assert.equal(flagged, scenario === 'fulfillment-failure' ? 1 : 0);
+  });
+}
+
+test('Payluk test-mode account resolution fails closed on provider errors', async () => {
+  const { PaylukService } = load('src/lib/payluk-service.ts', {
+    env: { PAYLUK_SECRET_KEY: 'sk_test_fixture' }, './payluk-onboarding': {},
+    fetch: async () => { throw new Error('Test provider unavailable'); },
+  });
+  assert.equal((await PaylukService.resolveAccount('0123456789abcdef01234567', '0000000000', 'opaque-code')).valid, false);
+});

@@ -211,7 +211,7 @@ export function EventCreatorOnboarding({ isOpen, onClose, onContinue }: EventCre
                 {/* How it works */}
                 <div className="space-y-3">
                   {[
-                    { icon: Zap, label: "Instant setup", desc: "Link your Nigerian bank account via Paystack" },
+                    { icon: Zap, label: "Instant setup", desc: "Link your Nigerian bank account via Payluk" },
                     { icon: Banknote, label: "Automatic payouts", desc: "Funds are released after your event ends" },
                     { icon: CheckCircle2, label: `You keep ${100 - EVENT_CONSTANTS.COMMISSION_RATE * 100}%`, desc: `Yrdly takes a ${EVENT_CONSTANTS.COMMISSION_RATE * 100}% platform fee on paid tickets; processing fees may apply` },
                   ].map(({ icon: Icon, label, desc }) => (

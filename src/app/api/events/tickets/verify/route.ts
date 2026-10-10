@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
 
 /**
  * GET /api/events/tickets/verify?tx_ref=...
- * Paystack redirects here after payment.
+ * Payluk checkout return URL for server-side payment verification.
  * Verifies the transaction, creates the ticket, generates QR, fires confirmation email.
  */
 export async function GET(request: NextRequest) {
@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     console.error('Ticket verify error:', error);
     
     // Redirect based on error type
-    if (error.message === 'sold_out_refunded' || error.message === 'sold_out_refund_required' || error.message === 'sold_out_payluk_refund_required') {
+    if (error.message === 'sold_out_payluk_refund_required') {
       // Need event_id to redirect properly, but if it failed here, we just go to events list or my-tickets
       return NextResponse.redirect(`${appUrl}/events?error=${error.message}&tx_ref=${encodeURIComponent(txRef)}`);
     } else if (error.message === 'payment_failed') {
