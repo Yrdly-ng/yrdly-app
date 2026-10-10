@@ -1,0 +1,12 @@
+.git
+.env*
+.qa-artifacts
+.next
+.next-qa
+node_modules
+.vercel
+qa-seed-output.json
+AUDIT_REPORT.md
+AUDIT_FIX_STATUS.md
+yrdly-audit-fix-prompts.md
+yrdly-qa-checklist.xlsx

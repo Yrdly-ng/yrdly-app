@@ -47,6 +47,7 @@ jobs:
       - run: node --test tests/audit-security.test.cjs
       - run: node scripts/qa-payluk-sandbox.mjs
       - run: node qa-scripts/edge-regression.mjs
+      - run: node qa-scripts/otp-regression.mjs
       - run: node qa-scripts/run-app.mjs build
       - run: pnpm typecheck && pnpm lint
       - name: Start QA server and run live checks

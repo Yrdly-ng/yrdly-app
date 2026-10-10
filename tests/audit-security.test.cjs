@@ -16,7 +16,7 @@ function load(file, mocks = {}) {
     if (id === 'next/server') return { NextRequest: Request, NextResponse: { json: (body, init) => Response.json(body, init) } };
     if (id === 'server-only') return {};
     if (id.startsWith('@/')) return load(`src/${id.slice(2)}.ts`, mocks);
-    if (id.startsWith('.')) return load(path.resolve(path.dirname(filename), `${id}.ts`), mocks);
+    if (id.startsWith('.')) return load(path.resolve(path.dirname(filename), id.endsWith('.ts') ? id : `${id}.ts`), mocks);
     return require(id);
   };
   vm.runInNewContext(output, { module, exports: module.exports, require: localRequire,
@@ -33,6 +33,60 @@ function chain(result) {
   for (const method of ['select','eq','neq','is','in','or','contains','limit','update','insert','single','maybeSingle','delete','order']) query[method] = () => query;
   query.then = (resolve, reject) => Promise.resolve(result).then(resolve, reject);
   return query;
+}
+
+for (const operation of ['send', 'verify']) {
+  for (const scenario of ['anonymous', 'invalid-token', 'suspended', 'bad-input', 'rate-limit', 'provider-failure', 'success', ...(operation === 'verify' ? ['other-owner', 'wrong-phone', 'wrong-code', 'replay'] : ['save-failure'])]) {
+    test(`phone OTP ${operation} enforces identity and challenge state: ${scenario}`, async () => {
+      let handler, providerCalls = 0, saved, completed = 0;
+      const owner = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+      const phone = '2347000000001';
+      const admin = {
+        from: table => {
+          if (table === 'users') return chain({ data: scenario === 'suspended' ? { is_suspended: true } : operation === 'send' ? [] : {} });
+          assert.equal(table, 'phone_verification_challenges');
+          return { insert: async row => { saved = row; return { error: scenario === 'save-failure' ? { code: 'database_failure' } : null }; } };
+        },
+        rpc: async name => {
+          if (name === 'consume_rate_limit') return { data: scenario !== 'rate-limit' };
+          if (name === 'claim_phone_verification_attempt') return { data: scenario === 'other-owner' ? null : phone };
+          assert.equal(name, 'complete_phone_verification');
+          completed++;
+          return { data: scenario !== 'replay' };
+        },
+      };
+      // authorize() uses a single profile row; duplicate-phone lookup uses an array.
+      admin.from = table => {
+        if (table !== 'users') return { insert: async row => { saved = row; return { error: scenario === 'save-failure' ? { code: 'database_failure' } : null }; } };
+        const profile = chain({ data: scenario === 'suspended' ? { is_suspended: true } : {} });
+        profile.in = () => chain({ data: [] });
+        return profile;
+      };
+      const mocks = {
+        'https://deno.land/std@0.168.0/http/server.ts': { serve: fn => { handler = fn; } },
+        'https://esm.sh/@supabase/supabase-js@2': { createClient: (_url, key) => key === 'public-fixture' ? { auth: { getUser: async token => ({ data: { user: token === 'valid' ? { id: owner } : null } }) } } : admin },
+        globals: { Deno: { env: { get: name => ({ SUPABASE_URL: 'https://qa.invalid', SUPABASE_ANON_KEY: 'public-fixture', SUPABASE_SERVICE_ROLE_KEY: 'backend-fixture', TERMII_API_KEY: 'provider-fixture' })[name] } } },
+        fetch: async (_url, options) => {
+          providerCalls++;
+          assert.equal(JSON.parse(options.body).api_key, 'provider-fixture');
+          if (scenario === 'provider-failure') return Response.json({}, { status: 503 });
+          return Response.json(operation === 'send' ? { smsStatus: 'Message Sent', pinId: 'fixture-challenge' }
+            : { verified: scenario !== 'wrong-code', msisdn: scenario === 'wrong-phone' ? '2347000000002' : phone });
+        },
+      };
+      load(`supabase/functions/${operation === 'send' ? 'send' : 'verify'}-phone-otp/index.ts`, mocks);
+      const headers = scenario === 'anonymous' ? {} : { authorization: `Bearer ${scenario === 'invalid-token' ? 'invalid' : 'valid'}` };
+      const body = scenario === 'bad-input' ? { phone: 123, pinId: 'fixture-challenge', pin: 123456 }
+        : operation === 'send' ? { phone: '07000000001' } : { pinId: 'fixture-challenge', pin: '123456' };
+      const response = await handler(new Request('https://qa.invalid', { method: 'POST', headers, body: JSON.stringify(body) }));
+      const statuses = { anonymous: 401, 'invalid-token': 401, suspended: 403, 'bad-input': 400, 'rate-limit': 429, 'provider-failure': 503, success: 200, 'other-owner': 400, 'wrong-phone': 400, 'wrong-code': 400, replay: 400, 'save-failure': 503 };
+      assert.equal(response.status, statuses[scenario]);
+      if (['anonymous', 'invalid-token', 'suspended', 'bad-input', 'rate-limit', 'other-owner'].includes(scenario)) assert.equal(providerCalls, 0);
+      if (operation === 'send' && scenario === 'success') assert.deepEqual(JSON.parse(JSON.stringify(saved)), { pin_id: 'fixture-challenge', user_id: owner, phone });
+      if (operation === 'verify' && ['other-owner', 'wrong-phone', 'wrong-code'].includes(scenario)) assert.equal(completed, 0);
+      assert.ok(!(await response.text()).includes('provider-fixture'));
+    });
+  }
 }
 
 for (const credential of ['anonymous','publishable','user-jwt','forged-secret','legacy-service','modern-service']) {

@@ -36,7 +36,8 @@ try {
   await check('buyer cannot read another private profile', async () => assert.equal(ok(await buyer.from('users').select('id,email').eq('id', seed.users.seller)).length, 0));
   await check('buyer can read own private profile', async () => assert.equal(ok(await buyer.from('users').select('id,email').eq('id', seed.users.buyer)).length, 1));
   await check('anonymous public profiles omit email and phone', async () => { const rows = ok(await anonymous.from('public_profiles').select('*')); assert.ok(rows.length >= 5); assert.ok(rows.every(r => !('email' in r) && !('phone' in r) && !('payluk_customer_id' in r))); });
-  for (const [field, value] of Object.entries({ is_admin: true, role: 'admin', verified_seller: true, phone_verified: true, payluk_customer_id: 'qa-forged-customer', rating: 5 })) {
+  const ownTrust = ok(await buyer.from('users').select('is_admin,role,verified_seller,phone_verified,rating').eq('id', seed.users.buyer).single());
+  for (const [field, value] of Object.entries({ is_admin: !ownTrust.is_admin, role: ownTrust.role === 'admin' ? 'user' : 'admin', verified_seller: !ownTrust.verified_seller, phone_verified: !ownTrust.phone_verified, payluk_customer_id: 'qa-forged-customer', rating: ownTrust.rating === 5 ? 0 : 5 })) {
     await check(`profile trust field protected: ${field}`, async () => denied(await buyer.from('users').update({ [field]: value }).eq('id', seed.users.buyer).select('id')));
   }
   await check('own display name remains editable', async () => { assert.equal(ok(await buyer.from('users').update({ name: 'YRDLY-QA Buyer' }).eq('id', seed.users.buyer).select('id')).length, 1); });
