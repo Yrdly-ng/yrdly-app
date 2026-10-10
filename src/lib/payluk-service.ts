@@ -27,12 +27,19 @@ if (typeof window === 'undefined' && !PAYLUK_SECRET_KEY) {
 // Every response: { status: number, message: string, data: T }
 
 interface PaylukEnvelope<T> {
-  status: number;
+  status: number | boolean;
   message: string;
   data: T;
 }
 
 // ── Request helpers ─────────────────────────────────────────────────────────
+
+export class PaylukRequestError extends Error {
+  constructor(message: string, readonly httpStatus: number, readonly providerStatus: number | boolean, readonly providerMessage: string) {
+    super(message);
+    this.name = 'PaylukRequestError';
+  }
+}
 
 async function paylukRequest<T>(
   endpoint: string,
@@ -73,9 +80,10 @@ async function paylukRequest<T>(
 
   if (!res.ok) {
     const errMsg = data.message || data.status?.toString() || 'Payluk API error';
-    throw new Error(
+    throw new PaylukRequestError(
       `[Payluk] ${fetchOptions.method || 'GET'} ${endpoint} — HTTP ${res.status}` +
-      ` (Payluk status: ${data.status}): ${errMsg}`
+      ` (Payluk status: ${data.status}): ${errMsg}`,
+      res.status, data.status, errMsg,
     );
   }
 
@@ -324,8 +332,16 @@ export class PaylukService {
    * Throws an error if ambiguity cannot be resolved. Returns null if not found.
    */
   static async getCustomerByPhone(phone: string, email?: string, signal?: AbortSignal): Promise<PaylukCustomer | null> {
-    const response = await paylukRequest<{ data: PaylukCustomer[] }>(
-      `/v1/customers?phone=${encodeURIComponent(phone)}`, { method: 'GET', signal });
+    let response: PaylukEnvelope<{ data: PaylukCustomer[] }>;
+    try {
+      response = await paylukRequest<{ data: PaylukCustomer[] }>(
+        `/v1/customers?phone=${encodeURIComponent(phone)}`, { method: 'GET', signal });
+    } catch (error) {
+      // Verified sandbox absence response. All other provider failures remain errors.
+      if (error instanceof PaylukRequestError && error.httpStatus === 400 &&
+          error.providerStatus === false && error.providerMessage === 'No customer found with the provided phone') return null;
+      throw error;
+    }
     const normalized = (value: string) => value.replace(/\D/g, '').replace(/^234/, '0');
     const matches = (response.data?.data || []).filter(customer =>
       normalized(customer.phone || '') === normalized(phone) &&

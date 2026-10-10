@@ -603,6 +603,43 @@ for (const scenario of ['allowed','disallowed','redirect','oversize','timeout'])
   });
 }
 
+for (const scenario of ['found', 'missing', 'bad-phone', 'unauthorized', 'locked', 'server-error']) {
+  test(`Payluk phone lookup distinguishes absent customers from provider failures: ${scenario}`, async () => {
+    const http = { found: 200, missing: 400, 'bad-phone': 400, unauthorized: 401, locked: 423, 'server-error': 500 }[scenario];
+    const { PaylukService, PaylukRequestError } = load('src/lib/payluk-service.ts', {
+      './payluk-onboarding': {},
+      fetch: async () => Response.json(scenario === 'found'
+        ? { status: 200, data: { data: [{ customerId: 'fixture-customer', phone: '+2348012345678' }] } }
+        : { status: false, message: scenario === 'bad-phone' ? 'Invalid phone number' : 'No customer found with the provided phone' }, { status: http }),
+    });
+    if (scenario === 'found') assert.equal((await PaylukService.getCustomerByPhone('08012345678')).customerId, 'fixture-customer');
+    else if (scenario === 'missing') assert.equal(await PaylukService.getCustomerByPhone('08012345678'), null);
+    else await assert.rejects(PaylukService.getCustomerByPhone('08012345678'), error => error instanceof PaylukRequestError && error.httpStatus === http);
+  });
+}
+
+test('new payment identity is created from confirmed Auth email and bound to the verified phone', async () => {
+  let reads = 0, created = 0;
+  const { ensurePaylukCustomer } = load('src/lib/payluk-onboarding.ts', {
+    './supabase-admin': { supabaseAdmin: {
+      from: () => chain({ data: ++reads === 1 ? { phone: '08012345678', phone_verified: true, legal_name: 'Fixture Buyer' } : reads === 2 ? [] : { payluk_customer_id: 'new-customer' } }),
+      auth: { admin: { getUserById: async () => ({ data: { user: { email: 'confirmed@example.test', email_confirmed_at: '2026-10-10' } } }) } },
+    } },
+    './payluk-service': { PaylukService: {
+      getCustomerByPhone: async () => null,
+      createCustomer: async params => {
+        created++;
+        assert.equal(params.email, 'confirmed@example.test');
+        assert.equal(params.phone, '08012345678');
+        return { customerId: 'new-customer', phone: '+2348012345678' };
+      },
+    } },
+  });
+  assert.equal(await ensurePaylukCustomer('fixture-buyer'), 'new-customer');
+  assert.equal(created, 1);
+  assert.equal(reads, 3);
+});
+
 test('onboarding has an overall deadline and never scans customer pages', async () => {
   let lookups = 0;
   const { ensurePaylukCustomer } = load('src/lib/payluk-onboarding.ts', {
