@@ -336,9 +336,9 @@ export async function POST(request: NextRequest) {
       let submittedToProvider = false;
       const setupDeadline = AbortSignal.timeout(20_000);
       try {
-        [buyerPaylukId,sellerPaylukId] = await Promise.all([
-          getPaylukCustomerId(buyerId),getPaylukCustomerId(sellerId),
-        ]);
+        // Either identity lookup may create a customer; Payluk locks concurrent creates.
+        buyerPaylukId = await getPaylukCustomerId(buyerId);
+        sellerPaylukId = await getPaylukCustomerId(sellerId);
 
         // Payluk can lock concurrent permission writes under the same merchant.
         await PaylukService.updateCustomerPermissions(buyerPaylukId,{ canBuy:true },setupDeadline);

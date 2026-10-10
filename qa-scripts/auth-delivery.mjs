@@ -5,7 +5,7 @@ import { Resend } from 'resend';
 import { readQaEnv, createAdminClient, generatePassword, updateQaEnv, QA_PREFIX } from './qa-common.mjs';
 
 const mode = process.argv[2] || 'inspect';
-if (!['inspect', 'signup', 'resend', 'confirm', 'reset'].includes(mode)) throw new Error('Use inspect, signup, resend, confirm or reset');
+if (!['inspect', 'signup', 'resend', 'confirm', 'reset', 'cleanup'].includes(mode)) throw new Error('Use inspect, signup, resend, confirm, reset or cleanup');
 const { env } = await readQaEnv();
 const settingsResponse = await fetch(`${env.SUPABASE_URL}/auth/v1/settings`, { headers: { apikey: env.NEXT_PUBLIC_SUPABASE_ANON_KEY }, signal: AbortSignal.timeout(15000) });
 if (!settingsResponse.ok) throw new Error(`QA Auth settings unavailable: HTTP ${settingsResponse.status}`);
@@ -15,10 +15,24 @@ if (mode !== 'inspect') {
   if (!env.QA_DELIVERY_EMAIL) throw new Error('Authorized QA delivery email required');
   const client = createClient(env.SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY, { auth: { persistSession: false }, global: { fetch: (url, options) => fetch(url, { ...options, signal: AbortSignal.timeout(15000) }) } });
   let signup;
-  if (mode === 'confirm' || mode === 'resend') {
+  if (['confirm', 'resend', 'cleanup'].includes(mode)) {
     signup = JSON.parse(await readFile('.qa-artifacts/auth-signup-delivery.json', 'utf8'));
     const account = await createAdminClient(env).auth.admin.getUserById(signup.userId);
     if (account.error || account.data.user.email !== env.QA_DELIVERY_EMAIL || account.data.user.user_metadata.qa_prefix !== QA_PREFIX || account.data.user.user_metadata.qa_role !== 'auth_delivery') throw new Error('Owned QA signup fixture required');
+  }
+  if (mode === 'cleanup') {
+    const admin = createAdminClient(env);
+    for (const [table, column] of [['posts', 'user_id'], ['events', 'organizer_id'], ['tickets', 'buyer_id'], ['payout_requests', 'seller_id']]) {
+      const result = await admin.from(table).select('id', { head: true, count: 'exact' }).eq(column, signup.userId);
+      if (result.error || result.count !== 0) throw new Error('Refusing to clean a delivery fixture with content, tickets or payouts');
+    }
+    const transactions = await admin.from('escrow_transactions').select('id', { head: true, count: 'exact' }).or(`buyer_id.eq.${signup.userId},seller_id.eq.${signup.userId}`);
+    if (transactions.error || transactions.count !== 0) throw new Error('Refusing to clean a delivery fixture with financial rows');
+    const result = await admin.auth.admin.deleteUser(signup.userId);
+    if (result.error) throw new Error('Owned QA Auth fixture cleanup failed');
+    await writeFile('.qa-artifacts/auth-signup-fixture-cleanup.json', JSON.stringify({ checkedAt: new Date().toISOString(), cleaned: true }), { mode: 0o600 });
+    console.log('PASS Cleanup of our QA signup delivery fixture only');
+    process.exit(0);
   }
   if (mode === 'confirm') {
     if (!env.RESEND_API_KEY) throw new Error('QA email delivery lookup key required');
