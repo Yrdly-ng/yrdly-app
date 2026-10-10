@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Raleway, Jersey_25, Pacifico } from 'next/font/google';
+import localFont from 'next/font/local';
 
 import './globals.css';
 import { cn } from '@/lib/utils';
@@ -14,22 +14,25 @@ import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister';
 import { PushNotificationManager } from '@/components/PushNotificationManager';
 import { CrispChat } from '@/components/CrispChat';
 
-const raleway = Raleway({
-  subsets: ['latin'],
+const raleway = localFont({
+  src: './fonts/raleway.woff2',
   variable: '--font-raleway',
-  weight: ['400', '500', '600', '700', '800'],
+  weight: '100 900',
+  display: 'swap',
 });
 
-const jersey25 = Jersey_25({
-  subsets: ['latin'],
+const jersey25 = localFont({
+  src: './fonts/jersey25.woff2',
   variable: '--font-jersey25',
-  weight: ['400'],
+  weight: '400',
+  display: 'swap',
 });
 
-const pacifico = Pacifico({
-  subsets: ['latin'],
+const pacifico = localFont({
+  src: './fonts/pacifico.woff2',
   variable: '--font-pacifico',
-  weight: ['400'],
+  weight: '400',
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
@@ -65,12 +68,6 @@ export default function RootLayout({
   return (
     <html lang="en" className={cn(raleway.variable, jersey25.variable, pacifico.variable)} suppressHydrationWarning>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
         <style dangerouslySetInnerHTML={{__html: `
           body { font-feature-settings: "cv11", "ss01"; }
         `}} />

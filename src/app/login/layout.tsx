@@ -1,8 +1,6 @@
-import { AuthProvider } from '@/hooks/use-supabase-auth';
-import { Inter } from 'next/font/google';
+import localFont from 'next/font/local';
 
-
-const inter = Inter({ weight: ['300', '400', '500'], subsets: ['latin'], variable: '--font-sans' });
+const inter = localFont({ src: '../fonts/inter.woff2', weight: '100 900', variable: '--font-sans', display: 'swap' });
 
 export default function LoginLayout({
   children,
