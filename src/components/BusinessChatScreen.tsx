@@ -123,7 +123,8 @@ export function BusinessChatScreen({ business, item, conversationId: initialConv
 
         // Merge both message arrays and deduplicate by content + timestamp proximity
         const map = new Map<string, BusinessMessage>();
-        [...formattedBiz, ...formattedMain].forEach(msg => {
+        [...formattedMain,...formattedBiz.filter(legacy => !formattedMain.some(current => current.sender_id === legacy.sender_id &&
+          current.content === legacy.content && Math.abs(Date.parse(current.created_at || '')-Date.parse(legacy.created_at || '')) < 1500))].forEach(msg => {
           const createdTime = msg.created_at ? new Date(msg.created_at).getTime() : Date.now();
           const key = `${msg.sender_id}_${msg.content.trim()}_${createdTime}`;
           if (!map.has(key)) {
@@ -252,38 +253,12 @@ export function BusinessChatScreen({ business, item, conversationId: initialConv
     setMessage("");
 
     try {
-      // 1. Insert into main messages table if conversationId exists
-      if (activeConvId) {
-        await supabase
-          .from('messages')
-          .insert({
-            conversation_id: activeConvId,
-            sender_id: user.id,
-            text: messageContent,
-            content: messageContent,
-            is_read: true,
-            read_by: [user.id],
-            created_at: new Date().toISOString()
-          });
-      }
-
-      // 2. Insert into business_messages table for fallback/backwards compatibility
-      const { data: insertedMessage, error } = await supabase
-        .from('business_messages')
-        .insert({
-          business_id: business.id,
-          sender_id: user.id,
-          content: messageContent,
-          item_id: item?.id || null,
-          is_read: true
-        })
-        .select()
-        .single();
-
-      if (error && !activeConvId) {
-        setMessages(prev => prev.filter(msg => msg.id !== tempId));
-        throw error;
-      }
+      if (!activeConvId) throw new Error('Conversation is still loading. Please retry.');
+      const { data:insertedMessage,error } = await supabase.from('messages').insert({
+        conversation_id:activeConvId,sender_id:user.id,text:messageContent,content:messageContent,
+        is_read:true,read_by:[user.id],created_at:new Date().toISOString(),
+      }).select().single();
+      if (error) { setMessages(prev => prev.filter(msg => msg.id !== tempId));throw error; }
 
       if (insertedMessage) {
         const { data: userData } = await supabase
@@ -294,14 +269,14 @@ export function BusinessChatScreen({ business, item, conversationId: initialConv
 
         const realMessage: BusinessMessage = {
           id: insertedMessage.id,
-          business_id: insertedMessage.business_id,
+          business_id: business.id,
           sender_id: insertedMessage.sender_id,
           sender_name: userData?.name || profile?.name || "You",
           sender_avatar: userData?.avatar_url || profile?.avatar_url,
           content: insertedMessage.content,
           timestamp: new Date(insertedMessage.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
           is_read: insertedMessage.is_read,
-          item_id: insertedMessage.item_id,
+          item_id: item?.id,
           created_at: insertedMessage.created_at
         };
 
@@ -361,7 +336,7 @@ export function BusinessChatScreen({ business, item, conversationId: initialConv
     <div className="flex flex-col h-[100dvh] bg-background">
       {/* Header */}
       <div className="flex items-center gap-3 p-4 border-b border-border bg-card flex-shrink-0">
-        <Button variant="ghost" size="icon" onClick={onBack}>
+        <Button aria-label="Back" variant="ghost" size="icon" onClick={onBack}>
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0">
@@ -377,7 +352,7 @@ export function BusinessChatScreen({ business, item, conversationId: initialConv
           <h2 className="font-semibold text-foreground truncate">{business.name}</h2>
           <p className="text-sm text-muted-foreground truncate">{business.category}</p>
         </div>
-        <Button variant="ghost" size="icon">
+        <Button aria-label="More options" variant="ghost" size="icon">
           <MoreVertical className="w-5 h-5" />
         </Button>
       </div>
@@ -444,7 +419,7 @@ export function BusinessChatScreen({ business, item, conversationId: initialConv
       {/* Input area - Fixed at bottom */}
       <div className="border-t border-border p-4 bg-card flex-shrink-0">
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="flex-shrink-0">
+          <Button aria-label="Choose emoji" variant="ghost" size="icon" className="flex-shrink-0">
             <Smile className="w-5 h-5" />
           </Button>
           <Input
@@ -454,7 +429,7 @@ export function BusinessChatScreen({ business, item, conversationId: initialConv
             onKeyDown={handleKeyPress}
             className="flex-1 bg-background border-border"
           />
-          <Button
+          <Button aria-label="Send message"
             size="icon"
             className="flex-shrink-0 bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={handleSend}

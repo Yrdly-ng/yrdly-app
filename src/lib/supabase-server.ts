@@ -1,3 +1,4 @@
+import { authCookieDomain } from './auth-navigation';
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { createClient as createJsClient } from "@supabase/supabase-js";
 import { cookies, headers } from "next/headers";
@@ -8,7 +9,7 @@ export async function createClient() {
   const cookieStore = await cookies();
   const reqHeaders = await headers();
   const host = reqHeaders.get("host") || "";
-  const isLocalhost = host.includes("localhost") || host.includes("127.0.0.1");
+  const cookieDomain = authCookieDomain(host);
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -26,7 +27,7 @@ export async function createClient() {
             cookiesToSet.forEach(({ name, value, options }) => {
               const finalOptions = {
                 ...options,
-                domain: isLocalhost ? undefined : (process.env.NEXT_PUBLIC_COOKIE_DOMAIN || '.yrdly.ng'),
+                domain: cookieDomain,
               };
               cookieStore.set(name, value, finalOptions);
             });

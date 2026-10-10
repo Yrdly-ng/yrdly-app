@@ -22,14 +22,33 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  if (req.method !== 'POST') return new Response('Method not allowed',{ status:405,headers:corsHeaders });
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!serviceKey || req.headers.get('authorization') !== `Bearer ${serviceKey}`) {
+    return new Response(JSON.stringify({ error:'Forbidden' }),{ status:403,headers:corsHeaders });
+  }
   try {
-    const { userId, payload, type } = await req.json() as {
+    const reader = req.body?.getReader();
+    if (!reader) return new Response('Missing body',{ status:400 });
+    const chunks: Uint8Array[] = [];
+    let bytes = 0;
+    while (true) {
+      const { done,value } = await reader.read();
+      if (done) break;
+      bytes += value.byteLength;
+      if (bytes > 8192) { await reader.cancel(); return new Response('Payload too large',{ status:413 }); }
+      chunks.push(value);
+    }
+    const body = new Uint8Array(bytes);
+    let offset = 0;
+    for (const chunk of chunks) { body.set(chunk,offset);offset += chunk.length; }
+    const { userId, payload, type } = JSON.parse(new TextDecoder().decode(body)) as {
       userId: string;
       payload: PushPayload;
       type?: string;
     };
 
-    if (!userId || !payload) {
+    if (typeof userId !== 'string' || !/^[0-9a-f-]{36}$/i.test(userId) || !payload || typeof payload.title !== 'string' || typeof payload.body !== 'string') {
       return new Response(JSON.stringify({ error: 'Missing userId or payload' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -191,7 +210,7 @@ serve(async (req) => {
 
       if (!expoResponse.ok) throw new Error(`Expo push service returned ${expoResponse.status}`);
       expoResult = await expoResponse.json();
-      console.log('Expo push result:', JSON.stringify(expoResult));
+      console.log('Expo push request completed');
     }
 
     // Match batch ticket responses back to validTokens by array index
@@ -202,7 +221,7 @@ serve(async (req) => {
         if (ticket?.status === 'error' && ticket?.details?.error === 'DeviceNotRegistered') {
           const failedToken = validTokens[i];
           if (failedToken) {
-            console.log(`Deleting invalid push token row for user ${userId}: ${failedToken}`);
+            console.warn(`Deleting an invalid push token for user ${userId}`);
             await supabaseAdmin
               .from('user_push_tokens')
               .delete()

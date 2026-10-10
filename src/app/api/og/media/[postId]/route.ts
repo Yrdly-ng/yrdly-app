@@ -1,3 +1,4 @@
+import { fetchSafeImage } from '@/lib/safe-image-fetch';
 import sharp from 'sharp';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
@@ -32,16 +33,6 @@ function firstUrl(value: unknown): string | null {
   return null;
 }
 
-async function loadImage(src: string): Promise<Buffer> {
-  // Video thumbnails are saved on the post as base64 data URLs
-  if (src.startsWith('data:')) {
-    return Buffer.from(src.slice(src.indexOf(',') + 1), 'base64');
-  }
-  const res = await fetch(src);
-  if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
-  return Buffer.from(await res.arrayBuffer());
-}
-
 const PLAY_BADGE = Buffer.from(
   `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
     <circle cx="${W / 2}" cy="${H / 2}" r="78" fill="rgba(0,0,0,0.6)"/>
@@ -54,8 +45,8 @@ const PLAY_BADGE = Buffer.from(
 async function buildPoster(avatarUrl: string | null): Promise<ReturnType<typeof sharp>> {
   if (avatarUrl) {
     try {
-      const avatar = await loadImage(avatarUrl);
-      const bg = await sharp(avatar, { failOn: 'none' })
+      const avatar = await fetchSafeImage(avatarUrl);
+      const bg = await sharp(avatar, { failOn: 'none', limitInputPixels: 40_000_000 })
         .resize(W, H, { fit: 'cover', position: 'centre' })
         .blur(28)
         .modulate({ brightness: 0.6 })
@@ -83,17 +74,18 @@ export async function GET(
     const { data: post, error } = await supabaseAdmin
       .from('posts')
       .select('*')
-      .eq('id', postId)
+      .eq('id', postId).eq('moderation_status','approved').eq('visibility','public')
       .maybeSingle();
 
-    info.postFound = !!post;
-    info.queryError = error?.message ?? null;
+    if (!post) return new Response('Not found',{ status:404 });
+    info.postFound = true;
+    info.queryError = error?.code ?? null;
 
     const photo = firstUrl(post?.image_urls) || firstUrl(post?.image_url);
     const hasVideo = !!post?.video_url || !!firstUrl(post?.video_urls);
     const hasVideoThumb = !!post?.video_thumbnail_url;
 
-    info.photo = photo;
+
     info.hasVideo = hasVideo;
     info.hasVideoThumbnail = hasVideoThumb;
 
@@ -101,18 +93,18 @@ export async function GET(
 
     if (photo) {
       info.using = 'photo';
-      const input = await loadImage(photo);
+      const input = await fetchSafeImage(photo);
       info.sourceBytes = input.length;
       // Center crop (fast). failOn:'none' tolerates slightly broken phone photos.
-      pipeline = sharp(input, { failOn: 'none' })
+      pipeline = sharp(input, { failOn: 'none', limitInputPixels: 40_000_000 })
         .rotate()
         .resize(W, H, { fit: 'cover', position: 'centre' })
         .flatten({ background: '#000000' });
     } else if (hasVideo && hasVideoThumb) {
       info.using = 'video thumbnail';
-      const input = await loadImage(post?.video_thumbnail_url as string);
+      const input = await fetchSafeImage(post?.video_thumbnail_url as string);
       info.sourceBytes = input.length;
-      const base = await sharp(input, { failOn: 'none' })
+      const base = await sharp(input, { failOn: 'none', limitInputPixels: 40_000_000 })
         .resize(W, H, { fit: 'cover', position: 'centre' })
         .flatten({ background: '#000000' })
         .png()

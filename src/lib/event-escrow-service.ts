@@ -168,11 +168,11 @@ export class EventEscrowService {
         })).outcome;
       }
     }
-    const { error: finalizeError } = await adminSupabase.from('event_payouts').update({
+    const { data:finalized,error: finalizeError } = await adminSupabase.from('event_payouts').update({
       status: outcome === 'success' ? 'COMPLETED' : outcome === 'failed' ? 'FAILED' : 'PROCESSING',
       ...(outcome === 'success' ? { paid_at: new Date().toISOString() } : { failure_reason: `Transfer ${outcome}; reconcile by stored reference.` }),
-    }).eq('id', payout.id).eq('status', 'PROCESSING');
-    if (finalizeError) throw finalizeError;
+    }).eq('id', payout.id).eq('status', 'PROCESSING').select('id');
+    if (finalizeError || !finalized?.length) throw finalizeError || new Error('Payout state changed; reconciliation required');
     if (outcome === 'success') {
       const { error } = await adminSupabase.from('events').update({ payout_released_at: new Date().toISOString() }).eq('id', eventId);
       if (error) throw error;

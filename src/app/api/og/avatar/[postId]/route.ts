@@ -1,3 +1,4 @@
+import { fetchSafeImage } from '@/lib/safe-image-fetch';
 import sharp from 'sharp';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
@@ -10,12 +11,6 @@ export const revalidate = 300;
 const SIZE = 128;
 const FALLBACK_LOGO = 'https://app.yrdly.ng/logo.png';
 
-async function fetchBuffer(url: string) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
-  return Buffer.from(await res.arrayBuffer());
-}
-
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ postId: string }> }
@@ -25,9 +20,10 @@ export async function GET(
   const { data: post } = await supabaseAdmin
     .from('posts')
     .select('author_image, user:users!posts_user_id_fkey(avatar_url)')
-    .eq('id', postId)
+    .eq('id', postId).eq('moderation_status','approved').eq('visibility','public')
     .maybeSingle();
 
+  if (!post) return new Response('Not found',{ status:404 });
   const user: any = Array.isArray(post?.user) ? post?.user[0] : post?.user;
   const avatar: string | undefined = user?.avatar_url || post?.author_image || undefined;
 
@@ -35,13 +31,13 @@ export async function GET(
   for (const src of [avatar, FALLBACK_LOGO]) {
     if (!src) continue;
     try {
-      input = await fetchBuffer(src);
+      input = await fetchSafeImage(src);
       break;
     } catch {}
   }
   if (!input) return new Response('Not found', { status: 404 });
 
-  const jpeg = await sharp(input, { failOn: 'none' })
+  const jpeg = await sharp(input, { failOn: 'none', limitInputPixels: 40_000_000 })
     .rotate()
     .resize(SIZE, SIZE, { fit: 'cover' })
     .flatten({ background: '#ffffff' })

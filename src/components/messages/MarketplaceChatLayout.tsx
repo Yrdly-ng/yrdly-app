@@ -492,7 +492,7 @@ export function MarketplaceChatLayout({
       <div className="flex flex-col h-full bg-[var(--yrdly-dark)] text-foreground font-yrdly-body">
         <div className="border-b border-[var(--yrdly-glass-border)] bg-[var(--yrdly-dark)]">
           <div className="flex items-center gap-4 p-3">
-            <Button
+            <Button aria-label="Back"
               variant="ghost"
               size="icon"
               className="md:hidden"
@@ -611,7 +611,7 @@ export function MarketplaceChatLayout({
           {imagePreview && (
             <div className="relative w-24 h-24 mb-2">
               <Image src={imagePreview} alt="Image preview" layout="fill" className="rounded-md object-cover" />
-              <Button variant="destructive" size="icon" className="absolute -top-2 -right-2 h-6 w-6 rounded-full" onClick={removeImagePreview}>
+              <Button aria-label="Close" variant="destructive" size="icon" className="absolute -top-2 -right-2 h-6 w-6 rounded-full" onClick={removeImagePreview}>
                 <X className="h-4 w-4" />
               </Button>
             </div>
@@ -619,7 +619,7 @@ export function MarketplaceChatLayout({
           {uploadProgress !== null && <Progress value={uploadProgress} className="mb-2" />}
           <form onSubmit={handleSendMessage} className="flex items-center gap-2">
             <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageSelect} className="hidden" />
-            <Button type="button" variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} className="text-[var(--yrdly-label)] hover:text-foreground">
+            <Button aria-label="Attach image" type="button" variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} className="text-[var(--yrdly-label)] hover:text-foreground">
               <ImagePlus className="h-5 w-5" />
             </Button>
             <Textarea
@@ -635,7 +635,7 @@ export function MarketplaceChatLayout({
                 }
               }}
             />
-            <Button type="submit" size="icon" disabled={(!newMessage.trim() && !imageFile) || uploadProgress !== null} className="bg-primary text-primary-foreground hover:bg-primary/90">
+            <Button aria-label="Send message" type="submit" size="icon" disabled={(!newMessage.trim() && !imageFile) || uploadProgress !== null} className="bg-primary text-primary-foreground hover:bg-primary/90">
               <SendHorizonal className="h-5 w-5" />
             </Button>
           </form>

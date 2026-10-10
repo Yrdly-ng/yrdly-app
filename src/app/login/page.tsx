@@ -1,5 +1,7 @@
 "use client";
 
+import { safeRelativePath } from '@/lib/auth-navigation';
+
 import React, { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AuthService } from "@/lib/auth-service";
@@ -47,7 +49,7 @@ function LoginFormPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const requestedNext = searchParams.get("next");
-  const nextPath = requestedNext?.startsWith("/") && !requestedNext.startsWith("//") ? requestedNext : "/home";
+  const nextPath = safeRelativePath(requestedNext, "/home");
   const { user, profile, loading: authLoading, signIn, signUp, signInWithGoogle } = useAuth();
 
   const [isSignUp, setIsSignUp] = useState(false);

@@ -41,11 +41,7 @@ export default function MyTicketsPage() {
     const loadTickets = async () => {
       if (txRefParam) {
         try {
-          await authenticatedFetch('/api/events/tickets/verify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tx_ref: txRefParam }),
-          });
+          await authenticatedFetch('/api/events/tickets/verify', { tx_ref: txRefParam });
         } catch (e) {}
       }
       const t = await getMyTickets(user.id);

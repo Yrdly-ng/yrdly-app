@@ -60,22 +60,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Insert payout request
-    const { data: payout, error: insertError } = await supabaseAdmin
-      .from('payout_requests')
-      .insert({
-        seller_id: user.id,
-        account_id: sellerAccount.id,
-        amount,
-        status: 'pending',
-      })
-      .select('id')
-      .single();
-
-    if (insertError) {
-      console.error('Insert payout error:', insertError);
-      return NextResponse.json({ error: 'Failed to request payout' }, { status: 500 });
-    }
+    const payout = { id:await PayoutService.reservePayout(user.id,sellerAccount.id,amount) };
 
     // Process payout immediately
     let processResult: {

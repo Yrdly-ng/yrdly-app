@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/use-supabase-auth';
-import { PayoutService, PayoutRequest } from '@/lib/payout-service';
+import type { PayoutRequest } from '@/lib/payout-service';
+import { authenticatedFetch } from '@/lib/authenticated-fetch';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -22,7 +23,7 @@ import { useRouter } from 'next/navigation';
 import { AppHeader } from '@/components/AppHeader';
 
 export default function PayoutHistoryPage() {
-  const { user } = useAuth();
+  const { user, loading:authLoading } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
   
@@ -31,8 +32,8 @@ export default function PayoutHistoryPage() {
 
   const fetchPayouts = useCallback(async () => {
     try {
-      const data = await PayoutService.getSellerPayoutHistory(user!.id);
-      setPayouts(data);
+      const { payouts } = await authenticatedFetch<{ payouts:PayoutRequest[] }>('/api/seller/payouts/history',{},'GET');
+      setPayouts(payouts);
     } catch (error) {
       console.error('Error fetching payout history:', error);
       toast({
@@ -43,16 +44,17 @@ export default function PayoutHistoryPage() {
     } finally {
       setLoading(false);
     }
-  }, [user, toast]);
+  }, [toast]);
 
   useEffect(() => {
+    if (authLoading) return;
     if (!user) {
-      router.push('/signin');
+      router.push('/login');
       return;
     }
 
     fetchPayouts();
-  }, [user, router, fetchPayouts]);
+  }, [user, authLoading, router, fetchPayouts]);
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {

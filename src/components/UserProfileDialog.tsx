@@ -296,7 +296,7 @@ export function UserProfileDialog({ user: profileUser, open, onOpenChange }: Use
                                 <AlertDialog>
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon"><MoreHorizontal className="h-5 w-5" /></Button>
+                                            <Button aria-label="More options" variant="ghost" size="icon"><MoreHorizontal className="h-5 w-5" /></Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
                                             {friendshipStatus === 'friends' && (

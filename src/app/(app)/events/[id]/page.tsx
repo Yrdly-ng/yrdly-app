@@ -148,11 +148,7 @@ export default function EventDetailPage() {
               customerId: data.buyerPaylukId,
               callback: async () => {
                 try {
-                  await authenticatedFetch('/api/events/tickets/verify', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ tx_ref: data.tx_ref }),
-                  });
+                  await authenticatedFetch('/api/events/tickets/verify', { tx_ref: data.tx_ref });
                 } catch (e) {}
                 setPurchase((s) => ({ ...s, step: "success" }));
                 setTimeout(() => router.push(`/my-tickets?success=1&tx_ref=${encodeURIComponent(data.tx_ref)}`), 1500);

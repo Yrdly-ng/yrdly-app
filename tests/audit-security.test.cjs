@@ -8,7 +8,7 @@ const ts = require('typescript');
 function load(file, mocks = {}) {
   const filename = path.resolve(file);
   const output = ts.transpileModule(fs.readFileSync(filename, 'utf8'), {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true, jsx:ts.JsxEmit.ReactJSX },
   }).outputText;
   const module = { exports: {} };
   const localRequire = id => {
@@ -22,6 +22,7 @@ function load(file, mocks = {}) {
   vm.runInNewContext(output, { module, exports: module.exports, require: localRequire,
     console, AbortSignal, Response, URL, URLSearchParams, Buffer, setTimeout, clearTimeout,
     process: { env: { PAYLUK_SECRET_KEY: 'test-only', ...mocks.env } },
+    ...mocks.globals,
     fetch: mocks.fetch || (() => { throw new Error('Live network is prohibited in audit tests'); }),
   }, { filename });
   return module.exports;
@@ -33,6 +34,81 @@ function chain(result) {
   query.then = (resolve, reject) => Promise.resolve(result).then(resolve, reject);
   return query;
 }
+
+test('seller balance excludes ticket revenue and reserves pending withdrawals', async () => {
+  const { PayoutService } = load('src/lib/payout-service.ts', {
+    './supabase-admin': { supabaseAdmin: { from: table => chain({ data: table === 'escrow_transactions'
+      ? [{ seller_amount:1000,status:'completed',item_type:'post',payment_provider:'payluk' },{ seller_amount:9000,status:'completed',item_type:'ticket',payment_provider:'payluk' },{ seller_amount:5000,status:'completed',item_type:'post',payment_provider:'paystack' }]
+      : [{ amount:100,status:'completed' },{ amount:200,status:'processing' }] }) } },
+    './payluk-onboarding':{ getPaylukCustomerId:async ()=>'seller-provider-id' },
+    './payluk-service':{ PaylukService:{ getCustomerWallet:async ()=>({ mainBalance:5000 }) } },
+    './server-notification-service':{ NotificationService:{} },
+  });
+  const balance = await PayoutService.getSellerBalance('seller');
+  assert.equal(balance.totalEarnings,1000);
+  assert.equal(balance.availableBalance,700);
+  assert.equal(balance.pendingPayouts,200);
+});
+
+test('legacy payout with unknown provider is blocked before any provider request', async () => {
+  const { POST } = load('src/app/api/seller/payouts/[payoutId]/retry/route.ts', {
+    '@/lib/supabase-server':{ getAuthenticatedUser:async ()=>({ data:{ user:{ id:'seller' } } }) },
+    '@/lib/supabase-admin':{ supabaseAdmin:{ from:()=>chain({ data:{ status:'failed',transaction_reference:'legacy',payment_provider:null } }) } },
+    '@/lib/payluk-service':{ PaylukService:{} },'@/lib/payluk-onboarding':{},'@/lib/payout-service':{},
+  });
+  const response = await POST(new Request('http://localhost',{ method:'POST',headers:{ authorization:'Bearer test' } }),{ params:Promise.resolve({ payoutId:'payout' }) });
+  assert.equal(response.status,409);
+});
+
+test('authenticated GET sends no request body', async () => {
+  const { authenticatedFetch } = load('src/lib/authenticated-fetch.ts', {
+    './supabase':{ supabase:{ auth:{ getSession:async ()=>({ data:{ session:{ access_token:'test-token' } } }) } } },
+    fetch:async (_url,options)=>{ assert.equal(options.method,'GET');assert.equal(options.body,undefined);return Response.json({ payouts:[] }); },
+  });
+  assert.ok((await authenticatedFetch('/api/seller/payouts/history',{},'GET')).payouts);
+});
+
+for (const outcome of ['success','pending']) {
+  test(`Paystack dispute settlement stays with Paystack and handles ${outcome}`, async () => {
+    let finalized = false,transfers = 0;
+    const { POST } = load('src/app/api/admin/disputes/[disputeId]/resolve/route.ts', {
+      '@/lib/supabase-server':{ getAuthenticatedUser:async ()=>({ data:{ user:{ id:'admin' } } }) },
+      '@/lib/payluk-service':{ PaylukService:{} },
+      '@/lib/server-notification-service':{ NotificationService:{ createDisputeResolvedNotification:async ()=>{} } },
+      '@/lib/paystack-service':{ PaystackService:{ transferToSeller:async params=>{
+        transfers++;assert.equal(params.reference,'dispute-payout-operation');assert.equal(params.amount,1000);return { outcome };
+      } } },
+      '@/lib/supabase-admin':{ supabaseAdmin:{
+        rpc:async name=>{
+          if (name === 'begin_dispute_resolution') return { data:{ newly_created:true,operation:{ id:'operation',refund_amount:0,seller_amount:1000,resolution:'Release' } } };
+          if (name === 'finish_dispute_resolution') finalized = true;
+          return {};
+        },
+        from:table=>chain({ data: table === 'users' ? { is_admin:true } : table === 'disputes' ? { transaction_id:'transaction' }
+          : table === 'seller_accounts' ? { is_active:true,verification_status:'verified',account_details:{ bank_code:'test',account_number:'test' } }
+          : { id:'transaction',payment_provider:'paystack' } }),
+      } },
+    });
+    const response = await POST(new Request('http://localhost',{ method:'POST',body:JSON.stringify({ resolution:'Release',refundAmount:0,sellerAmount:1000 }) }),{ params:Promise.resolve({ disputeId:'dispute' }) });
+    assert.equal(response.status,outcome === 'success' ? 200 : 202);
+    assert.equal(transfers,1);assert.equal(finalized,outcome === 'success');
+  });
+}
+
+test('marketplace message writes once to messages without requiring item_chats', async () => {
+  const writes = [];
+  const { SupabaseChatService } = load('src/lib/supabase-chat-service.ts', {
+    '@/lib/supabase':{ supabase:{ from:table => {
+      assert.notEqual(table,'chat_messages');assert.notEqual(table,'item_chats');
+      const q = chain({ data:{ participant_ids:['seller'] } });
+      q.insert = body => { writes.push({ table,body });return q; };return q;
+    } } },
+  });
+  await SupabaseChatService.sendMessage('conversation','seller','Seller','hello');
+  assert.equal(writes.length,1);
+  assert.equal(writes[0].table,'messages');
+  assert.equal(writes[0].body.conversation_id,'conversation');
+});
 
 test('onboarding rejects an unverified phone before calling Payluk', async () => {
   const { ensurePaylukCustomer } = load('src/lib/payluk-onboarding.ts', {
@@ -64,6 +140,7 @@ test('Payluk mapping held by another Yrdly user is rejected', async () => {
 
 test('escrow transition refuses another seller', async () => {
   const { POST } = load('src/app/api/transactions/[id]/status/route.ts', {
+    '@/lib/server-notification-service':{ NotificationService:{} },
     '@/lib/supabase-server': { getAuthenticatedUser: async () => ({ data: { user: { id: 'outsider' } } }) },
     '@/lib/supabase-admin': { supabaseAdmin: { from: () => chain({ data: { buyer_id: 'buyer', seller_id: 'seller', status: 'paid' } }) } },
   });
@@ -153,6 +230,7 @@ test('event payout includes USED tickets and keeps pending withdrawals unrelease
         data = { id: 'payout' };
       } else data = null;
       const update = operations.find(([op]) => op === 'update');
+      if (table === 'event_payouts' && update) data = [{ id:'payout' }];
       if (update) updates.push({ table, ...update[1] });
       return Promise.resolve({ data, error: null }).then(resolve,reject);
     };
@@ -276,4 +354,91 @@ test('payment write failure records a durable reconciliation flag before returni
   });
   await assert.rejects(applyEscrowPayment('tx','payluk','reference'),/reconciliation/);
   assert.equal(flagged,true);
+});
+
+
+test('auth redirect rejects backslashes and external origins', () => {
+  const { safeRelativePath,authCookieDomain } = load('src/lib/auth-navigation.ts');
+  for (const input of ['/\\attacker.example/path','//attacker.example','https://attacker.example','/ /evil']) assert.equal(safeRelativePath(input,'/home'),'/home');
+  assert.equal(safeRelativePath('/my-tickets?success=1'),'/my-tickets?success=1');
+  assert.equal(authCookieDomain('preview.vercel.app'),undefined);
+  assert.equal(authCookieDomain('localhost:9002'),undefined);
+  assert.equal(authCookieDomain('app.yrdly.ng'),'.yrdly.ng');
+});
+
+for (const host of ['localhost:9002','audit-preview.vercel.app','app.yrdly.ng']) {
+  test(`middleware authentication handoff for ${host}`, () => {
+    const { middleware } = load('middleware.ts', {
+      'next/server': { NextResponse: { next:()=>'app',redirect:()=> 'marketing' } },
+    });
+    const result = middleware({ nextUrl:new URL(`https://${host}/login`),headers:new Headers() });
+    assert.equal(result,host === 'app.yrdly.ng' ? 'marketing' : 'app');
+  });
+}
+
+for (const scenario of ['allowed','disallowed','redirect','oversize','timeout']) {
+  test(`image loader ${scenario}`, async () => {
+    let calls = 0;
+    const { fetchSafeImage } = load('src/lib/safe-image-fetch.ts', { fetch:async (_url,options) => {
+      calls++;assert.equal(options.redirect,'manual');assert.ok(options.signal);
+      if (scenario === 'timeout') throw new DOMException('Timed out','TimeoutError');
+      if (scenario === 'redirect') return new Response(null,{ status:302,headers:{ location:'http://127.0.0.1' } });
+      return new Response(scenario === 'oversize' ? new Uint8Array(5*1024*1024+1) : 'image', { headers:{ 'content-type':'image/png' } });
+    } });
+    const result = fetchSafeImage(scenario === 'disallowed' ? 'http://127.0.0.1/private' : 'https://api.yrdly.ng/storage/v1/object/public/post-images/test.png');
+    if (scenario === 'allowed') assert.equal((await result).toString(),'image');
+    else await assert.rejects(result);
+    assert.equal(calls,scenario === 'disallowed' ? 0 : 1);
+  });
+}
+
+test('onboarding has an overall deadline and never scans customer pages', async () => {
+  let lookups = 0;
+  const { ensurePaylukCustomer } = load('src/lib/payluk-onboarding.ts', {
+    globals:{ setTimeout:callback => setTimeout(callback,1) },
+    './supabase-admin': { supabaseAdmin:{ from:()=>chain({ data:{ phone:'08012345678',phone_verified:true } }) } },
+    './payluk-service': { PaylukService:{ getCustomerByPhone:()=> { lookups++;return new Promise(()=>{}); },listCustomers:()=> { throw Error('Never scan'); } } },
+  });
+  await assert.rejects(ensurePaylukCustomer('buyer'),/timed out.*retry/i);
+  assert.equal(lookups,1);
+});
+
+test('location waits for async profile, restores home LGA and honors expired saved filters', () => {
+  let auth = { loading:true,user:{ id:'user' },profile:null };
+  const states = [],refs = [];let si=0,ri=0;let effects=[];
+  const react = { createContext:()=>({ Provider:'provider' }),useContext:()=>{},
+    useState:initial => { const index=si++;if (!(index in states)) states[index]=initial;return [states[index],value=>{ states[index]=value; }]; },
+    useRef:initial => { const index=ri++;return refs[index] ||= { current:initial }; },
+    useEffect:effect=>effects.push(effect),useCallback:fn=>fn,
+  };
+  const { LocationProvider } = load('src/contexts/LocationContext.tsx', {
+    react,'react/jsx-runtime':{ jsx:(type,props)=>({ type,props }) },
+    '@/hooks/use-supabase-auth':{ useAuth:()=>auth },
+    globals:{ localStorage:{ getItem:()=>JSON.stringify({ filter:{ state:'Oyo' },timestamp:Date.now()-2*86400000 }),removeItem:()=>{},setItem:()=>{} } },
+  });
+  const render = () => { si=0;ri=0;effects=[];const output=LocationProvider({ children:null });effects.forEach(effect=>effect());return output.props.value; };
+  render();
+  auth = { loading:false,user:{ id:'user' },profile:{ id:'user',home_state:'Lagos',home_lga:'Ikeja' } };
+  render();const value = render();
+  assert.equal(value.activeFilter.state,'Lagos');assert.equal(value.activeFilter.lga,'Ikeja');assert.equal(value.displayLabel,'Ikeja, Lagos');
+  value.setGlobalFilter(null);assert.equal(render().activeFilter,null);
+});
+
+test('ETA rate-limit failure rejects before calling Google', async () => {
+  const { POST } = load('src/app/api/directions/eta/route.ts',{
+    '@/lib/supabase-server':{ getAuthenticatedUser:async()=>({ data:{ user:{ id:'user' } } }) },
+    '@/lib/supabase-admin':{ supabaseAdmin:{ rpc:async()=>({ error:{ code:'unavailable' } }) } },
+  });
+  assert.equal((await POST(new Request('http://localhost',{ method:'POST',body:'{}' }))).status,503);
+});
+
+test('push edge function rejects a regular user token before reading subscriptions', async () => {
+  let handler;
+  load('supabase/functions/send-push-notification/index.ts',{
+    'https://deno.land/std@0.168.0/http/server.ts':{ serve:fn=>{ handler=fn; } },
+    'https://esm.sh/@supabase/supabase-js@2':{ createClient:()=>{ throw Error('Must not read subscriptions'); } },
+    'npm:web-push@3.6.7':{},globals:{ Deno:{ env:{ get:()=> 'service-only-test-key' } } },
+  });
+  const response = await handler(new Request('http://localhost',{ method:'POST',headers:{ authorization:'Bearer user-token' },body:'{}' }));
+  assert.equal(response.status,403);
 });

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/supabase-server';
+import { NotificationService } from '@/lib/server-notification-service';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -25,5 +26,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     .eq('id', id).eq('status', transaction.status).select('id').maybeSingle();
   if (updateError) return NextResponse.json({ error: 'Could not update transaction' }, { status: 500 });
   if (!updated) return NextResponse.json({ error: 'Transaction changed; refresh and retry' }, { status: 409 });
+  try {
+    const { data:actor } = await supabaseAdmin.from('users').select('name').eq('id',user.id).single();
+    if (shipping) await NotificationService.createItemShippedNotification(transaction.buyer_id,actor?.name || 'Seller','your item',id);
+    else await NotificationService.createDeliveryConfirmedNotification(transaction.seller_id,actor?.name || 'Buyer','your item',id);
+  } catch (error) { console.error('Transaction notification failed:',error); }
   return NextResponse.json({ success: true });
 }

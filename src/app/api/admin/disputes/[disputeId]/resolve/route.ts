@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { getAuthenticatedUser } from '@/lib/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { PaystackService } from '@/lib/paystack-service';
-import { PayoutService } from '@/lib/payout-service';
+import { payoutAccountError } from '@/lib/payout-account';
 import { NotificationService } from '@/lib/server-notification-service';
 import { PaylukService } from '@/lib/payluk-service';
 
@@ -87,15 +87,30 @@ export async function POST(
         sellerAmount: sellerAmount > 0 ? sellerAmount : undefined,
         buyerAmount: refundAmount > 0 ? refundAmount : undefined,
       });
-    } else {
+    } else if (transaction.payment_provider === 'paystack') {
+      // Validate the destination before making either leg of a split settlement.
+      const { data: account, error: accountError } = sellerAmount > 0
+        ? await supabaseAdmin.from('seller_accounts').select('*').eq('user_id', transaction.seller_id)
+          .eq('is_primary', true).eq('is_active', true).single()
+        : { data: null, error: null };
+      if (sellerAmount > 0 && (accountError || payoutAccountError(account))) throw new Error('Verified payout account required before settlement.');
+      const bank = account?.account_details;
+      const bankCode = bank?.bank_code || bank?.bankCode;
+      const accountNumber = bank?.account_number || bank?.accountNumber;
+      if (sellerAmount > 0 && (!bankCode || !accountNumber)) throw new Error('Missing payout bank details.');
       if (refundAmount > 0) {
         const refunded = await PaystackService.refundTransaction(transaction.payment_reference, refundAmount);
         if (!refunded) throw new Error('Paystack did not confirm the refund.');
         providerReference = transaction.payment_reference;
       }
       if (sellerAmount > 0) {
-        providerReference = await PayoutService.manualPayout(transaction.seller_id, sellerAmount, user.id);
+        providerReference = `dispute-payout-${operation.id}`;
+        const transfer = await PaystackService.transferToSeller({ bankCode, accountNumber, amount: sellerAmount,
+          reference: providerReference, narration: `Dispute settlement ${operation.id}` });
+        if (transfer.outcome !== 'success') throw new Error(`Dispute transfer ${transfer.outcome}; reconcile reference ${providerReference}.`);
       }
+    } else {
+      throw new Error('Unknown payment provider; manual reconciliation required.');
     }
   } catch (providerError) {
     const safeMessage = providerError instanceof Error ? providerError.message : 'Payment provider returned an unknown outcome.';

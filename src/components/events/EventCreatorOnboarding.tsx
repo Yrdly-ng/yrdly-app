@@ -1,5 +1,7 @@
 "use client";
 
+import { EVENT_CONSTANTS } from "@/lib/constants";
+
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -181,9 +183,9 @@ export function EventCreatorOnboarding({ isOpen, onClose, onContinue }: EventCre
                         <p className="text-xs text-muted-foreground font-sans mt-0.5">Concerts, workshops, classes, VIP experiences. Sell tickets directly.</p>
                         <div className="flex items-center gap-2 mt-2 flex-wrap">
                           <span className="text-[0.6875rem] font-bold px-2 py-0.5 rounded-full text-primary" style={{ background: "rgba(56,142,60,0.2)" }}>
-                            You keep 95%
+                            You keep {100 - EVENT_CONSTANTS.COMMISSION_RATE * 100}%
                           </span>
-                          <span className="text-[0.6875rem] text-muted-foreground font-sans">Yrdly takes 5%</span>
+                          <span className="text-[0.6875rem] text-muted-foreground font-sans">Yrdly takes {EVENT_CONSTANTS.COMMISSION_RATE * 100}%</span>
                         </div>
                       </div>
                       <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-muted-foreground ml-auto flex-shrink-0 mt-3 transition-colors" />
@@ -211,7 +213,7 @@ export function EventCreatorOnboarding({ isOpen, onClose, onContinue }: EventCre
                   {[
                     { icon: Zap, label: "Instant setup", desc: "Link your Nigerian bank account via Paystack" },
                     { icon: Banknote, label: "Automatic payouts", desc: "Funds are released after your event ends" },
-                    { icon: CheckCircle2, label: "You keep 95%", desc: "Yrdly takes a 5% platform fee only on paid tickets" },
+                    { icon: CheckCircle2, label: `You keep ${100 - EVENT_CONSTANTS.COMMISSION_RATE * 100}%`, desc: `Yrdly takes a ${EVENT_CONSTANTS.COMMISSION_RATE * 100}% platform fee on paid tickets; processing fees may apply` },
                   ].map(({ icon: Icon, label, desc }) => (
                     <div key={label} className="flex items-center gap-3 p-3 rounded-xl" style={{ border: "1px solid var(--c-border)" }}>
                       <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(56,142,60,0.15)" }}>

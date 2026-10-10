@@ -1,5 +1,7 @@
 "use client";
 
+import { safeRelativePath } from '@/lib/auth-navigation';
+
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
@@ -37,7 +39,7 @@ function OnboardingProfileContent() {
   const searchParams = useSearchParams();
   const phoneSkipped = searchParams.get('phoneSkipped') === 'true';
   const requestedNext = searchParams.get('next');
-  const nextPath = requestedNext?.startsWith('/') && !requestedNext.startsWith('//') ? requestedNext : '';
+  const nextPath = safeRelativePath(requestedNext, '');
   const { user } = useAuth();
   const [step, setStep] = useState<1 | 2>(1);
   const gps = useGpsLocation();

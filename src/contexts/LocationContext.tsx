@@ -34,7 +34,7 @@ interface PersistedFilter {
 }
 
 export function LocationProvider({ children }: { children: React.ReactNode }) {
-  const { profile } = useAuth();
+  const { profile, user, loading } = useAuth();
 
   const userState = profile?.home_state || undefined;
   const userLga   = profile?.home_lga   || undefined;
@@ -47,44 +47,39 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
 
   const [activeFilter, setActiveFilterRaw] = useState<LocationFilter | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
-  const hasInitializedRef = useRef(false);
+  const initializedUser = useRef<string | null>(null);
+  const explicitUser = useRef<string | null>(null);
+  const storageKey = `${GLOBAL_FILTER_STORAGE_KEY}:${user?.id || 'guest'}`;
 
-
-  // Restore persisted filter on mount, or fallback to user profile location
-  // Only runs once — we don't re-run when profile loads to avoid overwriting manual selections
   useEffect(() => {
-    if (hasInitializedRef.current) return;
-    hasInitializedRef.current = true;
+    if (loading) return;
+    const identity = user?.id || 'guest';
+    if (initializedUser.current === identity) return;
+    if (user && (!profile || profile.id !== user.id)) return;
+    let restored: LocationFilter | null = hasLocation ? { state:userState,lga:userLga } : null;
     try {
-      const savedData = localStorage.getItem(GLOBAL_FILTER_STORAGE_KEY);
-      if (savedData) {
-        const parsed = JSON.parse(savedData);
-        if (parsed && parsed.hasOwnProperty('filter')) {
-          setActiveFilterRaw(parsed.filter);
-        } else {
-          setActiveFilterRaw(parsed);
-        }
-      } else if (hasLocation) {
-        // Default to user's LGA if no filter has ever been manually set
-        setActiveFilterRaw({ state: userState, lga: userLga });
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved) as PersistedFilter;
+        if (Number.isFinite(parsed.timestamp) && Date.now() - parsed.timestamp >= 0 &&
+            Date.now() - parsed.timestamp < EXPIRATION_TIME_MS && Object.prototype.hasOwnProperty.call(parsed,'filter')) {
+          restored = parsed.filter;
+        } else localStorage.removeItem(storageKey);
       }
-    } catch {
-      if (hasLocation) {
-        setActiveFilterRaw({ state: userState, lga: userLga });
-      }
-    }
+    } catch {}
+    if (explicitUser.current !== identity) setActiveFilterRaw(restored);
+    initializedUser.current = identity;
     setIsInitialized(true);
-  }, [hasLocation, userState, userLga]);
+  }, [loading,user,profile,storageKey,hasLocation,userState,userLga]);
 
   const setGlobalFilter = useCallback((newFilter: LocationFilter | null) => {
+    explicitUser.current = user?.id || 'guest';
     setActiveFilterRaw(newFilter);
     try {
-      const payload: PersistedFilter = { filter: newFilter, timestamp: Date.now() };
-      localStorage.setItem(GLOBAL_FILTER_STORAGE_KEY, JSON.stringify(payload));
-    } catch {
-      // localStorage not available
-    }
-  }, []);
+      const payload: PersistedFilter = { filter:newFilter,timestamp:Date.now() };
+      localStorage.setItem(storageKey,JSON.stringify(payload));
+    } catch {}
+  }, [storageKey,user?.id]);
 
   // Build the display label
   let displayLabel = "All Nigeria";

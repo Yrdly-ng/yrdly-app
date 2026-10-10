@@ -1,17 +1,17 @@
+import { authCookieDomain } from './auth-navigation';
 import { createBrowserClient } from '@supabase/ssr';
 
 // Supabase configuration
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder';
 
-const isLocalhost = typeof window !== 'undefined' && 
-  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+const cookieDomain = authCookieDomain(typeof window !== 'undefined' ? window.location.hostname : '');
 
 // Create Supabase client for client-side operations using SSR package to support cookieOptions
 export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey, {
   cookieOptions: {
     name: 'sb-yoiyqxtpmxnrrbqqidcs-auth-token',
-    domain: isLocalhost ? undefined : (process.env.NEXT_PUBLIC_COOKIE_DOMAIN || '.yrdly.ng'),
+    domain: cookieDomain,
     maxAge: 365 * 24 * 60 * 60,
     path: '/',
     sameSite: 'lax',

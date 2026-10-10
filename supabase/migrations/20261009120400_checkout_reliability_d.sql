@@ -3,6 +3,11 @@ BEGIN;
 CREATE UNIQUE INDEX idx_escrow_transactions_single_active_post
 ON public.escrow_transactions(item_id)
 WHERE coalesce(item_type,'post') = 'post' AND status NOT IN ('cancelled','completed');
+-- Prevent a buyer double-submitting an identical active catalog order.
+-- Read-only preflight found no existing violations before drafting this index.
+CREATE UNIQUE INDEX idx_escrow_transactions_single_active_catalog_buyer
+ON public.escrow_transactions(item_id,buyer_id)
+WHERE item_type = 'catalog_item' AND status NOT IN ('cancelled','completed');
 
 CREATE OR REPLACE FUNCTION public.reserve_catalog_stock(p_item_id uuid, p_qty integer)
 RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$

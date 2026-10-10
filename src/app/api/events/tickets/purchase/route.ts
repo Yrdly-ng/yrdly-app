@@ -342,13 +342,11 @@ export async function POST(request: NextRequest) {
         whoPays: 'seller',
         maxDelivery,
         deliveryTimeline: 'days',
-        totalQuantity: quantity,
+        // One escrow pays for this entire order; ticket quantity lives in metadata.
+        totalQuantity: 1,
       });
 
-      const commission = Math.round(totalAmount * EVENT_CONSTANTS.COMMISSION_RATE * 100) / 100;
-      if (commission > 0) {
-        await PaylukService.addAdditionalFee(paylukEscrow.paymentToken, commission);
-      }
+      // Event commission is deducted once at organizer payout, as for Paystack.
     } catch (paylukError: any) {
       console.error('[TicketPurchase] Payluk createEscrow error:', paylukError);
       return NextResponse.json({

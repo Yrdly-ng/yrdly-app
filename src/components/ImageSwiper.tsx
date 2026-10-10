@@ -171,7 +171,7 @@ export function ImageSwiper({ images, isOpen, onClose, initialIndex = 0 }: Image
 
   return (
     <div className="fixed inset-0 z-[110] bg-black/90 flex items-center justify-center">
-      <Button
+      <Button aria-label="Close"
         variant="ghost"
         size="icon"
         onClick={onClose}
@@ -182,7 +182,7 @@ export function ImageSwiper({ images, isOpen, onClose, initialIndex = 0 }: Image
 
       {images.length > 1 && (
         <>
-          <Button
+          <Button aria-label="Previous image"
             variant="ghost"
             size="icon"
             onClick={goToPrevious}
@@ -190,7 +190,7 @@ export function ImageSwiper({ images, isOpen, onClose, initialIndex = 0 }: Image
           >
             <ChevronLeft className="h-8 w-8" />
           </Button>
-          <Button
+          <Button aria-label="Next image"
             variant="ghost"
             size="icon"
             onClick={goToNext}

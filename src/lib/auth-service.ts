@@ -1,3 +1,4 @@
+import { safeRelativePath } from './auth-navigation';
 import { supabase } from './supabase';
 import { User } from '@supabase/supabase-js';
 
@@ -135,7 +136,8 @@ export class AuthService {
     try {
       // Always redirect back to the current origin (works for any domain)
       const callbackUrl = new URL('/auth/callback', window.location.origin);
-      if (next?.startsWith('/') && !next.startsWith('//')) callbackUrl.searchParams.set('next', next);
+      const destination = safeRelativePath(next, '');
+      if (destination) callbackUrl.searchParams.set('next', destination);
       const redirectUrl = callbackUrl.toString();
         
       const { data, error } = await supabase.auth.signInWithOAuth({
@@ -159,7 +161,8 @@ export class AuthService {
     try {
       // Always redirect back to the current origin (works for any domain)
       const callbackUrl = new URL('/auth/callback', window.location.origin);
-      if (next?.startsWith('/') && !next.startsWith('//')) callbackUrl.searchParams.set('next', next);
+      const destination = safeRelativePath(next, '');
+      if (destination) callbackUrl.searchParams.set('next', destination);
       const redirectUrl = callbackUrl.toString();
         
       const { data, error } = await supabase.auth.signInWithOAuth({

@@ -1,5 +1,7 @@
 "use client";
 
+import { MARKETPLACE_CONSTANTS } from "@/lib/constants";
+
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -177,9 +179,9 @@ export function MarketplaceCreatorOnboarding({ isOpen, onClose, onContinue }: Ma
                         <p className="text-xs text-muted-foreground font-sans mt-0.5">Sell your items securely through Yrdly Escrow.</p>
                         <div className="flex items-center gap-2 mt-2 flex-wrap">
                           <span className="text-[0.6875rem] font-bold px-2 py-0.5 rounded-full text-primary" style={{ background: "rgba(56,142,60,0.2)" }}>
-                            You keep 95%
+                            Buyer pays {MARKETPLACE_CONSTANTS.COMMISSION_RATE * 100}% fee
                           </span>
-                          <span className="text-[0.6875rem] text-muted-foreground font-sans">Yrdly takes 5%</span>
+                          <span className="text-[0.6875rem] text-muted-foreground font-sans">Seller receives the item price, less processing fees</span>
                         </div>
                       </div>
                       <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-muted-foreground ml-auto flex-shrink-0 mt-3 transition-colors" />
@@ -207,7 +209,7 @@ export function MarketplaceCreatorOnboarding({ isOpen, onClose, onContinue }: Ma
                   {[
                     { icon: Zap, label: "Instant setup", desc: "Link your Nigerian bank account via Paystack" },
                     { icon: Banknote, label: "Escrow Protection", desc: "Funds are held securely until the buyer confirms delivery" },
-                    { icon: CheckCircle2, label: "You keep 95%", desc: "Yrdly takes a 5% platform fee only on paid items" },
+                    { icon: CheckCircle2, label: `Buyer-paid ${MARKETPLACE_CONSTANTS.COMMISSION_RATE * 100}% platform fee`, desc: `The buyer pays a ${MARKETPLACE_CONSTANTS.COMMISSION_RATE * 100}% platform fee; Payluk processing fees are deducted from the seller` },
                   ].map(({ icon: Icon, label, desc }) => (
                     <div key={label} className="flex items-center gap-3 p-3 rounded-xl" style={{ border: "1px solid var(--c-border)" }}>
                       <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(56,142,60,0.15)" }}>

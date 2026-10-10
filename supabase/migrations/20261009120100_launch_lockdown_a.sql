@@ -42,7 +42,7 @@ FOR EACH ROW EXECUTE FUNCTION public.audit_guard_user_trust();
 CREATE OR REPLACE FUNCTION public.audit_server_write_only() RETURNS trigger
 LANGUAGE plpgsql SET search_path = '' AS $$
 BEGIN
-  IF auth.role() <> 'service_role' AND current_user NOT IN ('postgres','supabase_admin') THEN
+  IF auth.role() IS DISTINCT FROM 'service_role' AND current_user NOT IN ('postgres','supabase_admin') THEN
     RAISE EXCEPTION 'This write requires a server operation' USING ERRCODE = '42501';
   END IF;
   IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;
@@ -134,10 +134,14 @@ END; $$;
 
 DROP POLICY "Allow select on posts" ON public.posts;
 CREATE POLICY posts_visible ON public.posts FOR SELECT USING
-(user_id = (SELECT auth.uid()) OR (moderation_status = 'approved' AND COALESCE(visibility,'public') ILIKE 'public') OR (SELECT public.audit_is_admin()));
+(user_id = (SELECT auth.uid()) OR (moderation_status = 'approved' AND (
+ COALESCE(visibility,'public') ILIKE 'public' OR (visibility ILIKE 'friends' AND
+ EXISTS(SELECT 1 FROM public.followers WHERE follower_id = auth.uid() AND following_id = posts.user_id) AND
+ EXISTS(SELECT 1 FROM public.followers WHERE follower_id = posts.user_id AND following_id = auth.uid()))
+)) OR (SELECT public.audit_is_admin()));
 DROP POLICY "Public can view published events" ON public.events;
 CREATE POLICY events_visible ON public.events FOR SELECT USING
-(status = 'PUBLISHED' AND moderation_status = 'approved' AND visibility <> 'UNLISTED');
+(status = 'PUBLISHED' AND moderation_status = 'approved');
 CREATE OR REPLACE FUNCTION public.audit_guard_moderation() RETURNS trigger
 LANGUAGE plpgsql SET search_path = '' AS $$
 BEGIN

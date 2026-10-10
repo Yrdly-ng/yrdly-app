@@ -212,7 +212,8 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
           created_at: cm.created_at || cm.timestamp,
           is_read: cm.metadata?.isRead || false,
         }));
-        mainMsgs = [...mainMsgs, ...formattedLegacy];
+        mainMsgs = [...mainMsgs,...formattedLegacy.filter(legacy => !mainMsgs.some(current => current.sender_id === legacy.sender_id &&
+          current.text === legacy.text && Math.abs(Date.parse(current.created_at)-Date.parse(legacy.created_at)) < 1500))];
       }
 
       // If business conversation, also fetch from business_messages table for completeness/legacy support
@@ -238,7 +239,8 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
             created_at: bm.created_at,
             is_read: bm.is_read || false,
           }));
-          mainMsgs = [...mainMsgs, ...formattedBiz];
+          mainMsgs = [...mainMsgs,...formattedBiz.filter(legacy => conversation.participant_ids.includes(legacy.sender_id) && !mainMsgs.some(current => current.sender_id === legacy.sender_id &&
+            current.text === legacy.text && Math.abs(Date.parse(current.created_at)-Date.parse(legacy.created_at)) < 1500))];
         }
       }
 
@@ -435,23 +437,14 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
         created_at: new Date().toISOString(), is_read: true, read_by: [user.id],
       }).select().single();
 
+      if (insertError) throw insertError;
+
       // Optimistically append the sent message so it shows immediately
       if (!insertError && insertedMsg) {
         setMessages((prev) => {
           if (prev.some((m) => m.id === insertedMsg.id)) return prev;
           return [...prev, { ...insertedMsg, text: insertedMsg.text || insertedMsg.content || "" }];
         });
-      }
-
-      const bizId = conversation.context?.catalog_item_business_id || (conversation as any).business_id;
-      if (bizId && sentText) {
-        await supabase.from("business_messages").insert({
-          business_id: bizId,
-          sender_id: user.id,
-          content: sentText,
-          is_read: false,
-          created_at: new Date().toISOString()
-        }).then();
       }
 
       await supabase.from("conversations").update({

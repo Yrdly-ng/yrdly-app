@@ -1,5 +1,7 @@
 "use client";
 
+import { safeRelativePath } from '@/lib/auth-navigation';
+
 import React, { useState, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Loader2, ShieldCheck } from "lucide-react";
@@ -11,7 +13,7 @@ function VerifyPhoneOtpForm() {
   const phone = searchParams.get("phone") || "";
   const pinId = searchParams.get("pinId") || "";
   const requestedNext = searchParams.get("next");
-  const nextPath = requestedNext?.startsWith("/") && !requestedNext.startsWith("//") ? requestedNext : "";
+  const nextPath = safeRelativePath(requestedNext, "");
   const { verifyPhoneOtp } = useAuth();
 
   const [digits, setDigits] = useState(["", "", "", "", "", ""]);

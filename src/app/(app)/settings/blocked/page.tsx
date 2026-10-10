@@ -83,7 +83,7 @@ export default function BlockedUsersPage() {
   return (
     <div className="container max-w-2xl py-6 space-y-6 min-h-[100dvh] bg-[var(--yrdly-dark)] text-[var(--yrdly-text-primary)] font-yrdly-body">
       <div className="flex items-center space-x-3">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
+        <Button aria-label="Back" variant="ghost" size="icon" onClick={() => router.back()}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <h1 className="text-2xl font-bold font-yrdly-display tracking-tight text-[var(--yrdly-text-primary)]">Blocked Users</h1>

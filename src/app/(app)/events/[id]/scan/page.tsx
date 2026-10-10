@@ -84,21 +84,8 @@ export default function EventScanTicketPage({ params }: PageProps) {
     setResult(null);
 
     try {
-      const res = await authenticatedFetch("/api/events/checkin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ticket_code: code,
-          event_id: eventId,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        setResult({ success: false, reason: data.message || data.error || "Failed to scan ticket" });
-      } else {
-        setResult({ ...data, success: data.valid === true });
-      }
+      const data = await authenticatedFetch('/api/events/checkin', { ticket_code:code,event_id:eventId });
+      setResult({ ...data,success:data.valid === true });
     } catch (err: any) {
       setResult({ success: false, reason: err.message || "Network error" });
     } finally {
@@ -119,8 +106,9 @@ export default function EventScanTicketPage({ params }: PageProps) {
   }, []);
 
   const startCameraScanner = useCallback(async () => {
+    const generation = cameraGeneration.current + 1;
     await stopCameraScanner();
-    const generation = cameraGeneration.current;
+    if (generation !== cameraGeneration.current) return;
     setCameraError(null);
     try {
       const { Html5Qrcode } = await import("html5-qrcode");
@@ -190,7 +178,7 @@ export default function EventScanTicketPage({ params }: PageProps) {
 
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" className="rounded-full" onClick={() => router.back()}>
+        <Button aria-label="Back" variant="ghost" size="icon" className="rounded-full" onClick={() => router.back()}>
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div>

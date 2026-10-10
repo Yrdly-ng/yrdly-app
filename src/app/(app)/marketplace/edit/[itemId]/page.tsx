@@ -298,7 +298,7 @@ export default function EditMarketplaceItemPage() {
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button
+            <Button aria-label="Back"
               variant="ghost"
               size="icon"
               onClick={() => router.back()}
@@ -312,7 +312,7 @@ export default function EditMarketplaceItemPage() {
           {/* Delete Action Trigger */}
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full text-destructive hover:bg-destructive/10">
+              <Button aria-label="Delete listing" variant="ghost" size="icon" className="rounded-full text-destructive hover:bg-destructive/10">
                 <Trash2 className="w-5 h-5" />
               </Button>
             </AlertDialogTrigger>

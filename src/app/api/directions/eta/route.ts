@@ -38,40 +38,11 @@ export async function POST(request: NextRequest) {
 
     // ── Rate limiting ──────────────────────────────────────────────────────────
     // Keyed by user_id to prevent NAT collisions on mobile carrier networks.
-    const now = new Date();
-    const { data: rlData } = await supabaseAdmin
-      .from('rate_limits')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('endpoint', ENDPOINT)
-      .single();
-
-    if (rlData) {
-      const windowStart = new Date(rlData.window_start).getTime();
-      if (now.getTime() - windowStart < RATE_LIMIT_WINDOW_MS) {
-        if (rlData.request_count >= RATE_LIMIT_MAX) {
-          return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
-        }
-        await supabaseAdmin
-          .from('rate_limits')
-          .update({ request_count: rlData.request_count + 1 })
-          .eq('user_id', user.id)
-          .eq('endpoint', ENDPOINT);
-      } else {
-        await supabaseAdmin
-          .from('rate_limits')
-          .update({ request_count: 1, window_start: now.toISOString() })
-          .eq('user_id', user.id)
-          .eq('endpoint', ENDPOINT);
-      }
-    } else {
-      await supabaseAdmin.from('rate_limits').insert({
-        user_id: user.id,
-        endpoint: ENDPOINT,
-        request_count: 1,
-        window_start: now.toISOString(),
-      });
-    }
+    const { data: allowed,error: limitError } = await supabaseAdmin.rpc('consume_rate_limit',{
+      p_user_id:user.id,p_endpoint:ENDPOINT,p_max_requests:RATE_LIMIT_MAX,p_window_seconds:RATE_LIMIT_WINDOW_MS/1000,
+    });
+    if (limitError) return NextResponse.json({ error:'Rate limit unavailable' },{ status:503 });
+    if (!allowed) return NextResponse.json({ error:'Too many requests' },{ status:429 });
 
     // ── Input validation ─────────────────────────────────────────────────────
     let body: { origin?: Coordinate; destination?: Coordinate };
@@ -85,7 +56,9 @@ export async function POST(request: NextRequest) {
     if (
       !origin || !destination ||
       typeof origin.lat !== 'number' || typeof origin.lng !== 'number' ||
-      typeof destination.lat !== 'number' || typeof destination.lng !== 'number'
+      typeof destination.lat !== 'number' || typeof destination.lng !== 'number' ||
+      ![origin.lat,origin.lng,destination.lat,destination.lng].every(Number.isFinite) ||
+      Math.abs(origin.lat)>90 || Math.abs(destination.lat)>90 || Math.abs(origin.lng)>180 || Math.abs(destination.lng)>180
     ) {
       return NextResponse.json(
         { error: 'origin and destination must each have numeric lat and lng fields' },
@@ -110,7 +83,7 @@ export async function POST(request: NextRequest) {
 
     const googleRes = await fetch(
       `https://maps.googleapis.com/maps/api/directions/json?${params.toString()}`,
-      { cache: 'no-store' } // traffic data must be fresh
+      { cache: 'no-store',signal:AbortSignal.timeout(5000) } // traffic data must be fresh
     );
 
     if (!googleRes.ok) {
