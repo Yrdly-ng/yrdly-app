@@ -786,7 +786,7 @@ for (const scenario of ['success', 'provider-failure']) {
         return q;
       } } },
     });
-    const response = await POST(new Request('http://localhost', { method: 'POST', body: JSON.stringify({ event_id: 'event', tier_id: 'tier', attendee_name: 'Buyer', attendee_email: 'buyer@example.com', quantity: 2 }) }));
+    const response = await POST(new Request('http://localhost', { method: 'POST', body: JSON.stringify({ event_id: '11111111-1111-4111-a111-111111111111', tier_id: '22222222-2222-4222-a222-222222222222', attendee_name: 'Buyer', attendee_email: 'buyer@example.com', quantity: 2 }) }));
     assert.equal(response.status, scenario === 'success' ? 200 : 502);
     assert.equal(created, 1);
     assert.equal(inserts.length, scenario === 'success' ? 1 : 0);
@@ -798,6 +798,20 @@ for (const scenario of ['success', 'provider-failure']) {
       assert.equal(row.commission, 120); assert.equal(row.seller_amount, 3880);
       assert.equal(row.total_amount, 4000); assert.equal(row.payment_reference, result.tx_ref);
     }
+  });
+}
+
+for (const quantity of ['NaN', 0, -1, 1.5, true, null, 6]) {
+  test(`ticket checkout rejects malformed quantity before database/payment work: ${JSON.stringify(quantity)}`, async () => {
+    const { POST } = load('src/app/api/events/tickets/purchase/route.ts', {
+      '@/lib/supabase-server': { getAuthenticatedUser: async () => ({ data: { user: { id: 'buyer' } } }) },
+      '@/lib/user-suspension': { isUserSuspendedOrBanned: async () => ({ suspended: false }) },
+      '@/lib/resend-service': { ResendEmailService: {} }, '@/lib/server-push-notification': {},
+      '@/lib/payluk-service': {}, '@/lib/payluk-onboarding': {},
+      '@/lib/supabase-admin': { supabaseAdmin: { from: () => { throw new Error('Invalid input reached database'); } } },
+    });
+    const response = await POST(new Request('http://localhost', { method: 'POST', body: JSON.stringify({ event_id: '11111111-1111-4111-a111-111111111111', tier_id: '22222222-2222-4222-a222-222222222222', attendee_name: 'Buyer', attendee_email: 'buyer@example.com', quantity }) }));
+    assert.equal(response.status, 400);
   });
 }
 

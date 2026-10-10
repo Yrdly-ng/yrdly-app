@@ -31,11 +31,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { event_id, tier_id, attendee_name, attendee_email, attendee_phone, quantity: rawQuantity } = await request.json();
-    const quantity = Math.max(1, parseInt(rawQuantity || '1', 10));
-
-    if (!event_id || !tier_id || !attendee_name || !attendee_email) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== 'object' || Array.isArray(body)) return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+    const { event_id, tier_id, attendee_name, attendee_email, attendee_phone, quantity: rawQuantity } = body;
+    const quantity = rawQuantity === undefined ? 1
+      : typeof rawQuantity === 'string' && /^\d+$/.test(rawQuantity) ? Number(rawQuantity) : rawQuantity;
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (typeof event_id !== 'string' || !uuid.test(event_id) || typeof tier_id !== 'string' || !uuid.test(tier_id) ||
+        typeof attendee_name !== 'string' || !attendee_name.trim() || attendee_name.length > 120 ||
+        typeof attendee_email !== 'string' || attendee_email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(attendee_email) ||
+        (attendee_phone != null && (typeof attendee_phone !== 'string' || attendee_phone.length > 30)) ||
+        !Number.isSafeInteger(quantity) || quantity < 1 || quantity > 5) {
+      return NextResponse.json({ error: 'Provide valid attendee details and an integer quantity between 1 and 5' }, { status: 400 });
     }
 
     // ── Validate event & tier ────────────────────────────────────────────────

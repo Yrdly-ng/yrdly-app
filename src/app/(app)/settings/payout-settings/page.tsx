@@ -172,7 +172,7 @@ export default function PayoutSettingsPage() {
           </div>
         </header>
 
-        <main className="max-w-xl mx-auto px-5 py-6 space-y-4">
+        <div className="max-w-xl mx-auto px-5 py-6 space-y-4">
           <div className="p-5 rounded-[24px] bg-[var(--yrdly-surface-alt)] border border-[var(--yrdly-glass-border)] space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 rounded-[14px] bg-[rgba(130,219,126,0.08)] flex items-center justify-center flex-shrink-0">
@@ -213,7 +213,7 @@ export default function PayoutSettingsPage() {
           >
             Change Bank Account
           </button>
-        </main>
+        </div>
       </div>
     );
   }
@@ -255,7 +255,7 @@ export default function PayoutSettingsPage() {
         </div>
       </header>
 
-      <main className="max-w-xl mx-auto px-5 py-4 space-y-4">
+      <div className="max-w-xl mx-auto px-5 py-4 space-y-4">
         {step === "select" && (
           <div className="space-y-4">
             {/* Search Box */}
@@ -377,7 +377,7 @@ export default function PayoutSettingsPage() {
             )}
           </div>
         )}
-      </main>
+      </div>
     </div>
   );
 }

@@ -81,7 +81,7 @@ export default function SafetyAlertsAdminQueuePage() {
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-4 py-6 space-y-6">
+      <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
         {/* Tabs */}
         <div className="flex bg-card p-1 rounded-xl border border-border/40">
           <button
@@ -188,7 +188,7 @@ export default function SafetyAlertsAdminQueuePage() {
             ))}
           </div>
         )}
-      </main>
+      </div>
     </div>
   );
 }

@@ -24,10 +24,17 @@ not evidence that a payment settled or that production has the matching code.
   fixtures and saves a credential-free result in `.qa-artifacts/`.
 - A real Payluk sandbox `GET /v1/countries` returned HTTP/provider status 200.
   Only sandbox credentials are allowed by the QA launch scripts.
+- A real sandbox contract test then created two synthetic customers, set buyer
+  and seller permissions, created an unpaid escrow, applied and verified a
+  3% additional fee, and deleted that escrow. Eight provider operations and the
+  state/amount assertions passed. No funds were collected or transferred.
 - The push Edge Function deployed to Staging passed seven real authorization
   and payload tests. Backend keys work; publishable keys and user JWTs fail.
 - GitHub CLI has write-capable access. QA-only credentials were encrypted in
   the `yrdly-qa` GitHub environment, restricted to `fix/audit-oct-2026`.
+- Linux CI passed the build, typecheck, lint, 123 regression tests, seven live
+  push authorization tests and 43 signed-in API/security checks. The next
+  revision adds seven invalid-quantity cases and fixes the Settings landmarks.
 
 ## Regressions found and corrected during QA
 
@@ -51,6 +58,11 @@ not evidence that a payment settled or that production has the matching code.
    `qa_seed`; they are not represented as Payluk wallet funds.
 5. **VERIFIED:** image configuration recognized only the production storage
    hostname. The configured Supabase host is now recognized for isolated QA.
+6. **VERIFIED by browser:** Settings nested a main landmark inside the shared
+   application main landmark. Settings wrappers now preserve the shared main.
+7. **VERIFIED by HTTP:** a nonnumeric ticket quantity returned HTTP 500. Strict
+   request validation now rejects invalid quantities and attendee details with
+   HTTP 400 before querying inventory or contacting a payment provider.
 
 ## Remaining release requirements
 
@@ -65,12 +77,15 @@ not evidence that a payment settled or that production has the matching code.
 - Review outstanding Supabase security advisors. `public_profiles` deliberately
   exposes a restricted projection of private profiles; its definer-view warning
   requires an explicit design decision, not blind conversion to an invoker view.
-  Function search-path warnings remain to be assessed.
+  Eleven inspected function search paths were pinned in Staging; advisor
+  verification and legitimate-flow regression are required after changes.
 - Paid event refunds/cancellation are still support-assisted. Automated refund
   completion is not established.
 - Staging's moderation request is now authorized but returned HTTP 503
   (`Moderation unavailable`); successful live Sightengine moderation is not yet
   verified. Configure its QA function secrets and retest safe/flagged content.
+- Vercel CLI authentication is invalid. A working login is needed to configure
+  an isolated QA deployment/callback endpoint and verify release deployment.
 - Deploy matching web code, verify shared-backend mobile compatibility, then
   apply restrictive production migrations and deploy corrected Edge Functions.
   Staging success does not imply production is secured or released.

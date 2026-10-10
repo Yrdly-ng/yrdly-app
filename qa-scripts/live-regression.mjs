@@ -50,6 +50,11 @@ try {
   await check('ordinary user blocked from notification forgery RPC', async () => { const r = await buyer.rpc('create_notification', { p_user_id: seed.users.seller, p_type: 'message', p_title: 'QA', p_message: 'QA' }); assert.equal(r.error?.code, '42501'); });
   await check('unauthenticated ticket checkout denied', async () => assert.equal((await api(null, '/api/events/tickets/purchase')).status, 401));
   await check('unauthenticated ticket scan denied', async () => assert.equal((await api(null, '/api/events/checkin')).status, 401));
+  for (const quantity of ['not-a-number', 0, -1, 1.5, true, null, 6]) {
+    await check(`ticket checkout rejects invalid quantity: ${JSON.stringify(quantity)}`, async () => assert.equal((await api('buyer', '/api/events/tickets/purchase', {
+      event_id: seed.events.free, tier_id: seed.ticketTiers.free, attendee_name: 'YRDLY-QA Validation', attendee_email: env.QA_BUYER_EMAIL, quantity,
+    })).status, 400));
+  }
   await check('non-organizer ticket scan denied', async () => assert.equal((await api('buyer', '/api/events/checkin', { event_id: seed.events.free, ticket_code: 'QA-FORGED' })).status, 403));
 
   const sourceEvent = ok(await admin.from('events').select('*').eq('id', seed.events.free).single());
