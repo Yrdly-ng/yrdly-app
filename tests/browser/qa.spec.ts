@@ -37,6 +37,10 @@ for (const width of [375, 768, 1440]) {
       await page.goto(route);
       await expect(page.locator('main')).toHaveCount(1);
       await expect(page.locator('main')).toBeVisible({ timeout: 30000 });
+      await expect(page.locator('main .yrdly-skeleton')).toHaveCount(0, { timeout: 30000 });
+      if (route === '/home') await expect(page.getByText('YRDLY-QA Available Marketplace Listing', { exact: true }).first()).toBeVisible();
+      if (route === '/events') await expect(page.getByRole('heading', { name: 'Picked for You', exact: true })).toBeVisible();
+      await expect(page.getByRole('link', { name: 'Explore', exact: true })).toBeVisible();
       await expect(page).not.toHaveURL(/\/login/);
       await expect(page.locator('body')).not.toContainText('Application error:');
       await expect.poll(async () => page.locator('body').innerText()).not.toMatch(/^\s*(Loading[.…]*|Please wait[.…]*)\s*$/);
