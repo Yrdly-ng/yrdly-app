@@ -35,34 +35,99 @@ function chain(result) {
   return query;
 }
 
-test('booking checkout creates customers without overlapping provider locks', async () => {
-  let customerWriteActive = false;
-  const customers = [], escrows = [], payments = [];
-  const admin = { from: table => {
-    if (table === 'bookings') return chain({ data: null, error: null });
-    assert.equal(table, 'booking_payments');
-    const query = chain({ data: null, error: null });
-    query.insert = row => { payments.push(row); return chain({ data: null, error: null }); };
-    return query;
-  } };
-  const { createCheckoutForBooking } = load('src/lib/booking-payments.ts', {
-    './supabase-admin': { supabaseAdmin: admin },
-    './payluk-onboarding': { getPaylukCustomerId: async id => {
-      if (customerWriteActive) throw new Error('Payluk HTTP 423: customer write locked');
-      customerWriteActive = true;
-      await new Promise(resolve => setTimeout(resolve, 1));
-      customers.push(id); customerWriteActive = false; return `${id}-provider`;
-    } },
-    './payluk-service': { PaylukService: {
-      updateCustomerPermissions: async () => {},
-      createEscrow: async (seller, details) => { escrows.push({ seller, details }); return { id: 'owned-escrow', paymentToken: 'owned-payment-token' }; },
-    } },
+for (const scenario of ['success','retry','mismatch','uncertain','lost-claim','onboarding-failure','provider-failure','commission-failure']) {
+  test(`booking checkout saves the order before provider writes: ${scenario}`, async () => {
+    let customerWriteActive = false, created = 0, flags = 0, fees = 0;
+    const customers = [];
+    const tx = { id:'owned-order',buyer_id:'buyer',seller_id:'seller',item_id:'owned-booking',item_type:'booking',amount:2001.11,commission:60.03,total_amount:2061.14,
+      status:scenario==='uncertain'?'reconciling':'pending',payment_reference:'bk-owned',metadata:{payluk_fee_mode:'buyer_commission_v1'},
+      ...(['retry','mismatch'].includes(scenario)?{payluk_tx_ref:'PY_TOKEN',payluk_escrow_id:'escrow-id'}:{}) };
+    const admin = {
+      rpc: async (name,args) => { assert.equal(name,'reserve_booking_checkout');assert.equal(args.p_buyer_id,'buyer');return {data:{transaction:tx}}; },
+      from: table => {
+        assert.equal(table,'escrow_transactions');const q=chain({data:tx});
+        q.update=payload=>{if(scenario==='lost-claim')return chain({data:null});Object.assign(tx,payload);return chain({data:{id:tx.id}});};return q;
+      },
+    };
+    const {createCheckoutForBooking}=load('src/lib/booking-payments.ts',{
+      './supabase-admin':{supabaseAdmin:admin},
+      './payment-reconciliation':{flagPayment:async()=>{flags++;}},
+      './escrow-payment':{applyEscrowPayment:async()=>{throw new Error('Unpaid checkout must not be fulfilled');}},
+      './payluk-onboarding':{getPaylukCustomerId:async id=>{
+        if(scenario==='onboarding-failure')throw new Error('Phone verification required');
+        assert.equal(customerWriteActive,false);customerWriteActive=true;await new Promise(resolve=>setTimeout(resolve,1));customers.push(id);customerWriteActive=false;return 'provider-'+id;
+      }},
+      './payluk-service':{PaylukService:{
+        updateCustomerPermissions:async()=>{},
+        verifyEscrow:async()=>({status:'PENDING',state:'AWAITING_PAYMENT',amount:2001.11,whoPays:'seller',additionalFee:scenario==='mismatch'?0:60.03}),
+        createEscrow:async(seller,details)=>{assert.equal(tx.status,'creating_escrow');assert.equal(seller,'provider-seller');assert.equal(details.amount,2001.11);created++;if(scenario==='provider-failure')throw new Error('Unknown creation outcome');return{id:'escrow-id',paymentToken:'PY_TOKEN',fee:40.02};},
+        addAdditionalFee:async(token,fee)=>{assert.equal(tx.payluk_escrow_id,'escrow-id');assert.equal(token,'PY_TOKEN');assert.equal(fee,60.03);fees++;if(scenario==='commission-failure')throw new Error('Unknown fee outcome');},
+      }},
+    });
+    const run=()=>createCheckoutForBooking({bookingId:'owned-booking',buyerId:'buyer',sellerId:'untrusted-seller',amount:1,type:'full',purpose:'QA service',appointmentTime:new Date(Date.now()+86400000).toISOString()});
+    if(['success','retry'].includes(scenario)){
+      const result=await run();assert.equal(result.totalAmount,2061.14);assert.equal(result.paylukPaymentToken,'PY_TOKEN');assert.equal(result.url,undefined);
+      if(scenario==='success'){assert.deepEqual(customers,['buyer','seller']);assert.equal(tx.seller_amount,1961.09);}
+    }else await assert.rejects(run());
+    assert.equal(created,['success','provider-failure','commission-failure'].includes(scenario)?1:0);
+    assert.equal(fees,['success','commission-failure'].includes(scenario)?1:0);
+    assert.equal(flags,['mismatch','provider-failure','commission-failure'].includes(scenario)?1:0);
+    if(scenario==='onboarding-failure')assert.equal(tx.status,'cancelled');
+    if(['provider-failure','commission-failure'].includes(scenario))assert.equal(tx.status,'reconciling');
+    if(scenario==='commission-failure')assert.equal(tx.payluk_tx_ref,'PY_TOKEN');
   });
-  const result = await createCheckoutForBooking({ bookingId: 'owned-booking', buyerId: 'buyer', sellerId: 'seller', amount: 2500, type: 'full', purpose: 'QA service', appointmentTime: new Date(Date.now() + 86400000).toISOString() });
-  assert.deepEqual(customers, ['buyer', 'seller']);
-  assert.equal(escrows.length, 1); assert.equal(escrows[0].seller, 'seller-provider');
-  assert.equal(payments.length, 1); assert.equal(payments[0].payluk_payment_token, result.paylukPaymentToken);
+}
+
+test('booking percentage deposits retain kobo precision',()=>{
+  const {computeDepositAmount}=load('src/lib/booking-payments.ts',{'./supabase-admin':{supabaseAdmin:{}},'./payluk-service':{PaylukService:{}},'./payluk-onboarding':{},'./payment-reconciliation':{},'./escrow-payment':{}});
+  assert.equal(computeDepositAmount({price:12345.67,deposit_percent:15}),1851.85);
+  assert.equal(computeDepositAmount({price:12345.67,deposit_amount:1001.11,deposit_percent:15}),1001.11);
 });
+
+for(const scenario of ['unpaid','read-timeout','delete-timeout','paid','outsider','in-flight']){
+  test(`booking checkout cancellation protects funds: ${scenario}`,async()=>{
+    let deleted=0,flags=0,applied=0;
+    const tx={id:'order',buyer_id:'buyer',seller_id:'seller',item_id:'booking',item_type:'booking',status:scenario==='in-flight'?'creating_escrow':'pending',amount:2500,commission:75,payluk_tx_ref:'PY_TOKEN',payluk_escrow_id:'escrow-id',metadata:{payluk_fee_mode:'buyer_commission_v1'}};
+    const {cancelBookingCheckout}=load('src/lib/booking-payments.ts',{
+      './supabase-admin':{supabaseAdmin:{from:()=>{const q=chain({data:scenario==='outsider'?null:tx});q.update=p=>{Object.assign(tx,p);return chain({data:{id:tx.id}});};return q;}}},
+      './payluk-onboarding':{getPaylukCustomerId:async()=> 'provider-seller'},
+      './payment-reconciliation':{flagPayment:async()=>{flags++;}},
+      './escrow-payment':{applyEscrowPayment:async()=>{applied++;tx.status='paid';}},
+      './payluk-service':{PaylukService:{verifyEscrow:async()=>{if(scenario==='read-timeout')throw new Error('Read timeout');return{amount:2500,additionalFee:75,whoPays:'seller',state:scenario==='paid'?'OPENED':'AWAITING_PAYMENT',status:scenario==='paid'?'ONGOING':'PENDING'};},deleteEscrow:async()=>{deleted++;if(scenario==='delete-timeout')throw new Error('Unknown deletion outcome');}}},
+    });
+    const run=()=>cancelBookingCheckout('order',scenario==='outsider'?'outsider':'buyer');
+    if(scenario==='unpaid')await run();else await assert.rejects(run());
+    assert.equal(deleted,['unpaid','delete-timeout'].includes(scenario)?1:0);assert.equal(applied,scenario==='paid'?1:0);assert.equal(flags,scenario==='delete-timeout'?1:0);
+    assert.equal(tx.status,{unpaid:'cancelled','read-timeout':'pending','delete-timeout':'reconciling',paid:'paid',outsider:'pending','in-flight':'creating_escrow'}[scenario]);
+  });
+}
+
+for(const scenario of ['success','paid-replay','unpaid','fee-mismatch','principal-mismatch','outsider']){
+  test(`booking verification requires the owned settled amount: ${scenario}`,async()=>{
+    let applied=0,flags=0,verified=0;
+    const tx={id:'order',buyer_id:'buyer',item_id:'booking',status:scenario==='paid-replay'?'paid':'pending',amount:2500,commission:75,payluk_tx_ref:'PY_TOKEN',payluk_escrow_id:'escrow-id',metadata:{payluk_fee_mode:'buyer_commission_v1'}};
+    const {verifyBookingCheckout}=load('src/lib/booking-payments.ts',{
+      './supabase-admin':{supabaseAdmin:{from:()=>{const q=chain({data:scenario==='outsider'?null:tx});q.eq=(column,value)=>{if(column==='buyer_id')assert.equal(value,scenario==='outsider'?'outsider':'buyer');return q;};return q;}}},
+      './payluk-service':{PaylukService:{verifyEscrow:async()=>{verified++;return{status:scenario==='unpaid'?'PENDING':'ONGOING',amount:scenario==='principal-mismatch'?2501:2500,additionalFee:scenario==='fee-mismatch'?0:75,whoPays:'seller'};}}},
+      './payluk-onboarding':{},'./payment-reconciliation':{flagPayment:async()=>{flags++;}},'./escrow-payment':{applyEscrowPayment:async()=>{applied++;}},
+    });
+    const run=()=>verifyBookingCheckout('booking',scenario==='outsider'?'outsider':'buyer');
+    if(['success','paid-replay'].includes(scenario))assert.equal((await run()).transactionId,'order');else await assert.rejects(run());
+    assert.equal(applied,scenario==='success'?1:0);assert.equal(verified,['paid-replay','outsider'].includes(scenario)?0:1);
+    assert.equal(flags,['fee-mismatch','principal-mismatch'].includes(scenario)?1:0);
+  });
+}
+
+for(const operation of ['verify','cancel-checkout'])for(const scenario of ['anonymous','suspended','malformed','invalid-id']){
+  test(`booking ${operation} rejects ${scenario} before payment work`,async()=>{
+    const {POST}=load(`src/app/api/bookings/${operation}/route.ts`,{
+      '@/lib/supabase-server':{getAuthenticatedUser:async()=>({data:{user:scenario==='anonymous'?null:{id:'buyer'}},error:scenario==='suspended'?{status:403}:null})},
+      '@/lib/booking-payments':{BookingCheckoutError:class extends Error{},verifyBookingCheckout:()=>{throw new Error('Unauthorized payment access');},cancelBookingCheckout:()=>{throw new Error('Unauthorized payment access');}},
+    });
+    const response=await POST(new Request('https://qa.invalid/api/bookings/'+operation,{method:'POST',body:scenario==='malformed'?'{':JSON.stringify({bookingId:'invalid',transactionId:'invalid'})}));
+    assert.equal(response.status,scenario==='anonymous'?401:scenario==='suspended'?403:400);
+  });
+}
 
 for (const scenario of ['no-profile', 'no-phone', 'incomplete-profile', 'anonymous', 'onboarding-next', 'external-next']) {
   test(`auth callback preserves password recovery and onboarding boundaries: ${scenario}`, async () => {

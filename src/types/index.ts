@@ -254,6 +254,9 @@ export interface BookingPayment {
   provider: string;
   payluk_reference?: string | null;
   payluk_checkout_url?: string | null;
+  escrow_transaction_id?: string | null;
+  commission?: number | null;
+  total_amount?: number | null;
   escrow_hold: boolean;
   created_at: string;
   paid_at?: string | null;

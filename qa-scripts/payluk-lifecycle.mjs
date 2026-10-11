@@ -14,7 +14,7 @@ assert.ok(env.NEXT_PUBLIC_PAYLUK_PUBLIC_KEY?.startsWith('pk_test_'));
 const base = 'https://yrdly-app-qa.vercel.app';
 const checkout = 'https://staging.live.payluk.ng';
 const scenario = process.argv[3] || 'default';
-assert.ok(['default', 'commission', 'catalog', 'ticket', 'ticket-reserved'].includes(scenario), 'Use default, commission, catalog or ticket evidence');
+assert.ok(['default', 'commission', 'catalog', 'ticket', 'ticket-reserved', 'booking'].includes(scenario), 'Use an explicit owned sandbox scenario');
 const artifactPath = `.qa-artifacts/payluk-lifecycle${scenario === 'default' ? '' : `-${scenario}`}.json`;
 const admin = createAdminClient(env);
 const clients = [];
@@ -24,10 +24,10 @@ try { state = JSON.parse(await readFile(artifactPath, 'utf8')); }
 catch (error) { if (error.code !== 'ENOENT') throw error; }
 if (!state) {
   if (mode === 'new-sale') {
-    assert.ok(['commission', 'catalog', 'ticket', 'ticket-reserved'].includes(scenario));
+    assert.ok(['commission', 'catalog', 'ticket', 'ticket-reserved', 'booking'].includes(scenario));
     const source = JSON.parse(await readFile('.qa-artifacts/payluk-lifecycle-completed.json', 'utf8'));
     assert.equal(source.projectRef, projectRef); assert.equal(source.qaPrefix, QA_PREFIX);
-    state = { projectRef, environment: 'sandbox', qaPrefix: QA_PREFIX, kind: scenario === 'ticket-reserved' ? 'ticket' : scenario, startedAt: new Date().toISOString(), users: source.users, passwords: source.passwords, listingId: randomUUID(), ...(scenario === 'catalog' ? { businessId: randomUUID() } : scenario.startsWith('ticket') ? { eventId: randomUUID() } : {}), results: [] };
+    state = { projectRef, environment: 'sandbox', qaPrefix: QA_PREFIX, kind: scenario === 'ticket-reserved' ? 'ticket' : scenario, startedAt: new Date().toISOString(), users: source.users, passwords: source.passwords, listingId: randomUUID(), ...(scenario === 'catalog' || scenario === 'booking' ? { businessId: randomUUID() } : scenario.startsWith('ticket') ? { eventId: randomUUID() } : {}), ...(scenario === 'booking' ? { serviceId: randomUUID() } : {}), results: [] };
   } else {
     assert.equal(mode, 'prepare', 'Prepare an owned unpaid fixture first');
     const source = JSON.parse(await readFile('.qa-artifacts/payluk-checkout-fresh.json', 'utf8'));
@@ -40,11 +40,11 @@ assert.equal(state.projectRef, projectRef);
 assert.equal(state.environment, 'sandbox');
 assert.equal(state.qaPrefix, QA_PREFIX);
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
-const purchasePrice = state.kind === 'catalog' ? 1234.56 : 2500;
+const purchasePrice = ['catalog','booking'].includes(state.kind) ? 1234.56 : 2500;
 const commission = Math.round(purchasePrice * 0.03 * 100) / 100;
 const principal = state.kind === 'ticket' ? Math.round((purchasePrice - commission) * 100) / 100 : purchasePrice;
 const total = state.kind === 'ticket' ? purchasePrice : Math.round((principal + commission) * 100) / 100;
-const itemType = state.kind === 'catalog' ? 'catalog_item' : 'post';
+const itemType = state.kind === 'catalog' ? 'catalog_item' : state.kind === 'booking' ? 'booking' : 'post';
 const ok = (r, label) => { if (r.error) throw new Error(`${label}: ${r.error.code || r.error.status || 'failed'}`); return r.data; };
 async function save() { await writeFile(artifactPath, JSON.stringify(state, null, 2), { mode: 0o600 }); }
 async function check(name, run) {
@@ -103,7 +103,7 @@ try {
     assert.equal(transaction.buyer_id, state.users.buyer); assert.equal(transaction.seller_id, state.users.seller); assert.equal(transaction.item_id, state.listingId); assert.equal(transaction.payment_provider, 'payluk');
   } else assert.ok(['new-refund', 'new-sale'].includes(mode), 'Resume the pending new checkout first');
   if (mode === 'new-sale') {
-    assert.ok(['commission', 'catalog', 'ticket'].includes(state.kind));
+    assert.ok(['commission', 'catalog', 'ticket', 'booking'].includes(state.kind));
     await save(); // Persist owned fixture IDs before any creation or provider call.
     if (state.kind === 'ticket') {
       const existing = ok(await admin.from('events').select('organizer_id').eq('id', state.eventId).maybeSingle(), 'Check owned ticket event');
@@ -112,6 +112,16 @@ try {
       const tier = ok(await admin.from('ticket_tiers').select('event_id').eq('id', state.listingId).maybeSingle(), 'Read owned ticket tier');
       if (tier) assert.equal(tier.event_id, state.eventId);
       else ok(await admin.from('ticket_tiers').insert({ id: state.listingId, event_id: state.eventId, name: `${QA_PREFIX} General`, price: purchasePrice, capacity: 1, sold: 0, is_visible: true }), 'Create owned ticket tier');
+    } else if (state.kind === 'booking') {
+      const existing = ok(await admin.from('businesses').select('owner_id').eq('id', state.businessId).maybeSingle(), 'Check owned booking business');
+      if (existing) assert.equal(existing.owner_id, state.users.seller);
+      else ok(await admin.from('businesses').insert({ id: state.businessId, owner_id: state.users.seller, name: `${QA_PREFIX} Booking Settlement`, category: 'Other', location: { state: 'Lagos' }, is_active: true, moderation_status: 'approved' }), 'Create owned booking business');
+      const service = ok(await admin.from('service_offerings').select('business_id').eq('id', state.serviceId).maybeSingle(), 'Check owned booking service');
+      if (service) assert.equal(service.business_id, state.businessId);
+      else ok(await admin.from('service_offerings').insert({ id: state.serviceId, business_id: state.businessId, name: `${QA_PREFIX} fractional-price service`, price: purchasePrice, duration_minutes: 60, is_active: true, requires_full_payment: true, deposit_required: true, deposit_amount: 1000 }), 'Create owned booking service');
+      const booking = ok(await admin.from('bookings').select('customer_id,business_id').eq('id', state.listingId).maybeSingle(), 'Check owned booking');
+      if (booking) { assert.equal(booking.customer_id, state.users.buyer); assert.equal(booking.business_id, state.businessId); }
+      else ok(await admin.from('bookings').insert({ id: state.listingId, customer_id: state.users.buyer, business_id: state.businessId, service_id: state.serviceId, appointment_time: new Date(Date.now()+86400000).toISOString(), end_time: new Date(Date.now()+90000000).toISOString(), status: 'requested' }), 'Create owned booking');
     } else if (state.kind === 'catalog') {
       const business = ok(await admin.from('businesses').select('owner_id').eq('id', state.businessId).maybeSingle(), 'Check owned business');
       if (business) assert.equal(business.owner_id, state.users.seller);
@@ -128,8 +138,9 @@ try {
       console.log('Reserving a fresh Payluk rate window for canonical commission checkout'); await pause(65000);
       const r = state.kind === 'ticket'
         ? await api('buyer', '/api/events/tickets/purchase', { event_id: state.eventId, tier_id: state.listingId, attendee_name: `${QA_PREFIX} Buyer`, attendee_email: actors.buyer.profile.email, quantity: 1 })
+        : state.kind === 'booking' ? await api('buyer', '/api/bookings/checkout', { bookingId: state.listingId })
         : await api('buyer', '/api/payment/initialize', { itemId: state.listingId, itemType, buyerId: state.users.buyer, sellerId: state.users.seller, price: 1 });
-      assert.equal(r.status, 200); assert.equal(r.body.success, true);
+      assert.equal(r.status, 200); assert.equal(state.kind === 'booking' ? r.body.ok : r.body.success, true);
       if (state.kind === 'ticket') {
         const row = ok(await admin.from('escrow_transactions').select('id,total_amount').eq('payment_reference', r.body.tx_ref).eq('buyer_id', state.users.buyer).single(), 'Read owned ticket checkout');
         state.payment = { ...r.body, transactionId: row.id, totalAmount: row.total_amount };
@@ -169,7 +180,16 @@ try {
       assert.equal(ok(await admin.from('escrow_transactions').select('id').eq('item_type','ticket').eq('item_id',state.listingId), 'Read owned ticket orders').length, 1);
       assert.equal(ok(await admin.from('ticket_checkout_reservations').select('remaining').eq('transaction_id',state.payment.transactionId).single(), 'Read owned ticket reservation').remaining, 1);
     });
-    if (state.kind !== 'ticket') await check('fresh checkout retry reuses one unpaid escrow', async () => {
+    if (state.kind === 'booking') await check('booking checkout rejects a deposit downgrade and reuses its saved provider escrow', async () => {
+      assert.equal((await api('buyer', '/api/bookings/checkout', { bookingId: state.listingId, type: 'deposit' })).status, 409);
+      console.log('Reserving a fresh Payluk rate window for booking retry'); await pause(65000);
+      const r = await api('buyer', '/api/bookings/checkout', { bookingId: state.listingId }); assert.equal(r.status, 200);
+      for (const key of ['transactionId','paylukPaymentToken','paylukEscrowId']) assert.equal(r.body[key], state.payment[key]);
+      assert.equal(r.body.amount, purchasePrice); assert.equal(r.body.commission, commission); assert.equal(r.body.totalAmount, total); assert.equal(r.body.url, undefined);
+      const payment = ok(await admin.from('booking_payments').select('escrow_transaction_id').eq('booking_id',state.listingId).single(), 'Read linked booking payment');
+      assert.equal(payment.escrow_transaction_id, state.payment.transactionId);
+    });
+    if (!['ticket','booking'].includes(state.kind)) await check('fresh checkout retry reuses one unpaid escrow', async () => {
       console.log('Reserving a fresh Payluk rate window for hosted checkout'); await pause(65000);
       const r = await api('buyer', '/api/payment/initialize', { itemId: state.listingId, itemType, buyerId: state.users.buyer, sellerId: state.users.seller, price: 1 });
       assert.equal(r.status, 200);
@@ -178,7 +198,7 @@ try {
     });
     await check('unpaid provider price, commission and seller proceeds match', async () => {
       const r = await remote(); assert.equal(r.state, 'AWAITING_PAYMENT'); assert.equal(r.amount, principal); assert.equal(r.additionalFee, commission); assert.equal(state.payment.totalAmount, total);
-      if (['commission', 'catalog', 'ticket'].includes(state.kind)) assert.equal(r.fee, Math.round(principal * 0.02 * 100) / 100, 'Dashboard merchant commission must be zero for the canonical app fee');
+      if (['commission', 'catalog', 'ticket', 'booking'].includes(state.kind)) assert.equal(r.fee, Math.round(principal * 0.02 * 100) / 100, 'Dashboard merchant commission must be zero for the canonical app fee');
       assert.equal(transaction.seller_amount, Math.round((r.amount - r.fee) * 100) / 100); state.unpaidEscrow = r;
     });
     await check('wallet baselines recorded without deposits', async () => {
@@ -228,6 +248,10 @@ try {
         assert.equal(state.tickets.length, 1); assert.equal(state.tickets[0].status, 'PAID'); assert.equal(state.tickets[0].amount_paid, purchasePrice);
         assert.equal(ok(await admin.from('ticket_tiers').select('sold').eq('id', state.listingId).single(), 'Read sold tickets').sold, 1);
         if (scenario === 'ticket-reserved') assert.equal(ok(await admin.from('ticket_checkout_reservations').select('remaining').eq('transaction_id',state.payment.transactionId).single(), 'Read consumed reservation').remaining, 0);
+      } else if (state.kind === 'booking') {
+        assert.equal(ok(await admin.from('bookings').select('payment_status').eq('id',state.listingId).single(), 'Read funded booking').payment_status, 'fully_paid');
+        const payment = ok(await admin.from('booking_payments').select('status,escrow_transaction_id,amount,total_amount').eq('booking_id',state.listingId).single(), 'Read funded booking payment');
+        assert.equal(payment.status,'fully_paid'); assert.equal(payment.escrow_transaction_id,state.payment.transactionId); assert.equal(payment.amount,purchasePrice); assert.equal(payment.total_amount,total);
       } else if (state.kind === 'catalog') {
         const item = ok(await admin.from('catalog_items').select('quantity,in_stock').eq('id', state.listingId).single(), 'Read catalog inventory');
         assert.equal(item.quantity, 0); assert.equal(item.in_stock, false);
@@ -244,6 +268,13 @@ try {
       }
       assert.equal((await tx()).status, 'paid'); assert.equal(await count(), before);
       assert.equal(ok(await admin.from('escrow_transactions').select('id').eq('item_id', state.listingId), 'Read ledger').length, 1);
+    });
+    if (state.kind === 'booking') await check('booking verification is buyer-owned and idempotent', async () => {
+      assert.equal((await api('seller','/api/bookings/verify',{bookingId:state.listingId})).status,404);
+      for (let i=0;i<2;i++) {
+        const r=await api('buyer','/api/bookings/verify',{bookingId:state.listingId});
+        assert.equal(r.status,200);assert.equal(r.body.transactionId,state.payment.transactionId);
+      }
     });
   }
   if (mode === 'scan') {
@@ -267,6 +298,11 @@ try {
       const r = await api('buyer', '/api/payluk/confirm-delivery', { transactionId: state.payment.transactionId }); assert.equal(r.status, 200); assert.equal(r.body.success, true);
       const repeat = await api('buyer', '/api/payluk/confirm-delivery', { transactionId: state.payment.transactionId }); assert.equal(repeat.status, 200); assert.equal(repeat.body.alreadyCompleted, true);
       assert.equal((await tx()).status, 'completed');
+      if (state.kind === 'booking') {
+        assert.equal(ok(await admin.from('bookings').select('payment_status').eq('id',state.listingId).single(), 'Read released booking').payment_status,'escrow_released');
+        const payment = ok(await admin.from('booking_payments').select('status,escrow_hold').eq('booking_id',state.listingId).single(), 'Read released booking payment');
+        assert.equal(payment.status,'escrow_released'); assert.equal(payment.escrow_hold,false);
+      }
     });
     await check('released seller wallet matches escrow-specific net proceeds', async () => {
       const r = await remote(); assert.equal(r.status, 'COMPLETED'); state.completedEscrow = r;
@@ -283,7 +319,7 @@ try {
       assert.equal(r.body.pendingPayouts, 0); assert.equal(r.body.completedPayouts, 0);
       const request = await api('seller', '/api/seller/payouts/request', { amount: 1000 }); assert.equal(request.status, 400); assert.equal(request.body.error, 'NO_ACTIVE_ACCOUNT');
     });
-    if (['commission', 'catalog', 'ticket'].includes(state.kind)) await check('merchant ledger receives exactly one canonical 3% commission', async () => {
+    if (['commission', 'catalog', 'ticket', 'booking'].includes(state.kind)) await check('merchant ledger receives exactly one canonical 3% commission', async () => {
       const ledger = await provider('/v1/merchant/transactions?' + new URLSearchParams({ fromDate: state.startedAt, toDate: new Date().toISOString() })); assert.ok(Array.isArray(ledger));
       const own = ledger.filter(row => JSON.stringify(row.escrowDetails).includes(state.payment.paylukPaymentToken));
       state.merchantSettlement = own;

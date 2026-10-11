@@ -1,11 +1,14 @@
 import { supabaseAdmin } from './supabase-admin';
 import { PaylukService } from './payluk-service';
 import { getPaylukCustomerId } from './payluk-onboarding';
+import { flagPayment } from './payment-reconciliation';
+import { paylukAmountsMatch } from './payment-state';
+import { applyEscrowPayment } from './escrow-payment';
 
 export function computeDepositAmount(service: { price?: number | null; deposit_amount?: number | null; deposit_percent?: number | null }): number | null {
   if (service.deposit_amount) return Number(service.deposit_amount);
   if (service.deposit_percent && service.price) {
-    return Math.round(Number(service.price) * Number(service.deposit_percent) / 100);
+    return Math.round(Number(service.price) * Number(service.deposit_percent)) / 100;
   }
   return null;
 }
@@ -20,85 +23,145 @@ interface BookingCheckoutOptions {
   appointmentTime: string;
 }
 
-export async function createCheckoutForBooking(opts: BookingCheckoutOptions): Promise<{
-  reference: string;
-  url: string;
-  paylukPaymentToken: string;
-  buyerPaylukId: string;
-}> {
-  if (!Number.isFinite(opts.amount) || opts.amount < 1000 || Math.round(opts.amount * 100) !== opts.amount * 100) {
-    throw new Error('Payluk booking payments must be at least ₦1,000 with at most two decimal places.');
-  }
+export class BookingCheckoutError extends Error {
+  constructor(message: string, public status = 409) { super(message); }
+}
 
-  const { data: existing, error: existingError } = await supabaseAdmin
-    .from('booking_payments')
-    .select('payluk_reference, payluk_checkout_url, payluk_payment_token, amount, type')
-    .eq('booking_id', opts.bookingId)
-    .eq('status', 'deposit_pending')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (existingError) throw existingError;
-  if (existing?.payluk_checkout_url && existing.payluk_payment_token &&
-      Number(existing.amount) === opts.amount && existing.type === opts.type) {
-    return {
-      reference: existing.payluk_reference,
-      url: existing.payluk_checkout_url,
-      paylukPaymentToken: existing.payluk_payment_token,
-      buyerPaylukId: await getPaylukCustomerId(opts.buyerId),
-    };
-  }
-  if (existing) {
-    throw new Error('A different booking checkout is already pending. Contact support to replace it.');
-  }
-
-  // Either lookup may create a customer; Payluk serializes merchant writes.
-  const buyerPaylukId = await getPaylukCustomerId(opts.buyerId);
-  const sellerPaylukId = await getPaylukCustomerId(opts.sellerId);
-  await PaylukService.updateCustomerPermissions(buyerPaylukId, { canBuy: true });
-  await PaylukService.updateCustomerPermissions(sellerPaylukId, { canSell: true });
-
-  const daysUntilAppointment = Math.ceil((new Date(opts.appointmentTime).getTime() - Date.now()) / 86_400_000);
-  const escrow = await PaylukService.createEscrow(sellerPaylukId, {
-    amount: opts.amount,
-    purpose: opts.purpose,
-    whoPays: 'seller',
-    maxDelivery: Math.max(1, Math.min(daysUntilAppointment + 1, 365)),
-    deliveryTimeline: 'days',
-    totalQuantity: 1,
+export async function createCheckoutForBooking(opts: BookingCheckoutOptions) {
+  // The database locks the booking and computes the price/type from its service
+  // or accepted quote. The caller's amount never determines the payment ledger.
+  const { data: reservation, error } = await supabaseAdmin.rpc('reserve_booking_checkout', {
+    p_booking_id: opts.bookingId, p_buyer_id: opts.buyerId, p_type: opts.type,
   });
-
-  const reference = `bk_${opts.bookingId}_${opts.type}_${Date.now()}`;
-  const paylukHost = process.env.PAYLUK_SECRET_KEY?.startsWith('sk_live_')
-    ? 'https://payluk.ng'
-    : 'https://staging.api.payluk.ng';
-  const url = `${paylukHost}/escrow/${escrow.paymentToken}`;
-
-  const { error: insertError } = await supabaseAdmin.from('booking_payments').insert({
-    booking_id: opts.bookingId,
-    amount: opts.amount,
-    type: opts.type,
-    status: 'deposit_pending',
-    provider: 'payluk',
-    payluk_reference: reference,
-    payluk_escrow_id: escrow.id,
-    payluk_payment_token: escrow.paymentToken,
-    payluk_checkout_url: url,
-    escrow_hold: true,
+  if (error || !reservation?.transaction) throw new BookingCheckoutError(error?.message || 'Could not reserve booking payment.');
+  const tx = reservation.transaction;
+  const response = (buyerPaylukId: string) => ({
+    transactionId: tx.id, reference: tx.payment_reference, paylukPaymentToken: tx.payluk_tx_ref,
+    paylukEscrowId: tx.payluk_escrow_id, buyerPaylukId,
+    amount: Number(tx.amount), commission: Number(tx.commission), totalAmount: Number(tx.total_amount),
   });
-  if (insertError) {
-    await PaylukService.deleteEscrow(sellerPaylukId, escrow.paymentToken).catch(error => {
-      console.error('[BookingCheckout] Could not remove orphaned Payluk escrow:', error);
-    });
-    throw insertError;
+  if (['paid','shipped','delivered','completed'].includes(tx.status)) return { alreadyPaid: true, ...response('') };
+  if (tx.status === 'pending' && tx.payluk_tx_ref && tx.payluk_escrow_id) {
+    const remote = await PaylukService.verifyEscrow(tx.payluk_tx_ref);
+    if (!paylukAmountsMatch(tx, remote)) {
+      await flagPayment('payluk', tx.payluk_escrow_id, tx.id, 'booking_retry_amount_mismatch');
+      throw new BookingCheckoutError('Booking checkout needs reconciliation.');
+    }
+    if (['ONGOING','COMPLETED','CLAIMED'].includes(remote.status)) {
+      await applyEscrowPayment(tx.id, 'payluk', tx.payluk_escrow_id);
+      return { alreadyPaid: true, ...response('') };
+    }
+    if (remote.state !== 'AWAITING_PAYMENT' || remote.status !== 'PENDING') throw new BookingCheckoutError('Booking checkout needs reconciliation.');
+    return response(await getPaylukCustomerId(opts.buyerId));
   }
+  if (tx.status !== 'pending' || tx.payluk_escrow_id || tx.payluk_tx_ref) {
+    throw new BookingCheckoutError('Booking payment is processing or needs review. No new charge was started.');
+  }
+  const { data: claimed, error: claimError } = await supabaseAdmin.from('escrow_transactions')
+    .update({ status: 'creating_escrow', creating_escrow_started_at: new Date().toISOString() })
+    .eq('id', tx.id).eq('status', 'pending').is('payluk_escrow_id', null).select('id').maybeSingle();
+  if (claimError) throw claimError;
+  if (!claimed) throw new BookingCheckoutError('Booking checkout is already processing. Retry shortly.');
+  let submitted = false;
+  let escrowId: string | undefined;
+  const deadline = AbortSignal.timeout(20_000);
+  try {
+    const buyer = await getPaylukCustomerId(opts.buyerId);
+    const seller = await getPaylukCustomerId(tx.seller_id);
+    await PaylukService.updateCustomerPermissions(buyer, { canBuy: true }, deadline);
+    await PaylukService.updateCustomerPermissions(seller, { canSell: true }, deadline);
+    const days = Math.ceil((new Date(opts.appointmentTime).getTime() - Date.now()) / 86_400_000) + 1;
+    if (!Number.isFinite(days) || days < 1 || days > 365) throw new Error('Appointment is outside the supported escrow window');
+    submitted = true;
+    const escrow = await PaylukService.createEscrow(seller, {
+      amount: Number(tx.amount), purpose: opts.purpose, whoPays: 'seller',
+      maxDelivery: days, deliveryTimeline: 'days', totalQuantity: 1,
+    }, deadline);
+    escrowId = escrow.id;
+    if (!Number.isFinite(escrow.fee) || escrow.fee < 0 || escrow.fee > Number(tx.amount)) throw new Error('Invalid provider fee');
+    const { data: stored, error: storeError } = await supabaseAdmin.from('escrow_transactions').update({
+      payluk_escrow_id: escrow.id, payluk_tx_ref: escrow.paymentToken,
+      seller_amount: Math.round((Number(tx.amount) - escrow.fee) * 100) / 100,
+      metadata: { ...tx.metadata, payluk_fee: escrow.fee },
+    }).eq('id', tx.id).eq('status', 'creating_escrow').select('id').maybeSingle();
+    if (storeError || !stored) throw new Error('Could not persist booking provider checkout');
+    await PaylukService.addAdditionalFee(escrow.paymentToken, Number(tx.commission), deadline);
+    const { data: ready, error: readyError } = await supabaseAdmin.from('escrow_transactions')
+      .update({ status: 'pending' }).eq('id', tx.id).eq('status', 'creating_escrow').select('id').maybeSingle();
+    if (readyError || !ready) throw new Error('Could not finalize booking provider checkout');
+    tx.payluk_tx_ref = escrow.paymentToken; tx.payluk_escrow_id = escrow.id;
+    return response(buyer);
+  } catch (failure) {
+    const { error: stateError } = await supabaseAdmin.from('escrow_transactions')
+      .update({ status: submitted ? 'reconciling' : 'cancelled' }).eq('id', tx.id).eq('status', 'creating_escrow');
+    if (submitted || stateError) await flagPayment('payluk', escrowId || tx.id, tx.id, 'booking_creation_uncertain');
+    console.error('[BookingCheckout] Setup failed:', failure instanceof Error ? failure.message : 'Unknown outcome');
+    throw new BookingCheckoutError(submitted ? 'Booking payment setup needs reconciliation. No replacement charge was started.' : 'Could not prepare payment accounts.', 502);
+  }
+}
 
-  const { error: bookingError } = await supabaseAdmin.from('bookings')
-    .update({ payment_status: 'deposit_pending' })
-    .eq('id', opts.bookingId);
-  if (bookingError) throw bookingError;
+export async function verifyBookingCheckout(bookingId: string, buyerId: string) {
+  const { data: tx, error } = await supabaseAdmin.from('escrow_transactions').select('*')
+    .eq('item_type', 'booking').eq('item_id', bookingId).eq('buyer_id', buyerId)
+    .order('created_at', { ascending: false }).limit(1).maybeSingle();
+  if (error) throw error;
+  if (!tx) throw new BookingCheckoutError('Booking payment not found.', 404);
+  if (['paid','shipped','delivered','completed'].includes(tx.status)) return { transactionId: tx.id, completed: tx.status === 'completed' };
+  if (!tx.payluk_tx_ref) throw new BookingCheckoutError('Booking payment setup is incomplete.');
+  const remote = await PaylukService.verifyEscrow(tx.payluk_tx_ref);
+  if (!['ONGOING','COMPLETED','CLAIMED'].includes(remote.status)) throw new BookingCheckoutError('Booking payment has not completed.', 402);
+  if (!paylukAmountsMatch(tx, remote)) {
+    await flagPayment('payluk', tx.payluk_escrow_id, tx.id, 'booking_amount_mismatch');
+    throw new BookingCheckoutError('Booking payment needs reconciliation.');
+  }
+  await applyEscrowPayment(tx.id, 'payluk', tx.payluk_escrow_id);
+  return { transactionId: tx.id, completed: false };
+}
 
-  return { reference, url, paylukPaymentToken: escrow.paymentToken, buyerPaylukId };
+export async function cancelBookingCheckout(transactionId: string, buyerId: string) {
+  const { data: tx, error } = await supabaseAdmin.from('escrow_transactions').select('*')
+    .eq('id', transactionId).eq('item_type', 'booking').eq('buyer_id', buyerId).maybeSingle();
+  if (error) throw error;
+  if (!tx) throw new BookingCheckoutError('Booking payment not found.', 404);
+  if (tx.status === 'cancelled') return;
+  if (tx.status !== 'pending') throw new BookingCheckoutError('Booking payment is processing or needs review.');
+  if (!tx.payluk_escrow_id && !tx.payluk_tx_ref) {
+    const { data: cancelled, error: cancelError } = await supabaseAdmin.from('escrow_transactions')
+      .update({ status: 'cancelled' }).eq('id', tx.id).eq('status', 'pending').is('payluk_escrow_id', null).select('id').maybeSingle();
+    if (cancelError) throw cancelError;
+    if (!cancelled) throw new BookingCheckoutError('Booking checkout setup is already in progress.');
+    return;
+  }
+  if (!tx.payluk_escrow_id || !tx.payluk_tx_ref) throw new BookingCheckoutError('Booking payment needs reconciliation.');
+  const { data: claimed, error: claimError } = await supabaseAdmin.from('escrow_transactions')
+    .update({ status: 'reconciling' }).eq('id', tx.id).eq('status', 'pending').select('id').maybeSingle();
+  if (claimError) throw claimError;
+  if (!claimed) throw new BookingCheckoutError('Booking checkout changed. Retry shortly.');
+  let deletionSubmitted = false;
+  try {
+    const remote = await PaylukService.verifyEscrow(tx.payluk_tx_ref);
+    if (['ONGOING','COMPLETED','CLAIMED'].includes(remote.status)) {
+      await verifyBookingCheckout(tx.item_id, buyerId);
+      throw new BookingCheckoutError('This booking has been paid. Use support for a refund.');
+    }
+    if (remote.state !== 'AWAITING_PAYMENT' || remote.status !== 'PENDING' || !paylukAmountsMatch(tx, remote)) throw new Error('Provider checkout state needs review');
+    const seller = await getPaylukCustomerId(tx.seller_id);
+    deletionSubmitted = true;
+    await PaylukService.deleteEscrow(seller, tx.payluk_tx_ref);
+    const { data: cancelled, error: cancelError } = await supabaseAdmin.from('escrow_transactions')
+      .update({ status: 'cancelled' }).eq('id', tx.id).eq('status', 'reconciling').select('id').maybeSingle();
+    if (cancelError || !cancelled) throw new Error('Could not record provider checkout cancellation');
+  } catch (failure) {
+    if (!(failure instanceof BookingCheckoutError)) {
+      if (deletionSubmitted) await flagPayment('payluk', tx.payluk_escrow_id, tx.id, 'booking_cancellation_uncertain');
+      else {
+        const { error: restoreError } = await supabaseAdmin.from('escrow_transactions')
+          .update({ status: 'pending' }).eq('id', tx.id).eq('status', 'reconciling');
+        if (restoreError) await flagPayment('payluk', tx.payluk_escrow_id, tx.id, 'booking_cancellation_read_failed');
+      }
+    }
+    throw failure;
+  }
 }
 
 /** Process only signed escrow lifecycle events for booking payments. */
@@ -111,11 +174,14 @@ export async function handlePaylukWebhookEvent(payload: any): Promise<void> {
 
   const { data: payment, error: lookupError } = await supabaseAdmin
     .from('booking_payments')
-    .select('id, booking_id, amount, type, status')
+    .select('id, booking_id, amount, type, status, escrow_transaction_id')
     .eq('payluk_escrow_id', escrowId)
     .maybeSingle();
   if (lookupError) throw lookupError;
   if (!payment) return;
+  // New checkouts are synchronized atomically by sync_booking_escrow. This
+  // compatibility handler only processes the explicitly unlinked legacy rows.
+  if (payment.escrow_transaction_id) return;
 
   if (Number(payload.data.amount) !== Number(payment.amount)) {
     throw new Error(`Payluk booking amount mismatch for escrow ${escrowId}`);

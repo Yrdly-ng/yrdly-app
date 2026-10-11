@@ -49,12 +49,24 @@ can cancel unpaid checkout; paid or uncertain outcomes remain held for review.
 The service-only reservation migration must ship with its matching web code.
 Reconcile any legacy unfulfilled paid-ticket checkout before applying it.
 
-Booking commission collection remains a separate open verification requirement.
+Booking checkout uses the inline SDK and the same buyer-paid 3% additional fee
+as marketplace/catalog checkout. A service-only RPC locks the booking, enforces
+its configured payment type and computes its service/accepted-quote price before
+creating one common escrow-ledger order. A single setup claim prevents duplicate
+provider creation. Unknown provider outcomes remain reserved for review.
+The booking payment and booking status synchronize atomically with that ledger;
+released actual net proceeds enter seller earnings. The buyer verifies payment
+and confirms service receipt; provider completion alone does not release funds.
+Unpaid checkout is deleted at the provider before cancellation permits a new
+order. Legacy unlinked payment rows are not relabelled or replaced automatically.
+Deploy `reconcile_booking_checkout_ledger` with its matching web code. QA database
+and local unit checks pass; funded booking collection/settlement remains pending.
 
 ## Routes and safeguards
 
 - Marketplace: `/api/payment/initialize` and `/api/payment/verify`.
 - Event tickets: `/api/events/tickets/purchase` and `/api/events/tickets/verify`.
+- Bookings: `/api/bookings/checkout`, `/api/bookings/verify` and `/api/bookings/cancel-checkout`.
 - Bank setup: `/api/seller/banks`, `/api/seller/resolve-account`, `/api/seller/setup-account`.
 - Signed events: `/api/webhooks/payluk` (the existing `/api/payluk/webhook` alias remains compatible).
 - Unknown historical providers fail closed; records are not relabelled or paid through a different provider.

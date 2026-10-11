@@ -20,7 +20,7 @@ export function paylukEscrowPrincipal(transaction: PaylukAmountRecord): number {
 export function paylukAmountsMatch(transaction: PaylukAmountRecord, escrow: { amount: number; additionalFee?: number; whoPays?: string }): boolean {
   const expected = paylukEscrowPrincipal(transaction);
   if (!Number.isFinite(expected) || !Number.isFinite(escrow.amount) || Math.round(escrow.amount * 100) !== Math.round(expected * 100)) return false;
-  return transaction.metadata?.payluk_fee_mode !== 'seller_commission_v1' ||
+  return !['seller_commission_v1','buyer_commission_v1'].includes(transaction.metadata?.payluk_fee_mode || '') ||
     (escrow.whoPays === 'seller' && Number.isFinite(escrow.additionalFee) &&
       Math.round(Number(escrow.additionalFee) * 100) === Math.round(Number(transaction.commission) * 100));
 }

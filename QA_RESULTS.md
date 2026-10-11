@@ -32,16 +32,17 @@ not evidence that a payment settled or that production has the matching code.
   and payload tests. Backend keys work; publishable keys and user JWTs fail.
 - GitHub CLI has write-capable access. QA-only credentials were encrypted in
   the `yrdly-qa` GitHub environment, restricted to `fix/audit-oct-2026`.
-- Linux CI passed the build (173 routes), typecheck, lint, 185 regression tests, 20 live OTP
+- Linux CI passed the build, typecheck, lint, 197 regression tests, seven live
+  paid-ticket reservation checks, 20 live OTP
   checks, seven live
   push authorization tests, 50 signed-in API/security checks, five browser
   scenarios and the existing smoke suite. The browser scenarios cover six
   protected routes at 375, 768 and 1440 pixels, wait for loaded content and
   assert visible navigation. Nineteen screenshots were captured; representative
   loaded mobile, tablet and desktop screenshots were visually reviewed.
-  Evidence: https://github.com/Yrdly-ng/yrdly-app/actions/runs/38118159001
+  Evidence: https://github.com/Yrdly-ng/yrdly-app/actions/runs/38123126286
 - Vercel access works. A separate `yrdly-app-qa` project was configured with the
-  isolated database and Payluk sandbox keys. It deployed revision `582f041e`
+  isolated database and Payluk sandbox keys. It deployed revision `8847e6e6`
   successfully at https://yrdly-app-qa.vercel.app. No production environment
   variables, scheduled jobs or application data were copied into this project.
   Public login, authenticated/unauthenticated checkout guards and unsigned
@@ -84,6 +85,10 @@ not evidence that a payment settled or that production has the matching code.
   balance excluded this ticket income. The event and tier were explicitly seeded;
   this does not prove paid-event creation, paid-checkout reservation races,
   automatic maturity claims or bank payout. Funded evidence is retained.
+- The new paid-ticket reservation flow passed all 17 funded sandbox checks on
+  `8847e6e6`: retry reused the same saved provider escrow, funding consumed the
+  reserved seat and issued one ticket, concurrent scans consumed it once, and
+  buyer confirmation settled the expected organizer proceeds and single 3% fee.
 - Four hosted webhook checks passed: a correctly signed unknown synthetic
   event, its replay, a tampered body and a missing signature. These were locally
   signed diagnostic requests, not callbacks delivered by Payluk.
@@ -285,7 +290,10 @@ not evidence that a payment settled or that production has the matching code.
     returned 404 HTML with no redirect. This establishes failure of that legacy
     sandbox URL, not a completed end-to-end booking test or failure of the live
     `payluk.ng` URL. Booking needs the documented inline Checkout SDK path and
-    a fresh funded booking verification. No fix is claimed for this finding.
+    a fresh funded booking verification. The current patch replaces that URL
+    with the inline SDK and explicit buyer verification/cancellation. Its review
+    shows the base payment, 3% Yrdly fee and exact total before opening payment.
+    Local checks pass; hosted/funded booking verification is still pending.
 24. **VERIFIED, High, by source and live QA database tests:** paid checkout
     previously created provider escrows before recording the order and did not
     reserve ticket capacity. New checkout atomically records its order and seats
@@ -298,9 +306,21 @@ not evidence that a payment settled or that production has the matching code.
     in-flight/unknown setup protection and unprivileged access denial. Local
     cancellation tests cover read failure, unknown deletion and paid-order
     protection. The event UI verifies payment before showing success and uses
-    safe cancellation on SDK close. Hosted verification of this reservation
-    change is pending; the earlier funded event evidence remains valid for its
-    recorded revision.
+    safe cancellation on SDK close. Full CI passed with 197 regression tests on
+    `5d59b5ce`, after fixing the clean-runner evidence directory in the harness.
+    All 17 hosted funded reservation checks passed on `8847e6e6`.
+25. **VERIFIED, High, by source and live QA database tests:** booking checkout
+    created provider escrows before recording an order, allowed a deposit type
+    override on a full-payment service, omitted collection of the application's
+    3% commission and kept proceeds outside the shared seller earnings ledger.
+    New checkouts lock and price the booking from its service/accepted quote,
+    record one common-ledger order before provider calls, claim setup once and
+    retain uncertain provider outcomes for reconciliation. Linked booking state
+    updates atomically with the escrow ledger; released net proceeds enter seller
+    earnings. Legacy payment rows remain distinguishable and require review.
+    Nine real database checks and 225 local unit regressions pass. The migrations
+    is installed on QA only. Actual commission and wallet settlement are pending
+    the new hosted funded booking test.
 
 The customer/permission lock, missing-customer, token-addressing, recovery and
 escrow-proceeds fixes passed full CI on `cbe1d7c4`. The hosted fresh-customer,
@@ -315,6 +335,9 @@ release corrections passed full CI with 185 regression tests, typecheck and lint
 (the same 19 existing warnings) on `582f041e`. That exact revision is ready on
 the dedicated QA deployment. The funded ticket flow passed all 16 checks on that
 revision; automatic maturity claim and bank payout remain unverified.
+The paid-ticket reservation batch then passed full CI on `5d59b5ce` and all 17
+funded hosted checks on `8847e6e6`. The booking ledger/SDK batch has passed local
+typecheck, lint and unit/database checks; its full CI and deployment are pending.
 
 The manual harness `qa-scripts/payluk-lifecycle.mjs` explicitly separates
 preparation, funding, delivery, dispute, reconciliation and refund operations.
@@ -331,12 +354,10 @@ clean up these funded records as though they were unpaid fixtures.
 - Complete funded split resolutions, booking purchase and settlement,
   automatic event maturity claims, and bank withdrawals. Marketplace full refund passed above;
   other refund paths remain separate requirements.
-  Funded catalog and ticket purchase/release passed above. Paid ticket initialization
-  retries and competing last-ticket payments also need explicit reservation tests;
-  free-ticket concurrency is verified separately and does not prove paid checkout
-  reservation behavior. Booking commission collection remains unverified after
-  the dashboard commission was removed; the legacy sandbox booking redirect
-  returned 404 and still needs correction.
+  Funded catalog and ticket purchase/release, paid initialization retries and
+  competing last-seat reservations passed above. Booking commission collection
+  remains unverified after the dashboard commission was removed; the new ledger
+  and SDK correction still needs a hosted funded test.
   An authenticated read-only request does not establish these outcomes.
   The sandbox callback is configured and an unpaid-escrow callback was accepted;
   Funded marketplace payment and delivery completion are verified above;
@@ -379,6 +400,8 @@ commit that file or `qa-seed-output.json`.
 ```sh
 node qa-scripts/seed.mjs
 node --test tests/audit-security.test.cjs
+node qa-scripts/ticket-reservation-regression.mjs
+node qa-scripts/booking-checkout-regression.mjs
 node scripts/qa-payluk-sandbox.mjs
 node qa-scripts/edge-regression.mjs
 node qa-scripts/otp-regression.mjs
