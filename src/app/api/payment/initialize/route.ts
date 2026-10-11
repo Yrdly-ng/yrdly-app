@@ -187,14 +187,8 @@ export async function POST(request: NextRequest) {
     }
 
 
-    // 2. Check if item is already sold or currently in an active checkout
-    if (itemData?.is_sold) {
-      return NextResponse.json(
-        { error: "Item is no longer available." },
-        { status: 400 }
-      );
-    }
-
+    // Resume the buyer's existing reservation before testing fresh stock.
+    // Reserving the last catalog unit intentionally makes in_stock false.
     let activeQuery = supabaseAdmin.from('escrow_transactions')
       .select('id,buyer_id,status,payluk_tx_ref,payluk_escrow_id,total_amount,creating_escrow_started_at,updated_at')
       .eq('item_id',itemId).eq('item_type',itemType)
@@ -233,6 +227,13 @@ export async function POST(request: NextRequest) {
         }
         return NextResponse.json({ error:'Checkout is in progress or awaiting reconciliation. No new charge was started.' },{ status:409 });
       }
+    }
+
+    if (itemData?.is_sold && !existingTxToResume) {
+      return NextResponse.json(
+        { error: "Item is no longer available." },
+        { status: 400 }
+      );
     }
 
     // 3. Check if user is buying their own item (using selected user_id)

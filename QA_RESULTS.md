@@ -32,16 +32,16 @@ not evidence that a payment settled or that production has the matching code.
   and payload tests. Backend keys work; publishable keys and user JWTs fail.
 - GitHub CLI has write-capable access. QA-only credentials were encrypted in
   the `yrdly-qa` GitHub environment, restricted to `fix/audit-oct-2026`.
-- Linux CI passed the build (173 routes), typecheck, lint, 171 regression tests, 20 live OTP
+- Linux CI passed the build (173 routes), typecheck, lint, 173 regression tests, 20 live OTP
   checks, seven live
   push authorization tests, 50 signed-in API/security checks, five browser
   scenarios and the existing smoke suite. The browser scenarios cover six
   protected routes at 375, 768 and 1440 pixels, wait for loaded content and
   assert visible navigation. Nineteen screenshots were captured; representative
   loaded mobile, tablet and desktop screenshots were visually reviewed.
-  Evidence: https://github.com/Yrdly-ng/yrdly-app/actions/runs/38115927683
+  Evidence: https://github.com/Yrdly-ng/yrdly-app/actions/runs/38116705899
 - Vercel access works. A separate `yrdly-app-qa` project was configured with the
-  isolated database and Payluk sandbox keys. It deployed revision `d06c83ab`
+  isolated database and Payluk sandbox keys. It deployed revision `e17d9755`
   successfully at https://yrdly-app-qa.vercel.app. No production environment
   variables, scheduled jobs or application data were copied into this project.
   Public login, authenticated/unauthenticated checkout guards and unsigned
@@ -231,8 +231,17 @@ not evidence that a payment settled or that production has the matching code.
 19. **VERIFIED by local reproduction:** marketplace commission rounded to whole
     naira. A price of 1,234.56 produced commission 37 instead of 37.04. Commission
     and buyer total now round to two decimal places. Two fractional-price route
-    regressions pass, including 2,001.11 and 1,234.56. Hosted fractional-price
-    checkout verification remains pending deployment of this change.
+    regressions pass, including 2,001.11 and 1,234.56. Hosted revision `e17d9755`
+    initialized the 1,234.56 catalog purchase at the correct buyer total of
+    1,271.60. Provider readback and funded settlement remain pending below.
+20. **VERIFIED, High, by hosted checkout and local reproduction:** reserving the
+    last catalog unit correctly sets quantity to zero and `in_stock` to false,
+    but the same buyer's next initialization returned HTTP 400 before checking
+    their existing pending escrow. They could not resume checkout. The route
+    now checks the caller's existing reservation before fresh availability.
+    Three regressions cover unpaid retry, funded reconciliation and rejection
+    of a new buyer when stock is exhausted. Local tests pass; hosted retry and
+    funded catalog settlement remain pending deployment of this correction.
 
 The customer/permission lock, missing-customer, token-addressing, recovery and
 escrow-proceeds fixes passed full CI on `cbe1d7c4`. The hosted fresh-customer,
@@ -240,9 +249,10 @@ funded-payment, callback/replay, delivery and seller-proceeds checks passed.
 The refund and booking fixes passed full CI with 171 tests on `d06c83ab`, and
 that revision is ready on the dedicated QA deployment. The dashboard commission
 correction passed the new funded merchant-ledger assertion. The funded full
-refund passed all 16 checks. The additional commission precision change passed
-173 local tests, typecheck and lint (the same 19 existing warnings); its new
-full CI/deployment verification remains pending.
+refund passed all 16 checks. Commission precision passed full CI with 173 tests
+on `e17d9755`, now ready on QA. The catalog retry correction passed 176 local
+tests, typecheck and lint (the same 19 existing warnings); its full CI and hosted
+verification remain pending.
 
 The manual harness `qa-scripts/payluk-lifecycle.mjs` explicitly separates
 preparation, funding, delivery, dispute, reconciliation and refund operations.

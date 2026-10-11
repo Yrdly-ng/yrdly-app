@@ -536,6 +536,44 @@ test('checkout retry reconciles a funded prior escrow without cancelling or char
   assert.equal(writes,0);
 });
 
+for (const scenario of ['pending', 'funded', 'new-buyer']) {
+  test(`last catalog item checkout retry ${scenario} respects the existing reservation`, async () => {
+    let applied = 0, verified = 0;
+    const { POST } = load('src/app/api/payment/initialize/route.ts', {
+      '@/lib/supabase-server': { getAuthenticatedUser: async () => ({ data: { user: { id: 'buyer', email: 'buyer@example.test' } } }) },
+      '@/lib/user-suspension': { isUserSuspendedOrBanned: async () => ({ suspended: false }) },
+      '@/lib/payluk-onboarding': { getPaylukCustomerId: async id => { assert.equal(id, 'buyer'); return 'provider-buyer'; } },
+      '@/lib/escrow-payment': { applyEscrowPayment: async id => { assert.equal(id, 'prior'); applied++; } },
+      '@/lib/payment-reconciliation': {},
+      '@/lib/payluk-service': { PaylukService: {
+        verifyEscrow: async token => { verified++; assert.equal(token, 'owned-token'); return { status: scenario === 'funded' ? 'ONGOING' : 'PENDING', state: 'AWAITING_PAYMENT' }; },
+        createEscrow: () => { throw new Error('Retry must not create another escrow'); },
+      } },
+      '@/lib/supabase-admin': { supabaseAdmin: {
+        rpc: async name => { assert.equal(name, 'consume_rate_limit'); return { data: true }; },
+        from: table => {
+          const data = table === 'catalog_items' ? { id: 'item', in_stock: false, price: 1234.56, title: 'Last item', business_id: 'business' }
+            : table === 'businesses' ? { owner_id: 'seller' }
+            : scenario === 'new-buyer' ? [] : [{ id: 'prior', buyer_id: 'buyer', status: 'pending', payluk_tx_ref: 'owned-token', payluk_escrow_id: 'owned-escrow', total_amount: 1271.60 }];
+          const query = chain({ data });
+          query.insert = query.update = () => { throw new Error('Retry must preserve the existing reservation'); };
+          return query;
+        },
+      } },
+    });
+    const response = await POST(new Request('https://qa.invalid', { method: 'POST', body: JSON.stringify({ itemId: 'item', itemType: 'catalog_item', buyerId: 'buyer', sellerId: 'seller', price: 1 }) }));
+    assert.equal(response.status, scenario === 'new-buyer' ? 400 : 200);
+    if (scenario !== 'new-buyer') {
+      const result = await response.json();
+      assert.equal(result.transactionId, 'prior'); assert.equal(result.totalAmount, 1271.60);
+      if (scenario === 'pending') assert.equal(result.paylukPaymentToken, 'owned-token');
+      else assert.equal(result.alreadyPaid, true);
+    }
+    assert.equal(verified, scenario === 'new-buyer' ? 0 : 1);
+    assert.equal(applied, scenario === 'funded' ? 1 : 0);
+  });
+}
+
 test('late payment is held for reconciliation instead of reporting success', async () => {
   const { applyEscrowPayment } = load('src/lib/escrow-payment.ts', {
     './supabase-admin': { supabaseAdmin: { rpc: async () => ({ data:'review' }) } },

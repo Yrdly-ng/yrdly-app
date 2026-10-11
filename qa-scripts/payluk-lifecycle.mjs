@@ -14,8 +14,8 @@ assert.ok(env.NEXT_PUBLIC_PAYLUK_PUBLIC_KEY?.startsWith('pk_test_'));
 const base = 'https://yrdly-app-qa.vercel.app';
 const checkout = 'https://staging.live.payluk.ng';
 const scenario = process.argv[3] || 'default';
-assert.ok(['default', 'commission'].includes(scenario), 'Use default or commission evidence');
-const artifactPath = `.qa-artifacts/payluk-lifecycle${scenario === 'commission' ? '-commission' : ''}.json`;
+assert.ok(['default', 'commission', 'catalog'].includes(scenario), 'Use default, commission or catalog evidence');
+const artifactPath = `.qa-artifacts/payluk-lifecycle${scenario === 'default' ? '' : `-${scenario}`}.json`;
 const admin = createAdminClient(env);
 const clients = [];
 const actors = {};
@@ -24,10 +24,10 @@ try { state = JSON.parse(await readFile(artifactPath, 'utf8')); }
 catch (error) { if (error.code !== 'ENOENT') throw error; }
 if (!state) {
   if (mode === 'new-sale') {
-    assert.equal(scenario, 'commission');
+    assert.ok(['commission', 'catalog'].includes(scenario));
     const source = JSON.parse(await readFile('.qa-artifacts/payluk-lifecycle-completed.json', 'utf8'));
     assert.equal(source.projectRef, projectRef); assert.equal(source.qaPrefix, QA_PREFIX);
-    state = { projectRef, environment: 'sandbox', qaPrefix: QA_PREFIX, kind: 'commission', startedAt: new Date().toISOString(), users: source.users, passwords: source.passwords, listingId: randomUUID(), results: [] };
+    state = { projectRef, environment: 'sandbox', qaPrefix: QA_PREFIX, kind: scenario, startedAt: new Date().toISOString(), users: source.users, passwords: source.passwords, listingId: randomUUID(), ...(scenario === 'catalog' ? { businessId: randomUUID() } : {}), results: [] };
   } else {
     assert.equal(mode, 'prepare', 'Prepare an owned unpaid fixture first');
     const source = JSON.parse(await readFile('.qa-artifacts/payluk-checkout-fresh.json', 'utf8'));
@@ -40,6 +40,10 @@ assert.equal(state.projectRef, projectRef);
 assert.equal(state.environment, 'sandbox');
 assert.equal(state.qaPrefix, QA_PREFIX);
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
+const principal = state.kind === 'catalog' ? 1234.56 : 2500;
+const commission = Math.round(principal * 0.03 * 100) / 100;
+const total = Math.round((principal + commission) * 100) / 100;
+const itemType = state.kind === 'catalog' ? 'catalog_item' : 'post';
 const ok = (r, label) => { if (r.error) throw new Error(`${label}: ${r.error.code || r.error.status || 'failed'}`); return r.data; };
 async function save() { await writeFile(artifactPath, JSON.stringify(state, null, 2), { mode: 0o600 }); }
 async function check(name, run) {
@@ -98,13 +102,23 @@ try {
     assert.equal(transaction.buyer_id, state.users.buyer); assert.equal(transaction.seller_id, state.users.seller); assert.equal(transaction.item_id, state.listingId); assert.equal(transaction.payment_provider, 'payluk');
   } else assert.ok(['new-refund', 'new-sale'].includes(mode), 'Resume the pending new checkout first');
   if (mode === 'new-sale') {
-    assert.equal(state.kind, 'commission');
-    const existing = ok(await admin.from('posts').select('user_id').eq('id', state.listingId).maybeSingle(), 'Check owned commission listing');
-    if (existing) assert.equal(existing.user_id, state.users.seller);
-    else ok(await admin.from('posts').insert({ id: state.listingId, user_id: state.users.seller, author_name: `${QA_PREFIX} Commission Seller`, author_image: '', category: 'For Sale', sub_category: 'Other', title: `${QA_PREFIX} canonical commission test`, text: `${QA_PREFIX} synthetic test-bank funds only`, price: 2500, condition: 'New', image_urls: [], visibility: 'PUBLIC', moderation_status: 'approved', is_sold: false, liked_by: [], comment_count: 0, timestamp: new Date().toISOString() }), 'Create owned commission listing');
+    assert.ok(['commission', 'catalog'].includes(state.kind));
+    await save(); // Persist owned fixture IDs before any creation or provider call.
+    if (state.kind === 'catalog') {
+      const business = ok(await admin.from('businesses').select('owner_id').eq('id', state.businessId).maybeSingle(), 'Check owned business');
+      if (business) assert.equal(business.owner_id, state.users.seller);
+      else ok(await admin.from('businesses').insert({ id: state.businessId, owner_id: state.users.seller, name: `${QA_PREFIX} Catalog Settlement`, category: 'Other', location: { state: 'Lagos', address: `${QA_PREFIX} synthetic test fixture` }, is_active: true, moderation_status: 'approved' }), 'Create owned business');
+      const existing = ok(await admin.from('catalog_items').select('business_id').eq('id', state.listingId).maybeSingle(), 'Check owned catalog item');
+      if (existing) assert.equal(existing.business_id, state.businessId);
+      else ok(await admin.from('catalog_items').insert({ id: state.listingId, business_id: state.businessId, title: `${QA_PREFIX} fractional-price last catalog item`, price: principal, quantity: 1, in_stock: true, moderation_status: 'approved' }), 'Create owned catalog item');
+    } else {
+      const existing = ok(await admin.from('posts').select('user_id').eq('id', state.listingId).maybeSingle(), 'Check owned commission listing');
+      if (existing) assert.equal(existing.user_id, state.users.seller);
+      else ok(await admin.from('posts').insert({ id: state.listingId, user_id: state.users.seller, author_name: `${QA_PREFIX} Commission Seller`, author_image: '', category: 'For Sale', sub_category: 'Other', title: `${QA_PREFIX} canonical commission test`, text: `${QA_PREFIX} synthetic test-bank funds only`, price: principal, condition: 'New', image_urls: [], visibility: 'PUBLIC', moderation_status: 'approved', is_sold: false, liked_by: [], comment_count: 0, timestamp: new Date().toISOString() }), 'Create owned commission listing');
+    }
     if (!state.payment) {
       console.log('Reserving a fresh Payluk rate window for canonical commission checkout'); await pause(65000);
-      const r = await api('buyer', '/api/payment/initialize', { itemId: state.listingId, buyerId: state.users.buyer, sellerId: state.users.seller, price: 1 }); assert.equal(r.status, 200); assert.equal(r.body.success, true); state.payment = r.body; await save();
+      const r = await api('buyer', '/api/payment/initialize', { itemId: state.listingId, itemType, buyerId: state.users.buyer, sellerId: state.users.seller, price: 1 }); assert.equal(r.status, 200); assert.equal(r.body.success, true); state.payment = r.body; await save();
     }
   }
   if (mode === 'new-refund') {
@@ -129,14 +143,14 @@ try {
     });
     await check('fresh checkout retry reuses one unpaid escrow', async () => {
       console.log('Reserving a fresh Payluk rate window for hosted checkout'); await pause(65000);
-      const r = await api('buyer', '/api/payment/initialize', { itemId: state.listingId, buyerId: state.users.buyer, sellerId: state.users.seller, price: 1 });
+      const r = await api('buyer', '/api/payment/initialize', { itemId: state.listingId, itemType, buyerId: state.users.buyer, sellerId: state.users.seller, price: 1 });
       assert.equal(r.status, 200);
       for (const key of ['transactionId', 'paylukPaymentToken', 'paylukEscrowId']) assert.equal(r.body[key], state.payment[key]);
       assert.equal(ok(await admin.from('escrow_transactions').select('id').eq('item_id', state.listingId), 'Read reservations').length, 1);
     });
     await check('unpaid provider price, commission and seller proceeds match', async () => {
-      const r = await remote(); assert.equal(r.state, 'AWAITING_PAYMENT'); assert.equal(r.amount, 2500); assert.equal(r.additionalFee, 75); assert.equal(state.payment.totalAmount, 2575);
-      if (state.kind === 'commission') assert.equal(r.fee, 50, 'Dashboard merchant commission must be zero for the canonical app fee');
+      const r = await remote(); assert.equal(r.state, 'AWAITING_PAYMENT'); assert.equal(r.amount, principal); assert.equal(r.additionalFee, commission); assert.equal(state.payment.totalAmount, total);
+      if (['commission', 'catalog'].includes(state.kind)) assert.equal(r.fee, Math.round(principal * 0.02 * 100) / 100, 'Dashboard merchant commission must be zero for the canonical app fee');
       assert.equal(transaction.seller_amount, Math.round((r.amount - r.fee) * 100) / 100); state.unpaidEscrow = r;
     });
     await check('wallet baselines recorded without deposits', async () => {
@@ -177,7 +191,10 @@ try {
       let row;
       do { row = await tx(); if (row.status === 'paid') break; await pause(3000); } while (Date.now() < until);
       assert.equal(row.status, 'paid', 'Provider callback has not applied payment');
-      assert.equal(ok(await admin.from('posts').select('is_sold').eq('id', state.listingId).single(), 'Read listing').is_sold, true);
+      if (state.kind === 'catalog') {
+        const item = ok(await admin.from('catalog_items').select('quantity,in_stock').eq('id', state.listingId).single(), 'Read catalog inventory');
+        assert.equal(item.quantity, 0); assert.equal(item.in_stock, false);
+      } else assert.equal(ok(await admin.from('posts').select('is_sold').eq('id', state.listingId).single(), 'Read listing').is_sold, true);
       state.paidTransaction = row;
     });
     await check('signed funding replays preserve one payment and notification', async () => {
@@ -215,13 +232,13 @@ try {
       assert.equal(r.body.pendingPayouts, 0); assert.equal(r.body.completedPayouts, 0);
       const request = await api('seller', '/api/seller/payouts/request', { amount: 1000 }); assert.equal(request.status, 400); assert.equal(request.body.error, 'NO_ACTIVE_ACCOUNT');
     });
-    if (state.kind === 'commission') await check('merchant ledger receives exactly one canonical 3% commission', async () => {
+    if (['commission', 'catalog'].includes(state.kind)) await check('merchant ledger receives exactly one canonical 3% commission', async () => {
       const ledger = await provider('/v1/merchant/transactions?' + new URLSearchParams({ fromDate: state.startedAt, toDate: new Date().toISOString() })); assert.ok(Array.isArray(ledger));
       const own = ledger.filter(row => JSON.stringify(row.escrowDetails).includes(state.payment.paylukPaymentToken));
       state.merchantSettlement = own;
-      assert.equal(own.filter(row => row.status === 'success' && row.transactionType === 'delivery').reduce((sum, row) => sum + row.amount, 0), 75);
+      assert.equal(own.filter(row => row.status === 'success' && row.transactionType === 'delivery').reduce((sum, row) => sum + row.amount, 0), commission);
       assert.equal(own.filter(row => row.status === 'success' && row.transactionType === 'commission').reduce((sum, row) => sum + row.amount, 0), 0);
-      assert.equal(own.filter(row => row.status === 'success').reduce((sum, row) => sum + row.amount, 0), 75);
+      assert.equal(own.filter(row => row.status === 'success').reduce((sum, row) => sum + row.amount, 0), commission);
     });
   }
   if (['dispute', 'resolve', 'reconcile'].includes(mode)) {
