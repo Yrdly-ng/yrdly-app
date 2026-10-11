@@ -157,11 +157,21 @@ BEGIN
  IF (SELECT sum(amount) FROM public.payout_requests WHERE seller_id=actor AND status='pending') <> 10000 THEN RAISE EXCEPTION 'Payout reservation total wrong'; END IF;
  results := results || '[{"test":"payout provider isolation and pending reservations","result":"PASS","reserved":10000}]'::jsonb;
  UPDATE public.payout_requests SET status='processing',transaction_reference='audit-rollback-payout' WHERE id=payout;
- applied := public.requeue_seller_payout(payout,actor,10000);
+ applied := public.requeue_seller_payout(payout,actor,10000,'audit-rollback-payout','processing');
  IF NOT applied OR (SELECT status FROM public.payout_requests WHERE id=payout) <> 'pending' THEN RAISE EXCEPTION 'Requeue counted its own reservation twice'; END IF;
  UPDATE public.payout_requests SET status='failed',payment_provider=NULL WHERE id=payout;
- IF public.requeue_seller_payout(payout,actor,10000) THEN RAISE EXCEPTION 'Unknown provider requeued'; END IF;
+ IF public.requeue_seller_payout(payout,actor,10000,'audit-rollback-payout','failed') THEN RAISE EXCEPTION 'Unknown provider requeued'; END IF;
  results := results || '[{"test":"requeue excludes own reservation and rejects unknown provider","result":"PASS"}]'::jsonb;
+ UPDATE public.payout_requests SET payment_provider='payluk',transaction_reference='attempt-new',execution_stage='submitted' WHERE id=payout;
+ IF public.requeue_seller_payout(payout,actor,10000,'audit-rollback-payout','failed')
+ OR public.requeue_seller_payout(payout,actor,10000,'attempt-new','processing') THEN
+  RAISE EXCEPTION 'Stale retry proof requeued a different attempt';
+ END IF;
+ applied := public.requeue_seller_payout(payout,actor,10000,'attempt-new','failed');
+ IF NOT applied OR public.requeue_seller_payout(payout,actor,10000,'attempt-new','failed') THEN
+  RAISE EXCEPTION 'Concurrent retries did not admit exactly one reservation';
+ END IF;
+ results := results || '[{"test":"payout retry compares attempt reference and status atomically","result":"PASS"}]'::jsonb;
 
  EXECUTE 'SET LOCAL ROLE authenticated';
  PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',actor,'role','authenticated')::text,true);
@@ -179,7 +189,7 @@ BEGIN
  'public.apply_escrow_refund('''||tx||'''::uuid,''audit'',100)',
  'public.finish_dispute_resolution('''||operation||'''::uuid,''audit'')',
  'public.reserve_seller_payout('''||actor||'''::uuid,'''||account||'''::uuid,1,1,NULL)',
- 'public.requeue_seller_payout('''||payout||'''::uuid,'''||actor||'''::uuid,1)'
+ 'public.requeue_seller_payout('''||payout||'''::uuid,'''||actor||'''::uuid,1,''attempt-new'',''failed'')'
  ] LOOP
   denied := false;
   BEGIN EXECUTE 'SELECT '||outcome; EXCEPTION WHEN insufficient_privilege THEN denied := true; END;

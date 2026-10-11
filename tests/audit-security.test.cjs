@@ -294,6 +294,138 @@ test('legacy payout with unknown provider is blocked before any provider request
   assert.equal(response.status,409);
 });
 
+function payoutHarness({ verifyStatus = 'success', walletBalance = 2500, earnings = 2500, otherReserved = 0, lostClaim = false, intentError = false } = {}) {
+  const calls = [], updates = [];
+  let payout;
+  const account = { id:'bank',is_active:true,verification_status:'verified',account_updated_at:null,account_type:'bank_account',
+    account_details:{bank_code:'001',account_number:'0000000000',account_name:'QA Seller'} };
+  const admin = {
+    from: table => {
+      if (table === 'seller_accounts') return chain({data:account});
+      if (table === 'escrow_transactions') return chain({data:[{seller_amount:earnings,status:'completed',item_type:'post',payment_provider:'payluk'}]});
+      assert.equal(table,'payout_requests');
+      const filters = []; let payload, single = false;
+      const q = { select:()=>q, eq:(key,value)=>{filters.push([key,value]);return q;},
+        single:()=>{single=true;return q;},maybeSingle:()=>{single=true;return q;},
+        update:value=>{payload=value;return q;},
+        then:(resolve,reject)=>Promise.resolve().then(()=>{
+          if (payload) {
+            if (!payout || filters.some(([key,value])=>payout[key]!==value) || (lostClaim && payload.status==='processing')) return {data:single?null:[]};
+            Object.assign(payout,payload);updates.push({...payload});return {data:single?{id:payout.id}:[{id:payout.id}]};
+          }
+          return {data:single?payout&&{...payout,seller_account:account}:[...(payout?[{amount:payout.amount,status:payout.status}]:[]),...(otherReserved?[{amount:otherReserved,status:'processing'}]:[])]};
+        }).then(resolve,reject) };
+      return q;
+    },
+    rpc:async (name,args)=>{
+      assert.equal(name,'reserve_seller_payout');assert.equal(args.p_amount,1200);
+      payout={id:'owned-payout',seller_id:'seller',amount:1200,status:'pending'};return {data:payout.id};
+    },
+  };
+  const {PaylukService} = load('src/lib/payluk-service.ts',{'./payluk-onboarding':{},fetch:async (url,options)=>{
+    calls.push(new URL(url).pathname);
+    if (url.endsWith('/wallet')) return Response.json({status:200,data:{mainBalance:walletBalance}});
+    if (url.endsWith('/create-intent')) {
+      if (intentError) return Response.json({status:429,message:'Too many request'},{status:429});
+      const input=JSON.parse(options.body);return Response.json({status:200,data:{amount:input.amount,fee:10.75,reference:input.reference}});
+    }
+    assert.ok(url.endsWith('/verify'));assert.equal(payout.execution_stage,'submitted');
+    assert.equal(payout.transaction_reference,JSON.parse(options.body).reference);
+    if (verifyStatus==='timeout') throw new Error('Verify response lost');
+    return Response.json({status:200,data:{status:verifyStatus}});
+  }});
+  const {PayoutService} = load('src/lib/payout-service.ts',{
+    './supabase-admin':{supabaseAdmin:admin},'./payluk-service':{PaylukService},
+    './payluk-onboarding':{getPaylukCustomerId:async()=>{calls.push('/v1/customer/get/validated');return 'customer';}},
+    './server-notification-service':{NotificationService:{createPayoutProcessedNotification:async()=>{},createPayoutFailedNotification:async()=>{}}},
+  });
+  return {PayoutService,admin,calls,updates,account,get payout(){return payout;}};
+}
+
+test('one hosted withdrawal stays within seven provider calls and reserves before execution',async()=>{
+  const h=payoutHarness();
+  const {POST}=load('src/app/api/seller/payouts/request/route.ts',{
+    '@/lib/supabase-server':{getAuthenticatedUser:async()=>({data:{user:{id:'seller'}}})},
+    '@/lib/supabase-admin':{supabaseAdmin:h.admin},'@/lib/payout-service':{PayoutService:h.PayoutService},
+  });
+  const response=await POST(new Request('https://qa.invalid/api/seller/payouts/request',{method:'POST',body:JSON.stringify({amount:1200})}));
+  assert.equal(response.status,200);assert.equal(h.payout.status,'completed');
+  assert.equal(h.calls.length,7);assert.equal(h.calls.filter(x=>x.endsWith('/wallet')).length,2);
+  assert.equal(h.calls.filter(x=>x.endsWith('/verify')).length,1);
+  assert.equal(h.payout.amount,1200);const body=await response.json();
+  assert.equal(body.amountSentToBank,1189.25);assert.equal(body.fee,10.75);assert.equal(body.totalDebited,1200);
+});
+
+for(const status of ['pending','timeout']) test(`payout ${status} retains its submitted marker and reserved balance`,async()=>{
+  const h=payoutHarness({verifyStatus:status});const id=await h.PayoutService.reservePayout('seller','bank',1200);
+  assert.equal((await h.PayoutService.processPayout(id)).success,false);
+  assert.equal(h.payout.status,'processing');assert.equal(h.payout.execution_stage,'submitted');
+  assert.equal((await h.PayoutService.getSellerLedgerBalance('seller')).pendingPayouts,1200);
+  const before=h.calls.length;await h.PayoutService.processPayout(id);assert.equal(h.calls.length,before,'CAS rejects a second worker before provider calls');
+});
+
+test('withdrawal execution retains other reservations and rejects insufficient provider funds before staging',async()=>{
+  const h=payoutHarness();const id=await h.PayoutService.reservePayout('seller','bank',1200);
+  const {PaylukService}=load('src/lib/payluk-service.ts',{'./payluk-onboarding':{},fetch:async url=>{
+    assert.ok(url.endsWith('/wallet'),'No intent may be staged with insufficient wallet funds');
+    return Response.json({status:200,data:{mainBalance:1199}});
+  }});
+  // The public executor independently checks wallet and the supplied earned limit.
+  assert.equal((await PaylukService.withdrawToBank({sellerPaylukCustomerId:'customer',amount:1200,bankCode:'001',accountNumber:'0000000000',reference:id,yrdlyAvailableBalance:2500,onIntentReady:async()=>{throw new Error('No execution allowed');}})).outcome,'failed');
+  const reserved=payoutHarness({earnings:2500,otherReserved:1400});
+  await assert.rejects(reserved.PayoutService.reservePayout('seller','bank',1200),/INSUFFICIENT_BALANCE/);
+});
+
+test('a failed payout retry uses a fresh intent reference',async()=>{
+  const h=payoutHarness({verifyStatus:'failed'});const id=await h.PayoutService.reservePayout('seller','bank',1200);
+  await h.PayoutService.processPayout(id);const first=h.payout.transaction_reference;
+  h.payout.status='pending';await h.PayoutService.processPayout(id);
+  assert.notEqual(h.payout.transaction_reference,first);assert.equal(h.payout.status,'failed');
+});
+
+test('a provider limit before intent creation preserves proof that verification was never sent',async()=>{
+  const h=payoutHarness({intentError:true});const id=await h.PayoutService.reservePayout('seller','bank',1200);
+  await h.PayoutService.processPayout(id);
+  assert.equal(h.payout.status,'failed');assert.equal(h.payout.execution_stage,'preparing');
+  assert.equal(h.calls.some(x=>x.endsWith('/verify')),false);
+});
+
+test('a worker that loses the payout claim makes no provider calls',async()=>{
+  const h=payoutHarness({lostClaim:true});const id=await h.PayoutService.reservePayout('seller','bank',1200);
+  const before=h.calls.length;await h.PayoutService.processPayout(id);assert.equal(h.calls.length,before);
+});
+
+test('execution cannot spend funds reserved by another payout after reservation',async()=>{
+  const h=payoutHarness();const id=await h.PayoutService.reservePayout('seller','bank',1200);
+  h.PayoutService.getSellerLedgerBalance=async()=>({totalEarnings:2500,completedPayouts:0,pendingPayouts:2600,availableBalance:0});
+  assert.equal((await h.PayoutService.processPayout(id)).success,false);
+  assert.equal(h.payout.status,'failed');assert.equal(h.payout.execution_stage,'preparing');
+  assert.equal(h.calls.some(x=>x.endsWith('/create-intent')),false);
+});
+
+for(const scenario of ['preparing-failed','preparing-processing','submitted-missing','legacy-missing','provider-failed','provider-success','stale-attempt']) {
+  test(`payout retry requires durable attempt proof: ${scenario}`,async()=>{
+    let history=0,requeues=0,executions=0;
+    const payout={id:'payout',seller_id:'seller',amount:1200,status:scenario==='preparing-processing'?'processing':'failed',
+      payment_provider:'payluk',transaction_reference:'observed-attempt',execution_stage:scenario.startsWith('preparing')?'preparing':scenario.startsWith('legacy')?null:'submitted'};
+    const {POST}=load('src/app/api/seller/payouts/[payoutId]/retry/route.ts',{
+      '@/lib/supabase-server':{getAuthenticatedUser:async()=>({data:{user:{id:'seller'}}})},
+      '@/lib/supabase-admin':{supabaseAdmin:{from:()=>{const q=chain({data:payout});q.update=()=>chain({data:[{id:payout.id}]});return q;},rpc:async(name,args)=>{
+        requeues++;assert.equal(name,'requeue_seller_payout');assert.equal(args.p_expected_reference,'observed-attempt');assert.equal(args.p_expected_status,payout.status);
+        return {data:scenario!=='stale-attempt'};
+      }}},
+      '@/lib/payluk-service':{PaylukService:{getWithdrawalStatus:async()=>{history++;return scenario==='provider-success'?'success':['provider-failed','stale-attempt'].includes(scenario)?'failed':'pending';}}},
+      '@/lib/payluk-onboarding':{getPaylukCustomerId:async()=> 'customer'},
+      '@/lib/payout-service':{PayoutService:{getSellerBalance:async()=>({availableBalance:2500,pendingPayouts:0}),processPayout:async()=>{executions++;return {success:true};}}},
+    });
+    const response=await POST(new Request('https://qa.invalid',{method:'POST',headers:{authorization:'Bearer test'}}),{params:Promise.resolve({payoutId:'payout'})});
+    assert.equal(history,scenario==='preparing-failed'?0:1);
+    const mayExecute=['preparing-failed','provider-failed'].includes(scenario);
+    assert.equal(executions,mayExecute?1:0);assert.equal(requeues,mayExecute||scenario==='stale-attempt'?1:0);
+    assert.equal(response.status,mayExecute||scenario==='provider-success'?200:409);
+  });
+}
+
 test('authenticated GET sends no request body', async () => {
   const { authenticatedFetch } = load('src/lib/authenticated-fetch.ts', {
     './supabase':{ supabase:{ auth:{ getSession:async ()=>({ data:{ session:{ access_token:'test-token' } } }) } } },

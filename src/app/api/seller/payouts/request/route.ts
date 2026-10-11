@@ -46,21 +46,18 @@ export async function POST(request: NextRequest) {
     const accountError = payoutAccountError(sellerAccount);
     if (accountError) return NextResponse.json({ error: accountError }, { status: 403 });
 
-    // Validate requested amount against server-computed seller available balance
-    const currentBalance = await PayoutService.getSellerBalance(user.id);
-    if (amount > currentBalance.availableBalance) {
-      return NextResponse.json(
-        {
-          error: 'INSUFFICIENT_BALANCE',
-          message: `Requested withdrawal amount (₦${amount.toLocaleString()}) exceeds available balance (₦${currentBalance.availableBalance.toLocaleString()}).`,
-          requestedAmount: amount,
-          availableBalance: currentBalance.availableBalance,
-        },
-        { status: 400 }
-      );
+    // reservePayout checks provider and ledger availability once, then the SQL
+    // reservation rechecks concurrent requests under the seller lock.
+    let payoutId: string;
+    try {
+      payoutId = await PayoutService.reservePayout(user.id, sellerAccount.id, amount);
+    } catch (error) {
+      if (error instanceof Error && error.message === 'INSUFFICIENT_BALANCE') {
+        return NextResponse.json({ error: 'INSUFFICIENT_BALANCE', message: 'Requested amount exceeds your available balance. Refresh your balance and retry.' }, { status: 400 });
+      }
+      throw error;
     }
-
-    const payout = { id:await PayoutService.reservePayout(user.id,sellerAccount.id,amount) };
+    const payout = { id: payoutId };
 
     // Process payout immediately
     let processResult: {

@@ -5,19 +5,20 @@ not evidence that a payment settled or that production has the matching code.
 
 ## Current verification checkpoint
 
-Latest fully green CI is `fabe5458` / run `38161936258`: 263 unit tests,
+Latest fully green CI is `749a1279` / run `38165370443`: 266 unit tests,
 seven paid-ticket DB checks, nine booking DB checks, nine split-allocation DB
 checks, 11 minimum-price DB checks, seven browser scenarios, build, typecheck,
 lint, OTP/push/API security and smoke. The matching dedicated QA deployment is
-READY at https://yrdly-app-qa.vercel.app. Build output lists 174 application routes.
-Evidence: https://github.com/Yrdly-ng/yrdly-app/actions/runs/38161936258
+READY at https://yrdly-app-qa.vercel.app. The latest build lists 176 routes,
+including the generated not-found route (177 raw app-manifest entries).
+Evidence: https://github.com/Yrdly-ng/yrdly-app/actions/runs/38165370443
 
 Funded booking passed all 15 checks: principal 1,234.56, buyer 3% 37.04,
 total 1,271.60, Payluk 24.69, seller 1,209.87, merchant exactly 37.04.
 Real callbacks synchronize both booking ledgers; retries and delivery are
 idempotent. Safe evidence: `payluk-booking-summary.json`. Funded records retained.
 
-Current batch: 263 unit tests, 11 real minimum-price database checks,
+Current price/bank-code batch: 266 unit tests, 11 real minimum-price database checks,
 nine split-allocation database checks, nine booking DB checks, seven ticket DB
 checks and 24 rollback assertions PASS. Typecheck/lint/build PASS (18 pre-existing
 lint warnings). The approved NGN 1,200 minimum is enforced for paid listings,
@@ -25,7 +26,7 @@ catalog, tickets and booking payments/deposits, preserving free flows.
 Both new migrations are applied ONLY to isolated QA. Responsive minimum-price
 checks passed at 375, 768 and 1440 pixels; nine screenshots were captured and
 representative listing, deposit and ticket screenshots were visually inspected.
-Hosted funded split verification passed all 16 checks on this exact revision:
+Hosted funded split verification passed all 16 checks on `fabe5458`:
 gross ruling 1,250/1,250; Payluk pool 2,450; actual seller credit 1,225 and buyer
 credit 1,300, including the refundable 75 additional fee. Admin retries and signed
 split-event replays preserved one settlement and a sold listing. An initial
@@ -37,16 +38,33 @@ evidence comes from Linux CI.
 Five real bank preview checks passed: bank-list code, controlled-beneficiary
 verification, NGN 1,000 net quoted fee 10.75, below-net-minimum rejection, and
 NGN 1,010.75 debit budget fitting NGN 1,000+10.75. Only unpaid intents staged;
-NO outbound bank transfer executed. Beneficiary details are retained privately.
+Those preview checks executed no payout. Subsequent provider-test withdrawal
+evidence is reported separately below. Beneficiary details are retained privately.
 
 Subsequent hosted bank linking reproduced a separate blocker: the current
 provider-list code was rewritten by the application, and Payluk returned
 `Unknown bank code: 100004`; account setup returned HTTP 422. Account resolution,
 preview and withdrawal now preserve provider bank codes verbatim. Three new
 regressions pass (266 total unit tests); typecheck, lint and build also pass
-(18 existing lint warnings, 174 application routes). Matching hosted
-verification and the single-attempt sandbox payout remain pending for this
-follow-up. No bank details or credentials were added to tracked files.
+(18 existing lint warnings). Full CI passed and the matching QA deployment is
+READY. The corrected live-bank code reached Payluk, which then reported its
+three-per-day sandbox cap on live-bank name enquiries. The provider explicitly
+suggested test code `001`; a separate enquiry resolved a synthetic beneficiary.
+Authenticated linking and preview with that beneficiary passed. The first payout
+failed before verification: HTTP 429 at create-intent. The database row is failed,
+its provider history is empty and the wallet is unchanged. This exposed redundant
+provider lookups: a normal hosted request consumed approximately 12 provider calls
+against Payluk's documented 10/minute key limit. The follow-up reduces the normal
+path to seven, records a durable pre-submission/submitted marker, uses fresh intent
+references for retries, and compares the observed reference/status under the
+seller lock before requeueing. Legacy or submitted uncertainty remains blocked;
+missing history alone never authorizes a retry. The new migration was applied only
+to isolated QA; all 25 rollback database assertions passed. Matching code/build
+verification and one reconciled retry of the original ledger row are pending.
+This reduces one request's overhead; it does not establish concurrency capacity
+across all customers/apps sharing the provider key.
+The original controlled beneficiary is preserved
+separately. No bank details or credentials were added to tracked files.
 
 QA security advisors were rechecked after the price migration. No new price/RPC
 warnings appeared. Existing definer-view/function grant warnings, deliberately
@@ -65,7 +83,7 @@ not establish production readiness or 100% completion.
 - The three pending restrictive migrations were applied to Staging only.
   Private profile reads, server-managed trust fields, financial writes and
   ticket scanning are protected. Chat and report buckets are private there.
-- A rollback-only SQL regression passed 24 assertions covering inventory,
+- A rollback-only SQL regression initially passed 24 assertions covering inventory,
   payments, refunds, disputes, ticket capacity, payout reservations and money
   RPC authorization. These exercise the database, not Payluk settlement.
 - Live signed-in HTTP/REST tests passed profile privacy, trust-field attacks,
@@ -405,6 +423,18 @@ not establish production readiness or 100% completion.
     and execution with the staging code, a numeric bank code and an opaque code.
     Historical accounts with codes the current provider does not accept need
     re-verification; no stored beneficiary or bank code is silently rewritten.
+30. **VERIFIED, High, by hosted failure and request-path regression:** one seller
+    payout repeated identity/wallet checks across the request, reservation and
+    executor, reaching Payluk's 10/minute key limit before creating its intent.
+    The recorded HTTP 429 happened before verification; provider history is
+    empty and the wallet unchanged. Normal execution now takes seven provider
+    calls, retaining a fresh authoritative execution wallet check. A durable
+    pre-submission marker permits retrying known unsubmitted failures; unknown
+    submitted/legacy attempts stay held. Requeue compares reference/status under
+    the seller lock and every attempt gets fresh intent references. All 281 unit
+    tests and 25 rollback DB assertions pass; funded retry and matching CI/deploy
+    remain pending at this checkpoint. Concurrent load across the shared provider
+    key still requires a capacity/rate-limit strategy.
 
 The customer/permission lock, missing-customer, token-addressing, recovery and
 escrow-proceeds fixes passed full CI on `cbe1d7c4`. The hosted fresh-customer,

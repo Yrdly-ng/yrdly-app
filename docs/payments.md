@@ -90,6 +90,26 @@ The manual `qa-scripts/payluk-bank-withdrawal.mjs` separates preparation,
 single-attempt execution and read-only inspection. It requires the isolated QA
 project and sandbox keys, retains payout references and refuses an uncertain
 second attempt. Sandbox provider success does not prove receipt by a live bank.
+Payluk's staging response also enforces a three-per-day cap on live-bank name
+enquiries and suggests test code `001`. That code resolved a synthetic beneficiary
+even though it is absent from the general bank list. The optional `provider-test`
+mode uses this separately verified fixture; the controlled beneficiary is kept
+separately. This is a QA fixture exception, not a production bank-code fallback.
+
+A normal seller withdrawal uses seven provider requests, including identity
+validation, reservation wallet lookup, a final execution wallet check, two fee
+intents and verification. Payluk's key-wide 10/minute limit still applies across
+concurrent customers and applications; this is not a load-capacity guarantee.
+The request no longer repeats balance lookups in each layer.
+
+Each attempt stores `execution_stage=preparing` and a fresh reference before
+provider work; the exact final intent and `submitted` marker are saved before
+verification. A failed preparing attempt may retry the same ledger row. Submitted,
+processing and legacy attempts require definitive provider reconciliation;
+empty history is uncertain. Requeue compares the observed status and reference
+inside the seller lock, so stale concurrent proof cannot restart a newer attempt.
+The payout-attempt migration changes the requeue RPC signature and must be
+coordinated with the matching server release. Apply and test it in QA first.
 
 ## Dispute allocations
 

@@ -3,6 +3,7 @@ import { PaylukService } from './payluk-service';
 import { getPaylukCustomerId } from './payluk-onboarding';
 import { NotificationService } from './server-notification-service';
 import { payoutAccountError } from './payout-account';
+import { randomUUID } from 'node:crypto';
 
 export interface PayoutRequest {
   id: string;
@@ -27,7 +28,7 @@ export class PayoutService {
   /**
    * Get seller's balance from completed transactions
    */
-  static async getSellerBalance(sellerId: string): Promise<SellerBalance> {
+  static async getSellerLedgerBalance(sellerId: string): Promise<SellerBalance> {
     try {
       // Get completed transactions for this seller
       const { data: transactions, error } = await supabaseAdmin
@@ -57,25 +58,9 @@ export class PayoutService {
       const completedPayouts = payouts?.filter(p => p.status === 'completed').reduce((sum, p) => sum + p.amount, 0) || 0;
       const pendingPayouts = payouts?.filter(p => p.status === 'pending' || p.status === 'processing').reduce((sum, p) => sum + p.amount, 0) || 0;
 
-      let availableBalance = Math.max(0, totalEarnings - completedPayouts - pendingPayouts);
-
-      // Bound withdrawals by both earned funds and provider funds. Ticket funds
-      // have a separate payout ledger and must not inflate marketplace balances.
-      try {
-        const sellerPaylukId = await getPaylukCustomerId(sellerId);
-        if (sellerPaylukId) {
-          const wallet = await PaylukService.getCustomerWallet(sellerPaylukId);
-          if (typeof wallet.mainBalance === 'number' && !isNaN(wallet.mainBalance)) {
-            availableBalance = Math.min(availableBalance, Math.max(0, wallet.mainBalance - pendingPayouts));
-          }
-        }
-      } catch (wErr) {
-        console.warn('[PayoutService] getSellerBalance Payluk wallet check warning:', wErr);
-      }
-
       return {
         totalEarnings,
-        availableBalance,
+        availableBalance: Math.max(0, totalEarnings - completedPayouts - pendingPayouts),
         pendingPayouts,
         completedPayouts,
       };
@@ -83,6 +68,20 @@ export class PayoutService {
       console.error('Failed to get seller balance:', error);
       throw new Error('Failed to get seller balance');
     }
+  }
+
+  static async getSellerBalance(sellerId: string): Promise<SellerBalance> {
+    const balance = await this.getSellerLedgerBalance(sellerId);
+    // Ticket proceeds have a separate ledger. Display availability is bounded
+    // by both earned funds and provider funds; execution always rechecks wallet.
+    try {
+      const customerId = await getPaylukCustomerId(sellerId);
+      const wallet = await PaylukService.getCustomerWallet(customerId);
+      balance.availableBalance = Math.min(balance.availableBalance, Math.max(0, wallet.mainBalance - balance.pendingPayouts));
+    } catch (error) {
+      console.warn('[PayoutService] Seller balance provider check unavailable:', error);
+    }
+    return balance;
   }
 
   /**
@@ -171,6 +170,7 @@ export class PayoutService {
 
   static async reservePayout(sellerId:string,accountId:string,amount:number,transactionId?:string): Promise<string> {
     const balance = await this.getSellerBalance(sellerId);
+    if (amount > balance.availableBalance) throw new Error('INSUFFICIENT_BALANCE');
     const { data,error } = await supabaseAdmin.rpc('reserve_seller_payout',{
       p_seller_id:sellerId,p_account_id:accountId,p_amount:amount,
       p_wallet_limit:balance.availableBalance+balance.pendingPayouts,p_transaction_id:transactionId || null,
@@ -215,13 +215,18 @@ export class PayoutService {
       const accountError = payoutAccountError(payoutRequest.seller_account);
       if (accountError) return { success: false, error: accountError };
 
+      // A retry gets a fresh intent namespace. Never reuse a failed provider
+      // intent, and persist the attempt before contacting the provider.
+      const attemptReference = `payout-${payoutRequestId}-${randomUUID()}`;
+
       // CAS guard: update status from 'pending' to 'processing' atomically
       const { data: updatedRows, error: casError } = await supabaseAdmin
         .from('payout_requests')
         .update({
           status: 'processing',
-          transaction_reference: `payout-${payoutRequestId}`,
+          transaction_reference: attemptReference,
           payment_provider:'payluk',
+          execution_stage: 'preparing',
         })
         .eq('id', payoutRequestId)
         .eq('status', 'pending')
@@ -257,42 +262,32 @@ export class PayoutService {
             throw new Error('Missing bank details for payout. Seller must re-add their account.');
           }
 
-          // Fetch current available balance before this payout request was deducted
-          const currentBalance = await this.getSellerBalance(payoutRequest.seller_id);
-          // Since getSellerBalance already uses Payluk wallet as the source of truth,
-          // the available balance here reflects what the seller can ACTUALLY withdraw.
-          // Add back the pending payout amount since it was already subtracted.
-          const yrdlyAvailableBalance = currentBalance.availableBalance + payoutRequest.amount;
+          // Recheck the ledger without repeating customer/wallet API calls.
+          // Exclude only this payout's reservation, retaining all other claims.
+          const currentBalance = await this.getSellerLedgerBalance(payoutRequest.seller_id);
+          const yrdlyAvailableBalance = Math.max(0, currentBalance.totalEarnings - currentBalance.completedPayouts
+            - Math.max(0, currentBalance.pendingPayouts - Number(payoutRequest.amount)));
 
           // Check if seller has a Payluk customer ID
           const sellerPaylukId = await getPaylukCustomerId(payoutRequest.seller_id);
 
           if (sellerPaylukId) {
-            // Use the Payluk wallet balance as the withdrawal amount, NOT the payout
-            // request amount from the DB. The DB seller_amount may be inflated because
-            // it doesn't account for Payluk's escrow release fee.
-            const wallet = await PaylukService.getCustomerWallet(sellerPaylukId);
-            const paylukWalletBalance = wallet.mainBalance ?? 0;
-            // Withdraw the lesser of: the requested amount, or what's actually in the wallet
-            const withdrawalAmount = Math.min(payoutRequest.amount, paylukWalletBalance);
-
-            if (withdrawalAmount <= 0) {
-              throw new Error(`Seller Payluk wallet balance is ₦${paylukWalletBalance}. Nothing to withdraw.`);
-            }
-
-            console.log(`[PayoutService] Initiating Payluk bank withdrawal for seller ${payoutRequest.seller_id}. Requested: ₦${payoutRequest.amount}, Payluk wallet: ₦${paylukWalletBalance}, Withdrawing: ₦${withdrawalAmount}`);
+            // withdrawToBank performs the final authoritative wallet check and
+            // applies the quoted fee within this exact reserved debit budget.
             const paylukResult = await PaylukService.withdrawToBank({
               sellerPaylukCustomerId: sellerPaylukId,
-              amount: withdrawalAmount,
+              amount: Number(payoutRequest.amount),
               bankCode,
               bankName,
               accountNumber,
               accountName,
-              reference: `payout-${payoutRequestId}`,
+              reference: attemptReference,
               yrdlyAvailableBalance: yrdlyAvailableBalance,
               onIntentReady: async reference => {
                 const { data: saved, error } = await supabaseAdmin.from('payout_requests')
-                  .update({ transaction_reference: reference }).eq('id', payoutRequestId).eq('status', 'processing').select('id').maybeSingle();
+                  .update({ transaction_reference: reference, execution_stage: 'submitted' }).eq('id', payoutRequestId)
+                  .eq('status', 'processing').eq('execution_stage', 'preparing').eq('transaction_reference', attemptReference)
+                  .select('id').maybeSingle();
                 if (error || !saved) throw new Error('Could not persist withdrawal reference; transfer was not executed.');
               },
             });
@@ -307,7 +302,7 @@ export class PayoutService {
               transferReason = paylukResult.reason || paylukResult.error;
               maximumWithdrawable = paylukResult.maximumWithdrawable;
             }
-            transactionReference = paylukResult.reference || `payout-${payoutRequestId}`;
+            transactionReference = paylukResult.reference || attemptReference;
           } else {
             throw new Error('Payment identity unavailable; no alternate provider was attempted.');
           }

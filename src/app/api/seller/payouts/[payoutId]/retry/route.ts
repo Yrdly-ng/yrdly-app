@@ -42,21 +42,28 @@ export async function POST(
     if (payout.payment_provider !== 'payluk') {
       return NextResponse.json({ error: 'Payout provider is unknown or unsupported. Support must reconcile this request.' }, { status: 409 });
     }
-    if (payout.transaction_reference) {
+    const failedBeforeSubmission = payout.status === 'failed' && payout.execution_stage === 'preparing';
+    // A durable pre-submission failure proves verify was never attempted.
+    // Legacy, submitted and processing attempts still require provider proof;
+    // missing history alone can never authorize another transfer.
+    if (!failedBeforeSubmission && payout.transaction_reference) {
       const outcome = await PaylukService.getWithdrawalStatus(await getPaylukCustomerId(user.id), payout.transaction_reference);
       if (outcome === 'pending') return NextResponse.json({ error: 'Transfer is uncertain or still processing; funds remain reserved.' }, { status: 409 });
       if (outcome === 'success') {
-        const { data: reconciled, error } = await supabaseAdmin.from('payout_requests').update({ status: 'completed', processed_at: new Date().toISOString() }).eq('id', payoutId).in('status', ['failed','processing']).select('id');
+        const { data: reconciled, error } = await supabaseAdmin.from('payout_requests')
+          .update({ status: 'completed', processed_at: new Date().toISOString() }).eq('id', payoutId)
+          .eq('status', payout.status).eq('transaction_reference', payout.transaction_reference).select('id');
         if (error || !reconciled?.length) throw error || new Error('Payout state changed. Refresh and retry reconciliation.');
         return NextResponse.json({ success: true, reconciled: true });
       }
-    } else {
+    } else if (!payout.transaction_reference) {
       return NextResponse.json({ error: 'Legacy payout has no durable provider reference. Support must reconcile it before retry.' }, { status: 409 });
     }
     // Re-reserve under the same seller lock used by new withdrawal requests.
     const balance = await PayoutService.getSellerBalance(user.id);
     const { data: reset, error: updateError } = await supabaseAdmin.rpc('requeue_seller_payout', {
       p_payout_id:payoutId,p_seller_id:user.id,p_wallet_limit:balance.availableBalance+balance.pendingPayouts,
+      p_expected_reference: payout.transaction_reference, p_expected_status: payout.status,
     });
 
     if (updateError) {
