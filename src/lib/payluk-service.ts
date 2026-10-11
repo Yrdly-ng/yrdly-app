@@ -686,8 +686,11 @@ export class PaylukService {
     const formData = new FormData();
     formData.append('resolution', params.resolution);
     formData.append('status', params.status);
-    if (params.sellerAmount !== undefined) formData.append('sellerAmount', String(params.sellerAmount));
-    if (params.buyerAmount !== undefined) formData.append('buyerAmount', String(params.buyerAmount));
+    // Payluk rejects allocation fields on full refund/release resolutions.
+    if (params.status === 'SPLIT') {
+      if (params.sellerAmount !== undefined) formData.append('sellerAmount', String(params.sellerAmount));
+      if (params.buyerAmount !== undefined) formData.append('buyerAmount', String(params.buyerAmount));
+    }
     if (params.additionalFeeRefundable !== undefined) {
       formData.append('additionalFeeRefundable', String(params.additionalFeeRefundable));
     }

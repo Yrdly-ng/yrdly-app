@@ -82,8 +82,7 @@ export async function POST(
       await PaylukService.resolveDispute(transaction.payluk_escrow_id, {
         resolution,
         status,
-        sellerAmount: sellerAmount > 0 ? sellerAmount : undefined,
-        buyerAmount: refundAmount > 0 ? refundAmount : undefined,
+        ...(status === 'SPLIT' ? { sellerAmount, buyerAmount: refundAmount } : {}),
       });
       providerReference = transaction.payluk_escrow_id;
     } else {

@@ -35,6 +35,35 @@ function chain(result) {
   return query;
 }
 
+test('booking checkout creates customers without overlapping provider locks', async () => {
+  let customerWriteActive = false;
+  const customers = [], escrows = [], payments = [];
+  const admin = { from: table => {
+    if (table === 'bookings') return chain({ data: null, error: null });
+    assert.equal(table, 'booking_payments');
+    const query = chain({ data: null, error: null });
+    query.insert = row => { payments.push(row); return chain({ data: null, error: null }); };
+    return query;
+  } };
+  const { createCheckoutForBooking } = load('src/lib/booking-payments.ts', {
+    './supabase-admin': { supabaseAdmin: admin },
+    './payluk-onboarding': { getPaylukCustomerId: async id => {
+      if (customerWriteActive) throw new Error('Payluk HTTP 423: customer write locked');
+      customerWriteActive = true;
+      await new Promise(resolve => setTimeout(resolve, 1));
+      customers.push(id); customerWriteActive = false; return `${id}-provider`;
+    } },
+    './payluk-service': { PaylukService: {
+      updateCustomerPermissions: async () => {},
+      createEscrow: async (seller, details) => { escrows.push({ seller, details }); return { id: 'owned-escrow', paymentToken: 'owned-payment-token' }; },
+    } },
+  });
+  const result = await createCheckoutForBooking({ bookingId: 'owned-booking', buyerId: 'buyer', sellerId: 'seller', amount: 2500, type: 'full', purpose: 'QA service', appointmentTime: new Date(Date.now() + 86400000).toISOString() });
+  assert.deepEqual(customers, ['buyer', 'seller']);
+  assert.equal(escrows.length, 1); assert.equal(escrows[0].seller, 'seller-provider');
+  assert.equal(payments.length, 1); assert.equal(payments[0].payluk_payment_token, result.paylukPaymentToken);
+});
+
 for (const scenario of ['no-profile', 'no-phone', 'incomplete-profile', 'anonymous', 'onboarding-next', 'external-next']) {
   test(`auth callback preserves password recovery and onboarding boundaries: ${scenario}`, async () => {
     let queries = 0;
@@ -232,6 +261,37 @@ for (const outcome of ['success', 'uncertain', 'unsupported']) {
     assert.equal(response.status, outcome === 'success' ? 200 : 202);
     assert.equal(resolutions, outcome === 'unsupported' ? 0 : 1);
     assert.equal(finalized, outcome === 'success');
+  });
+}
+
+for (const status of ['REFUNDED', 'COMPLETED', 'SPLIT']) {
+  test(`dispute resolution sends allocation fields only for SPLIT: ${status}`, async () => {
+    let finalized = false, sent;
+    const refund = status === 'REFUNDED' ? 1000 : status === 'SPLIT' ? 400 : 0;
+    const seller = 1000 - refund;
+    const service = load('src/lib/payluk-service.ts', { './payluk-onboarding': {}, fetch: async (_url, options) => {
+      sent = options.body;
+      const hasAllocation = sent.has('sellerAmount') || sent.has('buyerAmount');
+      if (sent.get('status') !== 'SPLIT' && hasAllocation) return Response.json({ status: 400, message: 'sellerAmount and buyerAmount are only valid on a SPLIT resolution' }, { status: 400 });
+      return Response.json({ status: 200, data: { id: 'owned-escrow', status } });
+    } });
+    const { POST } = load('src/app/api/admin/disputes/[disputeId]/resolve/route.ts', {
+      '@/lib/supabase-server': { getAuthenticatedUser: async () => ({ data: { user: { id: 'admin' } } }) },
+      '@/lib/payluk-service': service,
+      '@/lib/server-notification-service': { NotificationService: { createDisputeResolvedNotification: async () => {} } },
+      '@/lib/supabase-admin': { supabaseAdmin: {
+        from: table => chain({ data: table === 'users' ? { is_admin: true } : table === 'disputes' ? { transaction_id: 'owned-transaction' } : { id: 'owned-transaction', payment_provider: 'payluk', payluk_escrow_id: 'owned-escrow' } }),
+        rpc: async name => {
+          if (name === 'begin_dispute_resolution') return { data: { newly_created: true, operation: { id: 'operation', refund_amount: refund, seller_amount: seller, resolution: 'QA ruling' } } };
+          if (name === 'finish_dispute_resolution') finalized = true;
+          return {};
+        },
+      } },
+    });
+    const response = await POST(new Request('http://localhost', { method: 'POST', body: JSON.stringify({ resolution: 'QA ruling', refundAmount: refund, sellerAmount: seller }) }), { params: Promise.resolve({ disputeId: 'owned-dispute' }) });
+    assert.equal(response.status, 200); assert.equal(finalized, true); assert.equal(sent.get('status'), status);
+    assert.equal(sent.has('sellerAmount'), status === 'SPLIT'); assert.equal(sent.has('buyerAmount'), status === 'SPLIT');
+    if (status === 'SPLIT') { assert.equal(Number(sent.get('buyerAmount')), refund); assert.equal(Number(sent.get('sellerAmount')), seller); }
   });
 }
 
