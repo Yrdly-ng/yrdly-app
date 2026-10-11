@@ -321,6 +321,13 @@ not evidence that a payment settled or that production has the matching code.
     Nine real database checks and 225 local unit regressions pass. The migrations
     is installed on QA only. Actual commission and wallet settlement are pending
     the new hosted funded booking test.
+26. **VERIFIED, High, by CI browser failure and live database API reproduction:**
+    booking detail, provider booking lists and confirmation used an ambiguous
+    customer/profile relationship. Supabase returned `PGRST201`, preventing the
+    booking detail/payment review from loading. All three queries now explicitly
+    select `bookings_customer_id_fkey`; the corrected live query returns HTTP 200.
+    The booking page fetch also has stable hook dependencies. A fresh full CI
+    browser run is required before claiming this UI fix is verified end to end.
 
 The customer/permission lock, missing-customer, token-addressing, recovery and
 escrow-proceeds fixes passed full CI on `cbe1d7c4`. The hosted fresh-customer,

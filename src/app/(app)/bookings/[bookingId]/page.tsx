@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-supabase-auth';
 import { BookingService, CANCELLATION_WINDOW_HOURS } from '@/lib/booking-service';
@@ -32,12 +32,12 @@ export default function BookingDetailWebPage() {
   const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [checkoutReview, setCheckoutReview] = useState<BookingCheckout | null>(null);
 
-  const fetchBooking = async () => {
+  const fetchBooking = useCallback(async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
         .from('bookings')
-        .select('*, service:service_offerings(*), business:businesses(*), customer:public_profiles(*)')
+        .select('*, service:service_offerings(*), business:businesses(*), customer:public_profiles!bookings_customer_id_fkey(*)')
         .eq('id', bookingId)
         .single();
 
@@ -48,11 +48,11 @@ export default function BookingDetailWebPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [bookingId]);
 
   useEffect(() => {
     if (bookingId) fetchBooking();
-  }, [bookingId]);
+  }, [bookingId, fetchBooking]);
 
   if (loading) {
     return (

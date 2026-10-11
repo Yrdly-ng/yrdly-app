@@ -309,7 +309,7 @@ export class BookingService {
       .from('bookings')
       .update({ status: 'confirmed', updated_at: new Date().toISOString() })
       .eq('id', bookingId)
-      .select('*, service:service_offerings(*), business:businesses(*), customer:public_profiles(*)')
+      .select('*, service:service_offerings(*), business:businesses(*), customer:public_profiles!bookings_customer_id_fkey(*)')
       .single();
     if (error) throw error;
     return data;
@@ -514,7 +514,7 @@ export class BookingService {
   static async getBusinessBookings(businessId: string): Promise<Booking[]> {
     const { data, error } = await supabase
       .from('bookings')
-      .select('*, service:service_offerings(*), business:businesses(*), customer:public_profiles(*)')
+      .select('*, service:service_offerings(*), business:businesses(*), customer:public_profiles!bookings_customer_id_fkey(*)')
       .eq('business_id', businessId)
       .order('appointment_time', { ascending: false });
 
