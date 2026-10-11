@@ -5,36 +5,54 @@ not evidence that a payment settled or that production has the matching code.
 
 ## Current verification checkpoint
 
-Latest fully green CI is092a98bd / run38132275104:225 unit tests, seven
-paid-ticket DB checks, nine booking DB checks, six browser scenarios, build,
-typecheck, lint, OTP/push/API security and smoke. Booking profile joins now load
-successfully in the browser. The matching dedicated QA deployment is READY.
+Latest fully green CI is `fabe5458` / run `38161936258`: 263 unit tests,
+seven paid-ticket DB checks, nine booking DB checks, nine split-allocation DB
+checks, 11 minimum-price DB checks, seven browser scenarios, build, typecheck,
+lint, OTP/push/API security and smoke. The matching dedicated QA deployment is
+READY at https://yrdly-app-qa.vercel.app. Build output lists 174 application routes.
+Evidence: https://github.com/Yrdly-ng/yrdly-app/actions/runs/38161936258
 
-Funded booking passed all 15 checks: principal1,234.56, buyer3%37.04,
-total1,271.60, Payluk24.69, seller1,209.87, merchant exactly37.04.
+Funded booking passed all 15 checks: principal 1,234.56, buyer 3% 37.04,
+total 1,271.60, Payluk 24.69, seller 1,209.87, merchant exactly 37.04.
 Real callbacks synchronize both booking ledgers; retries and delivery are
-idempotent. Safe evidence:payluk-booking-summary.json. Funded records retained.
+idempotent. Safe evidence: `payluk-booking-summary.json`. Funded records retained.
 
-Current batch: 263 unit tests,11 real minimum-price database checks,
+Current batch: 263 unit tests, 11 real minimum-price database checks,
 nine split-allocation database checks, nine booking DB checks, seven ticket DB
-checks and24 rollback assertions PASS. Typecheck/lint/build PASS (18 pre-existing
+checks and 24 rollback assertions PASS. Typecheck/lint/build PASS (18 pre-existing
 lint warnings). The approved NGN 1,200 minimum is enforced for paid listings,
 catalog, tickets and booking payments/deposits, preserving free flows.
-Both new migrations are applied ONLY to isolated QA. Full CI, new responsive
-browser checks and hosted funded split evidence are pending for this batch.
-Local Playwright cannot install Chromium on this laptop's macOS12; Linux CI
-runs browser checks. Do not interpret a missing local browser as a passed test.
+Both new migrations are applied ONLY to isolated QA. Responsive minimum-price
+checks passed at 375, 768 and 1440 pixels; nine screenshots were captured and
+representative listing, deposit and ticket screenshots were visually inspected.
+Hosted funded split verification passed all 16 checks on this exact revision:
+gross ruling 1,250/1,250; Payluk pool 2,450; actual seller credit 1,225 and buyer
+credit 1,300, including the refundable 75 additional fee. Admin retries and signed
+split-event replays preserved one settlement and a sold listing. An initial
+network failure created no resolution operation, as verified by a read-only QA
+query before retrying. Safe evidence: `payluk-split-summary.json`.
+Local Playwright cannot install Chromium on this laptop's macOS 12; the browser
+evidence comes from Linux CI.
 
 Five real bank preview checks passed: bank-list code, controlled-beneficiary
-verification, NGN 1,000 net quoted fee10.75, below-net-minimum rejection, and
+verification, NGN 1,000 net quoted fee 10.75, below-net-minimum rejection, and
 NGN 1,010.75 debit budget fitting NGN 1,000+10.75. Only unpaid intents staged;
 NO outbound bank transfer executed. Beneficiary details are retained privately.
+
+Subsequent hosted bank linking reproduced a separate blocker: the current
+provider-list code was rewritten by the application, and Payluk returned
+`Unknown bank code: 100004`; account setup returned HTTP 422. Account resolution,
+preview and withdrawal now preserve provider bank codes verbatim. Three new
+regressions pass (266 total unit tests); typecheck, lint and build also pass
+(18 existing lint warnings, 174 application routes). Matching hosted
+verification and the single-attempt sandbox payout remain pending for this
+follow-up. No bank details or credentials were added to tracked files.
 
 QA security advisors were rechecked after the price migration. No new price/RPC
 warnings appeared. Existing definer-view/function grant warnings, deliberately
 service-only tables without client policies and leaked-password protection
 remain tracked under the release requirements below. The current batch does
-not establish production readiness or100% completion.
+not establish production readiness or 100% completion.
 
 ## Verified
 
@@ -360,6 +378,33 @@ not establish production readiness or100% completion.
     booking detail/payment review from loading. All three queries now explicitly
     select `bookings_customer_id_fkey`; the corrected live query returns HTTP 200.
     The booking page fetch also has stable hook dependencies. Full CI38132275104 passed, including the booking review browser test at375/768/1440.
+27. **VERIFIED, High, by exact source, live QA database checks and funded sandbox
+    settlement:** admin split rulings used gross buyer/seller shares directly as
+    Payluk's fee-adjusted pool, and finalization retained the original seller
+    proceeds. Resolution now stores an immutable proportional plan, verifies the
+    actual provider settlement and atomically records actual seller proceeds.
+    Gross rulings remain separately visible. Unknown outcomes remain held for
+    reconciliation. Nine real DB checks, unit regressions and all 16 hosted
+    split lifecycle checks passed on `fabe5458`; buyer/seller wallet deltas were
+    1,300/1,225 on a 2,500 order. Admin retries and signed split replays were safe.
+28. **VERIFIED, High, by provider quote and money-boundary regressions:** the bank
+    minimum applies to the net transfer, so a 1,000 debit budget with a 10.75 fee
+    cannot withdraw 1,000. The service now checks integer-kobo net amounts before
+    submitting a below-minimum transfer and validates authoritative intent quotes.
+    The user-approved 1,200 paid-price policy is enforced in forms, APIs and QA
+    database guards, including independently payable booking deposits. Free flows
+    remain available. Eleven real price DB checks and responsive browser checks
+    passed. Partial refunds/splits can still leave small residual balances;
+    the selling-price buffer is not a universal withdrawal guarantee.
+29. **VERIFIED, High, by hosted account linking and provider logs:** a stale
+    hardcoded bank-code map rewrote the provider's current OPay code `999992`
+    into `100004`. Payluk rejected the rewritten code, so authenticated account
+    setup returned HTTP 422 even though the direct provider beneficiary check
+    passed. The same map existed in preview and withdrawal. All three now pass
+    provider-list codes unchanged. Three regressions cover resolution, preview
+    and execution with the staging code, a numeric bank code and an opaque code.
+    Historical accounts with codes the current provider does not accept need
+    re-verification; no stored beneficiary or bank code is silently rewritten.
 
 The customer/permission lock, missing-customer, token-addressing, recovery and
 escrow-proceeds fixes passed full CI on `cbe1d7c4`. The hosted fresh-customer,
@@ -377,10 +422,14 @@ revision; automatic maturity claim and bank payout remain unverified.
 The paid-ticket reservation batch then passed full CI on `5d59b5ce` and all 17
 funded hosted checks on `8847e6e6`. The booking ledger/SDK batch passed full CI and matching QA deployment on092a98bd, followed by 15 funded lifecycle checks.
 
+The minimum-price and split-allocation batch passed full CI on `fabe5458`,
+followed by all 16 funded split checks against the matching READY QA deployment.
+
 The manual harness `qa-scripts/payluk-lifecycle.mjs` explicitly separates
 preparation, funding, delivery, dispute, reconciliation and refund operations.
 Use `inspect` for the retained refund scenario or `inspect commission` for the
-post-dashboard-correction sale. Its evidence contains private sessions and is
+post-dashboard-correction sale, or `inspect split` for the split settlement.
+Its evidence contains private sessions and is
 ignored by Git. It refuses live keys and ambiguous duplicate transfers. Never
 clean up these funded records as though they were unpaid fixtures.
 
@@ -389,8 +438,8 @@ clean up these funded records as though they were unpaid fixtures.
 - Confirm the live merchant dashboard also has zero additional merchant
   commission. A new funded sandbox ledger verified the app's single 3% charge;
   the staging result does not prove the live account setting.
-- Complete funded split resolutions,
-  automatic event maturity claims, and bank withdrawals. Marketplace full refund passed above;
+- Complete automatic event maturity claims and bank withdrawals. Marketplace
+  full refund and funded split resolution passed above;
   other refund paths remain separate requirements.
   Funded catalog and ticket purchase/release, paid initialization retries and
   competing last-seat reservations passed above. Booking collection, commission and settlement now passed the hosted funded test.

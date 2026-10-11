@@ -60,7 +60,9 @@ and confirms service receipt; provider completion alone does not release funds.
 Unpaid checkout is deleted at the provider before cancellation permits a new
 order. Legacy unlinked payment rows are not relabelled or replaced automatically.
 Deploy `reconcile_booking_checkout_ledger` with its matching web code. QA database
-and funded booking checks pass: principal1,234.56, Yrdly37.04, Payluk24.69 and seller1,209.87, with15 lifecycle checks including real callbacks and idempotent delivery.
+and funded booking checks pass: principal 1,234.56, Yrdly 37.04, Payluk 24.69 and
+seller 1,209.87, with 15 lifecycle checks including real callbacks and idempotent
+delivery.
 
 ## Minimum paid prices and bank withdrawals
 
@@ -80,6 +82,15 @@ a NGN 1,010.75 debit budget therefore fits that quoted transfer. Fees are quoted
 at withdrawal time, not hardcoded. The preview harness verified the controlled
 beneficiary and staged intents only; no outbound bank transfer was executed.
 
+Bank codes come from Payluk's current bank list and pass unchanged through
+account verification, preview and withdrawal. Hardcoded code translation caused
+a verified sandbox linking failure and has been removed. Historical bank
+accounts with unsupported codes require re-verification using the current list.
+The manual `qa-scripts/payluk-bank-withdrawal.mjs` separates preparation,
+single-attempt execution and read-only inspection. It requires the isolated QA
+project and sandbox keys, retains payout references and refuses an uncertain
+second attempt. Sandbox provider success does not prove receipt by a live bank.
+
 ## Dispute allocations
 
 Admin buyer/seller shares divide the original gross price. The application
@@ -94,9 +105,10 @@ replays cannot release stock or credit proceeds twice.
 
 For an equal gross split of NGN 2,500 with NGN 50 Payluk fee and NGN 75 refundable
 additional fee, the expected actual allocation is NGN 1,225 seller and NGN 1,300
-buyer (including the additional fee). Database and unit tests pass; funded
-provider split settlement remains pending. The additive QA migration must ship
-with its matching application handlers.
+buyer (including the additional fee). All 16 funded sandbox split checks passed
+against the matching QA deployment, including actual wallet credits, admin retry
+and signed webhook replays. Database and unit tests also pass. The additive QA
+migration must ship with its matching application handlers.
 
 ## Routes and safeguards
 
@@ -118,8 +130,8 @@ The old profile payout-add page redirects to `/settings/payout-settings`, which 
 Applied migrations are immutable history. They can still contain retired provider names and compatibility columns. The backend is shared with other applications; historical rows and columns have not been destructively removed. Production changes must follow matching application deployment and development-project validation. Do not run a blanket migration push: local and live migration versions differ.
 
 The dedicated QA deployment uses an isolated Supabase branch and Payluk test
-keys. Funded marketplace, catalog and ticket purchase/release, and marketplace
-full dispute refund have passed
+keys. Funded marketplace, catalog, booking and ticket purchase/release, and
+marketplace full dispute refund and split resolution have passed
 using Payluk's [test bank](https://docs.payluk.ng/guides/payluk-test-bank), without
 wallet top-up/deposit. Funded ledger fixtures are retained. Current evidence and
 remaining event, payout and production requirements are in

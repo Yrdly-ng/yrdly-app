@@ -468,6 +468,41 @@ test('network loss after transfer execution keeps the result pending', async () 
   assert.equal(result.reference, 'stable-operation-net');
 });
 
+for (const bankCode of ['999992', '044', 'provider-bank-code']) {
+  test(`bank-list code ${bankCode} survives account resolution, preview and withdrawal`, async () => {
+    let intents = 0, executions = 0;
+    const { PaylukService } = load('src/lib/payluk-service.ts', {
+      './payluk-onboarding': {},
+      fetch: async (url, options) => {
+        if (url.endsWith('/v1/payment/bank-list')) return Response.json({ status: 200, data: [{ name: 'QA Bank', code: bankCode }] });
+        if (url.endsWith('/v1/wallet')) return Response.json({ status: 200, data: { mainBalance: 5000 } });
+        const input = JSON.parse(options.body);
+        if (url.endsWith('/v1/payment/verify-account')) {
+          assert.equal(input.bankCode, bankCode, 'Use the selected provider bank code verbatim');
+          return Response.json({ status: 200, data: { accountName: 'QA Seller', accountNumber: input.accountNumber } });
+        }
+        if (url.endsWith('/v1/payment/create-intent')) {
+          assert.equal(input.withdrawalDetails.bankCode, bankCode, 'Never rewrite a provider bank code');
+          intents++;
+          return Response.json({ status: 200, data: { amount: input.amount, fee: 10.75, reference: input.reference } });
+        }
+        assert.ok(url.endsWith('/v1/payment/verify'));
+        executions++;
+        return Response.json({ status: 200, data: { status: 'success' } });
+      },
+    });
+    const [bank] = await PaylukService.getBankList();
+    assert.equal((await PaylukService.resolveAccount('0123456789abcdef01234567', '0000000000', bank.code)).valid, true);
+    const params = { sellerPaylukCustomerId: 'customer', amount: 1200, bankCode: bank.code,
+      accountNumber: '0000000000', reference: 'qa-bank-code', onIntentReady: async () => {} };
+    assert.equal((await PaylukService.previewWithdrawal(params)).success, true);
+    assert.equal(executions, 0, 'Preview cannot execute a payout');
+    assert.equal((await PaylukService.withdrawToBank(params)).success, true);
+    assert.equal(intents, 4);
+    assert.equal(executions, 1);
+  });
+}
+
 test('suspension lookup errors fail closed', async () => {
   const { isUserSuspendedOrBanned } = load('src/lib/user-suspension.ts', {
     './supabase-admin': { supabaseAdmin: { from: () => chain({ error: { message: 'database unavailable' } }) } },

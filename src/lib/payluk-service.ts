@@ -776,35 +776,12 @@ export class PaylukService {
         }
       }
 
-      const LEGACY_CBN_TO_PAYLUK_BANK_MAP: Record<string, string> = {
-        '999991': '100004', // OPay
-        '999992': '100004', // OPay / Test Bank
-        '044': '000014',    // Access Bank
-        '058': '000013',    // GTBank
-        '011': '000016',    // First Bank
-        '057': '000015',    // Zenith Bank
-        '50515': '090405',  // Moniepoint
-        '50211': '090267',  // Kuda Bank
-        '214': '090409',    // FCMB
-        '033': '000040',    // UBA
-        '035': '000017',    // Wema Bank
-        '070': '000007',    // Fidelity Bank
-        '050': '000010',    // Ecobank
-        '082': '000002',    // Keystone Bank
-        '232': '000012',    // Stanbic IBTC
-        '230': '000001',    // Sterling Bank
-        '032': '000018',    // Union Bank
-        '101': '000023',    // Providus Bank
-        '100033': '100033', // PalmPay
-      };
-
-      const resolvedBankCode = LEGACY_CBN_TO_PAYLUK_BANK_MAP[bankCode] || bankCode;
-
       const response = await paylukRequest<PaylukResolvedAccount>(
         '/v1/payment/verify-account',
         {
           method: 'POST',
-          body: JSON.stringify({ accountNumber, bankCode: resolvedBankCode }),
+          // Bank-list codes are opaque and vary by provider/environment.
+          body: JSON.stringify({ accountNumber, bankCode }),
           customerId,
         }
       );
@@ -883,15 +860,6 @@ export class PaylukService {
         return { success:false,reference:params.reference,error:'Enter a valid withdrawal amount with at most two decimal places.' };
       }
       if (params.amount < PAYLUK_WITHDRAWAL_MINIMUM) return { ...withdrawalMinimumError(),reference:params.reference };
-      const LEGACY_CBN_TO_PAYLUK_BANK_MAP: Record<string, string> = {
-        '999991': '100004', '999992': '100004', '044': '000014', '058': '000013',
-        '011': '000016', '057': '000015', '50515': '090405', '50211': '090267',
-        '214': '090409', '033': '000040', '035': '000017', '070': '000007',
-        '050': '000010', '082': '000002', '232': '000012', '230': '000001',
-        '032': '000018', '101': '000023', '100033': '100033',
-      };
-      const resolvedBankCode = LEGACY_CBN_TO_PAYLUK_BANK_MAP[params.bankCode] || params.bankCode;
-
       let paylukMainBalance = Infinity;
       try {
         const wallet = await this.getCustomerWallet(params.sellerPaylukCustomerId);
@@ -920,7 +888,7 @@ export class PaylukService {
         customerId: params.sellerPaylukCustomerId,
         amount: params.amount,
         reference: `${params.reference}-quote`,
-        bankCode: resolvedBankCode,
+        bankCode: params.bankCode,
         bankName: params.bankName,
         accountNumber: params.accountNumber,
         accountName: params.accountName,
@@ -932,7 +900,7 @@ export class PaylukService {
         customerId: params.sellerPaylukCustomerId,
         amount: netAmount,
         reference: `${params.reference}-net`,
-        bankCode: resolvedBankCode,
+        bankCode: params.bankCode,
         bankName: params.bankName,
         accountNumber: params.accountNumber,
         accountName: params.accountName,
@@ -945,7 +913,7 @@ export class PaylukService {
           customerId: params.sellerPaylukCustomerId,
           amount: netAmount,
           reference: `${params.reference}-net-adjusted`,
-          bankCode: resolvedBankCode,
+          bankCode: params.bankCode,
           bankName: params.bankName,
           accountNumber: params.accountNumber,
           accountName: params.accountName,
@@ -1044,31 +1012,6 @@ export class PaylukService {
     let executionStarted = false;
     let activeReference = params.reference;
     try {
-      // Map legacy Nigerian bank codes to Payluk's internal codes
-      const LEGACY_CBN_TO_PAYLUK_BANK_MAP: Record<string, string> = {
-        '999991': '100004', // OPay
-        '999992': '100004', // OPay / Test Bank
-        '044': '000014',    // Access Bank
-        '058': '000013',    // GTBank
-        '011': '000016',    // First Bank
-        '057': '000015',    // Zenith Bank
-        '50515': '090405',  // Moniepoint
-        '50211': '090267',  // Kuda Bank
-        '214': '090409',    // FCMB
-        '033': '000040',    // UBA
-        '035': '000017',    // Wema Bank
-        '070': '000007',    // Fidelity Bank
-        '050': '000010',    // Ecobank
-        '082': '000002',    // Keystone Bank
-        '232': '000012',    // Stanbic IBTC
-        '230': '000001',    // Sterling Bank
-        '032': '000018',    // Union Bank
-        '101': '000023',    // Providus Bank
-        '100033': '100033', // PalmPay
-      };
-
-      const resolvedBankCode = LEGACY_CBN_TO_PAYLUK_BANK_MAP[params.bankCode] || params.bankCode;
-
       if (!Number.isFinite(params.amount) || !Number.isSafeInteger(Math.round(params.amount*100)) ||
           Math.abs(params.amount*100-Math.round(params.amount*100))>0.000001) {
         return { outcome:'failed',success:false,reference:params.reference,error:'Enter a valid withdrawal amount with at most two decimal places.' };
@@ -1102,7 +1045,7 @@ export class PaylukService {
         customerId: params.sellerPaylukCustomerId,
         amount: params.amount,
         reference: `${intentAttemptReference}-quote`,
-        bankCode: resolvedBankCode,
+        bankCode: params.bankCode,
         bankName: params.bankName,
         accountNumber: params.accountNumber,
         accountName: params.accountName,
@@ -1114,7 +1057,7 @@ export class PaylukService {
         customerId: params.sellerPaylukCustomerId,
         amount: netAmount,
         reference: `${intentAttemptReference}-net`,
-        bankCode: resolvedBankCode,
+        bankCode: params.bankCode,
         bankName: params.bankName,
         accountNumber: params.accountNumber,
         accountName: params.accountName,
@@ -1131,7 +1074,7 @@ export class PaylukService {
           customerId: params.sellerPaylukCustomerId,
           amount: netAmount,
           reference: `${intentAttemptReference}-net-adjusted`,
-          bankCode: resolvedBankCode,
+          bankCode: params.bankCode,
           bankName: params.bankName,
           accountNumber: params.accountNumber,
           accountName: params.accountName,
