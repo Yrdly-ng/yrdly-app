@@ -111,6 +111,13 @@ inside the seller lock, so stale concurrent proof cannot restart a newer attempt
 The payout-attempt migration changes the requeue RPC signature and must be
 coordinated with the matching server release. Apply and test it in QA first.
 
+The matching QA deployment passed a reconciled provider-test withdrawal on
+11 October: NGN 1,189.25 net plus NGN 10.75 fee, exactly NGN 1,200 wallet debit.
+The original intent-creation rate-limit failure never executed; one reviewed
+retry reused its payout ledger row with a fresh attempt. One successful provider
+withdrawal and its beneficiary, fee and wallet delta matched. These sandbox
+results do not verify receipt at the controlled live bank.
+
 ## Dispute allocations
 
 Admin buyer/seller shares divide the original gross price. The application

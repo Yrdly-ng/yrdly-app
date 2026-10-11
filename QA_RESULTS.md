@@ -5,13 +5,13 @@ not evidence that a payment settled or that production has the matching code.
 
 ## Current verification checkpoint
 
-Latest fully green CI is `749a1279` / run `38165370443`: 266 unit tests,
+Latest fully green application CI is `95986e40` / run `38168350267`: 281 unit tests,
 seven paid-ticket DB checks, nine booking DB checks, nine split-allocation DB
 checks, 11 minimum-price DB checks, seven browser scenarios, build, typecheck,
 lint, OTP/push/API security and smoke. The matching dedicated QA deployment is
 READY at https://yrdly-app-qa.vercel.app. The latest build lists 176 routes,
 including the generated not-found route (177 raw app-manifest entries).
-Evidence: https://github.com/Yrdly-ng/yrdly-app/actions/runs/38165370443
+Evidence: https://github.com/Yrdly-ng/yrdly-app/actions/runs/38168350267
 
 Funded booking passed all 15 checks: principal 1,234.56, buyer 3% 37.04,
 total 1,271.60, Payluk 24.69, seller 1,209.87, merchant exactly 37.04.
@@ -59,15 +59,35 @@ path to seven, records a durable pre-submission/submitted marker, uses fresh int
 references for retries, and compares the observed reference/status under the
 seller lock before requeueing. Legacy or submitted uncertainty remains blocked;
 missing history alone never authorizes a retry. The new migration was applied only
-to isolated QA; all 25 rollback database assertions passed. Matching code/build
-verification and one reconciled retry of the original ledger row are pending.
+to isolated QA; all 25 rollback database assertions passed. Matching full CI,
+local build/typecheck/lint and QA deployment passed on `95986e40`. One reviewed
+retry of the same original payout completed successfully: provider transfer
+1,189.25 + fee 10.75 = wallet debit 1,200. Exactly one ledger row and one successful
+provider withdrawal match. All four provider-test payout checks passed; safe
+evidence is `payluk-bank-withdrawal-provider-test-summary.json`. The original
+pre-execution failure was reconciled using its precise create-intent HTTP 429,
+empty reference history and unchanged wallet before marking that one owned QA
+row as unsubmitted. Other legacy rows were not changed. No live-bank receipt is
+claimed.
 This reduces one request's overhead; it does not establish concurrency capacity
 across all customers/apps sharing the provider key.
 The original controlled beneficiary is preserved
 separately. No bank details or credentials were added to tracked files.
 
-QA security advisors were rechecked after the price migration. No new price/RPC
-warnings appeared. Existing definer-view/function grant warnings, deliberately
+A separate organizer-maturity ticket escrow is funded and deliberately held:
+all 10 preparation/funding checks passed, including the real callback, consumed
+capacity reservation and signed replay safety. Advertised price 2,500, organizer
+commission 75, provider fee 48.50 and held organizer proceeds 2,376.50 match.
+The event ends at 21:46:57 Lagos time on 11 October; its 24-hour application gate
+opens after 21:46:57 on **12 October 2026**. Recheck no earlier than 21:47 Lagos
+time, and also confirm the provider claim window before execution. The escrow
+remains ONGOING; no manual delivery, claim or organizer bank payout was sent.
+Evidence: `payluk-ticket-maturity-summary.json`. Dedicated QA cron schedules
+remain disabled; this is a prepared real-time claim test, not proof that a
+scheduled job has run. Preserve the funded ledger and never repeat funding.
+
+QA security advisors were rechecked after the payout-attempt migration. No new
+money/RPC warnings appeared. Existing definer-view/function grant warnings, deliberately
 service-only tables without client policies and leaked-password protection
 remain tracked under the release requirements below. The current batch does
 not establish production readiness or 100% completion.
@@ -432,9 +452,10 @@ not establish production readiness or 100% completion.
     pre-submission marker permits retrying known unsubmitted failures; unknown
     submitted/legacy attempts stay held. Requeue compares reference/status under
     the seller lock and every attempt gets fresh intent references. All 281 unit
-    tests and 25 rollback DB assertions pass; funded retry and matching CI/deploy
-    remain pending at this checkpoint. Concurrent load across the shared provider
-    key still requires a capacity/rate-limit strategy.
+    tests and 25 rollback DB assertions pass. Matching full CI/deployment passed
+    on `95986e40`, and the reviewed same-row retry completed: provider net 1,189.25,
+    fee 10.75 and wallet debit 1,200, with one successful withdrawal. Concurrent
+    load across the shared provider key still requires a capacity/rate-limit strategy.
 
 The customer/permission lock, missing-customer, token-addressing, recovery and
 escrow-proceeds fixes passed full CI on `cbe1d7c4`. The hosted fresh-customer,
@@ -468,8 +489,10 @@ clean up these funded records as though they were unpaid fixtures.
 - Confirm the live merchant dashboard also has zero additional merchant
   commission. A new funded sandbox ledger verified the app's single 3% charge;
   the staging result does not prove the live account setting.
-- Complete automatic event maturity claims and bank withdrawals. Marketplace
-  full refund and funded split resolution passed above;
+- Complete automatic event maturity claims and live-bank receipt. The synthetic
+  provider-test bank withdrawal now passed all four checks, including the same-row
+  retry and actual wallet debit. That does not prove a live bank received money.
+  Marketplace full refund and funded split resolution passed above;
   other refund paths remain separate requirements.
   Funded catalog and ticket purchase/release, paid initialization retries and
   competing last-seat reservations passed above. Booking collection, commission and settlement now passed the hosted funded test.
@@ -488,8 +511,13 @@ clean up these funded records as though they were unpaid fixtures.
   requires an explicit design decision, not blind conversion to an invoker view.
   Eleven inspected function search paths were pinned in Staging; subsequent
   advisors no longer reported these warnings and the 24 money assertions passed
-  again. Service-only tables deliberately have no client policies. Remaining
-  function-grant warnings need context-specific review; leaked-password
+  again. Service-only tables deliberately have no client policies.
+  The remaining grant notices cover 13 trigger-returning functions and seven
+  explicit RPCs. Exact RPC definitions were inspected; five rollback checks passed
+  for anonymous identity helpers, guarded community mutations and rejection of a
+  direct trigger call. The moderator-role helper accepts arbitrary IDs and needs
+  a visibility decision for private communities. This review does not establish
+  every authenticated community role transition. Leaked-password
   protection is not enabled. Lint passes with 18 existing warnings.
 - Paid event refunds/cancellation are still support-assisted. Automated refund
   completion is not established.
