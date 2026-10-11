@@ -1,12 +1,13 @@
 // Real concurrent database requests; no provider calls or funded ledger changes.
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { writeFile } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { createClient } from '@supabase/supabase-js';
 import { readQaEnv, readOutput, createAdminClient, QA_PREFIX } from './qa-common.mjs';
 
 const { env, projectRef } = await readQaEnv();
 assert.equal(projectRef, 'jxgpvvehajxegeeozlnl');
+await mkdir('.qa-artifacts', { recursive: true });
 const seed = await readOutput();
 const admin = createAdminClient(env);
 const eventId = randomUUID(), tierId = randomUUID();
