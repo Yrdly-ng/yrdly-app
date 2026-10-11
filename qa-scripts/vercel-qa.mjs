@@ -95,15 +95,21 @@ if (mode === 'configure') {
     console.log(`Prepared committed revision ${state.revision.slice(0, 8)} for the dedicated QA project.`);
   } else if (mode === 'deploy') {
     console.log(`Deploying committed revision ${state.revision.slice(0, 8)} to the dedicated QA project…`);
-    const result = cli(['deploy', '--prod', '--yes'], undefined, state.source);
+    // Let Vercel build independently; a dropped long-lived polling connection
+    // must not make an accepted deployment look like a failed upload.
+    const result = cli(['deploy', '--prod', '--yes', '--no-wait', '--meta', `qaRevision=${state.revision}`], undefined, state.source);
     const urls = result.stdout.match(/https:\/\/[a-z0-9.-]+\.vercel\.app/gi) || [];
     if (!urls.length) throw new Error('Deployment returned no URL; inspect QA project status');
     state.deploymentUrl = urls.at(-1);
-    state.deployedAt = new Date().toISOString();
+    state.deploymentRequestedAt = new Date().toISOString();
     await writeFile(stateFile, JSON.stringify(state, null, 2), { mode: 0o600 });
-    console.log(JSON.stringify({ project: name, revision: state.revision, deploymentUrl: state.deploymentUrl }));
+    console.log(JSON.stringify({ project: name, revision: state.revision, deploymentUrl: state.deploymentUrl, state: 'requested; check status before testing' }));
   } else {
     const project = api(`/v9/projects/${state.projectId}`);
-    console.log(JSON.stringify({ name: project.name, revision: state.revision, deploymentUrl: state.deploymentUrl || null, protectionEnabled: Boolean(project.ssoProtection), deployments: project.latestDeployments?.map(d => ({ id: d.id, readyState: d.readyState, url: d.url })) }));
+    if (project.latestDeployments?.some(d => d.readyState === 'READY' && `https://${d.url}` === state.deploymentUrl && d.meta?.qaRevision === state.revision)) {
+      state.deployedAt ||= new Date().toISOString();
+      await writeFile(stateFile, JSON.stringify(state, null, 2), { mode: 0o600 });
+    }
+    console.log(JSON.stringify({ name: project.name, revision: state.revision, deploymentUrl: state.deploymentUrl || null, protectionEnabled: Boolean(project.ssoProtection), deployments: project.latestDeployments?.map(d => ({ id: d.id, readyState: d.readyState, url: d.url, revision: d.meta?.qaRevision || null })) }));
   }
 }

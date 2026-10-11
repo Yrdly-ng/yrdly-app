@@ -12,6 +12,19 @@ Payluk is the only payment provider in `yrdly-app`. Marketplace, business and ev
 
 Use project-specific Supabase credentials and test Payluk keys in the ignored `.env.qa`. Never commit keys. Production and preview deployment settings must be updated separately when publishing the matching code.
 
+For marketplace and catalog checkout through `/api/payment/initialize`, Yrdly's
+canonical 3% is the buyer's additional fee. Set Payluk's optional dashboard
+merchant commission to zero to avoid charging Yrdly commission twice. Payluk's
+own merchant escrow fee is separate and charged to the seller. Use the returned
+escrow fee to record seller proceeds; do not assume an aggregate wallet balance
+is the proceeds of one sale. Commission and totals are rounded to kobo.
+
+The official fee references are [Payluk fees](https://payluk.ng/help/fees) and
+[fees and settlement](https://docs.payluk.ng/concepts/fees-and-settlement).
+The 11 October sandbox sale verified a 2,500 principal, 75 Yrdly fee, 50 Payluk
+fee, 2,575 buyer payment and 2,450 seller credit. This does not verify live
+dashboard settings or the commission behavior of event and booking flows.
+
 ## Routes and safeguards
 
 - Marketplace: `/api/payment/initialize` and `/api/payment/verify`.
@@ -30,7 +43,13 @@ The old profile payout-add page redirects to `/settings/payout-settings`, which 
 
 Applied migrations are immutable history. They can still contain retired provider names and compatibility columns. The backend is shared with other applications; historical rows and columns have not been destructively removed. Production changes must follow matching application deployment and development-project validation. Do not run a blanket migration push: local and live migration versions differ.
 
-Before continuing live QA, publish this branch, configure Payluk credentials/webhook for the target environment, and test purchase, ticket issuance, escrow release, organizer payout and refund reconciliation against an isolated Supabase project. Local mocked tests do not establish that provider settlement succeeds.
+The dedicated QA deployment uses an isolated Supabase branch and Payluk test
+keys. Funded marketplace purchase, delivery and full dispute refund have passed
+using Payluk's [test bank](https://docs.payluk.ng/guides/payluk-test-bank), without
+wallet top-up/deposit. Funded ledger fixtures are retained. Current evidence and
+remaining event, booking, payout and production requirements are in
+[QA_RESULTS.md](../QA_RESULTS.md). Local mocked tests do not establish provider
+settlement.
 
 ## Local removal verification — 10 October 2026
 

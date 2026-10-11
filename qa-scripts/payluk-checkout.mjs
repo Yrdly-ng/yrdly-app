@@ -23,7 +23,17 @@ function ok(result, label) { if (result.error) throw new Error(`${label}: ${resu
 async function save() { await writeFile(`.qa-artifacts/payluk-checkout${mode === 'fresh' ? '-fresh' : ''}.json`, JSON.stringify(artifact, null, 2), { mode: 0o600 }); }
 async function check(name, fn) { await fn(); artifact.results.push({ name, passed: true }); console.log(`PASS Payluk checkout: ${name}`); await save(); }
 async function providerRequest(method, path, customer) {
-  const response = await fetch(`https://staging.api.payluk.ng${path}`, { method, headers: { Authorization: `Bearer ${env.PAYLUK_SECRET_KEY}`, ...(customer ? { 'customer-id': customer } : {}) }, signal: AbortSignal.timeout(10000), redirect: 'error' });
+  let response;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    response = await fetch(`https://staging.api.payluk.ng${path}`, { method, headers: { Authorization: `Bearer ${env.PAYLUK_SECRET_KEY}`, ...(customer ? { 'customer-id': customer } : {}) }, signal: AbortSignal.timeout(10000), redirect: 'error' });
+    // Reads can wait for the shared merchant-key window. Never retry a write
+    // after an unknown outcome, and never mask provider auth/state errors.
+    if (method !== 'GET' || response.status !== 429 || attempt === 2) break;
+    const retryAfter = Number(response.headers.get('retry-after'));
+    await response.arrayBuffer();
+    console.log('Waiting for the Payluk sandbox read-rate window');
+    await new Promise(resolve => setTimeout(resolve, Math.max(65, Math.min(120, retryAfter || 65)) * 1000));
+  }
   const body = await response.json();
   if (method === 'GET' && path.startsWith('/v1/customers?phone=') && response.status === 400 && body.status === false && body.message === 'No customer found with the provided phone') return { data: [] };
   assert.ok(response.ok, `Sandbox ${method} failed: HTTP ${response.status}`);

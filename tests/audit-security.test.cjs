@@ -544,8 +544,9 @@ test('late payment is held for reconciliation instead of reporting success', asy
   await assert.rejects(applyEscrowPayment('cancelled','payluk','reference'),/reconciliation/);
 });
 
-for (const lock of ['permissions', 'customers']) {
-  test(`marketplace checkout succeeds when Payluk rejects overlapping ${lock} writes`, async () => {
+for (const [lock, price] of [['permissions', 2500], ['customers', 2500], ['currency', 2001.11], ['currency', 1234.56]]) {
+  test(lock === 'currency' ? `marketplace checkout preserves commission and total kobo at NGN ${price}` : `marketplace checkout succeeds when Payluk rejects overlapping ${lock} writes`, async () => {
+    const expectedCommission = Math.round(price * 0.03 * 100) / 100;
     let permissionBusy = false, permissionCalls = 0, escrowReads = 0, proceedsWrites = 0;
     const { POST } = load('src/app/api/payment/initialize/route.ts', {
       '@/lib/supabase-server': { getAuthenticatedUser: async () => ({ data: { user: { id: 'buyer', email: 'qa@example.invalid' } } }) },
@@ -569,22 +570,22 @@ for (const lock of ['permissions', 'customers']) {
           await new Promise(resolve => setImmediate(resolve));
           permissionBusy = false;
         },
-        createEscrow: async (seller, params) => { assert.equal(seller, 'provider-seller'); assert.equal(params.amount, 2500); return { id: 'remote-id', paymentToken: 'PY_TOKEN', fee: 50 }; },
-        addAdditionalFee: async (token, fee) => { assert.equal(token, 'PY_TOKEN'); assert.equal(fee, 75); },
+        createEscrow: async (seller, params) => { assert.equal(seller, 'provider-seller'); assert.equal(params.amount, price); return { id: 'remote-id', paymentToken: 'PY_TOKEN', fee: 50 }; },
+        addAdditionalFee: async (token, fee) => { assert.equal(token, 'PY_TOKEN'); assert.equal(fee, expectedCommission); },
       } },
       '@/lib/supabase-admin': { supabaseAdmin: {
         rpc: async name => ({ data: name === 'consume_rate_limit' ? true : 'local-tx' }),
         from: table => {
-          const q = chain({ data: table === 'posts' ? { id: 'item', user_id: 'seller', price: 2500, is_sold: false, category: 'For Sale', moderation_status: 'approved' }
+          const q = chain({ data: table === 'posts' ? { id: 'item', user_id: 'seller', price, is_sold: false, category: 'For Sale', moderation_status: 'approved' }
             : escrowReads++ === 0 ? [] : { id: 'local-tx' } });
-          q.update = row => { if (Object.hasOwn(row, 'seller_amount')) { proceedsWrites++; assert.equal(row.seller_amount, 2450); } return q; };
+          q.update = row => { if (Object.hasOwn(row, 'seller_amount')) { proceedsWrites++; assert.equal(row.seller_amount, Math.round((price - 50) * 100) / 100); } return q; };
           return q;
         },
       } },
     });
     const response = await POST(new Request('http://localhost', { method: 'POST', body: JSON.stringify({ itemId: 'item', buyerId: 'buyer', sellerId: 'seller', price: 1 }) }));
     assert.equal(response.status, 200);
-    assert.equal((await response.json()).totalAmount, 2575);
+    assert.equal((await response.json()).totalAmount, Math.round((price + expectedCommission) * 100) / 100);
     assert.equal(permissionCalls, 2);
     assert.equal(proceedsWrites, 1);
   });

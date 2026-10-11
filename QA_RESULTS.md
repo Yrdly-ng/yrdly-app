@@ -1,4 +1,4 @@
-# Release verification — 10 October 2026
+# Release verification — 11 October 2026
 
 This document supersedes older completion estimates. A passing mocked test is
 not evidence that a payment settled or that production has the matching code.
@@ -32,20 +32,47 @@ not evidence that a payment settled or that production has the matching code.
   and payload tests. Backend keys work; publishable keys and user JWTs fail.
 - GitHub CLI has write-capable access. QA-only credentials were encrypted in
   the `yrdly-qa` GitHub environment, restricted to `fix/audit-oct-2026`.
-- Linux CI passed the build, typecheck, lint, 153 regression tests, 20 live OTP
+- Linux CI passed the build (173 routes), typecheck, lint, 171 regression tests, 20 live OTP
   checks, seven live
   push authorization tests, 50 signed-in API/security checks, five browser
   scenarios and the existing smoke suite. The browser scenarios cover six
   protected routes at 375, 768 and 1440 pixels, wait for loaded content and
   assert visible navigation. Nineteen screenshots were captured; representative
   loaded mobile, tablet and desktop screenshots were visually reviewed.
-  Evidence: https://github.com/Yrdly-ng/yrdly-app/actions/runs/38082700194
+  Evidence: https://github.com/Yrdly-ng/yrdly-app/actions/runs/38115927683
 - Vercel access works. A separate `yrdly-app-qa` project was configured with the
-  isolated database and Payluk sandbox keys. It deployed revision `711ec2a9`
+  isolated database and Payluk sandbox keys. It deployed revision `d06c83ab`
   successfully at https://yrdly-app-qa.vercel.app. No production environment
   variables, scheduled jobs or application data were copied into this project.
   Public login, authenticated/unauthenticated checkout guards and unsigned
   webhook rejection passed against the hosted application.
+- Four real hosted marketplace checkout checks passed on `7e22af52`: database
+  price instead of a tampered client price, exactly 3% commission, binding each
+  verified synthetic phone to its existing Payluk customer, and retry reuse of
+  the same unpaid transaction/escrow. The provider principal, additional fee and
+  escrow-specific seller proceeds matched the application. Cleanup passed.
+  This exercised application-driven lookup/binding of existing sandbox customers.
+- On hosted revision `cbe1d7c4`, fresh checkout created both previously absent
+  provider customers. Real provider reads verified their confirmed email and
+  verified synthetic phone bindings. Retry reused one unpaid transaction/token;
+  principal, 3% commission and escrow-specific proceeds matched. These payment
+  profiles explicitly seed phone trust; actual SMS verification was tested separately.
+- Thirteen resumable marketplace lifecycle checks passed using Payluk's hosted
+  Checkout SDK and its staging test bank. A direct escrow payment collected
+  NGN 2,575 without a deposit/top-up. The SDK verified payment and the real
+  provider callback marked the transaction paid and listing sold before any
+  application verification request or direct database payment write. Two locally
+  signed funding-event replays preserved one payment and added no notifications.
+  Seller confirmation was forbidden; buyer confirmation and its repeat passed.
+  Provider completion, the seller wallet increase and application earnings all
+  matched NGN 2,375: principal 2,500 less the returned escrow fee 125. The app's
+  additional 3% charge is 75. The separate merchant-ledger inspection below
+  exposed duplicate commission despite the correct seller-proceeds calculation.
+  An attempted withdrawal correctly required a
+  bank account; successful bank payout is not established by this check.
+  Funded QA ledger records and synthetic payment identities are retained for
+  reconciliation; they are never deleted as though no funds moved.
+  Documentation: https://docs.payluk.ng/guides/payluk-test-bank
 - Four hosted webhook checks passed: a correctly signed unknown synthetic
   event, its replay, a tampered body and a missing signature. These were locally
   signed diagnostic requests, not callbacks delivered by Payluk.
@@ -57,7 +84,23 @@ not evidence that a payment settled or that production has the matching code.
   checks establish callback delivery and session creation, not payment funding.
 - A diagnostic application email was accepted by Resend, reported delivered
   by the provider and confirmed received by the authorized recipient. This
-  does not establish Supabase Auth signup/password-reset email delivery.
+  was a separate check from Supabase Auth delivery.
+- A real QA Auth signup initially returned HTTP 500. QA Auth logs identified
+  SMTP authentication failure (535). Updating only the isolated project's SMTP
+  password from the local QA Resend key made signup return HTTP 200; Resend
+  reported its confirmation email delivered. The QA site URL and redirect
+  allowlist were corrected to stay on the dedicated QA application.
+- A real QA password-recovery request was accepted, its email was delivered,
+  and its link returned a PKCE code to the hosted callback. This exposed the
+  incomplete-onboarding redirect bug recorded below. On corrected hosted
+  revision `83eacf42`, all seven recovery checks passed: request acceptance,
+  provider delivery, PKCE callback, arrival at password reset before onboarding,
+  password update, login with the new password and rejection of the old password.
+- A fresh real signup email code verified successfully, established a session,
+  and was rejected when replayed. These checks used the authorized destination
+  and actual delivered messages, without logging codes or email links. Both
+  temporary Auth delivery fixtures were cleaned. This establishes email/API/HTTP
+  behavior; an interactive signup/reset browser walkthrough remains separate.
 - Real Termii SMS delivery and verification succeeded. After hardening the OTP
   functions, a second real SMS challenge verified for its requesting QA account,
   was marked consumed, and a repeated verification was rejected.
@@ -115,7 +158,7 @@ not evidence that a payment settled or that production has the matching code.
 10. **VERIFIED by hosted checkout:** simultaneous buyer/seller permission
     updates returned Payluk HTTP 423 and made checkout return HTTP 502. The
     marketplace route now sends those updates sequentially under its existing
-    deadline. Hosted verification of the corrected revision is pending.
+    deadline. All four hosted checkout checks subsequently passed on `7e22af52`.
 11. **VERIFIED against Payluk sandbox:** escrow verification by escrow ID
     returned HTTP 400, while the same escrow's payment token returned HTTP 200.
     Checkout retry, both delivery timeout-recovery paths and the legacy payment
@@ -126,22 +169,104 @@ not evidence that a payment settled or that production has the matching code.
     New marketplace checkouts now record principal minus that escrow's Payluk
     seller fee; completion preserves the recorded amount. Regression tests
     check fee accounting and prevent wallet reads from rewriting proceeds.
-    Historical proceeds and funded settlement still need reconciliation tests.
+    New funded marketplace proceeds subsequently matched the released provider
+    wallet credit. Historical production proceeds still need reconciliation.
+13. **VERIFIED by hosted recovery:** a valid password-reset callback sent an
+    account without a phone number to `/onboarding/verify-phone`. Local regression
+    cases also reproduced the failure with a missing or incomplete profile.
+    Authenticated callbacks now honor `/reset-password` before onboarding checks;
+    other destinations still require onboarding and external destinations remain
+    rejected. All six new callback tests passed.
+14. **VERIFIED by hosted first checkout:** Payluk returns HTTP 400 with status
+    `false` and `No customer found with the provided phone` for an unused phone.
+    The application treated that expected absence as an API failure, returning
+    HTTP 502 before creating the buyer/seller. The service now recognizes only
+    that exact absence response; validation, auth, lock and server failures still
+    fail closed. Seven added regressions cover these boundaries and creation
+    from the confirmed Auth email/verified phone. Fresh hosted checkout, provider
+    identity checks and retry reuse subsequently passed on `cbe1d7c4`.
+15. **VERIFIED by hosted first checkout:** after the missing-phone correction,
+    concurrent buyer/seller customer creation returned Payluk HTTP 423 and the
+    app returned HTTP 502. Customer creation is now sequenced, alongside the
+    previously sequenced permission writes. The fresh hosted checkout passed.
+    Provider reads in the test harness also encountered the documented shared
+    10-request/minute limit; bounded read-only backoff now paces those checks.
+16. **VERIFIED, High, corrected in sandbox configuration:** the completed sandbox sale's merchant ledger
+    contains both a `commission` credit of NGN 75 and a `delivery` credit of NGN
+    75, each referencing this exact escrow. For a 2,500 principal this pays Yrdly
+    6%, while the canonical application commission is 3%. Payluk's returned
+    escrow fee already includes the configured merchant commission, and the app
+    also applies its own additional fee in `src/app/api/payment/initialize/route.ts`.
+    The user removed the dashboard's extra merchant commission. A new sandbox
+    escrow now returns fee 50 (2%) while retaining the app's additional fee 75
+    (3%). A new funded sale then passed all 14 lifecycle checks: the buyer paid
+    2,575, seller received 2,450, and the merchant ledger credited exactly 75 as
+    the additional fee and zero extra commission. The same escrow token linked
+    each merchant entry to this purchase. The sandbox now collects exactly one
+    canonical 3% Yrdly commission. Live merchant configuration remains a separate
+    release check. Do not represent the earlier 125 escrow fee as entirely
+    Payluk revenue. Current documentation explains the fee components:
+    https://docs.payluk.ng/concepts/fees-and-settlement
+17. **VERIFIED, High:** an actual funded dispute's refund returned HTTP 202 and
+    required reconciliation. Its retained provider error was HTTP 400:
+    `sellerAmount and buyerAmount are only valid on a SPLIT resolution`.
+    Both full refunds and full releases sent one of those invalid fields. The
+    route and service now send allocation fields only for `SPLIT`; three
+    provider-contract regression cases pass. On hosted revision `d06c83ab`, the
+    rejected operation was checked against the provider's still-investigating
+    escrow, then reconciled through the authenticated admin API before one
+    corrected retry. All 16 funded refund checks passed: outsider/admin gates,
+    buyer dispute, one seller reply, duplicate rejection, refund completion and
+    retry idempotency. The transaction is cancelled and listing available again.
+    The gross refund allocation is 2,500; the actual buyer wallet credit is 2,450
+    (2,500 principal minus this older escrow's non-refundable 125 fee plus the
+    refunded additional fee 75). Provider state is `REFUNDED`. These are sandbox
+    funds; the original fee was fixed when this escrow was created before the
+    dashboard commission correction. No funded ledger records were deleted.
+18. **VERIFIED by local reproduction:** booking checkout still created buyer
+    and seller customers concurrently. A modeled provider lock reproduced HTTP
+    423, using the same failure already observed in real marketplace onboarding.
+    Booking onboarding is now sequenced. Its regression passes; a real funded
+    booking flow remains separate from this mocked reproduction.
+19. **VERIFIED by local reproduction:** marketplace commission rounded to whole
+    naira. A price of 1,234.56 produced commission 37 instead of 37.04. Commission
+    and buyer total now round to two decimal places. Two fractional-price route
+    regressions pass, including 2,001.11 and 1,234.56. Hosted fractional-price
+    checkout verification remains pending deployment of this change.
 
-The permission-lock and token-addressing fixes passed full CI. The additional
-escrow-proceeds change passed all 153 local regression tests, typecheck and lint
-(the same 19 warnings). Its full CI and repeat hosted checkout are pending.
+The customer/permission lock, missing-customer, token-addressing, recovery and
+escrow-proceeds fixes passed full CI on `cbe1d7c4`. The hosted fresh-customer,
+funded-payment, callback/replay, delivery and seller-proceeds checks passed.
+The refund and booking fixes passed full CI with 171 tests on `d06c83ab`, and
+that revision is ready on the dedicated QA deployment. The dashboard commission
+correction passed the new funded merchant-ledger assertion. The funded full
+refund passed all 16 checks. The additional commission precision change passed
+173 local tests, typecheck and lint (the same 19 existing warnings); its new
+full CI/deployment verification remains pending.
+
+The manual harness `qa-scripts/payluk-lifecycle.mjs` explicitly separates
+preparation, funding, delivery, dispute, reconciliation and refund operations.
+Use `inspect` for the retained refund scenario or `inspect commission` for the
+post-dashboard-correction sale. Its evidence contains private sessions and is
+ignored by Git. It refuses live keys and ambiguous duplicate transfers. Never
+clean up these funded records as though they were unpaid fixtures.
 
 ## Remaining release requirements
 
-- Test application-driven Payluk customer onboarding, checkout funding, signed callback
-  delivery/replay, delivery confirmation, settlement, refunds and withdrawals.
+- Confirm the live merchant dashboard also has zero additional merchant
+  commission. A new funded sandbox ledger verified the app's single 3% charge;
+  the staging result does not prove the live account setting.
+- Complete funded split resolutions, catalog/event/booking purchase and
+  settlement, and bank withdrawals. Marketplace full refund passed above;
+  other refund paths remain separate requirements.
   An authenticated read-only request does not establish these outcomes.
   The sandbox callback is configured and an unpaid-escrow callback was accepted;
-  callbacks for funded payments and financial state changes remain unverified.
+  Funded marketplace payment and delivery completion are verified above;
+  other financial outcomes remain separate gates.
   Deprecated wallet top-up/deposit is not a test path.
-- Verify Supabase Auth signup/reset email delivery, OAuth redirects and actual
-  device/browser push. The current push authorization test intentionally sends
+- Verify interactive Auth signup/reset browser flows, OAuth redirects and actual
+  device/browser push. Signup email OTP verification/replay and the real hosted
+  password recovery flow passed separately above. The current push authorization test intentionally sends
   to a fixture without subscribed devices. Basic application email and Termii
   OTP delivery are verified separately above.
 - Review outstanding Supabase security advisors. `public_profiles` deliberately
@@ -200,3 +325,26 @@ QA project, archive committed source, and disable scheduled jobs in that copy.
 Neither uploads delivery destinations, local environment files or QA artifacts.
 Use `qa-scripts/vercel-qa.mjs source` to refresh committed QA deployment source
 without rewriting the already configured QA environment variables.
+
+`qa-scripts/payluk-checkout.mjs existing` tests provider-customer lookup/binding;
+`fresh` tests new customer creation. Both target only hosted QA and unpaid sandbox
+escrows, clean their temporary application fixtures, and never establish real
+phone verification for their synthetic payment profiles.
+
+`qa-scripts/payluk-lifecycle.mjs` is an explicit manual, resumable sandbox test.
+Its `prepare`, `fund` and `complete` operations use only the allowlisted QA project,
+test keys and Payluk test-bank rail. It retains funded ledger fixtures and refuses
+duplicate or uncertain transfers. Sensitive evidence remains in ignored mode-600
+artifacts and is not uploaded by CI. Do not run fixture cleanup against its funded
+records. `new-refund`, `dispute` and `resolve` exercise a separate funded refund.
+
+Auth delivery tests require the explicitly authorized destination and local
+QA-only Resend credentials. `qa-scripts/auth-settings.mjs inspect` reports only
+configuration booleans; `repair` changes only QA SMTP credentials/redirects.
+Run `qa-scripts/auth-delivery.mjs signup` then `confirm` promptly, as email codes
+expire. `qa-scripts/auth-recovery.mjs run` checks real delivered recovery links,
+PKCE, the hosted callback and password replacement for that owned QA account.
+`qa-scripts/auth-delivery.mjs cleanup` removes only that fixture, refusing content,
+tickets or financial rows. Email links, OTPs, passwords and session cookies stay
+out of console output and public CI artifacts. Delivery tests are manual; they
+do not email the recipient on every CI run.

@@ -256,8 +256,8 @@ export async function POST(request: NextRequest) {
     // Yrdly's 3% commission is collected from the buyer as an additional fee.
     // Payluk's own escrow fee is charged to the seller via whoPays: 'seller' below,
     // while the escrow principal remains the seller's item price.
-    const commission = Math.round(authorizedPrice * MARKETPLACE_CONSTANTS.COMMISSION_RATE);
-    const totalAmount = authorizedPrice + commission;
+    const commission = Math.round(authorizedPrice * MARKETPLACE_CONSTANTS.COMMISSION_RATE * 100) / 100;
+    const totalAmount = Math.round((authorizedPrice + commission) * 100) / 100;
 
     // ── STEP 1: DB Reservation FIRST (Before external Payluk call) ──
     // Inserting into escrow_transactions first enforces single-buyer reservation at the DB layer
