@@ -5,7 +5,26 @@ not evidence that a payment settled or that production has the matching code.
 
 ## Current verification checkpoint
 
-Latest fully green application CI is `95986e40` / run `38168350267`: 281 unit tests,
+Latest passing CI is `5ed4207d` / run `38173709145`: 281 unit tests and
+13 browser scenarios, plus the database, OTP, push, API, smoke, build and static
+checks listed below. Signup/recovery request handoffs and Google authorization
+navigation use intercepted responses; they do not prove delivery or Google
+consent. Three recovery scenarios use real isolated-QA recovery sessions and
+password updates, verifying the new password works and the old one is rejected.
+Disposable recovery accounts are deleted after testing.
+Evidence: https://github.com/Yrdly-ng/yrdly-app/actions/runs/38173709145
+
+Screenshot inspection found unreadable small text on fixed dark auth cards in
+the default light theme. The follow-up uses an explicit light foreground and
+adds rendered foreground/background contrast assertions (minimum 4.5:1).
+Its new browser results must pass before this UI change is considered verified.
+
+The read-only production preflight still finds all 33 release contracts installed
+in QA and absent from production. See `docs/production-release.md`; passing QA
+does not authorize bypassing the shared-client cutover. Mobile compatibility
+updates are now included in the user-authorized coordinated release.
+
+Previously verified application runtime is `95986e40` / run `38168350267`: 281 unit tests,
 seven paid-ticket DB checks, nine booking DB checks, nine split-allocation DB
 checks, 11 minimum-price DB checks, seven browser scenarios, build, typecheck,
 lint, OTP/push/API security and smoke. The matching dedicated QA deployment is

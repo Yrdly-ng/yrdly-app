@@ -63,7 +63,7 @@ export default function ForgotPasswordPage() {
                 <h4 className="text-sm font-bold text-white font-yrdly-display">
                   Trouble logging in?
                 </h4>
-                <p className="text-xs text-[var(--yrdly-label)] leading-relaxed">
+                <p className="text-xs text-white/70 leading-relaxed">
                   Enter your email address and we&apos;ll send you a link to get back into your account.
                 </p>
               </div>

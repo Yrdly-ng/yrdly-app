@@ -115,7 +115,7 @@ function VerifyEmailForm() {
                 <h4 className="text-sm font-bold text-white font-yrdly-display">
                   Email Confirmation
                 </h4>
-                <p className="text-xs text-[var(--yrdly-label)] leading-relaxed">
+                <p className="text-xs text-white/70 leading-relaxed">
                   Click the confirmation link or enter the 6-digit code sent to your inbox.
                 </p>
               </div>

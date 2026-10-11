@@ -1,9 +1,38 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Locator } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { parse } from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
 import { createServerClient } from '@supabase/ssr';
+
+test.use({ colorScheme: 'light' });
+
+// Auth heroes keep a dark background even when the user's theme is light.
+// Measure the rendered colors, including inherited/transparent backgrounds,
+// so a theme token change cannot make their small copy unreadable again.
+async function expectReadableHero(locator: Locator) {
+  await expect(locator).toBeVisible();
+  const contrast = await locator.evaluate(element => {
+    const rgba = (value: string) => {
+      const parts = value.match(/[\d.]+/g)!.map(Number);
+      return [parts[0], parts[1], parts[2], parts[3] ?? 1];
+    };
+    const over = (front: number[], back: number[]) =>
+      front.slice(0, 3).map((channel, i) => channel * front[3] + back[i] * (1 - front[3]));
+    const ancestors: Element[] = [];
+    for (let node: Element | null = element; node; node = node.parentElement) ancestors.push(node);
+    let background = [255, 255, 255];
+    for (const node of ancestors.reverse()) background = over(rgba(getComputedStyle(node).backgroundColor), background);
+    const foreground = over(rgba(getComputedStyle(element).color), background);
+    const luminance = (rgb: number[]) => rgb.map(channel => {
+      const value = channel / 255;
+      return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+    }).reduce((sum, value, i) => sum + value * [0.2126, 0.7152, 0.0722][i], 0);
+    const light = luminance(foreground), dark = luminance(background);
+    return (Math.max(light, dark) + 0.05) / (Math.min(light, dark) + 0.05);
+  });
+  expect(contrast, 'Auth hero body text must meet WCAG AA contrast').toBeGreaterThanOrEqual(4.5);
+}
 
 function qaClients() {
   const env = parse(readFileSync('.env.qa', 'utf8'));
@@ -40,6 +69,10 @@ test('signup validation and email-verification handoff render at three breakpoin
     const before = requests;
     await page.setViewportSize({ width, height: 900 });
     await page.goto('/login?next=%2Fmarketplace');
+    if (width === 1440) {
+      await expectReadableHero(page.getByText('📍 Lagos, Nigeria', { exact: true }));
+      await expectReadableHero(page.getByText('Just now', { exact: true }));
+    }
     await page.getByRole('button', { name: 'Sign up', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Create an account', exact: true })).toBeVisible();
     await page.getByPlaceholder('Full name', { exact: true }).fill('YRDLY-QA Browser Signup');
@@ -54,6 +87,7 @@ test('signup validation and email-verification handoff render at three breakpoin
     await expect(page.getByRole('heading', { name: 'Check your email', exact: true })).toBeVisible();
     expect(new URL(page.url()).searchParams.get('next')).toBe('/marketplace');
     expect(requests).toBe(before + 1);
+    if (width === 1440) await expectReadableHero(page.getByText('Click the confirmation link or enter the 6-digit code sent to your inbox.', { exact: true }));
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth+1)).toBe(true);
     await page.screenshot({ path: `.qa-artifacts/screenshots/${width}-signup-verification.png`, fullPage: true });
   }
@@ -75,6 +109,7 @@ test('forgot-password form sends the recovery callback and renders acceptance', 
     const before = requests;
     await page.setViewportSize({ width, height: 900 });
     await page.goto('/forgot-password');
+    if (width === 1440) await expectReadableHero(page.getByText("Enter your email address and we'll send you a link to get back into your account.", { exact: true }));
     await page.getByPlaceholder('Enter your email address', { exact: true }).fill('yrdly-qa-browser@example.invalid');
     await page.getByRole('button', { name: 'Send Reset Link', exact: true }).click();
     await expect(page.getByText('Reset Link Sent', { exact: true })).toBeVisible();
@@ -136,6 +171,7 @@ for (const width of [375,768,1440]) {
       await page.goto('/auth/callback?next=/reset-password');
       await expect(page).toHaveURL(/\/reset-password$/);
       await expect(page.getByRole('heading', { name: 'Set New Password', exact: true })).toBeVisible();
+      if (width === 1440) await expectReadableHero(page.getByText('Choose a new strong password to protect your YRDLY account.', { exact: true }));
       let updates = 0;
       page.on('request', r => { if (r.method() === 'PUT' && new URL(r.url()).pathname === '/auth/v1/user') updates++; });
       await page.getByPlaceholder('New Password (8+ chars)', { exact: true }).fill(newPassword);

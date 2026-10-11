@@ -233,7 +233,7 @@ function LoginFormPage() {
                   <div className="text-xs font-bold text-white truncate font-yrdly-display">
                     Local Neighbourhood
                   </div>
-                  <div className="text-[10px] text-[var(--yrdly-label)] truncate">
+                  <div className="text-[10px] text-white/70 truncate">
                     📍 Lagos, Nigeria
                   </div>
                 </div>
@@ -245,7 +245,7 @@ function LoginFormPage() {
                 </p>
               </div>
 
-              <div className="flex items-center justify-between text-xs text-[var(--yrdly-label)] pt-1 border-t border-white/5">
+              <div className="flex items-center justify-between text-xs text-white/70 pt-1 border-t border-white/5">
                 <span className="text-[#82DB7E] font-bold">❤️ 24 likes</span>
                 <span>Just now</span>
               </div>
