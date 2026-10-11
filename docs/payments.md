@@ -34,7 +34,11 @@ prices remain in the application ledger. A server-managed fee-mode marker
 distinguishes these new orders from historical tickets. Organizer payout must
 confirm the ticket escrows are released and use their actual net proceeds;
 commission is not deducted again at withdrawal. Legacy orders require
-reconciliation. Funded verification of this event change remains pending.
+reconciliation. Sixteen funded sandbox checks verified an advertised/buyer
+price of 2,500, Yrdly credit of 75, returned Payluk fee of 48.50 and organizer
+wallet credit of 2,376.50. Ticket issuance, idempotent replays and simultaneous
+single-use scans passed. Automatic maturity claims and bank payouts remain
+separate requirements.
 
 Booking commission collection remains a separate open verification requirement.
 
@@ -57,7 +61,8 @@ The old profile payout-add page redirects to `/settings/payout-settings`, which 
 Applied migrations are immutable history. They can still contain retired provider names and compatibility columns. The backend is shared with other applications; historical rows and columns have not been destructively removed. Production changes must follow matching application deployment and development-project validation. Do not run a blanket migration push: local and live migration versions differ.
 
 The dedicated QA deployment uses an isolated Supabase branch and Payluk test
-keys. Funded marketplace purchase, delivery and full dispute refund have passed
+keys. Funded marketplace, catalog and ticket purchase/release, and marketplace
+full dispute refund have passed
 using Payluk's [test bank](https://docs.payluk.ng/guides/payluk-test-bank), without
 wallet top-up/deposit. Funded ledger fixtures are retained. Current evidence and
 remaining event, booking, payout and production requirements are in
