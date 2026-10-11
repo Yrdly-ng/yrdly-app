@@ -40,6 +40,15 @@ wallet credit of 2,376.50. Ticket issuance, idempotent replays and simultaneous
 single-use scans passed. Automatic maturity claims and bank payouts remain
 separate requirements.
 
+Paid ticket checkout reserves seats atomically before creating its provider
+escrow. Retries reuse the order; a single setup claim prevents duplicate escrow
+creation. Reservations last 15 minutes, but expiry alone never releases a seat:
+the application must first confirm deletion of its unpaid provider link. One
+expired reservation is reconciled when that tier is checked out again. Buyers
+can cancel unpaid checkout; paid or uncertain outcomes remain held for review.
+The service-only reservation migration must ship with its matching web code.
+Reconcile any legacy unfulfilled paid-ticket checkout before applying it.
+
 Booking commission collection remains a separate open verification requirement.
 
 ## Routes and safeguards

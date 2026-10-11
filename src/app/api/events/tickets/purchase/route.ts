@@ -4,9 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { EVENT_CONSTANTS } from '@/lib/constants';
 import { ResendEmailService } from '@/lib/resend-service';
 import QRCode from 'qrcode';
-import { PaylukService } from '@/lib/payluk-service';
-import { getPaylukCustomerId } from '@/lib/payluk-onboarding';
-import { EscrowStatus } from '@/types/escrow';
+import { createTicketCheckout, TicketCheckoutError } from '@/lib/ticket-checkout';
 import { sendPushNotification } from '@/lib/server-push-notification';
 
 /**
@@ -90,7 +88,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'MAX_TICKET_LIMIT_EXCEEDED', message }, { status: 400 });
     }
 
-    if (tier.capacity !== null && (tier.sold + quantity) > tier.capacity) {
+    if (tier.price === 0 && tier.capacity !== null && (tier.sold + quantity) > tier.capacity) {
       return NextResponse.json({ error: 'SOLD_OUT', message: `Not enough tickets left. Only ${Math.max(0, tier.capacity - tier.sold)} available.` }, { status: 409 });
     }
 
@@ -251,128 +249,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, free: true, ticket_id: insertedTickets[0].id, quantity });
     }
 
-    const txRef = `evt-${crypto.randomUUID()}`;
-    const ticketPrice = Number(tier.price);
-    if (!Number.isFinite(ticketPrice) || ticketPrice < EVENT_CONSTANTS.MIN_TICKET_PRICE ||
-        Math.abs(ticketPrice * 100 - Math.round(ticketPrice * 100)) > 0.00001) {
-      return NextResponse.json({ error: 'This paid ticket price needs correction before checkout.' }, { status: 400 });
-    }
-    const totalAmount = Math.round(ticketPrice * quantity * 100) / 100;
-    const commission = Math.round(totalAmount * EVENT_CONSTANTS.COMMISSION_RATE * 100) / 100;
-    // Preserve the advertised price: principal + merchant fee = ticket total.
-    const principal = Math.round((totalAmount - commission) * 100) / 100;
-
-    // ── Payluk Escrow payment ─────────────────────────────────────────────
-    // Fetch or provision Payluk Customer IDs for buyer & organizer
-    let buyerPaylukId: string;
-    let organizerPaylukId: string;
-    try {
-      buyerPaylukId = await getPaylukCustomerId(user.id);
-      organizerPaylukId = await getPaylukCustomerId(event.organizer_id);
-    } catch (onboardingErr: any) {
-      console.error('[TicketPurchase] Payluk onboarding error:', onboardingErr);
-      return NextResponse.json({
-        error: onboardingErr?.message || 'Failed to prepare user payment account.',
-      }, { status: 400 });
-    }
-
-    try {
-      await PaylukService.updateCustomerPermissions(buyerPaylukId, { canBuy: true });
-    } catch (e) {}
-    try {
-      await PaylukService.updateCustomerPermissions(organizerPaylukId, { canSell: true });
-    } catch (e) {}
-
-    // Calculate delivery window (in days)
-    let maxDelivery = 7;
-    if (event.end_time) {
-      const msUntilEnd = new Date(event.end_time).getTime() - Date.now();
-      const days = Math.ceil(msUntilEnd / (1000 * 60 * 60 * 24));
-      maxDelivery = Math.max(1, Math.min(days + 1, 90));
-    }
-
-    let paylukEscrow;
-    try {
-      paylukEscrow = await PaylukService.createEscrow(organizerPaylukId, {
-        amount: principal,
-        purpose: `${quantity}x ${tier.name} — ${event.title}`,
-        whoPays: 'seller',
-        maxDelivery,
-        deliveryTimeline: 'days',
-        // One escrow pays for this entire order; ticket quantity lives in metadata.
-        totalQuantity: 1,
-      });
-
-      if (!Number.isFinite(paylukEscrow.fee) || paylukEscrow.fee < 0 || paylukEscrow.fee > principal) {
-        throw new Error('Invalid Payluk escrow fee. Checkout needs reconciliation.');
-      }
-      await PaylukService.addAdditionalFee(paylukEscrow.paymentToken, commission);
-    } catch (paylukError: any) {
-      console.error('[TicketPurchase] Payluk createEscrow error:', paylukError);
-      return NextResponse.json({
-        error: 'Payment initialization failed',
-        details: paylukError?.message || 'Payluk Escrow error',
-      }, { status: 502 });
-    }
-
-    // Store escrow_transactions record
-    const transactionId = crypto.randomUUID();
-    const sellerAmount = Math.round((principal - paylukEscrow.fee) * 100) / 100;
-
-    const { error: dbInsertErr } = await supabaseAdmin
-      .from('escrow_transactions')
-      .insert({
-        id: transactionId,
-        buyer_id: user.id,
-        seller_id: event.organizer_id,
-        amount: totalAmount,
-        commission,
-        total_amount: totalAmount,
-        seller_amount: sellerAmount,
-        status: EscrowStatus.PENDING,
-        payment_method: 'card',
-        delivery_details: { option: 'event_entry' },
-        payment_provider: 'payluk',
-        payment_reference: txRef,
-        payluk_tx_ref: paylukEscrow.paymentToken,
-        payluk_escrow_id: paylukEscrow.id,
-        item_type: 'ticket',
-        item_id: tier_id,
-        metadata: {
-          payluk_fee_mode: 'seller_commission_v1',
-          payluk_fee: paylukEscrow.fee,
-          event_id,
-          tier_id,
-          quantity,
-          buyer_id: user.id,
-          attendee_name,
-          attendee_email,
-          attendee_phone: attendee_phone || null,
-        },
-      });
-
-    if (dbInsertErr) {
-      console.error('[TicketPurchase] Failed to store escrow_transactions row:', dbInsertErr);
-      return NextResponse.json({
-        error: 'Failed to store payment record',
-        details: dbInsertErr.message,
-      }, { status: 500 });
-    }
-
-    const isLive = process.env.PAYLUK_SECRET_KEY?.startsWith('sk_live_');
-    const paylukHost = isLive ? 'https://payluk.ng' : 'https://staging.api.payluk.ng';
-    const paymentLink = `${paylukHost}/escrow/${paylukEscrow.paymentToken}`;
-
-    return NextResponse.json({
-      success: true,
-      payment_link: paymentLink,
-      paylukPaymentToken: paylukEscrow.paymentToken,
-      paylukEscrowId: paylukEscrow.id,
-      buyerPaylukId,
-      tx_ref: txRef,
-      provider: 'payluk',
+    const { data: permitted, error: rateError } = await supabaseAdmin.rpc('consume_rate_limit', {
+      p_user_id: user.id, p_endpoint: '/api/events/tickets/purchase', p_max_requests: 10, p_window_seconds: 60,
     });
+    if (rateError) return NextResponse.json({ error: 'Unable to authorize checkout' }, { status: 503 });
+    if (!permitted) return NextResponse.json({ error: 'Too many checkout requests' }, { status: 429 });
+    const result = await createTicketCheckout({
+      event_id, tier_id, buyer_id: user.id, quantity,
+      attendee_name: attendee_name.trim(), attendee_email: attendee_email.trim(), attendee_phone: attendee_phone || null,
+    }, `${quantity}x ${tier.name} — ${event.title}`, event.end_time);
+    return NextResponse.json(result);
   } catch (error) {
+    if (error instanceof TicketCheckoutError) return NextResponse.json({ error: error.message }, { status: error.status });
     console.error('[TicketPurchase] Ticket purchase error:', error);
     return NextResponse.json({ 
       error: 'Internal server error',

@@ -286,6 +286,21 @@ not evidence that a payment settled or that production has the matching code.
     sandbox URL, not a completed end-to-end booking test or failure of the live
     `payluk.ng` URL. Booking needs the documented inline Checkout SDK path and
     a fresh funded booking verification. No fix is claimed for this finding.
+24. **VERIFIED, High, by source and live QA database tests:** paid checkout
+    previously created provider escrows before recording the order and did not
+    reserve ticket capacity. New checkout atomically records its order and seats
+    before provider calls, uses a single setup claim, persists the provider token
+    before fee setup and reuses the same unpaid order on retry. Uncertain setup
+    remains held with a reconciliation flag. The service-only reservation table
+    and RPCs are installed only on QA by `reserve_paid_ticket_checkout`.
+    Seven real concurrent database checks and eight rollback-only SQL checks pass,
+    including competing buyers, duplicate setup claims, atomic fulfillment,
+    in-flight/unknown setup protection and unprivileged access denial. Local
+    cancellation tests cover read failure, unknown deletion and paid-order
+    protection. The event UI verifies payment before showing success and uses
+    safe cancellation on SDK close. Hosted verification of this reservation
+    change is pending; the earlier funded event evidence remains valid for its
+    recorded revision.
 
 The customer/permission lock, missing-customer, token-addressing, recovery and
 escrow-proceeds fixes passed full CI on `cbe1d7c4`. The hosted fresh-customer,

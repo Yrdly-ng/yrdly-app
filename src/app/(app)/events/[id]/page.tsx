@@ -130,41 +130,44 @@ export default function EventDetailPage() {
         throw new Error(errorMsg);
       }
 
-      if (data.free) {
+      if (data.free || data.alreadyPaid) {
         // Free ticket — go straight to my-tickets
         setPurchase((s) => ({ ...s, step: "success" }));
         setTimeout(() => router.push("/my-tickets?success=1"), 1500);
       } else if (data.paylukPaymentToken) {
-        try {
-          const publicKey = process.env.NEXT_PUBLIC_PAYLUK_PUBLIC_KEY;
-          if (publicKey) {
-            const { initEscrowCheckout, pay } = await import('payluk-escrow-inline-checkout');
-            initEscrowCheckout({ publicKey });
-            await pay({
-              paymentToken: data.paylukPaymentToken,
-              reference: data.tx_ref,
-              redirectUrl: `${window.location.origin}/my-tickets?success=1&tx_ref=${encodeURIComponent(data.tx_ref)}`,
-              brand: 'Yrdly',
-              customerId: data.buyerPaylukId,
-              callback: async () => {
-                try {
-                  await authenticatedFetch('/api/events/tickets/verify', { tx_ref: data.tx_ref });
-                } catch (e) {}
-                setPurchase((s) => ({ ...s, step: "success" }));
-                setTimeout(() => router.push(`/my-tickets?success=1&tx_ref=${encodeURIComponent(data.tx_ref)}`), 1500);
-              },
-              onClose: () => {
-                setPurchase((s) => ({ ...s, step: "form" }));
-              }
-            });
-            return;
-          }
-        } catch (inlineErr) {
-          console.warn('Payluk inline checkout error, falling back to payment_link:', inlineErr);
-        }
-        window.location.href = data.payment_link;
+        const publicKey = process.env.NEXT_PUBLIC_PAYLUK_PUBLIC_KEY;
+        if (!publicKey) throw new Error('Payment checkout is unavailable. Please contact support.');
+        const { initEscrowCheckout, pay } = await import('payluk-escrow-inline-checkout');
+        initEscrowCheckout({ publicKey });
+        let confirmed = false;
+        const confirm = async () => {
+          await authenticatedFetch('/api/events/tickets/verify', { tx_ref: data.tx_ref });
+          confirmed = true;
+          setPurchase((s) => ({ ...s, step: "success" }));
+          router.push(`/my-tickets?success=1&tx_ref=${encodeURIComponent(data.tx_ref)}`);
+        };
+        await pay({
+          paymentToken: data.paylukPaymentToken,
+          reference: data.tx_ref,
+          redirectUrl: `${window.location.origin}/my-tickets?tx_ref=${encodeURIComponent(data.tx_ref)}`,
+          brand: 'Yrdly', customerId: data.buyerPaylukId,
+          callback: async () => {
+            try { await confirm(); }
+            catch { setPurchase((s) => ({ ...s, step: "form", errorMsg: 'Payment is being verified. Check My Tickets before trying again.' })); }
+          },
+          onClose: async () => {
+            if (confirmed) return;
+            try { await confirm(); return; } catch { /* Cancellation checks provider state again. */ }
+            try {
+              await authenticatedFetch('/api/events/tickets/cancel-checkout', { transactionId: data.transactionId });
+              setPurchase((s) => ({ ...s, step: "form", errorMsg: 'Unpaid checkout cancelled.' }));
+            } catch {
+              setPurchase((s) => ({ ...s, step: "form", errorMsg: 'Checkout is processing. Check My Tickets before paying again.' }));
+            }
+          },
+        });
       } else {
-        window.location.href = data.payment_link;
+        throw new Error('Could not open payment checkout. Please retry.');
       }
     } catch (err: any) {
       setPurchase((s) => ({ ...s, step: "form", errorMsg: err.message }));

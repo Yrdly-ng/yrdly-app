@@ -237,7 +237,15 @@ export class TicketService {
         .update({ status: 'paid', paid_at: new Date().toISOString() }).eq('id', paylukTx.id)
         .in('status', ['pending', 'creating_escrow', 'reconciling']).select('*').maybeSingle();
       if (error) throw error;
-      if (!paid) throw new Error('payment_requires_review');
+      if (!paid) {
+        const { data: current, error: currentError } = await supabaseAdmin.from('escrow_transactions')
+          .select('*').eq('id', paylukTx.id).maybeSingle();
+        if (currentError) throw currentError;
+        if (current && ['paid','shipped','delivered','completed'].includes(current.status)) {
+          return TicketService.processTicketPaymentFromTransaction(current);
+        }
+        throw new Error('payment_requires_review');
+      }
       return TicketService.processTicketPaymentFromTransaction(paid);
     }
 

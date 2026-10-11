@@ -14,7 +14,7 @@ assert.ok(env.NEXT_PUBLIC_PAYLUK_PUBLIC_KEY?.startsWith('pk_test_'));
 const base = 'https://yrdly-app-qa.vercel.app';
 const checkout = 'https://staging.live.payluk.ng';
 const scenario = process.argv[3] || 'default';
-assert.ok(['default', 'commission', 'catalog', 'ticket'].includes(scenario), 'Use default, commission, catalog or ticket evidence');
+assert.ok(['default', 'commission', 'catalog', 'ticket', 'ticket-reserved'].includes(scenario), 'Use default, commission, catalog or ticket evidence');
 const artifactPath = `.qa-artifacts/payluk-lifecycle${scenario === 'default' ? '' : `-${scenario}`}.json`;
 const admin = createAdminClient(env);
 const clients = [];
@@ -24,10 +24,10 @@ try { state = JSON.parse(await readFile(artifactPath, 'utf8')); }
 catch (error) { if (error.code !== 'ENOENT') throw error; }
 if (!state) {
   if (mode === 'new-sale') {
-    assert.ok(['commission', 'catalog', 'ticket'].includes(scenario));
+    assert.ok(['commission', 'catalog', 'ticket', 'ticket-reserved'].includes(scenario));
     const source = JSON.parse(await readFile('.qa-artifacts/payluk-lifecycle-completed.json', 'utf8'));
     assert.equal(source.projectRef, projectRef); assert.equal(source.qaPrefix, QA_PREFIX);
-    state = { projectRef, environment: 'sandbox', qaPrefix: QA_PREFIX, kind: scenario, startedAt: new Date().toISOString(), users: source.users, passwords: source.passwords, listingId: randomUUID(), ...(scenario === 'catalog' ? { businessId: randomUUID() } : scenario === 'ticket' ? { eventId: randomUUID() } : {}), results: [] };
+    state = { projectRef, environment: 'sandbox', qaPrefix: QA_PREFIX, kind: scenario === 'ticket-reserved' ? 'ticket' : scenario, startedAt: new Date().toISOString(), users: source.users, passwords: source.passwords, listingId: randomUUID(), ...(scenario === 'catalog' ? { businessId: randomUUID() } : scenario.startsWith('ticket') ? { eventId: randomUUID() } : {}), results: [] };
   } else {
     assert.equal(mode, 'prepare', 'Prepare an owned unpaid fixture first');
     const source = JSON.parse(await readFile('.qa-artifacts/payluk-checkout-fresh.json', 'utf8'));
@@ -161,7 +161,15 @@ try {
       assert.equal(transaction.amount, purchasePrice); assert.equal(transaction.total_amount, purchasePrice);
       assert.equal(transaction.commission, commission); assert.equal(transaction.metadata.payluk_fee_mode, 'seller_commission_v1');
     });
-    else await check('fresh checkout retry reuses one unpaid escrow', async () => {
+    if (scenario === 'ticket-reserved') await check('paid ticket checkout retry reuses the reserved provider escrow', async () => {
+      console.log('Reserving a fresh Payluk rate window for ticket retry'); await pause(65000);
+      const r = await api('buyer', '/api/events/tickets/purchase', { event_id: state.eventId, tier_id: state.listingId, attendee_name: `${QA_PREFIX} Buyer`, attendee_email: actors.buyer.profile.email, quantity: 1 });
+      assert.equal(r.status, 200); assert.equal(r.body.transactionId, state.payment.transactionId);
+      assert.equal(r.body.paylukPaymentToken, state.payment.paylukPaymentToken);
+      assert.equal(ok(await admin.from('escrow_transactions').select('id').eq('item_type','ticket').eq('item_id',state.listingId), 'Read owned ticket orders').length, 1);
+      assert.equal(ok(await admin.from('ticket_checkout_reservations').select('remaining').eq('transaction_id',state.payment.transactionId).single(), 'Read owned ticket reservation').remaining, 1);
+    });
+    if (state.kind !== 'ticket') await check('fresh checkout retry reuses one unpaid escrow', async () => {
       console.log('Reserving a fresh Payluk rate window for hosted checkout'); await pause(65000);
       const r = await api('buyer', '/api/payment/initialize', { itemId: state.listingId, itemType, buyerId: state.users.buyer, sellerId: state.users.seller, price: 1 });
       assert.equal(r.status, 200);
@@ -219,6 +227,7 @@ try {
         } while (Date.now() < until);
         assert.equal(state.tickets.length, 1); assert.equal(state.tickets[0].status, 'PAID'); assert.equal(state.tickets[0].amount_paid, purchasePrice);
         assert.equal(ok(await admin.from('ticket_tiers').select('sold').eq('id', state.listingId).single(), 'Read sold tickets').sold, 1);
+        if (scenario === 'ticket-reserved') assert.equal(ok(await admin.from('ticket_checkout_reservations').select('remaining').eq('transaction_id',state.payment.transactionId).single(), 'Read consumed reservation').remaining, 0);
       } else if (state.kind === 'catalog') {
         const item = ok(await admin.from('catalog_items').select('quantity,in_stock').eq('id', state.listingId).single(), 'Read catalog inventory');
         assert.equal(item.quantity, 0); assert.equal(item.in_stock, false);

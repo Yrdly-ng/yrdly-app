@@ -45,6 +45,7 @@ jobs:
       - run: node qa-scripts/write-ci-env.mjs
       - run: node qa-scripts/seed.mjs
       - run: node --test tests/audit-security.test.cjs
+      - run: node qa-scripts/ticket-reservation-regression.mjs
       - run: node scripts/qa-payluk-sandbox.mjs
       - run: node qa-scripts/edge-regression.mjs
       - run: node qa-scripts/otp-regression.mjs
@@ -70,4 +71,5 @@ jobs:
           path: |
             .qa-artifacts/screenshots/
             .qa-artifacts/live-regression.json
+            .qa-artifacts/ticket-reservation-regression.json
           retention-days: 7
