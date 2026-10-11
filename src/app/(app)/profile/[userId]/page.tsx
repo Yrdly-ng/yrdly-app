@@ -28,7 +28,7 @@ export default function UserProfilePage() {
 
         // Fetch user profile
         const { data: userData, error: userError } = await supabase
-          .from('users')
+          .from('public_profiles')
           .select('*')
           .eq('id', params.userId)
           .single();

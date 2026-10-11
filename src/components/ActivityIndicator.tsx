@@ -43,7 +43,7 @@ export function ActivityIndicator({
     const fetchUserStatus = async () => {
       try {
         const { data, error } = await supabase
-          .from('users')
+          .from('public_profiles')
           .select('is_online, last_seen')
           .eq('id', userId)
           .maybeSingle(); // Use maybeSingle() to handle cases where user doesn't exist

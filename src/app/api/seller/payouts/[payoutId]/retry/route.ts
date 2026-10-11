@@ -1,3 +1,6 @@
+import { PaylukService } from '@/lib/payluk-service';
+import { getPaylukCustomerId } from '@/lib/payluk-onboarding';
+import { getAuthenticatedUser } from '@/lib/supabase-server';
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { PayoutService } from '@/lib/payout-service';
@@ -12,13 +15,11 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const token = authHeader.split(' ')[1];
-    
     // Validate user via Supabase Auth
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    const { data: { user }, error: authError } = await getAuthenticatedUser(request);
     
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: authError?.status === 403 ? 403 : authError?.status === 503 ? 503 : 401 });
     }
 
     const { payoutId } = await params;
@@ -35,23 +36,34 @@ export async function POST(
       return NextResponse.json({ error: 'Payout not found or unauthorized' }, { status: 404 });
     }
 
-    if (payout.status !== 'failed') {
-      return NextResponse.json({ error: 'Only failed payouts can be retried' }, { status: 400 });
+    if (!['failed', 'processing'].includes(payout.status)) {
+      return NextResponse.json({ error: 'Only failed or processing payouts can be reconciled' }, { status: 409 });
     }
-
-    // Reset status to pending so processPayout can pick it up
-    const { data: resetRows, error: updateError } = await supabaseAdmin
-      .from('payout_requests')
-      .update({ status: 'pending', failure_reason: null })
-      .eq('id', payoutId)
-      .eq('status', 'failed')
-      .select('id');
+    if (payout.payment_provider !== 'payluk') {
+      return NextResponse.json({ error: 'Payout provider is unknown or unsupported. Support must reconcile this request.' }, { status: 409 });
+    }
+    if (payout.transaction_reference) {
+      const outcome = await PaylukService.getWithdrawalStatus(await getPaylukCustomerId(user.id), payout.transaction_reference);
+      if (outcome === 'pending') return NextResponse.json({ error: 'Transfer is uncertain or still processing; funds remain reserved.' }, { status: 409 });
+      if (outcome === 'success') {
+        const { data: reconciled, error } = await supabaseAdmin.from('payout_requests').update({ status: 'completed', processed_at: new Date().toISOString() }).eq('id', payoutId).in('status', ['failed','processing']).select('id');
+        if (error || !reconciled?.length) throw error || new Error('Payout state changed. Refresh and retry reconciliation.');
+        return NextResponse.json({ success: true, reconciled: true });
+      }
+    } else {
+      return NextResponse.json({ error: 'Legacy payout has no durable provider reference. Support must reconcile it before retry.' }, { status: 409 });
+    }
+    // Re-reserve under the same seller lock used by new withdrawal requests.
+    const balance = await PayoutService.getSellerBalance(user.id);
+    const { data: reset, error: updateError } = await supabaseAdmin.rpc('requeue_seller_payout', {
+      p_payout_id:payoutId,p_seller_id:user.id,p_wallet_limit:balance.availableBalance+balance.pendingPayouts,
+    });
 
     if (updateError) {
       return NextResponse.json({ error: 'Failed to reset payout status' }, { status: 500 });
     }
-    if (!resetRows?.length) {
-      return NextResponse.json({ error: 'Payout is already being retried' }, { status: 409 });
+    if (!reset) {
+      return NextResponse.json({ error: 'Payout cannot be retried with the current available balance or account.' }, { status: 409 });
     }
 
     // Attempt to process again

@@ -15,7 +15,7 @@ The original QA instructions are in `yrdly-qa-agent-prompt.md`; the checklist is
 - The QA seed and cleanup scripts exist under `qa-scripts/`.
 - Seed was attempted twice and stopped at the first Auth `listUsers` request because DNS could not resolve the staging Supabase hostname (`ENOTFOUND`). No Supabase writes were made. The incomplete `qa-seed-output.json` was removed. No QA accounts were created.
 - `.env.qa` is gitignored and targets the user's staging branch. Never display its values. It contains staging credentials and generated QA account email/password settings.
-- No Payluk or Paystack request was made.
+- No payment-provider request was made.
 
 ## Local fixes made
 
@@ -66,4 +66,4 @@ For browser/payment testing, the staging app URL and test-mode provider configur
 
 The workspace already had user changes before these fixes. Preserve them and review `git status` before editing. Pre-existing modified files included the community and listing pages, marketplace screen, `PostCard`, `PostDetailView`, `use-posts`, and `community-service`; pre-existing untracked items included `CLAUDE-YRDLY-WEB-APP.md`, `src/lib/marketplace-listing-service.ts`, `supabase/migrations/20261008105151_protect_paid_marketplace_listings.sql`, the QA prompt, and the checklist. The fixes listed above added more modified/untracked files.
 
-Security note: an earlier tool output exposed credentials while inspecting environment files, and a pre-existing `scripts/create-test-user.js` was found to contain a hardcoded service-role key. The user said they plan to rotate keys later. Do not repeat any values; confirm rotation and replace/remove the hardcoded key as a separate security cleanup.
+Security note: an earlier tool output exposed credentials while inspecting environment files, and a pre-existing reviewer-account script was found to contain a hardcoded service-role key. That script has now been deleted as part of the provider removal. The user said they plan to rotate keys later; deletion does not rotate credentials or erase Git history. Do not repeat any values; rotation still needs confirmation.

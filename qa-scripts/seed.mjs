@@ -150,7 +150,7 @@ async function main() {
     timestamp: new Date(now).toISOString(),
   };
   await upsert(client, 'posts', { ...postBase, id: output.listings.available, title: `${QA_PREFIX} Available Marketplace Listing` }, 'Upsert available listing');
-  await upsert(client, 'posts', { ...postBase, id: output.listings.completedSale, title: `${QA_PREFIX} Completed Sale Listing`, is_sold: true, sold_to_user_id: output.users.buyer, sold_at: new Date(now).toISOString() }, 'Upsert completed-sale listing');
+  await upsert(client, 'posts', { ...postBase, id: output.listings.completedSale, title: `${QA_PREFIX} Completed Sale Listing`, transaction_id: null, sold_to_user_id: null, sold_at: null }, 'Upsert completed-sale listing');
 
   const commonTx = {
     status: 'completed', payment_method: 'card', payment_provider: 'qa_seed',
@@ -161,19 +161,19 @@ async function main() {
   await upsert(client, 'escrow_transactions', {
     ...commonTx, id: output.transactions.seller950Balance,
     buyer_id: output.users.buyer, seller_id: output.users.seller,
-    item_id: null, item_title: `${QA_PREFIX} synthetic 950 balance fixture`,
+    item_id: deterministicUuid('fixture:seller-950-balance'),
     amount: 950, commission: 0, total_amount: 950, seller_amount: 950,
     metadata: { qa_prefix: QA_PREFIX, fixture: 'seller-balance-950' },
   }, 'Upsert seller balance fixture');
   await upsert(client, 'escrow_transactions', {
     ...commonTx, id: output.transactions.completedSale,
     buyer_id: output.users.buyer, seller_id: output.users.organizer,
-    item_id: output.listings.completedSale, item_title: `${QA_PREFIX} Completed Sale Listing`,
+    item_id: output.listings.completedSale,
     amount: 2500, commission: 75, total_amount: 2575, seller_amount: 2500,
     metadata: { qa_prefix: QA_PREFIX, fixture: 'completed-sale' },
   }, 'Upsert completed-sale transaction');
 
-  const { error: linkError } = await client.from('posts').update({ transaction_id: output.transactions.completedSale }).eq('id', output.listings.completedSale);
+  const { error: linkError } = await client.from('posts').update({ transaction_id: output.transactions.completedSale, is_sold: true, sold_to_user_id: output.users.buyer, sold_at: new Date(now).toISOString() }).eq('id', output.listings.completedSale);
   if (linkError) throw new Error(`Link completed sale: ${linkError.message}`);
 
   output.completedAt = new Date().toISOString();

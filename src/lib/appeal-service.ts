@@ -41,12 +41,6 @@ export class AppealService {
       const { data: booking } = await supabase.from('bookings').select('customer_id, business_id, strike_party, strike_type').eq('id', appeal.booking_id).single();
       if (booking?.strike_party && booking.strike_type) {
         const targetId = booking.strike_party === 'customer' ? booking.customer_id : booking.business_id;
-        const col = booking.strike_type === 'late_cancellation' ? 'late_cancellation_count' : 'no_show_count';
-        const table = booking.strike_party === 'customer' ? 'users' : 'businesses';
-        // decrement via rpc or read+update
-        const { data: row } = await supabase.from(table).select(col).eq('id', targetId).single();
-        const next = Math.max(0, ((row as any)?.[col]||1)-1);
-        await supabase.from(table).update({ [col]: next }).eq('id', targetId);
         await BookingService.evaluateActiveFlagStatus(targetId, booking.strike_party as any);
         // Optionally revert booking status from late_cancelled/no_show to cancelled if needed (keep as-is for history)
       }

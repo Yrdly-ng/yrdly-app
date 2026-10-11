@@ -108,7 +108,7 @@ export function BusinessDetailScreen({
           .from('business_reviews')
           .select(`
             *,
-            users!business_reviews_user_id_fkey(
+            users:public_profiles!business_reviews_user_id_fkey(
               name,
               avatar_url
             )
@@ -209,7 +209,7 @@ export function BusinessDetailScreen({
     setHasReviewed(true);
     const { data } = await supabase
       .from('business_reviews')
-      .select(`*, users!business_reviews_user_id_fkey(name, avatar_url)`)
+      .select(`*, users:public_profiles!business_reviews_user_id_fkey(name, avatar_url)`)
       .eq('business_id', business.id)
       .order('created_at', { ascending: false });
     setReviews(data || []);
@@ -342,7 +342,7 @@ export function BusinessDetailScreen({
         </div>
 
         {/* Back button */}
-        <Button
+        <Button aria-label="Back"
           variant="ghost"
           size="icon"
           className="absolute top-4 left-4 bg-background/80 backdrop-blur-sm hover:bg-background"
@@ -353,7 +353,7 @@ export function BusinessDetailScreen({
 
         {/* Action buttons */}
         <div className="absolute top-4 right-4 flex gap-2">
-          <Button 
+          <Button aria-label="Share"
             variant="ghost" 
             size="icon" 
             className="bg-background/80 backdrop-blur-sm hover:bg-background"
@@ -361,7 +361,7 @@ export function BusinessDetailScreen({
           >
             <Share2 className="w-5 h-5" />
           </Button>
-          <Button
+          <Button aria-label="Save to favorites"
             variant="ghost"
             size="icon"
             className="bg-background/80 backdrop-blur-sm hover:bg-background"
@@ -583,7 +583,7 @@ export function BusinessDetailScreen({
                         {isOwner && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <Button aria-label="More options" variant="ghost" size="icon" className="h-8 w-8">
                                 <MoreVertical className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>

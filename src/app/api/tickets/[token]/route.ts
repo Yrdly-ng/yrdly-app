@@ -9,7 +9,7 @@ import { getAuthenticatedUser } from '@/lib/supabase-server';
  */
 export async function GET(request: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   const { data: { user }, error: authError } = await getAuthenticatedUser(request);
-  if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: authError?.status === 403 ? 403 : authError?.status === 503 ? 503 : 401 });
   const { token } = await params;
   const { data: ticket, error } = await supabaseAdmin
     .from('tickets')

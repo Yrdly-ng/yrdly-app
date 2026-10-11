@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { getAuthenticatedUser } from "@/lib/supabase-server";
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { EVENT_CONSTANTS } from '@/lib/constants';
 import { ResendEmailService } from '@/lib/resend-service';
 import QRCode from 'qrcode';
 import { PaylukService } from '@/lib/payluk-service';
-import { PaystackService } from '@/lib/paystack-service';
 import { getPaylukCustomerId } from '@/lib/payluk-onboarding';
 import { EscrowStatus } from '@/types/escrow';
 import { sendPushNotification } from '@/lib/server-push-notification';
@@ -21,7 +19,7 @@ export async function POST(request: NextRequest) {
     // ── Auth ────────────────────────────────────────────────────────────────
     const { data: { user }, error: authError } = await getAuthenticatedUser(request);
     if (authError || !user) {
-      return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
+      return NextResponse.json({ error: 'Invalid session' }, { status: authError?.status === 403 ? 403 : authError?.status === 503 ? 503 : 401 });
     }
 
     const { isUserSuspendedOrBanned } = await import('@/lib/user-suspension');
@@ -33,17 +31,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { event_id, tier_id, attendee_name, attendee_email, attendee_phone, callbackUrl, quantity: rawQuantity } = await request.json();
-    const quantity = Math.max(1, parseInt(rawQuantity || '1', 10));
-
-    if (!event_id || !tier_id || !attendee_name || !attendee_email) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== 'object' || Array.isArray(body)) return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+    const { event_id, tier_id, attendee_name, attendee_email, attendee_phone, quantity: rawQuantity } = body;
+    const quantity = rawQuantity === undefined ? 1
+      : typeof rawQuantity === 'string' && /^\d+$/.test(rawQuantity) ? Number(rawQuantity) : rawQuantity;
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (typeof event_id !== 'string' || !uuid.test(event_id) || typeof tier_id !== 'string' || !uuid.test(tier_id) ||
+        typeof attendee_name !== 'string' || !attendee_name.trim() || attendee_name.length > 120 ||
+        typeof attendee_email !== 'string' || attendee_email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(attendee_email) ||
+        (attendee_phone != null && (typeof attendee_phone !== 'string' || attendee_phone.length > 30)) ||
+        !Number.isSafeInteger(quantity) || quantity < 1 || quantity > 5) {
+      return NextResponse.json({ error: 'Provide valid attendee details and an integer quantity between 1 and 5' }, { status: 400 });
     }
 
     // ── Validate event & tier ────────────────────────────────────────────────
     const { data: event } = await supabaseAdmin
       .from('events')
-      .select('id, title, status, organizer_id, payment_subaccount_id, end_time')
+      .select('id, title, status, organizer_id, end_time')
       .eq('id', event_id)
       .single();
 
@@ -107,6 +112,7 @@ export async function POST(request: NextRequest) {
           qr_data: qrData,
           status: 'PAID',
           amount_paid: 0,
+          payment_provider: null, settlement_mode: 'free',
           expires_at: event.end_time || null,
         });
       }
@@ -245,63 +251,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, free: true, ticket_id: insertedTickets[0].id, quantity });
     }
 
-    // ── Paid ticket — Check configured payment provider ────────────────────
-    const provider = (process.env.EVENT_TICKET_PAYMENT_PROVIDER || 'paystack').toLowerCase();
-    if (provider !== 'paystack' && provider !== 'payluk') {
-      return NextResponse.json({ error: 'Invalid event ticket payment provider configuration' }, { status: 500 });
+    const txRef = `evt-${crypto.randomUUID()}`;
+    const ticketPrice = Number(tier.price);
+    if (!Number.isFinite(ticketPrice) || ticketPrice < EVENT_CONSTANTS.MIN_TICKET_PRICE ||
+        Math.abs(ticketPrice * 100 - Math.round(ticketPrice * 100)) > 0.00001) {
+      return NextResponse.json({ error: 'This paid ticket price needs correction before checkout.' }, { status: 400 });
     }
-    const txRef = `evt-${event_id.substring(0, 8)}-${Date.now()}`;
-    const totalAmount = tier.price * quantity;
-
-    if (provider === 'paystack') {
-      // Fetch organizer's Paystack subaccount ID for automatic Split Payment
-      let organizerSubaccount: string | undefined = event.payment_subaccount_id || undefined;
-      if (!organizerSubaccount && event.organizer_id) {
-        const { data: subaccountData } = await supabaseAdmin
-          .from('seller_accounts')
-          .select('paystack_subaccount_id')
-          .eq('user_id', event.organizer_id)
-          .eq('is_primary', true)
-          .eq('is_active', true)
-          .maybeSingle();
-
-        if (subaccountData?.paystack_subaccount_id) {
-          organizerSubaccount = subaccountData.paystack_subaccount_id;
-        }
-      }
-
-      const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'https://app.yrdly.ng';
-      let paymentLink: string;
-      try {
-        paymentLink = await PaystackService.initializePayment({
-          transactionId: txRef,
-          amount: totalAmount,
-          buyerEmail: attendee_email,
-          buyerName: attendee_name,
-          itemTitle: `${quantity}x ${tier.name} — ${event.title}`,
-          sellerName: 'Event Organizer',
-          subaccount: organizerSubaccount,
-          callbackUrl: callbackUrl || `${origin}/api/events/tickets/verify?tx_ref=${txRef}`,
-          metadata: {
-            event_id,
-            tier_id,
-            quantity,
-            buyer_id: user.id,
-            attendee_name,
-            attendee_email,
-            attendee_phone: attendee_phone || null
-          }
-        });
-      } catch (paystackError: any) {
-        console.error('[TicketPurchase] Paystack init error:', paystackError);
-        return NextResponse.json({
-          error: 'Payment initialization failed',
-          details: paystackError?.message || 'Paystack API error',
-        }, { status: 502 });
-      }
-
-      return NextResponse.json({ success: true, payment_link: paymentLink, tx_ref: txRef, provider: 'paystack' });
-    }
+    const totalAmount = Math.round(ticketPrice * quantity * 100) / 100;
+    const commission = Math.round(totalAmount * EVENT_CONSTANTS.COMMISSION_RATE * 100) / 100;
+    // Preserve the advertised price: principal + merchant fee = ticket total.
+    const principal = Math.round((totalAmount - commission) * 100) / 100;
 
     // ── Payluk Escrow payment ─────────────────────────────────────────────
     // Fetch or provision Payluk Customer IDs for buyer & organizer
@@ -335,18 +294,19 @@ export async function POST(request: NextRequest) {
     let paylukEscrow;
     try {
       paylukEscrow = await PaylukService.createEscrow(organizerPaylukId, {
-        amount: totalAmount,
+        amount: principal,
         purpose: `${quantity}x ${tier.name} — ${event.title}`,
         whoPays: 'seller',
         maxDelivery,
         deliveryTimeline: 'days',
-        totalQuantity: quantity,
+        // One escrow pays for this entire order; ticket quantity lives in metadata.
+        totalQuantity: 1,
       });
 
-      const commission = Math.round(totalAmount * EVENT_CONSTANTS.COMMISSION_RATE * 100) / 100;
-      if (commission > 0) {
-        await PaylukService.addAdditionalFee(paylukEscrow.paymentToken, commission);
+      if (!Number.isFinite(paylukEscrow.fee) || paylukEscrow.fee < 0 || paylukEscrow.fee > principal) {
+        throw new Error('Invalid Payluk escrow fee. Checkout needs reconciliation.');
       }
+      await PaylukService.addAdditionalFee(paylukEscrow.paymentToken, commission);
     } catch (paylukError: any) {
       console.error('[TicketPurchase] Payluk createEscrow error:', paylukError);
       return NextResponse.json({
@@ -357,8 +317,7 @@ export async function POST(request: NextRequest) {
 
     // Store escrow_transactions record
     const transactionId = crypto.randomUUID();
-    const commission = Math.round(totalAmount * EVENT_CONSTANTS.COMMISSION_RATE * 100) / 100;
-    const sellerAmount = totalAmount - commission;
+    const sellerAmount = Math.round((principal - paylukEscrow.fee) * 100) / 100;
 
     const { error: dbInsertErr } = await supabaseAdmin
       .from('escrow_transactions')
@@ -380,6 +339,8 @@ export async function POST(request: NextRequest) {
         item_type: 'ticket',
         item_id: tier_id,
         metadata: {
+          payluk_fee_mode: 'seller_commission_v1',
+          payluk_fee: paylukEscrow.fee,
           event_id,
           tier_id,
           quantity,

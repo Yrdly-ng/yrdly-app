@@ -52,10 +52,9 @@ export async function createCheckoutForBooking(opts: BookingCheckoutOptions): Pr
     throw new Error('A different booking checkout is already pending. Contact support to replace it.');
   }
 
-  const [buyerPaylukId, sellerPaylukId] = await Promise.all([
-    getPaylukCustomerId(opts.buyerId),
-    getPaylukCustomerId(opts.sellerId),
-  ]);
+  // Either lookup may create a customer; Payluk serializes merchant writes.
+  const buyerPaylukId = await getPaylukCustomerId(opts.buyerId);
+  const sellerPaylukId = await getPaylukCustomerId(opts.sellerId);
   await PaylukService.updateCustomerPermissions(buyerPaylukId, { canBuy: true });
   await PaylukService.updateCustomerPermissions(sellerPaylukId, { canSell: true });
 

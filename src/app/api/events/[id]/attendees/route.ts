@@ -15,7 +15,7 @@ export async function GET(
   try {
     // ── Auth ────────────────────────────────────────────────────────────────
     const { data: { user }, error: authError } = await getAuthenticatedUser(request);
-    if (authError || !user) return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
+    if (authError || !user) return NextResponse.json({ error: 'Invalid session' }, { status: authError?.status === 403 ? 403 : authError?.status === 503 ? 503 : 401 });
 
     // ── Verify organizer ─────────────────────────────────────────────────────
     const { data: event } = await supabaseAdmin

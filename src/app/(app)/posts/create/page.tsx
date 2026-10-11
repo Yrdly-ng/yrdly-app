@@ -1,5 +1,6 @@
 "use client";
 
+import { authenticatedFetch } from '@/lib/authenticated-fetch';
 import React, { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -248,11 +249,7 @@ export default function CreatePostPage() {
         postPayload.video_urls = uploadedVideoUrls;
       }
 
-      const { data: newPost, error: insertErr } = await supabase
-        .from("posts")
-        .insert(postPayload)
-        .select()
-        .single();
+      const { data: newPost, error: insertErr } = await authenticatedFetch('/api/posts', { post: postPayload });
 
       if (insertErr) throw insertErr;
 
@@ -261,17 +258,7 @@ export default function CreatePostPage() {
         await NotificationTriggers.onMentionsInContent(user.id, newPost.id, trimmedText);
       }
 
-      if (modStatus === "pending" && newPost) {
-        await supabase.from("moderation_queue").insert({
-          content_id: newPost.id,
-          table_name: "posts",
-          user_id: user.id,
-          status: "pending",
-          reason: modReason,
-          text_content: trimmedText,
-          image_urls: uploadedImageUrls,
-        });
-      }
+
 
       setPosting(false);
       setUploadProgress(100);
@@ -358,7 +345,7 @@ export default function CreatePostPage() {
         {/* Header */}
         <div className="sticky top-0 z-30 bg-card/95 backdrop-blur border-b border-border px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button
+            <Button aria-label="Back"
               variant="ghost"
               size="icon"
               onClick={() => router.back()}

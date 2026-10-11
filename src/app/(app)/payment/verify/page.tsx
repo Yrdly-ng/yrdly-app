@@ -115,7 +115,7 @@ export default function PaymentVerificationPage() {
         <CardHeader className="text-center">
           <CardTitle>Payment Verification</CardTitle>
           <CardDescription>
-            Verifying your payment with Paystack...
+            Verifying your payment with Payluk...
           </CardDescription>
         </CardHeader>
         

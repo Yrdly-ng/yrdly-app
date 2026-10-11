@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, use } from "react";
+import React, { useState, useEffect, useRef, use, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -18,7 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { useAuth } from "@/hooks/use-supabase-auth";
+import { authenticatedFetch } from "@/lib/authenticated-fetch";
 import { supabase } from "@/lib/supabase";
 
 const FONT = "var(--font-work-sans), sans-serif";
@@ -28,10 +28,20 @@ interface PageProps {
   params: Promise<{ id: string }>;
 }
 
+// Clean raw QR code output (JSON or direct code)
+const extractCode = (raw: string): string => {
+    const clean = raw.trim();
+    try {
+      const parsed = JSON.parse(clean);
+      if (parsed.ticket_code) return parsed.ticket_code;
+      if (parsed.ticket_id || parsed.id) return parsed.ticket_id || parsed.id;
+    } catch {}
+    return clean;
+  };
+
 export default function EventScanTicketPage({ params }: PageProps) {
   const { id: eventId } = use(params);
   const router = useRouter();
-  const { user } = useAuth();
 
   const [eventTitle, setEventTitle] = useState<string>("");
   const [ticketInput, setTicketInput] = useState<string>("");
@@ -49,6 +59,8 @@ export default function EventScanTicketPage({ params }: PageProps) {
   } | null>(null);
 
   const scannerRef = useRef<any>(null);
+  const scanningRef = useRef(false);
+  const cameraGeneration = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -63,99 +75,67 @@ export default function EventScanTicketPage({ params }: PageProps) {
       });
   }, [eventId]);
 
-  // Clean raw QR code output (JSON or direct code)
-  const extractCode = (raw: string): string => {
-    let clean = raw.trim();
-    try {
-      const parsed = JSON.parse(clean);
-      if (parsed.ticket_code) return parsed.ticket_code;
-      if (parsed.ticket_id || parsed.id) return parsed.ticket_id || parsed.id;
-    } catch {}
-    return clean;
-  };
-
-  const processScan = async (rawCode: string) => {
+  const processScan = useCallback(async (rawCode: string) => {
     const code = extractCode(rawCode);
-    if (!code || loading) return;
+    if (!code || scanningRef.current) return;
+    scanningRef.current = true;
 
     setLoading(true);
     setResult(null);
 
     try {
-      const res = await fetch("/api/tickets/scan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ticketInput: code,
-          eventId,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        setResult({ success: false, reason: data.error || "Failed to scan ticket" });
-      } else {
-        setResult(data);
-      }
+      const data = await authenticatedFetch('/api/events/checkin', { ticket_code:code,event_id:eventId });
+      setResult({ ...data,success:data.valid === true });
     } catch (err: any) {
       setResult({ success: false, reason: err.message || "Network error" });
     } finally {
+      scanningRef.current = false;
       setLoading(false);
     }
-  };
+  }, [eventId]);
 
-  // Start Camera QR Scanner
-  const startCameraScanner = async () => {
-    setCameraError(null);
-    try {
-      // @ts-ignore
-      const { Html5Qrcode } = await import("html5-qrcode");
-      if (scannerRef.current) {
-        try {
-          await scannerRef.current.stop();
-        } catch {}
-      }
-
-      const scanner = new Html5Qrcode("reader");
-      scannerRef.current = scanner;
-
-      await scanner.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 250, height: 250 } },
-        (decodedText: string) => {
-          stopCameraScanner();
-          processScan(decodedText);
-        },
-        () => {}
-      );
-      setCameraActive(true);
-    } catch (err: any) {
-      console.error("Camera start error:", err);
-      setCameraError(err.message || "Could not access camera. Please check camera permissions.");
-      setCameraActive(false);
-    }
-  };
-
-  const stopCameraScanner = async () => {
-    if (scannerRef.current && cameraActive) {
-      try {
-        await scannerRef.current.stop();
-        scannerRef.current = null;
-      } catch {}
+  const stopCameraScanner = useCallback(async () => {
+    cameraGeneration.current++;
+    const scanner = scannerRef.current;
+    scannerRef.current = null;
+    if (scanner) {
+      try { await scanner.stop(); } catch {}
+      try { scanner.clear(); } catch {}
     }
     setCameraActive(false);
-  };
+  }, []);
+
+  const startCameraScanner = useCallback(async () => {
+    const generation = cameraGeneration.current + 1;
+    await stopCameraScanner();
+    if (generation !== cameraGeneration.current) return;
+    setCameraError(null);
+    try {
+      const { Html5Qrcode } = await import("html5-qrcode");
+      if (generation !== cameraGeneration.current) return;
+      const scanner = new Html5Qrcode("reader");
+      scannerRef.current = scanner;
+      await scanner.start({ facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        (text: string) => { void stopCameraScanner(); void processScan(text); }, () => {});
+      if (generation !== cameraGeneration.current) {
+        try { await scanner.stop(); scanner.clear(); } catch {}
+        return;
+      }
+      setCameraActive(true);
+    } catch (error: any) {
+      if (generation === cameraGeneration.current) {
+        setCameraError(error.message || "Could not access camera. Please check camera permissions.");
+        setCameraActive(false);
+      }
+    }
+  }, [processScan, stopCameraScanner]);
 
   useEffect(() => {
-    if (mode === "camera") {
-      startCameraScanner();
-    } else {
-      stopCameraScanner();
-    }
-    return () => {
-      stopCameraScanner();
-    };
-  }, [mode]);
+    if (mode === "camera") void startCameraScanner();
+    else void stopCameraScanner();
+    return () => { void stopCameraScanner(); };
+  }, [mode, startCameraScanner, stopCameraScanner]);
 
   // Handle File Upload QR scan
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -163,11 +143,11 @@ export default function EventScanTicketPage({ params }: PageProps) {
     if (!file) return;
 
     try {
-      // @ts-ignore
       const { Html5Qrcode } = await import("html5-qrcode");
       const html5QrCode = new Html5Qrcode("file-reader");
       const decodedText = await html5QrCode.scanFile(file, true);
-      processScan(decodedText);
+      html5QrCode.clear();
+      await processScan(decodedText);
     } catch (err: any) {
       setResult({
         success: false,
@@ -198,7 +178,7 @@ export default function EventScanTicketPage({ params }: PageProps) {
 
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" className="rounded-full" onClick={() => router.back()}>
+        <Button aria-label="Back" variant="ghost" size="icon" className="rounded-full" onClick={() => router.back()}>
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div>
@@ -315,6 +295,7 @@ export default function EventScanTicketPage({ params }: PageProps) {
           {mode === "manual" && (
             <form onSubmit={handleManualSubmit} className="flex gap-2">
               <Input
+                aria-label="Ticket code or ID"
                 placeholder="e.g. TC-89X12A or Ticket UUID"
                 value={ticketInput}
                 onChange={(e) => setTicketInput(e.target.value)}

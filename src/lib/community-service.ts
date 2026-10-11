@@ -272,7 +272,7 @@ export class CommunityService {
       .from('community_posts')
       .select(`
         *,
-        author:users!community_posts_author_id_fkey(id, name, avatar_url, phone_verified)
+        author:public_profiles!community_posts_author_id_fkey(id, name, avatar_url, phone_verified)
       `)
       .eq('community_id', communityId)
       .eq('moderation_status', 'approved')
@@ -350,7 +350,7 @@ export class CommunityService {
   static async fetchComments(postId: string): Promise<CommunityComment[]> {
     const { data, error } = await supabase
       .from('community_comments')
-      .select('*, author:users!community_comments_author_id_fkey(id, name, avatar_url)')
+      .select('*, author:public_profiles!community_comments_author_id_fkey(id, name, avatar_url)')
       .eq('post_id', postId)
       .is('parent_comment_id', null)
       .eq('moderation_status', 'approved')
@@ -422,7 +422,7 @@ export class CommunityService {
 
     const { data, error } = await supabase
       .from('community_posts')
-      .select('*, author:users!community_posts_author_id_fkey(id, name, avatar_url)')
+      .select('*, author:public_profiles!community_posts_author_id_fkey(id, name, avatar_url)')
       .eq('community_id', ward.parent_community_id)
       .eq('moderation_status', 'approved')
       .order('created_at', { ascending: false })
@@ -505,7 +505,7 @@ export class CommunityService {
   static async listJoinRequests(communityId: string) {
     const { data, error } = await supabase
       .from('community_join_requests')
-      .select('*, user:users!community_join_requests_user_id_fkey(id, name, avatar_url)')
+      .select('*, user:public_profiles!community_join_requests_user_id_fkey(id, name, avatar_url)')
       .eq('community_id', communityId)
       .eq('status', 'pending')
       .order('created_at', { ascending: true });

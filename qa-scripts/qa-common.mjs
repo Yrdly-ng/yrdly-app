@@ -6,7 +6,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const QA_PREFIX = 'YRDLY-QA';
-export const QA_PROJECT_REF = 'fytjezqtkdwsrkazlyfm';
+export const QA_PROJECT_REF = 'jxgpvvehajxegeeozlnl';
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export const ENV_PATH = resolve(ROOT, '.env.qa');
 export const OUTPUT_PATH = resolve(ROOT, 'qa-seed-output.json');
@@ -25,6 +25,10 @@ export async function readQaEnv() {
     throw new Error('Missing yrdly-app/.env.qa');
   }
   const env = parse(raw);
+  env.SUPABASE_URL ||= env.NEXT_PUBLIC_SUPABASE_URL;
+  env.SUPABASE_SERVICE_ROLE_KEY ||= env.SUPABASE_SECRET_KEY;
+  env.NEXT_PUBLIC_SUPABASE_URL ||= env.SUPABASE_URL;
+  env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||= env.SUPABASE_PUBLISHABLE_KEY;
   const required = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'];
   const missing = required.filter((key) => !env[key]);
   if (missing.length) throw new Error(`Missing required .env.qa values: ${missing.join(', ')}`);
@@ -56,7 +60,7 @@ export async function updateQaEnv(values) {
   for (const [key, value] of Object.entries(values)) {
     const line = `${key}=${value}`;
     const pattern = new RegExp(`^${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}=.*$`, 'm');
-    if (pattern.test(raw)) raw = raw.replace(pattern, line);
+    if (pattern.test(raw)) raw = raw.replace(pattern, () => line);
     else raw += `${raw.endsWith('\n') || raw.length === 0 ? '' : '\n'}${line}\n`;
   }
   await writeFile(ENV_PATH, raw, { mode: 0o600 });

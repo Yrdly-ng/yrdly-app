@@ -13,7 +13,7 @@ export async function GET(
     // 1. Authenticate user
     const { data: { user }, error: authError } = await getAuthenticatedUser(request);
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: authError?.status === 403 ? 403 : authError?.status === 503 ? 503 : 401 });
     }
 
     // 2. Fetch dispute record (check both id and transaction_id)

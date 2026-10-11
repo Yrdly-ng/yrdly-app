@@ -4,7 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import { downloadDisputeEvidence, signDisputeEvidence } from '@/lib/dispute-evidence-server';
-import { NotificationService } from '@/lib/notification-service';
+import { NotificationService } from '@/lib/server-notification-service';
 import { PaylukService } from '@/lib/payluk-service';
 
 const evidenceSchema = z.object({

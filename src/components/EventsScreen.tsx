@@ -130,8 +130,6 @@ export function EventsScreen({ className }: EventsScreenProps) {
     const error = params.get('error');
     if (!error) return;
     const messages: Record<string, string> = {
-      sold_out_refunded: 'The ticket tier sold out before confirmation. A refund was requested through Paystack.',
-      sold_out_refund_required: 'The ticket tier sold out, but the automatic refund failed. Contact support with the payment reference below.',
       sold_out_payluk_refund_required: 'The ticket tier sold out after payment. Contact support with the payment reference below to resolve the Payluk escrow.',
       payment_failed: 'Your payment could not be confirmed. Please check your payment status before trying again.',
       verification_failed: 'We could not verify the ticket payment. Contact support if you were charged.',

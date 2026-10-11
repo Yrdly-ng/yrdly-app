@@ -1,3 +1,4 @@
+import { invokeServerFunction } from '@/lib/server-functions';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
@@ -16,7 +17,7 @@ export async function POST(request: NextRequest) {
       error: authError,
     } = await getAuthenticatedUser(request);
     if (authError || !user) {
-      return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
+      return NextResponse.json({ error: 'Invalid session' }, { status: authError?.status === 403 ? 403 : authError?.status === 503 ? 503 : 401 });
     }
 
     const body = await request.json();
@@ -30,7 +31,9 @@ export async function POST(request: NextRequest) {
       ticketTiers,
     } = body;
 
-    if (!title || !startTime || !endTime) {
+    if (typeof title !== 'string' || !title.trim() || title.length > 200 ||
+        !Number.isFinite(Date.parse(startTime)) || !Number.isFinite(Date.parse(endTime)) ||
+        Date.parse(endTime) <= Date.parse(startTime)) {
       return NextResponse.json(
         { error: 'Missing required fields: title, startTime, endTime' },
         { status: 400 }
@@ -38,9 +41,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate minimum price for paid ticket tiers
+    if (!Array.isArray(ticketTiers) || ticketTiers.length < 1 || ticketTiers.length > 30) {
+      return NextResponse.json({ error: 'Provide between 1 and 30 ticket tiers.' }, { status: 400 });
+    }
     if (Array.isArray(ticketTiers)) {
       for (const tier of ticketTiers) {
-        const tierPrice = Number(tier.price) || 0;
+        const tierPrice = Number(tier.price);
+        if (!Number.isFinite(tierPrice) || tierPrice < 0 ||
+            !Number.isInteger(Number(tier.capacity)) || Number(tier.capacity) < 1 ||
+            typeof tier.name !== 'string' || !tier.name.trim()) {
+          return NextResponse.json({ error: 'Each tier needs a name, a non-negative price and an integer capacity of at least 1.' }, { status: 400 });
+        }
         if (tierPrice > 0 && tierPrice < EVENT_CONSTANTS.MIN_TICKET_PRICE) {
           return NextResponse.json(
             { error: `Paid ticket tiers must be at least ₦${EVENT_CONSTANTS.MIN_TICKET_PRICE.toLocaleString()}.` },
@@ -69,16 +80,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    let status = reqStatus;
-    if (!status) {
-      status = publish ? 'PUBLISHED' : 'DRAFT';
-    }
-
-    let moderationStatus = 'approved';
-    if (status === 'PENDING_MODERATION' || status === 'PENDING') {
-      status = 'DRAFT';
-      moderationStatus = 'pending';
-    }
+    const { data: moderation, error: moderationError } = await invokeServerFunction(supabaseAdmin, 'moderate-content', { type: 'text', content: `${title}\n${typeof description === 'string' ? description : ''}` });
+    const moderationStatus = !moderationError && moderation?.isSafe === true ? 'approved' : 'pending';
+    // Flagged or unavailable moderation stays DRAFT, even if the caller says approved.
+    const status = moderationStatus === 'approved' && (publish === true || reqStatus === 'PUBLISHED') ? 'PUBLISHED' : 'DRAFT';
 
     const publishedAt = (status === 'PUBLISHED') ? new Date().toISOString() : null;
 
@@ -103,14 +108,14 @@ export async function POST(request: NextRequest) {
         start_time: startTime,
         end_time: endTime,
         timezone: 'Africa/Lagos',
-        status,
+        status: 'DRAFT',
         visibility: (() => {
           const v = (visibility || 'PUBLIC').toUpperCase();
           if (v === 'PRIVATE' || v === 'FRIENDS' || v === 'UNLISTED') return 'UNLISTED';
           if (['PUBLIC', 'WARD_ONLY', 'LGA_ONLY'].includes(v)) return v;
           return 'PUBLIC';
         })(),
-        published_at: publishedAt,
+        published_at: null,
         moderation_status: moderationStatus,
       })
       .select('id')
@@ -139,6 +144,18 @@ export async function POST(request: NextRequest) {
       const { error: tiersError } = await supabaseAdmin.from('ticket_tiers').insert(tiersToInsert);
       if (tiersError) {
         console.error('[events/create] Ticket tiers insert error:', tiersError);
+        const { error: cleanupError } = await supabaseAdmin.from('events').delete().eq('id', eventId);
+        if (cleanupError) console.error('[events/create] Failed to remove incomplete draft:', { eventId, code: cleanupError.code });
+        return NextResponse.json({ error: 'Ticket tiers could not be saved. The event was not published. Please retry.' }, { status: 500 });
+      }
+    }
+
+    if (status === 'PUBLISHED') {
+      const { data: published, error: publishError } = await supabaseAdmin.from('events')
+        .update({ status, published_at: publishedAt }).eq('id', eventId).eq('status', 'DRAFT')
+        .eq('moderation_status', 'approved').select('id').single();
+      if (publishError || !published) {
+        return NextResponse.json({ error: 'Event saved as a draft, but could not be published.', eventId }, { status: 500 });
       }
     }
 

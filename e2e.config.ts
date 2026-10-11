@@ -10,11 +10,11 @@ export default {
       engine: web(),
       app: {
         url: appUrl,
-        command: {
+        ...(process.env.E2E_APP_URL ? {} : { command: {
           executable: 'pnpm',
           args: ['run', 'dev'],
           reuseExisting: true,
-        },
+        } }),
       },
     },
   ],

@@ -160,7 +160,7 @@ export default function ItemChatPage() {
             conversationCreationRef.current = false;
             if (user.id !== business.owner_id) {
               const { data: customer } = await supabase
-                .from('users')
+                .from('public_profiles')
                 .select('name')
                 .eq('id', user.id)
                 .maybeSingle();

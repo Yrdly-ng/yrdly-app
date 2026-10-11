@@ -1,3 +1,4 @@
+import { productionAppHost } from './src/lib/auth-navigation';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
@@ -17,7 +18,7 @@ export function middleware(request: NextRequest) {
   }
 
   // Nextdoor-style handoff: redirect the app's /login page back to the marketing site
-  if (pathname === '/login' || pathname === '/signup') {
+  if (request.nextUrl.hostname.toLowerCase() === productionAppHost() && (pathname === '/login' || pathname === '/signup')) {
     const marketingUrl = process.env.NEXT_PUBLIC_MARKETING_URL || 'https://yrdly.ng';
     const redirectUrl = new URL(marketingUrl);
     request.nextUrl.searchParams.forEach((value, key) => redirectUrl.searchParams.set(key, value));

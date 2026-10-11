@@ -1,3 +1,4 @@
+import { authenticatedFetch } from './authenticated-fetch';
 import { supabase } from "@/lib/supabase";
 import { AuthService } from "@/lib/auth-service";
 
@@ -174,25 +175,7 @@ export class AlertService {
       const currentUser = await AuthService.getCurrentUser();
       if (!currentUser) throw new Error("Not authenticated");
 
-      const { data, error } = await supabase
-        .from("safety_alerts")
-        .insert({
-          user_id: currentUser.id,
-          title: alertData.title,
-          description: alertData.description,
-          severity: alertData.severity,
-          type: alertData.type,
-          area_name: alertData.area_name,
-          ...(alertData.state ? { state: alertData.state } : {}),
-          ...(alertData.lga ? { lga: alertData.lga } : {}),
-          ...(alertData.ward ? { ward: alertData.ward } : {}),
-          ...(alertData.action ? { action: alertData.action } : {}),
-          status: "pending",
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
+      const { data } = await authenticatedFetch('/api/safety-alerts', alertData);
       return { data, error: null };
     } catch (error) {
       console.error("createAlert error:", error);

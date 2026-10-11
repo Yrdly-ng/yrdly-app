@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { invokeServerFunction } from './server-functions';
 
 type PushPayload = {
   title: string;
@@ -14,9 +15,7 @@ export async function sendPushNotification(
   type?: string,
 ): Promise<void> {
   try {
-    const { error } = await supabaseAdmin.functions.invoke('send-push-notification', {
-      body: { userId, payload, type },
-    });
+    const { error } = await invokeServerFunction(supabaseAdmin, 'send-push-notification', { userId, payload, type });
     if (error) console.error(`Push notification dispatch failed for ${userId}:`, error.message);
   } catch (error) {
     console.error(`Push notification dispatch failed for ${userId}:`, error);

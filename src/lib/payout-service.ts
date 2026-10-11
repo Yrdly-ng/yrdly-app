@@ -1,8 +1,8 @@
 import { supabaseAdmin } from './supabase-admin';
-import { PaystackService } from './paystack-service';
 import { PaylukService } from './payluk-service';
 import { getPaylukCustomerId } from './payluk-onboarding';
-import { NotificationService } from './notification-service';
+import { NotificationService } from './server-notification-service';
+import { payoutAccountError } from './payout-account';
 
 export interface PayoutRequest {
   id: string;
@@ -32,7 +32,7 @@ export class PayoutService {
       // Get completed transactions for this seller
       const { data: transactions, error } = await supabaseAdmin
         .from('escrow_transactions')
-        .select('seller_amount, status')
+        .select('seller_amount, status, item_type, payment_provider')
         .eq('seller_id', sellerId);
 
       if (error) {
@@ -40,7 +40,7 @@ export class PayoutService {
         throw error;
       }
 
-      const completedTransactions = transactions?.filter(t => t.status === 'completed') || [];
+      const completedTransactions = transactions?.filter(t => t.status === 'completed' && t.item_type !== 'ticket' && t.payment_provider === 'payluk') || [];
       const totalEarnings = completedTransactions.reduce((sum, t) => sum + t.seller_amount, 0);
 
       // Get payout requests
@@ -59,16 +59,14 @@ export class PayoutService {
 
       let availableBalance = Math.max(0, totalEarnings - completedPayouts - pendingPayouts);
 
-      // The Payluk wallet balance is the authoritative source of truth.
-      // The DB seller_amount may not account for Payluk's escrow fees, so the wallet
-      // will always have the real amount the seller can actually withdraw.
+      // Bound withdrawals by both earned funds and provider funds. Ticket funds
+      // have a separate payout ledger and must not inflate marketplace balances.
       try {
         const sellerPaylukId = await getPaylukCustomerId(sellerId);
         if (sellerPaylukId) {
           const wallet = await PaylukService.getCustomerWallet(sellerPaylukId);
           if (typeof wallet.mainBalance === 'number' && !isNaN(wallet.mainBalance)) {
-            // Use the Payluk wallet balance directly — it's what the seller actually has.
-            availableBalance = wallet.mainBalance;
+            availableBalance = Math.min(availableBalance, Math.max(0, wallet.mainBalance - pendingPayouts));
           }
         }
       } catch (wErr) {
@@ -159,26 +157,7 @@ export class PayoutService {
         }
       }
 
-      // Create payout request
-      const payoutData = {
-        transaction_id: transactionId,
-        seller_id: transaction.seller_id,
-        account_id: sellerAccount.id,
-        amount: payoutAmount,
-        status: 'pending',
-        requested_at: new Date().toISOString(),
-      };
-
-      const { data: payoutRequest, error: payoutError } = await supabaseAdmin
-        .from('payout_requests')
-        .insert(payoutData)
-        .select('id')
-        .single();
-
-      if (payoutError) {
-        console.error('Error creating payout request:', payoutError);
-        throw payoutError;
-      }
+      const payoutRequest = { id:await this.reservePayout(transaction.seller_id,sellerAccount.id,payoutAmount,transactionId) };
 
       // Process the payout
       const result = await this.processPayout(payoutRequest.id);
@@ -188,6 +167,16 @@ export class PayoutService {
       console.error('Failed to initiate auto payout:', error);
       throw new Error('Failed to initiate auto payout');
     }
+  }
+
+  static async reservePayout(sellerId:string,accountId:string,amount:number,transactionId?:string): Promise<string> {
+    const balance = await this.getSellerBalance(sellerId);
+    const { data,error } = await supabaseAdmin.rpc('reserve_seller_payout',{
+      p_seller_id:sellerId,p_account_id:accountId,p_amount:amount,
+      p_wallet_limit:balance.availableBalance+balance.pendingPayouts,p_transaction_id:transactionId || null,
+    });
+    if (error || !data) throw new Error('Withdrawal could not be reserved. Refresh your balance and retry.');
+    return data;
   }
 
   /**
@@ -223,11 +212,16 @@ export class PayoutService {
         return { success: true };
       }
 
+      const accountError = payoutAccountError(payoutRequest.seller_account);
+      if (accountError) return { success: false, error: accountError };
+
       // CAS guard: update status from 'pending' to 'processing' atomically
       const { data: updatedRows, error: casError } = await supabaseAdmin
         .from('payout_requests')
         .update({
           status: 'processing',
+          transaction_reference: `payout-${payoutRequestId}`,
+          payment_provider:'payluk',
         })
         .eq('id', payoutRequestId)
         .eq('status', 'pending')
@@ -243,6 +237,7 @@ export class PayoutService {
       const accountType = payoutRequest.seller_account?.account_type;
 
       let transferSuccess = false;
+      let transferPending = false;
       let transferErrorMsg = 'Transfer failed';
       let transferReason = '';
       let transactionReference = '';
@@ -294,10 +289,16 @@ export class PayoutService {
               accountNumber,
               accountName,
               reference: `payout-${payoutRequestId}`,
-              yrdlyAvailableBalance: paylukWalletBalance,
+              yrdlyAvailableBalance: yrdlyAvailableBalance,
+              onIntentReady: async reference => {
+                const { data: saved, error } = await supabaseAdmin.from('payout_requests')
+                  .update({ transaction_reference: reference }).eq('id', payoutRequestId).eq('status', 'processing').select('id').maybeSingle();
+                if (error || !saved) throw new Error('Could not persist withdrawal reference; transfer was not executed.');
+              },
             });
 
-            transferSuccess = paylukResult.success;
+            transferSuccess = paylukResult.outcome === 'success';
+            transferPending = paylukResult.outcome === 'pending';
             actualNetPayoutAmount = paylukResult.intentAmount;
             intentFee = paylukResult.intentFee;
             actualTotalDebit = paylukResult.totalPaylukDebit;
@@ -308,22 +309,7 @@ export class PayoutService {
             }
             transactionReference = paylukResult.reference || `payout-${payoutRequestId}`;
           } else {
-            console.log(`[PayoutService] Seller ${payoutRequest.seller_id} has no Payluk ID, using Paystack transfer...`);
-            const transferResult = await PaystackService.transferToSeller({
-              bankCode,
-              accountNumber,
-              amount: payoutRequest.amount,
-              reference: `payout-${payoutRequestId}`,
-              narration: `Yrdly payout for transaction ${payoutRequestId}`,
-            });
-
-            transferSuccess = transferResult.success;
-            actualNetPayoutAmount = payoutRequest.amount;
-            actualTotalDebit = payoutRequest.amount;
-            if (!transferSuccess && transferResult.error) {
-              transferErrorMsg = transferResult.error;
-            }
-            transactionReference = `payout-${payoutRequestId}`;
+            throw new Error('Payment identity unavailable; no alternate provider was attempted.');
           }
         }
 
@@ -373,11 +359,12 @@ export class PayoutService {
           await supabaseAdmin
             .from('payout_requests')
             .update({
-              status: 'failed',
+              status: transferPending ? 'processing' : 'failed',
+              transaction_reference: transactionReference,
               failure_reason: transferReason || transferErrorMsg,
               processed_at: new Date().toISOString(),
             })
-            .eq('id', payoutRequestId);
+            .eq('id', payoutRequestId).eq('status','processing');
 
           // Send failure notification
           try {
@@ -407,11 +394,11 @@ export class PayoutService {
         await supabaseAdmin
           .from('payout_requests')
           .update({
-            status: 'failed',
-            failure_reason: errorMsg,
+            status: 'processing',
+            failure_reason: `Uncertain transfer; reconcile before retry: ${errorMsg}`,
             processed_at: new Date().toISOString(),
           })
-          .eq('id', payoutRequestId);
+          .eq('id', payoutRequestId).eq('status','processing');
 
         try {
           await NotificationService.createPayoutFailedNotification(
@@ -451,25 +438,7 @@ export class PayoutService {
         throw new Error('No active primary account found for seller');
       }
 
-      // Create payout request
-      const payoutData = {
-        seller_id: sellerId,
-        account_id: sellerAccount.id,
-        amount: amount,
-        status: 'pending',
-        requested_at: new Date().toISOString(),
-      };
-
-      const { data: payoutRequest, error: payoutError } = await supabaseAdmin
-        .from('payout_requests')
-        .insert(payoutData)
-        .select('id')
-        .single();
-
-      if (payoutError) {
-        console.error('Error creating manual payout request:', payoutError);
-        throw payoutError;
-      }
+      const payoutRequest = { id:await this.reservePayout(sellerId,sellerAccount.id,amount) };
 
       // Process the payout
       const result = await this.processPayout(payoutRequest.id);
@@ -498,7 +467,12 @@ export class PayoutService {
         throw error;
       }
 
-      return data || [];
+      return (data || []).map(row => ({
+        id: row.id, sellerId: row.seller_id, accountId: row.account_id,
+        amount: Number(row.amount), status: row.status, requestedAt: new Date(row.requested_at),
+        processedAt: row.processed_at ? new Date(row.processed_at) : undefined,
+        failureReason: row.failure_reason || undefined, transactionReference: row.transaction_reference || undefined,
+      }));
     } catch (error) {
       console.error('Failed to get payout history:', error);
       throw new Error('Failed to get payout history');

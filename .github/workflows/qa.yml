@@ -1,0 +1,73 @@
+name: Isolated QA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [fix/audit-oct-2026]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: isolated-yrdly-qa
+  cancel-in-progress: false
+
+jobs:
+  qa:
+    runs-on: ubuntu-24.04
+    environment: yrdly-qa
+    timeout-minutes: 30
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      E2E_APP_URL: http://localhost:9002
+      QA_SUPABASE_URL: ${{ secrets.QA_SUPABASE_URL }}
+      QA_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.QA_SUPABASE_PUBLISHABLE_KEY }}
+      QA_SUPABASE_SECRET_KEY: ${{ secrets.QA_SUPABASE_SECRET_KEY }}
+      QA_PAYLUK_SECRET_KEY: ${{ secrets.QA_PAYLUK_SECRET_KEY }}
+      QA_PAYLUK_PUBLIC_KEY: ${{ secrets.QA_PAYLUK_PUBLIC_KEY }}
+      QA_BUYER_EMAIL: ${{ secrets.QA_BUYER_EMAIL }}
+      QA_BUYER_PASSWORD: ${{ secrets.QA_BUYER_PASSWORD }}
+      QA_SELLER_EMAIL: ${{ secrets.QA_SELLER_EMAIL }}
+      QA_SELLER_PASSWORD: ${{ secrets.QA_SELLER_PASSWORD }}
+      QA_ORGANIZER_EMAIL: ${{ secrets.QA_ORGANIZER_EMAIL }}
+      QA_ORGANIZER_PASSWORD: ${{ secrets.QA_ORGANIZER_PASSWORD }}
+      QA_ADMIN_EMAIL: ${{ secrets.QA_ADMIN_EMAIL }}
+      QA_ADMIN_PASSWORD: ${{ secrets.QA_ADMIN_PASSWORD }}
+      QA_NON_ADMIN_EMAIL: ${{ secrets.QA_NON_ADMIN_EMAIL }}
+      QA_NON_ADMIN_PASSWORD: ${{ secrets.QA_NON_ADMIN_PASSWORD }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+      - run: npm install --global pnpm@11.2.2
+      - run: pnpm install --frozen-lockfile
+      - run: node qa-scripts/write-ci-env.mjs
+      - run: node qa-scripts/seed.mjs
+      - run: node --test tests/audit-security.test.cjs
+      - run: node scripts/qa-payluk-sandbox.mjs
+      - run: node qa-scripts/edge-regression.mjs
+      - run: node qa-scripts/otp-regression.mjs
+      - run: node qa-scripts/run-app.mjs build
+      - run: pnpm typecheck && pnpm lint
+      - name: Start QA server and run live checks
+        run: |
+          mkdir -p .qa-artifacts/screenshots
+          node qa-scripts/run-app.mjs start > .qa-artifacts/server.log 2>&1 &
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://localhost:9002/login > /dev/null; then break; fi
+            sleep 1
+          done
+          node qa-scripts/live-regression.mjs
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm exec playwright test --config=playwright.qa.config.ts
+      - run: pnpm test:e2e:smoke
+      - name: Upload safe QA evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: qa-evidence
+          path: |
+            .qa-artifacts/screenshots/
+            .qa-artifacts/live-regression.json
+          retention-days: 7

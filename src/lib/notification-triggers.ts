@@ -14,7 +14,7 @@ export class NotificationTriggers {
     try {
       // Get sender's name
       const { data: senderData, error } = await supabase
-        .from('users')
+        .from('public_profiles')
         .select('name')
         .eq('id', fromUserId)
         .single();
@@ -45,7 +45,7 @@ export class NotificationTriggers {
     try {
       // Get acceptor's name
       const { data: acceptorData } = await supabase
-        .from('users')
+        .from('public_profiles')
         .select('name')
         .eq('id', toUserId)
         .single();
@@ -71,7 +71,7 @@ export class NotificationTriggers {
   static async onFriendRequestDeclined(fromUserId: string, toUserId: string) {
     try {
       const { data: recipient } = await supabase
-        .from('users')
+        .from('public_profiles')
         .select('name')
         .eq('id', toUserId)
         .maybeSingle();
@@ -121,7 +121,7 @@ export class NotificationTriggers {
 
       // Get sender's name
       const { data: senderData } = await supabase
-        .from('users')
+        .from('public_profiles')
         .select('name')
         .eq('id', fromUserId)
         .single();
@@ -168,7 +168,7 @@ export class NotificationTriggers {
       if (postData && postData.user_id !== likerId) {
         // Get liker's name
         const { data: likerData } = await supabase
-          .from('users')
+          .from('public_profiles')
           .select('name')
           .eq('id', likerId)
           .single();
@@ -214,7 +214,7 @@ export class NotificationTriggers {
     try {
       const { data: post } = await supabase.from('posts').select('user_id').eq('id', postId).maybeSingle();
       if (!post?.user_id || post.user_id === sharerId) return;
-      const { data: sharer } = await supabase.from('users').select('name').eq('id', sharerId).maybeSingle();
+      const { data: sharer } = await supabase.from('public_profiles').select('name').eq('id', sharerId).maybeSingle();
       await NotificationService.createNotification({
         userId: post.user_id,
         type: 'post_share',
@@ -245,7 +245,7 @@ export class NotificationTriggers {
       if (postData && postData.user_id !== commenterId) {
         // Get commenter's name
         const { data: commenterData } = await supabase
-          .from('users')
+          .from('public_profiles')
           .select('name')
           .eq('id', commenterId)
           .single();
@@ -288,7 +288,7 @@ export class NotificationTriggers {
       if (itemData && itemData.user_id !== buyerId) {
         // Get buyer's name
         const { data: buyerData } = await supabase
-          .from('users')
+          .from('public_profiles')
           .select('name')
           .eq('id', buyerId)
           .single();
@@ -316,7 +316,7 @@ export class NotificationTriggers {
       if (mentionedUserId === mentionerId) return;
       // Get mentioner's name
       const { data: mentionerData } = await supabase
-        .from('users')
+        .from('public_profiles')
         .select('name')
         .eq('id', mentionerId)
         .single();
@@ -347,7 +347,7 @@ export class NotificationTriggers {
 
     try {
       const { data: mentionedUsers, error } = await supabase
-        .from('users')
+        .from('public_profiles')
         .select('id, username')
         .in('username', handles);
       if (error) throw error;
@@ -367,7 +367,7 @@ export class NotificationTriggers {
     try {
       // Get inviter's name
       const { data: inviterData } = await supabase
-        .from('users')
+        .from('public_profiles')
         .select('name')
         .eq('id', inviterId)
         .single();
@@ -409,7 +409,7 @@ export class NotificationTriggers {
     try {
       // Get buyer's name
       const { data: buyerData } = await supabase
-        .from('users')
+        .from('public_profiles')
         .select('name')
         .eq('id', buyerId)
         .single();
@@ -509,7 +509,7 @@ export class NotificationTriggers {
         let customerName = params.customerName;
         if (!customerName && params.customerUserId) {
           const { data: customer } = await supabase
-            .from('users')
+            .from('public_profiles')
             .select('name')
             .eq('id', params.customerUserId)
             .single();

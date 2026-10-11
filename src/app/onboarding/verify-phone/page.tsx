@@ -1,5 +1,7 @@
 "use client";
 
+import { safeRelativePath } from '@/lib/auth-navigation';
+
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ShieldCheck, ChevronDown, AlertCircle, ArrowLeft, Loader2 } from "lucide-react";
@@ -15,7 +17,7 @@ export default function VerifyPhonePage() {
   const getNextParam = () => {
     if (typeof window === "undefined") return "";
     const next = new URLSearchParams(window.location.search).get("next");
-    return next?.startsWith("/") && !next.startsWith("//") ? next : "";
+    return safeRelativePath(next, "");
   };
 
   const handleSendOtp = async () => {

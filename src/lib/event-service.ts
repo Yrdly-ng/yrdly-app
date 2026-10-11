@@ -1,6 +1,6 @@
 /**
  * Event Service — all Supabase interactions for the events & ticketing system.
- * Server-side safe (no Paystack SDK usage here).
+ * Server-side safe (no Payluk SDK usage here).
  */
 
 import { supabase } from './supabase';
@@ -22,7 +22,7 @@ export async function getPublishedEvents(opts?: {
     .from('events')
     .select(`
       *,
-      organizer:users!events_organizer_id_fkey(id, name, avatar_url),
+      organizer:public_profiles!events_organizer_id_fkey(id, name, avatar_url),
       ticket_tiers(*)
     `)
     .eq('status', 'PUBLISHED')
@@ -44,7 +44,7 @@ export async function getPublishedEvents(opts?: {
     try {
       const { data: ticketsData } = await supabase
         .from('tickets')
-        .select('event_id, buyer:users(id, name, avatar_url)')
+        .select('event_id, buyer:public_profiles(id, name, avatar_url)')
         .in('event_id', eventIds)
         .eq('status', 'PAID')
         .limit(100);
@@ -87,7 +87,7 @@ export async function getEventAttendees(eventId: string, limit: number = 5) {
   try {
     const { data } = await supabase
       .from('tickets')
-      .select('buyer:users(id, name, avatar_url)')
+      .select('buyer:public_profiles(id, name, avatar_url)')
       .eq('event_id', eventId)
       .eq('status', 'PAID')
       .limit(limit * 3);
@@ -120,7 +120,7 @@ export async function getEventById(id: string): Promise<Event | null> {
     .from('events')
     .select(`
       *,
-      organizer:users!events_organizer_id_fkey(id, name, avatar_url),
+      organizer:public_profiles!events_organizer_id_fkey(id, name, avatar_url),
       ticket_tiers(*)
     `)
     .eq('id', id)
@@ -130,7 +130,7 @@ export async function getEventById(id: string): Promise<Event | null> {
     // Check if this is a legacy event stored in the posts table
     const { data: postData } = await supabase
       .from('posts')
-      .select('*, organizer:users!posts_user_id_fkey(id, name, avatar_url)')
+      .select('*, organizer:public_profiles!posts_user_id_fkey(id, name, avatar_url)')
       .eq('id', id)
       .eq('category', 'Event')
       .single();

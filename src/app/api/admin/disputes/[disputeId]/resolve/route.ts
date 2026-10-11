@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getAuthenticatedUser } from '@/lib/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { PaystackService } from '@/lib/paystack-service';
-import { PayoutService } from '@/lib/payout-service';
-import { NotificationService } from '@/lib/notification-service';
+import { NotificationService } from '@/lib/server-notification-service';
 import { PaylukService } from '@/lib/payluk-service';
 
 const resolveSchema = z.object({
@@ -18,7 +16,7 @@ export async function POST(
   context: { params: Promise<{ disputeId: string }> },
 ) {
   const { data: { user }, error: authError } = await getAuthenticatedUser(request);
-  if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: authError?.status === 403 ? 403 : authError?.status === 503 ? 503 : 401 });
 
   const { data: profile } = await supabaseAdmin.from('users').select('is_admin').eq('id', user.id).maybeSingle();
   if (!profile?.is_admin) return NextResponse.json({ error: 'Admin access required.' }, { status: 403 });
@@ -84,18 +82,11 @@ export async function POST(
       await PaylukService.resolveDispute(transaction.payluk_escrow_id, {
         resolution,
         status,
-        sellerAmount: sellerAmount > 0 ? sellerAmount : undefined,
-        buyerAmount: refundAmount > 0 ? refundAmount : undefined,
+        ...(status === 'SPLIT' ? { sellerAmount, buyerAmount: refundAmount } : {}),
       });
+      providerReference = transaction.payluk_escrow_id;
     } else {
-      if (refundAmount > 0) {
-        const refunded = await PaystackService.refundTransaction(transaction.payment_reference, refundAmount);
-        if (!refunded) throw new Error('Paystack did not confirm the refund.');
-        providerReference = transaction.payment_reference;
-      }
-      if (sellerAmount > 0) {
-        providerReference = await PayoutService.manualPayout(transaction.seller_id, sellerAmount, user.id);
-      }
+      throw new Error('Unknown payment provider; manual reconciliation required.');
     }
   } catch (providerError) {
     const safeMessage = providerError instanceof Error ? providerError.message : 'Payment provider returned an unknown outcome.';

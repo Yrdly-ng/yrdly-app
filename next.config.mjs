@@ -3,9 +3,11 @@ import { fileURLToPath } from 'url';
 import path from 'path';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const supabaseStorageHost = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://yoiyqxtpmxnrrbqqidcs.supabase.co').hostname;
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  distDir: process.env.YRDLY_QA_BUILD === 'true' ? '.next-qa' : '.next',
   // Optimize images for mobile
   images: {
     unoptimized: false,
@@ -15,7 +17,7 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'yoiyqxtpmxnrrbqqidcs.supabase.co',
+        hostname: supabaseStorageHost,
         pathname: '/storage/v1/object/public/**',
       },
       {
@@ -50,7 +52,7 @@ const nextConfig = {
   
   // Compiler optimizations
   compiler: {
-    removeConsole: process.env.NODE_ENV === 'production',
+    removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error', 'warn'] } : false,
   },
   
 

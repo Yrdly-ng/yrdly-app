@@ -303,8 +303,8 @@ export function MainLayout({ children }: MainLayoutProps) {
             isMapPage
               ? "h-[100dvh] p-0 overflow-hidden"
               : isEdgeToEdgePage
-              ? "h-[calc(100dvh-64px)] md:h-[calc(100dvh-84px)] lg:h-[100dvh] p-0 overflow-y-auto overflow-x-hidden"
-              : "px-3 sm:px-4 md:px-6 py-4 pb-20 md:pb-4"
+              ? "h-[calc(100dvh-64px)] md:h-[calc(100dvh-84px)] lg:h-[100dvh] p-0 pb-20 lg:pb-0 overflow-y-auto overflow-x-hidden"
+              : "px-3 sm:px-4 md:px-6 py-4 pb-20 lg:pb-4"
           )}
         >
           {showUrgentBanner && urgentAlert && (

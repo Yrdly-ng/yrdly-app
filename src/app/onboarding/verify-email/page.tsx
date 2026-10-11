@@ -1,5 +1,7 @@
 "use client";
 
+import { safeRelativePath } from '@/lib/auth-navigation';
+
 import React, { useState, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -10,7 +12,7 @@ function VerifyEmailForm() {
   const searchParams = useSearchParams();
   const email = searchParams.get("email") || "";
   const requestedNext = searchParams.get("next");
-  const nextPath = requestedNext?.startsWith("/") && !requestedNext.startsWith("//") ? requestedNext : "";
+  const nextPath = safeRelativePath(requestedNext, "");
   const [digits, setDigits] = useState(["", "", "", "", "", ""]);
   const [countdown, setCountdown] = useState(45);
   const [error, setError] = useState("");

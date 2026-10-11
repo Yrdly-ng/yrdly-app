@@ -1,3 +1,4 @@
+import { authenticatedFetch } from './authenticated-fetch';
 import { supabase } from './supabase';
 import {
   ServiceOffering,
@@ -286,35 +287,7 @@ export class BookingService {
     staffId?: string | null;
     quoteId?: string | null;
   }): Promise<Booking> {
-    const { data: service } = await supabase
-      .from('service_offerings')
-      .select('duration_minutes')
-      .eq('id', params.serviceId)
-      .single();
-
-    const durationMinutes = service?.duration_minutes || 60;
-    const startTimeDate = new Date(params.appointmentTime);
-    const endTimeDate = new Date(startTimeDate.getTime() + durationMinutes * 60 * 1000);
-
-    const { data, error } = await supabase
-      .from('bookings')
-      .insert([
-        {
-          customer_id: params.customerId,
-          business_id: params.businessId,
-          service_id: params.serviceId,
-          staff_id: params.staffId || null,
-          quote_id: params.quoteId || null,
-          appointment_time: params.appointmentTime,
-          end_time: endTimeDate.toISOString(),
-          notes: params.notes,
-          status: 'requested',
-        },
-      ])
-      .select('*, service:service_offerings(*), business:businesses(*)')
-      .single();
-
-    if (error) throw error;
+    const { data } = await authenticatedFetch('/api/bookings/create', params);
     return data;
   }
 
@@ -336,7 +309,7 @@ export class BookingService {
       .from('bookings')
       .update({ status: 'confirmed', updated_at: new Date().toISOString() })
       .eq('id', bookingId)
-      .select('*, service:service_offerings(*), business:businesses(*), customer:users(*)')
+      .select('*, service:service_offerings(*), business:businesses(*), customer:public_profiles(*)')
       .single();
     if (error) throw error;
     return data;
@@ -474,73 +447,13 @@ export class BookingService {
     party: StrikeParty,
     type: StrikeType
   ): Promise<void> {
-    const tableName = party === 'customer' ? 'users' : 'businesses';
-
-    const { data: target } = await supabase
-      .from(tableName)
-      .select('no_show_count, late_cancellation_count')
-      .eq('id', targetId)
-      .single();
-
-    if (!target) return;
-
-    let newNoShow = target.no_show_count || 0;
-    let newLateCancel = target.late_cancellation_count || 0;
-
-    if (type === 'no_show') newNoShow += 1;
-    if (type === 'late_cancellation') newLateCancel += 1;
-
-    const totalStrikes = newNoShow + newLateCancel;
-    const isFlagged = totalStrikes >= NO_SHOW_FLAG_THRESHOLD;
-
-    await supabase
-      .from(tableName)
-      .update({
-        no_show_count: newNoShow,
-        late_cancellation_count: newLateCancel,
-        is_flagged: isFlagged,
-      })
-      .eq('id', targetId);
+    await this.evaluateActiveFlagStatus(targetId,party);
   }
 
-  /**
-   * Evaluate trailing 90-day active strikes & auto-clear flag if clean for 90 days
-   */
-  static async evaluateActiveFlagStatus(
-    targetId: string,
-    party: StrikeParty
-  ): Promise<boolean> {
-    const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
-    const idField = party === 'customer' ? 'customer_id' : 'business_id';
-
-    // 1. Active late cancellations within trailing 90 days (cancelled_at >= 90d ago)
-    const { count: lateCancelCount } = await supabase
-      .from('bookings')
-      .select('id', { count: 'exact', head: true })
-      .eq(idField, targetId)
-      .eq('status', 'late_cancelled')
-      .gte('cancelled_at', ninetyDaysAgo);
-
-    // 2. Active no-shows within trailing 90 days (appointment_time >= 90d ago)
-    const { count: noShowCount } = await supabase
-      .from('bookings')
-      .select('id', { count: 'exact', head: true })
-      .eq(idField, targetId)
-      .eq('status', 'no_show')
-      .gte('appointment_time', ninetyDaysAgo);
-
-    const activeStrikes = (lateCancelCount || 0) + (noShowCount || 0);
-    const isFlagged = activeStrikes >= NO_SHOW_FLAG_THRESHOLD;
-    const tableName = party === 'customer' ? 'users' : 'businesses';
-
-    await supabase
-      .from(tableName)
-      .update({ is_flagged: isFlagged })
-      .eq('id', targetId);
-
+  static async evaluateActiveFlagStatus(targetId:string,party:StrikeParty): Promise<boolean> {
+    const { isFlagged } = await authenticatedFetch('/api/bookings/flags',{ targetId,party });
     return isFlagged;
   }
-
 
   /**
    * Check if a completed booking is eligible for review by a customer
@@ -601,7 +514,7 @@ export class BookingService {
   static async getBusinessBookings(businessId: string): Promise<Booking[]> {
     const { data, error } = await supabase
       .from('bookings')
-      .select('*, service:service_offerings(*), business:businesses(*), customer:users(*)')
+      .select('*, service:service_offerings(*), business:businesses(*), customer:public_profiles(*)')
       .eq('business_id', businessId)
       .order('appointment_time', { ascending: false });
 

@@ -198,7 +198,7 @@ export default function LocationSettingsPage() {
         </div>
       </header>
 
-      <main className="max-w-xl mx-auto px-5 py-5 space-y-5">
+      <div className="max-w-xl mx-auto px-5 py-5 space-y-5">
         {/* Current Location Card */}
         <div className="flex items-center gap-3 p-4 bg-[var(--yrdly-surface)] border border-[var(--yrdly-glass-border)] rounded-[16px]">
           <div className="w-9 h-9 rounded-full bg-[rgba(130,219,126,0.1)] flex items-center justify-center flex-shrink-0">
@@ -377,7 +377,7 @@ export default function LocationSettingsPage() {
             </div>
           </div>
         )}
-      </main>
+      </div>
     </div>
   );
 }

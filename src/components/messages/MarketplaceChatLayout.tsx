@@ -15,6 +15,7 @@ import { SupabaseChatService } from "@/lib/supabase-chat-service";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { PrivateMediaImage } from '@/components/PrivateMedia';
 import { Progress } from "../ui/progress";
 import { OnlineStatusService } from "@/lib/online-status";
 import { AvatarOnlineIndicator } from "../ui/online-indicator";
@@ -152,7 +153,7 @@ export function MarketplaceChatLayout({
         for (const userId of participantIds) {
           try {
             const { data: userData, error } = await supabase
-              .from('users')
+              .from('public_profiles')
               .select('*')
               .eq('id', userId)
               .single();
@@ -250,7 +251,7 @@ export function MarketplaceChatLayout({
         const otherParticipantId = isCurrentUserBuyer ? selectedChat.sellerId : selectedChat.buyerId;
         
         const { data: userData, error } = await supabase
-          .from('users')
+          .from('public_profiles')
           .select('*')
           .eq('id', otherParticipantId)
           .single();
@@ -311,7 +312,7 @@ export function MarketplaceChatLayout({
       
       // Upload image if one is selected
       if (imageFile) {
-        const { url, error: uploadError } = await StorageService.uploadChatImage(user?.id!, imageFile);
+        const { url, error: uploadError } = await StorageService.uploadChatImage(selectedChat.id, imageFile);
         if (uploadError) {
           console.error('Image upload error:', uploadError);
           throw uploadError;
@@ -492,7 +493,7 @@ export function MarketplaceChatLayout({
       <div className="flex flex-col h-full bg-[var(--yrdly-dark)] text-foreground font-yrdly-body">
         <div className="border-b border-[var(--yrdly-glass-border)] bg-[var(--yrdly-dark)]">
           <div className="flex items-center gap-4 p-3">
-            <Button
+            <Button aria-label="Back"
               variant="ghost"
               size="icon"
               className="md:hidden"
@@ -590,7 +591,7 @@ export function MarketplaceChatLayout({
                     <div className={cn("rounded-2xl px-4 py-2.5 max-w-xs lg:max-w-md break-words text-sm font-yrdly-body shadow-sm", msg.senderId === user?.id ? "bg-primary text-primary-foreground" : "bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] text-foreground")}>
                       {msg.metadata?.imageUrl && (
                         <div className="relative w-48 h-48 mb-2">
-                          <Image src={msg.metadata.imageUrl} alt="Chat image" layout="fill" className="rounded-md object-cover" />
+                          <PrivateMediaImage src={msg.metadata.imageUrl} alt="Chat image" fill className="rounded-md object-cover" />
                         </div>
                       )}
                       {msg.content && <p>{msg.content}</p>}
@@ -611,7 +612,7 @@ export function MarketplaceChatLayout({
           {imagePreview && (
             <div className="relative w-24 h-24 mb-2">
               <Image src={imagePreview} alt="Image preview" layout="fill" className="rounded-md object-cover" />
-              <Button variant="destructive" size="icon" className="absolute -top-2 -right-2 h-6 w-6 rounded-full" onClick={removeImagePreview}>
+              <Button aria-label="Close" variant="destructive" size="icon" className="absolute -top-2 -right-2 h-6 w-6 rounded-full" onClick={removeImagePreview}>
                 <X className="h-4 w-4" />
               </Button>
             </div>
@@ -619,7 +620,7 @@ export function MarketplaceChatLayout({
           {uploadProgress !== null && <Progress value={uploadProgress} className="mb-2" />}
           <form onSubmit={handleSendMessage} className="flex items-center gap-2">
             <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageSelect} className="hidden" />
-            <Button type="button" variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} className="text-[var(--yrdly-label)] hover:text-foreground">
+            <Button aria-label="Attach image" type="button" variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} className="text-[var(--yrdly-label)] hover:text-foreground">
               <ImagePlus className="h-5 w-5" />
             </Button>
             <Textarea
@@ -635,7 +636,7 @@ export function MarketplaceChatLayout({
                 }
               }}
             />
-            <Button type="submit" size="icon" disabled={(!newMessage.trim() && !imageFile) || uploadProgress !== null} className="bg-primary text-primary-foreground hover:bg-primary/90">
+            <Button aria-label="Send message" type="submit" size="icon" disabled={(!newMessage.trim() && !imageFile) || uploadProgress !== null} className="bg-primary text-primary-foreground hover:bg-primary/90">
               <SendHorizonal className="h-5 w-5" />
             </Button>
           </form>

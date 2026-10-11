@@ -222,7 +222,7 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
       let usersMap = new Map();
       if (otherUserIds.length > 0) {
         const { data: usersData } = await supabase
-          .from("users")
+          .from('public_profiles')
           .select("id, name, username, avatar_url, verified_seller, phone_verified")
           .in("id", otherUserIds);
 
@@ -378,7 +378,7 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
         const friendIds = userData?.friends || [];
         if (friendIds.length > 0) {
           const { data: friendsData } = await supabase
-            .from("users")
+            .from('public_profiles')
             .select("id, name, avatar_url")
             .in("id", friendIds);
           setFriends(friendsData || []);

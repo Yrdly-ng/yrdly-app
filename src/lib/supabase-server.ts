@@ -1,13 +1,15 @@
+import { authCookieDomain } from './auth-navigation';
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { createClient as createJsClient } from "@supabase/supabase-js";
 import { cookies, headers } from "next/headers";
-import type { NextRequest } from "next/server";
+import { AuthError, type UserResponse } from '@supabase/supabase-js';
+import { isUserSuspendedOrBanned } from './user-suspension';
 
 export async function createClient() {
   const cookieStore = await cookies();
   const reqHeaders = await headers();
   const host = reqHeaders.get("host") || "";
-  const isLocalhost = host.includes("localhost") || host.includes("127.0.0.1");
+  const cookieDomain = authCookieDomain(host);
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -25,7 +27,7 @@ export async function createClient() {
             cookiesToSet.forEach(({ name, value, options }) => {
               const finalOptions = {
                 ...options,
-                domain: isLocalhost ? undefined : (process.env.NEXT_PUBLIC_COOKIE_DOMAIN || '.yrdly.ng'),
+                domain: cookieDomain,
               };
               cookieStore.set(name, value, finalOptions);
             });
@@ -44,7 +46,7 @@ export async function createClient() {
  * If found, uses it directly (bulletproof for Incognito/Cookie-less environments).
  * Otherwise, falls back to the standard cookie-based client.
  */
-export async function getAuthenticatedUser(request?: NextRequest) {
+export async function getAuthenticatedUser(request?: Request) {
   if (request) {
     const authHeader = request.headers.get("authorization");
     if (authHeader?.startsWith("Bearer ")) {
@@ -57,11 +59,22 @@ export async function getAuthenticatedUser(request?: NextRequest) {
           auth: { autoRefreshToken: false, persistSession: false },
         }
       );
-      return supabaseAuth.auth.getUser();
+      return authorizeAccount(await supabaseAuth.auth.getUser());
     }
   }
 
   // Fallback to cookie-based SSR client
   const supabase = await createClient();
-  return supabase.auth.getUser();
+  return authorizeAccount(await supabase.auth.getUser());
+}
+
+async function authorizeAccount(result: UserResponse): Promise<UserResponse> {
+  if (result.error || !result.data.user) return result;
+  try {
+    const state = await isUserSuspendedOrBanned(result.data.user.id);
+    if (state.suspended) return { data: { user: null }, error: new AuthError('Account suspended', 403) };
+  } catch {
+    return { data: { user: null }, error: new AuthError('Account status unavailable', 503) };
+  }
+  return result;
 }

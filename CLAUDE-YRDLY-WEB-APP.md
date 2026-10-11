@@ -9,7 +9,7 @@ The sibling `yrdly` repository is the public marketing website. `yrdly-mobile` i
 ## Stack and commands
 
 - Next.js 15 App Router, React 19, TypeScript, Tailwind CSS, and Supabase (Postgres, Auth, Realtime, Storage).
-- Integrations in the codebase include Paystack, Payluk escrow, Resend email, Crisp support chat, Google Maps, Vercel analytics, and push notifications. Confirm the relevant feature's current provider and configuration in code before changing it.
+- Integrations in the codebase include Payluk escrow, Resend email, Crisp support chat, Google Maps, Vercel analytics, and push notifications. Confirm the relevant feature's current provider and configuration in code before changing it.
 - Run commands from this directory: `pnpm dev` (port 9002), `pnpm build`, `pnpm typecheck`, `pnpm lint`, and `pnpm test:e2e:smoke`.
 - `pnpm build` runs `scripts/inject-sw-version.js` before Next.js build. Use the package manifest as the source for current scripts.
 
@@ -18,7 +18,7 @@ The sibling `yrdly` repository is the public marketing website. `yrdly-mobile` i
 - `src/app/(app)/`: signed-in product routes, including home/feed, marketplace, map, businesses, communities, events, messages, bookings, notifications, profile, settings, transactions, and admin screens.
 - `src/app/api/`: server endpoints for checkout, payment verification and webhooks, payouts, bookings, events, disputes, tickets, notifications, and scheduled jobs.
 - `src/components/`: feature UI grouped into marketplace, escrow, events, messages, disputes, reviews, onboarding, settings, and shared UI.
-- `src/lib/`: Supabase clients and feature services. Relevant areas include `escrow-service`, `booking-service`, `event-service`, `dispute-service`, `marketplace-listing-service`, `notification-service`, `paystack-service`, and `payluk-service`.
+- `src/lib/`: Supabase clients and feature services. Relevant areas include `escrow-service`, `booking-service`, `event-service`, `dispute-service`, `marketplace-listing-service`, `notification-service`, `payluk-service`.
 - `src/hooks/`, `src/contexts/`, and `src/types/`: client state and shared domain types.
 - `supabase/migrations/`: ordered database changes, including RLS policies, RPCs, triggers, and integrity/safety controls. `supabase/functions/`: deployed Edge Functions.
 - `docs/`: technical references and payment design artifacts. Some documents are older than current code; compare them with the implementation and migrations.
@@ -28,7 +28,7 @@ The sibling `yrdly` repository is the public marketing website. `yrdly-mobile` i
 
 - **Neighbourhood social:** local feed, posts, comments, reactions, follows/friend connections, communities, alerts, and moderation/reporting.
 - **Marketplace:** listings and giveaways, seller/business catalogs, buyer/seller messaging, order status, reviews, and escrow-protected payments.
-- **Payments and trust:** Paystack and Payluk integrations, booking checkout, seller payouts, transaction history, disputes, evidence, and safety/admin workflows.
+- **Payments and trust:** Payluk integration, booking checkout, seller payouts, transaction history, disputes, evidence, and safety/admin workflows.
 - **Bookings and businesses:** local service providers, service catalogs, availability, quotes, staff, booking management, and payment state.
 - **Events:** event creation and discovery, tickets, payment, check-in/scanning, cancellation, and payout-related workflows.
 - **Account and engagement:** Supabase authentication, onboarding, phone verification, location-based discovery, notifications/push, saved content, and settings.
@@ -83,12 +83,12 @@ Start with `src/lib/auth-service.ts`, `src/hooks/use-supabase-auth.tsx`, `src/ap
 
 1. A seller creates or edits a listing using marketplace screens/components; ordinary items are typically `posts` rows, while business products use `catalog_items` related to a business owner.
 2. Buyers browse `src/app/(app)/marketplace` and item detail screens. Messaging/contact creates or opens a marketplace conversation; buying starts checkout.
-3. Checkout calls `POST /api/payment/initialize`. The trusted server checks the session, item/seller and eligibility, calculates the amount, creates/reuses transaction state, and initializes the configured provider. Its response can carry a Paystack checkout link or Payluk token and a transaction ID.
+3. Checkout calls `POST /api/payment/initialize`. The trusted server checks the session, item/seller and eligibility, calculates the amount, creates/reuses transaction state, and initializes the configured provider. Its response can carry a Payluk checkout link or token and a transaction ID.
 4. Provider redirects/callbacks and signed webhooks are reconciled by server code into `escrow_transactions` and, where needed, listing/catalog inventory state. A client redirect or SDK success callback alone does not prove payment.
 5. Seller shipment/delivery actions and buyer receipt confirmation advance the transaction. The buyer can dispute instead; evidence, admin decisions, provider updates, and reconciliation all affect that lifecycle.
 6. Completion may trigger reviews, notifications, and seller payout. Bank setup, payout, refund, and dispute operations have distinct routes and service methods.
 
-Trace `src/components/escrow/*`, `/api/payment/initialize`, `/api/payment/verify`, payment/provider webhooks, `/api/payluk/*`, `/api/disputes/*`, `/api/transactions/*`, and `src/lib/{escrow-service,transaction-status-service,paystack-service,payluk-service,dispute-service}.ts`. There are both Paystack and Payluk implementations; check the current provider selection and live code instead of relying on older prose.
+Trace `src/components/escrow/*`, `/api/payment/initialize`, `/api/payment/verify`, payment/provider webhooks, `/api/payluk/*`, `/api/disputes/*`, `/api/transactions/*`, and `src/lib/{escrow-service,transaction-status-service,payluk-service,dispute-service}.ts`. Payluk is the only provider. Paid ticket refunds and cancellations require support-assisted escrow resolution; never fake a refund or switch a historical payment to another provider.
 
 **Do not remove a paid listing as ordinary cleanup.** Inspect `escrow_transactions`, item type, and paid/provider status. The listing guard and migration `20261008105151_protect_paid_marketplace_listings.sql` protect paid marketplace items; retain both application and database enforcement when changing delete flows.
 
