@@ -32,16 +32,16 @@ not evidence that a payment settled or that production has the matching code.
   and payload tests. Backend keys work; publishable keys and user JWTs fail.
 - GitHub CLI has write-capable access. QA-only credentials were encrypted in
   the `yrdly-qa` GitHub environment, restricted to `fix/audit-oct-2026`.
-- Linux CI passed the build (173 routes), typecheck, lint, 173 regression tests, 20 live OTP
+- Linux CI passed the build (173 routes), typecheck, lint, 176 regression tests, 20 live OTP
   checks, seven live
   push authorization tests, 50 signed-in API/security checks, five browser
   scenarios and the existing smoke suite. The browser scenarios cover six
   protected routes at 375, 768 and 1440 pixels, wait for loaded content and
   assert visible navigation. Nineteen screenshots were captured; representative
   loaded mobile, tablet and desktop screenshots were visually reviewed.
-  Evidence: https://github.com/Yrdly-ng/yrdly-app/actions/runs/38116705899
+  Evidence: https://github.com/Yrdly-ng/yrdly-app/actions/runs/38117154957
 - Vercel access works. A separate `yrdly-app-qa` project was configured with the
-  isolated database and Payluk sandbox keys. It deployed revision `e17d9755`
+  isolated database and Payluk sandbox keys. It deployed revision `9262a9da`
   successfully at https://yrdly-app-qa.vercel.app. No production environment
   variables, scheduled jobs or application data were copied into this project.
   Public login, authenticated/unauthenticated checkout guards and unsigned
@@ -233,15 +233,39 @@ not evidence that a payment settled or that production has the matching code.
     and buyer total now round to two decimal places. Two fractional-price route
     regressions pass, including 2,001.11 and 1,234.56. Hosted revision `e17d9755`
     initialized the 1,234.56 catalog purchase at the correct buyer total of
-    1,271.60. Provider readback and funded settlement remain pending below.
+    1,271.60. The subsequent funded catalog flow passed all 14 checks on
+    `9262a9da`: buyer payment 1,271.60, Yrdly commission 37.04, Payluk fee 24.69,
+    seller release 1,209.87, one inventory reservation and one merchant credit.
 20. **VERIFIED, High, by hosted checkout and local reproduction:** reserving the
     last catalog unit correctly sets quantity to zero and `in_stock` to false,
     but the same buyer's next initialization returned HTTP 400 before checking
     their existing pending escrow. They could not resume checkout. The route
     now checks the caller's existing reservation before fresh availability.
     Three regressions cover unpaid retry, funded reconciliation and rejection
-    of a new buyer when stock is exhausted. Local tests pass; hosted retry and
-    funded catalog settlement remain pending deployment of this correction.
+    of a new buyer when stock is exhausted. Full CI passed. Hosted retry reused
+    the same unpaid escrow; real payment callback, replay, buyer delivery,
+    wallet/earnings reconciliation and merchant settlement all passed afterward.
+21. **VERIFIED, High, by exact source and modeled provider contract:** event
+    checkout recorded a 3% commission but did not assign it to Payluk. Its payout
+    path merely subtracted 3% from the intended bank withdrawal. With dashboard
+    merchant commission zero, this did not transfer Yrdly's intended fee. The
+    user confirmed that organizers pay the 3%, preserving the advertised price.
+    New ticket checkout uses principal = advertised total minus 3%, with that
+    3% assigned as the merchant additional fee. Buyer total remains unchanged.
+    Actual provider fees reduce organizer proceeds separately. Verification and
+    refund handling distinguish gross ticket price from the provider principal;
+    legacy orders keep their old interpretation and require payout reconciliation.
+    Local provider-contract tests pass; funded event verification remains pending.
+22. **VERIFIED, High, by exact source and modeled release/withdrawal cases:**
+    event payout did not release ticket escrows before bank withdrawal and used
+    gross minus 3% instead of the order's actual proceeds. The corrected path
+    verifies each order, claims only provider-releasable funds, confirms release
+    after a timeout and uses recorded net proceeds without a second commission
+    deduction. Held, disputed, legacy and mismatched orders block new withdrawal.
+    Ended published events are now included in the matured-event query; the
+    old query required `COMPLETED`, with no matching event-completion writer
+    found in this application. Local pending/timeout/held/legacy regressions pass.
+    Real claim-window and bank payout behavior remain separate release gates.
 
 The customer/permission lock, missing-customer, token-addressing, recovery and
 escrow-proceeds fixes passed full CI on `cbe1d7c4`. The hosted fresh-customer,
@@ -250,9 +274,10 @@ The refund and booking fixes passed full CI with 171 tests on `d06c83ab`, and
 that revision is ready on the dedicated QA deployment. The dashboard commission
 correction passed the new funded merchant-ledger assertion. The funded full
 refund passed all 16 checks. Commission precision passed full CI with 173 tests
-on `e17d9755`, now ready on QA. The catalog retry correction passed 176 local
-tests, typecheck and lint (the same 19 existing warnings); its full CI and hosted
-verification remain pending.
+on `e17d9755`. The catalog retry correction passed full CI with 176 tests and
+the funded hosted flow on `9262a9da`. The organizer-paid ticket commission and
+release corrections passed 185 local tests, typecheck and lint (the same 19
+existing warnings); their full CI and hosted verification remain pending.
 
 The manual harness `qa-scripts/payluk-lifecycle.mjs` explicitly separates
 preparation, funding, delivery, dispute, reconciliation and refund operations.
@@ -266,9 +291,14 @@ clean up these funded records as though they were unpaid fixtures.
 - Confirm the live merchant dashboard also has zero additional merchant
   commission. A new funded sandbox ledger verified the app's single 3% charge;
   the staging result does not prove the live account setting.
-- Complete funded split resolutions, catalog/event/booking purchase and
+- Complete funded split resolutions, event/booking purchase and
   settlement, and bank withdrawals. Marketplace full refund passed above;
   other refund paths remain separate requirements.
+  The funded catalog purchase/release passed above. Paid ticket initialization
+  retries and competing last-ticket payments also need explicit reservation tests;
+  free-ticket concurrency is verified separately and does not prove paid checkout
+  reservation behavior. Booking commission collection remains unverified after
+  the dashboard commission was removed.
   An authenticated read-only request does not establish these outcomes.
   The sandbox callback is configured and an unpaid-escrow callback was accepted;
   Funded marketplace payment and delivery completion are verified above;

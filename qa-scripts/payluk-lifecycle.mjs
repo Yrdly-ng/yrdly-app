@@ -7,14 +7,14 @@ import { createClient } from '@supabase/supabase-js';
 import { readQaEnv, createAdminClient, generatePassword, QA_PREFIX } from './qa-common.mjs';
 
 const mode = process.argv[2];
-assert.ok(['prepare', 'fund', 'complete', 'new-sale', 'new-refund', 'dispute', 'reconcile', 'resolve', 'inspect'].includes(mode), 'Choose an explicit lifecycle operation');
+assert.ok(['prepare', 'fund', 'scan', 'complete', 'new-sale', 'new-refund', 'dispute', 'reconcile', 'resolve', 'inspect'].includes(mode), 'Choose an explicit lifecycle operation');
 const { env, projectRef } = await readQaEnv();
 assert.ok(env.PAYLUK_SECRET_KEY?.startsWith('sk_test_'));
 assert.ok(env.NEXT_PUBLIC_PAYLUK_PUBLIC_KEY?.startsWith('pk_test_'));
 const base = 'https://yrdly-app-qa.vercel.app';
 const checkout = 'https://staging.live.payluk.ng';
 const scenario = process.argv[3] || 'default';
-assert.ok(['default', 'commission', 'catalog'].includes(scenario), 'Use default, commission or catalog evidence');
+assert.ok(['default', 'commission', 'catalog', 'ticket'].includes(scenario), 'Use default, commission, catalog or ticket evidence');
 const artifactPath = `.qa-artifacts/payluk-lifecycle${scenario === 'default' ? '' : `-${scenario}`}.json`;
 const admin = createAdminClient(env);
 const clients = [];
@@ -24,10 +24,10 @@ try { state = JSON.parse(await readFile(artifactPath, 'utf8')); }
 catch (error) { if (error.code !== 'ENOENT') throw error; }
 if (!state) {
   if (mode === 'new-sale') {
-    assert.ok(['commission', 'catalog'].includes(scenario));
+    assert.ok(['commission', 'catalog', 'ticket'].includes(scenario));
     const source = JSON.parse(await readFile('.qa-artifacts/payluk-lifecycle-completed.json', 'utf8'));
     assert.equal(source.projectRef, projectRef); assert.equal(source.qaPrefix, QA_PREFIX);
-    state = { projectRef, environment: 'sandbox', qaPrefix: QA_PREFIX, kind: scenario, startedAt: new Date().toISOString(), users: source.users, passwords: source.passwords, listingId: randomUUID(), ...(scenario === 'catalog' ? { businessId: randomUUID() } : {}), results: [] };
+    state = { projectRef, environment: 'sandbox', qaPrefix: QA_PREFIX, kind: scenario, startedAt: new Date().toISOString(), users: source.users, passwords: source.passwords, listingId: randomUUID(), ...(scenario === 'catalog' ? { businessId: randomUUID() } : scenario === 'ticket' ? { eventId: randomUUID() } : {}), results: [] };
   } else {
     assert.equal(mode, 'prepare', 'Prepare an owned unpaid fixture first');
     const source = JSON.parse(await readFile('.qa-artifacts/payluk-checkout-fresh.json', 'utf8'));
@@ -40,9 +40,10 @@ assert.equal(state.projectRef, projectRef);
 assert.equal(state.environment, 'sandbox');
 assert.equal(state.qaPrefix, QA_PREFIX);
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
-const principal = state.kind === 'catalog' ? 1234.56 : 2500;
-const commission = Math.round(principal * 0.03 * 100) / 100;
-const total = Math.round((principal + commission) * 100) / 100;
+const purchasePrice = state.kind === 'catalog' ? 1234.56 : 2500;
+const commission = Math.round(purchasePrice * 0.03 * 100) / 100;
+const principal = state.kind === 'ticket' ? Math.round((purchasePrice - commission) * 100) / 100 : purchasePrice;
+const total = state.kind === 'ticket' ? purchasePrice : Math.round((principal + commission) * 100) / 100;
 const itemType = state.kind === 'catalog' ? 'catalog_item' : 'post';
 const ok = (r, label) => { if (r.error) throw new Error(`${label}: ${r.error.code || r.error.status || 'failed'}`); return r.data; };
 async function save() { await writeFile(artifactPath, JSON.stringify(state, null, 2), { mode: 0o600 }); }
@@ -102,9 +103,16 @@ try {
     assert.equal(transaction.buyer_id, state.users.buyer); assert.equal(transaction.seller_id, state.users.seller); assert.equal(transaction.item_id, state.listingId); assert.equal(transaction.payment_provider, 'payluk');
   } else assert.ok(['new-refund', 'new-sale'].includes(mode), 'Resume the pending new checkout first');
   if (mode === 'new-sale') {
-    assert.ok(['commission', 'catalog'].includes(state.kind));
+    assert.ok(['commission', 'catalog', 'ticket'].includes(state.kind));
     await save(); // Persist owned fixture IDs before any creation or provider call.
-    if (state.kind === 'catalog') {
+    if (state.kind === 'ticket') {
+      const existing = ok(await admin.from('events').select('organizer_id').eq('id', state.eventId).maybeSingle(), 'Check owned ticket event');
+      if (existing) assert.equal(existing.organizer_id, state.users.seller);
+      else ok(await admin.from('events').insert({ id: state.eventId, organizer_id: state.users.seller, title: `${QA_PREFIX} Funded Ticket`, description: `${QA_PREFIX} seeded content; synthetic checkout funds only`, category: 'Community', location_address: `${QA_PREFIX} staging`, location_online: false, state: 'Lagos', timezone: 'Africa/Lagos', status: 'PUBLISHED', visibility: 'PUBLIC', moderation_status: 'approved', start_time: new Date(Date.now() + 86400000).toISOString(), end_time: new Date(Date.now() + 2 * 86400000).toISOString() }), 'Create owned event fixture');
+      const tier = ok(await admin.from('ticket_tiers').select('event_id').eq('id', state.listingId).maybeSingle(), 'Read owned ticket tier');
+      if (tier) assert.equal(tier.event_id, state.eventId);
+      else ok(await admin.from('ticket_tiers').insert({ id: state.listingId, event_id: state.eventId, name: `${QA_PREFIX} General`, price: purchasePrice, capacity: 1, sold: 0, is_visible: true }), 'Create owned ticket tier');
+    } else if (state.kind === 'catalog') {
       const business = ok(await admin.from('businesses').select('owner_id').eq('id', state.businessId).maybeSingle(), 'Check owned business');
       if (business) assert.equal(business.owner_id, state.users.seller);
       else ok(await admin.from('businesses').insert({ id: state.businessId, owner_id: state.users.seller, name: `${QA_PREFIX} Catalog Settlement`, category: 'Other', location: { state: 'Lagos', address: `${QA_PREFIX} synthetic test fixture` }, is_active: true, moderation_status: 'approved' }), 'Create owned business');
@@ -118,7 +126,15 @@ try {
     }
     if (!state.payment) {
       console.log('Reserving a fresh Payluk rate window for canonical commission checkout'); await pause(65000);
-      const r = await api('buyer', '/api/payment/initialize', { itemId: state.listingId, itemType, buyerId: state.users.buyer, sellerId: state.users.seller, price: 1 }); assert.equal(r.status, 200); assert.equal(r.body.success, true); state.payment = r.body; await save();
+      const r = state.kind === 'ticket'
+        ? await api('buyer', '/api/events/tickets/purchase', { event_id: state.eventId, tier_id: state.listingId, attendee_name: `${QA_PREFIX} Buyer`, attendee_email: actors.buyer.profile.email, quantity: 1 })
+        : await api('buyer', '/api/payment/initialize', { itemId: state.listingId, itemType, buyerId: state.users.buyer, sellerId: state.users.seller, price: 1 });
+      assert.equal(r.status, 200); assert.equal(r.body.success, true);
+      if (state.kind === 'ticket') {
+        const row = ok(await admin.from('escrow_transactions').select('id,total_amount').eq('payment_reference', r.body.tx_ref).eq('buyer_id', state.users.buyer).single(), 'Read owned ticket checkout');
+        state.payment = { ...r.body, transactionId: row.id, totalAmount: row.total_amount };
+      } else state.payment = r.body;
+      await save();
     }
   }
   if (mode === 'new-refund') {
@@ -141,7 +157,11 @@ try {
         assert.equal(c.email, p.email); assert.equal(c.phone.replace(/\D/g, '').replace(/^234/, '0'), p.phone);
       }
     });
-    await check('fresh checkout retry reuses one unpaid escrow', async () => {
+    if (state.kind === 'ticket') await check('ticket checkout preserves the advertised price and organizer commission', async () => {
+      assert.equal(transaction.amount, purchasePrice); assert.equal(transaction.total_amount, purchasePrice);
+      assert.equal(transaction.commission, commission); assert.equal(transaction.metadata.payluk_fee_mode, 'seller_commission_v1');
+    });
+    else await check('fresh checkout retry reuses one unpaid escrow', async () => {
       console.log('Reserving a fresh Payluk rate window for hosted checkout'); await pause(65000);
       const r = await api('buyer', '/api/payment/initialize', { itemId: state.listingId, itemType, buyerId: state.users.buyer, sellerId: state.users.seller, price: 1 });
       assert.equal(r.status, 200);
@@ -150,7 +170,7 @@ try {
     });
     await check('unpaid provider price, commission and seller proceeds match', async () => {
       const r = await remote(); assert.equal(r.state, 'AWAITING_PAYMENT'); assert.equal(r.amount, principal); assert.equal(r.additionalFee, commission); assert.equal(state.payment.totalAmount, total);
-      if (['commission', 'catalog'].includes(state.kind)) assert.equal(r.fee, Math.round(principal * 0.02 * 100) / 100, 'Dashboard merchant commission must be zero for the canonical app fee');
+      if (['commission', 'catalog', 'ticket'].includes(state.kind)) assert.equal(r.fee, Math.round(principal * 0.02 * 100) / 100, 'Dashboard merchant commission must be zero for the canonical app fee');
       assert.equal(transaction.seller_amount, Math.round((r.amount - r.fee) * 100) / 100); state.unpaidEscrow = r;
     });
     await check('wallet baselines recorded without deposits', async () => {
@@ -191,7 +211,15 @@ try {
       let row;
       do { row = await tx(); if (row.status === 'paid') break; await pause(3000); } while (Date.now() < until);
       assert.equal(row.status, 'paid', 'Provider callback has not applied payment');
-      if (state.kind === 'catalog') {
+      if (state.kind === 'ticket') {
+        do {
+          state.tickets = ok(await admin.from('tickets').select('id,status,amount_paid,ticket_code,qr_data,payment_tx_ref').eq('payment_tx_ref', state.payment.transactionId), 'Read owned paid tickets');
+          if (state.tickets.length) break;
+          await pause(3000);
+        } while (Date.now() < until);
+        assert.equal(state.tickets.length, 1); assert.equal(state.tickets[0].status, 'PAID'); assert.equal(state.tickets[0].amount_paid, purchasePrice);
+        assert.equal(ok(await admin.from('ticket_tiers').select('sold').eq('id', state.listingId).single(), 'Read sold tickets').sold, 1);
+      } else if (state.kind === 'catalog') {
         const item = ok(await admin.from('catalog_items').select('quantity,in_stock').eq('id', state.listingId).single(), 'Read catalog inventory');
         assert.equal(item.quantity, 0); assert.equal(item.in_stock, false);
       } else assert.equal(ok(await admin.from('posts').select('is_sold').eq('id', state.listingId).single(), 'Read listing').is_sold, true);
@@ -207,6 +235,20 @@ try {
       }
       assert.equal((await tx()).status, 'paid'); assert.equal(await count(), before);
       assert.equal(ok(await admin.from('escrow_transactions').select('id').eq('item_id', state.listingId), 'Read ledger').length, 1);
+    });
+  }
+  if (mode === 'scan') {
+    assert.equal(state.kind, 'ticket'); assert.ok(state.paidTransaction && state.tickets?.length === 1);
+    const input = { event_id: state.eventId, ticket_code: state.tickets[0].ticket_code };
+    await check('paid ticket scan rejects a non-organizer and a forged code', async () => {
+      assert.equal((await api('buyer', '/api/events/checkin', input)).status, 403);
+      assert.equal((await api('seller', '/api/events/checkin', { ...input, ticket_code: `${QA_PREFIX}-FORGED-${randomUUID()}` })).status, 404);
+    });
+    await check('two simultaneous organizer scans consume the paid ticket once', async () => {
+      const responses = await Promise.all([0, 1].map(() => fetch(`${base}/api/events/checkin`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${actors.seller.token}` }, body: JSON.stringify(input), signal: AbortSignal.timeout(30000) })));
+      assert.deepEqual(responses.map(response => response.status).sort(), [200, 409]);
+      state.scanResponses = await Promise.all(responses.map(response => response.json()));
+      assert.equal(ok(await admin.from('tickets').select('status').eq('id', state.tickets[0].id).single(), 'Read checked-in paid ticket').status, 'USED');
     });
   }
   if (mode === 'complete') {
@@ -232,7 +274,7 @@ try {
       assert.equal(r.body.pendingPayouts, 0); assert.equal(r.body.completedPayouts, 0);
       const request = await api('seller', '/api/seller/payouts/request', { amount: 1000 }); assert.equal(request.status, 400); assert.equal(request.body.error, 'NO_ACTIVE_ACCOUNT');
     });
-    if (['commission', 'catalog'].includes(state.kind)) await check('merchant ledger receives exactly one canonical 3% commission', async () => {
+    if (['commission', 'catalog', 'ticket'].includes(state.kind)) await check('merchant ledger receives exactly one canonical 3% commission', async () => {
       const ledger = await provider('/v1/merchant/transactions?' + new URLSearchParams({ fromDate: state.startedAt, toDate: new Date().toISOString() })); assert.ok(Array.isArray(ledger));
       const own = ledger.filter(row => JSON.stringify(row.escrowDetails).includes(state.payment.paylukPaymentToken));
       state.merchantSettlement = own;

@@ -413,8 +413,24 @@ test('provider references never get compared with a UUID id column', () => {
   assert.throws(() => paymentReferenceFilter('x,amount.gt.0', ['id','payment_reference']), /Invalid payment reference/);
 });
 
-test('event payout includes USED tickets and keeps pending withdrawals unreleased', async () => {
+test('organizer-paid commission preserves ticket price and verifies the provider fee allocation', () => {
+  const { paylukAmountsMatch, paylukEscrowPrincipal } = load('src/lib/payment-state.ts');
+  const ticket = { amount: 2500, commission: 75, metadata: { payluk_fee_mode: 'seller_commission_v1' } };
+  assert.equal(paylukEscrowPrincipal(ticket), 2425);
+  assert.equal(paylukAmountsMatch(ticket, { amount: 2425, additionalFee: 75, whoPays: 'seller' }), true);
+  assert.equal(paylukAmountsMatch(ticket, { amount: 2500, additionalFee: 75, whoPays: 'seller' }), false);
+  assert.equal(paylukAmountsMatch(ticket, { amount: 2425, additionalFee: 0, whoPays: 'seller' }), false);
+  assert.equal(paylukAmountsMatch(ticket, { amount: 2425, additionalFee: 75, whoPays: 'buyer' }), false);
+  assert.equal(paylukEscrowPrincipal({ amount: 2500, commission: 75 }), 2500);
+  assert.throws(() => paylukEscrowPrincipal({ ...ticket, commission: 2501 }), /Invalid stored/);
+});
+
+for (const scenario of ['released', 'held', 'legacy', 'claim-timeout-confirmed']) {
+test(`event payout ${scenario} includes USED tickets and only withdraws released net proceeds`, async () => {
   const updates = [];
+  let withdrawals = 0, claims = 0;
+  const paymentId = '11111111-1111-4111-a111-111111111111';
+  const transaction = { id: paymentId, amount: 2000, commission: 60, seller_amount: 1901.20, status: 'paid', payluk_tx_ref: 'owned-token', payment_provider: 'payluk', metadata: { event_id: 'event', quantity: 1, ...(scenario === 'legacy' ? {} : { payluk_fee_mode: 'seller_commission_v1' }) } };
   const admin = { from(table) {
     const operations = [];
     const query = {};
@@ -423,10 +439,13 @@ test('event payout includes USED tickets and keeps pending withdrawals unrelease
       let data;
       if (table === 'tickets') {
         const allowed = operations.find(([op]) => op === 'in')[2];
-        data = [{ status: 'USED', amount_paid: 2000, payment_provider: 'payluk', settlement_mode: 'held' }].filter(ticket => allowed.includes(ticket.status));
+        data = [{ status: 'USED', amount_paid: 2000, payment_provider: 'payluk', settlement_mode: 'held', payment_tx_ref: paymentId }].filter(ticket => allowed.includes(ticket.status));
       } else if (table === 'seller_accounts') data = { account_details: { bank_code: '044', account_number: '0000000000' }, updated_at: '2026-01-01' };
+      else if (table === 'escrow_transactions') data = [transaction];
       else if (operations.some(([op]) => op === 'insert')) {
         assert.equal(operations.find(([op]) => op === 'insert')[1].gross_amount, 2000);
+        assert.equal(operations.find(([op]) => op === 'insert')[1].commission_amount, 60);
+        assert.equal(operations.find(([op]) => op === 'insert')[1].net_amount, 1901.20);
         data = { id: 'payout' };
       } else data = null;
       const update = operations.find(([op]) => op === 'update');
@@ -438,16 +457,22 @@ test('event payout includes USED tickets and keeps pending withdrawals unrelease
   } };
   const { EventEscrowService } = load('src/lib/event-escrow-service.ts', {
     '@supabase/supabase-js': { createClient: () => admin },
-    './payluk-service': { PaylukService: { withdrawToBank: async params => {
+    './payluk-service': { PaylukService: {
+      verifyEscrow: async token => { assert.equal(token, 'owned-token'); return { status: scenario === 'held' || (scenario === 'claim-timeout-confirmed' && !claims) ? 'ONGOING' : 'COMPLETED', amount: 1940, fee: 38.80, additionalFee: 60, whoPays: 'seller' }; },
+      claimFunds: async (customer, token) => { claims++; assert.equal(customer, 'customer'); assert.equal(token, 'owned-token'); throw new Error('Simulated claim timeout'); },
+      withdrawToBank: async params => {
+      withdrawals++; assert.equal(params.amount, 1901.20);
       await params.onIntentReady('intent'); return { outcome: 'pending', success: false };
     } } },
     './payluk-onboarding': { getPaylukCustomerId: async () => 'customer' },
   });
-  await assert.rejects(EventEscrowService.processEventPayout('event','organizer'), /pending/);
+  await assert.rejects(EventEscrowService.processEventPayout('event','organizer'), scenario === 'legacy' ? /reconciliation/ : scenario === 'held' ? /not confirmed released/ : /pending/);
+  assert.equal(withdrawals, ['released', 'claim-timeout-confirmed'].includes(scenario) ? 1 : 0);
   assert.equal(updates.some(update => update.table === 'events'), false);
-  assert.equal(updates.some(update => update.status === 'PROCESSING'), true);
+  assert.equal(updates.some(update => update.status === 'PROCESSING'), ['released', 'claim-timeout-confirmed'].includes(scenario));
   assert.equal(updates.some(update => update.status === 'COMPLETED'), false);
 });
+}
 
 
 test('ticket verification rejects anonymous callers before fulfillment', async () => {
@@ -1023,12 +1048,13 @@ for (const scenario of ['paid', 'pending', 'amount-mismatch', 'unsupported', 'ot
   });
 }
 
-for (const scenario of ['missing', 'unsupported', 'other-buyer', 'pending', 'amount-mismatch', 'confirmed', 'replay']) {
+for (const scenario of ['missing', 'unsupported', 'other-buyer', 'pending', 'amount-mismatch', 'confirmed', 'replay', 'organizer-commission', 'organizer-fee-mismatch']) {
   test(`Payluk ticket verification ${scenario}`, async () => {
     let verified = 0, fulfilled = 0, updated = 0, flagged = 0;
     const tx = { id: '00000000-0000-0000-0000-000000000001', buyer_id: scenario === 'other-buyer' ? 'other' : 'buyer',
       item_type: 'ticket', payment_provider: scenario === 'unsupported' ? 'retired-provider' : 'payluk',
-      payluk_tx_ref: 'PY_TOKEN', status: scenario === 'replay' ? 'paid' : 'pending', amount: 2000 };
+      payluk_tx_ref: 'PY_TOKEN', status: scenario === 'replay' ? 'paid' : 'pending', amount: 2000,
+      ...(scenario.startsWith('organizer-') ? { commission: 60, metadata: { payluk_fee_mode: 'seller_commission_v1' } } : {}) };
     const { TicketService } = load('src/lib/ticket-service.ts', {
       '@/lib/supabase-admin': { supabaseAdmin: { from: () => {
         const q = chain({ data: scenario === 'missing' ? null : tx });
@@ -1038,27 +1064,28 @@ for (const scenario of ['missing', 'unsupported', 'other-buyer', 'pending', 'amo
       '@/lib/resend-service': { ResendEmailService: {} }, '@/lib/server-push-notification': {},
       '@/lib/payluk-service': { PaylukService: { verifyEscrow: async token => {
         verified++; assert.equal(token, 'PY_TOKEN');
-        return { status: scenario === 'pending' ? 'PENDING' : 'CLAIMED', amount: scenario === 'amount-mismatch' ? 1000 : 2000 };
+        return { status: scenario === 'pending' ? 'PENDING' : 'CLAIMED', amount: scenario.startsWith('organizer-') ? 1940 : scenario === 'amount-mismatch' ? 1000 : 2000,
+          ...(scenario.startsWith('organizer-') ? { additionalFee: scenario === 'organizer-fee-mismatch' ? 59 : 60, whoPays: 'seller' } : {}) };
       } } },
       './payment-reconciliation': { flagPayment: async () => { flagged++; } },
     });
     TicketService.processTicketPaymentFromTransaction = async paid => { fulfilled++; assert.equal(paid.status, 'paid'); return { id: 'ticket' }; };
-    if (['confirmed', 'replay'].includes(scenario)) {
+    if (['confirmed', 'replay', 'organizer-commission'].includes(scenario)) {
       assert.equal((await TicketService.verifyAndProcessTicket('order-reference', 'buyer')).id, 'ticket');
     } else {
       await assert.rejects(TicketService.verifyAndProcessTicket('order-reference', 'buyer'), new RegExp({
         missing: 'payment_not_found', unsupported: 'payment_requires_review', 'other-buyer': 'ticket_buyer_mismatch',
-        pending: 'payment_pending', 'amount-mismatch': 'payment_requires_review',
+        pending: 'payment_pending', 'amount-mismatch': 'payment_requires_review', 'organizer-fee-mismatch': 'payment_requires_review',
       }[scenario]));
     }
-    assert.equal(fulfilled, ['confirmed', 'replay'].includes(scenario) ? 1 : 0);
-    assert.equal(updated, scenario === 'confirmed' ? 1 : 0);
-    assert.equal(verified, ['pending', 'amount-mismatch', 'confirmed'].includes(scenario) ? 1 : 0);
-    assert.equal(flagged, scenario === 'amount-mismatch' ? 1 : 0);
+    assert.equal(fulfilled, ['confirmed', 'replay', 'organizer-commission'].includes(scenario) ? 1 : 0);
+    assert.equal(updated, ['confirmed', 'organizer-commission'].includes(scenario) ? 1 : 0);
+    assert.equal(verified, ['pending', 'amount-mismatch', 'confirmed', 'organizer-commission', 'organizer-fee-mismatch'].includes(scenario) ? 1 : 0);
+    assert.equal(flagged, ['amount-mismatch', 'organizer-fee-mismatch'].includes(scenario) ? 1 : 0);
   });
 }
 
-for (const scenario of ['success', 'provider-failure']) {
+for (const scenario of ['success', 'provider-failure', 'commission-failure']) {
   test(`event checkout uses Payluk ${scenario} and records one order escrow`, async () => {
     let created = 0;
     const inserts = [];
@@ -1069,9 +1096,12 @@ for (const scenario of ['success', 'provider-failure']) {
       '@/lib/resend-service': { ResendEmailService: {} }, '@/lib/server-push-notification': {},
       '@/lib/payluk-onboarding': { getPaylukCustomerId: async id => `provider-${id}` },
       '@/lib/payluk-service': { PaylukService: { updateCustomerPermissions: async () => {}, createEscrow: async (seller, params) => {
-        created++; assert.equal(seller, 'provider-organizer'); assert.equal(params.amount, 4000); assert.equal(params.totalQuantity, 1);
+        created++; assert.equal(seller, 'provider-organizer'); assert.equal(params.amount, 3880); assert.equal(params.totalQuantity, 1);
         if (scenario === 'provider-failure') throw new Error('Test provider unavailable');
-        return { id: 'escrow-id', paymentToken: 'PY_TOKEN' };
+        return { id: 'escrow-id', paymentToken: 'PY_TOKEN', fee: 77.60 };
+      }, addAdditionalFee: async (token, fee) => {
+        assert.equal(token, 'PY_TOKEN'); assert.equal(fee, 120);
+        if (scenario === 'commission-failure') throw new Error('Test commission setup unavailable');
       } } },
       '@/lib/supabase-admin': { supabaseAdmin: { from: table => {
         const q = chain({ data: table === 'events' ? { id: 'event', title: 'Event', status: 'PUBLISHED', organizer_id: 'organizer' }
@@ -1089,7 +1119,9 @@ for (const scenario of ['success', 'provider-failure']) {
       assert.equal(result.provider, 'payluk'); assert.equal(result.paylukPaymentToken, 'PY_TOKEN');
       const { row } = inserts[0];
       assert.equal(row.payment_provider, 'payluk'); assert.equal(row.metadata.quantity, 2);
-      assert.equal(row.commission, 120); assert.equal(row.seller_amount, 3880);
+      assert.equal(row.commission, 120); assert.equal(row.seller_amount, 3802.40);
+      assert.equal(row.amount, 4000); assert.equal(row.metadata.payluk_fee_mode, 'seller_commission_v1');
+      assert.equal(row.metadata.payluk_fee, 77.60);
       assert.equal(row.total_amount, 4000); assert.equal(row.payment_reference, result.tx_ref);
     }
   });
@@ -1152,6 +1184,28 @@ for (const amount of [2000, null, 0]) {
     });
     const response = await POST(new Request('http://localhost', { method: 'POST' }), { params: Promise.resolve({ id: 'event' }) });
     assert.equal(response.status, amount === 0 ? 200 : 409); assert.equal(writes, amount === 0 ? 2 : 0);
+  });
+}
+
+for (const scenario of ['matching', 'wrong-principal']) {
+  test(`organizer-paid ticket refund webhook ${scenario} reconciles gross ledger allocation`, async () => {
+    let applied = 0, flagged = 0;
+    const tx = { id: 'owned-ticket-payment', amount: 2500, commission: 75, payment_provider: 'payluk', item_type: 'ticket', metadata: { payluk_fee_mode: 'seller_commission_v1' } };
+    const { POST } = load('src/app/api/webhooks/payluk/route.ts', {
+      '@/lib/supabase-admin': { supabaseAdmin: { from: () => chain({ data: tx }), rpc: async (name, args) => {
+        assert.equal(name, 'apply_escrow_refund'); applied++;
+        assert.equal(args.p_refund_amount, 2500); assert.equal(args.p_transaction_id, tx.id);
+        return { data: false };
+      } } },
+      '@/lib/escrow-payment': {}, '@/lib/payment-reconciliation': { flagPayment: async () => { flagged++; } },
+      '@/lib/ticket-service': {}, '@/lib/server-notification-service': {}, '@/lib/payluk-service': {}, '@/lib/payout-service': {}, '@/lib/server-push-notification': {},
+      '@/lib/booking-payments': { handlePaylukWebhookEvent: async () => {} },
+    });
+    const body = JSON.stringify({ event: 'escrow.refunded', data: { id: 'owned-escrow', paymentToken: 'OWNED_TOKEN', amount: scenario === 'matching' ? 2425 : 2500 } });
+    const signature = require('node:crypto').createHmac('sha512', 'test-only').update(body).digest('hex');
+    const response = await POST(new Request('https://qa.invalid', { method: 'POST', body, headers: { 'x-payluk-signature': signature } }));
+    assert.equal(response.status, scenario === 'matching' ? 200 : 500);
+    assert.equal(applied, scenario === 'matching' ? 1 : 0); assert.equal(flagged, scenario === 'matching' ? 0 : 1);
   });
 }
 

@@ -8,6 +8,7 @@ import { createClient } from '@supabase/supabase-js';
 import { PaylukService } from './payluk-service';
 import { getPaylukCustomerId } from './payluk-onboarding';
 import { EVENT_CONSTANTS } from './constants';
+import { paylukAmountsMatch, paylukEscrowPrincipal } from './payment-state';
 
 // Service-role client for writes that bypass RLS
 const adminSupabase = createClient(
@@ -74,7 +75,7 @@ export class EventEscrowService {
     const { data: events, error } = await adminSupabase
       .from('events')
       .select('id, organizer_id, title')
-      .eq('status', 'COMPLETED')
+      .in('status', ['PUBLISHED', 'COMPLETED'])
       .lt('end_time', cutoff)
       .is('payout_released_at', null);
 
@@ -104,7 +105,7 @@ export class EventEscrowService {
    */
   static async processEventPayout(eventId: string, organizerId: string): Promise<void> {
     const { data: tickets, error: ticketsError } = await adminSupabase.from('tickets')
-      .select('amount_paid,payment_provider,settlement_mode').eq('event_id', eventId)
+      .select('amount_paid,payment_provider,settlement_mode,payment_tx_ref').eq('event_id', eventId)
       .in('status', ['PAID', 'USED']).is('refund_status', null);
     if (ticketsError) throw ticketsError;
     if (!tickets?.length) return;
@@ -119,7 +120,6 @@ export class EventEscrowService {
     }
     const provider = held[0].payment_provider;
     const gross = held.reduce((sum, ticket) => sum + Number(ticket.amount_paid), 0);
-    const { commission, net } = this.calculateAmounts(gross);
     const bank = await this.getOrganizerBankDetails(organizerId);
     if (!bank) throw new Error('Organizer has no verified payout account');
     if (bank.updatedAt && Date.now() - Date.parse(bank.updatedAt) < 86400000) return;
@@ -134,6 +134,55 @@ export class EventEscrowService {
       }
       outcome = await PaylukService.getWithdrawalStatus(await getPaylukCustomerId(organizerId), payout.payment_transfer_id);
     } else {
+      const references = [...new Set(held.map(ticket => ticket.payment_tx_ref))];
+      if (references.some(reference => typeof reference !== 'string' || !/^[0-9a-f-]{36}$/i.test(reference))) {
+        throw new Error('Ticket payment references need reconciliation before payout.');
+      }
+      const { data: transactions, error: transactionError } = await adminSupabase.from('escrow_transactions')
+        .select('id,amount,commission,seller_amount,status,payluk_tx_ref,payment_provider,metadata')
+        .in('id', references).eq('seller_id', organizerId).eq('item_type', 'ticket');
+      if (transactionError) throw transactionError;
+      if (!transactions || transactions.length !== references.length) throw new Error('Missing ticket payment ledger; payout requires reconciliation.');
+      const organizerCustomer = await getPaylukCustomerId(organizerId);
+      for (const transaction of transactions) {
+        const orderTickets = held.filter(ticket => ticket.payment_tx_ref === transaction.id);
+        if (transaction.payment_provider !== 'payluk' || transaction.metadata?.payluk_fee_mode !== 'seller_commission_v1' ||
+            transaction.metadata?.event_id !== eventId || orderTickets.length !== Number(transaction.metadata?.quantity) ||
+            !['paid', 'shipped', 'delivered', 'completed'].includes(transaction.status) || !transaction.payluk_tx_ref) {
+          throw new Error('Ticket settlement needs reconciliation before payout.');
+        }
+        const orderGross = orderTickets.reduce((sum, ticket) => sum + Number(ticket.amount_paid), 0);
+        if (Math.round(orderGross * 100) !== Math.round(Number(transaction.amount) * 100)) throw new Error('Partial ticket settlement requires reconciliation.');
+        let escrow = await PaylukService.verifyEscrow(transaction.payluk_tx_ref);
+        if (!paylukAmountsMatch(transaction, escrow)) throw new Error('Provider ticket amounts require reconciliation.');
+        if (!['COMPLETED', 'CLAIMED'].includes(escrow.status)) {
+          if (escrow.status !== 'ONGOING') throw new Error('Ticket escrow is not releasable; no withdrawal attempted.');
+          try { escrow = await PaylukService.claimFunds(organizerCustomer, transaction.payluk_tx_ref); }
+          catch {
+            // A timeout or concurrent claim may have released it. Read before
+            // deciding; never withdraw against an uncertain escrow outcome.
+            escrow = await PaylukService.verifyEscrow(transaction.payluk_tx_ref);
+          }
+        }
+        const proceeds = Math.round((paylukEscrowPrincipal(transaction) - escrow.fee) * 100) / 100;
+        if (!['COMPLETED', 'CLAIMED'].includes(escrow.status) || !paylukAmountsMatch(transaction, escrow) ||
+            !Number.isFinite(escrow.fee) || proceeds < 0 || Math.round(Number(transaction.seller_amount) * 100) !== Math.round(proceeds * 100)) {
+          throw new Error('Ticket funds are not confirmed released; no withdrawal attempted.');
+        }
+        const { data: released, error: releaseError } = await adminSupabase.from('escrow_transactions')
+          .update({ status: 'completed', completed_at: escrow.completedAt || new Date().toISOString() })
+          .eq('id', transaction.id).in('status', ['paid', 'shipped', 'delivered']).select('id');
+        if (releaseError) throw releaseError;
+        if (!released?.length) {
+          const { data: current, error: currentError } = await adminSupabase.from('escrow_transactions')
+            .select('status').eq('id', transaction.id).single();
+          if (currentError || current?.status !== 'completed') throw new Error('Ticket ledger state changed; payout requires reconciliation.');
+        }
+      }
+      // Commission already settled through each escrow's additional fee. Never
+      // deduct it again or use other marketplace wallet funds for ticket fees.
+      const commission = Math.round(transactions.reduce((sum, transaction) => sum + Number(transaction.commission), 0) * 100) / 100;
+      const net = Math.round(transactions.reduce((sum, transaction) => sum + Number(transaction.seller_amount), 0) * 100) / 100;
       const { data: created, error: createError } = await adminSupabase.from('event_payouts').insert({
         event_id: eventId, organizer_id: organizerId, gross_amount: gross, commission_amount: commission,
         net_amount: net, status: 'PROCESSING', payment_provider: provider,

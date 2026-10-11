@@ -1,6 +1,6 @@
 import { invokeServerFunction } from '@/lib/server-functions';
 import { applyEscrowPayment } from '@/lib/escrow-payment';
-import { ESCROW_ALLOWED_FROM, paymentReferenceFilter } from '@/lib/payment-state';
+import { ESCROW_ALLOWED_FROM, paymentReferenceFilter, paylukEscrowPrincipal } from '@/lib/payment-state';
 import { flagPayment } from '@/lib/payment-reconciliation';
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyPaylukWebhookSignature } from '@/lib/payluk-webhook';
@@ -168,7 +168,7 @@ async function findTransactionByPaylukData(data: Pick<PaylukEscrowData, 'id' | '
 
   return await supabaseAdmin
     .from('escrow_transactions')
-    .select('id, status, buyer_id, seller_id, item_id, item_type, amount, payment_provider, payluk_tx_ref, payluk_escrow_id, metadata')
+    .select('id, status, buyer_id, seller_id, item_id, item_type, amount, commission, total_amount, seller_amount, payment_provider, payluk_tx_ref, payluk_escrow_id, metadata')
     .or(orClause)
     .maybeSingle();
 }
@@ -436,8 +436,13 @@ async function handleEscrowRefunded(data: PaylukEscrowData) {
     return;
   }
 
+  if (data.amount != null && Math.round(Number(data.amount) * 100) !== Math.round(paylukEscrowPrincipal(tx) * 100)) {
+    await flagPayment('payluk', data.id, tx.id, 'refund_amount_mismatch');
+    throw new Error('Refund principal does not match the stored purchase');
+  }
   const { data: applied, error: refundError } = await supabaseAdmin.rpc('apply_escrow_refund', {
-    p_transaction_id: tx.id, p_provider_reference: data.id, p_refund_amount: Number(data.amount ?? tx.amount),
+    // The ledger records the gross purchase allocation, before retained fees.
+    p_transaction_id: tx.id, p_provider_reference: data.id, p_refund_amount: Number(tx.amount),
   });
   if (refundError) {
     await flagPayment('payluk', data.id, tx.id, 'refund_database_error');

@@ -5,7 +5,7 @@ import QRCode from 'qrcode';
 import { EVENT_CONSTANTS } from '@/lib/constants';
 import { PaylukService } from '@/lib/payluk-service';
 import { sendPushNotification } from '@/lib/server-push-notification';
-import { paymentReferenceFilter } from './payment-state';
+import { paymentReferenceFilter, paylukAmountsMatch } from './payment-state';
 import { flagPayment } from './payment-reconciliation';
 
 export class TicketService {
@@ -229,7 +229,7 @@ export class TicketService {
       if (!token) throw new Error('payment_pending');
       const escrow = await PaylukService.verifyEscrow(token);
       if (!['ONGOING', 'COMPLETED', 'CLAIMED'].includes((escrow.status || '').toUpperCase())) throw new Error('payment_pending');
-      if (Math.round(Number(escrow.amount) * 100) !== Math.round(Number(paylukTx.amount) * 100)) {
+      if (!paylukAmountsMatch(paylukTx, escrow)) {
         await flagPayment('payluk', token, paylukTx.id, 'amount_mismatch');
         throw new Error('payment_requires_review');
       }

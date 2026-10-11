@@ -4,6 +4,7 @@ import { getAuthenticatedUser } from '@/lib/supabase-server';
 import { PaylukService } from '@/lib/payluk-service';
 import { applyEscrowPayment } from '@/lib/escrow-payment';
 import { flagPayment } from '@/lib/payment-reconciliation';
+import { paylukAmountsMatch } from '@/lib/payment-state';
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,7 +21,7 @@ export async function POST(request: NextRequest) {
     if (!tx.payluk_tx_ref) return NextResponse.json({ error:'Payment setup incomplete' },{ status:409 });
     const remote = await PaylukService.verifyEscrow(tx.payluk_tx_ref);
     if (!['ONGOING','COMPLETED','CLAIMED'].includes((remote.status || '').toUpperCase())) return NextResponse.json({ error:'Payment not completed' },{ status:402 });
-    if (Math.round(Number(remote.amount)*100) !== Math.round(Number(tx.amount)*100)) {
+    if (!paylukAmountsMatch(tx, remote)) {
       await flagPayment('payluk',txRef,tx.id,'amount_mismatch');
       return NextResponse.json({ error:'Payment requires reconciliation' },{ status:409 });
     }

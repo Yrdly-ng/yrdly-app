@@ -252,7 +252,15 @@ export async function POST(request: NextRequest) {
     }
 
     const txRef = `evt-${crypto.randomUUID()}`;
-    const totalAmount = tier.price * quantity;
+    const ticketPrice = Number(tier.price);
+    if (!Number.isFinite(ticketPrice) || ticketPrice < EVENT_CONSTANTS.MIN_TICKET_PRICE ||
+        Math.abs(ticketPrice * 100 - Math.round(ticketPrice * 100)) > 0.00001) {
+      return NextResponse.json({ error: 'This paid ticket price needs correction before checkout.' }, { status: 400 });
+    }
+    const totalAmount = Math.round(ticketPrice * quantity * 100) / 100;
+    const commission = Math.round(totalAmount * EVENT_CONSTANTS.COMMISSION_RATE * 100) / 100;
+    // Preserve the advertised price: principal + merchant fee = ticket total.
+    const principal = Math.round((totalAmount - commission) * 100) / 100;
 
     // ── Payluk Escrow payment ─────────────────────────────────────────────
     // Fetch or provision Payluk Customer IDs for buyer & organizer
@@ -286,7 +294,7 @@ export async function POST(request: NextRequest) {
     let paylukEscrow;
     try {
       paylukEscrow = await PaylukService.createEscrow(organizerPaylukId, {
-        amount: totalAmount,
+        amount: principal,
         purpose: `${quantity}x ${tier.name} — ${event.title}`,
         whoPays: 'seller',
         maxDelivery,
@@ -295,7 +303,10 @@ export async function POST(request: NextRequest) {
         totalQuantity: 1,
       });
 
-      // Event commission is deducted once at organizer payout.
+      if (!Number.isFinite(paylukEscrow.fee) || paylukEscrow.fee < 0 || paylukEscrow.fee > principal) {
+        throw new Error('Invalid Payluk escrow fee. Checkout needs reconciliation.');
+      }
+      await PaylukService.addAdditionalFee(paylukEscrow.paymentToken, commission);
     } catch (paylukError: any) {
       console.error('[TicketPurchase] Payluk createEscrow error:', paylukError);
       return NextResponse.json({
@@ -306,8 +317,7 @@ export async function POST(request: NextRequest) {
 
     // Store escrow_transactions record
     const transactionId = crypto.randomUUID();
-    const commission = Math.round(totalAmount * EVENT_CONSTANTS.COMMISSION_RATE * 100) / 100;
-    const sellerAmount = totalAmount - commission;
+    const sellerAmount = Math.round((principal - paylukEscrow.fee) * 100) / 100;
 
     const { error: dbInsertErr } = await supabaseAdmin
       .from('escrow_transactions')
@@ -329,6 +339,8 @@ export async function POST(request: NextRequest) {
         item_type: 'ticket',
         item_id: tier_id,
         metadata: {
+          payluk_fee_mode: 'seller_commission_v1',
+          payluk_fee: paylukEscrow.fee,
           event_id,
           tier_id,
           quantity,

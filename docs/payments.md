@@ -23,7 +23,20 @@ The official fee references are [Payluk fees](https://payluk.ng/help/fees) and
 [fees and settlement](https://docs.payluk.ng/concepts/fees-and-settlement).
 The 11 October sandbox sale verified a 2,500 principal, 75 Yrdly fee, 50 Payluk
 fee, 2,575 buyer payment and 2,450 seller credit. This does not verify live
-dashboard settings or the commission behavior of event and booking flows.
+dashboard settings. Funded catalog checkout also verified a 1,234.56 principal,
+37.04 Yrdly commission, 24.69 provider fee and 1,209.87 seller credit.
+
+Event tickets preserve the advertised price, as confirmed by the user. Their
+Payluk principal is the ticket total minus Yrdly's 3%; the same 3% is assigned as
+the merchant additional fee. The buyer pays the advertised total, and the
+organizer receives the principal minus the returned Payluk fee. Gross ticket
+prices remain in the application ledger. A server-managed fee-mode marker
+distinguishes these new orders from historical tickets. Organizer payout must
+confirm the ticket escrows are released and use their actual net proceeds;
+commission is not deducted again at withdrawal. Legacy orders require
+reconciliation. Funded verification of this event change remains pending.
+
+Booking commission collection remains a separate open verification requirement.
 
 ## Routes and safeguards
 
