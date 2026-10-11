@@ -28,11 +28,11 @@ BEGIN
 
  -- No existing orders, payout accounts or paid records are changed.
  INSERT INTO public.catalog_items(title,price,quantity,inventory_count,in_stock)
- VALUES('AUDIT_ROLLBACK_ONLY_20261010',100,2,2,true) RETURNING id INTO item;
+ VALUES('AUDIT_ROLLBACK_ONLY_20261010',1200,2,2,true) RETURNING id INTO item;
  EXECUTE 'SET LOCAL ROLE service_role';
  IF current_user <> 'service_role' THEN RAISE EXCEPTION 'Service role test setup failed'; END IF;
  payload := jsonb_build_object('item_id',item,'buyer_id',buyer,'seller_id',actor,
- 'amount',100,'commission',3,'total_amount',103,'seller_amount',100,
+ 'amount',1200,'commission',36,'total_amount',1236,'seller_amount',1200,
  'item_type','catalog_item','delivery_details','{}'::jsonb);
  tx := public.create_checkout_reservation(payload);
  IF (SELECT quantity FROM public.catalog_items WHERE id=item) <> 1 THEN RAISE EXCEPTION 'Initial stock not reserved'; END IF;
@@ -57,11 +57,11 @@ BEGIN
  IF outcome <> 'applied' OR public.apply_escrow_payment(tx,'payluk','audit-rollback-payment') <> 'replay'
  OR (SELECT quantity FROM public.catalog_items WHERE id=item) <> 1 THEN RAISE EXCEPTION 'Payment replay changed inventory'; END IF;
  results := results || '[{"test":"payment replay does not reserve twice","result":"PASS"}]'::jsonb;
- applied := public.apply_escrow_refund(tx,'audit-rollback-refund',100);
- replayed := public.apply_escrow_refund(tx,'audit-rollback-refund',100);
+ applied := public.apply_escrow_refund(tx,'audit-rollback-refund',1200);
+ replayed := public.apply_escrow_refund(tx,'audit-rollback-refund',1200);
  IF NOT applied OR replayed
  OR (SELECT quantity FROM public.catalog_items WHERE id=item) <> 2
- OR (SELECT count(*) FROM public.disputes WHERE transaction_id=tx AND refund_amount=100 AND status='resolved') <> 1
+ OR (SELECT count(*) FROM public.disputes WHERE transaction_id=tx AND refund_amount=1200 AND status='resolved') <> 1
  THEN RAISE EXCEPTION 'Refund replay was not idempotent'; END IF;
  results := results || '[{"test":"full refund records amount and restores inventory once","result":"PASS"}]'::jsonb;
  outcome := public.apply_escrow_payment(tx,'payluk','audit-rollback-late');
@@ -72,7 +72,7 @@ BEGIN
  results := results || '[{"test":"late payment stays cancelled with durable reconciliation flag","result":"PASS"}]'::jsonb;
  tx := public.create_checkout_reservation(payload);
  PERFORM public.apply_escrow_payment(tx,'payluk','audit-rollback-partial');
- applied := public.apply_escrow_refund(tx,'audit-rollback-partial',50);
+ applied := public.apply_escrow_refund(tx,'audit-rollback-partial',600);
  IF applied
  OR (SELECT status FROM public.escrow_transactions WHERE id=tx) <> 'paid'
  OR (SELECT quantity FROM public.catalog_items WHERE id=item) <> 1
@@ -82,19 +82,22 @@ BEGIN
  UPDATE public.escrow_transactions SET status='disputed' WHERE id=tx;
  INSERT INTO public.disputes(transaction_id,opened_by,dispute_reason) VALUES(tx,buyer,'AUDIT_ROLLBACK_ONLY_20261010') RETURNING id INTO dispute;
  INSERT INTO public.dispute_resolution_operations(dispute_id,requested_by,resolution,refund_amount,seller_amount,status)
- VALUES(dispute,actor,'refund',100,0,'processing') RETURNING id INTO operation;
- PERFORM public.finish_dispute_resolution(operation,'audit-rollback-resolution');
- PERFORM public.finish_dispute_resolution(operation,'audit-rollback-resolution');
+ VALUES(dispute,actor,'refund',1200,0,'processing') RETURNING id INTO operation;
+ UPDATE public.escrow_transactions SET payluk_escrow_id='qa-rollback-'||tx,metadata=metadata || '{"payluk_fee_mode":"buyer_commission_v1"}'::jsonb WHERE id=tx;
+ payload := jsonb_build_object('escrowId','qa-rollback-'||tx,'status','REFUNDED','principal',1200,'fee',24,'whoPays','seller','additionalFee',36,'additionalFeeRefundable',true,'pool',1176,'buyerAmount',1176,'sellerAmount',0);
+ PERFORM public.save_payluk_dispute_plan(operation,payload);
+ PERFORM public.apply_payluk_dispute_settlement(tx,payload);
+ PERFORM public.apply_payluk_dispute_settlement(tx,payload);
  IF (SELECT status FROM public.escrow_transactions WHERE id=tx) <> 'cancelled'
  OR (SELECT status FROM public.dispute_resolution_operations WHERE id=operation) <> 'succeeded'
- OR (SELECT refund_amount FROM public.disputes WHERE id=dispute) <> 100
+ OR (SELECT refund_amount FROM public.disputes WHERE id=dispute) <> 1200
  OR (SELECT quantity FROM public.catalog_items WHERE id=item) <> 2
  THEN RAISE EXCEPTION 'Dispute finalization failed or replay restored stock'; END IF;
  results := results || '[{"test":"typed dispute resolution and replay","result":"PASS"}]'::jsonb;
 
  INSERT INTO public.events(organizer_id,title,start_time,status)
  VALUES(actor,'AUDIT_ROLLBACK_ONLY_20261010',now()+interval '1 day','DRAFT') RETURNING id INTO event_id;
- INSERT INTO public.ticket_tiers(event_id,name,price,capacity) VALUES(event_id,'AUDIT_ROLLBACK_ONLY_20261010',100,2) RETURNING id INTO tier;
+ INSERT INTO public.ticket_tiers(event_id,name,price,capacity) VALUES(event_id,'AUDIT_ROLLBACK_ONLY_20261010',1200,2) RETURNING id INTO tier;
  INSERT INTO public.escrow_transactions(item_id,buyer_id,seller_id,amount,commission,total_amount,seller_amount,status,payment_method,delivery_details,item_type,payment_provider)
  VALUES(event_id::text,buyer,actor,100,3,103,100,'paid','card','{}','ticket','payluk') RETURNING id INTO tx;
  INSERT INTO public.tickets(buyer_id,event_id,tier_id,attendee_name,attendee_email,ticket_code,status,amount_paid,payment_tx_ref,payment_provider,settlement_mode)
@@ -107,9 +110,9 @@ BEGIN
  OR (SELECT sold FROM public.ticket_tiers WHERE id=tier) <> 0 THEN RAISE EXCEPTION 'Ticket refund/tier count inconsistent'; END IF;
  results := results || '[{"test":"ticket refund state and tier capacity restored once","result":"PASS"}]'::jsonb;
 
- INSERT INTO public.posts(user_id,author_name,text,category) VALUES(actor,'Audit fixture','AUDIT_ROLLBACK_ONLY_20261010','For Sale') RETURNING id INTO listing;
+ INSERT INTO public.posts(user_id,author_name,text,category,price) VALUES(actor,'Audit fixture','AUDIT_ROLLBACK_ONLY_20261010','For Sale',1200) RETURNING id INTO listing;
  DELETE FROM public.posts WHERE id=listing;
- INSERT INTO public.posts(user_id,author_name,text,category) VALUES(actor,'Audit fixture','AUDIT_ROLLBACK_ONLY_20261010','For Sale') RETURNING id INTO paid_listing;
+ INSERT INTO public.posts(user_id,author_name,text,category,price) VALUES(actor,'Audit fixture','AUDIT_ROLLBACK_ONLY_20261010','For Sale',1200) RETURNING id INTO paid_listing;
  INSERT INTO public.escrow_transactions(item_id,buyer_id,seller_id,amount,commission,total_amount,seller_amount,status,payment_method,delivery_details,item_type)
  VALUES(paid_listing::text,buyer,actor,100,3,103,100,'paid','card','{}','post') RETURNING id INTO tx;
  denied := false;

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { BookingCheckoutError, computeDepositAmount, createCheckoutForBooking } from '@/lib/booking-payments';
+import { isPaidPrice, MINIMUM_PRICE_MESSAGE } from '@/lib/price-policy';
 
 export async function POST(req: NextRequest) {
   const { data: { user }, error: authError } = await getAuthenticatedUser(req);
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
     const { data: quote } = await supabaseAdmin.from('quote_requests').select('id, customer_id, business_id, staff_id, status, converted_booking_id, estimated_price, expires_at').eq('id', quoteId).single();
     if (!quote) return NextResponse.json({ error: 'Quote not found' }, { status: 404 });
     if ((quote as any).customer_id !== user.id) return NextResponse.json({ error: 'Forbidden quote' }, { status: 403 });
-    if (!['accepted', 'converted'].includes(quote.status) || !quote.estimated_price || Number(quote.estimated_price) < 1000 ||
+    if (!['accepted', 'converted'].includes(quote.status) || !isPaidPrice(Number(quote.estimated_price)) ||
         (quote.expires_at && new Date(quote.expires_at).getTime() < Date.now())) {
       return NextResponse.json({ error: 'An accepted, unexpired estimate is required before checkout' }, { status: 409 });
     }
@@ -90,13 +91,13 @@ export async function POST(req: NextRequest) {
       .select('customer_id, status, estimated_price, expires_at')
       .eq('id', booking.quote_id).single();
     if (!quote || quote.customer_id !== user.id || quote.status !== 'converted' ||
-        !quote.estimated_price || Number(quote.estimated_price) < 1000 ||
+        !isPaidPrice(Number(quote.estimated_price)) ||
         (quote.expires_at && new Date(quote.expires_at).getTime() < Date.now())) {
       return NextResponse.json({ error: 'This booking needs a valid accepted quote' }, { status: 409 });
     }
     amount = Number(quote.estimated_price);
   }
-  if (!amount) return NextResponse.json({ error: 'No amount configured' }, { status: 400 });
+  if (!isPaidPrice(amount)) return NextResponse.json({ error: MINIMUM_PRICE_MESSAGE }, { status: 400 });
   try {
     const res = await createCheckoutForBooking({
       bookingId: resolvedBookingId,

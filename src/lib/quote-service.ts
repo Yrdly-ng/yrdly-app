@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import type { QuoteRequest, QuoteMessage } from '@/types';
 import { NotificationTriggers } from './notification-triggers';
+import { isPaidPrice, MINIMUM_PRICE_MESSAGE } from './price-policy';
 
 export class QuoteService {
   static async createQuoteRequest(p: { business_id: string; category: string; title: string; description: string; images?: string[]; location_text?: string; urgency?: string; staff_id?: string | null }): Promise<QuoteRequest> {
@@ -28,6 +29,7 @@ export class QuoteService {
     return data;
   }
   static async submitEstimate(id: string, p: { estimated_price: number; estimated_duration_minutes?: number; estimate_notes?: string; expires_at?: string }): Promise<QuoteRequest> {
+    if (!isPaidPrice(p.estimated_price)) throw new Error(MINIMUM_PRICE_MESSAGE);
     const { data: existingQuote, error: quoteError } = await supabase
       .from('quote_requests')
       .select('id, customer_id, title')
@@ -52,7 +54,7 @@ export class QuoteService {
   static async convertQuoteToBooking(quoteId: string, appointmentTime: string): Promise<{ booking: any; quote: QuoteRequest }> {
     const quote = await this.getQuote(quoteId);
     if (!quote) throw new Error('Quote not found');
-    if (quote.status !== 'accepted' || !quote.estimated_price || quote.estimated_price < 1000) {
+    if (quote.status !== 'accepted' || !isPaidPrice(quote.estimated_price)) {
       throw new Error('Accept a valid estimate before converting it to a booking');
     }
     if (quote.expires_at && new Date(quote.expires_at).getTime() < Date.now()) {

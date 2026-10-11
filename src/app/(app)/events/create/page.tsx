@@ -33,6 +33,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { MIN_PAID_PRICE } from "@/lib/constants";
+import { isPaidPrice, MINIMUM_PRICE_MESSAGE } from "@/lib/price-policy";
 
 const STEPS = ["Basic Info", "Date & Time", "Location", "Tickets", "Media", "Review"];
 
@@ -201,12 +203,22 @@ export default function CreateEventPage() {
 
   const hasPaidTiers = ticketTiers.some((t) => !t.isFree && t.price > 0);
 
+  const validateTicketPrices = () => {
+    if (ticketTiers.some(tier => !tier.isFree && !isPaidPrice(tier.price))) {
+      toast({ variant: "destructive", title: "Valid Ticket Price Required", description: MINIMUM_PRICE_MESSAGE });
+      return false;
+    }
+    return true;
+  };
+
   // Submit Handler
   const handleSubmit = async () => {
     if (!user) {
       toast({ variant: "destructive", title: "Authentication Required", description: "Please sign in to create events." });
       return;
     }
+
+    if (!validateTicketPrices()) return;
 
     if (hasPaidTiers && !hasSellerAccount) {
       toast({
@@ -754,7 +766,7 @@ export default function CreateEventPage() {
                             onChange={(e) =>
                               updateTicketTier(tier.id, {
                                 isFree: e.target.checked,
-                                price: e.target.checked ? 0 : tier.price || 1000,
+                                price: e.target.checked ? 0 : tier.price || MIN_PAID_PRICE,
                               })
                             }
                             className="rounded text-primary focus:ring-primary"
@@ -771,7 +783,11 @@ export default function CreateEventPage() {
                               onChange={(e) =>
                                 updateTicketTier(tier.id, { price: parseFloat(e.target.value) || 0 })
                               }
-                              placeholder="1000"
+                              placeholder={String(MIN_PAID_PRICE)}
+                              min={MIN_PAID_PRICE}
+                              step="0.01"
+                              aria-label={`Price for ${tier.name || "ticket tier"}`}
+                              aria-describedby="paid-ticket-price-help"
                               className="w-28 rounded-xl"
                             />
                           </div>
@@ -780,6 +796,7 @@ export default function CreateEventPage() {
                     </div>
                   ))}
 
+                  <p id="paid-ticket-price-help" className="text-xs text-muted-foreground">Free tickets are available. Paid tickets start at ₦{MIN_PAID_PRICE.toLocaleString("en-NG")}.</p>
                   <Button
                     type="button"
                     variant="outline"
@@ -796,6 +813,7 @@ export default function CreateEventPage() {
                   </Button>
                   <Button
                     onClick={() => {
+                      if (!validateTicketPrices()) return;
                       if (hasPaidTiers && !hasSellerAccount) {
                         toast({
                           variant: "destructive",

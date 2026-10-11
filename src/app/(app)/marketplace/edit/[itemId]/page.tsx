@@ -39,6 +39,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { MIN_PAID_PRICE } from "@/lib/constants";
+import { isPaidPrice, MINIMUM_PRICE_MESSAGE } from "@/lib/price-policy";
 
 const CONDITIONS = ["New", "Like New", "Good", "Fair", "Poor"];
 
@@ -176,6 +178,11 @@ export default function EditMarketplaceItemPage() {
     const totalImages = existingImages.length + newFiles.length;
     if (totalImages === 0) {
       toast({ variant: "destructive", title: "Photo Required", description: "Please keep or add at least one photo." });
+      return;
+    }
+
+    if (listingType === "For Sale" && !isPaidPrice(Number(price))) {
+      toast({ variant: "destructive", title: "Valid Price Required", description: MINIMUM_PRICE_MESSAGE });
       return;
     }
 
@@ -460,14 +467,19 @@ export default function EditMarketplaceItemPage() {
             {/* Price (Disabled/Hidden when Giveaway) */}
             {listingType === "For Sale" && (
               <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Price (₦) *</label>
+                <label htmlFor="listing-price" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Price (₦) *</label>
                 <Input
-                  type="number"
+                  id="listing-price"
+                      type="number"
+                      min={MIN_PAID_PRICE}
+                      step="0.01"
+                      aria-describedby="listing-price-help"
                   placeholder="Price"
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
                   className="rounded-xl"
                 />
+                    <p id="listing-price-help" className="text-xs text-muted-foreground">Minimum paid price: ₦{MIN_PAID_PRICE.toLocaleString("en-NG")}.</p>
               </div>
             )}
 

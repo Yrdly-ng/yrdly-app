@@ -12,6 +12,7 @@ import { PaylukService } from '@/lib/payluk-service';
 import { handlePaylukWebhookEvent as handleBookingPaymentEvent } from '@/lib/booking-payments';
 import { PayoutService } from '@/lib/payout-service';
 import { sendPushNotification } from '@/lib/server-push-notification';
+import { applyDisputeSettlement } from '@/lib/dispute-settlement';
 
 // ── Signature verification ───────────────────────────────────────────────────
 //
@@ -79,6 +80,34 @@ export async function POST(request: NextRequest) {
   // Acknowledge only after durable financial effects or reconciliation flags commit.
 
   try {
+    if (['escrow.completed', 'escrow.refunded', 'escrow.cancelled', 'escrow.split'].includes(event)) {
+      const { data: transaction, error } = await findTransactionByPaylukData(data);
+      if (error) throw error;
+      if (transaction) {
+        const { data: dispute, error: disputeError } = await supabaseAdmin.from('disputes')
+          .select('id').eq('transaction_id', transaction.id).maybeSingle();
+        if (disputeError) throw disputeError;
+        const { data: operation, error: operationError } = dispute
+          ? await supabaseAdmin.from('dispute_resolution_operations').select('id,provider_plan,status').eq('dispute_id', dispute.id).maybeSingle()
+          : { data: null, error: null };
+        if (operationError) throw operationError;
+        if (operation?.provider_plan) {
+          if (operation.status !== 'succeeded') {
+            const verified = await PaylukService.verifyEscrow(data.paymentToken || transaction.payluk_tx_ref);
+            await applyDisputeSettlement(transaction.id, verified);
+          }
+          return NextResponse.json({ status: 'ok' });
+        }
+        if (operation || event === 'escrow.split') {
+          await flagPayment('payluk', data.id, transaction.id, 'dispute_allocation_requires_reconciliation');
+          return NextResponse.json({ status: 'ok' });
+        }
+      }
+      if (event === 'escrow.split') {
+        await flagPayment('payluk', data.id, null, 'unknown_split_transaction');
+        return NextResponse.json({ status: 'ok' });
+      }
+    }
     switch (event) {
 
       // ── escrow.completed ─────────────────────────────────────────────────
@@ -141,7 +170,7 @@ export async function POST(request: NextRequest) {
       }
 
       // ── All other events: log and ack ────────────────────────────────────
-      // escrow.created, escrow.pending, escrow.investigating, escrow.split
+      // escrow.created, escrow.pending, escrow.investigating
       // Logging them preserves observability without blocking.
       default: {
         console.log(`[PaylukWebhook] Unhandled event type: ${event} for escrow ${data?.id} — acknowledged without action`);

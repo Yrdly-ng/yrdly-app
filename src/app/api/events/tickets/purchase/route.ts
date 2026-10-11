@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from "@/lib/supabase-server";
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { EVENT_CONSTANTS } from '@/lib/constants';
+import { isMoneyAmount, isPaidPrice, MINIMUM_PRICE_MESSAGE } from '@/lib/price-policy';
 import { ResendEmailService } from '@/lib/resend-service';
 import QRCode from 'qrcode';
 import { createTicketCheckout, TicketCheckoutError } from '@/lib/ticket-checkout';
@@ -62,6 +63,10 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (!tier) return NextResponse.json({ error: 'Ticket tier not found' }, { status: 404 });
+    const tierPrice = Number(tier.price);
+    if (!isMoneyAmount(tierPrice) || (tierPrice > 0 && !isPaidPrice(tierPrice))) {
+      return NextResponse.json({ error: MINIMUM_PRICE_MESSAGE }, { status: 400 });
+    }
     if (!tier.is_visible) return NextResponse.json({ error: 'This ticket tier is not available' }, { status: 400 });
     if (tier.sale_ends_at && new Date(tier.sale_ends_at) < new Date()) {
       return NextResponse.json({ error: 'Ticket sales have ended for this tier' }, { status: 400 });

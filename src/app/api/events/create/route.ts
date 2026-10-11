@@ -1,3 +1,4 @@
+import { isMoneyAmount } from '@/lib/price-policy';
 import { invokeServerFunction } from '@/lib/server-functions';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/supabase-server';
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest) {
     if (Array.isArray(ticketTiers)) {
       for (const tier of ticketTiers) {
         const tierPrice = Number(tier.price);
-        if (!Number.isFinite(tierPrice) || tierPrice < 0 ||
+        if (!isMoneyAmount(tierPrice) ||
             !Number.isInteger(Number(tier.capacity)) || Number(tier.capacity) < 1 ||
             typeof tier.name !== 'string' || !tier.name.trim()) {
           return NextResponse.json({ error: 'Each tier needs a name, a non-negative price and an integer capacity of at least 1.' }, { status: 400 });

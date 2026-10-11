@@ -21,6 +21,7 @@ export interface DisputeData {
   refundAmount: number;
   refund_amount?: number;
   sellerAmount: number;
+  providerSettlement?: { buyerCredit: number; buyerAmount: number; sellerAmount: number; pool: number; fee: number; additionalFee: number; additionalFeeRefundable: boolean } | null;
   seller_amount?: number;
   createdAt: string;
   created_at?: string;

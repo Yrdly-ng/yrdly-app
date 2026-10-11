@@ -307,7 +307,8 @@ for (const outcome of ['success', 'uncertain', 'unsupported']) {
     let finalized = false, resolutions = 0;
     const { POST } = load('src/app/api/admin/disputes/[disputeId]/resolve/route.ts', {
       '@/lib/supabase-server': { getAuthenticatedUser: async () => ({ data: { user: { id: 'admin' } } }) },
-      '@/lib/payluk-service': { PaylukService: { resolveDispute: async (id, params) => {
+      '@/lib/dispute-settlement': { saveDisputePlan:async()=>({status:'COMPLETED',additionalFeeRefundable:false}),applyDisputeSettlement:async()=>{finalized=true;return true;} },
+      '@/lib/payluk-service': { PaylukService: { verifyEscrow:async()=>({}),resolveDispute: async (id, params) => {
         resolutions++; assert.equal(id, 'escrow-id'); assert.equal(params.status, 'COMPLETED');
         if (outcome === 'uncertain') throw new Error('Provider timeout');
       } } },
@@ -335,6 +336,7 @@ for (const status of ['REFUNDED', 'COMPLETED', 'SPLIT']) {
     const refund = status === 'REFUNDED' ? 1000 : status === 'SPLIT' ? 400 : 0;
     const seller = 1000 - refund;
     const service = load('src/lib/payluk-service.ts', { './payluk-onboarding': {}, fetch: async (_url, options) => {
+      if (options.method === 'GET') return Response.json({status:200,data:{id:'owned-escrow',status}});
       sent = options.body;
       const hasAllocation = sent.has('sellerAmount') || sent.has('buyerAmount');
       if (sent.get('status') !== 'SPLIT' && hasAllocation) return Response.json({ status: 400, message: 'sellerAmount and buyerAmount are only valid on a SPLIT resolution' }, { status: 400 });
@@ -343,6 +345,7 @@ for (const status of ['REFUNDED', 'COMPLETED', 'SPLIT']) {
     const { POST } = load('src/app/api/admin/disputes/[disputeId]/resolve/route.ts', {
       '@/lib/supabase-server': { getAuthenticatedUser: async () => ({ data: { user: { id: 'admin' } } }) },
       '@/lib/payluk-service': service,
+      '@/lib/dispute-settlement': { saveDisputePlan:async()=>({status,additionalFeeRefundable:status!=='COMPLETED',buyerAmount:refund*0.98,sellerAmount:seller*0.98}),applyDisputeSettlement:async()=>{finalized=true;return true;} },
       '@/lib/server-notification-service': { NotificationService: { createDisputeResolvedNotification: async () => {} } },
       '@/lib/supabase-admin': { supabaseAdmin: {
         from: table => chain({ data: table === 'users' ? { is_admin: true } : table === 'disputes' ? { transaction_id: 'owned-transaction' } : { id: 'owned-transaction', payment_provider: 'payluk', payluk_escrow_id: 'owned-escrow' } }),
@@ -356,7 +359,7 @@ for (const status of ['REFUNDED', 'COMPLETED', 'SPLIT']) {
     const response = await POST(new Request('http://localhost', { method: 'POST', body: JSON.stringify({ resolution: 'QA ruling', refundAmount: refund, sellerAmount: seller }) }), { params: Promise.resolve({ disputeId: 'owned-dispute' }) });
     assert.equal(response.status, 200); assert.equal(finalized, true); assert.equal(sent.get('status'), status);
     assert.equal(sent.has('sellerAmount'), status === 'SPLIT'); assert.equal(sent.has('buyerAmount'), status === 'SPLIT');
-    if (status === 'SPLIT') { assert.equal(Number(sent.get('buyerAmount')), refund); assert.equal(Number(sent.get('sellerAmount')), seller); }
+    if (status === 'SPLIT') { assert.equal(Number(sent.get('buyerAmount')), refund*0.98); assert.equal(Number(sent.get('sellerAmount')), seller*0.98); }
   });
 }
 
@@ -1297,7 +1300,7 @@ for (const scenario of ['matching', 'wrong-principal']) {
     let applied = 0, flagged = 0;
     const tx = { id: 'owned-ticket-payment', amount: 2500, commission: 75, payment_provider: 'payluk', item_type: 'ticket', metadata: { payluk_fee_mode: 'seller_commission_v1' } };
     const { POST } = load('src/app/api/webhooks/payluk/route.ts', {
-      '@/lib/supabase-admin': { supabaseAdmin: { from: () => chain({ data: tx }), rpc: async (name, args) => {
+      '@/lib/supabase-admin': { supabaseAdmin: { from: table => chain({ data: table === 'escrow_transactions' ? tx : null }), rpc: async (name, args) => {
         assert.equal(name, 'apply_escrow_refund'); applied++;
         assert.equal(args.p_refund_amount, 2500); assert.equal(args.p_transaction_id, tx.id);
         return { data: false };
@@ -1349,4 +1352,92 @@ test('Payluk test-mode account resolution fails closed on provider errors', asyn
     fetch: async () => { throw new Error('Test provider unavailable'); },
   });
   assert.equal((await PaylukService.resolveAccount('0123456789abcdef01234567', '0000000000', 'opaque-code')).valid, false);
+});
+
+
+for (const [mode,amount,commission,fee,refund,seller,expectedBuyer,expectedSeller] of [
+ ['buyer_commission_v1',2500,75,50,1250,1250,1225,1225],
+ ['seller_commission_v1',2500,75,48.50,1250,1250,1188.25,1188.25],
+ ['buyer_commission_v1',1234.56,37.04,24.69,617.28,617.28,604.94,604.93],
+ ['buyer_commission_v1',2500,75,50,2500,0,2450,0],
+ ['buyer_commission_v1',2500,75,50,0,2500,0,2450],
+]) test(`dispute allocation conserves the actual pool: ${mode}/${refund}/${amount}`,()=>{
+ const {planDisputeSettlement}=load('src/lib/dispute-settlement.ts',{'@/lib/supabase-admin':{},'@/lib/payluk-service':{}});
+ const tx={id:'tx',amount,commission,payluk_escrow_id:'escrow',metadata:{payluk_fee_mode:mode}};
+ const principal=mode==='seller_commission_v1'?amount-commission:amount;
+ const plan=planDisputeSettlement(tx,{refund_amount:refund,seller_amount:seller},{id:'escrow',amount:principal,additionalFee:commission,fee,whoPays:'seller',settlementType:'STANDARD'});
+ assert.equal(plan.buyerAmount,expectedBuyer);assert.equal(plan.sellerAmount,expectedSeller);
+ assert.equal(Math.round((plan.buyerAmount+plan.sellerAmount)*100),Math.round(plan.pool*100));
+ assert.equal(plan.additionalFeeRefundable,refund>0);
+});
+for(const scenario of ['foreign-escrow','principal','commission','fee','milestone','fractional-ruling'])test(`dispute plan rejects unverified allocation: ${scenario}`,()=>{
+ const {planDisputeSettlement}=load('src/lib/dispute-settlement.ts',{'@/lib/supabase-admin':{},'@/lib/payluk-service':{}});
+ const tx={id:'tx',amount:2500,commission:75,payluk_escrow_id:'escrow',metadata:{payluk_fee_mode:'buyer_commission_v1'}};
+ const remote={id:scenario==='foreign-escrow'?'other':'escrow',amount:scenario==='principal'?2600:2500,fee:scenario==='fee'?2600:50,additionalFee:scenario==='commission'?0:75,whoPays:'seller',settlementType:scenario==='milestone'?'MILESTONE':'STANDARD'};
+ assert.throws(()=>planDisputeSettlement(tx,{refund_amount:scenario==='fractional-ruling'?1250.001:1250,seller_amount:1250},remote));
+});
+
+for (const value of [0,950,1000,1053,1199.99,1200.001,NaN,Infinity,-1200,'1200',null]) {
+  test(`paid price rejects ${String(value)}`, () => {
+    const { isPaidPrice } = load('src/lib/price-policy.ts');
+    assert.equal(isPaidPrice(value),false);
+  });
+}
+for (const value of [1200,1200.01,1234.56,2500]) {
+  test(`paid price accepts ${value}`, () => {
+    assert.equal(load('src/lib/price-policy.ts').isPaidPrice(value),true);
+  });
+}
+test('deposit policy checks the charged amount and full-payment priority', () => {
+  const { servicePriceError } = load('src/lib/price-policy.ts');
+  assert.equal(servicePriceError({price:null}),null);
+  assert.equal(servicePriceError({price:0}),null);
+  assert.match(servicePriceError({price:1199.99}),/1,200/);
+  assert.match(servicePriceError({price:2400,deposit_required:true,deposit_amount:1000}),/deposit/);
+  assert.match(servicePriceError({price:1200,deposit_required:true,deposit_percent:50}),/deposit/);
+  assert.equal(servicePriceError({price:2400,deposit_required:true,deposit_percent:50}),null);
+  assert.equal(servicePriceError({price:1200,deposit_required:true,deposit_amount:1000,requires_full_payment:true}),null);
+  assert.equal(servicePriceError({price:1200,deposit_required:true,deposit_amount:1000,escrow_enabled:true}),null);
+  assert.match(servicePriceError({price:1200,deposit_percent:100.01}),/whole number/);
+});
+
+for (const mode of ['previewWithdrawal','withdrawToBank']) {
+  for (const amount of [999.99,1000,1010.74,1010.75]) {
+    test(`${mode} enforces the net bank minimum at debit budget ${amount}`, async () => {
+      const created=[],executed=[];
+      const { PaylukService } = load('src/lib/payluk-service.ts', {
+        './payluk-onboarding':{}, fetch:async(url,options)=>{
+          if(url.endsWith('/v1/wallet'))return Response.json({status:200,data:{mainBalance:5000}});
+          if(url.endsWith('/v1/payment/create-intent')){
+            const input=JSON.parse(options.body);created.push(input.amount);
+            assert.ok(input.amount>=1000,'Never stage a bank transfer below the minimum');
+            return Response.json({status:200,data:{amount:input.amount,fee:10.75,reference:input.reference}});
+          }
+          assert.ok(url.endsWith('/v1/payment/verify'));executed.push(url);
+          return Response.json({status:200,data:{status:'success'}});
+        }
+      });
+      const result=await PaylukService[mode]({sellerPaylukCustomerId:'qa',amount,bankCode:'044',accountNumber:'0000000000',reference:'qa-minimum',onIntentReady:async()=>{}});
+      if(amount<1010.75){
+        assert.equal(result.success,false);
+        assert.equal(executed.length,0);
+        assert.equal(created.length,amount<1000?0:1);
+      }else{
+        assert.equal(result.success,true);
+        assert.deepEqual(created,[1010.75,1000]);
+        assert.equal(result.intentAmount,1000);
+        assert.equal(executed.length,mode==='withdrawToBank'?1:0);
+      }
+    });
+  }
+}
+
+for(const price of [950,1199.99,1200.001])test(`posts API rejects paid price ${price} before moderation or writes`,async()=>{
+  const {POST}=load('src/app/api/posts/route.ts',{
+    '@/lib/supabase-server':{getAuthenticatedUser:async()=>({data:{user:{id:'seller'}},error:null})},
+    '@/lib/supabase-admin':{supabaseAdmin:{from:()=>{throw Error('Invalid prices must not reach profile, moderation or writes');}}},
+    '@/lib/server-functions':{invokeServerFunction:()=>{throw Error('Unexpected moderation request');}}
+  });
+  const response=await POST(new Request('https://qa.test/api/posts',{method:'POST',body:JSON.stringify({post:{category:'For Sale',price}})}));
+  assert.equal(response.status,400);
 });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { DeliveryOption, PaymentMethod, EscrowStatus } from "@/types/escrow";
+import { isPaidPrice } from '@/lib/price-policy';
 import { MARKETPLACE_CONSTANTS } from "@/lib/constants";
 import { getAuthenticatedUser } from "@/lib/supabase-server";
 import { PaylukService } from "@/lib/payluk-service";
@@ -248,7 +249,7 @@ export async function POST(request: NextRequest) {
     // Always use the price from the database — never trust the client-supplied value
     const authorizedPrice = Number(itemData.price);
 
-    if (!Number.isFinite(Number(authorizedPrice)) || authorizedPrice < MARKETPLACE_CONSTANTS.MIN_PRICE) {
+    if (!isPaidPrice(authorizedPrice)) {
       return NextResponse.json(
         { error: `Item price must be at least ₦${MARKETPLACE_CONSTANTS.MIN_PRICE.toLocaleString()} for escrow payment processing.` },
         { status: 400 }

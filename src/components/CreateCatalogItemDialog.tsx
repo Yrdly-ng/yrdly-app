@@ -32,6 +32,7 @@ import type { CatalogItem } from "@/types";
 import Image from "next/image";
 import { CatalogService } from "@/lib/catalog-service";
 import { useToast } from "@/hooks/use-toast";
+import { isPaidPrice, MINIMUM_PRICE_MESSAGE } from "@/lib/price-policy";
 import { MARKETPLACE_CONSTANTS } from "@/lib/constants";
 
 /* ─── design tokens (shared with CreateItemDialog) ─────────────────── */
@@ -69,7 +70,7 @@ const getFormSchema = (existingImageCount: number) =>
     description: z.string().min(1, "Description is required.").max(1000, "Description too long"),
     price: z.preprocess(
       (val) => (val === "" || val === null || val === undefined ? undefined : Number(val)),
-      z.number().min(MARKETPLACE_CONSTANTS.MIN_PRICE, `Price must be at least ₦${MARKETPLACE_CONSTANTS.MIN_PRICE.toLocaleString()}`)
+      z.number().refine(isPaidPrice, MINIMUM_PRICE_MESSAGE)
     ),
     category: z.string().min(1, "Category is required."),
     in_stock: z.boolean().default(true),
@@ -167,9 +168,10 @@ function FormBody({
                   <FormControl>
                     <div className="relative">
                       <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">₦</span>
-                      <Input type="number" placeholder="0.00" className="bg-background border-border h-12 rounded-xl pl-8 text-base" {...field} />
+                      <Input type="number" min={MARKETPLACE_CONSTANTS.MIN_PRICE} step="0.01" placeholder={String(MARKETPLACE_CONSTANTS.MIN_PRICE)} className="bg-background border-border h-12 rounded-xl pl-8 text-base" {...field} />
                     </div>
                   </FormControl>
+                  <p className="text-xs text-muted-foreground">Minimum paid price: ₦{MARKETPLACE_CONSTANTS.MIN_PRICE.toLocaleString("en-NG")}.</p>
                   <FormMessage />
                 </FormItem>
               )} />

@@ -47,6 +47,8 @@ jobs:
       - run: node --test tests/audit-security.test.cjs
       - run: node qa-scripts/ticket-reservation-regression.mjs
       - run: node qa-scripts/booking-checkout-regression.mjs
+      - run: node qa-scripts/dispute-allocation-regression.mjs
+      - run: node qa-scripts/price-minimum-regression.mjs
       - run: node scripts/qa-payluk-sandbox.mjs
       - run: node qa-scripts/edge-regression.mjs
       - run: node qa-scripts/otp-regression.mjs
@@ -74,4 +76,6 @@ jobs:
             .qa-artifacts/live-regression.json
             .qa-artifacts/ticket-reservation-regression.json
             .qa-artifacts/booking-checkout-regression.json
+            .qa-artifacts/dispute-allocation-regression.json
+            .qa-artifacts/price-minimum-regression.json
           retention-days: 7

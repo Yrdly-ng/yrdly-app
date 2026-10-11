@@ -60,7 +60,43 @@ and confirms service receipt; provider completion alone does not release funds.
 Unpaid checkout is deleted at the provider before cancellation permits a new
 order. Legacy unlinked payment rows are not relabelled or replaced automatically.
 Deploy `reconcile_booking_checkout_ledger` with its matching web code. QA database
-and local unit checks pass; funded booking collection/settlement remains pending.
+and funded booking checks pass: principal1,234.56, Yrdly37.04, Payluk24.69 and seller1,209.87, with15 lifecycle checks including real callbacks and idempotent delivery.
+
+## Minimum paid prices and bank withdrawals
+
+Paid listings, catalog items, service prices, booking deposits/estimates and
+paid ticket tiers start at NGN 1,200. Free giveaways, free tickets and free or
+quote-only services remain available. Forms and APIs check money precision and
+the database guards new prices and relevant edits. Booking deposits must reach
+the minimum independently; full payment/escrow takes priority over unused deposit
+settings. Historical prices and paid ledgers are not rewritten; new checkout
+reservations require the minimum and authoritative current prices.
+
+This price buffer is not a guarantee after a partial refund or split dispute.
+Small residual balances may need later earnings. The provider BANK minimum is
+still NGN 1,000 net of its fee, separate from Yrdly's selling-price policy.
+A real sandbox quote on 11 October returned NGN 10.75 for a NGN 1,000 bank transfer;
+a NGN 1,010.75 debit budget therefore fits that quoted transfer. Fees are quoted
+at withdrawal time, not hardcoded. The preview harness verified the controlled
+beneficiary and staged intents only; no outbound bank transfer was executed.
+
+## Dispute allocations
+
+Admin buyer/seller shares divide the original gross price. The application
+allocates Payluk's fee-adjusted pool proportionally and stores that immutable
+plan before requesting resolution. Non-refundable provider escrow fees are
+excluded from the pool; refundable additional fees are credited separately.
+The gross ruling remains in disputes.refund_amount/seller_amount, while
+provider_settlement records actual buyer credit and seller proceeds. Only
+verified provider settlement finalizes the dispute and updates withdrawable
+seller_amount. Unknown outcomes stay held for reconciliation; callbacks and
+replays cannot release stock or credit proceeds twice.
+
+For an equal gross split of NGN 2,500 with NGN 50 Payluk fee and NGN 75 refundable
+additional fee, the expected actual allocation is NGN 1,225 seller and NGN 1,300
+buyer (including the additional fee). Database and unit tests pass; funded
+provider split settlement remains pending. The additive QA migration must ship
+with its matching application handlers.
 
 ## Routes and safeguards
 
@@ -86,7 +122,7 @@ keys. Funded marketplace, catalog and ticket purchase/release, and marketplace
 full dispute refund have passed
 using Payluk's [test bank](https://docs.payluk.ng/guides/payluk-test-bank), without
 wallet top-up/deposit. Funded ledger fixtures are retained. Current evidence and
-remaining event, booking, payout and production requirements are in
+remaining event, payout and production requirements are in
 [QA_RESULTS.md](../QA_RESULTS.md). Local mocked tests do not establish provider
 settlement.
 

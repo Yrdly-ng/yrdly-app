@@ -603,12 +603,14 @@ export default function AdminDisputeReviewPage() {
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <Label htmlFor="refund" className="text-foreground">Refund Amount</Label>
+                      <Label htmlFor="refund" className="text-foreground">Gross Buyer Share</Label>
                       <div className="relative">
                         <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-[var(--yrdly-label)]" />
                         <Input
                           id="refund"
                           type="number"
+                          min="0"
+                          step="0.01"
                           placeholder="0"
                           value={refundAmount}
                           onChange={(e) => setRefundAmount(Number(e.target.value))}
@@ -617,12 +619,14 @@ export default function AdminDisputeReviewPage() {
                       </div>
                     </div>
                     <div>
-                      <Label htmlFor="seller" className="text-foreground">Seller Amount</Label>
+                      <Label htmlFor="seller" className="text-foreground">Gross Seller Share</Label>
                       <div className="relative">
                         <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-[var(--yrdly-label)]" />
                         <Input
                           id="seller"
                           type="number"
+                          min="0"
+                          step="0.01"
                           placeholder="0"
                           value={sellerAmount}
                           onChange={(e) => setSellerAmount(Number(e.target.value))}
@@ -631,6 +635,12 @@ export default function AdminDisputeReviewPage() {
                       </div>
                     </div>
                   </div>
+
+                  <p className="text-sm text-muted-foreground">
+                    These shares divide the original price. Payluk deducts its non-refundable escrow fee
+                    before dividing the held funds in these proportions. A refund or split also returns
+                    Yrdly’s additional fee to the buyer. The final credits are recorded separately.
+                  </p>
 
                   <div className="p-3 bg-background/50 border border-[var(--yrdly-glass-border)] rounded-lg">
                     <div className="flex justify-between text-sm">
@@ -675,11 +685,19 @@ export default function AdminDisputeReviewPage() {
                     <p className="text-sm text-[var(--yrdly-label)]">{dispute.resolution}</p>
                   </div>
                   
+                  {dispute.providerSettlement && (
+                    <div aria-label="Actual Payluk settlement" className="space-y-2 rounded-lg border border-border p-3 text-sm">
+                      <p className="font-medium text-foreground">Actual settlement after fees</p>
+                      <p>Buyer credited: ₦{dispute.providerSettlement.buyerCredit.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</p>
+                      <p>Seller proceeds: ₦{dispute.providerSettlement.sellerAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</p>
+                      <p className="text-muted-foreground">Payluk escrow fee: ₦{dispute.providerSettlement.fee.toLocaleString('en-NG', { minimumFractionDigits: 2 })}. The gross ruling below records how the original price was divided.</p>
+                    </div>
+                  )}
                   {(dispute.refundAmount > 0 || dispute.sellerAmount > 0) && (
                     <div className="space-y-2">
                       {dispute.refundAmount > 0 && (
                         <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
-                          <h5 className="font-medium text-emerald-500">Refund Amount</h5>
+                          <h5 className="font-medium text-emerald-500">Gross Buyer Share</h5>
                           <p className="text-lg font-bold text-emerald-500 font-yrdly-display">
                             ₦{dispute.refundAmount.toLocaleString()}
                           </p>
@@ -687,7 +705,7 @@ export default function AdminDisputeReviewPage() {
                       )}
                       {dispute.sellerAmount > 0 && (
                         <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-                          <h5 className="font-medium text-blue-500">Seller Amount</h5>
+                          <h5 className="font-medium text-blue-500">Gross Seller Share</h5>
                           <p className="text-lg font-bold text-blue-500 font-yrdly-display">
                             ₦{dispute.sellerAmount.toLocaleString()}
                           </p>

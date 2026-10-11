@@ -4,11 +4,12 @@ import { getAuthenticatedUser } from '@/lib/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { NotificationService } from '@/lib/server-notification-service';
 import { PaylukService } from '@/lib/payluk-service';
+import { applyDisputeSettlement, saveDisputePlan } from '@/lib/dispute-settlement';
 
 const resolveSchema = z.object({
   resolution: z.string().trim().min(1).max(1000),
-  refundAmount: z.number().finite().nonnegative(),
-  sellerAmount: z.number().finite().nonnegative(),
+  refundAmount: z.number().finite().nonnegative().refine(value => Number.isSafeInteger(Math.round(value*100)) && Math.abs(value*100-Math.round(value*100))<0.000001),
+  sellerAmount: z.number().finite().nonnegative().refine(value => Number.isSafeInteger(Math.round(value*100)) && Math.abs(value*100-Math.round(value*100))<0.000001),
 });
 
 export async function POST(
@@ -51,8 +52,6 @@ export async function POST(
 
   // Retries always use the originally claimed payload, never a modified UI payload.
   const resolution = operation.resolution as string;
-  const refundAmount = Number(operation.refund_amount);
-  const sellerAmount = Number(operation.seller_amount);
 
   const { data: dispute, error: disputeError } = await supabaseAdmin
     .from('disputes')
@@ -70,21 +69,18 @@ export async function POST(
     return NextResponse.json({ error: 'Resolution requires manual reconciliation.' }, { status: 202 });
   }
 
-  let providerReference: string | null = null;
   try {
     if (transaction.payment_provider === 'payluk') {
       if (!transaction.payluk_escrow_id) throw new Error('Missing Payluk escrow ID.');
-      const status = refundAmount > 0 && sellerAmount > 0
-        ? 'SPLIT'
-        : refundAmount > 0
-          ? 'REFUNDED'
-          : 'COMPLETED';
+      const plan = await saveDisputePlan(transaction, operation);
       await PaylukService.resolveDispute(transaction.payluk_escrow_id, {
         resolution,
-        status,
-        ...(status === 'SPLIT' ? { sellerAmount, buyerAmount: refundAmount } : {}),
+        status: plan.status,
+        additionalFeeRefundable: plan.additionalFeeRefundable,
+        ...(plan.status === 'SPLIT' ? { sellerAmount: plan.sellerAmount, buyerAmount: plan.buyerAmount } : {}),
       });
-      providerReference = transaction.payluk_escrow_id;
+      const settled = await PaylukService.verifyEscrow(transaction.payluk_tx_ref);
+      if (!await applyDisputeSettlement(transaction.id, settled)) throw new Error('Settlement operation was not found.');
     } else {
       throw new Error('Unknown payment provider; manual reconciliation required.');
     }
@@ -101,29 +97,13 @@ export async function POST(
     );
   }
 
-  const { error: finishError } = await supabaseAdmin.rpc('finish_dispute_resolution', {
-    p_operation_id: operation.id,
-    p_provider_reference: providerReference,
-  });
-  if (finishError) {
-    await supabaseAdmin.rpc('flag_dispute_resolution_reconciliation', {
-      p_operation_id: operation.id,
-      p_error_message: 'Provider accepted the resolution, but database finalization failed.',
-    });
-    console.error('[ResolveDispute] Provider succeeded, database finalization failed:', finishError);
-    return NextResponse.json(
-      { error: 'Payment was accepted; database finalization needs manual reconciliation.', resolutionStatus: 'needs_reconciliation' },
-      { status: 202 },
-    );
-  }
-
   try {
     const [{ data: updatedDispute }, { data: updatedTransaction }] = await Promise.all([
       supabaseAdmin.from('disputes').select('resolved_at').eq('id', disputeId).single(),
-      supabaseAdmin.from('escrow_transactions').select('buyer_id, seller_id, item_id, item_title, item_type').eq('id', transaction.id).single(),
+      supabaseAdmin.from('escrow_transactions').select('buyer_id, seller_id, item_id, item_type, metadata').eq('id', transaction.id).single(),
     ]);
     if (updatedTransaction) {
-      let itemTitle = updatedTransaction.item_title || 'Item';
+      let itemTitle = updatedTransaction.metadata?.item_title || 'Item';
       if (updatedTransaction.item_id) {
         const { data: post } = await supabaseAdmin.from('posts').select('title, text').eq('id', updatedTransaction.item_id).maybeSingle();
         const { data: catalog } = post ? { data: null } : await supabaseAdmin.from('catalog_items').select('title').eq('id', updatedTransaction.item_id).maybeSingle();

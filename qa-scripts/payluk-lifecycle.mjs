@@ -14,7 +14,7 @@ assert.ok(env.NEXT_PUBLIC_PAYLUK_PUBLIC_KEY?.startsWith('pk_test_'));
 const base = 'https://yrdly-app-qa.vercel.app';
 const checkout = 'https://staging.live.payluk.ng';
 const scenario = process.argv[3] || 'default';
-assert.ok(['default', 'commission', 'catalog', 'ticket', 'ticket-reserved', 'booking'].includes(scenario), 'Use an explicit owned sandbox scenario');
+assert.ok(['default', 'commission', 'catalog', 'ticket', 'ticket-reserved', 'booking', 'split'].includes(scenario), 'Use an explicit owned sandbox scenario');
 const artifactPath = `.qa-artifacts/payluk-lifecycle${scenario === 'default' ? '' : `-${scenario}`}.json`;
 const admin = createAdminClient(env);
 const clients = [];
@@ -24,7 +24,7 @@ try { state = JSON.parse(await readFile(artifactPath, 'utf8')); }
 catch (error) { if (error.code !== 'ENOENT') throw error; }
 if (!state) {
   if (mode === 'new-sale') {
-    assert.ok(['commission', 'catalog', 'ticket', 'ticket-reserved', 'booking'].includes(scenario));
+    assert.ok(['commission', 'catalog', 'ticket', 'ticket-reserved', 'booking', 'split'].includes(scenario));
     const source = JSON.parse(await readFile('.qa-artifacts/payluk-lifecycle-completed.json', 'utf8'));
     assert.equal(source.projectRef, projectRef); assert.equal(source.qaPrefix, QA_PREFIX);
     state = { projectRef, environment: 'sandbox', qaPrefix: QA_PREFIX, kind: scenario === 'ticket-reserved' ? 'ticket' : scenario, startedAt: new Date().toISOString(), users: source.users, passwords: source.passwords, listingId: randomUUID(), ...(scenario === 'catalog' || scenario === 'booking' ? { businessId: randomUUID() } : scenario.startsWith('ticket') ? { eventId: randomUUID() } : {}), ...(scenario === 'booking' ? { serviceId: randomUUID() } : {}), results: [] };
@@ -103,7 +103,7 @@ try {
     assert.equal(transaction.buyer_id, state.users.buyer); assert.equal(transaction.seller_id, state.users.seller); assert.equal(transaction.item_id, state.listingId); assert.equal(transaction.payment_provider, 'payluk');
   } else assert.ok(['new-refund', 'new-sale'].includes(mode), 'Resume the pending new checkout first');
   if (mode === 'new-sale') {
-    assert.ok(['commission', 'catalog', 'ticket', 'booking'].includes(state.kind));
+    assert.ok(['commission', 'catalog', 'ticket', 'booking', 'split'].includes(state.kind));
     await save(); // Persist owned fixture IDs before any creation or provider call.
     if (state.kind === 'ticket') {
       const existing = ok(await admin.from('events').select('organizer_id').eq('id', state.eventId).maybeSingle(), 'Check owned ticket event');
@@ -198,7 +198,7 @@ try {
     });
     await check('unpaid provider price, commission and seller proceeds match', async () => {
       const r = await remote(); assert.equal(r.state, 'AWAITING_PAYMENT'); assert.equal(r.amount, principal); assert.equal(r.additionalFee, commission); assert.equal(state.payment.totalAmount, total);
-      if (['commission', 'catalog', 'ticket', 'booking'].includes(state.kind)) assert.equal(r.fee, Math.round(principal * 0.02 * 100) / 100, 'Dashboard merchant commission must be zero for the canonical app fee');
+      if (['commission', 'catalog', 'ticket', 'booking', 'split'].includes(state.kind)) assert.equal(r.fee, Math.round(principal * 0.02 * 100) / 100, 'Dashboard merchant commission must be zero for the canonical app fee');
       assert.equal(transaction.seller_amount, Math.round((r.amount - r.fee) * 100) / 100); state.unpaidEscrow = r;
     });
     await check('wallet baselines recorded without deposits', async () => {
@@ -292,6 +292,7 @@ try {
     });
   }
   if (mode === 'complete') {
+    assert.notEqual(state.kind,'split','Resolve the split dispute rather than confirming full delivery');
     assert.ok(state.paidTransaction, 'Funding must pass before completion');
     await check('seller cannot confirm the buyer delivery', async () => assert.equal((await api('seller', '/api/payluk/confirm-delivery', { transactionId: state.payment.transactionId })).status, 403));
     await check('buyer confirms funded delivery and retry is idempotent', async () => {
@@ -319,7 +320,7 @@ try {
       assert.equal(r.body.pendingPayouts, 0); assert.equal(r.body.completedPayouts, 0);
       const request = await api('seller', '/api/seller/payouts/request', { amount: 1000 }); assert.equal(request.status, 400); assert.equal(request.body.error, 'NO_ACTIVE_ACCOUNT');
     });
-    if (['commission', 'catalog', 'ticket', 'booking'].includes(state.kind)) await check('merchant ledger receives exactly one canonical 3% commission', async () => {
+    if (['commission', 'catalog', 'ticket', 'booking', 'split'].includes(state.kind)) await check('merchant ledger receives exactly one canonical 3% commission', async () => {
       const ledger = await provider('/v1/merchant/transactions?' + new URLSearchParams({ fromDate: state.startedAt, toDate: new Date().toISOString() })); assert.ok(Array.isArray(ledger));
       const own = ledger.filter(row => JSON.stringify(row.escrowDetails).includes(state.payment.paylukPaymentToken));
       state.merchantSettlement = own;
@@ -329,7 +330,7 @@ try {
     });
   }
   if (['dispute', 'resolve', 'reconcile'].includes(mode)) {
-    assert.equal(state.kind, 'refund'); assert.ok(state.paidTransaction);
+    assert.ok(['refund','split'].includes(state.kind)); assert.ok(state.paidTransaction);
     for (const role of ['admin', 'non_admin']) {
       const client = createClient(env.SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false } }); clients.push(client);
       const login = ok(await client.auth.signInWithPassword({ email: env[`QA_${role.toUpperCase()}_EMAIL`], password: env[`QA_${role.toUpperCase()}_PASSWORD`] }), 'Sign in QA role');
@@ -370,8 +371,42 @@ try {
   if (mode === 'resolve') {
     assert.ok(state.disputeId);
     console.log('Reserving a fresh Payluk rate window for refund settlement'); await pause(65000);
-    const resolution = { resolution: 'YRDLY-QA simulated full refund, no item delivered', refundAmount: 2500, sellerAmount: 0 };
+    const resolution = state.kind === 'split'
+      ? { resolution: 'YRDLY-QA equal gross split, proportional fee-adjusted pool', refundAmount: 1250, sellerAmount: 1250 }
+      : { resolution: 'YRDLY-QA simulated full refund, no item delivered', refundAmount: 2500, sellerAmount: 0 };
     await check('non-admin cannot resolve or refund the dispute', async () => assert.equal((await api('buyer', `/api/admin/disputes/${state.disputeId}/resolve`, resolution)).status, 403));
+    if(state.kind==='split') {
+      await check('admin split commits actual allocation once and keeps the listing sold',async()=>{
+        const response=await api('admin',`/api/admin/disputes/${state.disputeId}/resolve`,resolution);
+        assert.equal(response.status,200);assert.equal(response.body.success,true);
+        const repeat=await api('admin',`/api/admin/disputes/${state.disputeId}/resolve`,resolution);
+        assert.equal(repeat.status,200);assert.equal(repeat.body.idempotent,true);
+        const row=ok(await admin.from('disputes').select('status,refund_amount,seller_amount,provider_settlement').eq('id',state.disputeId).single(),'Read split ledger');
+        assert.equal(row.status,'resolved');assert.equal(Number(row.refund_amount),1250);assert.equal(Number(row.seller_amount),1250);
+        assert.equal(Number(row.provider_settlement.buyerAmount),1225);assert.equal(Number(row.provider_settlement.buyerCredit),1300);
+        assert.equal(Number(row.provider_settlement.sellerAmount),1225);state.splitLedger=row;
+        const transaction=await tx();assert.equal(transaction.status,'completed');assert.equal(Number(transaction.seller_amount),1225);
+        assert.equal(ok(await admin.from('posts').select('is_sold').eq('id',state.listingId).single(),'Read split listing').is_sold,true);
+      });
+      await check('provider split and both wallets reconcile the fee-adjusted allocations',async()=>{
+        state.settledEscrow=await remote();assert.equal(state.settledEscrow.status,'SPLIT');
+        assert.equal(state.settledEscrow.split.pool,2450);assert.equal(state.settledEscrow.split.buyerAmount,1225);assert.equal(state.settledEscrow.split.sellerAmount,1225);
+        state.buyerWalletAfter=await provider('/v1/wallet',actors.buyer.profile.payluk_customer_id);
+        state.sellerWalletAfter=await provider('/v1/wallet',actors.seller.profile.payluk_customer_id);
+        assert.equal(Math.round((balance(state.buyerWalletAfter)-balance(state.walletBefore.buyer))*100)/100,1300);
+        assert.equal(Math.round((balance(state.sellerWalletAfter)-balance(state.walletBefore.seller))*100)/100,1225);
+      });
+      await check('signed split webhook replays preserve the actual seller balance and sold listing',async()=>{
+        for(let i=0;i<2;i++){
+          const raw=JSON.stringify({event:'escrow.split',data:state.settledEscrow});
+          const response=await fetch(`${base}/api/webhooks/payluk`,{method:'POST',headers:{'content-type':'application/json','x-payluk-signature':createHmac('sha512',env.PAYLUK_SECRET_KEY).update(raw).digest('hex')},body:raw,signal:AbortSignal.timeout(30000)});
+          assert.equal(response.status,200);
+        }
+        assert.equal(Number((await tx()).seller_amount),1225);
+        assert.equal(ok(await admin.from('posts').select('is_sold').eq('id',state.listingId).single(),'Read split listing').is_sold,true);
+        assert.equal(ok(await admin.from('dispute_resolution_operations').select('status').eq('dispute_id',state.disputeId).single(),'Read split operation').status,'succeeded');
+      });
+    } else {
     await check('admin full refund commits once and restores listing availability', async () => {
       const r = await api('admin', `/api/admin/disputes/${state.disputeId}/resolve`, resolution); assert.equal(r.status, 200); assert.equal(r.body.success, true);
       const repeat = await api('admin', `/api/admin/disputes/${state.disputeId}/resolve`, resolution); assert.equal(repeat.status, 200); assert.equal(repeat.body.idempotent, true);
@@ -394,6 +429,7 @@ try {
       assert.equal(balance(sellerWallet), balance(initial.walletBefore.seller) + completed.reduce((sum, row) => sum + Number(row.seller_amount), 0));
       assert.equal(ok(await admin.from('payout_requests').select('id').eq('seller_id', state.users.seller), 'Read QA payouts').length, 0);
     });
+  }
   }
   if (mode === 'inspect') console.log(JSON.stringify({ environment: state.environment, status: transaction.status, checksPassed: state.results.filter(r => r.passed).length, transferStarted: Boolean(state.transferStarted), ledgerRetained: true }));
   state.lastFailure = null;

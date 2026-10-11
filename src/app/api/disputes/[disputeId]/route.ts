@@ -187,6 +187,7 @@ export async function GET(
       refundAmount: dispute.refund_amount || 0,
       refund_amount: dispute.refund_amount || 0,
       sellerAmount: dispute.seller_amount || 0,
+      providerSettlement: dispute.provider_settlement || null,
       seller_amount: dispute.seller_amount || 0,
       createdAt: dispute.created_at,
       created_at: dispute.created_at,

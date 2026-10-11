@@ -5,6 +5,8 @@ import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useServiceOfferings } from '@/hooks/use-bookings';
 import { BookingService } from '@/lib/booking-service';
+import { MIN_PAID_PRICE } from '@/lib/constants';
+import { servicePriceError } from '@/lib/price-policy';
 
 export default function ManageServicesWebPage() {
   const params = useParams();
@@ -71,7 +73,7 @@ export default function ManageServicesWebPage() {
     try {
       const parsedPrice = price.trim() ? parseFloat(price) : undefined;
       const parsedDepAmt = depositAmount.trim() ? parseFloat(depositAmount) : undefined;
-      const parsedDepPct = depositPercent.trim() ? parseInt(depositPercent, 10) : undefined;
+      const parsedDepPct = depositPercent.trim() ? Number(depositPercent) : undefined;
 
       const payload = {
         name: name.trim(),
@@ -85,6 +87,9 @@ export default function ManageServicesWebPage() {
         requires_full_payment: requiresFullPayment,
         escrow_enabled: escrowEnabled,
       };
+
+      const priceError = servicePriceError(payload);
+      if (priceError) throw new Error(priceError);
 
       if (editingId) {
         await BookingService.updateServiceOffering(editingId, payload);
@@ -250,10 +255,13 @@ export default function ManageServicesWebPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-neutral-300 font-medium mb-1">Price (₦)</label>
+                    <label htmlFor="service-price" className="block text-neutral-300 font-medium mb-1">Price (₦)</label>
                     <input
                       type="number"
                       min={0}
+                      id="service-price"
+                      step="0.01"
+                      aria-describedby="service-price-help"
                       value={price}
                       onChange={(e) => setPrice(e.target.value)}
                       placeholder="e.g. 5000"
@@ -262,6 +270,7 @@ export default function ManageServicesWebPage() {
                   </div>
                 </div>
 
+                <p id="service-price-help" className="text-xs text-neutral-400">Paid services and online deposits start at ₦{MIN_PAID_PRICE.toLocaleString("en-NG")}. Leave the price blank for quotes, or enter 0 for a free service.</p>
                 <label className="flex items-center gap-2 cursor-pointer pt-1">
                   <input
                     type="checkbox"
@@ -295,7 +304,9 @@ export default function ManageServicesWebPage() {
                           min={0}
                           value={depositAmount}
                           onChange={(e) => setDepositAmount(e.target.value)}
-                          placeholder="e.g. 1000"
+                          placeholder={String(MIN_PAID_PRICE)}
+                          step="0.01"
+                          aria-label="Deposit amount"
                           className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-xs text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-emerald-500"
                         />
                       </div>
@@ -305,6 +316,8 @@ export default function ManageServicesWebPage() {
                           type="number"
                           min={0}
                           max={100}
+                          step="1"
+                          aria-label="Deposit percentage"
                           value={depositPercent}
                           onChange={(e) => setDepositPercent(e.target.value)}
                           placeholder="e.g. 20"

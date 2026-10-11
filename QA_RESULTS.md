@@ -3,6 +3,39 @@
 This document supersedes older completion estimates. A passing mocked test is
 not evidence that a payment settled or that production has the matching code.
 
+## Current verification checkpoint
+
+Latest fully green CI is092a98bd / run38132275104:225 unit tests, seven
+paid-ticket DB checks, nine booking DB checks, six browser scenarios, build,
+typecheck, lint, OTP/push/API security and smoke. Booking profile joins now load
+successfully in the browser. The matching dedicated QA deployment is READY.
+
+Funded booking passed all 15 checks: principal1,234.56, buyer3%37.04,
+total1,271.60, Payluk24.69, seller1,209.87, merchant exactly37.04.
+Real callbacks synchronize both booking ledgers; retries and delivery are
+idempotent. Safe evidence:payluk-booking-summary.json. Funded records retained.
+
+Current batch: 263 unit tests,11 real minimum-price database checks,
+nine split-allocation database checks, nine booking DB checks, seven ticket DB
+checks and24 rollback assertions PASS. Typecheck/lint/build PASS (18 pre-existing
+lint warnings). The approved NGN 1,200 minimum is enforced for paid listings,
+catalog, tickets and booking payments/deposits, preserving free flows.
+Both new migrations are applied ONLY to isolated QA. Full CI, new responsive
+browser checks and hosted funded split evidence are pending for this batch.
+Local Playwright cannot install Chromium on this laptop's macOS12; Linux CI
+runs browser checks. Do not interpret a missing local browser as a passed test.
+
+Five real bank preview checks passed: bank-list code, controlled-beneficiary
+verification, NGN 1,000 net quoted fee10.75, below-net-minimum rejection, and
+NGN 1,010.75 debit budget fitting NGN 1,000+10.75. Only unpaid intents staged;
+NO outbound bank transfer executed. Beneficiary details are retained privately.
+
+QA security advisors were rechecked after the price migration. No new price/RPC
+warnings appeared. Existing definer-view/function grant warnings, deliberately
+service-only tables without client policies and leaked-password protection
+remain tracked under the release requirements below. The current batch does
+not establish production readiness or100% completion.
+
 ## Verified
 
 - An isolated persistent Supabase Staging branch is available:
@@ -293,7 +326,7 @@ not evidence that a payment settled or that production has the matching code.
     a fresh funded booking verification. The current patch replaces that URL
     with the inline SDK and explicit buyer verification/cancellation. Its review
     shows the base payment, 3% Yrdly fee and exact total before opening payment.
-    Local checks pass; hosted/funded booking verification is still pending.
+    The new hosted booking lifecycle passed15 checks, including commission and wallet settlement.
 24. **VERIFIED, High, by source and live QA database tests:** paid checkout
     previously created provider escrows before recording the order and did not
     reserve ticket capacity. New checkout atomically records its order and seats
@@ -319,15 +352,14 @@ not evidence that a payment settled or that production has the matching code.
     updates atomically with the escrow ledger; released net proceeds enter seller
     earnings. Legacy payment rows remain distinguishable and require review.
     Nine real database checks and 225 local unit regressions pass. The migrations
-    is installed on QA only. Actual commission and wallet settlement are pending
-    the new hosted funded booking test.
+    are installed on QA only. Actual commission and wallet settlement passed
+    all 15 hosted funded booking checks on092a98bd.
 26. **VERIFIED, High, by CI browser failure and live database API reproduction:**
     booking detail, provider booking lists and confirmation used an ambiguous
     customer/profile relationship. Supabase returned `PGRST201`, preventing the
     booking detail/payment review from loading. All three queries now explicitly
     select `bookings_customer_id_fkey`; the corrected live query returns HTTP 200.
-    The booking page fetch also has stable hook dependencies. A fresh full CI
-    browser run is required before claiming this UI fix is verified end to end.
+    The booking page fetch also has stable hook dependencies. Full CI38132275104 passed, including the booking review browser test at375/768/1440.
 
 The customer/permission lock, missing-customer, token-addressing, recovery and
 escrow-proceeds fixes passed full CI on `cbe1d7c4`. The hosted fresh-customer,
@@ -343,8 +375,7 @@ release corrections passed full CI with 185 regression tests, typecheck and lint
 the dedicated QA deployment. The funded ticket flow passed all 16 checks on that
 revision; automatic maturity claim and bank payout remain unverified.
 The paid-ticket reservation batch then passed full CI on `5d59b5ce` and all 17
-funded hosted checks on `8847e6e6`. The booking ledger/SDK batch has passed local
-typecheck, lint and unit/database checks; its full CI and deployment are pending.
+funded hosted checks on `8847e6e6`. The booking ledger/SDK batch passed full CI and matching QA deployment on092a98bd, followed by 15 funded lifecycle checks.
 
 The manual harness `qa-scripts/payluk-lifecycle.mjs` explicitly separates
 preparation, funding, delivery, dispute, reconciliation and refund operations.
@@ -358,13 +389,11 @@ clean up these funded records as though they were unpaid fixtures.
 - Confirm the live merchant dashboard also has zero additional merchant
   commission. A new funded sandbox ledger verified the app's single 3% charge;
   the staging result does not prove the live account setting.
-- Complete funded split resolutions, booking purchase and settlement,
+- Complete funded split resolutions,
   automatic event maturity claims, and bank withdrawals. Marketplace full refund passed above;
   other refund paths remain separate requirements.
   Funded catalog and ticket purchase/release, paid initialization retries and
-  competing last-seat reservations passed above. Booking commission collection
-  remains unverified after the dashboard commission was removed; the new ledger
-  and SDK correction still needs a hosted funded test.
+  competing last-seat reservations passed above. Booking collection, commission and settlement now passed the hosted funded test.
   An authenticated read-only request does not establish these outcomes.
   The sandbox callback is configured and an unpaid-escrow callback was accepted;
   Funded marketplace payment and delivery completion are verified above;
@@ -382,7 +411,7 @@ clean up these funded records as though they were unpaid fixtures.
   advisors no longer reported these warnings and the 24 money assertions passed
   again. Service-only tables deliberately have no client policies. Remaining
   function-grant warnings need context-specific review; leaked-password
-  protection is not enabled. Lint passes with 19 existing warnings.
+  protection is not enabled. Lint passes with 18 existing warnings.
 - Paid event refunds/cancellation are still support-assisted. Automated refund
   completion is not established.
 - Deploy matching web code, verify shared-backend mobile compatibility, then

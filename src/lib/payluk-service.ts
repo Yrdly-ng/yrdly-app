@@ -209,6 +209,7 @@ export interface PaylukEscrow {
   milestones: PaylukMilestone[];
   createdAt: string;
   updatedAt: string;
+  split?: { sellerAmount: number; buyerAmount: number; pool: number; resolvedAt: string };
 }
 
 export interface PaylukVirtualAccount {
@@ -240,6 +241,25 @@ interface PaylukWithdrawalIntent {
   reference: string;
 }
 
+const PAYLUK_WITHDRAWAL_MINIMUM = 1000;
+
+function withdrawalMinimumError(fee = 0) {
+  const minimumBudget = Math.round((PAYLUK_WITHDRAWAL_MINIMUM + fee) * 100) / 100;
+  return {
+    success: false as const,
+    intentFee: fee,
+    maximumWithdrawable: 0,
+    minimumDebit: minimumBudget,
+    minimumBankAmount: PAYLUK_WITHDRAWAL_MINIMUM,
+    error: `The bank transfer must be at least ₦${PAYLUK_WITHDRAWAL_MINIMUM.toLocaleString()} after Payluk's fee.`,
+    reason: `With the quoted fee of ₦${fee.toLocaleString()}, your balance deduction must be at least ₦${minimumBudget.toLocaleString()}.`,
+  };
+}
+
+function withdrawalNet(budget: number, fee: number): number {
+  return Math.max(0, (Math.round(budget * 100) - Math.round(fee * 100)) / 100);
+}
+
 async function createPaylukWithdrawalIntent(params: {
   customerId: string;
   amount: number;
@@ -269,7 +289,7 @@ async function createPaylukWithdrawalIntent(params: {
   const intent = response?.data;
   if (
     !intent ||
-    typeof intent.amount !== 'number' || !Number.isFinite(intent.amount) || intent.amount < 0 ||
+    typeof intent.amount !== 'number' || !Number.isFinite(intent.amount) || intent.amount !== params.amount ||
     typeof intent.fee !== 'number' || !Number.isFinite(intent.fee) || intent.fee < 0 ||
     typeof intent.reference !== 'string' || !intent.reference
   ) {
@@ -852,10 +872,17 @@ export class PaylukService {
     intentFee?: number;
     totalPaylukDebit?: number;
     maximumWithdrawable?: number;
+    minimumDebit?: number;
+    minimumBankAmount?: number;
     error?: string;
     reason?: string;
   }> {
     try {
+      if (!Number.isFinite(params.amount) || !Number.isSafeInteger(Math.round(params.amount*100)) ||
+          Math.abs(params.amount*100-Math.round(params.amount*100))>0.000001) {
+        return { success:false,reference:params.reference,error:'Enter a valid withdrawal amount with at most two decimal places.' };
+      }
+      if (params.amount < PAYLUK_WITHDRAWAL_MINIMUM) return { ...withdrawalMinimumError(),reference:params.reference };
       const LEGACY_CBN_TO_PAYLUK_BANK_MAP: Record<string, string> = {
         '999991': '100004', '999992': '100004', '044': '000014', '058': '000013',
         '011': '000016', '057': '000015', '50515': '090405', '50211': '090267',
@@ -898,18 +925,8 @@ export class PaylukService {
         accountNumber: params.accountNumber,
         accountName: params.accountName,
       });
-      let netAmount = Math.max(0, Math.floor((params.amount - feeQuote.fee) * 100) / 100);
-      if (netAmount <= 0) {
-        return {
-          success: false,
-          reference: feeQuote.reference,
-          intentFee: feeQuote.fee,
-          totalPaylukDebit: feeQuote.fee,
-          maximumWithdrawable: 0,
-          error: 'Payluk fee consumes the requested withdrawal amount.',
-          reason: `Payluk's fee is ₦${feeQuote.fee.toLocaleString()}, which leaves no amount to send to your bank.`,
-        };
-      }
+      let netAmount = withdrawalNet(params.amount, feeQuote.fee);
+      if (netAmount < PAYLUK_WITHDRAWAL_MINIMUM) return { ...withdrawalMinimumError(feeQuote.fee),reference:feeQuote.reference };
 
       let intent = await createPaylukWithdrawalIntent({
         customerId: params.sellerPaylukCustomerId,
@@ -922,19 +939,8 @@ export class PaylukService {
       });
       let totalPaylukDebit = intent.amount + intent.fee;
       if (totalPaylukDebit > params.amount) {
-        netAmount = Math.max(0, Math.floor((params.amount - intent.fee) * 100) / 100);
-        if (netAmount <= 0) {
-          return {
-            success: false,
-            reference: intent.reference,
-            intentAmount: intent.amount,
-            intentFee: intent.fee,
-            totalPaylukDebit,
-            maximumWithdrawable: 0,
-            error: 'Payluk fee consumes the requested withdrawal amount.',
-            reason: `Payluk's fee is ₦${intent.fee.toLocaleString()}, which leaves no amount to send to your bank.`,
-          };
-        }
+        netAmount = withdrawalNet(params.amount, intent.fee);
+        if (netAmount < PAYLUK_WITHDRAWAL_MINIMUM) return { ...withdrawalMinimumError(intent.fee),reference:intent.reference };
         intent = await createPaylukWithdrawalIntent({
           customerId: params.sellerPaylukCustomerId,
           amount: netAmount,
@@ -1063,18 +1069,11 @@ export class PaylukService {
 
       const resolvedBankCode = LEGACY_CBN_TO_PAYLUK_BANK_MAP[params.bankCode] || params.bankCode;
 
-      // 0. Hard minimum — Payluk rejects any withdrawal intent below ₦1,000
-      const PAYLUK_MINIMUM = 1000;
-      if (params.amount < PAYLUK_MINIMUM) {
-        return {
-          outcome: 'failed',
-          success: false,
-          reference: params.reference,
-          error: `Minimum withdrawal amount is ₦${PAYLUK_MINIMUM.toLocaleString()}.`,
-          reason: `Your available balance of ₦${params.amount.toLocaleString()} is below Payluk's minimum withdrawal of ₦${PAYLUK_MINIMUM.toLocaleString()}.`,
-          maximumWithdrawable: 0,
-        };
+      if (!Number.isFinite(params.amount) || !Number.isSafeInteger(Math.round(params.amount*100)) ||
+          Math.abs(params.amount*100-Math.round(params.amount*100))>0.000001) {
+        return { outcome:'failed',success:false,reference:params.reference,error:'Enter a valid withdrawal amount with at most two decimal places.' };
       }
+      if (params.amount < PAYLUK_WITHDRAWAL_MINIMUM) return { ...withdrawalMinimumError(),outcome:'failed',reference:params.reference };
 
       // 1. Fetch seller's Payluk wallet to check mainBalance (ignoring escrowBalance for withdrawals)
       const wallet = await this.getCustomerWallet(params.sellerPaylukCustomerId);
@@ -1108,19 +1107,8 @@ export class PaylukService {
         accountNumber: params.accountNumber,
         accountName: params.accountName,
       });
-      let netAmount = Math.max(0, Math.floor((params.amount - feeQuote.fee) * 100) / 100);
-      if (netAmount <= 0) {
-        return {
-          outcome: 'failed',
-          success: false,
-          reference: feeQuote.reference,
-          intentFee: feeQuote.fee,
-          totalPaylukDebit: feeQuote.fee,
-          maximumWithdrawable: 0,
-          error: 'Payluk fee consumes the requested withdrawal amount.',
-          reason: `Payluk's fee is ₦${feeQuote.fee.toLocaleString()}, which leaves no amount to send to your bank.`,
-        };
-      }
+      let netAmount = withdrawalNet(params.amount, feeQuote.fee);
+      if (netAmount < PAYLUK_WITHDRAWAL_MINIMUM) return { ...withdrawalMinimumError(feeQuote.fee),outcome:'failed',reference:feeQuote.reference };
 
       let intent = await createPaylukWithdrawalIntent({
         customerId: params.sellerPaylukCustomerId,
@@ -1136,20 +1124,8 @@ export class PaylukService {
       // The fee can depend on the payout amount. If the net intent's fee quote
       // differs, make one adjusted intent and use only its exact returned fee.
       if (totalPaylukDebit > params.amount) {
-        netAmount = Math.max(0, Math.floor((params.amount - intent.fee) * 100) / 100);
-        if (netAmount <= 0) {
-          return {
-            outcome: 'failed',
-          success: false,
-            reference: intent.reference,
-            intentAmount: intent.amount,
-            intentFee: intent.fee,
-            totalPaylukDebit,
-            maximumWithdrawable: 0,
-            error: 'Payluk fee consumes the requested withdrawal amount.',
-            reason: `Payluk's fee is ₦${intent.fee.toLocaleString()}, which leaves no amount to send to your bank.`,
-          };
-        }
+        netAmount = withdrawalNet(params.amount, intent.fee);
+        if (netAmount < PAYLUK_WITHDRAWAL_MINIMUM) return { ...withdrawalMinimumError(intent.fee),outcome:'failed',reference:intent.reference };
 
         intent = await createPaylukWithdrawalIntent({
           customerId: params.sellerPaylukCustomerId,

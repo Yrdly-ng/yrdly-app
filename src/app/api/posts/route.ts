@@ -2,6 +2,7 @@ import { invokeServerFunction } from '@/lib/server-functions';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { isMoneyAmount, isPaidPrice, MINIMUM_PRICE_MESSAGE } from '@/lib/price-policy';
 
 async function save(request: NextRequest, editing: boolean) {
   const { data: { user }, error } = await getAuthenticatedUser(request);
@@ -10,13 +11,20 @@ async function save(request: NextRequest, editing: boolean) {
   const input = body?.post;
   if (!input || (input.text != null && (typeof input.text !== 'string' || input.text.length > 10000)) ||
       (input.title != null && (typeof input.title !== 'string' || input.title.length > 200)) ||
-      (input.price != null && (typeof input.price !== 'number' || !Number.isFinite(input.price) || input.price < 0)) ||
+      (input.price != null && !isMoneyAmount(input.price)) ||
       (input.image_urls != null && (!Array.isArray(input.image_urls) || input.image_urls.length > 10 || input.image_urls.some((url: unknown) => typeof url !== 'string')))) {
     return NextResponse.json({ error: 'Invalid post details' }, { status: 400 });
   }
+  let category = input.category;
+  let price = input.price;
   if (editing) {
-    const { data: existing } = await supabaseAdmin.from('posts').select('user_id').eq('id', body.id).maybeSingle();
+    const { data: existing } = await supabaseAdmin.from('posts').select('user_id,category,price').eq('id', body.id).maybeSingle();
     if (existing?.user_id !== user.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    category = input.category ?? existing.category;
+    price = input.price !== undefined ? input.price : Number(existing.price);
+  }
+  if (category === 'For Sale' && (!editing || input.price !== undefined || input.category !== undefined) && !isPaidPrice(price)) {
+    return NextResponse.json({ error: MINIMUM_PRICE_MESSAGE }, { status: 400 });
   }
   const { data: profile, error: profileError } = await supabaseAdmin.from('users')
     .select('id,name,avatar_url,home_state,home_lga,home_ward,created_at,verified_seller,phone_verified').eq('id', user.id).single();
