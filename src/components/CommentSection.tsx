@@ -45,7 +45,7 @@ import TextareaAutosize from 'react-textarea-autosize';
 /* ─── design tokens ─────────────────────────────────────────────── */
 const BG = 'var(--c-bg)';
 const CARD_BG = 'var(--c-card)';
-const FONT_RALEWAY = 'Inter, sans-serif';
+const FONT_RALEWAY = 'Figtree, sans-serif';
 const FONT_PACIFICO = "var(--font-jersey25)";
 
 import { VerifiedBadge } from '@/components/VerifiedBadge';

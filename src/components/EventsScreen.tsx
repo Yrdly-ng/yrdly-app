@@ -239,7 +239,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
             <Skeleton key={i} className="h-8 w-20 flex-shrink-0 rounded-md" style={{ background: "var(--c-card)" }} />
           ))}
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
             <Skeleton key={i} className="h-[400px] rounded-[11px]" style={{ background: "var(--c-card)" }} />
           ))}
@@ -300,7 +300,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
                 {pickedForYou.map((event) => (
                   <CarouselItem
                     key={event.id}
-                    className="pl-2 sm:pl-4 basis-[92%] sm:basis-[82%] md:basis-[72%] lg:basis-[68%]"
+                    className={cn("pl-2 sm:pl-4", pickedForYou.length === 1 ? "basis-full" : "basis-[92%] sm:basis-[82%] md:basis-[72%] lg:basis-1/2 2xl:basis-1/3")}
                   >
                     <TiltCard
                       className="w-full rounded-[20px] sm:rounded-[24px] overflow-hidden aspect-[820/340] max-h-[300px] sm:max-h-[350px] bg-card border border-[var(--yrdly-glass-border)]"
@@ -333,7 +333,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
                         }}
                       />
                       <div className="absolute inset-0 flex flex-col justify-end p-4 sm:p-6 md:p-8">
-                        <h3 className="font-yrdly-display font-extrabold text-lg sm:text-[1.4375rem] text-white mb-2 drop-shadow-sm">
+                        <h3 className="font-yrdly-display font-bold text-lg sm:text-[1.4375rem] text-white mb-2 drop-shadow-sm">
                           {event.title || "Event"}
                         </h3>
                         <div className="flex flex-wrap items-center gap-3 text-white/90 text-xs sm:text-[0.8125rem] font-yrdly-body">
@@ -394,7 +394,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
             See all
           </Link>
         </div>
-        <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {inYourArea.map((event) => (
             <EventCardCompact
               key={event.id}
@@ -462,7 +462,7 @@ export function EventsScreen({ className }: EventsScreenProps) {
             <p className="text-[var(--yrdly-label)] font-yrdly-body text-xs max-w-[280px]">Be the first to create an event in your neighborhood.</p>
           </GlassCard>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
             {mainstream.map((event, idx) => (
               <RevealOnScroll key={event.id} delay={(idx % 4) * 60}>
                 <EventCard

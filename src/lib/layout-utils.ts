@@ -2,7 +2,7 @@ export type WidthTier = 'narrow' | 'default' | 'wide' | 'xwide' | 'full';
 
 export function getPageWidthTier(pathname: string): string {
   if (pathname.startsWith('/settings')) {
-    return 'max-w-[680px] mx-auto lg:max-w-5xl';
+    return 'max-w-[680px] mx-auto lg:max-w-none';
   }
 
   if (pathname.startsWith('/transactions')) {

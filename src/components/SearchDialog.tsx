@@ -180,7 +180,7 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
                     background: 'var(--c-card2)',
                     border: `0.5px solid ${GREEN}`,
                     color: 'var(--c-text)',
-                    fontFamily: 'Inter, sans-serif',
+                    fontFamily: 'Figtree, sans-serif',
                   }}
                 />
               </div>
@@ -226,7 +226,7 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
                       key={r}
                       onClick={() => setSearchTerm(r)}
                       className="flex items-center gap-2 rounded-full px-4 py-2 text-sm transition-colors hover:bg-accent"
-                      style={{ background: 'var(--c-card)', color: 'var(--c-text)', fontFamily: 'Inter, sans-serif' }}
+                      style={{ background: 'var(--c-card)', color: 'var(--c-text)', fontFamily: 'Figtree, sans-serif' }}
                     >
                       <Clock className="w-4 h-4" style={{ color: 'var(--c-text-muted)' }} />
                       {r}
@@ -248,14 +248,14 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
               <div className="flex flex-col items-center justify-center py-20">
                 <Search className="w-14 h-14 mb-4 text-primary" style={{ opacity: 0.3 }} />
                 <p style={{ fontFamily: "var(--font-work-sans)", color: 'var(--c-text)', fontSize: 20 }}>Nothing found</p>
-                <p className="mt-2 text-sm" style={{ color: 'var(--c-text-muted)', fontFamily: 'Inter, sans-serif' }}>Try a different search</p>
+                <p className="mt-2 text-sm" style={{ color: 'var(--c-text-muted)', fontFamily: 'Figtree, sans-serif' }}>Try a different search</p>
               </div>
             )}
 
             {/* People */}
             {!loading && users.length > 0 && (
               <section>
-                <h3 className="mb-4 px-1 text-[0.6875rem] font-bold uppercase tracking-[0.2em]" style={{ color: 'var(--c-text-muted)', fontFamily: 'Inter, sans-serif' }}>
+                <h3 className="mb-4 px-1 text-[0.6875rem] font-bold uppercase tracking-[0.2em]" style={{ color: 'var(--c-text-muted)', fontFamily: 'Figtree, sans-serif' }}>
                   Suggested People
                 </h3>
                 <div className="space-y-2">
@@ -268,7 +268,7 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
                     >
                       <Avatar className="w-12 h-12 flex-shrink-0" style={{ border: `1px solid rgba(130,219,126,0.2)` }}>
                         <AvatarImage src={u.avatar_url} />
-                        <AvatarFallback style={{ background: GREEN, color: '#fff', fontFamily: 'Inter, sans-serif', fontWeight: 700 }}>
+                        <AvatarFallback style={{ background: GREEN, color: '#fff', fontFamily: 'Figtree, sans-serif', fontWeight: 700 }}>
                           {u.name?.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
@@ -294,7 +294,7 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
             {/* Posts */}
             {!loading && posts.length > 0 && (
               <section>
-                <h3 className="mb-4 px-1 text-[0.6875rem] font-bold uppercase tracking-[0.2em]" style={{ color: 'var(--c-text-muted)', fontFamily: 'Inter, sans-serif' }}>
+                <h3 className="mb-4 px-1 text-[0.6875rem] font-bold uppercase tracking-[0.2em]" style={{ color: 'var(--c-text-muted)', fontFamily: 'Figtree, sans-serif' }}>
                   Top Posts
                 </h3>
                 <div className="space-y-2">
@@ -331,7 +331,7 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
             {/* Events */}
             {!loading && events.length > 0 && (
               <section>
-                <h3 className="mb-4 px-1 text-[0.6875rem] font-bold uppercase tracking-[0.2em]" style={{ color: 'var(--c-text-muted)', fontFamily: 'Inter, sans-serif' }}>
+                <h3 className="mb-4 px-1 text-[0.6875rem] font-bold uppercase tracking-[0.2em]" style={{ color: 'var(--c-text-muted)', fontFamily: 'Figtree, sans-serif' }}>
                   Upcoming Events
                 </h3>
                 <div className="space-y-2">
@@ -364,7 +364,7 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
             {/* Businesses */}
             {!loading && businesses.length > 0 && (
               <section>
-                <h3 className="mb-4 px-1 text-[0.6875rem] font-bold uppercase tracking-[0.2em]" style={{ color: 'var(--c-text-muted)', fontFamily: 'Inter, sans-serif' }}>
+                <h3 className="mb-4 px-1 text-[0.6875rem] font-bold uppercase tracking-[0.2em]" style={{ color: 'var(--c-text-muted)', fontFamily: 'Figtree, sans-serif' }}>
                   Local Businesses
                 </h3>
                 <div className="space-y-2">
@@ -404,7 +404,7 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
             {/* Marketplace items */}
             {!loading && items.length > 0 && (
               <section>
-                <h3 className="mb-4 px-1 text-[0.6875rem] font-bold uppercase tracking-[0.2em]" style={{ color: 'var(--c-text-muted)', fontFamily: 'Inter, sans-serif' }}>
+                <h3 className="mb-4 px-1 text-[0.6875rem] font-bold uppercase tracking-[0.2em]" style={{ color: 'var(--c-text-muted)', fontFamily: 'Figtree, sans-serif' }}>
                   Marketplace
                 </h3>
                 <div className="grid grid-cols-2 gap-3">
@@ -434,7 +434,7 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
 
             {/* Brand watermark */}
             <div className="flex justify-center py-6 opacity-[0.12] pointer-events-none">
-              <span style={{ fontFamily: 'Jersey 25, sans-serif', fontSize: 28, letterSpacing: '0.2em' }} className="text-primary-light">YRDLY</span>
+              <span style={{ fontFamily: "'Unbounded', sans-serif", fontWeight: 800, fontSize: 24, letterSpacing: '0.12em' }} className="text-primary-light">YRDLY</span>
             </div>
           </div>
         </div>
