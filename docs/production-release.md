@@ -39,26 +39,20 @@ Safe local evidence: `.qa-artifacts/release-yoiyqxtpmxnrrbqqidcs.json`,
 
 ## Shared-client compatibility blocks database lockdown
 
-Read-only mobile caller inspection confirmed:
-
-- `yrdly-mobile/src/lib/escrow-service.ts` inserts/updates financial transactions
-  directly. The new escrow guard rejects those writes.
-- `yrdly-mobile/src/app/events/scan.tsx` marks tickets USED directly. Scanning
-  needs the authenticated atomic server path before the final guards ship.
-- Mobile profile, feed, chat, notification and map callers read other users
-  directly from `users`. Own/admin-only profile reads require the matching safe
-  public-profile projection in those callers.
-- Mobile invokes the push function with a client session. The corrected push
-  function is backend-only; notification creation must use authorized server
-  paths. Private media renderers also need compatible signed URL handling.
+Mobile branch `fix/coordinated-release-oct-2026` now addresses the source
+compatibility gaps found in the initial inspection: server-only financial and
+notification mutations, atomic ticket scanning, public profile projections,
+authorized friend locations, server moderation and signed private chat/report
+media. It also aligns paid-price forms and bank/withdrawal interfaces with the
+Payluk-only server contracts. Local typecheck, contract tests and Android/iOS
+JavaScript bundle exports pass; 44 live profile/API contracts pass against QA.
+Full API CI, native UI/payment/device tests and distribution still need verification.
 
 Editing mobile source alone does not update installed clients. Establish the
 released mobile version/update mechanism, ship and verify compatible clients,
 and account for older installed versions before revoking shared database access.
-No mobile source was modified during this web release-preflight batch.
-The user has since explicitly authorized mobile updates for a coordinated
-release. Implement and test those changes on a separate mobile branch before
-the shared database lockdown; this removes the earlier mobile scope exclusion.
+The user has authorized mobile updates and the coordinated release. Technical
+compatibility and rollout checks remain release gates.
 
 Mobile's current `app.config.js` has no Expo Updates runtime/channel setup and
 `package.json` does not include `expo-updates`. An OTA rollout is therefore not

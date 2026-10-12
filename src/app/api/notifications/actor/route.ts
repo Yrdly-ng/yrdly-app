@@ -31,6 +31,11 @@ export async function POST(request: NextRequest) {
     title = sent ? 'New Friend Request' : body.type === 'friend_request_accepted' ? 'Friend Request Accepted' : 'Friend Request Declined';
     action = sent ? 'sent you a friend request.' : body.type === 'friend_request_accepted' ? 'accepted your friend request.' : 'declined your friend request.';
     relatedType = 'user';
+  } else if (body.type === 'new_follower') {
+    const { data: follow } = await supabaseAdmin.from('followers').select('id')
+      .eq('follower_id', user.id).eq('following_id', body.userId).maybeSingle();
+    authorized = !!follow && body.relatedId === user.id;
+    title = 'New Follower'; action = 'started following you.'; relatedType = 'user';
   } else if (['message', 'marketplace_message', 'catalog_item_inquiry'].includes(body.type)) {
     const { data: conversation } = await supabaseAdmin.from('conversations').select('participant_ids').eq('id', body.relatedId).maybeSingle();
     const { data: message } = await supabaseAdmin.from('messages').select('id').eq('conversation_id', body.relatedId).eq('sender_id', user.id).limit(1);

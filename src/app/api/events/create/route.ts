@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ success: true, eventId });
+    return NextResponse.json({ success: true, eventId, moderationStatus, status });
   } catch (err: any) {
     console.error('[events/create] Unexpected error:', err);
     return NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 });

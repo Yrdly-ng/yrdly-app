@@ -1,23 +1,48 @@
-# Release verification — 11 October 2026
+# Release verification — 12 October 2026
 
 This document supersedes older completion estimates. A passing mocked test is
 not evidence that a payment settled or that production has the matching code.
 
 ## Current verification checkpoint
 
-Latest passing CI is `5ed4207d` / run `38173709145`: 281 unit tests and
+Latest passing CI is `b41d1924` / run `38183773443`: 281 unit tests and
 13 browser scenarios, plus the database, OTP, push, API, smoke, build and static
 checks listed below. Signup/recovery request handoffs and Google authorization
 navigation use intercepted responses; they do not prove delivery or Google
 consent. Three recovery scenarios use real isolated-QA recovery sessions and
 password updates, verifying the new password works and the old one is rejected.
 Disposable recovery accounts are deleted after testing.
-Evidence: https://github.com/Yrdly-ng/yrdly-app/actions/runs/38173709145
+Evidence: https://github.com/Yrdly-ng/yrdly-app/actions/runs/38183773443
 
 Screenshot inspection found unreadable small text on fixed dark auth cards in
 the default light theme. The follow-up uses an explicit light foreground and
 adds rendered foreground/background contrast assertions (minimum 4.5:1).
-Its new browser results must pass before this UI change is considered verified.
+All 13 browser scenarios, including the rendered contrast checks, passed on b41d1924. Representative screenshots were inspected.
+
+
+Mobile coordination batch (local changes; CI publication pending):
+
+- Mobile TypeScript and lint pass (0 errors, 856 warnings; baseline recorded 877).
+- Twelve contract tests pass for authenticated transport, retry restrictions, SDK
+  configuration, price limits, private media references, withdrawal quotes and
+  server-verified booking checkout/receipt.
+- Android and iOS JavaScript bundle exports pass with placeholder public values
+  and dotenv loading disabled. Fresh CI will recompile the final booking receipt
+  changes. These are bundle checks, not installed native builds.
+- All 44 live mobile profile/query/API transport checks pass against isolated QA.
+  They caught and corrected ambiguous ticket-buyer joins and a missing legacy
+  post-attendee relation. See `qa-scripts/mobile-contract-regression.mjs`.
+- New source/test/workflow formatting passes. Repository-wide format checking
+  still reports 142 files; unrelated pre-existing formatting was not rewritten.
+- Full local API reruns encountered transient connection resets/TLS failures.
+  One earlier run was invalidated by the new suite's global QA logout; the new
+  suite now signs out only its own session. No incomplete run counts as a pass.
+  Fresh exact-commit CI is required before release.
+- Mobile bank/withdrawal screens use server balances and validated fee quotes;
+  pending payment outcomes route users to payout history/support. Booking payments
+  now use Payluk checkout and server verification. Regular safety-alert creation,
+  moderation and resolution use server authorization. No provider payout was
+  retried or initiated by this batch.
 
 The read-only production preflight still finds all 33 release contracts installed
 in QA and absent from production. See `docs/production-release.md`; passing QA
@@ -546,11 +571,10 @@ clean up these funded records as though they were unpaid fixtures.
   Include the additive OTP challenge migration before replacing both OTP
   functions. Remove retired provider environment entries only with the matching
   web release; the deployed production version has not been replaced.
-  Read-only inspection confirmed the current mobile source directly updates
-  `escrow_transactions` (`src/lib/escrow-service.ts:89`) and scans tickets using
-  direct `tickets` updates (`src/app/events/scan.tsx:111`). Those paths conflict
-  with the proposed server-only policies; matching mobile changes are required
-  before applying the restrictive migrations to the shared production backend.
+  The coordinated mobile branch now routes payment/status/scanning/notification
+  operations through the server, uses public profile projections and signs private
+  chat media. Local code changes are not an installed-client rollout. Native
+  device checks and distribution remain required before production lockdown.
 
 No claim of 100% release completion is made while these requirements remain.
 

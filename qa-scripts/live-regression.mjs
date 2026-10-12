@@ -11,7 +11,8 @@ const base = env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
 if (new URL(base).hostname !== 'localhost') throw new Error('Live regression only targets localhost');
 const actors = {};
 const results = [];
-const ids = { event: randomUUID(), tier: randomUUID(), post: randomUUID(), conversation: randomUUID(), message: randomUUID() };
+const createdNotifications = [];
+const ids = { event: randomUUID(), tier: randomUUID(), post: randomUUID(), conversation: randomUUID(), message: randomUUID(), alert: randomUUID(), follow: randomUUID() };
 const ok = (r) => { if (r.error) throw new Error(`Database operation failed (${r.error.code || 'unknown'})`); return r.data; };
 const denied = r => assert.ok(r.error || !r.data?.length, 'Unauthorized operation changed a row');
 async function check(name, run) {
@@ -51,6 +52,19 @@ try {
   await check('ordinary user blocked from notification forgery RPC', async () => { const r = await buyer.rpc('create_notification', { p_user_id: seed.users.seller, p_type: 'message', p_title: 'QA', p_message: 'QA' }); assert.equal(r.error?.code, '42501'); });
   await check('unauthenticated ticket checkout denied', async () => assert.equal((await api(null, '/api/events/tickets/purchase')).status, 401));
   await check('unauthenticated ticket scan denied', async () => assert.equal((await api(null, '/api/events/checkin')).status, 401));
+  await check('anonymous cannot invoke mobile text review', async () => assert.equal((await api(null, '/api/moderation/check', { type: 'text', content: 'QA' })).status, 401));
+  for (const input of [{ type: 'image', content: 'https://outside.invalid/image' }, { type: 'text', content: 'x'.repeat(10001) }, { type: 'text', content: '' }]) {
+    await check(`mobile text review rejects invalid input: ${input.type}/${input.content.length}`, async () => assert.equal((await api('buyer', '/api/moderation/check', input)).status, 400));
+  }
+  await check('mobile text review enforces the durable per-user limit before provider calls', async () => {
+    const key = { user_id: seed.users.non_admin, endpoint: '/api/moderation/check' };
+    try {
+      ok(await admin.from('rate_limits').upsert({ ...key, request_count: 10, window_start: new Date().toISOString() }, { onConflict: 'user_id,endpoint' }));
+      assert.equal((await api('non_admin', '/api/moderation/check', { type: 'text', content: 'YRDLY-QA limit check' })).status, 429);
+    } finally {
+      ok(await admin.from('rate_limits').delete().eq('user_id', key.user_id).eq('endpoint', key.endpoint));
+    }
+  });
   for (const quantity of ['not-a-number', 0, -1, 1.5, true, null, 6]) {
     await check(`ticket checkout rejects invalid quantity: ${JSON.stringify(quantity)}`, async () => assert.equal((await api('buyer', '/api/events/tickets/purchase', {
       event_id: seed.events.free, tier_id: seed.ticketTiers.free, attendee_name: 'YRDLY-QA Validation', attendee_email: env.QA_BUYER_EMAIL, quantity,
@@ -69,7 +83,7 @@ try {
     for (const r of await Promise.all([buyer.rpc('toggle_post_like', { p_post_id: ids.post, p_user_id: seed.users.buyer }), seller.rpc('toggle_post_like', { p_post_id: ids.post, p_user_id: seed.users.seller })])) ok(r);
     const row = ok(await admin.from('posts').select('liked_by').eq('id', ids.post).single()); assert.equal(row.liked_by.length, 2); assert.equal(new Set(row.liked_by).size, 2);
   });
-  ok(await admin.from('conversations').insert({ id: ids.conversation, participant_ids: [seed.users.buyer, seed.users.seller], type: 'friend', created_by: seed.users.buyer }));
+  await check('mobile participant can create a conversation before uploading media', async () => ok(await buyer.from('conversations').insert({ id: ids.conversation, participant_ids: [seed.users.buyer, seed.users.seller], type: 'marketplace', created_by: seed.users.buyer })));
   await check('chat participant can send a message', async () => ok(await buyer.from('messages').insert({ id: ids.message, conversation_id: ids.conversation, sender_id: seed.users.buyer, text: 'YRDLY-QA message' })));
   await check('chat outsider cannot read messages', async () => assert.equal(ok(await actors.non_admin.client.from('messages').select('id').eq('conversation_id', ids.conversation)).length, 0));
   await check('chat outsider cannot send a message', async () => assert.ok((await actors.non_admin.client.from('messages').insert({ conversation_id: ids.conversation, sender_id: seed.users.non_admin, text: 'QA forged' })).error));
@@ -84,6 +98,32 @@ try {
   await check('chat recipient can sign private image', async () => assert.ok(ok(await seller.storage.from('chat-images').createSignedUrl(mediaPath, 60)).signedUrl));
   await check('chat outsider cannot sign private image', async () => assert.ok((await actors.non_admin.client.storage.from('chat-images').createSignedUrl(mediaPath, 60)).error));
   await check('chat image cannot be fetched from public endpoint', async () => { const r = await fetch(buyer.storage.from('chat-images').getPublicUrl(mediaPath).data.publicUrl); assert.notEqual(r.status, 200); });
+  await check('chat recipient can batch sign native attachment references', async () => {
+    const signed = ok(await seller.storage.from('chat-images').createSignedUrls([mediaPath], 600));
+    assert.ok(signed[0].signedUrl && !signed[0].error);
+  });
+  await check('mobile follower notification requires a persisted follow', async () => {
+    const existing = ok(await admin.from('followers').select('id').eq('follower_id', seed.users.non_admin).eq('following_id', seed.users.seller).maybeSingle());
+    if (!existing) ok(await actors.non_admin.client.from('followers').insert({ id: ids.follow, follower_id: seed.users.non_admin, following_id: seed.users.seller }));
+    const action = { type: 'new_follower', userId: seed.users.seller, relatedId: seed.users.non_admin };
+    const previous = new Set(ok(await admin.from('notifications').select('id').eq('user_id', seed.users.seller).eq('type', 'new_follower').eq('sender_id', seed.users.non_admin)).map(row => row.id));
+    const notification = await api('non_admin', '/api/notifications/actor', action);
+    assert.equal(notification.status, 200);
+    if (!previous.has(notification.body.id)) createdNotifications.push(notification.body.id);
+    assert.equal((await api('non_admin', '/api/notifications/actor', { ...action, relatedId: seed.users.buyer })).status, 403);
+  });
+  ok(await admin.from('safety_alerts').insert({ id: ids.alert, user_id: seed.users.buyer, title: 'YRDLY-QA Mobile alert', description: 'YRDLY-QA authorization fixture', area_name: 'YRDLY-QA Test area', severity: 'information', type: 'info', status: 'pending' }));
+  await check('ordinary mobile user cannot moderate or resolve safety alerts', async () => {
+    for (const action of [{ status: 'approved' }, { action: 'resolve' }]) assert.equal((await api('buyer', '/api/safety-alerts', { id: ids.alert, ...action }, 'PATCH')).status, 403);
+  });
+  await check('mobile admin cannot resolve an unpublished alert', async () => assert.equal((await api('admin', '/api/safety-alerts', { id: ids.alert, action: 'resolve' }, 'PATCH')).status, 409));
+  await check('mobile admin can approve then resolve an alert through the server', async () => {
+    assert.equal((await api('admin', '/api/safety-alerts', { id: ids.alert, status: 'approved' }, 'PATCH')).status, 200);
+    assert.equal((await api('admin', '/api/safety-alerts', { id: ids.alert, action: 'resolve' }, 'PATCH')).status, 200);
+    const row = ok(await admin.from('safety_alerts').select('status,is_resolved,resolved_at').eq('id', ids.alert).single());
+    assert.equal(row.status, 'approved'); assert.equal(row.is_resolved, true); assert.ok(row.resolved_at);
+  });
+  await check('mobile admin can reject an alert through the server', async () => assert.equal((await api('admin', '/api/safety-alerts', { id: ids.alert, status: 'rejected' }, 'PATCH')).status, 200));
   const order = { event_id: ids.event, tier_id: ids.tier, attendee_name: 'YRDLY-QA Runtime', attendee_email: env.QA_BUYER_EMAIL, quantity: 1 };
   await check('free ticket purchase succeeds', async () => { const r = await api('buyer', '/api/events/tickets/purchase', order); assert.equal(r.status, 200); });
   const ticket = ok(await admin.from('tickets').select('*').eq('event_id', ids.event).eq('buyer_id', seed.users.buyer).single());
@@ -91,14 +131,18 @@ try {
   await check('two simultaneous organiser scans admit exactly once', async () => { const responses = await Promise.all([api('organizer', '/api/events/checkin', { event_id: ids.event, ticket_code: ticket.ticket_code }), api('organizer', '/api/events/checkin', { event_id: ids.event, ticket_code: ticket.ticket_code })]); assert.equal(responses.filter(r => r.status === 200 && r.body.valid).length, 1); assert.equal(responses.filter(r => r.status === 409).length, 1); });
   await check('last free ticket cannot be oversold by concurrent buyers', async () => { const responses = await Promise.all([api('seller', '/api/events/tickets/purchase', order), api('non_admin', '/api/events/tickets/purchase', order)]); assert.equal(responses.filter(r => r.status === 200).length, 1); assert.equal(responses.filter(r => r.status === 409).length, 1); assert.equal(ok(await admin.from('ticket_tiers').select('sold').eq('id', ids.tier).single()).sold, 2); });
   await check('event attendee count matches issued live tickets', async () => assert.equal(ok(await admin.from('events').select('attendee_count').eq('id', ids.event).single()).attendee_count, 2));
-  await admin.storage.from('chat-images').remove([mediaPath]);
+} catch (error) {
+  results.push({ name: 'suite completed without fixture errors', passed: false,
+    reason: error instanceof Error ? error.message.replace(/https?:\/\/\S+/g, '[URL]') : 'QA fixture failure' });
 } finally {
-  for (const [table, column, id] of [['tickets', 'event_id', ids.event], ['ticket_tiers', 'event_id', ids.event], ['events', 'id', ids.event], ['messages', 'conversation_id', ids.conversation], ['conversations', 'id', ids.conversation], ['posts', 'id', ids.post]]) {
+  const mediaCleanup = await admin.storage.from('chat-images').remove([`chat/${ids.conversation}/${seed.users.buyer}-qa.png`]);
+  if (mediaCleanup.error) results.push({ name: 'cleanup private chat fixture', passed: false, reason: 'Storage cleanup failed' });
+  for (const [table, column, id] of [['tickets', 'event_id', ids.event], ['ticket_tiers', 'event_id', ids.event], ['events', 'id', ids.event], ['messages', 'conversation_id', ids.conversation], ['conversations', 'id', ids.conversation], ['posts', 'id', ids.post], ['safety_alerts', 'id', ids.alert], ['followers', 'id', ids.follow], ...createdNotifications.map(id => ['notifications', 'id', id])]) {
     const r = await admin.from(table).delete().eq(column, id);
     if (r.error) results.push({ name: `cleanup ${table}`, passed: false, reason: r.error.code });
   }
   await mkdir(`${ROOT}/.qa-artifacts`, { recursive: true });
-  await writeFile(`${ROOT}/.qa-artifacts/live-regression.json`, JSON.stringify({ projectRef, checkedAt: new Date().toISOString(), results }, null, 2));
+  await writeFile(`${ROOT}/.qa-artifacts/live-regression.json`, JSON.stringify({ projectRef, checkedAt: new Date().toISOString(), fixtures: ids, results }, null, 2));
   const failed = results.filter(r => !r.passed);
   console.log(`Live regression: ${results.length - failed.length}/${results.length} passed`);
   if (failed.length) process.exitCode = 1;

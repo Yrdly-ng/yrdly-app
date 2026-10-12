@@ -26,7 +26,16 @@ export async function PATCH(request: NextRequest) {
   const { data: admin } = await supabaseAdmin.from('users').select('is_admin').eq('id', user.id).single();
   if (!admin?.is_admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const body = await request.json().catch(() => null);
-  if (!body?.id || !['approved', 'rejected'].includes(body.status)) return NextResponse.json({ error: 'Invalid moderation action' }, { status: 400 });
+  if (typeof body?.id !== 'string' || !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(body.id) ||
+      (body.action !== 'resolve' && !['approved', 'rejected'].includes(body.status))) return NextResponse.json({ error: 'Invalid moderation action' }, { status: 400 });
+  if (body.action === 'resolve') {
+    const { data, error: resolveError } = await supabaseAdmin.from('safety_alerts')
+      .update({ is_resolved: true, resolved_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .eq('id', body.id).eq('status', 'approved').select('id').maybeSingle();
+    if (resolveError) return NextResponse.json({ error: 'Could not resolve alert' }, { status: 500 });
+    if (!data) return NextResponse.json({ error: 'Only approved alerts can be resolved' }, { status: 409 });
+    return NextResponse.json({ success: true });
+  }
   const { error: updateError } = await supabaseAdmin.from('safety_alerts')
     .update({ status: body.status, reviewed_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', body.id);
   return updateError ? NextResponse.json({ error: 'Could not moderate alert' }, { status: 500 }) : NextResponse.json({ success: true });
