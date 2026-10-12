@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-supabase-auth';
 import { supabase } from '@/lib/supabase';
@@ -36,7 +36,9 @@ export function BusinessHub({ searchQuery = '' }: { searchQuery?: string }) {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [localSearch, setLocalSearch] = useState(searchQuery);
 
+  const latestFetch = useRef(0);
   const fetchBusinesses = useCallback(async () => {
+    const request = ++latestFetch.current;
     setLoading(true);
     try {
       let q = supabase
@@ -47,16 +49,24 @@ export function BusinessHub({ searchQuery = '' }: { searchQuery?: string }) {
 
       const { data, error } = await q;
       if (error) throw error;
-      setBusinesses((data as Business[]) || []);
+      if (request === latestFetch.current) setBusinesses((data as Business[]) || []);
     } catch (e) {
       console.error('Error fetching businesses:', e);
+      if (request === latestFetch.current) setBusinesses([]);
     } finally {
-      setLoading(false);
+      if (request === latestFetch.current) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     fetchBusinesses();
+  }, [fetchBusinesses]);
+
+  useEffect(() => {
+    const channel = supabase.channel('business-hub-updates').on('postgres_changes',
+      { event: '*', schema: 'public', table: 'businesses' }, () => { void fetchBusinesses(); }).subscribe();
+    window.addEventListener('focus', fetchBusinesses);
+    return () => { void supabase.removeChannel(channel); window.removeEventListener('focus', fetchBusinesses); };
   }, [fetchBusinesses]);
 
   const categories = Array.from(

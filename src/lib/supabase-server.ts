@@ -1,3 +1,4 @@
+import { brandedSupabaseUrl } from './supabase-url';
 import { authCookieDomain } from './auth-navigation';
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { createClient as createJsClient } from "@supabase/supabase-js";
@@ -12,7 +13,7 @@ export async function createClient() {
   const cookieDomain = authCookieDomain(host);
 
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    brandedSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL!),
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookieOptions: {
@@ -52,7 +53,7 @@ export async function getAuthenticatedUser(request?: Request) {
     if (authHeader?.startsWith("Bearer ")) {
       const token = authHeader.replace("Bearer ", "");
       const supabaseAuth = createJsClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        brandedSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL!),
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         {
           global: { headers: { Authorization: `Bearer ${token}` } },

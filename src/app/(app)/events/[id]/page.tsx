@@ -220,7 +220,7 @@ export default function EventDetailPage() {
   return (
     <div className="min-h-[100dvh] bg-[var(--yrdly-dark)] text-[var(--yrdly-text-primary)] font-yrdly-body pb-24">
       {/* Hero Carousel */}
-      <div className="relative w-full aspect-[16/7] max-h-[420px] bg-card overflow-hidden">
+      <div className="relative mx-auto w-full max-w-6xl aspect-[4/3] sm:aspect-[16/7] max-h-[420px] sm:rounded-3xl bg-card overflow-hidden">
         {eventImages.length > 0 ? (
           <>
             {/* Images — touch-swipeable strip */}
@@ -327,7 +327,8 @@ export default function EventDetailPage() {
         />
       )}
 
-      <div className="max-w-2xl mx-auto px-4 pt-6 space-y-6">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-8 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)] gap-8 lg:gap-12">
+        <div className="min-w-0 space-y-6">
         {/* Title & category */}
         <div>
           <Badge className="bg-primary/20 text-[#4CAF50] border-primary/30 text-xs font-sans mb-3">
@@ -408,13 +409,14 @@ export default function EventDetailPage() {
         {event.description && (
           <div>
             <h2 className="font-sans font-bold text-base text-foreground mb-2">About this Event</h2>
-            <p className="font-sans text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{event.description}</p>
+            <p className="font-sans text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap break-words">{event.description}</p>
           </div>
         )}
 
+        </div>
         {/* Ticket Tiers */}
         {!isCancelled && tiers.length > 0 && (
-          <div>
+          <aside className="min-w-0 rounded-3xl bg-muted/40 p-4 sm:p-6 self-start lg:sticky lg:top-6">
             <h2 className="font-sans font-bold text-base text-foreground mb-3">Tickets</h2>
             <div className="space-y-3">
               {tiers.filter(t => t.is_visible).map((tier) => {
@@ -424,12 +426,12 @@ export default function EventDetailPage() {
                 return (
                   <div
                     key={tier.id}
-                    className="rounded-2xl border border-border bg-card p-4 flex items-center justify-between gap-4"
+                    className="rounded-2xl bg-card p-4 flex flex-col gap-4 shadow-sm"
                   >
                     <div className="flex-1 min-w-0">
                       <p className="font-sans font-bold text-sm text-foreground">{tier.name}</p>
                       {tier.description && (
-                        <p className="font-sans text-xs text-muted-foreground mt-0.5 truncate">{tier.description}</p>
+                        <p className="font-sans text-xs text-muted-foreground mt-0.5 break-words">{tier.description}</p>
                       )}
                       {isLimited && (
                         <p className="font-sans text-xs font-semibold text-amber-500 mt-1 flex items-center gap-1">
@@ -442,7 +444,7 @@ export default function EventDetailPage() {
                         </p>
                       )}
                     </div>
-                    <div className="flex items-center gap-3 flex-shrink-0">
+                    <div className="flex w-full flex-wrap items-center justify-between gap-3">
                       <span className="font-sans font-bold text-[#4CAF50] text-base">
                         {formatPrice(tier.price)}
                       </span>
@@ -460,7 +462,7 @@ export default function EventDetailPage() {
                 );
               })}
             </div>
-          </div>
+          </aside>
         )}
       </div>
 

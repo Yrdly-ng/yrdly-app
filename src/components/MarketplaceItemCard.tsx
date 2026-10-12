@@ -8,12 +8,6 @@ import {
   MessageCircle,
   ShoppingBag,
   MapPin,
-  Tag,
-  Sparkles,
-  TrendingDown,
-  Gift,
-  Star,
-  CheckCircle2,
 } from "lucide-react";
 import type { Post } from "@/types";
 import { formatPrice } from "@/lib/utils";
@@ -40,13 +34,6 @@ function getBadge(item: Post): BadgeType | null {
   if ((item as any).price_reduced) return "Price Reduced";
   return null;
 }
-
-const BADGE_COLORS: Record<BadgeType, { bg: string; text: string }> = {
-  "Just Listed": { bg: "rgba(130,219,126,0.2)", text: "#82DB7E" },
-  Popular: { bg: "rgba(245,158,11,0.2)", text: "#F59E0B" },
-  "Price Reduced": { bg: "rgba(139,92,246,0.2)", text: "#8B5CF6" },
-  Free: { bg: "rgba(34,197,94,0.2)", text: "#22c55e" },
-};
 
 export function MarketplaceItemCard({
   item,
@@ -117,7 +104,7 @@ export function MarketplaceItemCard({
   return (
     <GlassCard
       onClick={handleCardClick}
-      className="group cursor-pointer overflow-hidden rounded-2xl transition-all duration-200 hover:-translate-y-1 hover:shadow-xl w-full flex flex-col justify-between"
+      className="group cursor-pointer overflow-hidden rounded-2xl transition-all duration-200 hover:shadow-md w-full flex flex-col justify-between"
     >
       <div>
         {/* Product Image Header */}
@@ -127,6 +114,7 @@ export function MarketplaceItemCard({
               src={imageUrl}
               alt={item.title || item.text || "Marketplace Item"}
               fill
+              sizes="(max-width: 640px) 50vw, 280px"
               className="object-cover transition-transform duration-300 group-hover:scale-105"
             />
           ) : (
@@ -135,9 +123,28 @@ export function MarketplaceItemCard({
             </div>
           )}
 
-          {/* Seller Avatar Badge Overlay */}
-          <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-background/80 backdrop-blur-md p-1 pr-2.5 shadow-md border border-border/50">
-            <div className="relative h-6 w-6 rounded-full overflow-hidden bg-primary/20 flex items-center justify-center">
+          {/* Bookmark Button */}
+          <button
+            aria-label={saved ? "Unsave item" : "Save item"}
+            aria-pressed={saved}
+            onClick={toggleSaved}
+            className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-background/70 backdrop-blur-md transition-all hover:bg-background/90 active:scale-95 shadow-sm"
+          >
+            <Heart className={`h-4 w-4 ${saved ? "fill-red-500 text-red-500" : "text-foreground"}`} />
+          </button>
+
+        </div>
+
+        {/* Content Body */}
+        <div className="p-4 space-y-2.5">
+          <h4 className="line-clamp-2 min-h-10 text-sm font-bold text-foreground group-hover:text-primary transition-colors">
+            {item.title || item.text || "Item"}
+          </h4>
+
+          <p className="break-words text-base sm:text-lg font-bold tracking-tight text-foreground">{item.price === 0 ? "Free" : formatPrice(item.price)}</p>
+          {/* Seller information */}
+          <div className="flex min-w-0 items-center gap-2 text-muted-foreground">
+            <div className="relative h-6 w-6 shrink-0 rounded-full overflow-hidden bg-primary/20 flex items-center justify-center">
               {sellerAvatar ? (
                 <Image src={sellerAvatar} alt={sellerName} fill className="object-cover" />
               ) : (
@@ -146,49 +153,16 @@ export function MarketplaceItemCard({
                 </span>
               )}
             </div>
-            <span className="text-[0.6875rem] font-semibold text-foreground max-w-[80px] truncate">
+            <span className="text-[0.6875rem] font-semibold text-foreground min-w-0 truncate">
               {sellerName}
             </span>
             {isVerifiedSeller && <VerifiedBadge size={14} />}
           </div>
 
-          {/* Bookmark Button */}
-          <button
-            onClick={toggleSaved}
-            className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-background/70 backdrop-blur-md transition-all hover:bg-background/90 active:scale-95 shadow-sm"
-          >
-            <Heart className={`h-4 w-4 ${saved ? "fill-red-500 text-red-500" : "text-foreground"}`} />
-          </button>
-
-          {/* Badge Tag */}
-          {badge && (
-            <div
-              className="absolute bottom-2.5 left-3 rounded-full px-2.5 py-0.5 text-[0.625rem] font-bold backdrop-blur-md shadow-sm"
-              style={{ backgroundColor: BADGE_COLORS[badge].bg, color: BADGE_COLORS[badge].text }}
-            >
-              {badge}
-            </div>
-          )}
-
-          {/* Price Tag Overlay */}
-          <div className="absolute bottom-2.5 right-3 rounded-full bg-primary px-3 py-1 text-xs font-extrabold text-primary-foreground shadow-lg">
-            {item.price === 0 ? "Free" : formatPrice(item.price)}
+          <div className="flex flex-wrap gap-x-2 text-xs text-muted-foreground">
+            {(item as any).item_condition && <span>{(item as any).item_condition}</span>}
+            {badge && <span>{badge}</span>}
           </div>
-        </div>
-
-        {/* Content Body */}
-        <div className="p-3.5 space-y-2">
-          <h4 className="line-clamp-1 text-sm font-bold text-foreground group-hover:text-primary transition-colors">
-            {item.title || item.text || "Item"}
-          </h4>
-
-          {(item as any).item_condition && (
-            <div className="inline-flex items-center gap-1 rounded-md bg-muted/60 px-2 py-0.5 text-[0.625rem] font-medium text-muted-foreground">
-              <Tag className="h-3 w-3" />
-              <span>{(item as any).item_condition}</span>
-            </div>
-          )}
-
           {!!locationText && (
             <div className="flex items-center gap-1 text-[0.6875rem] text-muted-foreground">
               <MapPin className="h-3 w-3 flex-shrink-0 text-primary" />
@@ -199,7 +173,7 @@ export function MarketplaceItemCard({
       </div>
 
       {/* Action Footer */}
-      {!isOwner && (
+      {!isOwner && !item.is_sold && (
         <div className="p-3.5 pt-0">
           <button
             onClick={handleMessage}

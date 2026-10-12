@@ -566,10 +566,10 @@ function OnboardingProfileContent() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-xs font-semibold text-white/70 tracking-wider uppercase">
-                    SHORT BIO
+                    BIO
                   </label>
                   <textarea
-                    placeholder="Tell your neighbours a bit about yourself..."
+                    placeholder="Bio"
                     value={bio}
                     onChange={(e) => setBio(e.target.value)}
                     rows={3}

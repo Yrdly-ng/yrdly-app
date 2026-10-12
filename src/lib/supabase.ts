@@ -1,8 +1,9 @@
+import { brandedSupabaseUrl } from './supabase-url';
 import { authCookieDomain } from './auth-navigation';
 import { createBrowserClient } from '@supabase/ssr';
 
 // Supabase configuration
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
+const supabaseUrl = brandedSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co');
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder';
 
 const cookieDomain = authCookieDomain(typeof window !== 'undefined' ? window.location.hostname : '');

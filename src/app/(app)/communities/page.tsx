@@ -1,11 +1,23 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
+import { useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
 import { UsersThree, MagnifyingGlass, Lock, ArrowRight, SpinnerGap, Plus, ShieldCheck } from "@phosphor-icons/react";
 import { CommunityService, Community } from "@/lib/community-service";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { cn } from "@/lib/utils";
+
+function CommunitySubmitButton({ saving, awaitingApproval }: { saving: boolean; awaitingApproval: boolean }) {
+  const { pending } = useFormStatus();
+  const submitting = saving || pending;
+
+  return (
+    <button disabled={submitting || awaitingApproval} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">
+      {submitting ? "Submitting…" : awaitingApproval ? "Awaiting approval" : "Send for review"}
+    </button>
+  );
+}
 
 export default function CommunitiesPage() {
   const router = useRouter();
@@ -17,6 +29,10 @@ export default function CommunitiesPage() {
   const [submissions, setSubmissions] = useState<Community[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const submissionInFlight = useRef(false);
+  const [name, setName] = useState("");
+  const [pendingNames, setPendingNames] = useState<string[]>([]);
+  const awaitingApproval = pendingNames.includes(name.trim().replace(/\s+/g, ' ').toLowerCase());
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -41,14 +57,16 @@ export default function CommunitiesPage() {
   const load = useCallback(async () => {
     setLoading(true);
     const userState = (profile as any)?.home_state;
-    const [mine, disc, submitted] = await Promise.all([
+    const [mine, disc, submitted, names] = await Promise.all([
       CommunityService.listMyCommunities().catch(() => []),
       CommunityService.discoverCommunities({ state: userState }).catch(() => []),
       user ? CommunityService.listMyCommunitySubmissions(user.id).catch(() => []) : Promise.resolve([]),
+      user ? CommunityService.pendingSubmissionNames(user.id).catch(() => []) : Promise.resolve([]),
     ]);
     setMyComms(mine);
     setDiscovered(disc);
     setSubmissions(submitted);
+    setPendingNames(names);
     setLoading(false);
   }, [profile, user]);
 
@@ -63,7 +81,8 @@ export default function CommunitiesPage() {
   const list = tab === "mine" ? myComms : discovered;
 
   const submitCommunity = async (formData: FormData) => {
-    if (!user) return;
+    if (!user || submissionInFlight.current || awaitingApproval) return;
+    submissionInFlight.current = true;
     setSaving(true);
     setFormError("");
     try {
@@ -71,17 +90,19 @@ export default function CommunitiesPage() {
         createdBy: user.id,
         name: String(formData.get("name") || ""),
         description: String(formData.get("description") || ""),
-        avatarFile: formData.get("avatarImage") instanceof File ? formData.get("avatarImage") as File : null,
-        bannerFile: formData.get("bannerImage") instanceof File ? formData.get("bannerImage") as File : null,
+        avatarFile: avatarFile?.size ? avatarFile : null,
+        bannerFile: bannerFile?.size ? bannerFile : null,
         privacy: String(formData.get("privacy") || "open") as "open" | "request" | "invite",
       });
       setShowCreate(false);
+      setName("");
       setAvatarFile(null);
       setBannerFile(null);
       await load();
     } catch (error: any) {
       setFormError(error.message || "Could not submit this community.");
     } finally {
+      submissionInFlight.current = false;
       setSaving(false);
     }
   };
@@ -108,6 +129,7 @@ export default function CommunitiesPage() {
         <button onClick={() => router.push("/community-review")} className="mb-4 rounded-lg border border-border px-3 py-2 text-xs font-medium text-muted-foreground">Review community submissions</button>
       ) : null}
 
+      {!showCreate && formError && <p role="alert" className="mb-4 text-sm text-red-500">{formError}</p>}
       {submissions.length > 0 && (
         <div className="mb-5 rounded-xl border border-border bg-card p-4">
           <h2 className="text-sm font-semibold text-foreground mb-2">Your submissions</h2>
@@ -118,6 +140,13 @@ export default function CommunitiesPage() {
                 <span className={cn("shrink-0 text-xs font-medium", submission.approval_status === "pending" ? "text-amber-500" : "text-red-500")}>
                   {submission.approval_status === "pending" ? "Awaiting review" : "Rejected"}
                 </span>
+                <button type="button" className="rounded-lg px-2 py-1 text-xs text-primary focus-visible:ring-2 focus-visible:ring-primary" aria-label={`Dismiss ${submission.name}`} onClick={async () => {
+                  if (!user) return;
+                  try {
+                    await CommunityService.dismissCommunitySubmission(submission.id, user.id);
+                    setSubmissions(current => current.filter(row => row.id !== submission.id));
+                  } catch { setFormError("Could not dismiss the submission. Please try again."); }
+                }}>Dismiss</button>
                 {submission.approval_status === "rejected" && submission.rejection_reason && <span className="basis-full text-xs text-muted-foreground">{submission.rejection_reason}</span>}
               </div>
             ))}
@@ -132,13 +161,13 @@ export default function CommunitiesPage() {
               <h2 className="text-lg font-bold text-foreground">Create a community</h2>
               <p className="mt-1 text-sm text-muted-foreground">Our moderators review the name, description, and images before it appears.</p>
             </div>
-            <label className="block text-sm text-foreground">Name<input name="name" required maxLength={60} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2" /></label>
+            <label className="block text-sm text-foreground">Name<input name="name" value={name} onChange={event => setName(event.target.value)} required maxLength={60} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2" /></label>
             <label className="block text-sm text-foreground">Description<textarea name="description" required maxLength={500} rows={3} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2" /></label>
             <label className="block text-sm text-foreground">Profile image <span className="text-xs text-muted-foreground">(optional, up to 10 MB)</span><div className="mt-2 flex items-center gap-3 rounded-xl border border-dashed border-border p-3">{avatarPreview ? <img src={avatarPreview} alt="Profile image preview" className="h-14 w-14 rounded-full object-cover" /> : <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted text-xs text-muted-foreground">Logo</div>}<input name="avatarImage" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" onChange={(event) => setAvatarFile(event.target.files?.[0] ?? null)} className="min-w-0 flex-1 text-xs text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-primary" /></div></label>
             <label className="block text-sm text-foreground">Banner image <span className="text-xs text-muted-foreground">(optional, up to 10 MB)</span><div className="mt-2 flex items-center gap-3 rounded-xl border border-dashed border-border p-3">{bannerPreview ? <img src={bannerPreview} alt="Banner image preview" className="h-14 w-24 rounded-lg object-cover" /> : <div className="flex h-14 w-24 items-center justify-center rounded-lg bg-muted text-xs text-muted-foreground">Banner</div>}<input name="bannerImage" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" onChange={(event) => setBannerFile(event.target.files?.[0] ?? null)} className="min-w-0 flex-1 text-xs text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-primary" /></div></label>
             <label className="block text-sm text-foreground">Who can join?<select name="privacy" className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2"><option value="open">Anyone</option><option value="request">By request</option><option value="invite">Invite only</option></select></label>
             {formError && <p className="text-sm text-red-500">{formError}</p>}
-            <div className="flex justify-end gap-2"><button type="button" onClick={() => setShowCreate(false)} className="rounded-lg px-4 py-2 text-sm text-muted-foreground">Cancel</button><button disabled={saving} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">{saving ? "Submitting…" : "Send for review"}</button></div>
+            <div className="flex justify-end gap-2"><button type="button" onClick={() => setShowCreate(false)} className="rounded-lg px-4 py-2 text-sm text-muted-foreground">Cancel</button><CommunitySubmitButton saving={saving} awaitingApproval={awaitingApproval} /></div>
           </form>
         </div>
       )}

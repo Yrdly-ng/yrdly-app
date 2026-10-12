@@ -708,7 +708,7 @@ export function CommentSection({
         return (
             <div
                 className="flex flex-col w-full h-full overflow-hidden relative"
-                style={{ background: BG, border: '0.2px solid var(--c-border)' }}
+                style={{ background: BG }}
             >
                 {/* Post preview block */}
                 {!hidePostPreview && post && author && (

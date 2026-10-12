@@ -66,6 +66,10 @@ jobs:
           done
           node qa-scripts/live-regression.mjs
       - run: pnpm exec playwright install --with-deps chromium
+      - name: Check responsive UI and community submissions
+        run: node qa-scripts/ui-bug-regression.cjs
+        env:
+          QA_UI_OUTPUT: .qa-artifacts/ui-screenshots
       - run: pnpm exec playwright test --config=playwright.qa.config.ts
       - run: pnpm test:e2e:smoke
       - name: Upload safe QA evidence
@@ -75,6 +79,7 @@ jobs:
           name: qa-evidence
           path: |
             .qa-artifacts/screenshots/
+            .qa-artifacts/ui-screenshots/
             .qa-artifacts/live-regression.json
             .qa-artifacts/community-privileges-regression.json
             .qa-artifacts/password-security-regression.json

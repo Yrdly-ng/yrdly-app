@@ -1,4 +1,5 @@
 "use client";
+import { ProfilePicture } from "@/components/ProfilePicture";
 
 import { useState, useEffect, useCallback, useMemo, useRef as reactUseRef } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -123,7 +124,6 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
   const [activeTab, setActiveTab] = useState("posts");
   const [showFriendsList, setShowFriendsList] = useState(false);
   const [showRemoveFriendDialog, setShowRemoveFriendDialog] = useState(false);
-  const [showAvatarPreview, setShowAvatarPreview] = useState(false);
   const [stats, setStats] = useState({ friends: 0, events: 0, followers: 0, following: 0 });
   const hasTriggeredViewRef = reactUseRef<boolean>(false);
 
@@ -201,12 +201,12 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
         }));
 
       const extractedBusinesses = (businessRes.data || [])
-        .filter((item: any) => item.businesses != null)
+        .filter((item: any) => item.businesses?.is_active === true)
         .map((item: any) => ({
           id: item.businesses.id,
           text: item.businesses.name,
           title: item.businesses.name,
-          image_urls: item.businesses.logo || item.businesses.cover_image || item.businesses.image_urls?.[0] ? [item.businesses.logo || item.businesses.cover_image || item.businesses.image_urls?.[0]] : [],
+          image_urls: item.businesses.logo_url || item.businesses.logo || item.businesses.cover_image || item.businesses.image_urls?.[0] ? [item.businesses.logo_url || item.businesses.logo || item.businesses.cover_image || item.businesses.image_urls?.[0]] : [],
           category: 'Business',
           event_link: `/businesses/${item.businesses.id}`,
           bookmark_created_at: item.created_at,
@@ -396,12 +396,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
             {/* Avatar with Camera Icon Overlay */}
             <div className="relative flex-shrink-0">
               <div className="w-20 h-20 lg:w-28 lg:h-28 rounded-full overflow-hidden border-2 border-primary/30 bg-[var(--yrdly-glass-bg)] transition-all">
-                <Avatar className="w-full h-full">
-                  <AvatarImage src={avatarUrl || "/placeholder.svg"} className="object-cover" />
-                  <AvatarFallback style={{ background: GREEN, color: "#000", fontSize: 24 }} className="font-yrdly-display font-extrabold">
-                    {name.charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
+                <ProfilePicture src={avatarUrl} name={name} className="w-20 h-20 lg:w-28 lg:h-28" />
               </div>
               {actualIsOwnProfile && (
                 <button

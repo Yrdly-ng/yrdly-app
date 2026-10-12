@@ -5,7 +5,31 @@ not evidence that a payment settled or that production has the matching code.
 
 ## Current verification checkpoint
 
-Latest passing application CI is `812854bc` / run `38248059986`: 281 unit tests and
+Combined UI verification on 12 October (before publishing this UI batch):
+
+- Fresh isolated-QA production build passed, including TypeScript and lint;
+  existing lint warnings remain. All 12 local fixture browser checks passed:
+  nine responsive checks at 320/768/1280px, profile-picture Escape dismissal,
+  persistent community dismissal/duplicate prevention and one pending submission.
+- The browser check exposed a React form loading-state issue. A child button now
+  uses `useFormStatus`, and the test holds the POST response until the button is
+  disabled and exactly one request has been sent. CI now runs this browser suite.
+- QA-only community migration `community_submission_dismissal_and_duplicates`
+  was applied as live version `20261012135400` (tracked SQL timestamp
+  `20261012130109`). Eleven live permission/behavior checks passed inside a
+  rollback; no fixture rows remain. Production is unchanged.
+- Read-only branded auth preflight passed on both Supabase hosts. Google uses
+  `https://api.yrdly.ng/auth/v1/callback` and accepted authorization without a
+  redirect mismatch. This does not prove a completed Google login. The user
+  will complete real sign-in and physical-device tests later; neither is waived.
+- The user confirmed the actual bank receipt. Do not repeat that withdrawal.
+  Remaining payment checks and the organizer maturity window remain pending.
+- The obsolete Vercel integration is not an enforced merge requirement:
+  production main has no required checks or active branch rules. Its failed
+  status is retained; the user authorized ignoring it if it has no release effect.
+
+
+Latest passing committed application CI is `9f95ffbe` / run `38253999465`: 281 unit tests and
 13 browser scenarios, plus the database, OTP, push, API, smoke, build and static
 checks listed below. Signup/recovery request handoffs and Google authorization
 navigation use intercepted responses; they do not prove delivery or Google
@@ -15,7 +39,7 @@ Disposable recovery accounts are deleted after testing.
 All 62 live API/security assertions passed, including mobile text-review limits,
 private attachment signing, authorized follower notifications and safety-alert
 moderation/resolution. Evidence:
-https://github.com/Yrdly-ng/yrdly-app/actions/runs/38248059986
+https://github.com/Yrdly-ng/yrdly-app/actions/runs/38253999465
 
 Screenshot inspection found unreadable small text on fixed dark auth cards in
 the default light theme. The follow-up uses an explicit light foreground and
@@ -64,9 +88,9 @@ Additional security verification on 12 October:
 - QA leaked-password protection was enabled and read back. A real Auth signup
   rejected a known compromised password specifically with the `pwned` reason,
   before creating an account. Production Auth settings were not changed.
-- Fresh full CI is pending for this additional security batch. Current application
-  runtime remains the passing `812854bc`; the QA schema changes were verified
-  separately before publishing the batch.
+- Full CI for this security batch passed on `9f95ffbe`, run `38253999465`,
+  including the eight community privilege checks and real compromised-password
+  rejection. Subsequent combined UI changes require their own exact-commit CI.
 - The exact `812854bc` Vercel preview is READY and passed five protected-preview
   smoke checks. PR 74 still carries a failing check from the inaccessible old
   Vercel team. The CLI lists only the current team and Yrdly's team; the browser

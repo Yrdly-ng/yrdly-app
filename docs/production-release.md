@@ -51,8 +51,10 @@ media. It also aligns paid-price forms and bank/withdrawal interfaces with the
 Payluk-only server contracts. Mobile `7efc430a` passes CI typecheck/lint, 12
 contract tests and Android/iOS JavaScript bundle compilation; 44 live profile/API
 contracts pass against QA. Draft PR: https://github.com/Yrdly-ng/yrdly-mobile/pull/8.
-Web `812854bc` passes the full workflow, including 62 live API/security assertions;
-its exact Vercel preview passes five smoke checks. Native UI/payment/device tests
+Web `9f95ffbe` passes the full workflow, including 62 live API/security assertions;
+its exact Vercel preview is READY. The five-check preview smoke was on `812854bc`.
+Combined UI changes passed a fresh local QA build and all 12 fixture browser
+checks; they still require exact-commit CI after publishing. Native UI/payment/device tests
 and distribution still need verification.
 
 Editing mobile source alone does not update installed clients. Establish the
@@ -92,6 +94,7 @@ Inspect live definitions again before selecting further migrations.
 | `20261010054000_private_chat_report_media.sql` | Follows lockdown and compatible signing/renderers; review unmapped storage objects first. |
 | `20261010145624_pin_function_search_paths.sql` | Reinspect live function bodies; apply after function replacements so pins persist. |
 | `20261012125707_scope_community_role_helper.sql` | Follows the shared security definitions; restricts the helper to its caller and removes trigger RPC/anonymous mutation grants. Eight real QA tests passed. |
+| `20261012130109_community_submission_dismissal_and_duplicates.sql` | Install before the new community submission UI. QA live version is `20261012135400`; eleven rollback-only live checks passed. Production remains unapplied. |
 
 Prepare the exact migration/cutover/rollback bundle and validate a matching
 production build before promotion. A routine code rollback is insufficient after
@@ -107,19 +110,22 @@ web, shared-client and webhook behavior before enabling scheduled money jobs.
   schedules are disabled; no background job will execute it automatically.
   Scope the test to that owned event; do not invoke a broad payout job against
   all retained funded fixtures.
-- Sandbox withdrawal success is not evidence of live-bank receipt.
+- The user confirmed an actual bank receipt for the completed withdrawal. Do not
+  repeat it; historical payout reconciliation remains a separate task.
 - Independently confirm zero extra merchant commission on the live dashboard.
 - QA leaked-password protection is enabled and a compromised-password signup
   was rejected before creating an account. Enable and verify the matching
   production Auth setting during the coordinated release.
-- PR 74 still has a failing check from an old inaccessible Vercel team; the actual
-  current project's exact preview is READY and smoke-tested. Resolve ownership
-  of the stale integration without falsifying its status. This session's browser
-  bridge is unavailable; the CLI account cannot manage that old team.
+- PR 74 retains a failed status from an old inaccessible Vercel team. Read-only
+  GitHub inspection found main unprotected, no required checks and no active
+  branch rules. This status does not enforce a merge block; the user authorized
+  ignoring it if it has no release effect. Do not falsify or suppress the status.
 - Paid-event refunds/cancellation remain support-assisted. Automated whole-event
   and partial-ticket refunds have not passed a funded lifecycle test.
-- Verify real-device push and real Google consent/callback completion. Browser
-  request-construction tests are separate evidence from a Google login.
+- Verify real-device push and real Google consent/callback completion. Public
+  auth health/settings and the branded Google callback preflight passed on
+  12 October. No completed Google session is claimed. The user will perform
+  sign-in and physical-device checks later; these requirements are not waived.
 - Seven Payluk calls for one normal withdrawal do not establish throughput for
   concurrent customers across all applications sharing a 10/minute key.
 

@@ -33,7 +33,7 @@ export function GlassCard({
   return (
     <div
       className={cn(
-        "relative overflow-hidden border transition-all duration-200",
+        "relative overflow-hidden border-0 shadow-sm dark:border dark:shadow-none transition-all duration-200",
         "bg-[var(--yrdly-glass-bg)] border-[var(--yrdly-glass-border)]",
         className
       )}

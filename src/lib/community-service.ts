@@ -133,11 +133,29 @@ export class CommunityService {
   }
 
   static async listMyCommunitySubmissions(userId: string): Promise<Community[]> {
-    const { data, error } = await supabase.from('communities').select('*')
-      .eq('created_by', userId).in('approval_status', ['pending', 'rejected'])
-      .order('created_at', { ascending: false });
+    const [submitted, dismissed] = await Promise.all([
+      supabase.from('communities').select('*')
+        .eq('created_by', userId).in('approval_status', ['pending', 'rejected'])
+        .order('created_at', { ascending: false }),
+      supabase.from('community_submission_dismissals').select('community_id').eq('user_id', userId),
+    ]);
+    if (submitted.error) throw submitted.error;
+    if (dismissed.error) throw dismissed.error;
+    const hidden = new Set((dismissed.data ?? []).map(row => row.community_id));
+    return (submitted.data ?? []).filter(row => !hidden.has(row.id)) as Community[];
+  }
+
+  static async dismissCommunitySubmission(communityId: string, userId: string): Promise<void> {
+    const { error } = await supabase.from('community_submission_dismissals')
+      .insert({ user_id: userId, community_id: communityId });
+    if (error && error.code !== '23505') throw error;
+  }
+
+  static async pendingSubmissionNames(userId: string): Promise<string[]> {
+    const { data, error } = await supabase.from('communities').select('name')
+      .eq('created_by', userId).eq('approval_status', 'pending');
     if (error) throw error;
-    return (data ?? []) as Community[];
+    return (data ?? []).map(row => row.name.trim().replace(/\s+/g, ' ').toLowerCase());
   }
 
   static async submitCommunity(input: {
@@ -148,6 +166,13 @@ export class CommunityService {
     bannerFile?: File | null;
     privacy: CommunityPrivacy;
   }): Promise<Community> {
+    const normalizedName = input.name.trim().replace(/\s+/g, ' ').toLowerCase();
+    const { data: pending, error: pendingError } = await supabase.from('communities')
+      .select('name').eq('created_by', input.createdBy).eq('approval_status', 'pending');
+    if (pendingError) throw pendingError;
+    if (pending?.some(row => row.name.trim().replace(/\s+/g, ' ').toLowerCase() === normalizedName)) {
+      throw new Error('This community is already awaiting approval.');
+    }
     const submissionId = crypto.randomUUID();
     const avatarUrl = input.avatarFile ? await this.uploadCommunityImage(input.createdBy, submissionId, 'avatar', input.avatarFile) : null;
     const bannerUrl = input.bannerFile ? await this.uploadCommunityImage(input.createdBy, submissionId, 'banner', input.bannerFile) : null;
@@ -164,6 +189,7 @@ export class CommunityService {
       is_official: false,
       approval_status: 'pending',
     }).select('*').single();
+    if (error?.code === '23505') throw new Error('This community is already awaiting approval.');
     if (error) throw error;
     return data as Community;
   }
