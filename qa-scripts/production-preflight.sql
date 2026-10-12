@@ -63,6 +63,20 @@ WITH required_functions(signature) AS (VALUES
     SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='users' AND policyname='users_private_read'
   )
   UNION ALL
+  SELECT 'community_role_lookup_scoped',EXISTS (
+    SELECT 1 FROM pg_proc
+    WHERE oid=to_regprocedure('public.is_community_mod_or_admin(uuid,uuid)')
+      AND prosrc LIKE '%p_user_id = auth.uid()%'
+      AND prosrc LIKE '%auth.uid() IS NOT NULL%'
+  )
+  UNION ALL
+  SELECT 'trigger_rpc_grants_removed',NOT EXISTS (
+    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+    WHERE n.nspname='public' AND p.prorettype='trigger'::regtype AND p.prosecdef
+      AND (has_function_privilege('anon',p.oid,'EXECUTE')
+        OR has_function_privilege('authenticated',p.oid,'EXECUTE'))
+  )
+  UNION ALL
   SELECT 'private_bucket:' || bucket,EXISTS (
     SELECT 1 FROM storage.buckets WHERE id=bucket AND NOT public
   ) FROM unnest(ARRAY['chat-images','chat-videos','reports']) bucket

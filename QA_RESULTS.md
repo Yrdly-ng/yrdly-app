@@ -5,14 +5,17 @@ not evidence that a payment settled or that production has the matching code.
 
 ## Current verification checkpoint
 
-Latest passing CI is `b41d1924` / run `38183773443`: 281 unit tests and
+Latest passing application CI is `812854bc` / run `38248059986`: 281 unit tests and
 13 browser scenarios, plus the database, OTP, push, API, smoke, build and static
 checks listed below. Signup/recovery request handoffs and Google authorization
 navigation use intercepted responses; they do not prove delivery or Google
 consent. Three recovery scenarios use real isolated-QA recovery sessions and
 password updates, verifying the new password works and the old one is rejected.
 Disposable recovery accounts are deleted after testing.
-Evidence: https://github.com/Yrdly-ng/yrdly-app/actions/runs/38183773443
+All 62 live API/security assertions passed, including mobile text-review limits,
+private attachment signing, authorized follower notifications and safety-alert
+moderation/resolution. Evidence:
+https://github.com/Yrdly-ng/yrdly-app/actions/runs/38248059986
 
 Screenshot inspection found unreadable small text on fixed dark auth cards in
 the default light theme. The follow-up uses an explicit light foreground and
@@ -20,15 +23,19 @@ adds rendered foreground/background contrast assertions (minimum 4.5:1).
 All 13 browser scenarios, including the rendered contrast checks, passed on b41d1924. Representative screenshots were inspected.
 
 
-Mobile coordination batch (local changes; CI publication pending):
+Mobile coordination batch (`7efc430a`; draft PR 8):
+
+https://github.com/Yrdly-ng/yrdly-mobile/pull/8
+https://github.com/Yrdly-ng/yrdly-mobile/actions/runs/38250000532
 
 - Mobile TypeScript and lint pass (0 errors, 856 warnings; baseline recorded 877).
 - Twelve contract tests pass for authenticated transport, retry restrictions, SDK
   configuration, price limits, private media references, withdrawal quotes and
   server-verified booking checkout/receipt.
-- Android and iOS JavaScript bundle exports pass with placeholder public values
-  and dotenv loading disabled. Fresh CI will recompile the final booking receipt
-  changes. These are bundle checks, not installed native builds.
+- Android and iOS JavaScript bundle exports pass on the final mobile commit in CI
+  with placeholder public values and dotenv loading disabled. These are bundle
+  checks, not installed native builds. A clean-checkout route-segment typing
+  failure was corrected and the complete workflow passed again.
 - All 44 live mobile profile/query/API transport checks pass against isolated QA.
   They caught and corrected ambiguous ticket-buyer joins and a missing legacy
   post-attendee relation. See `qa-scripts/mobile-contract-regression.mjs`.
@@ -37,15 +44,38 @@ Mobile coordination batch (local changes; CI publication pending):
 - Full local API reruns encountered transient connection resets/TLS failures.
   One earlier run was invalidated by the new suite's global QA logout; the new
   suite now signs out only its own session. No incomplete run counts as a pass.
-  Fresh exact-commit CI is required before release.
+  Exact-commit CI subsequently passed all 62 assertions. The inspected free
+  fixtures from the aborted local run were cleaned; funded fixtures were preserved.
 - Mobile bank/withdrawal screens use server balances and validated fee quotes;
   pending payment outcomes route users to payout history/support. Booking payments
   now use Payluk checkout and server verification. Regular safety-alert creation,
   moderation and resolution use server authorization. No provider payout was
   retried or initiated by this batch.
 
-The read-only production preflight still finds all 33 release contracts installed
-in QA and absent from production. See `docs/production-release.md`; passing QA
+Additional security verification on 12 October:
+
+- VERIFIED: the community role helper accepted arbitrary user IDs. It now checks
+  only the caller's own role. All eight real QA checks passed: anonymous/member
+  privacy, moderator self-check, RLS membership reads, unauthorized approval,
+  legitimate approval, invitation acceptance and trigger-maintained member counts.
+- Thirteen trigger-only functions have no anonymous/authenticated EXECUTE grants.
+  Anonymous execution of three authenticated community mutations was revoked.
+  Live grant inspection found zero client-executable definer trigger functions.
+- QA leaked-password protection was enabled and read back. A real Auth signup
+  rejected a known compromised password specifically with the `pwned` reason,
+  before creating an account. Production Auth settings were not changed.
+- Fresh full CI is pending for this additional security batch. Current application
+  runtime remains the passing `812854bc`; the QA schema changes were verified
+  separately before publishing the batch.
+- The exact `812854bc` Vercel preview is READY and passed five protected-preview
+  smoke checks. PR 74 still carries a failing check from the inaccessible old
+  Vercel team. The CLI lists only the current team and Yrdly's team; the browser
+  bridge is unavailable in this session. No status was suppressed or fabricated.
+
+The read-only production preflight now finds all 35 release contracts installed
+in QA and absent from production, including the two additional community/grant
+checks. Safe evidence: `.qa-artifacts/release-preflight-20261012-*.json`.
+See `docs/production-release.md`; passing QA
 does not authorize bypassing the shared-client cutover. Mobile compatibility
 updates are now included in the user-authorized coordinated release.
 
@@ -556,13 +586,17 @@ clean up these funded records as though they were unpaid fixtures.
   Eleven inspected function search paths were pinned in Staging; subsequent
   advisors no longer reported these warnings and the 24 money assertions passed
   again. Service-only tables deliberately have no client policies.
-  The remaining grant notices cover 13 trigger-returning functions and seven
-  explicit RPCs. Exact RPC definitions were inspected; five rollback checks passed
-  for anonymous identity helpers, guarded community mutations and rejection of a
-  direct trigger call. The moderator-role helper accepts arbitrary IDs and needs
-  a visibility decision for private communities. This review does not establish
-  every authenticated community role transition. Leaked-password
-  protection is not enabled. Lint passes with 18 existing warnings.
+  The 12 October follow-up removed client EXECUTE from all 13 trigger-returning
+  functions and unnecessary anonymous grants from three mutations. The remaining
+  notices cover three anonymous identity/RLS helpers and seven deliberately
+  authenticated RPCs. The moderator-role helper is now caller-scoped; eight real
+  authorization/approval/invitation tests passed. This does not establish every
+  community role transition. QA leaked-password protection is enabled and a
+  compromised-password rejection was reproduced. Production still needs the
+  matching change. References: [function grants](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable),
+  [profile view](https://supabase.com/docs/guides/database/database-linter?lint=0010_security_definer_view),
+  [password protection](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection).
+  Lint passes with 18 existing warnings.
 - Paid event refunds/cancellation are still support-assisted. Automated refund
   completion is not established.
 - Deploy matching web code, verify shared-backend mobile compatibility, then

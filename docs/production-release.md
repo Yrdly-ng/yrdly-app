@@ -1,4 +1,4 @@
-# Production release checkpoint — 11 October 2026
+# Production release checkpoint — 12 October 2026
 
 The requested production release is authorized, but its technical prerequisites
 are not satisfied. Do not merge PR 74 while that merge would automatically
@@ -10,8 +10,12 @@ another general approval.
 
 `qa-scripts/production-preflight.sql` was executed read-only through Supabase
 against production `yoiyqxtpmxnrrbqqidcs` and isolated QA `jxgpvvehajxegeeozlnl`.
-All 33 database contract checks pass in QA; all 33 are absent from production.
-These are prerequisites of this release, not 33 new independent audit findings.
+All 35 database contract checks pass in QA; all 35 are absent from production.
+These are prerequisites of this release, not 35 new independent audit findings.
+The 12 October rerun includes caller-scoped community role lookup and removal of
+client EXECUTE grants on trigger-only functions. Safe evidence:
+`.qa-artifacts/release-preflight-20261012-yoiyqxtpmxnrrbqqidcs.json` and
+`.qa-artifacts/release-preflight-20261012-jxgpvvehajxegeeozlnl.json`.
 
 - Production lacks ticket checkout reservations, booking ledger bridge columns,
   phone verification challenges, dispute allocation persistence and the five
@@ -44,9 +48,12 @@ compatibility gaps found in the initial inspection: server-only financial and
 notification mutations, atomic ticket scanning, public profile projections,
 authorized friend locations, server moderation and signed private chat/report
 media. It also aligns paid-price forms and bank/withdrawal interfaces with the
-Payluk-only server contracts. Local typecheck, contract tests and Android/iOS
-JavaScript bundle exports pass; 44 live profile/API contracts pass against QA.
-Full API CI, native UI/payment/device tests and distribution still need verification.
+Payluk-only server contracts. Mobile `7efc430a` passes CI typecheck/lint, 12
+contract tests and Android/iOS JavaScript bundle compilation; 44 live profile/API
+contracts pass against QA. Draft PR: https://github.com/Yrdly-ng/yrdly-mobile/pull/8.
+Web `812854bc` passes the full workflow, including 62 live API/security assertions;
+its exact Vercel preview passes five smoke checks. Native UI/payment/device tests
+and distribution still need verification.
 
 Editing mobile source alone does not update installed clients. Establish the
 released mobile version/update mechanism, ship and verify compatible clients,
@@ -84,6 +91,7 @@ Inspect live definitions again before selecting further migrations.
 | `20261009120300_ticket_scanning_c.sql` | Revoke legacy scan RPCs only after scanner callers are compatible. |
 | `20261010054000_private_chat_report_media.sql` | Follows lockdown and compatible signing/renderers; review unmapped storage objects first. |
 | `20261010145624_pin_function_search_paths.sql` | Reinspect live function bodies; apply after function replacements so pins persist. |
+| `20261012125707_scope_community_role_helper.sql` | Follows the shared security definitions; restricts the helper to its caller and removes trigger RPC/anonymous mutation grants. Eight real QA tests passed. |
 
 Prepare the exact migration/cutover/rollback bundle and validate a matching
 production build before promotion. A routine code rollback is insufficient after
@@ -101,6 +109,13 @@ web, shared-client and webhook behavior before enabling scheduled money jobs.
   all retained funded fixtures.
 - Sandbox withdrawal success is not evidence of live-bank receipt.
 - Independently confirm zero extra merchant commission on the live dashboard.
+- QA leaked-password protection is enabled and a compromised-password signup
+  was rejected before creating an account. Enable and verify the matching
+  production Auth setting during the coordinated release.
+- PR 74 still has a failing check from an old inaccessible Vercel team; the actual
+  current project's exact preview is READY and smoke-tested. Resolve ownership
+  of the stale integration without falsifying its status. This session's browser
+  bridge is unavailable; the CLI account cannot manage that old team.
 - Paid-event refunds/cancellation remain support-assisted. Automated whole-event
   and partial-ticket refunds have not passed a funded lifecycle test.
 - Verify real-device push and real Google consent/callback completion. Browser
