@@ -131,7 +131,7 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
   }, [items, searchTerm, activeCategory]);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-4 font-yrdly-body pb-20 sm:pb-8">
+    <div className="w-full space-y-4 font-yrdly-body pb-20 sm:pb-8">
       {/* Header bar */}
       <div className="px-4 flex flex-col items-start gap-4 pt-2 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
         <h1 className="text-xl sm:text-2xl font-bold font-yrdly-display text-foreground">
@@ -189,7 +189,7 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
 
       {/* Items grid */}
       {loading ? (
-        <div className="px-4 grid grid-cols-1 min-[360px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 pb-28">
+        <div className="px-4 grid grid-cols-1 min-[360px]:grid-cols-2 sm:grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-4 pb-28">
           {[...Array(8)].map((_, i) => (
             <GlassCard key={i} className="h-64 w-full rounded-xl">
               <Skeleton className="h-full w-full rounded-lg" />
@@ -197,7 +197,7 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
           ))}
         </div>
       ) : filteredItems.length > 0 ? (
-        <div className="px-4 grid grid-cols-1 min-[360px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 pb-28">
+        <div className="px-4 grid grid-cols-1 min-[360px]:grid-cols-2 sm:grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-4 pb-28">
           {filteredItems.map((item) => (
             <MarketplaceItemCard
               key={item.id}

@@ -58,7 +58,7 @@ export function Sidebar({
       {/* Brand & Location Chip */}
       <div className="pb-4 pt-1 space-y-3">
         <Link href="/home" className="flex items-center gap-2">
-          <span className="font-yrdly-display font-black text-2xl tracking-tight text-[#82DB7E]">
+          <span className="font-wordmark text-2xl tracking-tight text-[#82DB7E]">
             YRDLY
           </span>
         </Link>

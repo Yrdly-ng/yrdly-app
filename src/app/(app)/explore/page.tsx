@@ -89,7 +89,7 @@ function ExploreContent() {
       {/* ── Header Bar ── */}
       <div className="flex items-center justify-between pb-3 mb-2">
         <div>
-          <h1 className="text-2xl font-extrabold text-foreground font-yrdly-display">
+          <h1 className="text-2xl font-bold text-foreground font-yrdly-display">
             Explore
           </h1>
         </div>
@@ -115,7 +115,7 @@ function ExploreContent() {
             <button
               key={key}
               onClick={() => selectTab(key)}
-              className="whitespace-nowrap rounded-full px-5 py-2.5 text-xs font-extrabold transition-all shrink-0 font-yrdly-display"
+              className="whitespace-nowrap rounded-full px-5 py-2.5 text-[0.8125rem] font-semibold transition-all shrink-0 font-yrdly-body"
               style={{
                 background: isActive ? GREEN : "var(--yrdly-glass-bg)",
                 color: isActive ? "#000" : "var(--yrdly-text-primary)",

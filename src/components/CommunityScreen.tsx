@@ -41,7 +41,7 @@ function UserActionButton({
       return (
         <button
           onClick={() => handleAction(friendshipHook.addFriend)}
-          className="rounded-full px-5 py-1.5 text-xs font-extrabold transition-all active:scale-95 disabled:opacity-50 font-yrdly-display border border-[var(--primary)] text-[var(--primary)] hover:bg-[var(--primary)]/10"
+          className="rounded-full px-5 py-1.5 text-xs font-semibold transition-all active:scale-95 disabled:opacity-50 font-yrdly-display border border-[var(--primary)] text-[var(--primary)] hover:bg-[var(--primary)]/10"
           disabled={isLoading}
         >
           {isLoading ? "..." : "Add Friend"}
@@ -50,7 +50,7 @@ function UserActionButton({
     case "request_sent":
       return (
         <button
-          className="rounded-full px-5 py-1.5 text-xs font-extrabold font-yrdly-display bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] text-foreground"
+          className="rounded-full px-5 py-1.5 text-xs font-semibold font-yrdly-display bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] text-foreground"
           disabled
         >
           Pending
@@ -60,7 +60,7 @@ function UserActionButton({
       return (
         <button
           onClick={() => handleAction(friendshipHook.removeFriend)}
-          className="rounded-full px-5 py-1.5 text-xs font-extrabold transition-all active:scale-95 disabled:opacity-50 font-yrdly-display bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] text-foreground hover:border-red-500/40 hover:text-red-500 flex items-center gap-1"
+          className="rounded-full px-5 py-1.5 text-xs font-semibold transition-all active:scale-95 disabled:opacity-50 font-yrdly-display bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] text-foreground hover:border-red-500/40 hover:text-red-500 flex items-center gap-1"
           disabled={isLoading}
         >
           {isLoading ? "..." : "✓ Friends"}
@@ -71,7 +71,7 @@ function UserActionButton({
         <div className="flex gap-1.5">
           <button
             onClick={() => handleAction(friendshipHook.acceptRequest)}
-            className="rounded-full px-4 py-1.5 text-xs text-black font-extrabold transition-all active:scale-95 disabled:opacity-50 font-yrdly-display"
+            className="rounded-full px-4 py-1.5 text-xs text-black font-semibold transition-all active:scale-95 disabled:opacity-50 font-yrdly-display"
             style={{ background: GREEN }}
             disabled={isLoading}
           >
@@ -300,7 +300,7 @@ export function CommunityScreen({ className }: { className?: string }) {
         <div className="flex rounded-full p-1 border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] backdrop-blur-md">
           <button
             onClick={() => setActiveTab("discover")}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full text-xs font-extrabold font-yrdly-display transition-all ${
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full text-xs font-semibold font-yrdly-display transition-all ${
               activeTab === "discover"
                 ? "bg-[#82DB7E] text-black shadow-sm"
                 : "text-[var(--yrdly-text-secondary)] hover:text-foreground font-medium"
@@ -310,13 +310,13 @@ export function CommunityScreen({ className }: { className?: string }) {
           </button>
           <button
             onClick={() => router.push("/communities")}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full text-xs font-extrabold font-yrdly-display transition-all text-[var(--yrdly-text-secondary)] hover:text-foreground font-medium"
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full text-xs font-semibold font-yrdly-display transition-all text-[var(--yrdly-text-secondary)] hover:text-foreground font-medium"
           >
             Communities
           </button>
           <button
             onClick={() => setActiveTab("friends")}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full text-xs font-extrabold font-yrdly-display transition-all ${
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full text-xs font-semibold font-yrdly-display transition-all ${
               activeTab === "friends"
                 ? "bg-[#82DB7E] text-black shadow-sm"
                 : "text-[var(--yrdly-text-secondary)] hover:text-foreground font-medium"
@@ -342,7 +342,7 @@ export function CommunityScreen({ className }: { className?: string }) {
                 <button
                   key={f.key}
                   onClick={() => setDiscoverFilter(f.key as DiscoverFilter)}
-                  className={`px-4 py-1.5 rounded-full text-xs font-extrabold whitespace-nowrap font-yrdly-display transition-all ${
+                  className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap font-yrdly-display transition-all ${
                     active
                       ? "border border-[var(--primary)] text-[var(--primary)] bg-[var(--primary)]/10"
                       : "bg-[var(--yrdly-glass-bg)] text-[var(--yrdly-text-primary)] border border-[var(--yrdly-glass-border)] hover:border-primary/40"
@@ -379,7 +379,7 @@ export function CommunityScreen({ className }: { className?: string }) {
                 <h2 className="text-sm font-bold text-foreground tracking-wide uppercase font-yrdly-display">
                   Friend Requests ({pendingRequests.length})
                 </h2>
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-2">
                   {pendingRequests.map((req) => {
                     const sender = req.from_user;
                     if (!sender) return null;
@@ -442,7 +442,7 @@ export function CommunityScreen({ className }: { className?: string }) {
                   )}
                 </GlassCard>
               ) : (
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-2">
                   {filteredFriends.map((friend) => {
                     const u = friend.user;
                     if (!u) return null;
@@ -510,7 +510,7 @@ export function CommunityScreen({ className }: { className?: string }) {
                 </p>
               </GlassCard>
             ) : (
-              <div className="space-y-2">
+              <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-2">
                 {displayedDiscoverList.map((u) => {
                   const loc = getLocationString(u.location);
                   return (

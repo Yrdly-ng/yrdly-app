@@ -141,7 +141,7 @@ export function EventCardCompact({ event, onPress }: EventCardProps) {
   return (
     <GlassCard
       onClick={handleCardClick}
-      className="group cursor-pointer overflow-hidden rounded-2xl transition-all duration-200 hover:-translate-y-1 hover:shadow-xl w-[260px] flex-shrink-0"
+      className="group cursor-pointer overflow-hidden rounded-2xl transition-all duration-200 hover:-translate-y-1 hover:shadow-xl w-full min-w-0"
     >
       {/* Cover Image Header */}
       <div className="relative aspect-[16/10] w-full overflow-hidden bg-muted">

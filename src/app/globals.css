@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-sans: "Figtree", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --font-mono: ui-monospace, monospace;
     
     /* Emil Kowalski Spacing & Border Radius */
@@ -78,8 +78,8 @@
     --on-surface-variant: #71717A;
 
     /* YRDLY Design Tokens (Light) */
-    --yrdly-font-display: 'Outfit';
-    --yrdly-font-body: 'Inter';
+    --yrdly-font-display: 'Bricolage Grotesque', 'Figtree', sans-serif;
+    --yrdly-font-body: 'Figtree', sans-serif;
     --yrdly-g: #82DB7E;
     --yrdly-glow: rgba(130,219,126,0.26);
     --yrdly-glow-strong: rgba(130,219,126,0.45);
@@ -126,7 +126,7 @@
   }
 
   .dark {
-    --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-sans: "Figtree", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     
     --c-bg:        #0A0A0A;
     --c-card:      #121212;
@@ -175,8 +175,8 @@
     --on-surface-variant: #A1A1AA;
 
     /* YRDLY Design Tokens (Dark) */
-    --yrdly-font-display: 'Outfit';
-    --yrdly-font-body: 'Inter';
+    --yrdly-font-display: 'Bricolage Grotesque', 'Figtree', sans-serif;
+    --yrdly-font-body: 'Figtree', sans-serif;
     --yrdly-g: #82DB7E;
     --yrdly-glow: rgba(130,219,126,0.26);
     --yrdly-glow-strong: rgba(130,219,126,0.45);

@@ -53,7 +53,7 @@ export function Topbar({
     >
       <div className="w-full flex items-center gap-3 md:gap-4">
         <Link href="/home" className="flex items-center gap-2 flex-shrink-0">
-          <span className="font-yrdly-display font-black text-2xl tracking-tight text-[#82DB7E]">
+          <span className="font-wordmark text-2xl tracking-tight text-[#82DB7E]">
             YRDLY
           </span>
         </Link>

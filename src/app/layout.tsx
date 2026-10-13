@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from 'next';
-import localFont from 'next/font/local';
 
 import './globals.css';
 import { cn } from '@/lib/utils';
@@ -13,27 +12,6 @@ import { AmbientBackground } from '@/components/ui/AmbientBackground';
 import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister';
 import { PushNotificationManager } from '@/components/PushNotificationManager';
 import { CrispChat } from '@/components/CrispChat';
-
-const raleway = localFont({
-  src: './fonts/raleway.woff2',
-  variable: '--font-raleway',
-  weight: '100 900',
-  display: 'swap',
-});
-
-const jersey25 = localFont({
-  src: './fonts/jersey25.woff2',
-  variable: '--font-jersey25',
-  weight: '400',
-  display: 'swap',
-});
-
-const pacifico = localFont({
-  src: './fonts/pacifico.woff2',
-  variable: '--font-pacifico',
-  weight: '400',
-  display: 'swap',
-});
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://app.yrdly.ng'),
@@ -66,14 +44,26 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={cn(raleway.variable, jersey25.variable, pacifico.variable)} suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;600;700&family=Figtree:wght@400;500;600;700&family=Unbounded:wght@800&display=swap"
+          rel="stylesheet"
+        />
         <style dangerouslySetInnerHTML={{__html: `
-          body { font-feature-settings: "cv11", "ss01"; }
+          :root {
+            --font-raleway: 'Bricolage Grotesque', 'Figtree', sans-serif;
+            --font-jersey25: 'Bricolage Grotesque', 'Figtree', sans-serif;
+            --font-pacifico: 'Bricolage Grotesque', 'Figtree', sans-serif;
+          }
+          button.font-yrdly-display, a.font-yrdly-display { font-family: var(--yrdly-font-body, 'Figtree'), sans-serif; }
+          .font-wordmark { font-family: 'Unbounded', 'Bricolage Grotesque', sans-serif; font-weight: 800; }
         `}} />
       </head>
 
-      <body className={cn('font-body antialiased min-h-[100dvh] bg-background')}>
+      <body suppressHydrationWarning className={cn('font-body antialiased min-h-[100dvh] bg-background')}>
         <AmbientBackground />
         <ThemeProvider
           attribute="class"

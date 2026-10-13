@@ -248,7 +248,7 @@ export function BusinessesScreen({ backTarget = "/businesses" }: { backTarget?: 
 
       <div className="px-4 sm:px-6">
         {loading ? (
-          <div className="grid grid-cols-1 min-[360px]:grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
+          <div className="grid grid-cols-1 min-[360px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3.5 mt-2">
             {[1, 2, 3, 4].map((i) => (
               <Skeleton key={i} className="h-44 w-full rounded-2xl" />
             ))}
@@ -292,7 +292,7 @@ function CategoryGrid({
   onSelect: (category: string) => void;
 }) {
   return (
-    <div className="grid grid-cols-1 min-[360px]:grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
+    <div className="grid grid-cols-1 min-[360px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3.5 mt-2">
       {tiles.map((tile) => (
         <button
           key={tile.name}

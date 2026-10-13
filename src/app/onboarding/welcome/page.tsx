@@ -35,7 +35,7 @@ export default function WelcomePage() {
       <div className="relative z-10 flex-1 flex flex-col items-center justify-center p-6 text-center">
         <div className={`flex flex-col items-center gap-4 transition-all duration-1000 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
           <Logo size={88} />
-          <h1 className="text-3xl font-extrabold text-white tracking-[0.05em]">YRDLY</h1>
+          <h1 className="font-wordmark text-3xl text-white tracking-[0.05em]">YRDLY</h1>
           <p className="text-base text-white/50 tracking-wide max-w-sm">Your Neighbourhood, Connected.</p>
         </div>
       </div>
