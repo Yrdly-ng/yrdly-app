@@ -1608,3 +1608,105 @@ for(const price of [950,1199.99,1200.001])test(`posts API rejects paid price ${p
   const response=await POST(new Request('https://qa.test/api/posts',{method:'POST',body:JSON.stringify({post:{category:'For Sale',price}})}));
   assert.equal(response.status,400);
 });
+
+for (const [endpoint, query] of [
+  ['https://attacker.invalid', 'input=Lagos'],
+  ['place/nearbysearch/json', 'input=Lagos'],
+  ['place/autocomplete/json', 'input=Lagos&input=Abuja'],
+  ['place/autocomplete/json', 'input=Lagos&url=https://attacker.invalid'],
+  ['place/autocomplete/json', 'input=%20%20'],
+  ['place/autocomplete/json', `input=${'a'.repeat(201)}`],
+  ['place/autocomplete/json', 'input=Lagos&types=invalid'],
+  ['place/details/json', 'placeid=../invalid'],
+  ['place/details/json', 'placeid=valid&place_id=another'],
+  ['geocode/json', 'latlng=91,3'],
+  ['geocode/json', 'latlng=6,181'],
+  ['geocode/json', 'latlng=,3'],
+  ['geocode/json', 'latlng=NaN,3'],
+  ['geocode/json', 'latlng=6,3,4'],
+]) test(`Maps proxy rejects unsafe address input: ${endpoint} ${query.slice(0, 45)}`, () => {
+  const { buildMapsRequest } = load('src/lib/maps-proxy.ts');
+  assert.throws(() => buildMapsRequest(endpoint.split('/'), new URLSearchParams(query)));
+});
+
+test('Maps proxy fixes host, Nigeria scope and billable details fields', () => {
+  const { buildMapsRequest } = load('src/lib/maps-proxy.ts');
+  const auto = buildMapsRequest(['place','autocomplete','json'], new URLSearchParams('input=Lagos&key=client-value&language=fr&components=country:us'));
+  assert.equal(auto.origin, 'https://maps.googleapis.com');
+  assert.equal(auto.searchParams.get('components'), 'country:ng');
+  assert.equal(auto.searchParams.get('language'), 'en');
+  assert.equal(auto.searchParams.has('key'), false);
+  const details = buildMapsRequest(['place','details','json'], new URLSearchParams('placeid=place_123&fields=reviews,website'));
+  assert.equal(details.searchParams.get('place_id'), 'place_123');
+  assert.equal(details.searchParams.get('fields'), 'address_components,formatted_address,geometry,name,place_id');
+});
+
+for (const enabled of [false,true]) test(`web reverse geocoding preserves location matching with proxy ${enabled}`,async()=>{
+  let requested;
+  const query={select:()=>query,range:async()=>({data:[{state:'Lagos',lga:'Lagos Island',ward:'Ward',latitude:6,longitude:3}],error:null})};
+  const {reverseGeocode}=load('src/lib/geocoding-service.ts',{
+    env:{NEXT_PUBLIC_MAPS_PROXY_ENABLED:enabled?'true':'false',NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:'public-test-only'},
+    '@/lib/supabase':{supabase:{from:table=>{assert.equal(table,'lga_wards');return query;}}},
+    fetch:async(url,options)=>{
+      requested=url;assert.ok(options.signal);
+      return Response.json({status:'OK',results:[{formatted_address:'Lagos, Nigeria',address_components:[{long_name:'Nigeria',types:['country']}]}]});
+    },
+  });
+  const result=await reverseGeocode(6,3);
+  assert.equal(result.lga,'Lagos Island');assert.equal(result.displayAddress,'Lagos, Nigeria');
+  if(enabled){assert.equal(requested,'/api/maps/geocode/json?latlng=6%2C3');assert.equal(requested.includes('key='),false);}
+  else assert.ok(requested.startsWith('https://maps.googleapis.com/maps/api/geocode/json?'));
+});
+
+for (const scenario of ['anonymous','suspended','auth-unavailable','invalid','missing-key','limited','limit-unavailable','success','zero-results','provider-denied','provider-http','timeout']) {
+  test(`Maps endpoint authenticates and fails safely: ${scenario}`, async () => {
+    let quotaCalls = 0, providerCalls = 0;
+    const { GET } = load('src/app/api/maps/[...path]/route.ts', {
+      env: { GOOGLE_MAPS_SERVER_API_KEY: scenario === 'missing-key' ? '' : 'server-test-only' },
+      '@/lib/supabase-server': { getAuthenticatedUser: async () => ({
+        data: { user: ['anonymous','suspended','auth-unavailable'].includes(scenario) ? null : { id:'owned-user' } },
+        error: scenario === 'suspended' ? {status:403} : scenario === 'auth-unavailable' ? {status:503} : null,
+      }) },
+      '@/lib/supabase-admin': { supabaseAdmin: { rpc: async (name, args) => {
+        quotaCalls++; assert.equal(name,'consume_rate_limit'); assert.equal(args.p_user_id,'owned-user');
+        assert.equal(args.p_endpoint,'/api/maps'); assert.equal(args.p_max_requests,60);
+        return {data:scenario !== 'limited',error:scenario === 'limit-unavailable' ? {message:'private-db-error'} : null};
+      } } },
+      fetch: async (url, options) => {
+        providerCalls++;
+        assert.equal(url.origin,'https://maps.googleapis.com');
+        assert.equal(url.searchParams.get('key'),'server-test-only');
+        assert.equal(options.redirect,'error'); assert.equal(options.cache,'no-store'); assert.ok(options.signal);
+        if (scenario === 'timeout') throw new Error('private-key-bearing-provider-url');
+        if (scenario === 'provider-http') return new Response('private upstream content',{status:500});
+        return Response.json({ status:scenario === 'provider-denied' ? 'REQUEST_DENIED' : scenario === 'zero-results' ? 'ZERO_RESULTS' : 'OK',
+          error_message:'private provider details', results:[{formatted_address:'Lagos, Nigeria'}], debug:'private debug' });
+      },
+    });
+    const request = new Request(`https://qa.test/api/maps/geocode/json?latlng=${scenario === 'invalid' ? '91,3' : '6,3'}`);
+    request.nextUrl = new URL(request.url);
+    const result = await GET(request,{params:Promise.resolve({path:['geocode','json']})});
+    const expected = {anonymous:401,suspended:403,'auth-unavailable':503,invalid:400,'missing-key':503,limited:429,'limit-unavailable':503,success:200,'zero-results':200,'provider-denied':503,'provider-http':502,timeout:503}[scenario];
+    assert.equal(result.status,expected);
+    assert.equal(result.headers.get('cache-control'),'no-store');
+    const body = await result.text(); assert.equal(/private|server-test-only/.test(body),false);
+    assert.equal(quotaCalls,['anonymous','suspended','auth-unavailable','invalid','missing-key'].includes(scenario)?0:1);
+    assert.equal(providerCalls,['success','zero-results','provider-denied','provider-http','timeout'].includes(scenario)?1:0);
+  });
+}
+
+for (const endpoint of ['place/autocomplete/json','place/details/json']) test(`Maps endpoint keeps native response format: ${endpoint}`, async () => {
+  const payload = endpoint.includes('autocomplete') ? {predictions:Array.from({length:12},(_,i)=>({description:`Place ${i}`}))} : {result:{geometry:{location:{lat:6,lng:3}}}};
+  const { GET } = load('src/app/api/maps/[...path]/route.ts', {
+    env:{GOOGLE_MAPS_SERVER_API_KEY:'server-test-only'},
+    '@/lib/supabase-server':{getAuthenticatedUser:async()=>({data:{user:{id:'owned-user'}},error:null})},
+    '@/lib/supabase-admin':{supabaseAdmin:{rpc:async()=>({data:true,error:null})}},
+    fetch:async()=>Response.json({status:'OK',...payload}),
+  });
+  const request = new Request(`https://qa.test/api/maps/${endpoint}?input=Lagos&placeid=owned-place&key=server-proxy`);
+  request.nextUrl = new URL(request.url);
+  const response = await GET(request,{params:Promise.resolve({path:endpoint.split('/')})});
+  assert.equal(response.status,200);
+  const body = await response.json();
+  if (body.predictions) assert.equal(body.predictions.length,10); else assert.deepEqual(body.result,payload.result);
+});
