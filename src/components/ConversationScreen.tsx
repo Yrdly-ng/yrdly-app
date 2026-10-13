@@ -12,6 +12,7 @@ import { useTypingDetection } from "@/hooks/use-typing-detection";
 import type { User } from "@/types";
 import Image from "next/image";
 import { PrivateMediaImage, PrivateMediaVideo } from '@/components/PrivateMedia';
+import { useVideoEditor } from '@/hooks/use-video-editor';
 import { resolvePrivateMediaSource } from '@/hooks/use-private-media';
 import { useToast } from "@/hooks/use-toast";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -136,6 +137,14 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
+  const { editVideo, videoEditor, isEditingVideo } = useVideoEditor();
+
+  useEffect(() => {
+    if (!videoFile) { setVideoPreview(null); return; }
+    const url = URL.createObjectURL(videoFile);
+    setVideoPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [videoFile]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
@@ -410,7 +419,7 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
 
   const handleSend = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !conversation || (!newMessage.trim() && !selectedFile && !videoFile)) return;
+    if (sending || isEditingVideo || !user || !conversation || (!newMessage.trim() && !selectedFile && !videoFile)) return;
     setSending(true);
     try {
       let imageUrl: string | null = null;
@@ -466,7 +475,7 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
     } catch {
       toast({ title: 'Message could not be sent', description: 'Please try again. Your draft has been kept.', variant: 'destructive' });
     } finally { setSending(false); }
-  }, [user, conversation, newMessage, selectedFile, videoFile, stopTyping, toast]);
+  }, [user, conversation, newMessage, selectedFile, videoFile, stopTyping, toast, isEditingVideo, sending]);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -477,15 +486,19 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
     reader.readAsDataURL(file);
   };
 
-  const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const prepareVideo = async (file: File) => {
+    if (sending || isEditingVideo) return;
+    try {
+      const edited = await editVideo(file, 15 * 1024 * 1024);
+      if (edited) setVideoFile(edited);
+    } catch (error) { toast({ title: 'Video unavailable', description: error instanceof Error ? error.message : 'Please try again.', variant: 'destructive' }); }
+  };
+
+  const handleVideoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const MAX = 15 * 1024 * 1024;
-    const ALLOWED = ['video/mp4', 'video/webm', 'video/quicktime'];
-    if (!ALLOWED.includes(file.type) || file.size > MAX) return;
-    setVideoFile(file);
-    setVideoPreview(URL.createObjectURL(file));
     if (videoInputRef.current) videoInputRef.current.value = '';
+    await prepareVideo(file);
   };
 
   const handleDownload = async (url: string, defaultFilename: string) => {
@@ -539,6 +552,7 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
 
   return (
     <div className="w-full h-full flex-1 flex flex-col min-h-0 bg-[var(--yrdly-dark)] text-foreground font-yrdly-body relative">
+      {videoEditor}
       {/* ── Top Bar ── */}
       <header className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 bg-[var(--yrdly-dark)]/90 backdrop-blur-md border-b border-[var(--yrdly-glass-border)]">
         <div className="flex items-center gap-3">
@@ -862,6 +876,7 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
         {videoPreview && (
           <div className="relative mb-3 inline-block">
             <video src={videoPreview.includes('#t=') ? videoPreview : `${videoPreview}#t=0.001`} preload="metadata" className="rounded-[10px] w-20 h-20 object-cover" />
+            <button type="button" disabled={sending || isEditingVideo} onClick={() => { if (videoFile) void prepareVideo(videoFile); }} className="mt-1 text-xs text-primary">Edit video</button>
             <button
               onClick={() => { setVideoFile(null); setVideoPreview(null); }}
               className="absolute -top-2 -right-2 w-6 h-6 rounded-full text-foreground text-xs flex items-center justify-center"
@@ -876,7 +891,7 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
             onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--c-card2)")}>
             <ImagePlus className="w-5 h-5" />
           </button>
-          <button type="button" onClick={() => videoInputRef.current?.click()}
+          <button type="button" disabled={sending || isEditingVideo} aria-label="Attach video" onClick={() => videoInputRef.current?.click()}
             className="p-2.5 rounded-full flex-shrink-0 transition-all duration-200 hover:scale-105 text-primary"
             style={{ background: "var(--c-card2)" }}
             onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "color-mix(in srgb, var(--primary) 15%, var(--c-card2))")}
@@ -896,7 +911,7 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
           </div>
           <button
             type="submit"
-            disabled={(!newMessage.trim() && !selectedFile && !videoFile) || sending}
+            disabled={(!newMessage.trim() && !selectedFile && !videoFile) || sending || isEditingVideo}
             className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 bg-primary text-primary-foreground transition-all duration-200 active:scale-95 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100 shadow-md">
             {sending ? <Loader2 className="w-5 h-5 text-primary-foreground animate-spin" /> : <Send className="w-5 h-5 text-primary-foreground" />}
           </button>

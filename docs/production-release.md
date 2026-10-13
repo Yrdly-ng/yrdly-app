@@ -1,4 +1,4 @@
-# Production release checkpoint — 12 October 2026
+# Production release checkpoint — 13 October 2026
 
 The requested production release is authorized, but its technical prerequisites
 are not satisfied. Do not merge PR 74 while that merge would automatically
@@ -10,12 +10,14 @@ another general approval.
 
 `qa-scripts/production-preflight.sql` was executed read-only through Supabase
 against production `yoiyqxtpmxnrrbqqidcs` and isolated QA `jxgpvvehajxegeeozlnl`.
-All 35 database contract checks pass in QA; all 35 are absent from production.
-These are prerequisites of this release, not 35 new independent audit findings.
-The 12 October rerun includes caller-scoped community role lookup and removal of
-client EXECUTE grants on trigger-only functions. Safe evidence:
-`.qa-artifacts/release-preflight-20261012-yoiyqxtpmxnrrbqqidcs.json` and
-`.qa-artifacts/release-preflight-20261012-jxgpvvehajxegeeozlnl.json`.
+The latest saved combined preflight (12 October, 17:25 UTC) has all 40 database
+contract checks passing in QA and all 40 absent from production. These are
+release prerequisites, not 40 new independent audit findings. This includes
+caller-scoped community role lookup, removal of client EXECUTE grants on
+trigger-only functions, and community submission/dismissal contracts. Evidence:
+`.qa-artifacts/combined-release-preflight-yoiyqxtpmxnrrbqqidcs.json` and
+`.qa-artifacts/combined-release-preflight-jxgpvvehajxegeeozlnl.json`.
+Recheck the live state at cutover; this document does not claim a new DB run.
 
 - Production lacks ticket checkout reservations, booking ledger bridge columns,
   phone verification challenges, dispute allocation persistence and the five
@@ -48,14 +50,27 @@ compatibility gaps found in the initial inspection: server-only financial and
 notification mutations, atomic ticket scanning, public profile projections,
 authorized friend locations, server moderation and signed private chat/report
 media. It also aligns paid-price forms and bank/withdrawal interfaces with the
-Payluk-only server contracts. Mobile `7efc430a` passes CI typecheck/lint, 12
-contract tests and Android/iOS JavaScript bundle compilation; 44 live profile/API
-contracts pass against QA. Draft PR: https://github.com/Yrdly-ng/yrdly-mobile/pull/8.
-Web `9f95ffbe` passes the full workflow, including 62 live API/security assertions;
-its exact Vercel preview is READY. The five-check preview smoke was on `812854bc`.
-Combined UI changes passed a fresh local QA build and all 12 fixture browser
-checks; they still require exact-commit CI after publishing. Native UI/payment/device tests
-and distribution still need verification.
+Payluk-only server contracts. Before the video feature, mobile `45dd4dfc`
+passed CI typecheck/lint, 14 contracts and Android/iOS JavaScript bundles
+(run 38348026482). Web `a0664316` passed its full QA workflow (run 38347745365)
+and local 312 units, typecheck/lint and isolated-QA build. Combined UI checks
+previously passed all 12 fixture-browser cases. Draft mobile PR:
+https://github.com/Yrdly-ng/yrdly-mobile/pull/8.
+
+The user reports the prior sign-in/session/logout, neighborhood keyboard,
+picture viewer and navigation checklist passed on QA web (`801bc138`), Samsung
+A21s (APK c078a366, source `abd3f91`) and a sideloaded IPA on iPhone 12. The IPA's
+exact version/source is unspecified. These are USER_REPORTED results, not agent
+reproduction or coverage of later changes.
+
+The new pre-upload video editor and full-frame feed display are documented in
+`docs/video-editing.md`. Eight web and nine mobile helper/chat tests passed
+before the user asked to skip further feature testing. Real browser codec
+export, responsive visual checks, native compilation and physical-device
+verification for this feature remain unverified. The native editor requires
+new Android/iOS binaries; the earlier device checks do not verify it. Record
+exact-source static/CI results with the release PRs; do not reuse old build
+results as evidence for the new feature.
 
 Editing mobile source alone does not update installed clients. Establish the
 released mobile version/update mechanism, ship and verify compatible clients,
@@ -105,8 +120,8 @@ web, shared-client and webhook behavior before enabling scheduled money jobs.
 
 ## Financial and external verification still required
 
-- The retained funded organizer ticket cannot be claimed before **12 October
-  2026, 21:47 Lagos time**, subject to a fresh provider-window check. QA cron
+- The retained funded organizer ticket cannot be claimed before **13 October
+  2026, 20:52:38 Lagos time**, subject to a fresh provider-window check. QA cron
   schedules are disabled; no background job will execute it automatically.
   Scope the test to that owned event; do not invoke a broad payout job against
   all retained funded fixtures.
@@ -122,10 +137,10 @@ web, shared-client and webhook behavior before enabling scheduled money jobs.
   ignoring it if it has no release effect. Do not falsify or suppress the status.
 - Paid-event refunds/cancellation remain support-assisted. Automated whole-event
   and partial-ticket refunds have not passed a funded lifecycle test.
-- Verify real-device push and real Google consent/callback completion. Public
-  auth health/settings and the branded Google callback preflight passed on
-  12 October. No completed Google session is claimed. The user will perform
-  sign-in and physical-device checks later; these requirements are not waived.
+- Verify real-device push and production-branded Google consent/callback on the
+  matching release. The user-reported earlier QA sign-in/device passes above
+  do not establish these results. Basic hosted Crisp loading passed; real
+  conversation/account-switch and native push verification remain incomplete.
 - Seven Payluk calls for one normal withdrawal do not establish throughput for
   concurrent customers across all applications sharing a 10/minute key.
 

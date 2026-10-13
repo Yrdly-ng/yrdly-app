@@ -126,6 +126,7 @@ function MediaCollage({
   poster?: string;
 }) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [mediaAspects, setMediaAspects] = useState<Record<string, number>>({});
   const scrollRef = useRef<HTMLDivElement>(null);
   const dragStartPos = useRef<{ x: number; y: number } | null>(null);
 
@@ -154,7 +155,7 @@ function MediaCollage({
   return (
     <div
       className="relative w-full overflow-hidden rounded-yrdly-md group bg-black"
-      style={{ aspectRatio: "4/5", maxHeight: 480 }}
+      style={{ aspectRatio: mediaAspects[items[activeIndex]?.url] || 4 / 5, maxHeight: 480 }}
     >
       <div
         ref={scrollRef}
@@ -188,20 +189,14 @@ function MediaCollage({
               >
                 <Image
                   src={item.url}
-                  alt=""
-                  fill
-                  aria-hidden="true"
-                  loading="lazy"
-                  className="object-cover scale-110 blur-2xl brightness-75 pointer-events-none"
-                  sizes="48px"
-                  quality={10}
-                />
-                <Image
-                  src={item.url}
                   alt={`Post media ${i + 1}`}
                   fill
-                  className="object-cover post-media-image"
+                  className="object-contain post-media-image"
                   sizes="(max-width: 640px) 100vw, 626px"
+                  onLoad={event => {
+                    const image = event.currentTarget;
+                    if (image.naturalWidth > 0 && image.naturalHeight > 0) setMediaAspects(previous => ({ ...previous, [item.url]: image.naturalWidth / image.naturalHeight }));
+                  }}
                 />
               </div>
             );
@@ -220,6 +215,10 @@ function MediaCollage({
                 preload="metadata"
                 poster={poster}
                 className="w-full h-full object-contain post-media-image"
+                onLoadedMetadata={event => {
+                  const video = event.currentTarget;
+                  if (video.videoWidth > 0 && video.videoHeight > 0) setMediaAspects(previous => ({ ...previous, [item.url]: video.videoWidth / video.videoHeight }));
+                }}
                 onTimeUpdate={() => {
                   if (videoRef?.current && setVideoProgress) {
                     const progress = (videoRef.current.currentTime / videoRef.current.duration) * 100;
@@ -422,7 +421,7 @@ function ModalMediaCarousel({
                 src={item.url}
                 alt={`Post media ${i + 1}`}
                 fill
-                className="object-cover pointer-events-none"
+                className="object-contain pointer-events-none"
                 sizes="60vw"
                 draggable={false}
               />

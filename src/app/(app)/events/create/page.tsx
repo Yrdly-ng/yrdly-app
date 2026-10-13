@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabase";
 import { ModerationService } from "@/lib/moderation-service";
 import { LocationInput, StructuredLocation } from "@/components/LocationInput";
 import { useToast } from "@/hooks/use-toast";
+import { useVideoEditor } from '@/hooks/use-video-editor';
 import {
   ArrowLeft,
   ImageIcon,
@@ -80,6 +81,9 @@ export default function CreateEventPage() {
   // Step 5: Media (Photos & Videos)
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [videoFiles, setVideoFiles] = useState<File[]>([]);
+  const { editVideo, videoEditor, isEditingVideo } = useVideoEditor();
+  const pickingVideo = useRef(false);
+  const [pickingVideos, setPickingVideos] = useState(false);
   const [coverIndex, setCoverIndex] = useState(0);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
@@ -158,10 +162,12 @@ export default function CreateEventPage() {
   };
 
   // Video Handlers
-  const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleVideoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (submitting || pickingVideo.current || isEditingVideo) return;
     if (!e.target.files) return;
     const selected = Array.from(e.target.files);
     const available = 3 - videoFiles.length;
+    e.target.value = '';
     if (available <= 0) {
       toast({
         variant: "destructive",
@@ -171,21 +177,25 @@ export default function CreateEventPage() {
       return;
     }
 
-    const validVideos: File[] = [];
-    for (const file of selected) {
-      if (file.size > 40 * 1024 * 1024) {
-        toast({
-          variant: "destructive",
-          title: "File Too Large",
-          description: `Video "${file.name}" exceeds the 40MB limit.`,
-        });
-      } else {
-        validVideos.push(file);
+    pickingVideo.current = true; setPickingVideos(true);
+    try {
+      for (const file of selected.slice(0, available)) {
+        try {
+          const edited = await editVideo(file, 40 * 1024 * 1024);
+          if (edited) setVideoFiles(previous => [...previous, edited].slice(0, 3));
+        } catch (error) {
+          toast({ variant: 'destructive', title: 'Video unavailable', description: error instanceof Error ? error.message : 'Please choose another video.' });
+        }
       }
-    }
+    } finally { pickingVideo.current = false; setPickingVideos(false); }
+  };
 
-    const toAdd = validVideos.slice(0, available);
-    setVideoFiles((prev) => [...prev, ...toAdd]);
+  const editAttachedVideo = async (file: File) => {
+    if (submitting || pickingVideo.current || isEditingVideo) return;
+    try {
+      const edited = await editVideo(file, 40 * 1024 * 1024);
+      if (edited) setVideoFiles(previous => previous.map(current => current === file ? edited : current));
+    } catch { toast({ variant: 'destructive', title: 'Video unavailable', description: 'Please try again.' }); }
   };
 
   const removeVideo = (index: number) => {
@@ -213,6 +223,7 @@ export default function CreateEventPage() {
 
   // Submit Handler
   const handleSubmit = async () => {
+    if (submitting || pickingVideo.current || isEditingVideo) return;
     if (!user) {
       toast({ variant: "destructive", title: "Authentication Required", description: "Please sign in to create events." });
       return;
@@ -410,6 +421,7 @@ export default function CreateEventPage() {
 
   return (
     <div className="min-h-screen bg-background pb-12">
+      {videoEditor}
       {/* Top Header */}
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
@@ -881,6 +893,7 @@ export default function CreateEventPage() {
                       <button
                         type="button"
                         onClick={() => imageInputRef.current?.click()}
+                        disabled={submitting || pickingVideos || isEditingVideo}
                         className="aspect-square rounded-2xl border-2 border-dashed border-border hover:border-primary/50 flex flex-col items-center justify-center p-3 text-center transition-colors bg-secondary/30 hover:bg-secondary"
                       >
                         <ImageIcon className="w-6 h-6 text-muted-foreground mb-1" />
@@ -909,6 +922,7 @@ export default function CreateEventPage() {
                               ({(file.size / (1024 * 1024)).toFixed(1)}MB)
                             </span>
                           </div>
+                          <Button type="button" variant="ghost" size="sm" disabled={submitting || pickingVideos || isEditingVideo} onClick={() => void editAttachedVideo(file)}>Edit video</Button>
                           <button
                             type="button"
                             onClick={() => removeVideo(i)}
@@ -925,6 +939,7 @@ export default function CreateEventPage() {
                     <button
                       type="button"
                       onClick={() => videoInputRef.current?.click()}
+                      disabled={submitting || pickingVideos || isEditingVideo}
                       className="w-full py-3 rounded-2xl border-2 border-dashed border-border hover:border-primary/50 flex items-center justify-center gap-2 text-xs font-semibold text-muted-foreground transition-colors bg-secondary/30 hover:bg-secondary"
                     >
                       <Video className="w-4 h-4 text-blue-500" />
@@ -1019,7 +1034,7 @@ export default function CreateEventPage() {
                     <ChevronLeft className="w-5 h-5 mr-1" /> Edit Details
                   </Button>
                   <Button
-                    disabled={submitting}
+                    disabled={submitting || pickingVideos || isEditingVideo}
                     onClick={handleSubmit}
                     className="flex-1 rounded-full py-6 font-bold bg-primary text-foreground hover:bg-primary/90 text-base"
                   >
