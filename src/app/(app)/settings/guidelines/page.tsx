@@ -51,7 +51,7 @@ export default function GuidelinesPage() {
         </h1>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+      <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
         <div className="p-6 rounded-3xl bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] space-y-2 text-center shadow-lg">
           <div className="w-12 h-12 rounded-full bg-primary/20 text-primary flex items-center justify-center mx-auto mb-3">
             <Shield className="w-6 h-6" />
@@ -87,7 +87,7 @@ export default function GuidelinesPage() {
             );
           })}
         </div>
-      </main>
+      </div>
     </div>
   );
 }

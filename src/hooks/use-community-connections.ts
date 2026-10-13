@@ -35,14 +35,14 @@ export function useCommunityConnections(
       const [{ data: followingData }, { data: followersData }, { data: discoverData }] = await Promise.all([
         supabase
           .from('followers')
-          .select(`following_id, following:users!followers_following_id_fkey(id, name, avatar_url, username)`)
+          .select(`following_id, following:public_profiles!followers_following_id_fkey(id, name, avatar_url, username)`)
           .eq('follower_id', currentUser.id),
         supabase
           .from('followers')
-          .select(`follower_id, follower:users!followers_follower_id_fkey(id, name, avatar_url, username)`)
+          .select(`follower_id, follower:public_profiles!followers_follower_id_fkey(id, name, avatar_url, username)`)
           .eq('following_id', currentUser.id),
         supabase
-          .from('users')
+          .from('public_profiles')
           .select('id, name, username, avatar_url, bio')
           .neq('id', currentUser.id)
           .limit(20),

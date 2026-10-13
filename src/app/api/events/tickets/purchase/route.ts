@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { getAuthenticatedUser } from "@/lib/supabase-server";
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { EVENT_CONSTANTS } from '@/lib/constants';
+import { isMoneyAmount, isPaidPrice, MINIMUM_PRICE_MESSAGE } from '@/lib/price-policy';
 import { ResendEmailService } from '@/lib/resend-service';
 import QRCode from 'qrcode';
-import { PaylukService } from '@/lib/payluk-service';
-import { PaystackService } from '@/lib/paystack-service';
-import { getPaylukCustomerId } from '@/lib/payluk-onboarding';
-import { EscrowStatus } from '@/types/escrow';
+import { createTicketCheckout, TicketCheckoutError } from '@/lib/ticket-checkout';
 import { sendPushNotification } from '@/lib/server-push-notification';
 
 /**
@@ -21,7 +18,7 @@ export async function POST(request: NextRequest) {
     // ── Auth ────────────────────────────────────────────────────────────────
     const { data: { user }, error: authError } = await getAuthenticatedUser(request);
     if (authError || !user) {
-      return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
+      return NextResponse.json({ error: 'Invalid session' }, { status: authError?.status === 403 ? 403 : authError?.status === 503 ? 503 : 401 });
     }
 
     const { isUserSuspendedOrBanned } = await import('@/lib/user-suspension');
@@ -33,17 +30,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { event_id, tier_id, attendee_name, attendee_email, attendee_phone, callbackUrl, quantity: rawQuantity } = await request.json();
-    const quantity = Math.max(1, parseInt(rawQuantity || '1', 10));
-
-    if (!event_id || !tier_id || !attendee_name || !attendee_email) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== 'object' || Array.isArray(body)) return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+    const { event_id, tier_id, attendee_name, attendee_email, attendee_phone, quantity: rawQuantity } = body;
+    const quantity = rawQuantity === undefined ? 1
+      : typeof rawQuantity === 'string' && /^\d+$/.test(rawQuantity) ? Number(rawQuantity) : rawQuantity;
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (typeof event_id !== 'string' || !uuid.test(event_id) || typeof tier_id !== 'string' || !uuid.test(tier_id) ||
+        typeof attendee_name !== 'string' || !attendee_name.trim() || attendee_name.length > 120 ||
+        typeof attendee_email !== 'string' || attendee_email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(attendee_email) ||
+        (attendee_phone != null && (typeof attendee_phone !== 'string' || attendee_phone.length > 30)) ||
+        !Number.isSafeInteger(quantity) || quantity < 1 || quantity > 5) {
+      return NextResponse.json({ error: 'Provide valid attendee details and an integer quantity between 1 and 5' }, { status: 400 });
     }
 
     // ── Validate event & tier ────────────────────────────────────────────────
     const { data: event } = await supabaseAdmin
       .from('events')
-      .select('id, title, status, organizer_id, payment_subaccount_id, end_time')
+      .select('id, title, status, organizer_id, end_time')
       .eq('id', event_id)
       .single();
 
@@ -59,6 +63,10 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (!tier) return NextResponse.json({ error: 'Ticket tier not found' }, { status: 404 });
+    const tierPrice = Number(tier.price);
+    if (!isMoneyAmount(tierPrice) || (tierPrice > 0 && !isPaidPrice(tierPrice))) {
+      return NextResponse.json({ error: MINIMUM_PRICE_MESSAGE }, { status: 400 });
+    }
     if (!tier.is_visible) return NextResponse.json({ error: 'This ticket tier is not available' }, { status: 400 });
     if (tier.sale_ends_at && new Date(tier.sale_ends_at) < new Date()) {
       return NextResponse.json({ error: 'Ticket sales have ended for this tier' }, { status: 400 });
@@ -85,7 +93,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'MAX_TICKET_LIMIT_EXCEEDED', message }, { status: 400 });
     }
 
-    if (tier.capacity !== null && (tier.sold + quantity) > tier.capacity) {
+    if (tier.price === 0 && tier.capacity !== null && (tier.sold + quantity) > tier.capacity) {
       return NextResponse.json({ error: 'SOLD_OUT', message: `Not enough tickets left. Only ${Math.max(0, tier.capacity - tier.sold)} available.` }, { status: 409 });
     }
 
@@ -107,6 +115,7 @@ export async function POST(request: NextRequest) {
           qr_data: qrData,
           status: 'PAID',
           amount_paid: 0,
+          payment_provider: null, settlement_mode: 'free',
           expires_at: event.end_time || null,
         });
       }
@@ -245,173 +254,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, free: true, ticket_id: insertedTickets[0].id, quantity });
     }
 
-    // ── Paid ticket — Check configured payment provider ────────────────────
-    const provider = (process.env.EVENT_TICKET_PAYMENT_PROVIDER || 'paystack').toLowerCase();
-    if (provider !== 'paystack' && provider !== 'payluk') {
-      return NextResponse.json({ error: 'Invalid event ticket payment provider configuration' }, { status: 500 });
-    }
-    const txRef = `evt-${event_id.substring(0, 8)}-${Date.now()}`;
-    const totalAmount = tier.price * quantity;
-
-    if (provider === 'paystack') {
-      // Fetch organizer's Paystack subaccount ID for automatic Split Payment
-      let organizerSubaccount: string | undefined = event.payment_subaccount_id || undefined;
-      if (!organizerSubaccount && event.organizer_id) {
-        const { data: subaccountData } = await supabaseAdmin
-          .from('seller_accounts')
-          .select('paystack_subaccount_id')
-          .eq('user_id', event.organizer_id)
-          .eq('is_primary', true)
-          .eq('is_active', true)
-          .maybeSingle();
-
-        if (subaccountData?.paystack_subaccount_id) {
-          organizerSubaccount = subaccountData.paystack_subaccount_id;
-        }
-      }
-
-      const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'https://app.yrdly.ng';
-      let paymentLink: string;
-      try {
-        paymentLink = await PaystackService.initializePayment({
-          transactionId: txRef,
-          amount: totalAmount,
-          buyerEmail: attendee_email,
-          buyerName: attendee_name,
-          itemTitle: `${quantity}x ${tier.name} — ${event.title}`,
-          sellerName: 'Event Organizer',
-          subaccount: organizerSubaccount,
-          callbackUrl: callbackUrl || `${origin}/api/events/tickets/verify?tx_ref=${txRef}`,
-          metadata: {
-            event_id,
-            tier_id,
-            quantity,
-            buyer_id: user.id,
-            attendee_name,
-            attendee_email,
-            attendee_phone: attendee_phone || null
-          }
-        });
-      } catch (paystackError: any) {
-        console.error('[TicketPurchase] Paystack init error:', paystackError);
-        return NextResponse.json({
-          error: 'Payment initialization failed',
-          details: paystackError?.message || 'Paystack API error',
-        }, { status: 502 });
-      }
-
-      return NextResponse.json({ success: true, payment_link: paymentLink, tx_ref: txRef, provider: 'paystack' });
-    }
-
-    // ── Payluk Escrow payment ─────────────────────────────────────────────
-    // Fetch or provision Payluk Customer IDs for buyer & organizer
-    let buyerPaylukId: string;
-    let organizerPaylukId: string;
-    try {
-      buyerPaylukId = await getPaylukCustomerId(user.id);
-      organizerPaylukId = await getPaylukCustomerId(event.organizer_id);
-    } catch (onboardingErr: any) {
-      console.error('[TicketPurchase] Payluk onboarding error:', onboardingErr);
-      return NextResponse.json({
-        error: onboardingErr?.message || 'Failed to prepare user payment account.',
-      }, { status: 400 });
-    }
-
-    try {
-      await PaylukService.updateCustomerPermissions(buyerPaylukId, { canBuy: true });
-    } catch (e) {}
-    try {
-      await PaylukService.updateCustomerPermissions(organizerPaylukId, { canSell: true });
-    } catch (e) {}
-
-    // Calculate delivery window (in days)
-    let maxDelivery = 7;
-    if (event.end_time) {
-      const msUntilEnd = new Date(event.end_time).getTime() - Date.now();
-      const days = Math.ceil(msUntilEnd / (1000 * 60 * 60 * 24));
-      maxDelivery = Math.max(1, Math.min(days + 1, 90));
-    }
-
-    let paylukEscrow;
-    try {
-      paylukEscrow = await PaylukService.createEscrow(organizerPaylukId, {
-        amount: totalAmount,
-        purpose: `${quantity}x ${tier.name} — ${event.title}`,
-        whoPays: 'seller',
-        maxDelivery,
-        deliveryTimeline: 'days',
-        totalQuantity: quantity,
-      });
-
-      const commission = Math.round(totalAmount * EVENT_CONSTANTS.COMMISSION_RATE * 100) / 100;
-      if (commission > 0) {
-        await PaylukService.addAdditionalFee(paylukEscrow.paymentToken, commission);
-      }
-    } catch (paylukError: any) {
-      console.error('[TicketPurchase] Payluk createEscrow error:', paylukError);
-      return NextResponse.json({
-        error: 'Payment initialization failed',
-        details: paylukError?.message || 'Payluk Escrow error',
-      }, { status: 502 });
-    }
-
-    // Store escrow_transactions record
-    const transactionId = crypto.randomUUID();
-    const commission = Math.round(totalAmount * EVENT_CONSTANTS.COMMISSION_RATE * 100) / 100;
-    const sellerAmount = totalAmount - commission;
-
-    const { error: dbInsertErr } = await supabaseAdmin
-      .from('escrow_transactions')
-      .insert({
-        id: transactionId,
-        buyer_id: user.id,
-        seller_id: event.organizer_id,
-        amount: totalAmount,
-        commission,
-        total_amount: totalAmount,
-        seller_amount: sellerAmount,
-        status: EscrowStatus.PENDING,
-        payment_method: 'card',
-        delivery_details: { option: 'event_entry' },
-        payment_provider: 'payluk',
-        payment_reference: txRef,
-        payluk_tx_ref: paylukEscrow.paymentToken,
-        payluk_escrow_id: paylukEscrow.id,
-        item_type: 'ticket',
-        item_id: tier_id,
-        metadata: {
-          event_id,
-          tier_id,
-          quantity,
-          buyer_id: user.id,
-          attendee_name,
-          attendee_email,
-          attendee_phone: attendee_phone || null,
-        },
-      });
-
-    if (dbInsertErr) {
-      console.error('[TicketPurchase] Failed to store escrow_transactions row:', dbInsertErr);
-      return NextResponse.json({
-        error: 'Failed to store payment record',
-        details: dbInsertErr.message,
-      }, { status: 500 });
-    }
-
-    const isLive = process.env.PAYLUK_SECRET_KEY?.startsWith('sk_live_');
-    const paylukHost = isLive ? 'https://payluk.ng' : 'https://staging.api.payluk.ng';
-    const paymentLink = `${paylukHost}/escrow/${paylukEscrow.paymentToken}`;
-
-    return NextResponse.json({
-      success: true,
-      payment_link: paymentLink,
-      paylukPaymentToken: paylukEscrow.paymentToken,
-      paylukEscrowId: paylukEscrow.id,
-      buyerPaylukId,
-      tx_ref: txRef,
-      provider: 'payluk',
+    const { data: permitted, error: rateError } = await supabaseAdmin.rpc('consume_rate_limit', {
+      p_user_id: user.id, p_endpoint: '/api/events/tickets/purchase', p_max_requests: 10, p_window_seconds: 60,
     });
+    if (rateError) return NextResponse.json({ error: 'Unable to authorize checkout' }, { status: 503 });
+    if (!permitted) return NextResponse.json({ error: 'Too many checkout requests' }, { status: 429 });
+    const result = await createTicketCheckout({
+      event_id, tier_id, buyer_id: user.id, quantity,
+      attendee_name: attendee_name.trim(), attendee_email: attendee_email.trim(), attendee_phone: attendee_phone || null,
+    }, `${quantity}x ${tier.name} — ${event.title}`, event.end_time);
+    return NextResponse.json(result);
   } catch (error) {
+    if (error instanceof TicketCheckoutError) return NextResponse.json({ error: error.message }, { status: error.status });
     console.error('[TicketPurchase] Ticket purchase error:', error);
     return NextResponse.json({ 
       error: 'Internal server error',

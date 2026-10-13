@@ -97,7 +97,7 @@ export function Topbar({
         <div className="flex items-center gap-1.5 md:gap-2 ml-auto flex-shrink-0">
           <div className="group/tip relative">
             <Link href="/map">
-              <Button
+              <Button aria-label="Change location"
                 variant="ghost"
                 size="icon"
                 className="w-9 h-9 md:w-10 md:h-10 flex items-center justify-center text-[var(--c-text-muted)] border border-[var(--c-border)] bg-[var(--c-card2)] rounded-full hover:bg-[#F3F4F6] hover:text-[var(--foreground)] transition-all duration-150"
@@ -111,7 +111,7 @@ export function Topbar({
           </div>
 
           <div className="group/tip relative">
-            <Button
+            <Button aria-label="Notifications"
               variant="ghost"
               size="icon"
               className="relative w-9 h-9 md:w-10 md:h-10 flex items-center justify-center text-[var(--c-text-muted)] border border-[var(--c-border)] bg-[var(--c-card2)] rounded-full hover:bg-[#F3F4F6] hover:text-[var(--foreground)] transition-all duration-150"
@@ -129,7 +129,7 @@ export function Topbar({
             </span>
           </div>
 
-          <Button
+          <Button aria-label="Open profile"
             variant="ghost"
             size="icon"
             className="flex w-9 h-9 md:w-10 md:h-10 rounded-full overflow-hidden p-0.5 ml-1 border border-[var(--c-border)] bg-[var(--c-card2)] shadow-sm"

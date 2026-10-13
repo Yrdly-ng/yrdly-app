@@ -214,7 +214,7 @@ export default function WithdrawPage() {
   return (
     <div className="container max-w-2xl py-6 space-y-6 font-yrdly-body text-foreground">
       <div className="flex items-center space-x-3">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
+        <Button aria-label="Back" variant="ghost" size="icon" onClick={() => router.back()}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <h1 className="text-2xl font-bold tracking-tight font-yrdly-display text-foreground">Withdraw Funds</h1>

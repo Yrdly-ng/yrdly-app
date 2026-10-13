@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabase";
 import { ModerationService } from "@/lib/moderation-service";
 import { LocationInput, StructuredLocation } from "@/components/LocationInput";
 import { useToast } from "@/hooks/use-toast";
+import { useVideoEditor } from '@/hooks/use-video-editor';
 import {
   ArrowLeft,
   ImageIcon,
@@ -33,6 +34,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { MIN_PAID_PRICE } from "@/lib/constants";
+import { isPaidPrice, MINIMUM_PRICE_MESSAGE } from "@/lib/price-policy";
 
 const STEPS = ["Basic Info", "Date & Time", "Location", "Tickets", "Media", "Review"];
 
@@ -78,6 +81,9 @@ export default function CreateEventPage() {
   // Step 5: Media (Photos & Videos)
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [videoFiles, setVideoFiles] = useState<File[]>([]);
+  const { editVideo, videoEditor, isEditingVideo } = useVideoEditor();
+  const pickingVideo = useRef(false);
+  const [pickingVideos, setPickingVideos] = useState(false);
   const [coverIndex, setCoverIndex] = useState(0);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
@@ -156,10 +162,12 @@ export default function CreateEventPage() {
   };
 
   // Video Handlers
-  const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleVideoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (submitting || pickingVideo.current || isEditingVideo) return;
     if (!e.target.files) return;
     const selected = Array.from(e.target.files);
     const available = 3 - videoFiles.length;
+    e.target.value = '';
     if (available <= 0) {
       toast({
         variant: "destructive",
@@ -169,21 +177,25 @@ export default function CreateEventPage() {
       return;
     }
 
-    const validVideos: File[] = [];
-    for (const file of selected) {
-      if (file.size > 40 * 1024 * 1024) {
-        toast({
-          variant: "destructive",
-          title: "File Too Large",
-          description: `Video "${file.name}" exceeds the 40MB limit.`,
-        });
-      } else {
-        validVideos.push(file);
+    pickingVideo.current = true; setPickingVideos(true);
+    try {
+      for (const file of selected.slice(0, available)) {
+        try {
+          const edited = await editVideo(file, 40 * 1024 * 1024);
+          if (edited) setVideoFiles(previous => [...previous, edited].slice(0, 3));
+        } catch (error) {
+          toast({ variant: 'destructive', title: 'Video unavailable', description: error instanceof Error ? error.message : 'Please choose another video.' });
+        }
       }
-    }
+    } finally { pickingVideo.current = false; setPickingVideos(false); }
+  };
 
-    const toAdd = validVideos.slice(0, available);
-    setVideoFiles((prev) => [...prev, ...toAdd]);
+  const editAttachedVideo = async (file: File) => {
+    if (submitting || pickingVideo.current || isEditingVideo) return;
+    try {
+      const edited = await editVideo(file, 40 * 1024 * 1024);
+      if (edited) setVideoFiles(previous => previous.map(current => current === file ? edited : current));
+    } catch { toast({ variant: 'destructive', title: 'Video unavailable', description: 'Please try again.' }); }
   };
 
   const removeVideo = (index: number) => {
@@ -201,12 +213,23 @@ export default function CreateEventPage() {
 
   const hasPaidTiers = ticketTiers.some((t) => !t.isFree && t.price > 0);
 
+  const validateTicketPrices = () => {
+    if (ticketTiers.some(tier => !tier.isFree && !isPaidPrice(tier.price))) {
+      toast({ variant: "destructive", title: "Valid Ticket Price Required", description: MINIMUM_PRICE_MESSAGE });
+      return false;
+    }
+    return true;
+  };
+
   // Submit Handler
   const handleSubmit = async () => {
+    if (submitting || pickingVideo.current || isEditingVideo) return;
     if (!user) {
       toast({ variant: "destructive", title: "Authentication Required", description: "Please sign in to create events." });
       return;
     }
+
+    if (!validateTicketPrices()) return;
 
     if (hasPaidTiers && !hasSellerAccount) {
       toast({
@@ -398,11 +421,12 @@ export default function CreateEventPage() {
 
   return (
     <div className="min-h-screen bg-background pb-12">
+      {videoEditor}
       {/* Top Header */}
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button
+            <Button aria-label="Back"
               variant="ghost"
               size="icon"
               onClick={() => {
@@ -754,7 +778,7 @@ export default function CreateEventPage() {
                             onChange={(e) =>
                               updateTicketTier(tier.id, {
                                 isFree: e.target.checked,
-                                price: e.target.checked ? 0 : tier.price || 1000,
+                                price: e.target.checked ? 0 : tier.price || MIN_PAID_PRICE,
                               })
                             }
                             className="rounded text-primary focus:ring-primary"
@@ -771,7 +795,11 @@ export default function CreateEventPage() {
                               onChange={(e) =>
                                 updateTicketTier(tier.id, { price: parseFloat(e.target.value) || 0 })
                               }
-                              placeholder="1000"
+                              placeholder={String(MIN_PAID_PRICE)}
+                              min={MIN_PAID_PRICE}
+                              step="0.01"
+                              aria-label={`Price for ${tier.name || "ticket tier"}`}
+                              aria-describedby="paid-ticket-price-help"
                               className="w-28 rounded-xl"
                             />
                           </div>
@@ -780,6 +808,7 @@ export default function CreateEventPage() {
                     </div>
                   ))}
 
+                  <p id="paid-ticket-price-help" className="text-xs text-muted-foreground">Free tickets are available. Paid tickets start at ₦{MIN_PAID_PRICE.toLocaleString("en-NG")}.</p>
                   <Button
                     type="button"
                     variant="outline"
@@ -796,6 +825,7 @@ export default function CreateEventPage() {
                   </Button>
                   <Button
                     onClick={() => {
+                      if (!validateTicketPrices()) return;
                       if (hasPaidTiers && !hasSellerAccount) {
                         toast({
                           variant: "destructive",
@@ -863,6 +893,7 @@ export default function CreateEventPage() {
                       <button
                         type="button"
                         onClick={() => imageInputRef.current?.click()}
+                        disabled={submitting || pickingVideos || isEditingVideo}
                         className="aspect-square rounded-2xl border-2 border-dashed border-border hover:border-primary/50 flex flex-col items-center justify-center p-3 text-center transition-colors bg-secondary/30 hover:bg-secondary"
                       >
                         <ImageIcon className="w-6 h-6 text-muted-foreground mb-1" />
@@ -891,6 +922,7 @@ export default function CreateEventPage() {
                               ({(file.size / (1024 * 1024)).toFixed(1)}MB)
                             </span>
                           </div>
+                          <Button type="button" variant="ghost" size="sm" disabled={submitting || pickingVideos || isEditingVideo} onClick={() => void editAttachedVideo(file)}>Edit video</Button>
                           <button
                             type="button"
                             onClick={() => removeVideo(i)}
@@ -907,6 +939,7 @@ export default function CreateEventPage() {
                     <button
                       type="button"
                       onClick={() => videoInputRef.current?.click()}
+                      disabled={submitting || pickingVideos || isEditingVideo}
                       className="w-full py-3 rounded-2xl border-2 border-dashed border-border hover:border-primary/50 flex items-center justify-center gap-2 text-xs font-semibold text-muted-foreground transition-colors bg-secondary/30 hover:bg-secondary"
                     >
                       <Video className="w-4 h-4 text-blue-500" />
@@ -1001,7 +1034,7 @@ export default function CreateEventPage() {
                     <ChevronLeft className="w-5 h-5 mr-1" /> Edit Details
                   </Button>
                   <Button
-                    disabled={submitting}
+                    disabled={submitting || pickingVideos || isEditingVideo}
                     onClick={handleSubmit}
                     className="flex-1 rounded-full py-6 font-bold bg-primary text-foreground hover:bg-primary/90 text-base"
                   >

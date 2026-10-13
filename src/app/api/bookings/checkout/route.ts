@@ -1,12 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { computeDepositAmount, createCheckoutForBooking } from '@/lib/booking-payments';
+import { BookingCheckoutError, computeDepositAmount, createCheckoutForBooking } from '@/lib/booking-payments';
+import { isPaidPrice, MINIMUM_PRICE_MESSAGE } from '@/lib/price-policy';
 
 export async function POST(req: NextRequest) {
-  const { data: { user } } = await getAuthenticatedUser(req);
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const body = await req.json();
+  const { data: { user }, error: authError } = await getAuthenticatedUser(req);
+  if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: authError?.status === 503 ? 503 : authError?.status === 403 ? 403 : 401 });
+  const body = await req.json().catch(() => null);
+  const uuid = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
+  if (!body || typeof body !== 'object' || Array.isArray(body) ||
+      (body.bookingId != null && (typeof body.bookingId !== 'string' || !uuid.test(body.bookingId))) ||
+      (body.quoteId != null && (typeof body.quoteId !== 'string' || !uuid.test(body.quoteId))) ||
+      (body.type != null && !['deposit','full','escrow'].includes(body.type))) {
+    return NextResponse.json({ error: 'Invalid booking checkout request' }, { status: 400 });
+  }
+  const { data: permitted, error: rateError } = await supabaseAdmin.rpc('consume_rate_limit', {
+    p_user_id: user.id, p_endpoint: '/api/bookings/checkout', p_max_requests: 10, p_window_seconds: 60,
+  });
+  if (rateError) return NextResponse.json({ error: 'Unable to authorize checkout' }, { status: 503 });
+  if (!permitted) return NextResponse.json({ error: 'Too many checkout requests' }, { status: 429 });
   const { bookingId, type, quoteId } = body as { bookingId?: string; type?: 'deposit'|'full'|'escrow'; quoteId?: string };
   let resolvedBookingId = bookingId;
   // Quotes -> Bookings: if quoteId supplied without bookingId, convert quote to booking first (4C)
@@ -14,7 +27,7 @@ export async function POST(req: NextRequest) {
     const { data: quote } = await supabaseAdmin.from('quote_requests').select('id, customer_id, business_id, staff_id, status, converted_booking_id, estimated_price, expires_at').eq('id', quoteId).single();
     if (!quote) return NextResponse.json({ error: 'Quote not found' }, { status: 404 });
     if ((quote as any).customer_id !== user.id) return NextResponse.json({ error: 'Forbidden quote' }, { status: 403 });
-    if (!['accepted', 'converted'].includes(quote.status) || !quote.estimated_price || Number(quote.estimated_price) < 1000 ||
+    if (!['accepted', 'converted'].includes(quote.status) || !isPaidPrice(Number(quote.estimated_price)) ||
         (quote.expires_at && new Date(quote.expires_at).getTime() < Date.now())) {
       return NextResponse.json({ error: 'An accepted, unexpired estimate is required before checkout' }, { status: 409 });
     }
@@ -66,7 +79,10 @@ export async function POST(req: NextRequest) {
   if (type && !['deposit', 'full', 'escrow'].includes(type)) {
     return NextResponse.json({ error: 'Invalid payment type' }, { status: 400 });
   }
-  const chosen: 'deposit'|'full'|'escrow' = type || (booking.quote_id ? 'full' : service?.escrow_enabled ? 'escrow' : service?.requires_full_payment ? 'full' : 'deposit');
+  const chosen: 'deposit'|'full'|'escrow' | null = booking.quote_id ? 'full' : service.escrow_enabled ? 'escrow' : service.requires_full_payment ? 'full' : service.deposit_required ? 'deposit' : null;
+  if (!chosen || (type && type !== chosen)) {
+    return NextResponse.json({ error: 'Use the payment type configured for this service' }, { status: 409 });
+  }
   let amount: number | null = null;
   if (chosen==='full' || chosen==='escrow') amount = service?.price ? Number(service.price) : null;
   else amount = computeDepositAmount(service as any) ?? (service?.price ? Number(service.price) : null);
@@ -75,13 +91,13 @@ export async function POST(req: NextRequest) {
       .select('customer_id, status, estimated_price, expires_at')
       .eq('id', booking.quote_id).single();
     if (!quote || quote.customer_id !== user.id || quote.status !== 'converted' ||
-        !quote.estimated_price || Number(quote.estimated_price) < 1000 ||
+        !isPaidPrice(Number(quote.estimated_price)) ||
         (quote.expires_at && new Date(quote.expires_at).getTime() < Date.now())) {
       return NextResponse.json({ error: 'This booking needs a valid accepted quote' }, { status: 409 });
     }
     amount = Number(quote.estimated_price);
   }
-  if (!amount) return NextResponse.json({ error: 'No amount configured' }, { status: 400 });
+  if (!isPaidPrice(amount)) return NextResponse.json({ error: MINIMUM_PRICE_MESSAGE }, { status: 400 });
   try {
     const res = await createCheckoutForBooking({
       bookingId: resolvedBookingId,
@@ -92,8 +108,9 @@ export async function POST(req: NextRequest) {
       purpose: `${service.name || 'Service booking'} — ${business.name || 'Yrdly business'}`,
       appointmentTime: booking.appointment_time,
     });
-    return NextResponse.json({ ok: true, ...res, amount, type: chosen, bookingId: resolvedBookingId });
+    return NextResponse.json({ ok: true, ...res, type: chosen, bookingId: resolvedBookingId });
   } catch (error) {
+    if (error instanceof BookingCheckoutError) return NextResponse.json({ error: error.message }, { status: error.status });
     console.error('[BookingCheckout] Could not initialize payment:', error);
     return NextResponse.json({ error: 'Could not initialize booking payment. Please try again.' }, { status: 502 });
   }

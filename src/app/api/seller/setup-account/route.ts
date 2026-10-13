@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from "@/lib/supabase-server";
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { createClient } from '@supabase/supabase-js';
-import { PaystackService } from '@/lib/paystack-service';
 import { PaylukService } from '@/lib/payluk-service';
-import { MARKETPLACE_CONSTANTS } from '@/lib/constants';
 
 /**
  * Normalises a name string for fuzzy comparison:
@@ -31,9 +28,9 @@ function namesMatch(a: string, b: string): boolean {
 /**
  * POST /api/seller/setup-account
  *
- * 1. Resolves the bank account via Paystack and verifies the name
+ * 1. Resolves the bank account via Payluk and verifies the name
  *    matches the authenticated user's profile name.
- * 2. Stores the account in `seller_accounts` with pending verification
+ * 2. Stores the verified account in `seller_accounts`
  *    status and an `account_updated_at` timestamp for the cooling-off guard.
  */
 export async function POST(request: NextRequest) {
@@ -41,7 +38,7 @@ export async function POST(request: NextRequest) {
     // ── Authenticate ─────────────────────────────────────
     const { data: { user }, error: authError } = await getAuthenticatedUser(request);
     if (authError || !user) {
-      return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
+      return NextResponse.json({ error: 'Invalid session' }, { status: authError?.status === 403 ? 403 : authError?.status === 503 ? 503 : 401 });
     }
 
     const body = await request.json();
@@ -100,35 +97,11 @@ export async function POST(request: NextRequest) {
     // ── Check Existing Accounts ───────────────────────────
     const { data: existingAccounts } = await supabaseAdmin
       .from('seller_accounts')
-      .select('id, paystack_subaccount_id')
+      .select('id')
       .eq('user_id', user.id)
       .eq('is_active', true);
 
     const isUpdate = existingAccounts && existingAccounts.length > 0;
-    const existingSubaccountId = isUpdate ? existingAccounts[0].paystack_subaccount_id : null;
-
-    // ── Paystack Subaccount (Optional / Best effort) ──────
-    let subaccountId: string | null = existingSubaccountId;
-    try {
-      const subaccountPayload = {
-        businessName: accountName,
-        bankCode: bankCode,
-        accountNumber: accountNumber,
-        percentageCharge: Math.round(MARKETPLACE_CONSTANTS.COMMISSION_RATE * 100),
-      };
-
-      if (existingSubaccountId) {
-        await PaystackService.updateSubaccount(existingSubaccountId, subaccountPayload);
-      } else {
-        const createResult = await PaystackService.createSubaccount(subaccountPayload);
-        if (createResult.success && createResult.subaccountCode) {
-          subaccountId = createResult.subaccountCode;
-        }
-      }
-    } catch (e) {
-      console.warn('[AccountSetup] Paystack subaccount step skipped (Paystack in test mode):', e);
-    }
-
     // ── Deactivate any existing accounts ──────────────────
     if (isUpdate) {
       await supabaseAdmin
@@ -139,7 +112,7 @@ export async function POST(request: NextRequest) {
 
     // ── Store in seller_accounts ───────────────────────────
     // For initial setup: no account_updated_at (allows immediate selling)
-    // For updates: set account_updated_at to trigger 48-hour cooling-off
+    // For updates: set account_updated_at to trigger 24-hour cooling-off
     const now = new Date().toISOString();
     const { error: insertError } = await supabaseAdmin
       .from('seller_accounts')
@@ -153,14 +126,13 @@ export async function POST(request: NextRequest) {
           account_name: accountName,
         },
         verification_status: 'verified',
+        verified_at: now,
         is_active: true,
         is_primary: true,
         // ✅ Only set account_updated_at for account updates, not initial setup
         account_updated_at: isUpdate ? now : null,
         created_at: now,
         updated_at: now,
-        paystack_subaccount_id: subaccountId,
-        paystack_subaccount_status: 'pending',
       });
 
     if (insertError) {
@@ -170,7 +142,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      subaccountId,
       message: 'Bank account linked and verified successfully.',
     });
   } catch (error) {
@@ -188,7 +159,7 @@ export async function GET(request: NextRequest) {
   try {
     const { data: { user }, error: authError } = await getAuthenticatedUser(request);
     if (authError || !user) {
-      return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
+      return NextResponse.json({ error: 'Invalid session' }, { status: authError?.status === 403 ? 403 : authError?.status === 503 ? 503 : 401 });
     }
 
     const { data, error } = await supabaseAdmin

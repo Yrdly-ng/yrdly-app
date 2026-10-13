@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
-        { status: 401 }
+        { status: authError?.status === 403 ? 403 : authError?.status === 503 ? 503 : 401 }
       );
     }
 

@@ -32,7 +32,7 @@ export function BusinessCreatorOnboarding({ isOpen, onClose, onContinue }: Busin
     const checkSellerStatus = async () => {
       const [{ data: userData }, { data: sellerData }] = await Promise.all([
         supabase
-          .from("users")
+          .from('public_profiles')
           .select("verified_seller")
           .eq("id", user.id)
           .single(),

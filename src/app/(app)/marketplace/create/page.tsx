@@ -1,5 +1,6 @@
 "use client";
 
+import { authenticatedFetch } from '@/lib/authenticated-fetch';
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -28,6 +29,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { MIN_PAID_PRICE } from "@/lib/constants";
+import { isPaidPrice, MINIMUM_PRICE_MESSAGE } from "@/lib/price-policy";
 
 const STEPS = ["Photos", "Details", "Description", "Review"];
 const CONDITIONS = ["New", "Used – Like New", "Used – Good", "Fair"];
@@ -123,6 +126,11 @@ export default function CreateMarketplaceListingPage() {
       return;
     }
 
+    if (listingType === "For Sale" && !isPaidPrice(Number(price))) {
+      toast({ variant: "destructive", title: "Valid Price Required", description: MINIMUM_PRICE_MESSAGE });
+      return;
+    }
+
     setPosting(true);
     setUploadProgress(10);
 
@@ -196,26 +204,12 @@ export default function CreateMarketplaceListingPage() {
         comment_count: 0,
       };
 
-      const { data: newPost, error: insertErr } = await supabase
-        .from("posts")
-        .insert(postPayload)
-        .select()
-        .single();
+      const { data: newPost, error: insertErr } = await authenticatedFetch('/api/posts', { post: postPayload });
 
       if (insertErr) throw insertErr;
 
       // 5. Insert into moderation_queue if flagged
-      if (modStatus === "pending" && newPost) {
-        await supabase.from("moderation_queue").insert({
-          content_id: newPost.id,
-          table_name: "posts",
-          user_id: user.id,
-          status: "pending",
-          reason: modReason,
-          text_content: textToModerate,
-          image_urls: uploadedImageUrls,
-        });
-      }
+
 
       setPosting(false);
       setUploadProgress(100);
@@ -282,7 +276,7 @@ export default function CreateMarketplaceListingPage() {
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button
+            <Button aria-label="Back"
               variant="ghost"
               size="icon"
               onClick={() => {
@@ -458,14 +452,19 @@ export default function CreateMarketplaceListingPage() {
                 {/* Price (Hidden if Giveaway) */}
                 {listingType === "For Sale" && (
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Price (₦) *</label>
+                    <label htmlFor="listing-price" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Price (₦) *</label>
                     <Input
+                      id="listing-price"
                       type="number"
+                      min={MIN_PAID_PRICE}
+                      step="0.01"
+                      aria-describedby="listing-price-help"
                       placeholder="e.g. 250000"
                       value={price}
                       onChange={(e) => setPrice(e.target.value)}
                       className="rounded-xl"
                     />
+                    <p id="listing-price-help" className="text-xs text-muted-foreground">Minimum paid price: ₦{MIN_PAID_PRICE.toLocaleString("en-NG")}.</p>
                   </div>
                 )}
 
@@ -534,8 +533,8 @@ export default function CreateMarketplaceListingPage() {
                         toast({ variant: "destructive", title: "Title Required", description: "Please enter a title." });
                         return;
                       }
-                      if (listingType === "For Sale" && (!price || parseFloat(price) <= 0)) {
-                        toast({ variant: "destructive", title: "Valid Price Required", description: "Please enter a valid price." });
+                      if (listingType === "For Sale" && !isPaidPrice(Number(price))) {
+                        toast({ variant: "destructive", title: "Valid Price Required", description: MINIMUM_PRICE_MESSAGE });
                         return;
                       }
                       setStep(2);

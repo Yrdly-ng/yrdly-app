@@ -109,15 +109,20 @@ export async function reverseGeocode(
   lng: number,
 ): Promise<ResolvedLocation | { status: typeof OUTSIDE_NIGERIA | typeof UNMATCHED_LOCATION }> {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  // Keep the current integration until the authenticated proxy passes deployment QA.
+  const useProxy = process.env.NEXT_PUBLIC_MAPS_PROXY_ENABLED === 'true';
 
   let googleState = "";
   let googleLga = "";
   let displayAddress = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
 
-  if (apiKey) {
+  if (useProxy || apiKey) {
     try {
       const res = await fetch(
-        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}&language=en`,
+        useProxy
+          ? `/api/maps/geocode/json?latlng=${encodeURIComponent(`${lat},${lng}`)}`
+          : `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}&language=en`,
+        { cache: 'no-store', signal: AbortSignal.timeout(8000) },
       );
       const data = await res.json();
 

@@ -88,7 +88,7 @@ export default function MarketplaceItemPage() {
         setLoading(true);
         const { data, error } = await supabase
           .from("posts")
-          .select(`*, user:users!posts_user_id_fkey(id, name, avatar_url, created_at)`)
+          .select(`*, user:public_profiles!posts_user_id_fkey(id, name, avatar_url, created_at)`)
           .eq("id", itemId)
           .eq("category", "For Sale")
           .single();
@@ -99,7 +99,7 @@ export default function MarketplaceItemPage() {
         /* fetch related items — same state as the viewed item */
         let relatedQuery = supabase
           .from("posts")
-          .select(`*, user:users!posts_user_id_fkey(id, name, avatar_url)`)
+          .select(`*, user:public_profiles!posts_user_id_fkey(id, name, avatar_url)`)
           .eq("category", "For Sale")
           .eq("is_sold", false)
           .neq("id", itemId)

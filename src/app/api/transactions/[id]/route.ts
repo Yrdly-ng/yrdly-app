@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { createClient } from "@supabase/supabase-js";
+import { getAuthenticatedUser } from '@/lib/supabase-server';
 
 export async function GET(
   request: NextRequest,
@@ -9,29 +9,8 @@ export async function GET(
   try {
     const { id: transactionId } = await params;
 
-    // Get authenticated user
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    const supabaseAuth = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        global: { headers: { Authorization: `Bearer ${token}` } },
-        auth: { autoRefreshToken: false, persistSession: false },
-      }
-    );
-    const { data: { user } } = await supabaseAuth.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+    const { data:{ user },error:authError } = await getAuthenticatedUser(request);
+    if (authError || !user) return NextResponse.json({ error:'Invalid session' },{ status:authError?.status === 403 ? 403 : authError?.status === 503 ? 503 : 401 });
 
     // Fetch transaction with admin client to bypass RLS
     const { data: transaction, error: txError } = await supabaseAdmin
@@ -60,13 +39,13 @@ export async function GET(
     // Fetch related user data
     const { data: buyer } = await supabaseAdmin
       .from('users')
-      .select('id, name, avatar_url, email')
+      .select('id, name, avatar_url')
       .eq('id', transaction.buyer_id)
       .single();
 
     const { data: seller } = await supabaseAdmin
       .from('users')
-      .select('id, name, avatar_url, email')
+      .select('id, name, avatar_url')
       .eq('id', transaction.seller_id)
       .single();
 

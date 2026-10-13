@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { ArrowLeft, Search, Star, MapPin, X, Plus, BadgeCheck } from "lucide-react";
@@ -63,7 +63,9 @@ export function BusinessesScreen({ backTarget = "/businesses" }: { backTarget?: 
   const filterLga = activeFilter?.lga;
   const filterWard = activeFilter?.ward;
 
+  const latestFetch = useRef(0);
   const fetchBusinesses = useCallback(async () => {
+    const request = ++latestFetch.current;
     try {
       let query = supabase
         .from("businesses")
@@ -77,18 +79,19 @@ export function BusinessesScreen({ backTarget = "/businesses" }: { backTarget?: 
 
       const { data, error } = await query;
 
+      if (request !== latestFetch.current) return;
       if (error) {
         console.error("Error fetching businesses:", error);
         setBusinesses([]);
         return;
       }
 
-      setBusinesses((data as Business[]) || []);
+      if (request === latestFetch.current) setBusinesses((data as Business[]) || []);
     } catch (err) {
       console.error("Error fetching businesses:", err);
-      setBusinesses([]);
+      if (request === latestFetch.current) setBusinesses([]);
     } finally {
-      setLoading(false);
+      if (request === latestFetch.current) setLoading(false);
     }
   }, [filterState, filterLga, filterWard]);
 
@@ -106,6 +109,12 @@ export function BusinessesScreen({ backTarget = "/businesses" }: { backTarget?: 
     return () => {
       supabase.removeChannel(channel);
     };
+  }, [fetchBusinesses]);
+
+  useEffect(() => {
+    const refresh = () => { void fetchBusinesses(); };
+    window.addEventListener('focus', refresh);
+    return () => window.removeEventListener('focus', refresh);
   }, [fetchBusinesses]);
 
   // Group businesses into category tiles
@@ -171,9 +180,9 @@ export function BusinessesScreen({ backTarget = "/businesses" }: { backTarget?: 
   };
 
   return (
-    <div className="min-h-[100dvh] bg-[var(--yrdly-dark)] text-foreground font-yrdly-body pb-10">
+    <div className="max-w-5xl mx-auto min-h-[100dvh] bg-[var(--yrdly-dark)] text-foreground font-yrdly-body pb-10">
       {/* Header */}
-      <div className="sticky top-0 z-10 px-4 pt-4 pb-3 bg-[var(--yrdly-dark)]/80 backdrop-blur-md border-b border-[var(--yrdly-glass-border)]">
+      <div className="px-4 sm:px-6 pt-6 pb-5">
         <div className="flex items-center gap-3 mb-3">
           {showingList ? (
             <button
@@ -200,12 +209,12 @@ export function BusinessesScreen({ backTarget = "/businesses" }: { backTarget?: 
           )}
         </div>
 
-        <div className="flex items-center justify-between gap-3 mb-1">
+        <div className="flex flex-col items-start gap-5 mb-6 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-3xl text-foreground font-yrdly-display font-bold">
               Business Hub
             </h1>
-            <p className="text-sm text-[var(--yrdly-label)] font-yrdly-body">
+            <p className="mt-2 text-sm text-[var(--yrdly-label)] font-yrdly-body">
               Discover local businesses in your neighborhood
             </p>
           </div>
@@ -218,7 +227,7 @@ export function BusinessesScreen({ backTarget = "/businesses" }: { backTarget?: 
           </Button>
         </div>
 
-        <div className="relative mb-4">
+        <div className="relative max-w-xl">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--yrdly-label)]" />
           <input
             value={searchQuery}
@@ -237,9 +246,9 @@ export function BusinessesScreen({ backTarget = "/businesses" }: { backTarget?: 
         </div>
       </div>
 
-      <div className="px-4">
+      <div className="px-4 sm:px-6">
         {loading ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3.5 mt-2">
+          <div className="grid grid-cols-1 min-[360px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3.5 mt-2">
             {[1, 2, 3, 4].map((i) => (
               <Skeleton key={i} className="h-44 w-full rounded-2xl" />
             ))}
@@ -283,12 +292,12 @@ function CategoryGrid({
   onSelect: (category: string) => void;
 }) {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3.5 mt-2">
+    <div className="grid grid-cols-1 min-[360px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3.5 mt-2">
       {tiles.map((tile) => (
         <button
           key={tile.name}
           onClick={() => onSelect(tile.name)}
-          className="relative h-44 rounded-2xl overflow-hidden group text-left border border-[var(--yrdly-glass-border)] shadow-sm"
+          className="relative h-44 rounded-2xl overflow-hidden group text-left shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
         >
           {tile.image ? (
             <Image
@@ -333,7 +342,7 @@ function BusinessList({
   if (businesses.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        <p className="text-sm text-[var(--yrdly-label)] font-yrdly-body">
+        <p className="mt-2 text-sm text-[var(--yrdly-label)] font-yrdly-body">
           No businesses found
         </p>
       </div>
@@ -350,7 +359,7 @@ function BusinessList({
         >
           <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)]">
             <Image
-              src={biz.logo || biz.cover_image || biz.image_urls?.[0] || "/placeholder.svg"}
+              src={(biz as any).logo_url || biz.logo || biz.cover_image || biz.image_urls?.[0] || "/placeholder.svg"}
               alt={biz.name}
               width={64}
               height={64}

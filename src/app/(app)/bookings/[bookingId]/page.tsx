@@ -1,12 +1,24 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-supabase-auth';
 import { BookingService, CANCELLATION_WINDOW_HOURS } from '@/lib/booking-service';
 import { NotificationTriggers } from '@/lib/notification-triggers';
 import { supabase } from '@/lib/supabase';
 import { Booking } from '@/types';
+import { authenticatedFetch } from '@/lib/authenticated-fetch';
+
+interface BookingCheckout {
+  transactionId: string;
+  reference: string;
+  paylukPaymentToken: string;
+  buyerPaylukId: string;
+  amount: number;
+  commission: number;
+  totalAmount: number;
+  alreadyPaid?: boolean;
+}
 
 export default function BookingDetailWebPage() {
   const params = useParams();
@@ -18,13 +30,14 @@ export default function BookingDetailWebPage() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [checkoutReview, setCheckoutReview] = useState<BookingCheckout | null>(null);
 
-  const fetchBooking = async () => {
+  const fetchBooking = useCallback(async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
         .from('bookings')
-        .select('*, service:service_offerings(*), business:businesses(*), customer:users(*)')
+        .select('*, service:service_offerings(*), business:businesses(*), customer:public_profiles!bookings_customer_id_fkey(*)')
         .eq('id', bookingId)
         .single();
 
@@ -35,19 +48,20 @@ export default function BookingDetailWebPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [bookingId]);
 
   useEffect(() => {
     if (bookingId) fetchBooking();
-  }, [bookingId]);
+  }, [bookingId, fetchBooking]);
 
-  if (loading || !booking) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-neutral-950 text-neutral-100 flex items-center justify-center p-4">
         <p className="text-neutral-400">Loading booking details...</p>
       </div>
     );
   }
+  if (!booking) return <div className="min-h-screen bg-neutral-950 text-neutral-100 p-6"><p role="alert">{msg?.text || 'Booking not found.'}</p></div>;
 
   const isCustomer = user?.id === booking.customer_id;
   const isProvider = user?.id === booking.business?.owner_id;
@@ -187,20 +201,92 @@ export default function BookingDetailWebPage() {
     setActionLoading(true);
     setMsg(null);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) throw new Error('Please sign in again to pay for this booking.');
-      const response = await fetch('/api/bookings/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({ bookingId: booking.id }),
-      });
-      const result = await response.json();
-      if (!response.ok || !result.url) throw new Error(result.error || 'Could not start checkout.');
-      window.location.assign(result.url);
+      const result = await authenticatedFetch<BookingCheckout>('/api/bookings/checkout', { bookingId: booking.id });
+      if (result.alreadyPaid) {
+        setMsg({ text: 'Your booking payment is confirmed.', type: 'success' });
+        await fetchBooking();
+      } else {
+        if (!result.paylukPaymentToken) throw new Error('Could not prepare secure checkout.');
+        setCheckoutReview(result);
+      }
     } catch (error) {
       setMsg({ text: error instanceof Error ? error.message : 'Could not start checkout.', type: 'error' });
+    } finally {
       setActionLoading(false);
     }
+  };
+
+  const openCheckout = async () => {
+    if (!checkoutReview) return;
+    setActionLoading(true);
+    setMsg(null);
+    let confirmed = false;
+    const verify = async () => {
+      await authenticatedFetch('/api/bookings/verify', { bookingId: booking.id });
+      confirmed = true;
+      setCheckoutReview(null);
+      setMsg({ text: 'Booking payment confirmed. Your funds are held securely until receipt is confirmed.', type: 'success' });
+      await fetchBooking();
+    };
+    try {
+      const publicKey = process.env.NEXT_PUBLIC_PAYLUK_PUBLIC_KEY;
+      if (!publicKey) throw new Error('Payment checkout is unavailable. Please contact support.');
+      const { initEscrowCheckout, pay } = await import('payluk-escrow-inline-checkout');
+      initEscrowCheckout({ publicKey });
+      await pay({
+        paymentToken: checkoutReview.paylukPaymentToken,
+        reference: checkoutReview.reference,
+        customerId: checkoutReview.buyerPaylukId,
+        redirectUrl: `${window.location.origin}/bookings/${booking.id}`,
+        brand: 'Yrdly',
+        callback: async () => {
+          try { await verify(); }
+          catch { setMsg({ text: 'Payment is being verified. Check this booking before paying again.', type: 'error' }); }
+          finally { setActionLoading(false); }
+        },
+        onClose: async () => {
+          if (confirmed) return;
+          try { await verify(); }
+          catch {
+            try {
+              await authenticatedFetch('/api/bookings/cancel-checkout', { transactionId: checkoutReview.transactionId });
+              setCheckoutReview(null);
+              setMsg({ text: 'Unpaid checkout cancelled.', type: 'success' });
+              await fetchBooking();
+            } catch { setMsg({ text: 'Checkout is processing. Check this booking before paying again.', type: 'error' }); }
+          } finally { setActionLoading(false); }
+        },
+      });
+    } catch (error) {
+      setMsg({ text: error instanceof Error ? error.message : 'Could not open checkout.', type: 'error' });
+      setActionLoading(false);
+    }
+  };
+
+  const handleReceipt = async () => {
+    if (!confirm('Confirm that you received the booked service? This releases the payment to the provider.')) return;
+    setActionLoading(true);
+    try {
+      const payment = await authenticatedFetch<{ transactionId: string }>('/api/bookings/verify', { bookingId: booking.id });
+      await authenticatedFetch('/api/payluk/confirm-delivery', { transactionId: payment.transactionId });
+      setMsg({ text: 'Service receipt confirmed. Payment released to the provider.', type: 'success' });
+      await fetchBooking();
+    } catch (error) {
+      setMsg({ text: error instanceof Error ? error.message : 'Could not confirm service receipt.', type: 'error' });
+    } finally { setActionLoading(false); }
+  };
+
+  const cancelReviewedCheckout = async () => {
+    if (!checkoutReview) return;
+    setActionLoading(true);
+    try {
+      await authenticatedFetch('/api/bookings/cancel-checkout', { transactionId: checkoutReview.transactionId });
+      setCheckoutReview(null);
+      setMsg({ text: 'Unpaid checkout cancelled.', type: 'success' });
+      await fetchBooking();
+    } catch (error) {
+      setMsg({ text: error instanceof Error ? error.message : 'Could not cancel checkout.', type: 'error' });
+    } finally { setActionLoading(false); }
   };
 
   return (
@@ -325,8 +411,21 @@ export default function BookingDetailWebPage() {
           </div>
 
           {/* Action Buttons */}
+          {checkoutReview && (
+            <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5 space-y-3" aria-label="Booking payment review">
+              <h3 className="font-semibold">Review your payment</h3>
+              <dl className="text-sm space-y-2">
+                <div className="flex justify-between gap-4"><dt>Service payment</dt><dd>₦{checkoutReview.amount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</dd></div>
+                <div className="flex justify-between gap-4"><dt>Yrdly fee (3%)</dt><dd>₦{checkoutReview.commission.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</dd></div>
+                <div className="flex justify-between gap-4 font-bold"><dt>Total</dt><dd>₦{checkoutReview.totalAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</dd></div>
+              </dl>
+              <p className="text-xs text-neutral-400">Payluk holds your payment securely. Confirm service receipt here to release it to the provider.</p>
+              <button onClick={openCheckout} disabled={actionLoading} className="w-full rounded-xl bg-emerald-500 px-4 py-3 font-semibold text-neutral-950 disabled:opacity-50">{actionLoading ? 'Opening checkout…' : 'Continue to secure checkout'}</button>
+              <button onClick={cancelReviewedCheckout} disabled={actionLoading} className="w-full rounded-xl border border-neutral-700 px-4 py-3 text-sm disabled:opacity-50">Cancel unpaid checkout</button>
+            </div>
+          )}
           <div className="pt-4 flex flex-wrap gap-3">
-            {isCustomer && ['requested', 'confirmed'].includes(booking.status)
+            {isCustomer && !checkoutReview && ['requested', 'confirmed'].includes(booking.status)
               && (!!booking.quote_id || !!booking.service?.price)
               && (!!booking.quote_id || booking.service?.deposit_required || booking.service?.requires_full_payment || booking.service?.escrow_enabled)
               && !['deposit_paid', 'fully_paid', 'escrow_held', 'escrow_released'].includes(booking.payment_status || 'unpaid') && (
@@ -335,8 +434,11 @@ export default function BookingDetailWebPage() {
                 disabled={actionLoading}
                 className="flex-1 py-3 px-4 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-bold rounded-xl text-sm disabled:opacity-50"
               >
-                {actionLoading ? 'Opening checkout…' : 'Pay for booking'}
+                {actionLoading ? 'Preparing payment…' : 'Review booking payment'}
               </button>
+            )}
+            {isCustomer && ['deposit_paid','fully_paid','escrow_held'].includes(booking.payment_status || '') && (
+              <button onClick={handleReceipt} disabled={actionLoading} className="flex-1 rounded-xl bg-emerald-500 px-4 py-3 font-semibold text-neutral-950 disabled:opacity-50">Confirm service received</button>
             )}
             {isProvider && booking.status === 'requested' && (
               <>

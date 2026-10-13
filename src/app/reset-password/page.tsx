@@ -108,7 +108,7 @@ export default function ResetPasswordPage() {
                 <h4 className="text-sm font-bold text-white font-yrdly-display">
                   Secure Password Update
                 </h4>
-                <p className="text-xs text-[var(--yrdly-label)] leading-relaxed">
+                <p className="text-xs text-white/70 leading-relaxed">
                   Choose a new strong password to protect your YRDLY account.
                 </p>
               </div>

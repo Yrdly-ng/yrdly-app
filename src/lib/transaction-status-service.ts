@@ -1,291 +1,33 @@
 import { supabase } from './supabase';
-import { EscrowStatus } from '@/types/escrow';
-import { NotificationService } from './notification-service';
-import { PayoutService } from './payout-service';
 
 export class TransactionStatusService {
-  /**
-   * Confirm payment after Paystack verification
-   */
-  static async confirmPayment(transactionId: string): Promise<void> {
-    try {
-      const { error } = await supabase
-        .from('escrow_transactions')
-        .update({
-          status: EscrowStatus.PAID,
-          paid_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', transactionId);
-
-      if (error) {
-        console.error('Error confirming payment:', error);
-        throw error;
-      }
-
-      // Send notification to seller
-      try {
-        const { data: transaction } = await supabase
-          .from('escrow_transactions')
-          .select(`
-            buyer_id,
-            seller_id,
-            amount,
-            item:posts(title, text)
-          `)
-          .eq('id', transactionId)
-          .single();
-
-        if (transaction) {
-          const { data: buyer } = await supabase
-            .from('users')
-            .select('name')
-            .eq('id', transaction.buyer_id)
-            .single();
-
-          const itemTitle = transaction.item?.[0]?.title || transaction.item?.[0]?.text || 'Item';
-          const buyerName = buyer?.name || 'Buyer';
-
-          await NotificationService.createPaymentSuccessfulNotification(
-            transaction.seller_id,
-            buyerName,
-            itemTitle,
-            transaction.amount,
-            transactionId
-          );
-        }
-      } catch (notificationError) {
-        console.error('Failed to send payment notification:', notificationError);
-        // Don't throw error - payment is still confirmed
-      }
-    } catch (error) {
-      console.error('Failed to confirm payment:', error);
-      throw new Error('Failed to confirm payment');
-    }
+  private static async transition(transactionId: string, action: 'shipped' | 'delivered'): Promise<void> {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error('Not authenticated');
+    const response = await fetch(`/api/transactions/${transactionId}/status`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify({ action }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Could not update transaction');
   }
 
-  /**
-   * Seller marks item as shipped
-   */
-  static async confirmShipped(transactionId: string, sellerId: string): Promise<void> {
-    try {
-      // Verify the seller owns this transaction
-      const { data: transaction, error: fetchError } = await supabase
-        .from('escrow_transactions')
-        .select('seller_id, status')
-        .eq('id', transactionId)
-        .single();
-
-      if (fetchError) {
-        throw new Error('Transaction not found');
-      }
-
-      if (transaction.seller_id !== sellerId) {
-        throw new Error('Unauthorized: You can only update your own transactions');
-      }
-
-      const currentStatus = (transaction.status || '').toLowerCase();
-      const validPaidStatuses = ['paid', 'ongoing', 'opened'];
-      if (!validPaidStatuses.includes(currentStatus)) {
-        throw new Error('Transaction must be paid before marking as shipped');
-      }
-
-      const { error } = await supabase
-        .from('escrow_transactions')
-        .update({
-          status: EscrowStatus.SHIPPED,
-          shipped_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', transactionId);
-
-      if (error) {
-        console.error('Error confirming shipment:', error);
-        throw error;
-      }
-
-      // Send notification to buyer
-      try {
-        const { data: transaction } = await supabase
-          .from('escrow_transactions')
-          .select(`
-            buyer_id,
-            seller_id,
-            item:posts(title, text)
-          `)
-          .eq('id', transactionId)
-          .single();
-
-        if (transaction) {
-          const { data: seller } = await supabase
-            .from('users')
-            .select('name')
-            .eq('id', transaction.seller_id)
-            .single();
-
-          const itemTitle = transaction.item?.[0]?.title || transaction.item?.[0]?.text || 'Item';
-          const sellerName = seller?.name || 'Seller';
-
-          await NotificationService.createItemShippedNotification(
-            transaction.buyer_id,
-            sellerName,
-            itemTitle,
-            transactionId
-          );
-        }
-      } catch (notificationError) {
-        console.error('Failed to send shipment notification:', notificationError);
-        // Don't throw error - shipment is still confirmed
-      }
-    } catch (error) {
-      console.error('Failed to confirm shipment:', error);
-      throw new Error('Failed to confirm shipment');
-    }
+  static async confirmShipped(transactionId: string, _sellerId: string): Promise<void> {
+    await this.transition(transactionId, 'shipped');
   }
 
-  /**
-   * Buyer confirms delivery
-   */
-  static async confirmDelivered(transactionId: string, buyerId: string): Promise<void> {
-    try {
-      // Verify the buyer owns this transaction
-      const { data: transaction, error: fetchError } = await supabase
-        .from('escrow_transactions')
-        .select('buyer_id, status')
-        .eq('id', transactionId)
-        .single();
-
-      if (fetchError) {
-        throw new Error('Transaction not found');
-      }
-
-      if (transaction.buyer_id !== buyerId) {
-        throw new Error('Unauthorized: You can only update your own transactions');
-      }
-
-      const confirmableStatuses = [EscrowStatus.PAID, EscrowStatus.SHIPPED, EscrowStatus.DELIVERED];
-      if (!confirmableStatuses.includes(transaction.status as EscrowStatus)) {
-        throw new Error(`Transaction cannot be confirmed in state: ${transaction.status}`);
-      }
-
-      const { error } = await supabase
-        .from('escrow_transactions')
-        .update({
-          status: EscrowStatus.DELIVERED,
-          delivered_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', transactionId);
-
-      if (error) {
-        console.error('Error confirming delivery:', error);
-        throw error;
-      }
-
-      // Send notification to seller
-      try {
-        const { data: transaction } = await supabase
-          .from('escrow_transactions')
-          .select(`
-            buyer_id,
-            seller_id,
-            item:posts(title, text)
-          `)
-          .eq('id', transactionId)
-          .single();
-
-        if (transaction) {
-          const { data: buyer } = await supabase
-            .from('users')
-            .select('name')
-            .eq('id', transaction.buyer_id)
-            .single();
-
-          const itemTitle = transaction.item?.[0]?.title || transaction.item?.[0]?.text || 'Item';
-          const buyerName = buyer?.name || 'Buyer';
-
-          await NotificationService.createDeliveryConfirmedNotification(
-            transaction.seller_id,
-            buyerName,
-            itemTitle,
-            transactionId
-          );
-        }
-      } catch (notificationError) {
-        console.error('Failed to send delivery notification:', notificationError);
-        // Don't throw error - delivery is still confirmed
-      }
-    } catch (error) {
-      console.error('Failed to confirm delivery:', error);
-      throw new Error('Failed to confirm delivery');
-    }
+  static async confirmDelivered(transactionId: string, _buyerId: string): Promise<void> {
+    await this.transition(transactionId, 'delivered');
   }
 
-  /**
-   * Complete transaction and release funds to seller
-   */
   static async completeTransaction(transactionId: string): Promise<void> {
-    try {
-      const sessionResponse = await supabase.auth.getSession();
-      const token = sessionResponse.data.session?.access_token;
-      
-      if (!token) {
-        throw new Error('Not authenticated');
-      }
-
-      const res = await fetch(`/api/transactions/${transactionId}/complete`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      const data = await res.json();
-      
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to complete transaction');
-      }
-    } catch (error) {
-      console.error('Failed to complete transaction:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Cancel transaction (for disputes or other reasons)
-   */
-  static async cancelTransaction(transactionId: string, reason: string): Promise<void> {
-    try {
-      const { error } = await supabase
-        .from('escrow_transactions')
-        .update({
-          status: EscrowStatus.CANCELLED,
-          dispute_reason: reason,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', transactionId);
-
-      if (error) {
-        console.error('Error cancelling transaction:', error);
-        throw error;
-      }
-
-      // Mark item as available again
-      const { data: transaction } = await supabase
-        .from('escrow_transactions')
-        .select('item_id')
-        .eq('id', transactionId)
-        .single();
-
-      if (transaction) {
-        const { ItemTrackingService } = await import('./item-tracking-service');
-        await ItemTrackingService.markItemAsAvailable(transaction.item_id);
-      }
-
-    } catch (error) {
-      console.error('Failed to cancel transaction:', error);
-      throw new Error('Failed to cancel transaction');
-    }
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error('Not authenticated');
+    const response = await fetch(`/api/transactions/${transactionId}/complete`, {
+      method: 'POST', headers: { Authorization: `Bearer ${session.access_token}` },
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Could not complete transaction');
   }
 
   /**

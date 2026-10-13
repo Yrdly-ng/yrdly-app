@@ -126,7 +126,7 @@ export class UserReviewService {
         .from('user_reviews')
         .select(`
           *,
-          buyer:users!user_reviews_buyer_id_fkey(name, avatar_url)
+          buyer:public_profiles!user_reviews_buyer_id_fkey(name, avatar_url)
         `)
         .eq('seller_id', sellerId)
         .order('created_at', { ascending: false });

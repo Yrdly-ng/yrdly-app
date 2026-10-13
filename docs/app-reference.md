@@ -1,7 +1,7 @@
 # Yrdly App — Complete Technical Reference
 
-> **Last updated:** March 2026  
-> **Stack:** Next.js 15 (App Router, Turbopack) · Supabase · Paystack · Tailwind CSS · TypeScript
+> **Payment sections updated:** October 2026 (other sections retain their earlier reference context)
+> **Stack:** Next.js 15 (App Router, Turbopack) · Supabase · Payluk · Tailwind CSS · TypeScript
 
 ---
 
@@ -53,7 +53,7 @@ Yrdly is a **hyper-local community marketplace and social platform** for Nigeria
 | Auth | Supabase Auth (email/password + OAuth) |
 | Realtime | Supabase Realtime (chat messages) |
 | Storage | Supabase Storage (images, dispute evidence) |
-| Payments | Paystack (hosted standard checkout) |
+| Payments | Payluk escrow (inline SDK / hosted checkout) |
 | Deployment | Vercel (planned) |
 | Fonts | Raleway · Plus Jakarta Sans · Work Sans · Pacifico · Jersey 25 |
 
@@ -70,8 +70,8 @@ yrdly-app/
 │   │   │   ├── marketplace/          # Item listings grid
 │   │   │   │   └── [itemId]/         # Item detail + BuyButton
 │   │   │   ├── payment/
-│   │   │   │   ├── redirect/         # Loading spinner → Paystack
-│   │   │   │   ├── verify/           # Paystack callback → API verify
+│   │   │   │   ├── redirect/         # Loading spinner → Payluk
+│   │   │   │   ├── verify/           # Payluk callback → API verify
 │   │   │   │   ├── escrow-confirmation/  # "Payment Secured!" screen
 │   │   │   │   └── success/          # Payout success + review prompt
 │   │   │   ├── transactions/
@@ -93,8 +93,8 @@ yrdly-app/
 │   │   │   └── notifications/        # Notification centre
 │   │   ├── api/
 │   │   │   └── payment/
-│   │   │       ├── initialize/route.ts   # ★ Creates escrow + Paystack link
-│   │   │       └── verify/route.ts       # ★ Verifies Paystack + marks PAID
+│   │   │       ├── initialize/route.ts   # ★ Creates escrow + Payluk link
+│   │   │       └── verify/route.ts       # ★ Verifies Payluk + marks PAID
 │   │   ├── auth/callback/            # Supabase OAuth callback
 │   │   ├── onboarding/               # Welcome → Tour → Profile setup
 │   │   ├── login/ signup/            # Auth screens
@@ -114,7 +114,7 @@ yrdly-app/
 │   │   ├── supabase.ts               # Anon client (browser-safe)
 │   │   ├── supabase-admin.ts         # ★ Service-role client (API routes only)
 │   │   ├── escrow-service.ts         # Escrow CRUD (uses anon client)
-│   │   ├── paystack-service.ts       # Paystack helper (server-only)
+│   │   ├── payluk-service.ts         # Payluk helper (server-only)
 │   │   ├── transaction-status-service.ts  # Status transitions
 │   │   ├── item-tracking-service.ts  # Availability checks
 │   │   └── designTokens.ts           # Stitch design system tokens
@@ -211,226 +211,76 @@ The entire app is locked to dark mode. These are the core tokens:
 
 ## 7. Marketplace & Escrow
 
-### Listing an Item
-1. User taps **+** → "Sell an Item" → `CreateItemDialog`
-2. Fills in title, description, price, photos, condition, location
-3. Item is saved to `posts` table with `category = 'For Sale'`
-4. Item appears in `/marketplace` grid
+Marketplace listings use `posts` (`For Sale` / `Giveaway`); business catalog listings use `catalog_items`. The authenticated server derives buyer, seller and price, reserves inventory and creates a Payluk escrow. The browser uses the Payluk inline SDK when configured, with a hosted checkout link as fallback.
 
-### Buying an Item — Escrow Flow
+Payment verification and signed webhooks commit local payment/inventory state through the database. Escrow transitions include pending, paid, shipped, delivered, completed, disputed and cancelled. Refund amounts are recorded separately; never infer a refund solely from a cancelled status.
 
-```
-Buyer taps "Buy Now" on a listing
-  ↓
-BuyButton opens Stitch Order Summary sheet
-  Shows: item, seller, item price, 3% fee, total
-  ↓
-Buyer taps "Pay Securely"
-  ↓
-POST /api/payment/initialize (server-side)
-  - Validates availability
-  - Creates escrow_transactions row (PENDING status)
-  - Calls Paystack /transaction/initialize API
-  - Returns hosted checkout link
-  ↓
-/payment/redirect (loading screen, then redirects to Paystack)
-  ↓
-Buyer completes payment on Paystack hosted page
-  ↓
-Paystack redirects to /payment/verify?tx_ref={id}
-  ↓
-/payment/verify page calls POST /api/payment/verify
-  - Verifies payment with Paystack
-  - Updates escrow status → PAID
-  - Marks item as is_sold = true
-  ↓
-Redirects to /payment/escrow-confirmation
-  Shows: success, 4-step escrow timeline
-```
-
-### After Payment
-
-| Actor | Action | Route |
-|---|---|---|
-| Seller | Marks item as sent (3-point checklist) | `/transactions/[id]/mark-sent` |
-| Buyer | Confirms receipt or raises dispute | `/transactions/[id]/confirm-receipt` |
-| Buyer | Raises dispute with reason + evidence | `/transactions/[id]/dispute` |
-| System | Auto-releases funds after 48h if no action | (cron job — pending) |
-| Buyer | Leaves star review | `/transactions/[id]/review` |
-| Seller | Views payout confirmation | `/payment/success` |
-
-### Escrow Statuses
-
-```
-PENDING → PAID → SHIPPED → DELIVERED → COMPLETED
-                         ↘ DISPUTED
-```
-
-### Commission
-- Currently **3%** of item price, added on top (buyer pays item + fee)
-- Configured in `/api/payment/initialize` as `Math.round(price * 0.03)`
-- **To change the rate:** Update this constant — a `platform_config` DB table is planned for dynamic config
-
----
+The canonical commission is 3%, defined in `src/lib/constants.ts`. Marketplace checkout adds the platform commission as an additional fee; event commission is deducted at organizer payout. Reconcile provider fees and actual settlement in the sandbox before launch changes.
 
 ## 8. Payment Flow
 
-### Files Involved
+Payluk is the only payment provider. See [payments.md](payments.md) for the current integration and remaining live verification.
 
 | File | Role |
 |---|---|
-| `src/components/escrow/BuyButton.tsx` | UI sheet + calls `/api/payment/initialize` |
-| `src/app/api/payment/initialize/route.ts` | Creates escrow row + Paystack link (server-side) |
-| `src/app/(app)/payment/redirect/page.tsx` | Auto-redirect loading screen |
-| `src/app/(app)/payment/verify/page.tsx` | Receives Paystack callback, triggers API verify |
-| `src/app/api/payment/verify/route.ts` | Verifies payment + updates DB |
-| `src/app/(app)/payment/escrow-confirmation/page.tsx` | Success state shown to buyer |
-| `src/app/(app)/payment/success/page.tsx` | Payout confirmation + review |
+| `src/lib/payluk-service.ts` | Server-side Payluk API requests |
+| `src/lib/payluk-onboarding.ts` | Customer identity and onboarding |
+| `src/components/escrow/BuyButton.tsx` | Marketplace checkout |
+| `src/app/api/payment/initialize/route.ts` | Reserves marketplace order and initializes escrow |
+| `src/app/api/payment/verify/route.ts` | Buyer-authorized Payluk verification |
+| `src/app/api/events/tickets/purchase/route.ts` | Free tickets or paid Payluk escrow |
+| `src/lib/ticket-service.ts` | Payment verification and idempotent ticket issuance |
+| `src/app/api/webhooks/payluk/route.ts` | Signed payment and escrow events |
+| `src/lib/event-escrow-service.ts` | Organizer bank payouts with persisted attempt references |
 
-### Paystack Integration
-- **Mode:** Test mode (keys in `.env.local`)
-- **Method:** Paystack Standard (hosted checkout page)
-- **Test Card:** `4084 0840 8408 4081` · Expiry `any future date` · CVV `123` · PIN `any`
-- **Redirect URL:** `{APP_URL}/payment/verify?tx_ref={transactionId}`
-
----
+Paid event refunds and cancellations require support-assisted Payluk escrow resolution. The API keeps paid tickets unchanged until the refund is confirmed. Free tickets can be cancelled directly. Unknown historical payment providers require reconciliation and are never silently relabelled.
 
 ## 9. Environment Variables
 
-### `.env` (committed, public-safe)
+Keep credentials in ignored environment files and deployment settings. An isolated QA environment must use its own Supabase project credentials and test payment keys.
+
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://yoiyqxtpmxnrrbqqidcs.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<public-key>
+SUPABASE_SERVICE_ROLE_KEY=<server-only-key>
 NEXT_PUBLIC_APP_URL=http://localhost:9002
+PAYLUK_SECRET_KEY=<server-only-test-or-live-key>
+NEXT_PUBLIC_PAYLUK_PUBLIC_KEY=<publishable-key-for-inline-checkout>
+CRON_SECRET=<server-only-cron-secret>
 ```
 
-### `.env.local` (never commit — contains secrets)
-```env
-# Supabase admin — bypasses RLS for server-side writes
-SUPABASE_SERVICE_ROLE_KEY=eyJ...   # Project Settings → API → service_role
-
-# Paystack test keys
-PAYSTACK_PUBLIC_KEY=pk_test_...
-PAYSTACK_SECRET_KEY=sk_test_...
-
-# Webhook secret — must match Paystack dashboard → Webhooks
-PAYSTACK_WEBHOOK_SECRET=your_secret_here
-
-# App URL — update to https://... in production
-NEXT_PUBLIC_APP_URL=http://localhost:9002
-```
-
-> ⚠️ **Critical:** `SUPABASE_SERVICE_ROLE_KEY` must **only** be used in `src/app/api/**` routes via `supabaseAdmin`. Never import `supabase-admin.ts` from any client component or page.
-
----
+The Payluk secret key selects staging or production. Webhook signatures use that environment's secret key. Configure `/api/webhooks/payluk` in the provider dashboard. No payment-provider selector is used.
 
 ## 10. Database Schema
 
-### Key Tables
+| Tables | Purpose |
+|---|---|
+| `posts`, `catalog_items` | Marketplace and business listings |
+| `escrow_transactions` | Buyer/seller amounts, provider, payment token and escrow ID, lifecycle |
+| `disputes`, `dispute_resolution_operations` | Dispute amounts and durable resolution attempts |
+| `events`, `ticket_tiers`, `tickets` | Events, capacity and buyer tickets |
+| `seller_accounts`, `payout_requests`, `event_payouts` | Verified bank details and persisted payout attempts |
+| `users`, `public_profiles` | Private account state and scoped public profile data |
+| `conversations`, `messages` | Membership-scoped messaging |
 
-#### `posts`
-Stores all content: community posts, marketplace items, events.
-```sql
-id          uuid PK
-user_id     uuid → users
-category    text  -- 'For Sale', 'Event', 'Community', etc.
-title       text
-text        text
-description text
-price       numeric
-image_urls  text[]
-image_url   text
-is_sold     boolean default false
-event_location jsonb
-timestamp   timestamptz
-created_at  timestamptz
-```
-
-#### `escrow_transactions`
-Core marketplace transaction table.
-```sql
-id              uuid PK
-item_id         uuid → posts
-buyer_id        uuid → users
-seller_id       uuid → users
-amount          numeric  -- item price
-commission      numeric  -- platform fee
-total_amount    numeric  -- amount + commission
-seller_amount   numeric  -- amount - commission
-status          text     -- PENDING/PAID/SHIPPED/DELIVERED/COMPLETED/DISPUTED/CANCELLED
-payment_method  text
-payment_reference text   -- Paystack tx ref
-delivery_details  jsonb
-dispute_reason  text
-paid_at         timestamptz
-shipped_at      timestamptz
-delivered_at    timestamptz
-completed_at    timestamptz
-dispute_resolved_at timestamptz
-created_at      timestamptz
-updated_at      timestamptz
-```
-
-#### `users` / `profiles`
-User identity and profile data.
-
-#### `conversations` / `messages`
-Chat system. Marketplace conversations link to a specific `item_id`.
-
-#### `payout_accounts` *(planned)*
-Seller bank account details for automated payouts.
-```sql
-id              uuid PK
-user_id         uuid → users
-bank_name       text
-account_number  text
-account_name    text  -- Verified by Paystack
-paystack_subaccount_id text
-is_default      boolean
-created_at      timestamptz
-```
-
-### RLS Policy Notes
-- The `escrow_transactions` table has RLS enabled
-- **Anon client** (used in browser/pages) can only read rows where `buyer_id` or `seller_id` = the current user
-- **Service role client** (`supabaseAdmin`) bypasses RLS — only used in `/api/**` routes
-
----
+Check migration files and live schema before database changes. Historical migrations are retained; the shared backend has version drift and unapplied audit guards. Do not run a blanket migration push against production. Browser access depends on grants and RLS; service-role credentials belong only in server code.
 
 ## 11. API Routes
 
-| Method | Route | Description |
+| Method | Route | Purpose |
 |---|---|---|
-| `POST` | `/api/payment/initialize` | Creates escrow + Paystack hosted link |
-| `POST` | `/api/payment/verify` | Verifies Paystack payment, marks transaction PAID |
-| `POST` | `/api/user-status` | Online/last-seen tracking |
+| POST | `/api/payment/initialize` | Marketplace Payluk checkout |
+| POST | `/api/payment/verify` | Verify the authenticated buyer's transaction |
+| POST | `/api/events/tickets/purchase` | Event ticket checkout |
+| POST | `/api/events/tickets/verify` | Verify tickets and return minimal identifiers |
+| POST | `/api/events/tickets/refund` | Cancel a free ticket; paid refunds require support |
+| POST | `/api/events/[id]/cancel` | Cancel an event after any paid refunds are resolved |
+| GET | `/api/seller/banks` | Authenticated Payluk bank list |
+| GET/POST | `/api/seller/resolve-account` | Payluk account-name resolution |
+| GET/POST | `/api/seller/setup-account` | Read/link the authenticated seller's bank account |
+| POST | `/api/webhooks/payluk` | HMAC-SHA512 signed provider events |
 
-### `POST /api/payment/initialize`
-**Body:**
-```json
-{
-  "itemId": "uuid",
-  "buyerId": "uuid",
-  "sellerId": "uuid",
-  "price": 4000,
-  "buyerEmail": "buyer@email.com",
-  "buyerName": "Ade",
-  "itemTitle": "iPhone 12",
-  "sellerName": "Caleb"
-}
-```
-**Response:**
-```json
-{
-  "success": true,
-  "paymentLink": "https://checkout.paystack.com/...",
-  "transactionId": "uuid"
-}
-```
-
-### `POST /api/payment/verify`
-**Body:** `{ "txRef": "uuid-here" }`  
-**Response:** `{ "success": true, "transactionId": "uuid", "amount": 4120 }`
+For exact request and response shapes, read each route. Treat browser callback success as a prompt to verify server-side; it is not proof that funds moved.
 
 ---
 
@@ -471,38 +321,17 @@ npm start
 
 ### First-Time Setup Checklist
 - [ ] Create a Supabase project
-- [ ] Run the database migrations (tables listed in §10)
+- [ ] Reconcile and validate required database migrations in an isolated development project
 - [ ] Copy your Supabase URL + anon key → `.env`
 - [ ] Copy your Supabase service role key → `.env.local`
-- [ ] Add your Paystack test keys → `.env.local`
+- [ ] Add your Payluk test keys → `.env.local`
 - [ ] Set `NEXT_PUBLIC_APP_URL` in `.env.local`
-- [ ] Set `PAYSTACK_WEBHOOK_SECRET` in both `.env.local` and the Paystack dashboard
+- [ ] Configure `/api/webhooks/payluk` in the Payluk dashboard; signatures use `PAYLUK_SECRET_KEY`
 
 ---
 
 ## 14. Known Limitations & Next Steps
 
-### Pending Implementation
-| Feature | Status | Notes |
-|---|---|---|
-| Dispute submission (backend) | 🟡 UI done, placeholder | Wire to a `disputes` table |
-| Review submission (backend) | 🟡 UI done, placeholder | Wire to `reviews` table |
-| Add payout account (backend) | 🟡 UI done, placeholder | Paystack Resolve Account API + `payout_accounts` table |
-| 48h auto-release | 🔴 Not started | Requires Supabase Edge Function + pg_cron |
-| Commission from DB | 🔴 Hardcoded at 3% | Add `platform_config` table |
-| Delivery tracking | 🔴 Not started | Face-to-face only for now |
-| Location filtering (LGA/ward) | 🔴 Not started | Core to the "local first" vision |
-| Paid boosts | 🔴 Not started | Separate Paystack payment flow |
-| Push notifications | 🔴 Not started | Service worker registered, not sending |
-| Seller subaccounts (Paystack) | 🔴 Not started | Needed for automated payouts |
+Read `AUDIT_FIX_STATUS.md` for the audit rollout status. Local fixes are not a production end-to-end certification. Remaining gates include GitHub publishing access, an isolated Supabase QA project, deployed database/security guards, browser verification and real Payluk sandbox payment, escrow release, bank payout and refund reconciliation.
 
-### Known Issues
-- `profile/payouts` page is **109 kB** — needs code splitting or lazy loading
-- `use-posts.tsx` has a redundant `useCallback` dependency (lint warning)
-- Dispute image uploads need Supabase Storage bucket configured before use
-
-### Architecture Decisions Made
-- **All payment calls go through API routes** — the Paystack secret key is never sent to the browser
-- **`supabaseAdmin` only in `/api/**`** — using it in a page component would expose the service role key in the client bundle
-- **Escrow happens client-to-escrow-to-seller** — we never send money anywhere automatically until the buyer confirms
-- **No delivery service** — the platform facilitates meeting/handover; it does not own the delivery leg
+Paid bookings and event ticket refunds use support-assisted Payluk resolution. Historical migrations and shared database compatibility columns remain until a separately reviewed database cleanup. Do not remove historical financial records or rewrite applied migrations.

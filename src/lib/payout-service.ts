@@ -1,8 +1,9 @@
 import { supabaseAdmin } from './supabase-admin';
-import { PaystackService } from './paystack-service';
 import { PaylukService } from './payluk-service';
 import { getPaylukCustomerId } from './payluk-onboarding';
-import { NotificationService } from './notification-service';
+import { NotificationService } from './server-notification-service';
+import { payoutAccountError } from './payout-account';
+import { randomUUID } from 'node:crypto';
 
 export interface PayoutRequest {
   id: string;
@@ -27,12 +28,12 @@ export class PayoutService {
   /**
    * Get seller's balance from completed transactions
    */
-  static async getSellerBalance(sellerId: string): Promise<SellerBalance> {
+  static async getSellerLedgerBalance(sellerId: string): Promise<SellerBalance> {
     try {
       // Get completed transactions for this seller
       const { data: transactions, error } = await supabaseAdmin
         .from('escrow_transactions')
-        .select('seller_amount, status')
+        .select('seller_amount, status, item_type, payment_provider')
         .eq('seller_id', sellerId);
 
       if (error) {
@@ -40,7 +41,7 @@ export class PayoutService {
         throw error;
       }
 
-      const completedTransactions = transactions?.filter(t => t.status === 'completed') || [];
+      const completedTransactions = transactions?.filter(t => t.status === 'completed' && t.item_type !== 'ticket' && t.payment_provider === 'payluk') || [];
       const totalEarnings = completedTransactions.reduce((sum, t) => sum + t.seller_amount, 0);
 
       // Get payout requests
@@ -57,27 +58,9 @@ export class PayoutService {
       const completedPayouts = payouts?.filter(p => p.status === 'completed').reduce((sum, p) => sum + p.amount, 0) || 0;
       const pendingPayouts = payouts?.filter(p => p.status === 'pending' || p.status === 'processing').reduce((sum, p) => sum + p.amount, 0) || 0;
 
-      let availableBalance = Math.max(0, totalEarnings - completedPayouts - pendingPayouts);
-
-      // The Payluk wallet balance is the authoritative source of truth.
-      // The DB seller_amount may not account for Payluk's escrow fees, so the wallet
-      // will always have the real amount the seller can actually withdraw.
-      try {
-        const sellerPaylukId = await getPaylukCustomerId(sellerId);
-        if (sellerPaylukId) {
-          const wallet = await PaylukService.getCustomerWallet(sellerPaylukId);
-          if (typeof wallet.mainBalance === 'number' && !isNaN(wallet.mainBalance)) {
-            // Use the Payluk wallet balance directly — it's what the seller actually has.
-            availableBalance = wallet.mainBalance;
-          }
-        }
-      } catch (wErr) {
-        console.warn('[PayoutService] getSellerBalance Payluk wallet check warning:', wErr);
-      }
-
       return {
         totalEarnings,
-        availableBalance,
+        availableBalance: Math.max(0, totalEarnings - completedPayouts - pendingPayouts),
         pendingPayouts,
         completedPayouts,
       };
@@ -85,6 +68,20 @@ export class PayoutService {
       console.error('Failed to get seller balance:', error);
       throw new Error('Failed to get seller balance');
     }
+  }
+
+  static async getSellerBalance(sellerId: string): Promise<SellerBalance> {
+    const balance = await this.getSellerLedgerBalance(sellerId);
+    // Ticket proceeds have a separate ledger. Display availability is bounded
+    // by both earned funds and provider funds; execution always rechecks wallet.
+    try {
+      const customerId = await getPaylukCustomerId(sellerId);
+      const wallet = await PaylukService.getCustomerWallet(customerId);
+      balance.availableBalance = Math.min(balance.availableBalance, Math.max(0, wallet.mainBalance - balance.pendingPayouts));
+    } catch (error) {
+      console.warn('[PayoutService] Seller balance provider check unavailable:', error);
+    }
+    return balance;
   }
 
   /**
@@ -159,26 +156,7 @@ export class PayoutService {
         }
       }
 
-      // Create payout request
-      const payoutData = {
-        transaction_id: transactionId,
-        seller_id: transaction.seller_id,
-        account_id: sellerAccount.id,
-        amount: payoutAmount,
-        status: 'pending',
-        requested_at: new Date().toISOString(),
-      };
-
-      const { data: payoutRequest, error: payoutError } = await supabaseAdmin
-        .from('payout_requests')
-        .insert(payoutData)
-        .select('id')
-        .single();
-
-      if (payoutError) {
-        console.error('Error creating payout request:', payoutError);
-        throw payoutError;
-      }
+      const payoutRequest = { id:await this.reservePayout(transaction.seller_id,sellerAccount.id,payoutAmount,transactionId) };
 
       // Process the payout
       const result = await this.processPayout(payoutRequest.id);
@@ -188,6 +166,17 @@ export class PayoutService {
       console.error('Failed to initiate auto payout:', error);
       throw new Error('Failed to initiate auto payout');
     }
+  }
+
+  static async reservePayout(sellerId:string,accountId:string,amount:number,transactionId?:string): Promise<string> {
+    const balance = await this.getSellerBalance(sellerId);
+    if (amount > balance.availableBalance) throw new Error('INSUFFICIENT_BALANCE');
+    const { data,error } = await supabaseAdmin.rpc('reserve_seller_payout',{
+      p_seller_id:sellerId,p_account_id:accountId,p_amount:amount,
+      p_wallet_limit:balance.availableBalance+balance.pendingPayouts,p_transaction_id:transactionId || null,
+    });
+    if (error || !data) throw new Error('Withdrawal could not be reserved. Refresh your balance and retry.');
+    return data;
   }
 
   /**
@@ -223,11 +212,21 @@ export class PayoutService {
         return { success: true };
       }
 
+      const accountError = payoutAccountError(payoutRequest.seller_account);
+      if (accountError) return { success: false, error: accountError };
+
+      // A retry gets a fresh intent namespace. Never reuse a failed provider
+      // intent, and persist the attempt before contacting the provider.
+      const attemptReference = `payout-${payoutRequestId}-${randomUUID()}`;
+
       // CAS guard: update status from 'pending' to 'processing' atomically
       const { data: updatedRows, error: casError } = await supabaseAdmin
         .from('payout_requests')
         .update({
           status: 'processing',
+          transaction_reference: attemptReference,
+          payment_provider:'payluk',
+          execution_stage: 'preparing',
         })
         .eq('id', payoutRequestId)
         .eq('status', 'pending')
@@ -243,6 +242,7 @@ export class PayoutService {
       const accountType = payoutRequest.seller_account?.account_type;
 
       let transferSuccess = false;
+      let transferPending = false;
       let transferErrorMsg = 'Transfer failed';
       let transferReason = '';
       let transactionReference = '';
@@ -262,42 +262,38 @@ export class PayoutService {
             throw new Error('Missing bank details for payout. Seller must re-add their account.');
           }
 
-          // Fetch current available balance before this payout request was deducted
-          const currentBalance = await this.getSellerBalance(payoutRequest.seller_id);
-          // Since getSellerBalance already uses Payluk wallet as the source of truth,
-          // the available balance here reflects what the seller can ACTUALLY withdraw.
-          // Add back the pending payout amount since it was already subtracted.
-          const yrdlyAvailableBalance = currentBalance.availableBalance + payoutRequest.amount;
+          // Recheck the ledger without repeating customer/wallet API calls.
+          // Exclude only this payout's reservation, retaining all other claims.
+          const currentBalance = await this.getSellerLedgerBalance(payoutRequest.seller_id);
+          const yrdlyAvailableBalance = Math.max(0, currentBalance.totalEarnings - currentBalance.completedPayouts
+            - Math.max(0, currentBalance.pendingPayouts - Number(payoutRequest.amount)));
 
           // Check if seller has a Payluk customer ID
           const sellerPaylukId = await getPaylukCustomerId(payoutRequest.seller_id);
 
           if (sellerPaylukId) {
-            // Use the Payluk wallet balance as the withdrawal amount, NOT the payout
-            // request amount from the DB. The DB seller_amount may be inflated because
-            // it doesn't account for Payluk's escrow release fee.
-            const wallet = await PaylukService.getCustomerWallet(sellerPaylukId);
-            const paylukWalletBalance = wallet.mainBalance ?? 0;
-            // Withdraw the lesser of: the requested amount, or what's actually in the wallet
-            const withdrawalAmount = Math.min(payoutRequest.amount, paylukWalletBalance);
-
-            if (withdrawalAmount <= 0) {
-              throw new Error(`Seller Payluk wallet balance is ₦${paylukWalletBalance}. Nothing to withdraw.`);
-            }
-
-            console.log(`[PayoutService] Initiating Payluk bank withdrawal for seller ${payoutRequest.seller_id}. Requested: ₦${payoutRequest.amount}, Payluk wallet: ₦${paylukWalletBalance}, Withdrawing: ₦${withdrawalAmount}`);
+            // withdrawToBank performs the final authoritative wallet check and
+            // applies the quoted fee within this exact reserved debit budget.
             const paylukResult = await PaylukService.withdrawToBank({
               sellerPaylukCustomerId: sellerPaylukId,
-              amount: withdrawalAmount,
+              amount: Number(payoutRequest.amount),
               bankCode,
               bankName,
               accountNumber,
               accountName,
-              reference: `payout-${payoutRequestId}`,
-              yrdlyAvailableBalance: paylukWalletBalance,
+              reference: attemptReference,
+              yrdlyAvailableBalance: yrdlyAvailableBalance,
+              onIntentReady: async reference => {
+                const { data: saved, error } = await supabaseAdmin.from('payout_requests')
+                  .update({ transaction_reference: reference, execution_stage: 'submitted' }).eq('id', payoutRequestId)
+                  .eq('status', 'processing').eq('execution_stage', 'preparing').eq('transaction_reference', attemptReference)
+                  .select('id').maybeSingle();
+                if (error || !saved) throw new Error('Could not persist withdrawal reference; transfer was not executed.');
+              },
             });
 
-            transferSuccess = paylukResult.success;
+            transferSuccess = paylukResult.outcome === 'success';
+            transferPending = paylukResult.outcome === 'pending';
             actualNetPayoutAmount = paylukResult.intentAmount;
             intentFee = paylukResult.intentFee;
             actualTotalDebit = paylukResult.totalPaylukDebit;
@@ -306,24 +302,9 @@ export class PayoutService {
               transferReason = paylukResult.reason || paylukResult.error;
               maximumWithdrawable = paylukResult.maximumWithdrawable;
             }
-            transactionReference = paylukResult.reference || `payout-${payoutRequestId}`;
+            transactionReference = paylukResult.reference || attemptReference;
           } else {
-            console.log(`[PayoutService] Seller ${payoutRequest.seller_id} has no Payluk ID, using Paystack transfer...`);
-            const transferResult = await PaystackService.transferToSeller({
-              bankCode,
-              accountNumber,
-              amount: payoutRequest.amount,
-              reference: `payout-${payoutRequestId}`,
-              narration: `Yrdly payout for transaction ${payoutRequestId}`,
-            });
-
-            transferSuccess = transferResult.success;
-            actualNetPayoutAmount = payoutRequest.amount;
-            actualTotalDebit = payoutRequest.amount;
-            if (!transferSuccess && transferResult.error) {
-              transferErrorMsg = transferResult.error;
-            }
-            transactionReference = `payout-${payoutRequestId}`;
+            throw new Error('Payment identity unavailable; no alternate provider was attempted.');
           }
         }
 
@@ -373,11 +354,12 @@ export class PayoutService {
           await supabaseAdmin
             .from('payout_requests')
             .update({
-              status: 'failed',
+              status: transferPending ? 'processing' : 'failed',
+              transaction_reference: transactionReference,
               failure_reason: transferReason || transferErrorMsg,
               processed_at: new Date().toISOString(),
             })
-            .eq('id', payoutRequestId);
+            .eq('id', payoutRequestId).eq('status','processing');
 
           // Send failure notification
           try {
@@ -407,11 +389,11 @@ export class PayoutService {
         await supabaseAdmin
           .from('payout_requests')
           .update({
-            status: 'failed',
-            failure_reason: errorMsg,
+            status: 'processing',
+            failure_reason: `Uncertain transfer; reconcile before retry: ${errorMsg}`,
             processed_at: new Date().toISOString(),
           })
-          .eq('id', payoutRequestId);
+          .eq('id', payoutRequestId).eq('status','processing');
 
         try {
           await NotificationService.createPayoutFailedNotification(
@@ -451,25 +433,7 @@ export class PayoutService {
         throw new Error('No active primary account found for seller');
       }
 
-      // Create payout request
-      const payoutData = {
-        seller_id: sellerId,
-        account_id: sellerAccount.id,
-        amount: amount,
-        status: 'pending',
-        requested_at: new Date().toISOString(),
-      };
-
-      const { data: payoutRequest, error: payoutError } = await supabaseAdmin
-        .from('payout_requests')
-        .insert(payoutData)
-        .select('id')
-        .single();
-
-      if (payoutError) {
-        console.error('Error creating manual payout request:', payoutError);
-        throw payoutError;
-      }
+      const payoutRequest = { id:await this.reservePayout(sellerId,sellerAccount.id,amount) };
 
       // Process the payout
       const result = await this.processPayout(payoutRequest.id);
@@ -498,7 +462,12 @@ export class PayoutService {
         throw error;
       }
 
-      return data || [];
+      return (data || []).map(row => ({
+        id: row.id, sellerId: row.seller_id, accountId: row.account_id,
+        amount: Number(row.amount), status: row.status, requestedAt: new Date(row.requested_at),
+        processedAt: row.processed_at ? new Date(row.processed_at) : undefined,
+        failureReason: row.failure_reason || undefined, transactionReference: row.transaction_reference || undefined,
+      }));
     } catch (error) {
       console.error('Failed to get payout history:', error);
       throw new Error('Failed to get payout history');

@@ -1,156 +1,69 @@
 import { supabaseAdmin } from './supabase-admin';
-import { PaylukService } from './payluk-service';
+import { PaylukService, type PaylukCustomer } from './payluk-service';
 
-/**
- * Lightweight read: returns the stored payluk_customer_id for a user
- * without making any Payluk API calls. Falls back to ensurePaylukCustomer
- * (full onboarding ladder) only when no ID is stored in the database.
- *
- * Use this from read-only routes (e.g. wallet-balance) where the customer
- * is expected to already exist. The full ladder in ensurePaylukCustomer is
- * reserved for routes that may legitimately create a new customer
- * (virtual-account, payment/initialize).
- */
+function normalizePhone(value: string): string {
+  const digits = value.replace(/\D/g, '');
+  if (/^234[789]\d{9}$/.test(digits)) return `0${digits.slice(3)}`;
+  if (/^0[789]\d{9}$/.test(digits)) return digits;
+  throw new Error('A verified Nigerian phone number is required for payments.');
+}
+
 export async function getPaylukCustomerId(userId: string): Promise<string> {
   return ensurePaylukCustomer(userId);
 }
 
-/**
- * Ensures a user has a Payluk customer profile.
- * - If `payluk_customer_id` is already set, returns it immediately.
- * - Otherwise, parses the user's name, creates a Payluk customer using the Nigeria countryId,
- *   saves the ID to the `users` table, and returns it.
- */
+/** Never recover a financial identity by name or unverified profile email. */
 export async function ensurePaylukCustomer(userId: string): Promise<string> {
-  let { data: user, error } = await supabaseAdmin
-    .from('users')
-    .select('payluk_customer_id, name, legal_name, email, phone')
-    .eq('id', userId)
-    .maybeSingle();
-
-  if (error || !user) {
-    // Fallback to auth.users
-    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.getUserById(userId);
-    if (authError || !authUser?.user) {
-      throw new Error(`[PaylukOnboarding] Failed to fetch user ${userId}: ${error?.message || 'User not found in public or auth'}`);
-    }
-    user = {
-      payluk_customer_id: null,
-      name: authUser.user.user_metadata?.name || 'Unknown',
-      legal_name: null,
-      email: authUser.user.email,
-      phone: authUser.user.phone || authUser.user.user_metadata?.phone
-    };
-  }
-
-  // 1. If already onboarded, return stored ID immediately
-  if (user.payluk_customer_id) {
-    return user.payluk_customer_id;
-  }
-
-  // 2. Prepare customer data
-  // The users table stores name as a single string. Payluk requires firstname and lastname.
-  // We prioritize legal_name over name.
-  const rawName = (user.legal_name || user.name || 'Unknown User').trim();
-  const nameParts = rawName.split(/\s+/);
-  
-  const firstname = nameParts[0];
-  // If the user only has a single-word name, fallback to 'User' since lastname is required
-  const lastname = nameParts.length > 1 ? nameParts.slice(1).join(' ') : 'User';
-
-  if (!user.phone) {
-    throw new Error(
-      `[PaylukOnboarding] User ${userId} must have a verified phone number before Payluk onboarding.`
-    );
-  }
-  
-  let phone = user.phone;
-  if (phone.startsWith('234') && phone.length === 13) {
-    phone = '0' + phone.substring(3);
-  } else if (phone.startsWith('+234') && phone.length === 14) {
-    phone = '0' + phone.substring(4);
-  } else {
-    phone = phone.replace(/\D/g, '');
-    if (phone.length > 11) phone = phone.substring(phone.length - 11);
-    if (phone.length < 11) phone = phone.padStart(11, '0');
-    if (!phone.startsWith('0')) phone = '0' + phone.substring(1);
-  }
-
-  const email = user.email || `${userId}@placeholder.yrdly.com`;
-
-  // 3. Call Payluk API
-  let customerId = '';
+  const deadline = AbortSignal.timeout(10_000);
+  let timeout: ReturnType<typeof setTimeout> | undefined;
   try {
-    const customer = await PaylukService.createCustomer({
-      firstname,
-      lastname,
-      email,
-      phone,
-    });
-    customerId = customer.customerId;
-  } catch (err: any) {
-    // 1. Try extracting customerId directly from Payluk's error message (e.g., "registered to one of your customers (customerId: 6a905b7d4224347a5745b83c)")
-    const match = err.message?.match(/customerId:\s*([a-f0-9]{24})/i);
-    if (match && match[1]) {
-      console.log(`[PaylukOnboarding] Extracted existing customerId ${match[1]} directly from Payluk error message.`);
-      customerId = match[1];
-    } else {
-      const isAlreadyExistsError =
-        err.message?.includes('already exists') ||
-        err.message?.includes('already registered') ||
-        err.message?.includes('registered to one of your customers');
+    return await Promise.race([
+      ensureWithinDeadline(userId,deadline),
+      new Promise<never>((_,reject) => { timeout = setTimeout(() => reject(new Error('Payment identity lookup timed out. Please retry.')),10_000); }),
+    ]);
+  } finally { if (timeout) clearTimeout(timeout); }
+}
 
-      if (!isAlreadyExistsError) {
-        throw err; // unrelated error — surface immediately
-      }
-
-      // "already exists" — try to recover the existing customer ID
-      let existingCustomer = await PaylukService.getCustomerByPhone(phone, email);
-
-      // Also try international format — Payluk may have stored the phone as 234XXXXXXXXX
-      if (!existingCustomer && phone.startsWith('0') && phone.length === 11) {
-        const intlPhone = '234' + phone.substring(1);
-        console.log(`[PaylukOnboarding] Trying international phone format: ${intlPhone}`);
-        existingCustomer = await PaylukService.getCustomerByPhone(intlPhone, email);
-      }
-
-      if (!existingCustomer) {
-        console.log(`[PaylukOnboarding] Phone lookup failed for ${phone}, trying email: ${email}`);
-        existingCustomer = await PaylukService.getCustomerByEmail(email);
-      }
-
-      if (!existingCustomer) {
-        console.log(`[PaylukOnboarding] Email lookup failed, scanning all customers for phone: ${phone}`);
-        existingCustomer = await PaylukService.findCustomerByPhoneOrEmailScan(phone, email);
-      }
-
-      // Last resort: match by name. This handles the case where a customer was
-      // previously created with a placeholder email and a different phone number.
-      if (!existingCustomer) {
-        console.log(`[PaylukOnboarding] Scan failed, trying name-based recovery for: ${firstname} ${lastname}`);
-        existingCustomer = await PaylukService.findCustomerByNameScan(firstname, lastname);
-      }
-
-      if (existingCustomer) {
-        customerId = existingCustomer.customerId;
-      } else {
-        // Recovery failed — throw immediately.
-        throw new Error(
-          `[PaylukOnboarding] Customer already exists, but lookup by phone failed for ${phone}`
-        );
-      }
+async function ensureWithinDeadline(userId: string, deadline: AbortSignal): Promise<string> {
+  const { data: user, error } = await supabaseAdmin.from('users')
+    .select('payluk_customer_id, name, legal_name, phone, phone_verified')
+    .eq('id', userId).single();
+  if (error || !user) throw new Error('Payment profile could not be loaded. Please retry.');
+  if (!user.phone_verified || !user.phone) throw new Error('Verify your phone number before using payments.');
+  const phone = normalizePhone(user.phone);
+  const validate = async (customer: PaylukCustomer) => {
+    if (!customer?.customerId || normalizePhone(customer.phone || '') !== phone) {
+      throw new Error('Payment identity could not be verified. Contact support; your stored mapping has not been changed.');
     }
+    const { data: duplicate, error: lookupError } = await supabaseAdmin.from('users')
+      .select('id').eq('payluk_customer_id', customer.customerId).neq('id', userId).limit(1);
+    if (lookupError) throw new Error('Unable to verify payment identity. Please retry.');
+    if (duplicate?.length) throw new Error('Payment identity is already linked to another account. Contact support.');
+    deadline.throwIfAborted();
+    return customer.customerId;
+  };
+  if (user.payluk_customer_id) {
+    return validate(await PaylukService.getCustomerById(user.payluk_customer_id, deadline));
   }
-
-  // 4. Save to database
-  const { error: updateError } = await supabaseAdmin
-    .from('users')
-    .update({ payluk_customer_id: customerId })
-    .eq('id', userId);
-
-  if (updateError) {
-    throw new Error(`[PaylukOnboarding] Failed to save Payluk customer ID: ${updateError.message}`);
+  let customer = await PaylukService.getCustomerByPhone(phone, undefined, deadline);
+  if (!customer) {
+    const { data: auth, error: authError } = await supabaseAdmin.auth.admin.getUserById(userId);
+    if (authError || !auth.user?.email || !auth.user.email_confirmed_at) {
+      throw new Error('Verify your email before setting up payments.');
+    }
+    const [firstname, ...rest] = (user.legal_name || user.name || 'Yrdly User').trim().split(/\s+/);
+    customer = await PaylukService.createCustomer({ firstname, lastname: rest.join(' ') || 'User', email: auth.user.email, phone }, deadline);
   }
-
+  const customerId = await validate(customer);
+  deadline.throwIfAborted();
+  const { data: saved, error: saveError } = await supabaseAdmin.from('users')
+    .update({ payluk_customer_id: customerId }).eq('id', userId)
+    .is('payluk_customer_id', null).select('payluk_customer_id').maybeSingle();
+  if (saveError) throw new Error('Unable to save verified payment identity. Please retry.');
+  if (!saved) {
+    const { data: current, error: readError } = await supabaseAdmin.from('users')
+      .select('payluk_customer_id').eq('id', userId).single();
+    if (readError || current?.payluk_customer_id !== customerId) throw new Error('Payment identity changed concurrently. Contact support.');
+  }
   return customerId;
 }

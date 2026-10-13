@@ -28,7 +28,7 @@ export default function CommunityApprovalPage() {
   const load = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabase.from("communities")
-      .select("*, creator:users!communities_created_by_fkey(name, phone_verified)")
+      .select("*, creator:public_profiles!communities_created_by_fkey(name, phone_verified)")
       .eq("approval_status", "pending").order("created_at", { ascending: true });
     if (error) toast({ title: "Could not load submissions", description: error.message, variant: "destructive" });
     setItems((data ?? []) as PendingCommunity[]);

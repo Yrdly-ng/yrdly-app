@@ -25,18 +25,6 @@ export class SupabaseChatService {
         return existingConvs[0].id;
       }
 
-      // 2. Check if conversation exists between participants for marketplace without item_id match
-      const { data: existingParticipantConvs } = await supabase
-        .from('conversations')
-        .select('id')
-        .contains('participant_ids', [buyerId, sellerId])
-        .eq('type', 'marketplace')
-        .limit(1);
-
-      if (existingParticipantConvs && existingParticipantConvs.length > 0) {
-        return existingParticipantConvs[0].id;
-      }
-
       // 3. Create new conversation in conversations table
       const { data: newConv, error: createError } = await supabase
         .from('conversations')
@@ -65,99 +53,35 @@ export class SupabaseChatService {
     }
   }
 
-  // Get all chats for a user (as buyer)
-  static async getUserChats(userId: string): Promise<ItemChat[]> {
-    try {
-      const { data: chats, error } = await supabase
-        .from('item_chats')
-        .select('*')
-        .eq('buyer_id', userId)
-        .order('last_message_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching user chats:', error);
-        throw error;
-      }
-
-      return (chats || []).map(chat => ({
-        id: chat.id,
-        itemId: chat.item_id,
-        buyerId: chat.buyer_id,
-        sellerId: chat.seller_id,
-        itemTitle: chat.item_title,
-        itemImageUrl: chat.item_image_url,
-        itemPrice: chat.item_price ?? undefined,
-        createdAt: new Date(chat.created_at),
-        lastActivity: new Date(chat.last_message_at),
-        isActive: true,
-        updatedAt: new Date(chat.last_message_at),
-        lastMessage: chat.last_message ? {
-          id: '',
-          chatId: chat.id,
-          senderId: '',
-          senderName: '',
-          content: chat.last_message,
-          timestamp: new Date(chat.last_message_at),
-          isRead: false,
-          messageType: 'text' as const,
-        } : undefined,
-      }));
-    } catch (error) {
-      console.error('Error in getUserChats:', error);
-      throw error;
-    }
-  }
-
-  // Get all chats for a user (as seller)
-  static async getSellerChats(userId: string): Promise<ItemChat[]> {
-    try {
-      const { data: chats, error } = await supabase
-        .from('item_chats')
-        .select('*')
-        .eq('seller_id', userId)
-        .order('last_message_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching seller chats:', error);
-        throw error;
-      }
-
-      return (chats || []).map(chat => ({
-        id: chat.id,
-        itemId: chat.item_id,
-        buyerId: chat.buyer_id,
-        sellerId: chat.seller_id,
-        itemTitle: chat.item_title,
-        itemImageUrl: chat.item_image_url,
-        itemPrice: chat.item_price ?? undefined,
-        createdAt: new Date(chat.created_at),
-        lastActivity: new Date(chat.last_message_at),
-        isActive: true,
-        updatedAt: new Date(chat.last_message_at),
-        lastMessage: chat.last_message ? {
-          id: '',
-          chatId: chat.id,
-          senderId: '',
-          senderName: '',
-          content: chat.last_message,
-          timestamp: new Date(chat.last_message_at),
-          isRead: false,
-          messageType: 'text' as const,
-        } : undefined,
-      }));
-    } catch (error) {
-      console.error('Error in getSellerChats:', error);
-      throw error;
-    }
+  static async getUserChats(userId: string): Promise<ItemChat[]> { return this.listChats(userId); }
+  static async getSellerChats(userId: string): Promise<ItemChat[]> { return (await this.listChats(userId)).filter(chat => chat.sellerId === userId); }
+  private static async listChats(userId: string): Promise<ItemChat[]> {
+    const { data,error } = await supabase.from('conversations').select('*')
+      .contains('participant_ids',[userId]).eq('type','marketplace').order('last_message_timestamp',{ ascending:false });
+    if (error) throw error;
+    const itemIds = Array.from(new Set((data || []).map(chat => chat.item_id).filter(Boolean)));
+    const { data:items,error:itemError } = itemIds.length
+      ? await supabase.from('posts').select('id,user_id').in('id',itemIds) : { data:[],error:null };
+    if (itemError) throw itemError;
+    const sellers = new Map((items || []).map(item => [item.id,item.user_id]));
+    return (data || []).map(chat => {
+      const sellerId = sellers.get(chat.item_id) as string | undefined;
+      return {
+      id:chat.id,itemId:chat.item_id,buyerId:chat.participant_ids.find((id:string) => id !== (sellerId || userId)) || userId,
+      sellerId:sellerId || userId,itemTitle:chat.item_title,itemImageUrl:chat.item_image,itemPrice:chat.item_price,
+      createdAt:new Date(chat.created_at),updatedAt:new Date(chat.updated_at),lastActivity:new Date(chat.last_message_timestamp || chat.updated_at),
+      isActive:true,lastMessage:chat.last_message_text ? { id:'',chatId:chat.id,senderId:chat.last_message_sender_id,
+        senderName:'',content:chat.last_message_text,timestamp:new Date(chat.last_message_timestamp),isRead:false,messageType:'text' as const } : undefined,
+    }; });
   }
 
   // Get messages for a specific chat
   static async getChatMessages(chatId: string): Promise<ChatMessage[]> {
     try {
       const { data: messages, error } = await supabase
-        .from('chat_messages')
+        .from('messages')
         .select('*')
-        .eq('chat_id', chatId)
+        .eq('conversation_id', chatId)
         .order('created_at', { ascending: true });
 
       if (error) {
@@ -167,15 +91,15 @@ export class SupabaseChatService {
 
       return (messages || []).map((message: any) => ({
         id: message.id,
-        chatId: message.chat_id,
+        chatId: message.conversation_id,
         senderId: message.sender_id,
         senderName: message.sender_name,
-        content: message.content,
+        content: message.text || message.content || '',
         timestamp: new Date(message.created_at || message.timestamp),
         // Parse isRead from metadata
-        isRead: message.metadata?.isRead || false,
-        messageType: (message.message_type || 'text') as 'text' | 'image' | 'system',
-        metadata: message.metadata || (message.message_type === 'image' ? { imageUrl: message.content } : undefined),
+        isRead: (message.read_by?.length || 0) > 1,
+        messageType: (message.image_url ? 'image' : 'text') as 'text' | 'image' | 'system',
+        metadata: message.image_url ? { imageUrl:message.image_url } : undefined,
       }));
     } catch (error) {
       console.error('Error in getChatMessages:', error);
@@ -192,60 +116,11 @@ export class SupabaseChatService {
     imageUrl?: string
   ): Promise<void> {
     try {
-      // Insert the message
-      // Note: chat_messages table doesn't have is_read or image_url columns
-      // image_url should be stored in metadata if needed
-      const messageData: any = {
-        chat_id: chatId,
-        sender_id: senderId,
-        sender_name: senderName,
-        content: content,
-        message_type: imageUrl ? 'image' : 'text',
-        metadata: imageUrl ? { imageUrl } : {},
-        created_at: new Date().toISOString(),
-      };
-      
-      const { error: messageError } = await supabase
-        .from('chat_messages')
-        .insert(messageData);
-
-      if (messageError) {
-        console.error('Error sending message:', messageError);
-        throw messageError;
-      }
-      
-      // ALSO insert into the new `messages` table for unified inbox
-      const { error: unifiedMessageError } = await supabase
-        .from('messages')
-        .insert({
-          conversation_id: chatId,
-          sender_id: senderId,
-          text: content,
-          image_url: imageUrl || null,
-          video_url: null,
-          created_at: new Date().toISOString(),
-          is_read: true,
-          read_by: [senderId]
-        });
-        
-      if (unifiedMessageError) {
-        console.error('Error sending unified message:', unifiedMessageError);
-        // Don't throw, it's just for the unified inbox
-      }
-
-      // Update the chat's last message
-      const { error: updateError } = await supabase
-        .from('item_chats')
-        .update({
-          last_message: content,
-          last_message_at: new Date().toISOString(),
-        })
-        .eq('id', chatId);
-
-      if (updateError) {
-        console.error('Error updating chat last message:', updateError);
-        // Don't throw here, message was sent successfully
-      }
+      const { error:messageError } = await supabase.from('messages').insert({
+        conversation_id:chatId,sender_id:senderId,text:content,image_url:imageUrl || null,
+        created_at:new Date().toISOString(),is_read:true,read_by:[senderId],
+      });
+      if (messageError) throw messageError;
 
       // Also update the conversations table for marketplace chats
       const { error: conversationUpdateError } = await supabase
@@ -280,7 +155,7 @@ export class SupabaseChatService {
           console.error('Error fetching unified conversation for notification:', convError);
         }
 
-        if (convRow && (convRow.type === 'friend' || convRow.type === 'briefcase')) {
+        if (convRow) {
           // Use unified participant array
           const participants: string[] = convRow.participant_ids || [];
           const recipient = participants.find((id: string) => id !== senderId);
@@ -328,8 +203,8 @@ export class SupabaseChatService {
         {
           event: '*',
           schema: 'public',
-          table: 'chat_messages',
-          filter: `chat_id=eq.${chatId}`,
+          table: 'messages',
+          filter: `conversation_id=eq.${chatId}`,
         },
         async () => {
           // Refetch messages when changes occur
@@ -348,36 +223,14 @@ export class SupabaseChatService {
     };
   }
 
-  // Mark messages as read using the metadata column
-  static async markMessagesAsRead(chatId: string, userId: string): Promise<void> {
-    try {
-      // Fetch messages sent by the OTHER person
-      const { data: messages, error: fetchError } = await supabase
-        .from('chat_messages')
-        .select('id, metadata')
-        .eq('chat_id', chatId)
-        .neq('sender_id', userId);
-
-      if (fetchError) throw fetchError;
-      if (!messages || messages.length === 0) return;
-
-      // Filter for unread messages
-      const unreadMessages = messages.filter(m => !m.metadata || !m.metadata.isRead);
-      if (unreadMessages.length === 0) return;
-
-      // Update their metadata
-      const updatePromises = unreadMessages.map(msg => {
-        const newMetadata = { ...(msg.metadata || {}), isRead: true };
-        return supabase
-          .from('chat_messages')
-          .update({ metadata: newMetadata })
-          .eq('id', msg.id);
-      });
-
-      await Promise.all(updatePromises);
-    } catch (error) {
-      console.error('Error in markMessagesAsRead:', error);
-      throw error;
+  static async markMessagesAsRead(chatId:string,userId:string): Promise<void> {
+    const { data,error } = await supabase.from('messages').select('id,read_by')
+      .eq('conversation_id',chatId).neq('sender_id',userId);
+    if (error) throw error;
+    for (const message of data || []) {
+      if (message.read_by?.includes(userId)) continue;
+      const { error:updateError } = await supabase.from('messages').update({ read_by:[...(message.read_by || []),userId] }).eq('id',message.id);
+      if (updateError) throw updateError;
     }
   }
 }

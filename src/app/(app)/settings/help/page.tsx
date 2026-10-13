@@ -75,7 +75,7 @@ export default function HelpCenterPage() {
         <div className="w-9" />
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 pt-6 space-y-6">
+      <div className="max-w-2xl mx-auto px-4 pt-6 space-y-6">
         <div>
           <h2 className="font-bold text-xl text-foreground mb-4">Frequently Asked Questions</h2>
           <div className="bg-card rounded-2xl border border-border/60 shadow-sm overflow-hidden">
@@ -111,7 +111,7 @@ export default function HelpCenterPage() {
             </button>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

@@ -288,7 +288,7 @@ export function NotificationsDropdown({ isOpen, onClose, onNotificationCountChan
           const senderIds = Array.from(new Set(data.map(notif => notif.sender_id || notif.data?.from_user_id).filter(Boolean)));
           let senderMap = new Map();
           if (senderIds.length > 0) {
-            const { data: senders } = await supabase.from('users').select('id, name, avatar_url').in('id', senderIds);
+            const { data: senders } = await supabase.from('public_profiles').select('id, name, avatar_url').in('id', senderIds);
             if (senders) {
               senderMap = new Map(senders.map(s => [s.id, s]));
             }

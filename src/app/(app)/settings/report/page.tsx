@@ -142,7 +142,7 @@ export default function ReportIssuePage() {
         <div className="w-9" />
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 pt-6">
+      <div className="max-w-2xl mx-auto px-4 pt-6">
         <p className="text-xs sm:text-sm text-muted-foreground mb-6 leading-relaxed">
           If you run into technical bugs, have marketplace disputes, or wish to report inappropriate
           content or behaviour, let us know below.
@@ -265,7 +265,7 @@ export default function ReportIssuePage() {
             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Submit Report'}
           </button>
         </form>
-      </main>
+      </div>
     </div>
   );
 }

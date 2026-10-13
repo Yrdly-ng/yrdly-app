@@ -138,7 +138,7 @@ export default function EditProfilePage() {
         </button>
       </header>
 
-      <main className="max-w-xl mx-auto px-6 pt-4 pb-6 space-y-8">
+      <div className="max-w-xl mx-auto px-6 pt-4 pb-6 space-y-8">
         {/* ── Avatar Section ── */}
         <div className="flex flex-col items-center pt-2 pb-6 border-b border-[var(--yrdly-glass-border)]">
           <div
@@ -309,7 +309,7 @@ export default function EditProfilePage() {
             )}
           </button>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

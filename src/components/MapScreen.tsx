@@ -1,5 +1,6 @@
 "use client";
 
+import { authenticatedFetch } from '@/lib/authenticated-fetch';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import { 
@@ -236,20 +237,8 @@ export function MapScreen({ className }: MapScreenProps) {
 
       // 1. Friends
       if (user?.id) {
-        const { data: me } = await supabase
-          .from('users')
-          .select('friends')
-          .eq('id', user.id)
-          .single();
-
-        if (me?.friends && me.friends.length > 0) {
-          const { data: frds } = await supabase
-            .from('users')
-            .select('id, name, avatar_url, current_location')
-            .in('id', me.friends)
-            .or('share_location.is.null,share_location.eq.true')
-            .not('current_location', 'is', null);
-
+        const { data: frds } = await authenticatedFetch('/api/profiles/friend-locations', {}).catch(() => ({ data: [] }));
+        {
           (frds || []).forEach((f: any) => {
             const lat = parseFloat(f.current_location?.lat ?? f.current_location?.geopoint?.latitude);
             const lng = parseFloat(f.current_location?.lng ?? f.current_location?.geopoint?.longitude);

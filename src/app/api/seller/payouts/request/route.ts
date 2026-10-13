@@ -2,18 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { PayoutService } from '@/lib/payout-service';
+import { payoutAccountError } from '@/lib/payout-account';
 
 export async function POST(request: NextRequest) {
   try {
     const { data: { user }, error: authError } = await getAuthenticatedUser(request);
 
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: authError?.status === 403 ? 403 : authError?.status === 503 ? 503 : 401 });
     }
 
     const { amount } = await request.json();
 
-    if (!amount || amount <= 0) {
+    if (typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0) {
       return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
     }
 
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
     // Get seller account ID
     const { data: sellerAccount, error: saError } = await supabaseAdmin
       .from('seller_accounts')
-      .select('id')
+      .select('id,is_active,verification_status,account_updated_at')
       .eq('user_id', user.id)
       .eq('is_active', true)
       .maybeSingle();
@@ -42,36 +43,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate requested amount against server-computed seller available balance
-    const currentBalance = await PayoutService.getSellerBalance(user.id);
-    if (amount > currentBalance.availableBalance) {
-      return NextResponse.json(
-        {
-          error: 'INSUFFICIENT_BALANCE',
-          message: `Requested withdrawal amount (₦${amount.toLocaleString()}) exceeds available balance (₦${currentBalance.availableBalance.toLocaleString()}).`,
-          requestedAmount: amount,
-          availableBalance: currentBalance.availableBalance,
-        },
-        { status: 400 }
-      );
-    }
+    const accountError = payoutAccountError(sellerAccount);
+    if (accountError) return NextResponse.json({ error: accountError }, { status: 403 });
 
-    // Insert payout request
-    const { data: payout, error: insertError } = await supabaseAdmin
-      .from('payout_requests')
-      .insert({
-        seller_id: user.id,
-        account_id: sellerAccount.id,
-        amount,
-        status: 'pending',
-      })
-      .select('id')
-      .single();
-
-    if (insertError) {
-      console.error('Insert payout error:', insertError);
-      return NextResponse.json({ error: 'Failed to request payout' }, { status: 500 });
+    // reservePayout checks provider and ledger availability once, then the SQL
+    // reservation rechecks concurrent requests under the seller lock.
+    let payoutId: string;
+    try {
+      payoutId = await PayoutService.reservePayout(user.id, sellerAccount.id, amount);
+    } catch (error) {
+      if (error instanceof Error && error.message === 'INSUFFICIENT_BALANCE') {
+        return NextResponse.json({ error: 'INSUFFICIENT_BALANCE', message: 'Requested amount exceeds your available balance. Refresh your balance and retry.' }, { status: 400 });
+      }
+      throw error;
     }
+    const payout = { id: payoutId };
 
     // Process payout immediately
     let processResult: {

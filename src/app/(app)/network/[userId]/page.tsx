@@ -58,7 +58,7 @@ export default function NetworkPage() {
       let usersById = new Map<string, any>();
       if (allUserIds.length > 0) {
         const { data: userRows } = await supabase
-          .from("users")
+          .from('public_profiles')
           .select("*")
           .in("id", allUserIds);
 

@@ -1,5 +1,7 @@
 "use client";
 
+import { safeRelativePath } from '@/lib/auth-navigation';
+
 import React, { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AuthService } from "@/lib/auth-service";
@@ -47,7 +49,7 @@ function LoginFormPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const requestedNext = searchParams.get("next");
-  const nextPath = requestedNext?.startsWith("/") && !requestedNext.startsWith("//") ? requestedNext : "/home";
+  const nextPath = safeRelativePath(requestedNext, "/home");
   const { user, profile, loading: authLoading, signIn, signUp, signInWithGoogle } = useAuth();
 
   const [isSignUp, setIsSignUp] = useState(false);
@@ -231,7 +233,7 @@ function LoginFormPage() {
                   <div className="text-xs font-bold text-white truncate font-yrdly-display">
                     Local Neighbourhood
                   </div>
-                  <div className="text-[10px] text-[var(--yrdly-label)] truncate">
+                  <div className="text-[10px] text-white/70 truncate">
                     📍 Lagos, Nigeria
                   </div>
                 </div>
@@ -243,7 +245,7 @@ function LoginFormPage() {
                 </p>
               </div>
 
-              <div className="flex items-center justify-between text-xs text-[var(--yrdly-label)] pt-1 border-t border-white/5">
+              <div className="flex items-center justify-between text-xs text-white/70 pt-1 border-t border-white/5">
                 <span className="text-[#82DB7E] font-bold">❤️ 24 likes</span>
                 <span>Just now</span>
               </div>

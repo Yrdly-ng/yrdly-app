@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { PRIVATE_MEDIA_BUCKETS, privateMediaReference, type PrivateMediaBucket } from './private-media';
 
 export class StorageService {
   // Get proper MIME type for file
@@ -138,8 +139,12 @@ export class StorageService {
     }
   }
 
-  // Get public URL for a file
+  // Enable durable object references only after shared clients support them.
+  // Historical project URLs are also re-authorized by the web signer after privacy flips.
   static getPublicUrl(bucket: string, path: string): string {
+    if (process.env.NEXT_PUBLIC_PRIVATE_MEDIA_REFERENCES === 'true' && PRIVATE_MEDIA_BUCKETS.includes(bucket as PrivateMediaBucket)) {
+      return privateMediaReference(bucket as PrivateMediaBucket, path);
+    }
     const { data } = supabase.storage
       .from(bucket)
       .getPublicUrl(path);
@@ -274,11 +279,12 @@ export class StorageService {
   ): Promise<{ url: string | null; error: any }> {
     try {
 
-      const fileName = `${Date.now()}_${file.name}`;
+      const safeName = file.name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9._-]/g, '');
+      const fileName = `${Date.now()}_${safeName}`;
       const path = `${conversationId}/${fileName}`;
 
       const { data, error } = await this.uploadFile('chat-images', path, file, {
-        cacheControl: '86400',
+        cacheControl: '60',
       });
       
       if (error) {
@@ -294,7 +300,7 @@ export class StorageService {
         const fallbackPath = `chat/${conversationId}/${fileName}`;
         
         const { data: fallbackData, error: fallbackError } = await this.uploadFile('chat-images', fallbackPath, file, {
-          cacheControl: '86400',
+          cacheControl: '60',
         });
         
         if (fallbackError) {
@@ -426,7 +432,7 @@ export class StorageService {
       const { data, error } = await supabase.storage
         .from('chat-videos')
         .upload(path, file, {
-          cacheControl: '604800',
+          cacheControl: '60',
           upsert: false,
           contentType: file.type || this.getMimeType(file),
         });
@@ -470,7 +476,7 @@ export class StorageService {
       }
       const fileExt = file.name.split('.').pop() || 'jpg';
       const filePath = `${userId}/${Date.now()}.${fileExt}`;
-      const { data, error } = await this.uploadFile('reports', filePath, file);
+      const { data, error } = await this.uploadFile('reports', filePath, file, { cacheControl: '60' });
       if (error) return { url: null, error };
       return { url: this.getPublicUrl('reports', data.path), error: null };
     } catch (error) {

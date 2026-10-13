@@ -40,7 +40,7 @@ export default function CommunityPostPage() {
     if (!postId) return;
     supabase
       .from("community_posts")
-      .select("*, author:users!community_posts_author_id_fkey(id, name, avatar_url)")
+      .select("*, author:public_profiles!community_posts_author_id_fkey(id, name, avatar_url)")
       .eq("id", postId)
       .single()
       .then(({ data }) => { setPost(data as CommunityPost ?? null); });

@@ -1,3 +1,4 @@
+import { safeRelativePath } from './auth-navigation';
 import { supabase } from './supabase';
 import { User } from '@supabase/supabase-js';
 
@@ -104,12 +105,16 @@ export class AuthService {
       if (error) throw error;
 
       if (data.user) {
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from('users')
           .select('is_suspended, is_banned, status, suspension_reason')
           .eq('id', data.user.id)
           .maybeSingle();
 
+        if (profileError || !profile) {
+          await supabase.auth.signOut();
+          throw new Error('Account status could not be verified. Please try again.');
+        }
         if (profile && (profile.is_suspended || profile.is_banned || profile.status === 'suspended' || profile.status === 'banned')) {
           await supabase.auth.signOut();
           return {
@@ -131,7 +136,8 @@ export class AuthService {
     try {
       // Always redirect back to the current origin (works for any domain)
       const callbackUrl = new URL('/auth/callback', window.location.origin);
-      if (next?.startsWith('/') && !next.startsWith('//')) callbackUrl.searchParams.set('next', next);
+      const destination = safeRelativePath(next, '');
+      if (destination) callbackUrl.searchParams.set('next', destination);
       const redirectUrl = callbackUrl.toString();
         
       const { data, error } = await supabase.auth.signInWithOAuth({
@@ -155,7 +161,8 @@ export class AuthService {
     try {
       // Always redirect back to the current origin (works for any domain)
       const callbackUrl = new URL('/auth/callback', window.location.origin);
-      if (next?.startsWith('/') && !next.startsWith('//')) callbackUrl.searchParams.set('next', next);
+      const destination = safeRelativePath(next, '');
+      if (destination) callbackUrl.searchParams.set('next', destination);
       const redirectUrl = callbackUrl.toString();
         
       const { data, error } = await supabase.auth.signInWithOAuth({
@@ -282,8 +289,12 @@ export class AuthService {
   // Update user profile
   static async updateUserProfile(userId: string, updates: Partial<AuthUser> & Record<string, any>) {
     try {
-      const cleanUpdates = { ...updates };
-      delete cleanUpdates.home_location_geom;
+      const allowed = new Set(['name', 'legal_name', 'username', 'avatar_url', 'bio',
+        'interests', 'notification_settings', 'share_location', 'current_location',
+        'location_updated_at', 'location', 'home_state', 'home_lga', 'home_ward',
+        'home_lat', 'home_lng', 'profile_completed', 'onboarding_status',
+        'onboarding_completed_at', 'tour_completed', 'discoverable', 'is_online', 'last_seen']);
+      const cleanUpdates = Object.fromEntries(Object.entries(updates).filter(([key]) => allowed.has(key)));
 
       if (cleanUpdates.username) {
         cleanUpdates.username = cleanUpdates.username.replace(/^@/, '').trim().toLowerCase();
@@ -341,7 +352,7 @@ export class AuthService {
       if (!clean) return true;
 
       let query = supabase
-        .from('users')
+        .from('public_profiles')
         .select('id')
         .ilike('username', clean);
 

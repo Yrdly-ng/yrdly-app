@@ -1,3 +1,4 @@
+import { withdrawalOutcome, type WithdrawalOutcome } from './payment-state';
 // Server-side only - Payluk service
 // This service should only be used in API routes, not in client components.
 //
@@ -26,12 +27,19 @@ if (typeof window === 'undefined' && !PAYLUK_SECRET_KEY) {
 // Every response: { status: number, message: string, data: T }
 
 interface PaylukEnvelope<T> {
-  status: number;
+  status: number | boolean;
   message: string;
   data: T;
 }
 
 // ── Request helpers ─────────────────────────────────────────────────────────
+
+export class PaylukRequestError extends Error {
+  constructor(message: string, readonly httpStatus: number, readonly providerStatus: number | boolean, readonly providerMessage: string) {
+    super(message);
+    this.name = 'PaylukRequestError';
+  }
+}
 
 async function paylukRequest<T>(
   endpoint: string,
@@ -56,6 +64,7 @@ async function paylukRequest<T>(
   const res = await fetch(`${PAYLUK_BASE_URL}${endpoint}`, {
     ...fetchOptions,
     headers,
+    signal: fetchOptions.signal || AbortSignal.timeout(10_000),
   });
 
   let data: PaylukEnvelope<T>;
@@ -65,15 +74,16 @@ async function paylukRequest<T>(
     data = JSON.parse(rawBody) as PaylukEnvelope<T>;
   } catch {
     throw new Error(
-      `[Payluk] ${fetchOptions.method || 'GET'} ${endpoint} — HTTP ${res.status}: non-JSON response body: ${rawBody?.slice(0, 200)}`
+      `[Payluk] ${fetchOptions.method || 'GET'} ${endpoint} — HTTP ${res.status}: non-JSON response`
     );
   }
 
   if (!res.ok) {
     const errMsg = data.message || data.status?.toString() || 'Payluk API error';
-    throw new Error(
+    throw new PaylukRequestError(
       `[Payluk] ${fetchOptions.method || 'GET'} ${endpoint} — HTTP ${res.status}` +
-      ` (Payluk status: ${data.status}): ${errMsg} | body: ${rawBody?.slice(0, 400)}`
+      ` (Payluk status: ${data.status}): ${errMsg}`,
+      res.status, data.status, errMsg,
     );
   }
 
@@ -83,7 +93,7 @@ async function paylukRequest<T>(
 async function paylukFormRequest<T>(
   endpoint: string,
   formData: FormData,
-  options: { customerId?: string; method?: string } = {}
+  options: { customerId?: string; method?: string; signal?: AbortSignal } = {}
 ): Promise<PaylukEnvelope<T>> {
   if (!PAYLUK_SECRET_KEY) {
     throw new Error('Payluk service not available - PAYLUK_SECRET_KEY is not set');
@@ -101,6 +111,7 @@ async function paylukFormRequest<T>(
     method: options.method || 'POST',
     body: formData,
     headers,
+    signal: options.signal || AbortSignal.timeout(10_000),
   });
 
   let data: PaylukEnvelope<T>;
@@ -110,7 +121,7 @@ async function paylukFormRequest<T>(
     data = JSON.parse(rawBody) as PaylukEnvelope<T>;
   } catch {
     throw new Error(
-      `[Payluk] ${options.method || 'POST'} ${endpoint} — HTTP ${res.status}: non-JSON response body: ${rawBody?.slice(0, 200)}`
+      `[Payluk] ${options.method || 'POST'} ${endpoint} — HTTP ${res.status}: non-JSON response`
     );
   }
 
@@ -118,7 +129,7 @@ async function paylukFormRequest<T>(
     const errMsg = data.message || data.status?.toString() || 'Payluk API error';
     throw new Error(
       `[Payluk] ${options.method || 'POST'} ${endpoint} — HTTP ${res.status}` +
-      ` (Payluk status: ${data.status}): ${errMsg} | body: ${rawBody?.slice(0, 400)}`
+      ` (Payluk status: ${data.status}): ${errMsg}`
     );
   }
 
@@ -198,6 +209,7 @@ export interface PaylukEscrow {
   milestones: PaylukMilestone[];
   createdAt: string;
   updatedAt: string;
+  split?: { sellerAmount: number; buyerAmount: number; pool: number; resolvedAt: string };
 }
 
 export interface PaylukVirtualAccount {
@@ -229,6 +241,25 @@ interface PaylukWithdrawalIntent {
   reference: string;
 }
 
+const PAYLUK_WITHDRAWAL_MINIMUM = 1000;
+
+function withdrawalMinimumError(fee = 0) {
+  const minimumBudget = Math.round((PAYLUK_WITHDRAWAL_MINIMUM + fee) * 100) / 100;
+  return {
+    success: false as const,
+    intentFee: fee,
+    maximumWithdrawable: 0,
+    minimumDebit: minimumBudget,
+    minimumBankAmount: PAYLUK_WITHDRAWAL_MINIMUM,
+    error: `The bank transfer must be at least ₦${PAYLUK_WITHDRAWAL_MINIMUM.toLocaleString()} after Payluk's fee.`,
+    reason: `With the quoted fee of ₦${fee.toLocaleString()}, your balance deduction must be at least ₦${minimumBudget.toLocaleString()}.`,
+  };
+}
+
+function withdrawalNet(budget: number, fee: number): number {
+  return Math.max(0, (Math.round(budget * 100) - Math.round(fee * 100)) / 100);
+}
+
 async function createPaylukWithdrawalIntent(params: {
   customerId: string;
   amount: number;
@@ -258,7 +289,7 @@ async function createPaylukWithdrawalIntent(params: {
   const intent = response?.data;
   if (
     !intent ||
-    typeof intent.amount !== 'number' || !Number.isFinite(intent.amount) || intent.amount < 0 ||
+    typeof intent.amount !== 'number' || !Number.isFinite(intent.amount) || intent.amount !== params.amount ||
     typeof intent.fee !== 'number' || !Number.isFinite(intent.fee) || intent.fee < 0 ||
     typeof intent.reference !== 'string' || !intent.reference
   ) {
@@ -285,9 +316,10 @@ export class PaylukService {
     phone?: string;
     countryId?: string;
     bvn?: string;
-  }): Promise<PaylukCustomer> {
+  }, signal?: AbortSignal): Promise<PaylukCustomer> {
     const response = await paylukRequest<PaylukCustomer>('/v1/customer/create', {
       method: 'POST',
+      signal,
       body: JSON.stringify(params),
     });
     return response.data;
@@ -301,13 +333,14 @@ export class PaylukService {
    */
   static async updateCustomerPermissions(
     customerId: string,
-    permissions: { canBuy?: boolean; canSell?: boolean; canWithdraw?: boolean }
+    permissions: { canBuy?: boolean; canSell?: boolean; canWithdraw?: boolean },
+    signal?: AbortSignal
   ): Promise<PaylukCustomer> {
     const response = await paylukRequest<PaylukCustomer>(
       `/v1/customer/permissions/${encodeURIComponent(customerId)}`,
       {
         method: 'PUT',
-        body: JSON.stringify(permissions),
+        body: JSON.stringify(permissions), signal,
       }
     );
     return response.data;
@@ -318,41 +351,23 @@ export class PaylukService {
    * Looks up a customer by phone number. If multiple matches are found, it uses the provided email to disambiguate.
    * Throws an error if ambiguity cannot be resolved. Returns null if not found.
    */
-  static async getCustomerByPhone(phone: string, email?: string): Promise<PaylukCustomer | null> {
+  static async getCustomerByPhone(phone: string, email?: string, signal?: AbortSignal): Promise<PaylukCustomer | null> {
+    let response: PaylukEnvelope<{ data: PaylukCustomer[] }>;
     try {
-      const response = await paylukRequest<{
-        pagination: any;
-        data: PaylukCustomer[];
-      }>(`/v1/customers?phone=${encodeURIComponent(phone)}`, {
-        method: 'GET',
-      });
-      
-      const matches = response.data?.data || [];
-      
-      if (matches.length === 0) {
-        return null;
-      }
-      
-      if (email) {
-        const exactMatches = matches.filter(c => c.email.toLowerCase() === email.toLowerCase());
-        if (exactMatches.length === 1) {
-          return exactMatches[0];
-        }
-        throw new Error(`Found ${matches.length} customers with phone ${phone}, and ${exactMatches.length} with email ${email}. Cannot disambiguate safely.`);
-      }
-      
-      if (matches.length === 1) {
-        return matches[0];
-      }
-      
-      throw new Error(`Found ${matches.length} customers with phone ${phone} and no email provided for disambiguation.`);
-    } catch (error: any) {
-      if (error.message.includes('Cannot disambiguate safely') || error.message.includes('no email provided')) {
-        throw error;
-      }
-      console.warn(`[PaylukService] getCustomerByPhone failed for ${phone}:`, error?.message);
-      return null;
+      response = await paylukRequest<{ data: PaylukCustomer[] }>(
+        `/v1/customers?phone=${encodeURIComponent(phone)}`, { method: 'GET', signal });
+    } catch (error) {
+      // Verified sandbox absence response. All other provider failures remain errors.
+      if (error instanceof PaylukRequestError && error.httpStatus === 400 &&
+          error.providerStatus === false && error.providerMessage === 'No customer found with the provided phone') return null;
+      throw error;
     }
+    const normalized = (value: string) => value.replace(/\D/g, '').replace(/^234/, '0');
+    const matches = (response.data?.data || []).filter(customer =>
+      normalized(customer.phone || '') === normalized(phone) &&
+      (!email || customer.email?.toLowerCase() === email.toLowerCase()));
+    if (matches.length > 1) throw new Error('Ambiguous verified payment identity. Contact support.');
+    return matches[0] || null;
   }
 
   /**
@@ -360,10 +375,10 @@ export class PaylukService {
    * Fetches a single customer by their Payluk customer ID.
    * Throws if the customer doesn't exist (used to verify stored IDs).
    */
-  static async getCustomerById(customerId: string): Promise<PaylukCustomer> {
+  static async getCustomerById(customerId: string, signal?: AbortSignal): Promise<PaylukCustomer> {
     const response = await paylukRequest<PaylukCustomer>(
       `/v1/customer/get/${encodeURIComponent(customerId)}`,
-      { method: 'GET' }
+      { method: 'GET', signal }
     );
     return response.data;
   }
@@ -544,7 +559,8 @@ export class PaylukService {
       deliveryTimeline: 'minutes' | 'hours' | 'days';
       totalQuantity?: number;
       categoryId?: string;
-    }
+    },
+    signal?: AbortSignal
   ): Promise<PaylukEscrow> {
     const formData = new FormData();
     formData.append('amount', String(params.amount));
@@ -557,7 +573,7 @@ export class PaylukService {
     if (params.categoryId) formData.append('categoryId', params.categoryId);
 
     const response = await paylukFormRequest<PaylukEscrow>('/v1/escrow/create', formData, {
-      customerId,
+      customerId, signal,
     });
     return response.data;
   }
@@ -568,13 +584,14 @@ export class PaylukService {
    */
   static async addAdditionalFee(
     paymentToken: string,
-    additionalFee: number
+    additionalFee: number,
+    signal?: AbortSignal
   ): Promise<PaylukEscrow> {
     const response = await paylukRequest<PaylukEscrow>(
       `/v1/escrow/additional-fee/${encodeURIComponent(paymentToken)}`,
       {
         method: 'PUT',
-        body: JSON.stringify({ additionalFee }),
+        body: JSON.stringify({ additionalFee }), signal,
       }
     );
     return response.data;
@@ -689,8 +706,11 @@ export class PaylukService {
     const formData = new FormData();
     formData.append('resolution', params.resolution);
     formData.append('status', params.status);
-    if (params.sellerAmount !== undefined) formData.append('sellerAmount', String(params.sellerAmount));
-    if (params.buyerAmount !== undefined) formData.append('buyerAmount', String(params.buyerAmount));
+    // Payluk rejects allocation fields on full refund/release resolutions.
+    if (params.status === 'SPLIT') {
+      if (params.sellerAmount !== undefined) formData.append('sellerAmount', String(params.sellerAmount));
+      if (params.buyerAmount !== undefined) formData.append('buyerAmount', String(params.buyerAmount));
+    }
     if (params.additionalFeeRefundable !== undefined) {
       formData.append('additionalFeeRefundable', String(params.additionalFeeRefundable));
     }
@@ -756,35 +776,12 @@ export class PaylukService {
         }
       }
 
-      const PAYSTACK_TO_PAYLUK_BANK_MAP: Record<string, string> = {
-        '999991': '100004', // OPay
-        '999992': '100004', // OPay / Test Bank
-        '044': '000014',    // Access Bank
-        '058': '000013',    // GTBank
-        '011': '000016',    // First Bank
-        '057': '000015',    // Zenith Bank
-        '50515': '090405',  // Moniepoint
-        '50211': '090267',  // Kuda Bank
-        '214': '090409',    // FCMB
-        '033': '000040',    // UBA
-        '035': '000017',    // Wema Bank
-        '070': '000007',    // Fidelity Bank
-        '050': '000010',    // Ecobank
-        '082': '000002',    // Keystone Bank
-        '232': '000012',    // Stanbic IBTC
-        '230': '000001',    // Sterling Bank
-        '032': '000018',    // Union Bank
-        '101': '000023',    // Providus Bank
-        '100033': '100033', // PalmPay
-      };
-
-      const resolvedBankCode = PAYSTACK_TO_PAYLUK_BANK_MAP[bankCode] || bankCode;
-
       const response = await paylukRequest<PaylukResolvedAccount>(
         '/v1/payment/verify-account',
         {
           method: 'POST',
-          body: JSON.stringify({ accountNumber, bankCode: resolvedBankCode }),
+          // Bank-list codes are opaque and vary by provider/environment.
+          body: JSON.stringify({ accountNumber, bankCode }),
           customerId,
         }
       );
@@ -800,12 +797,6 @@ export class PaylukService {
       return { valid: false };
     } catch (error: any) {
       console.error('[PaylukService] resolveAccount error:', error);
-
-      // Test-mode fallback — mirrors paystack-service.ts pattern.
-      if (PAYLUK_SECRET_KEY?.startsWith('sk_test_')) {
-        console.warn('[PaylukService] Test mode: resolveAccount failed, using fallback.');
-        return { valid: true, accountName: 'Test Bank Account (Fallback)' };
-      }
 
       return { valid: false };
     }
@@ -858,19 +849,17 @@ export class PaylukService {
     intentFee?: number;
     totalPaylukDebit?: number;
     maximumWithdrawable?: number;
+    minimumDebit?: number;
+    minimumBankAmount?: number;
     error?: string;
     reason?: string;
   }> {
     try {
-      const PAYSTACK_TO_PAYLUK_BANK_MAP: Record<string, string> = {
-        '999991': '100004', '999992': '100004', '044': '000014', '058': '000013',
-        '011': '000016', '057': '000015', '50515': '090405', '50211': '090267',
-        '214': '090409', '033': '000040', '035': '000017', '070': '000007',
-        '050': '000010', '082': '000002', '232': '000012', '230': '000001',
-        '032': '000018', '101': '000023', '100033': '100033',
-      };
-      const resolvedBankCode = PAYSTACK_TO_PAYLUK_BANK_MAP[params.bankCode] || params.bankCode;
-
+      if (!Number.isFinite(params.amount) || !Number.isSafeInteger(Math.round(params.amount*100)) ||
+          Math.abs(params.amount*100-Math.round(params.amount*100))>0.000001) {
+        return { success:false,reference:params.reference,error:'Enter a valid withdrawal amount with at most two decimal places.' };
+      }
+      if (params.amount < PAYLUK_WITHDRAWAL_MINIMUM) return { ...withdrawalMinimumError(),reference:params.reference };
       let paylukMainBalance = Infinity;
       try {
         const wallet = await this.getCustomerWallet(params.sellerPaylukCustomerId);
@@ -899,53 +888,32 @@ export class PaylukService {
         customerId: params.sellerPaylukCustomerId,
         amount: params.amount,
         reference: `${params.reference}-quote`,
-        bankCode: resolvedBankCode,
+        bankCode: params.bankCode,
         bankName: params.bankName,
         accountNumber: params.accountNumber,
         accountName: params.accountName,
       });
-      let netAmount = Math.max(0, Math.floor((params.amount - feeQuote.fee) * 100) / 100);
-      if (netAmount <= 0) {
-        return {
-          success: false,
-          reference: feeQuote.reference,
-          intentFee: feeQuote.fee,
-          totalPaylukDebit: feeQuote.fee,
-          maximumWithdrawable: 0,
-          error: 'Payluk fee consumes the requested withdrawal amount.',
-          reason: `Payluk's fee is ₦${feeQuote.fee.toLocaleString()}, which leaves no amount to send to your bank.`,
-        };
-      }
+      let netAmount = withdrawalNet(params.amount, feeQuote.fee);
+      if (netAmount < PAYLUK_WITHDRAWAL_MINIMUM) return { ...withdrawalMinimumError(feeQuote.fee),reference:feeQuote.reference };
 
       let intent = await createPaylukWithdrawalIntent({
         customerId: params.sellerPaylukCustomerId,
         amount: netAmount,
         reference: `${params.reference}-net`,
-        bankCode: resolvedBankCode,
+        bankCode: params.bankCode,
         bankName: params.bankName,
         accountNumber: params.accountNumber,
         accountName: params.accountName,
       });
       let totalPaylukDebit = intent.amount + intent.fee;
       if (totalPaylukDebit > params.amount) {
-        netAmount = Math.max(0, Math.floor((params.amount - intent.fee) * 100) / 100);
-        if (netAmount <= 0) {
-          return {
-            success: false,
-            reference: intent.reference,
-            intentAmount: intent.amount,
-            intentFee: intent.fee,
-            totalPaylukDebit,
-            maximumWithdrawable: 0,
-            error: 'Payluk fee consumes the requested withdrawal amount.',
-            reason: `Payluk's fee is ₦${intent.fee.toLocaleString()}, which leaves no amount to send to your bank.`,
-          };
-        }
+        netAmount = withdrawalNet(params.amount, intent.fee);
+        if (netAmount < PAYLUK_WITHDRAWAL_MINIMUM) return { ...withdrawalMinimumError(intent.fee),reference:intent.reference };
         intent = await createPaylukWithdrawalIntent({
           customerId: params.sellerPaylukCustomerId,
           amount: netAmount,
           reference: `${params.reference}-net-adjusted`,
-          bankCode: resolvedBankCode,
+          bankCode: params.bankCode,
           bankName: params.bankName,
           accountNumber: params.accountNumber,
           accountName: params.accountName,
@@ -1010,6 +978,15 @@ export class PaylukService {
     return Number.isFinite(balance) ? balance : null;
   }
 
+  static async getWithdrawalStatus(customerId: string, reference: string): Promise<WithdrawalOutcome> {
+    const response = await paylukRequest<any>(`/v1/payment/history?reference=${encodeURIComponent(reference)}`, { customerId, method: 'GET' });
+    const entries = Array.isArray(response.data) ? response.data : response.data?.data;
+    if (!Array.isArray(entries)) throw new Error('Invalid Payluk reconciliation response');
+    const matches = entries.filter((entry: any) => entry.reference === reference && entry.transactionType === 'withdrawal');
+    if (matches.length !== 1) return 'pending';
+    return withdrawalOutcome(matches[0].status);
+  }
+
   static async withdrawToBank(params: {
     sellerPaylukCustomerId: string;
     amount: number;
@@ -1019,7 +996,9 @@ export class PaylukService {
     accountName?: string;
     reference: string;
     yrdlyAvailableBalance?: number;
+    onIntentReady: (reference: string) => Promise<void>;
   }): Promise<{
+    outcome: WithdrawalOutcome;
     success: boolean;
     reference?: string;
     intentAmount?: number;
@@ -1030,52 +1009,18 @@ export class PaylukService {
     reason?: string;
     paylukStatus?: string;
   }> {
+    let executionStarted = false;
+    let activeReference = params.reference;
     try {
-      // Map Paystack/CBN bank codes to Payluk's internal codes
-      const PAYSTACK_TO_PAYLUK_BANK_MAP: Record<string, string> = {
-        '999991': '100004', // OPay
-        '999992': '100004', // OPay / Test Bank
-        '044': '000014',    // Access Bank
-        '058': '000013',    // GTBank
-        '011': '000016',    // First Bank
-        '057': '000015',    // Zenith Bank
-        '50515': '090405',  // Moniepoint
-        '50211': '090267',  // Kuda Bank
-        '214': '090409',    // FCMB
-        '033': '000040',    // UBA
-        '035': '000017',    // Wema Bank
-        '070': '000007',    // Fidelity Bank
-        '050': '000010',    // Ecobank
-        '082': '000002',    // Keystone Bank
-        '232': '000012',    // Stanbic IBTC
-        '230': '000001',    // Sterling Bank
-        '032': '000018',    // Union Bank
-        '101': '000023',    // Providus Bank
-        '100033': '100033', // PalmPay
-      };
-
-      const resolvedBankCode = PAYSTACK_TO_PAYLUK_BANK_MAP[params.bankCode] || params.bankCode;
-
-      // 0. Hard minimum — Payluk rejects any withdrawal intent below ₦1,000
-      const PAYLUK_MINIMUM = 1000;
-      if (params.amount < PAYLUK_MINIMUM) {
-        return {
-          success: false,
-          reference: params.reference,
-          error: `Minimum withdrawal amount is ₦${PAYLUK_MINIMUM.toLocaleString()}.`,
-          reason: `Your available balance of ₦${params.amount.toLocaleString()} is below Payluk's minimum withdrawal of ₦${PAYLUK_MINIMUM.toLocaleString()}.`,
-          maximumWithdrawable: 0,
-        };
+      if (!Number.isFinite(params.amount) || !Number.isSafeInteger(Math.round(params.amount*100)) ||
+          Math.abs(params.amount*100-Math.round(params.amount*100))>0.000001) {
+        return { outcome:'failed',success:false,reference:params.reference,error:'Enter a valid withdrawal amount with at most two decimal places.' };
       }
+      if (params.amount < PAYLUK_WITHDRAWAL_MINIMUM) return { ...withdrawalMinimumError(),outcome:'failed',reference:params.reference };
 
       // 1. Fetch seller's Payluk wallet to check mainBalance (ignoring escrowBalance for withdrawals)
-      let paylukMainBalance = Infinity;
-      try {
-        const wallet = await this.getCustomerWallet(params.sellerPaylukCustomerId);
-        paylukMainBalance = wallet.mainBalance ?? 0;
-      } catch (walletErr) {
-        console.warn('[PaylukService] Could not fetch Payluk customer wallet balance, proceeding with Yrdly balance validation:', walletErr);
-      }
+      const wallet = await this.getCustomerWallet(params.sellerPaylukCustomerId);
+      const paylukMainBalance = wallet.mainBalance ?? 0;
 
       const effectiveAvailableBalance = params.yrdlyAvailableBalance !== undefined
         ? Math.min(params.yrdlyAvailableBalance, paylukMainBalance)
@@ -1084,6 +1029,7 @@ export class PaylukService {
       // If requested amount already exceeds effective available balance, reject before staging
       if (params.amount > effectiveAvailableBalance) {
         return {
+          outcome: 'failed',
           success: false,
           reference: params.reference,
           intentAmount: params.amount,
@@ -1094,34 +1040,24 @@ export class PaylukService {
 
       // The seller's requested amount is their total wallet-debit budget.
       // Quote the fee, then create the final intent for budget minus fee.
-      const intentAttemptReference = `${params.reference}-${Date.now()}`;
+      const intentAttemptReference = params.reference;
       const feeQuote = await createPaylukWithdrawalIntent({
         customerId: params.sellerPaylukCustomerId,
         amount: params.amount,
         reference: `${intentAttemptReference}-quote`,
-        bankCode: resolvedBankCode,
+        bankCode: params.bankCode,
         bankName: params.bankName,
         accountNumber: params.accountNumber,
         accountName: params.accountName,
       });
-      let netAmount = Math.max(0, Math.floor((params.amount - feeQuote.fee) * 100) / 100);
-      if (netAmount <= 0) {
-        return {
-          success: false,
-          reference: feeQuote.reference,
-          intentFee: feeQuote.fee,
-          totalPaylukDebit: feeQuote.fee,
-          maximumWithdrawable: 0,
-          error: 'Payluk fee consumes the requested withdrawal amount.',
-          reason: `Payluk's fee is ₦${feeQuote.fee.toLocaleString()}, which leaves no amount to send to your bank.`,
-        };
-      }
+      let netAmount = withdrawalNet(params.amount, feeQuote.fee);
+      if (netAmount < PAYLUK_WITHDRAWAL_MINIMUM) return { ...withdrawalMinimumError(feeQuote.fee),outcome:'failed',reference:feeQuote.reference };
 
       let intent = await createPaylukWithdrawalIntent({
         customerId: params.sellerPaylukCustomerId,
         amount: netAmount,
         reference: `${intentAttemptReference}-net`,
-        bankCode: resolvedBankCode,
+        bankCode: params.bankCode,
         bankName: params.bankName,
         accountNumber: params.accountNumber,
         accountName: params.accountName,
@@ -1131,25 +1067,14 @@ export class PaylukService {
       // The fee can depend on the payout amount. If the net intent's fee quote
       // differs, make one adjusted intent and use only its exact returned fee.
       if (totalPaylukDebit > params.amount) {
-        netAmount = Math.max(0, Math.floor((params.amount - intent.fee) * 100) / 100);
-        if (netAmount <= 0) {
-          return {
-            success: false,
-            reference: intent.reference,
-            intentAmount: intent.amount,
-            intentFee: intent.fee,
-            totalPaylukDebit,
-            maximumWithdrawable: 0,
-            error: 'Payluk fee consumes the requested withdrawal amount.',
-            reason: `Payluk's fee is ₦${intent.fee.toLocaleString()}, which leaves no amount to send to your bank.`,
-          };
-        }
+        netAmount = withdrawalNet(params.amount, intent.fee);
+        if (netAmount < PAYLUK_WITHDRAWAL_MINIMUM) return { ...withdrawalMinimumError(intent.fee),outcome:'failed',reference:intent.reference };
 
         intent = await createPaylukWithdrawalIntent({
           customerId: params.sellerPaylukCustomerId,
           amount: netAmount,
           reference: `${intentAttemptReference}-net-adjusted`,
-          bankCode: resolvedBankCode,
+          bankCode: params.bankCode,
           bankName: params.bankName,
           accountNumber: params.accountNumber,
           accountName: params.accountName,
@@ -1161,6 +1086,7 @@ export class PaylukService {
       if (totalPaylukDebit > spendLimit) {
         const maximumWithdrawable = Math.max(0, Math.floor((spendLimit - intent.fee) * 100) / 100);
         return {
+          outcome: 'failed',
           success: false,
           reference: intent.reference,
           intentAmount: intent.amount,
@@ -1176,6 +1102,10 @@ export class PaylukService {
       const activeIntentFee = intent.fee;
       const activeIntentRef = intent.reference;
 
+      activeReference = activeIntentRef;
+      await params.onIntentReady(activeIntentRef);
+      executionStarted = true;
+
       // 6. Execute / verify payment intent (totalPaylukDebit <= effectiveAvailableBalance)
       const verifyResponse = await paylukRequest<any>(
         '/v1/payment/verify',
@@ -1186,37 +1116,20 @@ export class PaylukService {
         }
       );
 
-      const verifyDataStatus = verifyResponse?.data?.status;
-      const isSuccess = verifyResponse.status >= 200 && verifyResponse.status < 300 && (
-        verifyDataStatus === 'successful' || verifyDataStatus === 'success' || verifyDataStatus === 'completed' || verifyResponse.status === 200
-      );
-
-      if (isSuccess) {
-        return {
-          success: true,
-          reference: activeIntentRef,
-          intentAmount: activeIntentAmount,
-          intentFee: activeIntentFee,
-          totalPaylukDebit,
-          maximumWithdrawable: activeIntentAmount,
-          paylukStatus: 'successful',
-        };
-      } else {
-        return {
-          success: false,
-          reference: activeIntentRef,
-          intentAmount: activeIntentAmount,
-          intentFee: activeIntentFee,
-          totalPaylukDebit,
-          error: verifyResponse.message || 'Withdrawal verification failed',
-          paylukStatus: String(verifyDataStatus || 'failed'),
-        };
-      }
+      const outcome = withdrawalOutcome(verifyResponse?.data?.status);
+      return {
+        outcome, success: outcome === 'success', reference: activeIntentRef,
+        intentAmount: activeIntentAmount, intentFee: activeIntentFee, totalPaylukDebit,
+        maximumWithdrawable: activeIntentAmount,
+        ...(outcome === 'success' ? {} : { error: outcome === 'pending' ? 'Transfer pending; do not submit another withdrawal.' : 'Transfer failed.' }),
+        paylukStatus: String(verifyResponse?.data?.status || 'unknown'),
+      };
     } catch (err: any) {
       console.error('[PaylukService] withdrawToBank error:', err);
       return {
+        outcome: executionStarted ? 'pending' : 'failed',
         success: false,
-        reference: params.reference,
+        reference: activeReference,
         error: err.message || 'Withdrawal request failed',
       };
     }

@@ -1,5 +1,7 @@
 "use client";
 
+import { safeRelativePath } from '@/lib/auth-navigation';
+
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { SceneBg, ProgressPills, PrimaryBtn } from '@/components/onboarding/primitives';
@@ -50,11 +52,11 @@ export default function TourPage() {
         if (profile?.profile_completed) {
           await completeTour();
           const requestedNext = typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('next');
-          const nextPath = requestedNext?.startsWith('/') && !requestedNext.startsWith('//') ? requestedNext : '/home';
+          const nextPath = safeRelativePath(requestedNext, '/home');
           router.replace(nextPath);
         } else {
           const requestedNext = typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('next');
-          const nextPath = requestedNext?.startsWith('/') && !requestedNext.startsWith('//') ? requestedNext : null;
+          const nextPath = safeRelativePath(requestedNext, '') || null;
           router.replace(`/onboarding/profile${nextPath ? `?next=${encodeURIComponent(nextPath)}` : ''}`);
         }
       } else {

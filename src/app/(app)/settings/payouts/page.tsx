@@ -165,7 +165,7 @@ export default function PayoutsDashboardPage() {
         </div>
       </header>
 
-      <main className="max-w-xl mx-auto px-5 py-5 space-y-6">
+      <div className="max-w-xl mx-auto px-5 py-5 space-y-6">
         {/* Balance Hero Card */}
         <div
           className="rounded-[28px] p-[22px] space-y-4"
@@ -350,7 +350,7 @@ export default function PayoutsDashboardPage() {
             )}
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

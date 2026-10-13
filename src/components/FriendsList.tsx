@@ -19,7 +19,7 @@ interface FriendsListProps {
 export function FriendsList({ userId, onBack }: FriendsListProps) {
   const router = useRouter();
   const { user: currentUser } = useAuth();
-  const [friends, setFriends] = useState<User[]>([]);
+  const [friends, setFriends] = useState<(User & { username?: string | null })[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -45,8 +45,8 @@ export function FriendsList({ userId, onBack }: FriendsListProps) {
 
         // Fetch friend details
         const { data: friendsData, error: friendsError } = await supabase
-          .from('users')
-          .select('id, name, email, avatar_url, created_at')
+          .from('public_profiles')
+          .select('id, name, username, avatar_url, created_at')
           .in('id', friendIds);
 
         if (friendsError) throw friendsError;
@@ -185,7 +185,7 @@ export function FriendsList({ userId, onBack }: FriendsListProps) {
                       {friend.name || "Unknown User"}
                     </h3>
                     <p className="text-sm text-muted-foreground truncate">
-                      {friend.email}
+                      {friend.username}
                     </p>
                     <p className="text-xs text-muted-foreground">       
                       Member since {new Date(friend.timestamp || '').getFullYear()}

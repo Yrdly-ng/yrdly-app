@@ -27,7 +27,7 @@ export class UserActivityService {
       cutoffTime.setHours(cutoffTime.getHours() - hours);
       
       const { data, error } = await supabase
-        .from('users')
+        .from('public_profiles')
         .select('id, last_seen')
         .gte('last_seen', cutoffTime.toISOString());
 
@@ -50,7 +50,7 @@ export class UserActivityService {
       today.setHours(0, 0, 0, 0); // Start of today
       
       const { data, error } = await supabase
-        .from('users')
+        .from('public_profiles')
         .select('id, last_seen')
         .gte('last_seen', today.toISOString());
 

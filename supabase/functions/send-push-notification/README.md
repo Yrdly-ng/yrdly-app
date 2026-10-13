@@ -15,12 +15,25 @@ continues sending to other subscriptions if one endpoint has expired.
 
 ### Deployment
 
+The handler verifies backend credentials itself: a legacy service key on
+`Authorization`, or a named modern secret key on `apikey`. Publishable keys and
+ordinary user sessions are rejected. Deploy with `verify_jwt = false` because
+the platform JWT check cannot validate modern secret keys. Preserve this custom
+authentication before using `--no-verify-jwt`.
+
+Use the isolated Staging project for testing first:
+
+```bash
+supabase functions deploy send-push-notification --project-ref jxgpvvehajxegeeozlnl --no-verify-jwt
+node qa-scripts/edge-regression.mjs
+```
+
 Because this function is shared between the web and mobile apps, it currently has no automated CI/CD deployment pipeline. 
 
 **If you edit this file, you must manually deploy it** using the Supabase CLI from the `yrdly-app` directory:
 
 ```bash
-supabase functions deploy send-push-notification --project-ref yoiyqxtpmxnrrbqqidcs
+supabase functions deploy send-push-notification --project-ref yoiyqxtpmxnrrbqqidcs --no-verify-jwt
 ```
 
 *(Note: `yrdly-app` is the canonical owner of this function to keep it aligned with the database migrations. The copy in `yrdly-mobile` has been removed to prevent drift.)*

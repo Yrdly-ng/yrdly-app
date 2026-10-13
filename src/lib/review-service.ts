@@ -228,7 +228,7 @@ export class ReviewService {
               .single();
 
             const { data: reviewer } = await supabase
-              .from('users')
+              .from('public_profiles')
               .select('name')
               .eq('id', userId)
               .single();
@@ -311,7 +311,7 @@ export class ReviewService {
 
           try {
             const { data: reviewer } = await supabase
-              .from('users')
+              .from('public_profiles')
               .select('name')
               .eq('id', userId)
               .single();
@@ -448,7 +448,7 @@ export class ReviewService {
         .from('business_reviews')
         .select(`
           *,
-          users!business_reviews_user_id_fkey(
+          users:public_profiles!business_reviews_user_id_fkey(
             id,
             name,
             avatar_url

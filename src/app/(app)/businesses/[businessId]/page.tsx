@@ -40,7 +40,7 @@ export default function BusinessDetailPage() {
       let ownerData = null;
       if (businessData.owner_id) {
         const { data: userData, error: userError } = await supabase
-          .from('users')
+          .from('public_profiles')
           .select('name, avatar_url')
           .eq('id', businessData.owner_id)
           .single();

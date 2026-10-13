@@ -1,20 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from "@/lib/supabase-server";
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { isPaylukTicket } from '@/lib/ticket-payment-provider';
-import { requestPaystackTicketRefund } from '@/lib/ticket-refunds';
-import { sendPushNotification } from '@/lib/server-push-notification';
 
 /**
  * POST /api/events/[id]/cancel
- * Cancels the event, triggers Paystack refunds for all PAID tickets,
- * updates statuses, and notifies all buyers via in-app notification.
+ * Cancels free-ticket events. Paid ticket refunds require support resolution first.
  */
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
     const { data: { user }, error: authError } = await getAuthenticatedUser(request);
-    if (authError || !user) return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
+    if (authError || !user) return NextResponse.json({ error: 'Invalid session' }, { status: authError?.status === 403 ? 403 : authError?.status === 503 ? 503 : 401 });
 
     // Verify ownership
     const { data: event } = await supabaseAdmin
@@ -41,62 +37,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: 'Checked-in tickets need support review before this event can be cancelled.' }, { status: 409 });
     }
 
-    for (const ticket of paidTickets || []) {
-      if (await isPaylukTicket(ticket.payment_tx_ref)) {
-        return NextResponse.json({ error: 'This event has Payluk escrow tickets. Contact support to resolve their refunds before cancellation.' }, { status: 409 });
-      }
-      if (ticket.amount_paid > 0 && !ticket.payment_provider_ref) {
-        return NextResponse.json({ error: `Ticket ${ticket.id} has no payment reference. Contact support before cancellation.` }, { status: 409 });
-      }
-      if (['initiating', 'needs-attention', 'failed'].includes(ticket.refund_status || '')) {
-        return NextResponse.json({ error: `Ticket ${ticket.id} has a refund that needs support review.` }, { status: 409 });
-      }
+    // Paid escrow refunds require support resolution before cancellation.
+    // Never mark tickets refunded or notify buyers of money that was not returned.
+    if ((paidTickets || []).some(ticket => (ticket.amount_paid == null || Number(ticket.amount_paid) !== 0))) {
+      return NextResponse.json({ error: 'This event has paid tickets. Contact support to resolve Payluk escrow refunds before cancellation.' }, { status: 409 });
     }
 
-    let refundsRequested = 0;
     const errors: string[] = [];
-    const paymentRefs = [...new Set((paidTickets || [])
-      .filter(ticket => Number(ticket.amount_paid) > 0)
-      .map(ticket => ticket.payment_provider_ref as string))];
-
-    for (const paymentRef of paymentRefs) {
-      const orderTickets = (paidTickets || []).filter(ticket => ticket.payment_provider_ref === paymentRef);
-      try {
-        const alreadyPending = orderTickets.every(ticket => ['pending', 'processing'].includes(ticket.refund_status || ''));
-        if (alreadyPending) {
-          refundsRequested += orderTickets.length;
-          continue;
-        }
-        if (orderTickets.some(ticket => ticket.refund_status)) throw new Error('Mixed refund state in one payment');
-        await requestPaystackTicketRefund(paymentRef, orderTickets);
-        refundsRequested += orderTickets.length;
-        for (const ticket of orderTickets) {
-          const notification = {
-            user_id: ticket.buyer_id, type: 'event_cancelled',
-            title: 'Event Cancelled — Refund Requested 💰',
-            message: `"${event.title}" has been cancelled. A refund of ₦${Number(ticket.amount_paid).toLocaleString()} was requested; check your payment method for the final credit.`,
-            related_id: id, related_type: 'event',
-            data: { eventId: id, eventTitle: event.title, amount: ticket.amount_paid },
-          };
-          const { error: notificationError } = await supabaseAdmin.from('notifications').insert(notification);
-          if (notificationError) throw notificationError;
-          await sendPushNotification(supabaseAdmin, ticket.buyer_id, {
-            title: notification.title,
-            body: notification.message,
-            data: notification.data,
-            url: `/events/${id}`,
-          }, notification.type);
-        }
-      } catch (err) {
-        errors.push(`Payment ${paymentRef}: ${(err as Error).message}`);
-      }
-    }
-
-    if (errors.length) {
-      return NextResponse.json({ error: 'Some ticket refunds need support review.', refundsRequested, errors }, { status: 502 });
-    }
-
-    for (const ticket of (paidTickets || []).filter(ticket => Number(ticket.amount_paid) <= 0)) {
+    for (const ticket of (paidTickets || []).filter(ticket => ticket.amount_paid != null && Number(ticket.amount_paid) === 0)) {
       const { error: updateError } = await supabaseAdmin.from('tickets')
         .update({ status: 'REFUNDED', refund_status: 'processed', updated_at: new Date().toISOString() })
         .eq('id', ticket.id).eq('status', 'PAID');
@@ -104,7 +52,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     if (errors.length) {
-      return NextResponse.json({ error: 'Some ticket refunds need support review.', refundsRequested, errors }, { status: 502 });
+      return NextResponse.json({ error: 'Some ticket refunds need support review.', errors }, { status: 502 });
     }
 
     const { error: cancelError } = await supabaseAdmin
@@ -115,7 +63,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     return NextResponse.json({
       success: true,
-      refundsRequested,
+      refundsRequested: 0,
       errors: errors.length > 0 ? errors : undefined,
     });
   } catch (error) {

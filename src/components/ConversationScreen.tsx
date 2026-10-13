@@ -11,6 +11,9 @@ import { ActivityIndicator } from "@/components/ActivityIndicator";
 import { useTypingDetection } from "@/hooks/use-typing-detection";
 import type { User } from "@/types";
 import Image from "next/image";
+import { PrivateMediaImage, PrivateMediaVideo } from '@/components/PrivateMedia';
+import { useVideoEditor } from '@/hooks/use-video-editor';
+import { resolvePrivateMediaSource } from '@/hooks/use-private-media';
 import { useToast } from "@/hooks/use-toast";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
@@ -134,6 +137,14 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
+  const { editVideo, videoEditor, isEditingVideo } = useVideoEditor();
+
+  useEffect(() => {
+    if (!videoFile) { setVideoPreview(null); return; }
+    const url = URL.createObjectURL(videoFile);
+    setVideoPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [videoFile]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
@@ -212,7 +223,8 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
           created_at: cm.created_at || cm.timestamp,
           is_read: cm.metadata?.isRead || false,
         }));
-        mainMsgs = [...mainMsgs, ...formattedLegacy];
+        mainMsgs = [...mainMsgs,...formattedLegacy.filter(legacy => !mainMsgs.some(current => current.sender_id === legacy.sender_id &&
+          current.text === legacy.text && Math.abs(Date.parse(current.created_at)-Date.parse(legacy.created_at)) < 1500))];
       }
 
       // If business conversation, also fetch from business_messages table for completeness/legacy support
@@ -238,7 +250,8 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
             created_at: bm.created_at,
             is_read: bm.is_read || false,
           }));
-          mainMsgs = [...mainMsgs, ...formattedBiz];
+          mainMsgs = [...mainMsgs,...formattedBiz.filter(legacy => conversation.participant_ids.includes(legacy.sender_id) && !mainMsgs.some(current => current.sender_id === legacy.sender_id &&
+            current.text === legacy.text && Math.abs(Date.parse(current.created_at)-Date.parse(legacy.created_at)) < 1500))];
         }
       }
 
@@ -406,23 +419,19 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
 
   const handleSend = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !conversation || (!newMessage.trim() && !selectedFile && !videoFile)) return;
+    if (sending || isEditingVideo || !user || !conversation || (!newMessage.trim() && !selectedFile && !videoFile)) return;
     setSending(true);
     try {
       let imageUrl: string | null = null;
       let videoUrl: string | null = null;
       if (selectedFile) {
         const { url, error } = await StorageService.uploadChatImage(conversation.id, selectedFile);
-        if (!error) imageUrl = url;
+        if (error || !url) throw new Error('Image upload failed. Please try again.');
+        imageUrl = url;
       }
       if (videoFile) {
         const { url, error } = await StorageService.uploadChatVideo(conversation.id, videoFile);
-        if (error) {
-          const msg = typeof error === 'string' ? error : 'Video upload failed.';
-          alert(msg);
-          setSending(false);
-          return;
-        }
+        if (error || !url) throw new Error('Video upload failed. Please try again.');
         videoUrl = url;
       }
 
@@ -435,23 +444,14 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
         created_at: new Date().toISOString(), is_read: true, read_by: [user.id],
       }).select().single();
 
+      if (insertError) throw insertError;
+
       // Optimistically append the sent message so it shows immediately
       if (!insertError && insertedMsg) {
         setMessages((prev) => {
           if (prev.some((m) => m.id === insertedMsg.id)) return prev;
           return [...prev, { ...insertedMsg, text: insertedMsg.text || insertedMsg.content || "" }];
         });
-      }
-
-      const bizId = conversation.context?.catalog_item_business_id || (conversation as any).business_id;
-      if (bizId && sentText) {
-        await supabase.from("business_messages").insert({
-          business_id: bizId,
-          sender_id: user.id,
-          content: sentText,
-          is_read: false,
-          created_at: new Date().toISOString()
-        }).then();
       }
 
       await supabase.from("conversations").update({
@@ -472,8 +472,10 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
       setNewMessage(""); setSelectedFile(null); setImagePreview(null);
       setVideoFile(null); setVideoPreview(null);
       stopTyping();
-    } catch (e) { console.error(e); } finally { setSending(false); }
-  }, [user, conversation, newMessage, selectedFile, videoFile, stopTyping]);
+    } catch {
+      toast({ title: 'Message could not be sent', description: 'Please try again. Your draft has been kept.', variant: 'destructive' });
+    } finally { setSending(false); }
+  }, [user, conversation, newMessage, selectedFile, videoFile, stopTyping, toast, isEditingVideo, sending]);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -484,20 +486,25 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
     reader.readAsDataURL(file);
   };
 
-  const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const prepareVideo = async (file: File) => {
+    if (sending || isEditingVideo) return;
+    try {
+      const edited = await editVideo(file, 15 * 1024 * 1024);
+      if (edited) setVideoFile(edited);
+    } catch (error) { toast({ title: 'Video unavailable', description: error instanceof Error ? error.message : 'Please try again.', variant: 'destructive' }); }
+  };
+
+  const handleVideoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const MAX = 15 * 1024 * 1024;
-    const ALLOWED = ['video/mp4', 'video/webm', 'video/quicktime'];
-    if (!ALLOWED.includes(file.type) || file.size > MAX) return;
-    setVideoFile(file);
-    setVideoPreview(URL.createObjectURL(file));
     if (videoInputRef.current) videoInputRef.current.value = '';
+    await prepareVideo(file);
   };
 
   const handleDownload = async (url: string, defaultFilename: string) => {
     try {
-      const response = await fetch(url);
+      const response = await fetch(await resolvePrivateMediaSource(url), { cache: 'no-store' });
+      if (!response.ok) throw new Error('Download unavailable');
       const blob = await response.blob();
       const blobUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -508,7 +515,7 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
       document.body.removeChild(link);
       window.URL.revokeObjectURL(blobUrl);
     } catch (e) {
-      window.open(url, '_blank');
+      toast({ title: 'Download unavailable', description: 'Please try again.', variant: 'destructive' });
     }
   };
 
@@ -545,6 +552,7 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
 
   return (
     <div className="w-full h-full flex-1 flex flex-col min-h-0 bg-[var(--yrdly-dark)] text-foreground font-yrdly-body relative">
+      {videoEditor}
       {/* ── Top Bar ── */}
       <header className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 bg-[var(--yrdly-dark)]/90 backdrop-blur-md border-b border-[var(--yrdly-glass-border)]">
         <div className="flex items-center gap-3">
@@ -778,7 +786,7 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
                   <div className="flex flex-col gap-1">
                     {(msg.image_url || (msg.media_type === 'image' && msg.media_url)) && (
                       <div className="relative group rounded-2xl overflow-hidden border border-[var(--yrdly-glass-border)] cursor-pointer" style={{ maxWidth: 280 }} onClick={() => setFullscreenImage(msg.image_url || msg.media_url!)}>
-                        <Image src={msg.image_url || msg.media_url!} alt="Message image" width={280} height={280} className="w-full h-auto object-cover" />
+                        <PrivateMediaImage src={msg.image_url || msg.media_url!} alt="Message image" width={280} height={280} className="w-full h-auto object-cover" />
                         <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                           <span className="bg-black/50 text-white p-2 rounded-full backdrop-blur-sm">
                             <ImagePlus className="w-5 h-5" />
@@ -788,8 +796,8 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
                     )}
                     {msg.video_url && (
                       <div className="rounded-2xl overflow-hidden relative group border border-[var(--yrdly-glass-border)]" style={{ maxWidth: 280, width: "100%", background: "#000" }}>
-                        <video
-                          src={msg.video_url.includes('#t=') ? msg.video_url : `${msg.video_url}#t=0.001`}
+                        <PrivateMediaVideo
+                          src={msg.video_url}
                           controls
                           playsInline
                           disablePictureInPicture
@@ -868,6 +876,7 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
         {videoPreview && (
           <div className="relative mb-3 inline-block">
             <video src={videoPreview.includes('#t=') ? videoPreview : `${videoPreview}#t=0.001`} preload="metadata" className="rounded-[10px] w-20 h-20 object-cover" />
+            <button type="button" disabled={sending || isEditingVideo} onClick={() => { if (videoFile) void prepareVideo(videoFile); }} className="mt-1 text-xs text-primary">Edit video</button>
             <button
               onClick={() => { setVideoFile(null); setVideoPreview(null); }}
               className="absolute -top-2 -right-2 w-6 h-6 rounded-full text-foreground text-xs flex items-center justify-center"
@@ -882,7 +891,7 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
             onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--c-card2)")}>
             <ImagePlus className="w-5 h-5" />
           </button>
-          <button type="button" onClick={() => videoInputRef.current?.click()}
+          <button type="button" disabled={sending || isEditingVideo} aria-label="Attach video" onClick={() => videoInputRef.current?.click()}
             className="p-2.5 rounded-full flex-shrink-0 transition-all duration-200 hover:scale-105 text-primary"
             style={{ background: "var(--c-card2)" }}
             onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "color-mix(in srgb, var(--primary) 15%, var(--c-card2))")}
@@ -902,7 +911,7 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
           </div>
           <button
             type="submit"
-            disabled={(!newMessage.trim() && !selectedFile && !videoFile) || sending}
+            disabled={(!newMessage.trim() && !selectedFile && !videoFile) || sending || isEditingVideo}
             className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 bg-primary text-primary-foreground transition-all duration-200 active:scale-95 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100 shadow-md">
             {sending ? <Loader2 className="w-5 h-5 text-primary-foreground animate-spin" /> : <Send className="w-5 h-5 text-primary-foreground" />}
           </button>
@@ -936,10 +945,11 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
               <X className="w-6 h-6" />
             </button>
           </div>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img 
+          <PrivateMediaImage
             src={fullscreenImage} 
             alt="Fullscreen" 
+            width={1200}
+            height={1200}
             className="max-w-full max-h-[90vh] object-contain rounded-md" 
             onClick={(e) => e.stopPropagation()} 
           />

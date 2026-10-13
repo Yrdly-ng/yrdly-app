@@ -66,7 +66,7 @@ export function RightRail({
         const followedIds = new Set((followedData || []).map((f) => f.following_id));
 
         const { data: usersData } = await supabase
-          .from("users")
+          .from('public_profiles')
           .select("id, name, username, avatar_url, home_lga")
           .eq("home_lga", viewerLga)
           .neq("id", viewerId)

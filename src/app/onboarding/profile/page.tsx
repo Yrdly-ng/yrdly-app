@@ -1,5 +1,7 @@
 "use client";
 
+import { safeRelativePath } from '@/lib/auth-navigation';
+
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
@@ -37,7 +39,7 @@ function OnboardingProfileContent() {
   const searchParams = useSearchParams();
   const phoneSkipped = searchParams.get('phoneSkipped') === 'true';
   const requestedNext = searchParams.get('next');
-  const nextPath = requestedNext?.startsWith('/') && !requestedNext.startsWith('//') ? requestedNext : '';
+  const nextPath = safeRelativePath(requestedNext, '');
   const { user } = useAuth();
   const [step, setStep] = useState<1 | 2>(1);
   const gps = useGpsLocation();
@@ -564,10 +566,10 @@ function OnboardingProfileContent() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-xs font-semibold text-white/70 tracking-wider uppercase">
-                    SHORT BIO
+                    BIO
                   </label>
                   <textarea
-                    placeholder="Tell your neighbours a bit about yourself..."
+                    placeholder="Bio"
                     value={bio}
                     onChange={(e) => setBio(e.target.value)}
                     rows={3}

@@ -59,7 +59,7 @@ export default function InviteFriendsPage() {
         </h1>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+      <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
         {/* Banner */}
         <div
           className="p-6 rounded-3xl border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] backdrop-blur-xl text-center space-y-4 shadow-xl relative overflow-hidden font-yrdly-body"
@@ -127,7 +127,7 @@ export default function InviteFriendsPage() {
             </div>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

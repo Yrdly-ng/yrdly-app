@@ -86,7 +86,7 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
       try {
         let query = supabase
           .from("posts")
-          .select(`*, user:users!posts_user_id_fkey(id, name, avatar_url, verified_seller)`)
+          .select(`*, user:public_profiles!posts_user_id_fkey(id, name, avatar_url, verified_seller)`)
           .eq("category", "For Sale")
           .eq("is_sold", false);
 
@@ -133,11 +133,11 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
   return (
     <div className="w-full space-y-4 font-yrdly-body pb-20 sm:pb-8">
       {/* Header bar */}
-      <div className="px-4 flex items-center justify-between">
+      <div className="px-4 flex flex-col items-start gap-4 pt-2 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
         <h1 className="text-xl sm:text-2xl font-bold font-yrdly-display text-foreground">
           Marketplace
         </h1>
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-3">
           <LocationChip />
           <Magnetic
             className="flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold text-primary-foreground font-yrdly-display transition-all duration-150 active:scale-[0.97]"
@@ -189,7 +189,7 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
 
       {/* Items grid */}
       {loading ? (
-        <div className="px-4 grid grid-cols-2 sm:grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-4 pb-28">
+        <div className="px-4 grid grid-cols-1 min-[360px]:grid-cols-2 sm:grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-4 pb-28">
           {[...Array(8)].map((_, i) => (
             <GlassCard key={i} className="h-64 w-full rounded-xl">
               <Skeleton className="h-full w-full rounded-lg" />
@@ -197,7 +197,7 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
           ))}
         </div>
       ) : filteredItems.length > 0 ? (
-        <div className="px-4 grid grid-cols-2 sm:grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-4 pb-28">
+        <div className="px-4 grid grid-cols-1 min-[360px]:grid-cols-2 sm:grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-4 pb-28">
           {filteredItems.map((item) => (
             <MarketplaceItemCard
               key={item.id}

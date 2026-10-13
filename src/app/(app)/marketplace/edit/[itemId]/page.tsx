@@ -1,5 +1,6 @@
 "use client";
 
+import { authenticatedFetch } from '@/lib/authenticated-fetch';
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
@@ -38,6 +39,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { MIN_PAID_PRICE } from "@/lib/constants";
+import { isPaidPrice, MINIMUM_PRICE_MESSAGE } from "@/lib/price-policy";
 
 const CONDITIONS = ["New", "Like New", "Good", "Fair", "Poor"];
 
@@ -178,6 +181,11 @@ export default function EditMarketplaceItemPage() {
       return;
     }
 
+    if (listingType === "For Sale" && !isPaidPrice(Number(price))) {
+      toast({ variant: "destructive", title: "Valid Price Required", description: MINIMUM_PRICE_MESSAGE });
+      return;
+    }
+
     setSubmitting(true);
 
     try {
@@ -233,25 +241,12 @@ export default function EditMarketplaceItemPage() {
         lng: selectedLocation?.lng || null,
       };
 
-      const { error: updateErr } = await supabase
-        .from("posts")
-        .update(updatePayload)
-        .eq("id", itemId);
+      const { error: updateErr } = await authenticatedFetch('/api/posts', { id: itemId, post: updatePayload }, 'PATCH');
 
       if (updateErr) throw updateErr;
 
       // 4. Insert into moderation_queue if flagged
-      if (modStatus === "pending") {
-        await supabase.from("moderation_queue").insert({
-          content_id: itemId,
-          table_name: "posts",
-          user_id: user!.id,
-          status: "pending",
-          reason: modReason,
-          text_content: textToModerate,
-          image_urls: finalImageUrls,
-        });
-      }
+
 
       toast({
         title: "Listing Updated",
@@ -310,7 +305,7 @@ export default function EditMarketplaceItemPage() {
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button
+            <Button aria-label="Back"
               variant="ghost"
               size="icon"
               onClick={() => router.back()}
@@ -324,7 +319,7 @@ export default function EditMarketplaceItemPage() {
           {/* Delete Action Trigger */}
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full text-destructive hover:bg-destructive/10">
+              <Button aria-label="Delete listing" variant="ghost" size="icon" className="rounded-full text-destructive hover:bg-destructive/10">
                 <Trash2 className="w-5 h-5" />
               </Button>
             </AlertDialogTrigger>
@@ -472,14 +467,19 @@ export default function EditMarketplaceItemPage() {
             {/* Price (Disabled/Hidden when Giveaway) */}
             {listingType === "For Sale" && (
               <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Price (₦) *</label>
+                <label htmlFor="listing-price" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Price (₦) *</label>
                 <Input
-                  type="number"
+                  id="listing-price"
+                      type="number"
+                      min={MIN_PAID_PRICE}
+                      step="0.01"
+                      aria-describedby="listing-price-help"
                   placeholder="Price"
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
                   className="rounded-xl"
                 />
+                    <p id="listing-price-help" className="text-xs text-muted-foreground">Minimum paid price: ₦{MIN_PAID_PRICE.toLocaleString("en-NG")}.</p>
               </div>
             )}
 

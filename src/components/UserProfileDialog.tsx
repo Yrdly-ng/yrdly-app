@@ -1,3 +1,4 @@
+import { ProfilePicture } from "@/components/ProfilePicture";
 
 import { VerifiedBadge } from '@/components/VerifiedBadge';
 
@@ -296,7 +297,7 @@ export function UserProfileDialog({ user: profileUser, open, onOpenChange }: Use
                                 <AlertDialog>
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon"><MoreHorizontal className="h-5 w-5" /></Button>
+                                            <Button aria-label="More options" variant="ghost" size="icon"><MoreHorizontal className="h-5 w-5" /></Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
                                             {friendshipStatus === 'friends' && (
@@ -364,10 +365,7 @@ export function UserProfileDialog({ user: profileUser, open, onOpenChange }: Use
                                 </AlertDialog>
                             </div>
                         )}
-                        <Avatar className="h-24 w-24 mb-4 border-2 border-background">
-                            <AvatarImage src={profileUser.avatar_url} alt={profileUser.name} />
-                            <AvatarFallback>{profileUser.name?.charAt(0)}</AvatarFallback>
-                        </Avatar>
+                        <ProfilePicture src={profileUser.avatar_url} name={profileUser.name || "User"} className="h-24 w-24 mb-4" />
                         <h1 className="text-2xl font-bold flex items-center justify-center gap-1.5">
                             {profileUser.name}
                             {((profileUser as any).is_verified || (profileUser as any).verified_seller || (profileUser as any).phone_verified) && (

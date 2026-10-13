@@ -67,13 +67,16 @@ export default function MyListingsPage() {
     try {
       const { error } = await supabase
         .from("posts")
-        .update({ status: "sold" })
-        .eq("id", id);
+        .update({ status: "sold", is_sold: true })
+        .eq("id", id)
+        .eq("user_id", user?.id || "")
+        .select("id")
+        .single();
 
       if (error) throw error;
 
       setListings((prev) =>
-        prev.map((item) => (item.id === id ? { ...item, status: "sold" } : item))
+        prev.map((item) => (item.id === id ? { ...item, status: "sold", is_sold: true } : item))
       );
       toast({ title: "Listing marked as sold!" });
     } catch (err: any) {
@@ -99,7 +102,7 @@ export default function MyListingsPage() {
   };
 
   const filteredListings = listings.filter((item) => {
-    const isSold = item.status === "sold";
+    const isSold = (item.is_sold || item.status === "sold");
     return activeTab === "active" ? !isSold : isSold;
   });
 
@@ -139,7 +142,7 @@ export default function MyListingsPage() {
             }`}
             style={{ fontFamily: FONT }}
           >
-            Active Listings ({listings.filter((i) => i.status !== "sold").length})
+            Active Listings ({listings.filter((i) => !i.is_sold && i.status !== "sold").length})
           </button>
           <button
             onClick={() => setActiveTab("sold")}
@@ -150,7 +153,7 @@ export default function MyListingsPage() {
             }`}
             style={{ fontFamily: FONT }}
           >
-            Sold ({listings.filter((i) => i.status === "sold").length})
+            Sold ({listings.filter((i) => (i.is_sold || i.status === "sold")).length})
           </button>
         </div>
 
@@ -218,7 +221,7 @@ export default function MyListingsPage() {
                     )}
                   </div>
 
-                  {activeTab === "active" && (
+                  {activeTab === "active" && !item.is_sold && item.status !== "sold" && (
                     <button
                       onClick={() => handleMarkSold(item.id)}
                       className="px-3 py-1.5 rounded-lg border border-primary/40 text-primary text-xs font-bold hover:bg-primary/10 transition-colors flex items-center gap-1"

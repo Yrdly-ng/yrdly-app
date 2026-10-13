@@ -78,7 +78,7 @@ export function CatalogItemScreen({
           {/* Image navigation arrows */}
           {item.images.length > 1 && (
             <>
-              <Button
+              <Button aria-label="Previous image"
                 variant="ghost"
                 size="icon"
                 className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-background/80 backdrop-blur-sm hover:bg-background"
@@ -86,7 +86,7 @@ export function CatalogItemScreen({
               >
                 <ArrowLeft className="w-5 h-5" />
               </Button>
-              <Button
+              <Button aria-label="Next image"
                 variant="ghost"
                 size="icon"
                 className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-background/80 backdrop-blur-sm hover:bg-background"
@@ -99,7 +99,7 @@ export function CatalogItemScreen({
         </div>
 
         {/* Back button */}
-        <Button
+        <Button aria-label="Back"
           variant="ghost"
           size="icon"
           className="absolute top-4 left-4 bg-background/80 backdrop-blur-sm hover:bg-background"
@@ -110,7 +110,7 @@ export function CatalogItemScreen({
 
         {/* Action buttons */}
         <div className="absolute top-4 right-4 flex gap-2">
-          <Button 
+          <Button aria-label="Share"
             variant="ghost" 
             size="icon" 
             className="bg-background/80 backdrop-blur-sm hover:bg-background"
@@ -118,7 +118,7 @@ export function CatalogItemScreen({
           >
             <Share2 className="w-5 h-5" />
           </Button>
-          <Button variant="ghost" size="icon" className="bg-background/80 backdrop-blur-sm hover:bg-background">
+          <Button aria-label="Save to favorites" variant="ghost" size="icon" className="bg-background/80 backdrop-blur-sm hover:bg-background">
             <Heart className="w-5 h-5" />
           </Button>
         </div>

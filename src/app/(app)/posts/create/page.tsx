@@ -1,5 +1,6 @@
 "use client";
 
+import { authenticatedFetch } from '@/lib/authenticated-fetch';
 import React, { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -24,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import ImageCropDialog from "@/components/ImageCropDialog";
+import { useVideoEditor } from '@/hooks/use-video-editor';
 
 export default function CreatePostPage() {
   const router = useRouter();
@@ -35,6 +37,9 @@ export default function CreatePostPage() {
   const [visibility, setVisibility] = useState<"public" | "private">("public");
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [videoFiles, setVideoFiles] = useState<File[]>([]);
+  const { editVideo, videoEditor, isEditingVideo } = useVideoEditor();
+  const pickingVideo = useRef(false);
+  const [pickingVideos, setPickingVideos] = useState(false);
   const [posting, setPosting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [posted, setPosted] = useState(false);
@@ -99,9 +104,11 @@ export default function CreatePostPage() {
   };
 
   // Handle Video selection (max 3, 40MB limit each)
-  const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleVideoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (posting || pickingVideo.current || isEditingVideo) return;
     if (!e.target.files) return;
     const selected = Array.from(e.target.files);
+    e.target.value = '';
     const available = 3 - videoFiles.length;
     if (available <= 0) {
       toast({
@@ -112,21 +119,25 @@ export default function CreatePostPage() {
       return;
     }
 
-    const validVideos: File[] = [];
-    for (const file of selected) {
-      if (file.size > 40 * 1024 * 1024) {
-        toast({
-          variant: "destructive",
-          title: "File Too Large",
-          description: `Video "${file.name}" exceeds the 40MB limit.`,
-        });
-      } else {
-        validVideos.push(file);
+    pickingVideo.current = true; setPickingVideos(true);
+    try {
+      for (const file of selected.slice(0, available)) {
+        try {
+          const edited = await editVideo(file, 40 * 1024 * 1024);
+          if (edited) setVideoFiles(previous => [...previous, edited].slice(0, 3));
+        } catch (error) {
+          toast({ variant: 'destructive', title: 'Video unavailable', description: error instanceof Error ? error.message : 'Please choose another video.' });
+        }
       }
-    }
+    } finally { pickingVideo.current = false; setPickingVideos(false); }
+  };
 
-    const toAdd = validVideos.slice(0, available);
-    setVideoFiles((prev) => [...prev, ...toAdd]);
+  const editAttachedVideo = async (file: File) => {
+    if (posting || pickingVideo.current || isEditingVideo) return;
+    try {
+      const edited = await editVideo(file, 40 * 1024 * 1024);
+      if (edited) setVideoFiles(previous => previous.map(current => current === file ? edited : current));
+    } catch { toast({ variant: 'destructive', title: 'Video unavailable', description: 'Please try again.' }); }
   };
 
   const removeImage = (index: number) => {
@@ -138,6 +149,7 @@ export default function CreatePostPage() {
   };
 
   const handleSubmit = async () => {
+    if (posting || pickingVideo.current || isEditingVideo) return;
     if (!user) {
       toast({
         variant: "destructive",
@@ -248,11 +260,7 @@ export default function CreatePostPage() {
         postPayload.video_urls = uploadedVideoUrls;
       }
 
-      const { data: newPost, error: insertErr } = await supabase
-        .from("posts")
-        .insert(postPayload)
-        .select()
-        .single();
+      const { data: newPost, error: insertErr } = await authenticatedFetch('/api/posts', { post: postPayload });
 
       if (insertErr) throw insertErr;
 
@@ -261,17 +269,7 @@ export default function CreatePostPage() {
         await NotificationTriggers.onMentionsInContent(user.id, newPost.id, trimmedText);
       }
 
-      if (modStatus === "pending" && newPost) {
-        await supabase.from("moderation_queue").insert({
-          content_id: newPost.id,
-          table_name: "posts",
-          user_id: user.id,
-          status: "pending",
-          reason: modReason,
-          text_content: trimmedText,
-          image_urls: uploadedImageUrls,
-        });
-      }
+
 
       setPosting(false);
       setUploadProgress(100);
@@ -343,6 +341,7 @@ export default function CreatePostPage() {
 
   return (
     <div className="min-h-screen bg-background pb-12">
+      {videoEditor}
       <ImageCropDialog
         file={currentCropFile}
         onConfirm={handleCropConfirm}
@@ -358,7 +357,7 @@ export default function CreatePostPage() {
         {/* Header */}
         <div className="sticky top-0 z-30 bg-card/95 backdrop-blur border-b border-border px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button
+            <Button aria-label="Back"
               variant="ghost"
               size="icon"
               onClick={() => router.back()}
@@ -372,7 +371,7 @@ export default function CreatePostPage() {
           </div>
 
           <Button
-            disabled={!hasContent || posting}
+            disabled={!hasContent || posting || pickingVideos || isEditingVideo}
             onClick={handleSubmit}
             className="rounded-full px-6 bg-primary text-foreground font-sans font-bold hover:bg-primary/90 disabled:opacity-50"
           >
@@ -521,6 +520,7 @@ export default function CreatePostPage() {
                         ({(file.size / (1024 * 1024)).toFixed(1)}MB)
                       </span>
                     </div>
+                    <Button type="button" variant="ghost" size="sm" disabled={posting || pickingVideos || isEditingVideo} onClick={() => void editAttachedVideo(file)}>Edit video</Button>
                     <button
                       type="button"
                       onClick={() => removeVideo(i)}
@@ -542,7 +542,7 @@ export default function CreatePostPage() {
             <button
               type="button"
               onClick={() => imageInputRef.current?.click()}
-              disabled={imageFiles.length >= 10 || posting}
+              disabled={imageFiles.length >= 10 || posting || pickingVideos || isEditingVideo}
               className="inline-flex items-center gap-2 px-3 py-2 rounded-full text-xs font-semibold bg-secondary hover:bg-secondary/80 text-foreground transition-colors disabled:opacity-40"
             >
               <ImageIcon className="w-4 h-4 text-emerald-500" />
@@ -558,7 +558,7 @@ export default function CreatePostPage() {
             <button
               type="button"
               onClick={() => videoInputRef.current?.click()}
-              disabled={videoFiles.length >= 3 || posting}
+              disabled={videoFiles.length >= 3 || posting || pickingVideos || isEditingVideo}
               className="inline-flex items-center gap-2 px-3 py-2 rounded-full text-xs font-semibold bg-secondary hover:bg-secondary/80 text-foreground transition-colors disabled:opacity-40"
             >
               <Video className="w-4 h-4 text-blue-500" />
