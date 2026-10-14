@@ -305,19 +305,9 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
                 >
                   <Image
                     src={urls[0]}
-                    alt=""
-                    fill
-                    aria-hidden="true"
-                    loading="lazy"
-                    className="object-cover scale-110 blur-2xl brightness-75 pointer-events-none"
-                    sizes="48px"
-                    quality={10}
-                  />
-                  <Image
-                    src={urls[0]}
                     alt="Post media"
                     fill
-className="object-cover"
+className="object-contain"
   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 60vw, 900px"
                   />
                 </div>
@@ -335,21 +325,11 @@ className="object-cover"
                         className="relative w-full h-full flex-shrink-0 snap-start cursor-pointer overflow-hidden"
                         onClick={() => setLightboxIndex(i)}
                       >
-                        <Image
-                          src={u}
-                          alt=""
-                          fill
-                          aria-hidden="true"
-                          loading="lazy"
-                          className="object-cover scale-110 blur-2xl brightness-75 pointer-events-none"
-                          sizes="48px"
-                          quality={10}
-                        />
 <Image
   src={u}
   alt={`Post media ${i + 1}`}
   fill
-  className="object-cover"
+  className="object-contain"
                           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 60vw, 900px"
                         />
                       </div>

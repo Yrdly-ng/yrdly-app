@@ -155,12 +155,12 @@ function MediaCollage({
   return (
     <div
       className="relative w-full overflow-hidden rounded-yrdly-md group bg-black"
-      style={{ aspectRatio: mediaAspects[items[activeIndex]?.url] || 4 / 5, maxHeight: 480 }}
+      style={{ aspectRatio: mediaAspects[items[activeIndex]?.url] || 1 }}
     >
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className={`flex w-full h-full overflow-y-hidden overscroll-x-contain snap-x snap-mandatory scrollbar-hide select-none ${items.length > 1 ? "overflow-x-auto" : "overflow-x-hidden"}`}
+        className={`absolute inset-0 flex w-full h-full overflow-y-hidden overscroll-x-contain snap-x snap-mandatory scrollbar-hide select-none ${items.length > 1 ? "overflow-x-auto" : "overflow-x-hidden"}`}
       >
         {items.map((item, i) => {
           if (item.type === "image") {
