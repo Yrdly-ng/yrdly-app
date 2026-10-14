@@ -1,6 +1,12 @@
 "use client";
 
-import { useState, useEffect, useLayoutEffect, useCallback, useRef } from "react";
+import {
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useCallback,
+  useRef,
+} from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { usePosts } from "@/hooks/use-posts";
@@ -10,9 +16,19 @@ import { PostSkeleton } from "@/components/PostSkeleton";
 import { LocationChip } from "@/components/LocationChip";
 import { EventCreatorOnboarding } from "@/components/events/EventCreatorOnboarding";
 import { MarketplaceCreatorOnboarding } from "@/components/marketplace/MarketplaceCreatorOnboarding";
-import { Map, Bell, AlertTriangle, X, TrendingUp, LayoutGrid, Heart, ArrowUp } from "lucide-react";
+import {
+  Map,
+  Bell,
+  AlertTriangle,
+  X,
+  TrendingUp,
+  LayoutGrid,
+  Heart,
+  ArrowUp,
+} from "lucide-react";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
+import { clientFeedState } from "@/lib/client-feed-state";
 
 const GREEN = "#82DB7E";
 
@@ -25,8 +41,16 @@ function HandshakeIcon() {
           <stop offset="85.3%" stopColor="#00D078" />
         </linearGradient>
       </defs>
-      <path d="M6 22l5-5 4 2 5-5h4l5 5 4-2 5 5-9 7-5-3-5 3L6 22z" fill="url(#hg1)" />
-      <path d="M14 19l3 8M28 19l-3 8" stroke="url(#hg1)" strokeWidth="2" strokeLinecap="round" />
+      <path
+        d="M6 22l5-5 4 2 5-5h4l5 5 4-2 5 5-9 7-5-3-5 3L6 22z"
+        fill="url(#hg1)"
+      />
+      <path
+        d="M14 19l3 8M28 19l-3 8"
+        stroke="url(#hg1)"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -43,7 +67,15 @@ function TicketIcon() {
       <rect x="4" y="14" width="34" height="14" rx="3" fill="url(#tg1)" />
       <circle cx="4" cy="21" r="4" fill="var(--yrdly-dark)" />
       <circle cx="38" cy="21" r="4" fill="var(--yrdly-dark)" />
-      <line x1="18" y1="14" x2="18" y2="28" stroke="var(--yrdly-dark)" strokeWidth="1.5" strokeDasharray="3 2" />
+      <line
+        x1="18"
+        y1="14"
+        x2="18"
+        y2="28"
+        stroke="var(--yrdly-dark)"
+        strokeWidth="1.5"
+        strokeDasharray="3 2"
+      />
     </svg>
   );
 }
@@ -66,23 +98,65 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
   const { user, profile } = useAuth();
   const router = useRouter();
   const { activeFilter } = useLocation();
+  const feedKey = JSON.stringify([
+    activeFilter?.state,
+    activeFilter?.lga,
+    activeFilter?.ward,
+  ]);
+  useEffect(() => {
+    if (!user?.id) return;
+    const owner = user.id;
+    const remember = () => {
+      clientFeedState.scroll(
+        owner,
+        feedKey,
+        document.querySelector("main")?.scrollTop || window.scrollY,
+      );
+    };
+    window.addEventListener("yrdly:remember-feed", remember);
+    const stored = clientFeedState.read(owner, feedKey);
+    let attempts = 0,
+      frame = 0;
+    const restore = () => {
+      const main = document.querySelector("main");
+      if (stored && main) {
+        main.scrollTop = stored.scrollTop;
+        if (main.scrollTop + 1 < stored.scrollTop && attempts++ < 45)
+          frame = requestAnimationFrame(restore);
+      }
+    };
+    frame = requestAnimationFrame(restore);
+    return () => {
+      window.removeEventListener("yrdly:remember-feed", remember);
+      cancelAnimationFrame(frame);
+    };
+  }, [user?.id, feedKey]);
 
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [isCreateEventOpen, setIsCreateEventOpen] = useState(false);
-  const [marketplaceOnboardingOpen, setMarketplaceOnboardingOpen] = useState(false);
+  const [marketplaceOnboardingOpen, setMarketplaceOnboardingOpen] =
+    useState(false);
   const [isCreateItemOpen, setIsCreateItemOpen] = useState(false);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   const [activeAlerts, setActiveAlerts] = useState<Alert[]>([]);
 
   // Sidebar data
   const [trendingPosts, setTrendingPosts] = useState<
-    { id: string; category: string; snippet: string; image: string; like_count: number }[]
+    {
+      id: string;
+      category: string;
+      snippet: string;
+      image: string;
+      like_count: number;
+    }[]
   >([]);
   // ── Trending reorder animation (FLIP) ──
   const trendingRowRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const trendingPrevTops = useRef<Record<string, number>>({});
   const trendingPrevRanks = useRef<Record<string, number>>({});
-  const [risingTrendingIds, setRisingTrendingIds] = useState<Set<string>>(new Set());
+  const [risingTrendingIds, setRisingTrendingIds] = useState<Set<string>>(
+    new Set(),
+  );
   const [recentListings, setRecentListings] = useState<
     { id: string; title: string; price: number; image: string }[]
   >([]);
@@ -90,7 +164,9 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
   useEffect(() => {
     const fetchTrending = async () => {
       try {
-        const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+        const since = new Date(
+          Date.now() - 7 * 24 * 60 * 60 * 1000,
+        ).toISOString();
         let query = supabase
           .from("posts")
           .select("id, category, title, text, image_url, image_urls, liked_by")
@@ -150,11 +226,13 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
     const interval = setInterval(fetchTrending, 4000);
 
     const ch = supabase
-      .channel(`home_trending_posts_${Math.random().toString(36).substring(2, 7)}`)
+      .channel(
+        `home_trending_posts_${Math.random().toString(36).substring(2, 7)}`,
+      )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "posts" },
-        fetchTrending
+        fetchTrending,
       )
       .subscribe();
 
@@ -217,11 +295,13 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
     fetchListings();
 
     const ch = supabase
-      .channel(`home_recent_listings_${Math.random().toString(36).substring(2, 7)}`)
+      .channel(
+        `home_recent_listings_${Math.random().toString(36).substring(2, 7)}`,
+      )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "posts" },
-        fetchListings
+        fetchListings,
       )
       .subscribe();
 
@@ -230,7 +310,15 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
     };
   }, [activeFilter]);
 
-  const { posts, loading, loadingMore, hasMore, loadMore, deletePost, createPost } = usePosts(activeFilter);
+  const {
+    posts,
+    loading,
+    loadingMore,
+    hasMore,
+    loadMore,
+    deletePost,
+    createPost,
+  } = usePosts(activeFilter);
 
   // Fetch unread notification count
   useEffect(() => {
@@ -249,8 +337,13 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
       .channel("unread_count_home")
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
-        fetchUnread
+        {
+          event: "*",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${user.id}`,
+        },
+        fetchUnread,
       )
       .subscribe();
 
@@ -263,7 +356,9 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
   useEffect(() => {
     const fetchAlerts = async () => {
       try {
-        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        const twentyFourHoursAgo = new Date(
+          Date.now() - 24 * 60 * 60 * 1000,
+        ).toISOString();
         const { data } = await supabase
           .from("safety_alerts")
           .select("*")
@@ -274,7 +369,9 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
 
         if (data) {
           const visible = data.filter(
-            (a) => !localStorage.getItem(`yrdly_dismissed_alert_${a.id}`) && !localStorage.getItem(`yrdly_alert_dismissed_${a.id}`)
+            (a) =>
+              !localStorage.getItem(`yrdly_dismissed_alert_${a.id}`) &&
+              !localStorage.getItem(`yrdly_alert_dismissed_${a.id}`),
           );
           setActiveAlerts(visible as Alert[]);
         }
@@ -320,7 +417,7 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
           loadMoreRef.current();
         }
       },
-      { rootMargin: "600px 0px" }
+      { rootMargin: "600px 0px" },
     );
 
     observer.observe(el);
@@ -329,212 +426,264 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
 
   return (
     <div className="w-full max-w-[680px] lg:max-w-none mx-auto grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_360px] gap-6 pb-24">
-    <div className="w-full max-w-none space-y-4 font-yrdly-body">
-      {/* ── Active Safety Alert Banners (Horizontal Swipe Carousel) ── */}
-      {activeAlerts.length > 0 && (
-        <div className="flex overflow-x-auto snap-x snap-mandatory gap-3 pb-2 scrollbar-none">
-          {activeAlerts.map((alert) => (
-            <div
-              key={alert.id}
-              className="snap-center w-[88%] sm:w-[320px] flex-shrink-0 flex items-start justify-between gap-3 p-4 rounded-2xl border bg-amber-500/10 border-amber-500/30 text-amber-400 backdrop-blur-md"
-            >
-              <div className="flex items-start gap-3 min-w-0 flex-1">
-                <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                <div className="min-w-0 flex-1">
-                  <h4 className="text-xs font-bold font-yrdly-display uppercase tracking-wider truncate">
-                    {alert.title} · <span className="text-[var(--yrdly-label)]">{alert.area_name}</span>
-                  </h4>
-                  <p className="text-xs text-foreground mt-0.5 leading-relaxed font-yrdly-body line-clamp-2">
-                    {alert.description}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  localStorage.setItem(`yrdly_dismissed_alert_${alert.id}`, "true");
-                  setActiveAlerts((prev) => prev.filter((a) => a.id !== alert.id));
-                }}
-                className="text-[var(--yrdly-label)] hover:text-foreground p-1 flex-shrink-0"
+      <div className="w-full max-w-none space-y-4 font-yrdly-body">
+        {/* ── Active Safety Alert Banners (Horizontal Swipe Carousel) ── */}
+        {activeAlerts.length > 0 && (
+          <div className="flex overflow-x-auto snap-x snap-mandatory gap-3 pb-2 scrollbar-none">
+            {activeAlerts.map((alert) => (
+              <div
+                key={alert.id}
+                className="snap-center w-[88%] sm:w-[320px] flex-shrink-0 flex items-start justify-between gap-3 p-4 rounded-2xl border bg-amber-500/10 border-amber-500/30 text-amber-400 backdrop-blur-md"
               >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
+                <div className="flex items-start gap-3 min-w-0 flex-1">
+                  <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                  <div className="min-w-0 flex-1">
+                    <h4 className="text-xs font-bold font-yrdly-display uppercase tracking-wider truncate">
+                      {alert.title} ·{" "}
+                      <span className="text-[var(--yrdly-label)]">
+                        {alert.area_name}
+                      </span>
+                    </h4>
+                    <p className="text-xs text-foreground mt-0.5 leading-relaxed font-yrdly-body line-clamp-2">
+                      {alert.description}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    localStorage.setItem(
+                      `yrdly_dismissed_alert_${alert.id}`,
+                      "true",
+                    );
+                    setActiveAlerts((prev) =>
+                      prev.filter((a) => a.id !== alert.id),
+                    );
+                  }}
+                  className="text-[var(--yrdly-label)] hover:text-foreground p-1 flex-shrink-0"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
 
-      {/* ── Quick Post Box (Mobile Parity) ── */}
-      <div
-        onClick={() => router.push("/posts/create")}
-        className="flex items-center gap-3 p-3 rounded-3xl border border-[var(--yrdly-glass-border)] bg-card cursor-pointer transition-all hover:bg-white/5"
-      >
+        {/* ── Quick Post Box (Mobile Parity) ── */}
         <div
-          className="w-10 h-10 rounded-full border-2 overflow-hidden flex-shrink-0 flex items-center justify-center"
-          style={{ borderColor: GREEN, backgroundColor: "var(--yrdly-dark)" }}
+          onClick={() => router.push("/posts/create")}
+          className="flex items-center gap-3 p-3 rounded-3xl border border-[var(--yrdly-glass-border)] bg-card cursor-pointer transition-all hover:bg-white/5"
         >
-          {profile?.avatar_url ? (
-            <Image
-              src={profile.avatar_url}
-              alt={profile.name || "User"}
-              width={40}
-              height={40}
-              className="w-full h-full object-cover"
-              unoptimized
-            />
-          ) : (
-            <span className="text-sm font-bold text-[#82DB7E] font-yrdly-display">
-              {profile?.name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || "?"}
-            </span>
-          )}
-        </div>
-
-        <span className="flex-1 text-sm text-[var(--yrdly-label)] truncate font-yrdly-body">
-          What&apos;s happening in your neighbourhood?
-        </span>
-
-        <button
-          type="button"
-          className="h-8 px-4 rounded-full font-bold text-xs text-black shrink-0 transition-transform active:scale-95 font-yrdly-display"
-          style={{ backgroundColor: GREEN }}
-        >
-          Post
-        </button>
-      </div>
-
-      {/* Onboarding Dialogs */}
-      <EventCreatorOnboarding
-        isOpen={onboardingOpen}
-        onClose={() => setOnboardingOpen(false)}
-        onContinue={() => router.push("/events/create")}
-      />
-      <MarketplaceCreatorOnboarding
-        isOpen={marketplaceOnboardingOpen}
-        onClose={() => setMarketplaceOnboardingOpen(false)}
-        onContinue={() => router.push("/marketplace/create")}
-      />
-
-      {/* ── Feed List ── */}
-      {loading ? (
-        <div className="space-y-4">
-          {[1, 2, 3].map((i) => (
-            <PostSkeleton key={i} />
-          ))}
-        </div>
-      ) : posts.length > 0 ? (
-        <div className="space-y-3">
-          {posts.map((post) => (
-            <PostCard key={post.id} post={post} onDelete={deletePost} onCreatePost={createPost} />
-          ))}
-
-          {hasMore && (
-            <div ref={loadMoreSentinelRef} className="flex justify-center py-4">
-              {loadingMore && (
-                <span className="text-sm font-medium text-[var(--yrdly-label)] font-yrdly-body">
-                  Loading more...
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <p className="text-sm text-[var(--yrdly-label)] font-yrdly-body">
-            No posts yet. Be the first to post in your neighbourhood!
-          </p>
-        </div>
-      )}
-    </div>
-
-    {/* ── Right Sidebar (fixed in place, does not move while the feed scrolls) ── */}
-    <div className="hidden lg:block relative shrink-0">
-      <aside className="sticky top-6 flex min-w-0 w-full max-w-full flex-col gap-4 overflow-x-hidden font-yrdly-body items-start overflow-y-auto max-h-[calc(100dvh-24px)] pb-6 scrollbar-hide">
-      <div className="h-[340px] w-full overflow-hidden rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-5 shadow-sm transition-all hover:border-primary/40 hover:shadow-md">
-        <div className="flex items-center gap-3 mb-4">
-          <span
-            className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-            style={{ backgroundColor: `${GREEN}22` }}
+          <div
+            className="w-10 h-10 rounded-full border-2 overflow-hidden flex-shrink-0 flex items-center justify-center"
+            style={{ borderColor: GREEN, backgroundColor: "var(--yrdly-dark)" }}
           >
-            <TrendingUp size={17} style={{ color: GREEN }} />
-          </span>
-          <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--yrdly-label)] font-yrdly-display">
-            Trending nearby
-          </h3>
-        </div>
-        {trendingPosts.length > 0 ? (
-          trendingPosts.map((p) => (
-            <div
-              key={p.id}
-              ref={(el) => {
-                trendingRowRefs.current[p.id] = el;
-              }}
-              onClick={() => router.push(`/posts/${p.id}`)}
-              className={`relative flex min-w-0 w-full max-w-full items-center gap-3 py-2.5 px-2 -mx-1 rounded-lg border-b border-[var(--yrdly-glass-border)] last:border-b-0 cursor-pointer transition-all duration-500 hover:bg-[var(--yrdly-glass-border)]/40 hover:ring-1 hover:ring-inset hover:ring-primary/40 ${
-                risingTrendingIds.has(p.id) ? "ring-1 ring-inset ring-primary/60 bg-primary/5" : ""
-              }`}
-            >
-              <div className="w-11 h-11 rounded-lg overflow-hidden flex-shrink-0 bg-background flex items-center justify-center">
-                {p.image ? (
-                  <Image src={p.image} alt={p.snippet} width={44} height={44} className="w-full h-full object-cover" unoptimized />
-                ) : (
-                  <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: GREEN }} />
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="min-w-0 break-words line-clamp-2 text-[15px] font-bold">{p.snippet}</div>
-                <div className="text-xs text-[var(--yrdly-label)] capitalize">{p.category}</div>
-              </div>
-              <span className="flex items-center gap-1 text-sm text-[var(--yrdly-label)] flex-shrink-0">
-                {risingTrendingIds.has(p.id) && (
-                  <ArrowUp size={13} className="animate-bounce" style={{ color: GREEN }} />
-                )}
-                <Heart size={13} />
-                {p.like_count}
+            {profile?.avatar_url ? (
+              <Image
+                src={profile.avatar_url}
+                alt={profile.name || "User"}
+                width={40}
+                height={40}
+                className="w-full h-full object-cover"
+                unoptimized
+              />
+            ) : (
+              <span className="text-sm font-bold text-[#82DB7E] font-yrdly-display">
+                {profile?.name?.charAt(0)?.toUpperCase() ||
+                  user?.email?.charAt(0)?.toUpperCase() ||
+                  "?"}
               </span>
-            </div>
-          ))
-        ) : (
-          <p className="text-xs text-[var(--yrdly-label)]">No trending posts yet.</p>
-        )}
-      </div>
+            )}
+          </div>
 
-      <div className="h-[340px] w-full overflow-hidden rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-5 shadow-sm transition-all hover:border-primary/40 hover:shadow-md">
-        <div className="flex items-center gap-3 mb-4">
-          <span
-            className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-            style={{ backgroundColor: "#B24C7A22" }}
-          >
-            <LayoutGrid size={17} style={{ color: "#B24C7A" }} />
+          <span className="flex-1 text-sm text-[var(--yrdly-label)] truncate font-yrdly-body">
+            What&apos;s happening in your neighbourhood?
           </span>
-          <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--yrdly-label)] font-yrdly-display">
-            Fresh listings
-          </h3>
+
+          <button
+            type="button"
+            className="h-8 px-4 rounded-full font-bold text-xs text-black shrink-0 transition-transform active:scale-95 font-yrdly-display"
+            style={{ backgroundColor: GREEN }}
+          >
+            Post
+          </button>
         </div>
-        {recentListings.length > 0 ? (
-          recentListings.map((item) => (
-            <div
-              key={item.id}
-              onClick={() => router.push(`/marketplace/${item.id}`)}
-              className="flex items-center gap-3.5 py-2.5 px-2 -mx-1 rounded-lg border-b border-[var(--yrdly-glass-border)] last:border-b-0 cursor-pointer transition-all hover:bg-[var(--yrdly-glass-border)]/40 hover:ring-1 hover:ring-inset hover:ring-primary/40"
-            >
-              <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-background">
-                {item.image && (
-                  <Image src={item.image} alt={item.title} width={48} height={48} className="w-full h-full object-cover" unoptimized />
+
+        {/* Onboarding Dialogs */}
+        <EventCreatorOnboarding
+          isOpen={onboardingOpen}
+          onClose={() => setOnboardingOpen(false)}
+          onContinue={() => router.push("/events/create")}
+        />
+        <MarketplaceCreatorOnboarding
+          isOpen={marketplaceOnboardingOpen}
+          onClose={() => setMarketplaceOnboardingOpen(false)}
+          onContinue={() => router.push("/marketplace/create")}
+        />
+
+        {/* ── Feed List ── */}
+        {loading ? (
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <PostSkeleton key={i} />
+            ))}
+          </div>
+        ) : posts.length > 0 ? (
+          <div className="space-y-3">
+            {posts.map((post) => (
+              <PostCard
+                key={post.id}
+                post={post}
+                onDelete={deletePost}
+                onCreatePost={createPost}
+              />
+            ))}
+
+            {hasMore && (
+              <div
+                ref={loadMoreSentinelRef}
+                className="flex justify-center py-4"
+              >
+                {loadingMore && (
+                  <span className="text-sm font-medium text-[var(--yrdly-label)] font-yrdly-body">
+                    Loading more...
+                  </span>
                 )}
               </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-[15px] font-bold truncate">{item.title}</div>
-                <div className="text-sm text-[var(--yrdly-label)]">₦{item.price?.toLocaleString()}</div>
-              </div>
-            </div>
-          ))
+            )}
+          </div>
         ) : (
-          <p className="text-xs text-[var(--yrdly-label)]">No listings yet.</p>
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <p className="text-sm text-[var(--yrdly-label)] font-yrdly-body">
+              No posts yet. Be the first to post in your neighbourhood!
+            </p>
+          </div>
         )}
       </div>
 
-    </aside>
-    </div>
+      {/* ── Right Sidebar (fixed in place, does not move while the feed scrolls) ── */}
+      <div className="hidden lg:block relative shrink-0">
+        <aside className="sticky top-6 flex min-w-0 w-full max-w-full flex-col gap-4 overflow-x-hidden font-yrdly-body items-start overflow-y-auto max-h-[calc(100dvh-24px)] pb-6 scrollbar-hide">
+          <div className="h-[340px] w-full overflow-hidden rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-5 shadow-sm transition-all hover:border-primary/40 hover:shadow-md">
+            <div className="flex items-center gap-3 mb-4">
+              <span
+                className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{ backgroundColor: `${GREEN}22` }}
+              >
+                <TrendingUp size={17} style={{ color: GREEN }} />
+              </span>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--yrdly-label)] font-yrdly-display">
+                Trending nearby
+              </h3>
+            </div>
+            {trendingPosts.length > 0 ? (
+              trendingPosts.map((p) => (
+                <div
+                  key={p.id}
+                  ref={(el) => {
+                    trendingRowRefs.current[p.id] = el;
+                  }}
+                  onClick={() => router.push(`/posts/${p.id}`)}
+                  className={`relative flex min-w-0 w-full max-w-full items-center gap-3 py-2.5 px-2 -mx-1 rounded-lg border-b border-[var(--yrdly-glass-border)] last:border-b-0 cursor-pointer transition-all duration-500 hover:bg-[var(--yrdly-glass-border)]/40 hover:ring-1 hover:ring-inset hover:ring-primary/40 ${
+                    risingTrendingIds.has(p.id)
+                      ? "ring-1 ring-inset ring-primary/60 bg-primary/5"
+                      : ""
+                  }`}
+                >
+                  <div className="w-11 h-11 rounded-lg overflow-hidden flex-shrink-0 bg-background flex items-center justify-center">
+                    {p.image ? (
+                      <Image
+                        src={p.image}
+                        alt={p.snippet}
+                        width={44}
+                        height={44}
+                        className="w-full h-full object-cover"
+                        unoptimized
+                      />
+                    ) : (
+                      <span
+                        className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: GREEN }}
+                      />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="min-w-0 break-words line-clamp-2 text-[15px] font-bold">
+                      {p.snippet}
+                    </div>
+                    <div className="text-xs text-[var(--yrdly-label)] capitalize">
+                      {p.category}
+                    </div>
+                  </div>
+                  <span className="flex items-center gap-1 text-sm text-[var(--yrdly-label)] flex-shrink-0">
+                    {risingTrendingIds.has(p.id) && (
+                      <ArrowUp
+                        size={13}
+                        className="animate-bounce"
+                        style={{ color: GREEN }}
+                      />
+                    )}
+                    <Heart size={13} />
+                    {p.like_count}
+                  </span>
+                </div>
+              ))
+            ) : (
+              <p className="text-xs text-[var(--yrdly-label)]">
+                No trending posts yet.
+              </p>
+            )}
+          </div>
+
+          <div className="h-[340px] w-full overflow-hidden rounded-2xl border border-[var(--yrdly-glass-border)] bg-card p-5 shadow-sm transition-all hover:border-primary/40 hover:shadow-md">
+            <div className="flex items-center gap-3 mb-4">
+              <span
+                className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{ backgroundColor: "#B24C7A22" }}
+              >
+                <LayoutGrid size={17} style={{ color: "#B24C7A" }} />
+              </span>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--yrdly-label)] font-yrdly-display">
+                Fresh listings
+              </h3>
+            </div>
+            {recentListings.length > 0 ? (
+              recentListings.map((item) => (
+                <div
+                  key={item.id}
+                  onClick={() => router.push(`/marketplace/${item.id}`)}
+                  className="flex items-center gap-3.5 py-2.5 px-2 -mx-1 rounded-lg border-b border-[var(--yrdly-glass-border)] last:border-b-0 cursor-pointer transition-all hover:bg-[var(--yrdly-glass-border)]/40 hover:ring-1 hover:ring-inset hover:ring-primary/40"
+                >
+                  <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-background">
+                    {item.image && (
+                      <Image
+                        src={item.image}
+                        alt={item.title}
+                        width={48}
+                        height={48}
+                        className="w-full h-full object-cover"
+                        unoptimized
+                      />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[15px] font-bold truncate">
+                      {item.title}
+                    </div>
+                    <div className="text-sm text-[var(--yrdly-label)]">
+                      ₦{item.price?.toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-xs text-[var(--yrdly-label)]">
+                No listings yet.
+              </p>
+            )}
+          </div>
+        </aside>
+      </div>
     </div>
   );
 }

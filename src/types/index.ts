@@ -81,7 +81,7 @@ export interface BusinessReview {
   verified_purchase?: boolean;
 }
 
-export type PostCategory = 'General' | 'Event' | 'For Sale' | 'Business';
+export type PostCategory = "General" | "Event" | "For Sale" | "Business";
 
 export interface Post {
   id: string;
@@ -93,6 +93,7 @@ export interface Post {
   image_url?: string;
   image_urls?: string[];
   video_url?: string | null;
+  video_urls?: string[] | null;
   video_thumbnail_url?: string | null;
   timestamp: string;
   comment_count: number;
@@ -175,7 +176,7 @@ export interface User {
   is_flagged?: boolean;
 }
 
-export type BusinessMode = 'product' | 'service' | 'both';
+export type BusinessMode = "product" | "service" | "both";
 
 export interface ServiceOffering {
   id: string;
@@ -202,7 +203,7 @@ export interface ProviderAvailability {
   staff_id?: string | null;
   day_of_week: number; // 0 = Sun, 6 = Sat
   start_time: string; // HH:mm format
-  end_time: string;   // HH:mm format
+  end_time: string; // HH:mm format
   is_available: boolean;
   created_at?: string;
   updated_at?: string;
@@ -220,9 +221,15 @@ export interface AvailabilityException {
   created_at?: string;
 }
 
-export type BookingStatus = 'requested' | 'confirmed' | 'completed' | 'cancelled' | 'late_cancelled' | 'no_show';
-export type StrikeType = 'late_cancellation' | 'no_show';
-export type StrikeParty = 'customer' | 'provider';
+export type BookingStatus =
+  | "requested"
+  | "confirmed"
+  | "completed"
+  | "cancelled"
+  | "late_cancelled"
+  | "no_show";
+export type StrikeType = "late_cancellation" | "no_show";
+export type StrikeParty = "customer" | "provider";
 
 // Phase 4 — Multi-Staff
 export interface BusinessStaff {
@@ -243,8 +250,16 @@ export interface ServiceStaffAssignment {
 }
 
 // Phase 4 — Payments (Payluk deposit + escrow per-service)
-export type PaymentStatus = 'unpaid' | 'deposit_pending' | 'deposit_paid' | 'fully_paid' | 'escrow_held' | 'escrow_released' | 'refunded' | 'failed';
-export type PaymentType = 'deposit' | 'full' | 'escrow';
+export type PaymentStatus =
+  | "unpaid"
+  | "deposit_pending"
+  | "deposit_paid"
+  | "fully_paid"
+  | "escrow_held"
+  | "escrow_released"
+  | "refunded"
+  | "failed";
+export type PaymentType = "deposit" | "full" | "escrow";
 export interface BookingPayment {
   id: string;
   booking_id: string;
@@ -263,7 +278,14 @@ export interface BookingPayment {
 }
 
 // Phase 4 — Quotes
-export type QuoteStatus = 'pending' | 'estimated' | 'accepted' | 'rejected' | 'expired' | 'converted' | 'cancelled';
+export type QuoteStatus =
+  | "pending"
+  | "estimated"
+  | "accepted"
+  | "rejected"
+  | "expired"
+  | "converted"
+  | "cancelled";
 export interface QuoteRequest {
   id: string;
   customer_id: string;
@@ -293,7 +315,7 @@ export interface QuoteMessage {
 }
 
 // Phase 4 — Appeals
-export type AppealStatus = 'pending' | 'approved' | 'rejected';
+export type AppealStatus = "pending" | "approved" | "rejected";
 export interface StrikeAppeal {
   id: string;
   booking_id: string;
@@ -348,7 +370,7 @@ export interface FriendRequest {
   from_user_id: string;
   to_user_id: string;
   participant_ids: string[];
-  status: 'pending' | 'accepted' | 'declined';
+  status: "pending" | "accepted" | "declined";
   timestamp: string;
 }
 
@@ -387,5 +409,3 @@ export interface NotificationSettings {
   postLikes: boolean;
   eventInvites: boolean;
 }
-
-

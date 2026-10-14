@@ -1,0 +1,5 @@
+# Enforce account session ownership in the database
+
+A new sign-in must immediately replace older sessions, including access tokens that have not expired. Supabase's native single-session setting removes earlier sessions during refresh; Yrdly also records the newest immutable `auth.sessions` login and guards RLS, privileged writes, API authorization and authenticated Edge Functions against that record. This avoids relying on a client activation callback and preserves ownership during ordinary refresh; the observer reads Supabase-managed session records without modifying them, so Auth schema upgrades require compatibility review.
+
+The registry retains its newest-login watermark after sign-out to prevent an older login from becoming active again. Service jobs retain their existing authorization, and new protected tables or privileged functions must adopt the same guard. Previously issued signed media URLs remain valid until their expiry. Disconnected devices clear their local session after reconnecting and confirming revocation.

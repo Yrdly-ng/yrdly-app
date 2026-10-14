@@ -1,21 +1,50 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import {
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useCallback,
+} from "react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { supabase } from "@/lib/supabase";
+import { privateMediaReference } from "@/lib/private-media";
+import { checkActiveSession } from "@/lib/session-policy";
 import { StorageService } from "@/lib/storage-service";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, ImagePlus, VideoIcon, Send, MessageCircle, Loader2, Download, X, MoreVertical, Trash2, Edit, Copy } from "lucide-react";
+import {
+  ArrowLeft,
+  ImagePlus,
+  VideoIcon,
+  Send,
+  MessageCircle,
+  Loader2,
+  Download,
+  X,
+  MoreVertical,
+  Trash2,
+  Edit,
+  Copy,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { ActivityIndicator } from "@/components/ActivityIndicator";
 import { useTypingDetection } from "@/hooks/use-typing-detection";
 import type { User } from "@/types";
 import Image from "next/image";
-import { PrivateMediaImage, PrivateMediaVideo } from '@/components/PrivateMedia';
-import { useVideoEditor } from '@/hooks/use-video-editor';
-import { resolvePrivateMediaSource } from '@/hooks/use-private-media';
+import {
+  PrivateMediaImage,
+  PrivateMediaVideo,
+} from "@/components/PrivateMedia";
+import { useVideoEditor } from "@/hooks/use-video-editor";
+import { resolvePrivateMediaSource } from "@/hooks/use-private-media";
 import { useToast } from "@/hooks/use-toast";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import { GlassCard } from "@/components/ui/glass-card";
 import { cn } from "@/lib/utils";
@@ -30,7 +59,7 @@ interface ConversationRow {
   created_at: string;
   updated_at: string;
   context?: any;
-  type?: 'friend' | 'marketplace' | 'briefcase';
+  type?: "friend" | "marketplace" | "briefcase";
   item_id?: string;
   item_title?: string;
   item_image?: string;
@@ -51,6 +80,10 @@ interface ChatMessage {
   created_at: string;
   is_read: boolean;
   read_by?: string[];
+  delivered_by?: string[];
+  local_status?: "sending" | "sent" | "failed";
+  local_image?: File;
+  local_video?: File;
 }
 
 interface ConversationScreenProps {
@@ -60,7 +93,10 @@ interface ConversationScreenProps {
 }
 
 function formatTime(iso: string) {
-  return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return new Date(iso).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function getActivityStatus(lastSeen: string | null | undefined): string {
@@ -74,7 +110,11 @@ function getActivityStatus(lastSeen: string | null | undefined): string {
   return `Last seen ${Math.floor(h / 24)}d ago`;
 }
 
-export function ConversationScreen({ conversationId, onBack, isEmbedded = false }: ConversationScreenProps) {
+export function ConversationScreen({
+  conversationId,
+  onBack,
+  isEmbedded = false,
+}: ConversationScreenProps) {
   const { user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -84,8 +124,13 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
     try {
       const target = messages.find((m) => m.id === msgId);
       if (!target) return;
-      const newDeletedBy = Array.from(new Set([...((target as any).deleted_by || []), user.id]));
-      await supabase.from("messages").update({ deleted_by: newDeletedBy }).eq("id", msgId);
+      const newDeletedBy = Array.from(
+        new Set([...((target as any).deleted_by || []), user.id]),
+      );
+      await supabase
+        .from("messages")
+        .update({ deleted_by: newDeletedBy })
+        .eq("id", msgId);
       setMessages((prev) => prev.filter((m) => m.id !== msgId));
       toast({ title: "Message deleted for you" });
     } catch (e) {
@@ -107,9 +152,14 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
   const handleEditMessage = async (msgId: string, newText: string) => {
     if (!user || !newText.trim()) return;
     try {
-      const { error } = await supabase.from("messages").update({ text: newText.trim() }).eq("id", msgId);
+      const { error } = await supabase
+        .from("messages")
+        .update({ text: newText.trim() })
+        .eq("id", msgId);
       if (error) throw error;
-      setMessages((prev) => prev.map((m) => m.id === msgId ? { ...m, text: newText.trim() } : m));
+      setMessages((prev) =>
+        prev.map((m) => (m.id === msgId ? { ...m, text: newText.trim() } : m)),
+      );
       toast({ title: "Message edited" });
     } catch (e) {
       toast({ title: "Error editing message", variant: "destructive" });
@@ -119,9 +169,18 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
   const handleDeleteConversation = async () => {
     if (!user || !conversation) return;
     try {
-      const { data: currentData } = await supabase.from("conversations").select("deleted_by").eq("id", conversation.id).single();
-      const newDeletedBy = Array.from(new Set([...(currentData?.deleted_by || []), user.id]));
-      await supabase.from("conversations").update({ deleted_by: newDeletedBy }).eq("id", conversation.id);
+      const { data: currentData } = await supabase
+        .from("conversations")
+        .select("deleted_by")
+        .eq("id", conversation.id)
+        .single();
+      const newDeletedBy = Array.from(
+        new Set([...(currentData?.deleted_by || []), user.id]),
+      );
+      await supabase
+        .from("conversations")
+        .update({ deleted_by: newDeletedBy })
+        .eq("id", conversation.id);
       toast({ title: "Conversation deleted" });
       router.push("/messages");
     } catch (e) {
@@ -129,7 +188,9 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
     }
   };
 
-  const [conversation, setConversation] = useState<ConversationRow | null>(null);
+  const [conversation, setConversation] = useState<ConversationRow | null>(
+    null,
+  );
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [participants, setParticipants] = useState<Record<string, User>>({});
   const [newMessage, setNewMessage] = useState("");
@@ -140,77 +201,142 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
   const { editVideo, videoEditor, isEditingVideo } = useVideoEditor();
 
   useEffect(() => {
-    if (!videoFile) { setVideoPreview(null); return; }
+    if (!videoFile) {
+      setVideoPreview(null);
+      return;
+    }
     const url = URL.createObjectURL(videoFile);
     setVideoPreview(url);
     return () => URL.revokeObjectURL(url);
   }, [videoFile]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const submitting = useRef(false);
+  const requestContext = useRef(`${user?.id || ""}:${conversationId}`);
+  useLayoutEffect(() => {
+    requestContext.current = `${user?.id || ""}:${conversationId}`;
+  }, [user?.id, conversationId]);
+  const pendingMessages = useRef(new Map<string, ChatMessage>());
+  const inFlightMessages = useRef(new Set<string>());
+  const requestOwner = useRef(user?.id);
+  useLayoutEffect(() => {
+    requestOwner.current = user?.id;
+  }, [user?.id]);
+  const uploadController = useRef<AbortController | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const autoScroll = useRef(true);
+  const messageListRef = useRef<HTMLElement>(null);
+  useEffect(() => () => uploadController.current?.abort(), []);
+  useEffect(() => {
+    pendingMessages.current.forEach((message) => {
+      if (message.local_image && message.image_url)
+        URL.revokeObjectURL(message.image_url);
+      if (message.local_video && message.video_url)
+        URL.revokeObjectURL(message.video_url);
+    });
+    uploadController.current?.abort();
+    pendingMessages.current.clear();
+    inFlightMessages.current.clear();
+    setMessages([]);
+    setConversation(null);
+    setParticipants({});
+    setLoading(true);
+    setNewMessage("");
+    setSelectedFile(null);
+    setVideoFile(null);
+    setImagePreview(null);
+    autoScroll.current = true;
+  }, [user?.id, conversationId]);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
-  const { otherTypingUsers, handleTyping, stopTyping } = useTypingDetection(conversationId);
+  const { otherTypingUsers, handleTyping, stopTyping } =
+    useTypingDetection(conversationId);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
-  useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
+  useEffect(() => {
+    if (autoScroll.current) scrollToBottom();
+  }, [messages, scrollToBottom]);
 
   /* ── Load conversation ── */
   useEffect(() => {
     if (!user) return;
+    let active = true;
     const fetch = async () => {
       const { data } = await supabase
-        .from("conversations").select("*")
+        .from("conversations")
+        .select("*")
         .contains("participant_ids", [user.id])
         .neq("type", "group")
-        .order("updated_at", { ascending: false });
-      const conv = data?.find((c) => c.id === conversationId) || null;
-      setConversation(conv);
+        .eq("id", conversationId)
+        .maybeSingle();
+      const conv = data || null;
+      if (active) {
+        setConversation(conv);
+        if (!conv) setLoading(false);
+      }
     };
-    fetch();
-  }, [user, conversationId]);
+    void fetch();
+    return () => {
+      active = false;
+    };
+  }, [user?.id, conversationId]);
 
   /* ── Load participants ── */
   useEffect(() => {
     if (!conversation) return;
+    let active = true;
     const fetch = async () => {
       const { data } = await supabase
-        .from("users").select("id, name, email, avatar_url, created_at, last_seen, is_online, verified_seller, phone_verified")
+        .from("public_profiles")
+        .select(
+          "id, name, avatar_url, created_at, last_seen, is_online, verified_seller, phone_verified",
+        )
         .in("id", conversation.participant_ids);
       const map: Record<string, User> = {};
       data?.forEach((p) => {
         map[p.id] = { ...p, uid: p.id, timestamp: p.created_at };
       });
-      setParticipants(map);
+      if (active) setParticipants(map);
     };
-    fetch();
-  }, [conversation]);
+    void fetch();
+    return () => {
+      active = false;
+    };
+  }, [conversation?.id]);
 
   /* ── Load messages ── */
   useEffect(() => {
     if (!conversation) return;
+    let active = true;
     const fetch = async () => {
-      const { data } = await supabase
-        .from("messages").select("*")
-        .eq("conversation_id", conversation.id)
-        .order("created_at", { ascending: true });
-
+      const [{ data }, { data: legacyData }] = await Promise.all([
+        supabase
+          .from("messages")
+          .select("*")
+          .eq("conversation_id", conversation.id)
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false })
+          .limit(50),
+        supabase
+          .from("chat_messages")
+          .select("*")
+          .eq("chat_id", conversation.id)
+          .order("created_at", { ascending: false })
+          .limit(50),
+      ]);
+      if (!active) return;
       let mainMsgs: ChatMessage[] = (data || []).map((m: any) => ({
         ...m,
         text: m.text || m.content || "",
       }));
-
-      // Also fetch from legacy/marketplace chat_messages table
-      const { data: legacyData } = await supabase
-        .from("chat_messages").select("*")
-        .eq("chat_id", conversation.id)
-        .order("created_at", { ascending: true });
 
       if (legacyData && legacyData.length > 0) {
         const formattedLegacy: ChatMessage[] = legacyData.map((cm: any) => ({
@@ -219,137 +345,192 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
           sender_id: cm.sender_id,
           text: cm.content || (cm.metadata?.imageUrl ? "📷 Photo" : ""),
           content: cm.content || "",
-          image_url: cm.metadata?.imageUrl || (cm.message_type === 'image' ? cm.content : null),
+          image_url:
+            cm.metadata?.imageUrl ||
+            (cm.message_type === "image" ? cm.content : null),
           created_at: cm.created_at || cm.timestamp,
           is_read: cm.metadata?.isRead || false,
         }));
-        mainMsgs = [...mainMsgs,...formattedLegacy.filter(legacy => !mainMsgs.some(current => current.sender_id === legacy.sender_id &&
-          current.text === legacy.text && Math.abs(Date.parse(current.created_at)-Date.parse(legacy.created_at)) < 1500))];
+        mainMsgs = [
+          ...mainMsgs,
+          ...formattedLegacy.filter(
+            (legacy) =>
+              !mainMsgs.some(
+                (current) =>
+                  current.sender_id === legacy.sender_id &&
+                  current.text === legacy.text &&
+                  Math.abs(
+                    Date.parse(current.created_at) -
+                      Date.parse(legacy.created_at),
+                  ) < 1500,
+              ),
+          ),
+        ];
       }
 
-      // If business conversation, also fetch from business_messages table for completeness/legacy support
-      const bizId = conversation.context?.catalog_item_business_id || (conversation as any).business_id;
-      if (bizId || (conversation.type as string) === 'business' || conversation.type === 'briefcase') {
-        const queryBizId = bizId || conversation.item_id;
-        let query = supabase.from("business_messages").select("*");
-        if (bizId) {
-          query = query.eq("business_id", bizId);
-        } else {
-          query = query.in("sender_id", conversation.participant_ids);
-        }
-
-        const { data: bizMsgs } = await query;
-        if (bizMsgs && bizMsgs.length > 0) {
-          const formattedBiz: ChatMessage[] = bizMsgs.map((bm: any) => ({
-            id: bm.id,
-            conversation_id: conversation.id,
-            sender_id: bm.sender_id,
-            text: bm.content || "",
-            content: bm.content || "",
-            image_url: null,
-            created_at: bm.created_at,
-            is_read: bm.is_read || false,
-          }));
-          mainMsgs = [...mainMsgs,...formattedBiz.filter(legacy => conversation.participant_ids.includes(legacy.sender_id) && !mainMsgs.some(current => current.sender_id === legacy.sender_id &&
-            current.text === legacy.text && Math.abs(Date.parse(current.created_at)-Date.parse(legacy.created_at)) < 1500))];
-        }
-      }
+      // business_messages has no recipient/conversation key. Keep that history
+      // in its business inbox; importing it here would mix unrelated buyers.
 
       // Deduplicate and sort by creation timestamp
       const map = new Map<string, ChatMessage>();
       mainMsgs.forEach((msg) => {
-        const key = msg.id || `${msg.sender_id}_${(msg.text || '').trim()}_${new Date(msg.created_at).getTime()}`;
+        const key =
+          msg.id ||
+          `${msg.sender_id}_${(msg.text || "").trim()}_${new Date(msg.created_at).getTime()}`;
         if (!map.has(key)) {
           map.set(key, msg);
         }
       });
 
       const sorted = Array.from(map.values()).sort(
-        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        (a, b) =>
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
       );
 
-      const visible = sorted.filter((m: any) => !m.deleted_by?.includes(user?.id || ''));
-      setMessages(visible);
+      const visible = sorted.filter(
+        (m: any) => !m.deleted_by?.includes(user?.id || ""),
+      );
+      setMessages((previous) =>
+        Array.from(
+          new Map(
+            [...previous, ...visible].map((message) => [message.id, message]),
+          ).values(),
+        ).sort(
+          (a, b) =>
+            a.created_at.localeCompare(b.created_at) ||
+            a.id.localeCompare(b.id),
+        ),
+      );
+      visible.forEach((message) => pendingMessages.current.delete(message.id));
       setLoading(false);
     };
-    fetch();
-  }, [conversation, user]);
-
-  /* ── Mark as read ── */
-  useEffect(() => {
-    if (!conversation || !user) return;
-    const mark = async () => {
-      const { data: unread } = await supabase
-        .from("messages").select("id, read_by")
-        .eq("conversation_id", conversation.id)
-        .neq("sender_id", user.id);
-      
-      const toUpdate = (unread || []).filter(msg => !msg.read_by?.includes(user.id));
-      if (toUpdate.length > 0) {
-        await supabase.rpc('mark_messages_as_read', {
-          p_conversation_id: conversation.id,
-          p_user_id: user.id
-        });
-      }
-
-      // Clear notifications for this chat when opened
-      await supabase.from("notifications").delete()
-        .eq("user_id", user.id)
-        .eq("type", "message")
-        .eq("related_id", conversation.id);
-
-      const lastMsgDate = conversation.last_message_timestamp ? new Date(conversation.last_message_timestamp).getTime() : 0;
-      const readReceiptStr = conversation.context?.read_receipts?.[user.id];
-      const readReceiptDate = readReceiptStr ? new Date(readReceiptStr).getTime() : 0;
-      
-      if (readReceiptDate >= lastMsgDate && toUpdate.length === 0) {
-        return;
-      }
-      
-      const newContext = {
-        ...(conversation.context || {}),
-        read_receipts: {
-          ...(conversation.context?.read_receipts || {}),
-          [user.id]: new Date().toISOString()
-        }
-      };
-
-      await supabase.from("conversations")
-        .update({ context: newContext, updated_at: new Date().toISOString() })
-        .eq("id", conversation.id);
+    void fetch();
+    const reconnect = () => {
+      if (!document.hidden) void fetch();
     };
-    mark();
-  }, [conversation, user]);
+    window.addEventListener("online", reconnect);
+    document.addEventListener("visibilitychange", reconnect);
+    return () => {
+      active = false;
+      window.removeEventListener("online", reconnect);
+      document.removeEventListener("visibilitychange", reconnect);
+    };
+  }, [conversation?.id, user?.id]);
+
+  useEffect(() => {
+    if (!user || !conversation || document.hidden) return;
+    const rows = messages.filter(
+      (message) => message.sender_id !== user.id && !message.local_status,
+    );
+    const delivered = rows.filter(
+      (message) => !message.delivered_by?.includes(user.id),
+    );
+    for (let offset = 0; offset < delivered.length; offset += 50)
+      void supabase
+        .rpc("acknowledge_messages", {
+          p_message_ids: delivered
+            .slice(offset, offset + 50)
+            .map((message) => message.id),
+          p_read: false,
+        })
+        .then();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (document.hidden) return;
+        const ids = entries
+          .filter((entry) => entry.isIntersecting)
+          .map((entry) => (entry.target as HTMLElement).dataset.messageId)
+          .filter(Boolean);
+        for (let offset = 0; offset < ids.length; offset += 50)
+          void supabase
+            .rpc("acknowledge_messages", {
+              p_message_ids: ids.slice(offset, offset + 50),
+              p_read: true,
+            })
+            .then();
+      },
+      { root: messageListRef.current, threshold: 0.6 },
+    );
+    messageListRef.current
+      ?.querySelectorAll<HTMLElement>("[data-message-id]")
+      .forEach((element) => {
+        const message = rows.find(
+          (row) => row.id === element.dataset.messageId,
+        );
+        if (message && !message.read_by?.includes(user.id))
+          observer.observe(element);
+      });
+    return () => observer.disconnect();
+  }, [conversation?.id, messages, user?.id]);
 
   /* ── Real-time messages ── */
   useEffect(() => {
     if (!conversation || !user) return;
     const channels: any[] = [];
-    const ch = supabase.channel(`messages-${conversation.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "messages", filter: `conversation_id=eq.${conversation.id}` },
+    const ch = supabase
+      .channel(`messages-${conversation.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "messages",
+          filter: `conversation_id=eq.${conversation.id}`,
+        },
         (payload) => {
           if (payload.eventType === "INSERT") {
             setMessages((p) => {
-              if (p.some(m => m.id === payload.new.id)) return p;
-              return [...p, { ...payload.new as ChatMessage, text: (payload.new as any).text || (payload.new as any).content || "" }];
+              if (p.some((m) => m.id === payload.new.id))
+                return p.map((message) =>
+                  message.id === payload.new.id
+                    ? { ...(payload.new as ChatMessage), local_status: "sent" }
+                    : message,
+                );
+              return [
+                ...p,
+                {
+                  ...(payload.new as ChatMessage),
+                  text:
+                    (payload.new as any).text ||
+                    (payload.new as any).content ||
+                    "",
+                },
+              ];
             });
             // Clear notification if a new message arrives while we are in the chat
             if (payload.new.sender_id !== user.id) {
-              supabase.from("notifications").delete()
+              supabase
+                .from("notifications")
+                .delete()
                 .eq("user_id", user.id)
                 .eq("type", "message")
-                .eq("related_id", conversation.id).then();
+                .eq("related_id", conversation.id)
+                .then();
             }
-          }
-          else if (payload.eventType === "UPDATE") setMessages((p) => p.map((m) => m.id === payload.new.id ? payload.new as ChatMessage : m));
-          else if (payload.eventType === "DELETE") setMessages((p) => p.filter((m) => m.id !== payload.old.id));
-        })
+          } else if (payload.eventType === "UPDATE")
+            setMessages((p) =>
+              p.map((m) =>
+                m.id === payload.new.id ? (payload.new as ChatMessage) : m,
+              ),
+            );
+          else if (payload.eventType === "DELETE")
+            setMessages((p) => p.filter((m) => m.id !== payload.old.id));
+        },
+      )
       .subscribe();
     channels.push(ch);
 
     // Subscribe to legacy chat_messages table
-    const chatCh = supabase.channel(`chat_messages-${conversation.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "chat_messages", filter: `chat_id=eq.${conversation.id}` },
+    const chatCh = supabase
+      .channel(`chat_messages-${conversation.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "chat_messages",
+          filter: `chat_id=eq.${conversation.id}`,
+        },
         (payload) => {
           if (payload.eventType === "INSERT") {
             const formatted: ChatMessage = {
@@ -363,123 +544,262 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
               is_read: false,
             };
             setMessages((p) => {
-              if (p.some(m => m.id === formatted.id || (m.sender_id === formatted.sender_id && m.text === formatted.text))) return p;
+              if (p.some((m) => m.id === formatted.id)) return p;
               return [...p, formatted];
             });
           }
-        })
+        },
+      )
       .subscribe();
     channels.push(chatCh);
 
-    const bizId = conversation.context?.catalog_item_business_id || (conversation as any).business_id;
-    if (bizId) {
-      const bizCh = supabase.channel(`biz-messages-${conversation.id}`)
-        .on("postgres_changes", { event: "INSERT", schema: "public", table: "business_messages", filter: `business_id=eq.${bizId}` },
-          (payload) => {
-            const bm = payload.new as any;
-            if (bm.sender_id === user.id) return;
-            const formatted: ChatMessage = {
-              id: bm.id,
-              conversation_id: conversation.id,
-              sender_id: bm.sender_id,
-              text: bm.content || "",
-              content: bm.content || "",
-              image_url: null,
-              created_at: bm.created_at,
-              is_read: bm.is_read || false,
-            };
-            setMessages((p) => {
-              if (p.some(m => m.id === formatted.id || (m.sender_id === formatted.sender_id && m.text === formatted.text))) return p;
-              return [...p, formatted];
-            });
-          })
-        .subscribe();
-      channels.push(bizCh);
-    }
-
-    return () => { channels.forEach(c => supabase.removeChannel(c)); };
-  }, [conversation, user]);
+    return () => {
+      channels.forEach((c) => supabase.removeChannel(c));
+    };
+  }, [conversation?.id, user?.id]);
 
   /* ── Activity ── */
   useEffect(() => {
     if (!user) return;
     const update = async () => {
-      await supabase.from("users").update({ last_seen: new Date().toISOString(), is_online: true }).eq("id", user.id);
+      await supabase
+        .from("users")
+        .update({ last_seen: new Date().toISOString(), is_online: true })
+        .eq("id", user.id);
     };
     update();
     const interval = setInterval(update, 30000);
-    const onVisible = () => { if (!document.hidden) update(); };
+    const onVisible = () => {
+      if (!document.hidden) update();
+    };
     document.addEventListener("visibilitychange", onVisible);
-    return () => { clearInterval(interval); document.removeEventListener("visibilitychange", onVisible); };
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [user]);
 
   const otherParticipant = conversation
-    ? participants[conversation.participant_ids.find((id) => id !== user?.id) || ""]
+    ? participants[
+        conversation.participant_ids.find((id) => id !== user?.id) || ""
+      ]
     : null;
 
-  const handleSend = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (sending || isEditingVideo || !user || !conversation || (!newMessage.trim() && !selectedFile && !videoFile)) return;
-    setSending(true);
+  const deliverMessage = async (message: ChatMessage) => {
+    if (!user || inFlightMessages.current.has(message.id)) return;
+    const owner = user.id;
+    const context = requestContext.current;
+    inFlightMessages.current.add(message.id);
+    setMessages((previous) =>
+      previous.map((row) =>
+        row.id === message.id ? { ...row, local_status: "sending" } : row,
+      ),
+    );
     try {
-      let imageUrl: string | null = null;
-      let videoUrl: string | null = null;
-      if (selectedFile) {
-        const { url, error } = await StorageService.uploadChatImage(conversation.id, selectedFile);
-        if (error || !url) throw new Error('Image upload failed. Please try again.');
-        imageUrl = url;
-      }
-      if (videoFile) {
-        const { url, error } = await StorageService.uploadChatVideo(conversation.id, videoFile);
-        if (error || !url) throw new Error('Video upload failed. Please try again.');
-        videoUrl = url;
-      }
-
-      const sentText = newMessage.trim() || "";
-      const { data: insertedMsg, error: insertError } = await supabase.from("messages").insert({
-        conversation_id: conversation.id, sender_id: user.id,
-        text: sentText, image_url: imageUrl, video_url: videoUrl,
-        media_url: imageUrl || videoUrl,
-        media_type: videoUrl ? 'video' : (imageUrl ? 'image' : null),
-        created_at: new Date().toISOString(), is_read: true, read_by: [user.id],
-      }).select().single();
-
-      if (insertError) throw insertError;
-
-      // Optimistically append the sent message so it shows immediately
-      if (!insertError && insertedMsg) {
-        setMessages((prev) => {
-          if (prev.some((m) => m.id === insertedMsg.id)) return prev;
-          return [...prev, { ...insertedMsg, text: insertedMsg.text || insertedMsg.content || "" }];
-        });
-      }
-
-      await supabase.from("conversations").update({
-        updated_at: new Date().toISOString(),
-        last_message_text: sentText || (videoUrl ? "🎬 Video" : imageUrl ? "📷 Photo" : ""),
-        last_message_timestamp: new Date().toISOString(),
-        last_message_sender_id: user.id,
-        deleted_by: [],
-      }).eq("id", conversation.id);
-
-      const others = conversation.participant_ids.filter((id) => id !== user.id);
-      for (const pid of others) {
+      if (
+        (await checkActiveSession()) === false ||
+        requestOwner.current !== owner ||
+        requestContext.current !== context
+      )
+        throw new Error("Session ended");
+      let imageUrl: string | null = null,
+        videoUrl: string | null = null;
+      const attachments = [
+        ["chat-images", message.local_image],
+        ["chat-videos", message.local_video],
+      ] as const;
+      for (const [bucket, file] of attachments) {
+        if (!file) continue;
+        const path = `chat/${message.conversation_id}/${owner}-${message.id}.${
+          file.name
+            .split(".")
+            .pop()
+            ?.replace(/[^a-z0-9]/gi, "") ||
+          (bucket === "chat-videos" ? "mp4" : "jpg")
+        }`;
+        const controller = new AbortController();
+        uploadController.current = controller;
+        setUploadProgress(0);
         try {
-          const { NotificationTriggers } = await import("@/lib/notification-triggers");
-          await NotificationTriggers.onMessageSent(pid, user.id, conversation.id, newMessage.trim() || (videoUrl ? "🎬 Video" : imageUrl ? "📷 Photo" : ""));
-        } catch {}
+          const existing = await supabase.storage
+            .from(bucket)
+            .createSignedUrl(path, 60);
+          if (!existing.data?.signedUrl) {
+            const upload = await StorageService.uploadFile(bucket, path, file, {
+              contentType: file.type,
+              signal: controller.signal,
+              onProgress: setUploadProgress,
+            });
+            if (upload.error) throw upload.error;
+          }
+          const reference = privateMediaReference(bucket, path);
+          if (bucket === "chat-images") imageUrl = reference;
+          else videoUrl = reference;
+        } finally {
+          uploadController.current = null;
+          setUploadProgress(null);
+        }
       }
-      setNewMessage(""); setSelectedFile(null); setImagePreview(null);
-      setVideoFile(null); setVideoPreview(null);
-      stopTyping();
+      if (requestOwner.current !== owner || requestContext.current !== context)
+        return;
+      const payload = {
+        id: message.id,
+        conversation_id: message.conversation_id,
+        sender_id: owner,
+        text: message.text,
+        image_url: imageUrl,
+        video_url: videoUrl,
+        media_url: imageUrl || videoUrl,
+        media_type: videoUrl ? "video" : imageUrl ? "image" : null,
+        created_at: message.created_at,
+      };
+      const result = await supabase
+        .from("messages")
+        .upsert(payload, { onConflict: "id", ignoreDuplicates: true })
+        .select()
+        .maybeSingle();
+      if (result.error) throw result.error;
+      const confirmed =
+        result.data ||
+        (
+          await supabase
+            .from("messages")
+            .select("*")
+            .eq("id", message.id)
+            .eq("conversation_id", message.conversation_id)
+            .eq("sender_id", owner)
+            .single()
+        ).data;
+      if (!confirmed) throw new Error("Message acknowledgement unavailable");
+      if (requestOwner.current !== owner || requestContext.current !== context)
+        return;
+      pendingMessages.current.delete(message.id);
+      setMessages((previous) =>
+        previous.map((row) =>
+          row.id === message.id ? { ...confirmed, local_status: "sent" } : row,
+        ),
+      );
+      if (message.local_image && message.image_url)
+        URL.revokeObjectURL(message.image_url);
+      if (message.local_video && message.video_url)
+        URL.revokeObjectURL(message.video_url);
+      if (result.data)
+        conversation?.participant_ids
+          .filter((id) => id !== owner)
+          .forEach((recipient) => {
+            void import("@/lib/notification-triggers")
+              .then(({ NotificationTriggers }) =>
+                NotificationTriggers.onMessageSent(
+                  recipient,
+                  owner,
+                  message.conversation_id,
+                  message.text || "Sent an attachment",
+                ),
+              )
+              .catch(() => {});
+          });
     } catch {
-      toast({ title: 'Message could not be sent', description: 'Please try again. Your draft has been kept.', variant: 'destructive' });
-    } finally { setSending(false); }
-  }, [user, conversation, newMessage, selectedFile, videoFile, stopTyping, toast, isEditingVideo, sending]);
+      if (
+        requestOwner.current !== owner ||
+        requestContext.current !== context ||
+        !pendingMessages.current.has(message.id)
+      )
+        return;
+      setMessages((previous) =>
+        previous.map((row) =>
+          row.id === message.id ? { ...row, local_status: "failed" } : row,
+        ),
+      );
+    } finally {
+      inFlightMessages.current.delete(message.id);
+    }
+  };
+  const handleSend = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (
+      submitting.current ||
+      isEditingVideo ||
+      !user ||
+      !conversation ||
+      (!newMessage.trim() && !selectedFile && !videoFile)
+    )
+      return;
+    submitting.current = true;
+    setSending(true);
+    const message: ChatMessage = {
+      id: crypto.randomUUID(),
+      conversation_id: conversation.id,
+      sender_id: user.id,
+      text: newMessage.trim(),
+      created_at: new Date().toISOString(),
+      is_read: false,
+      read_by: [],
+      image_url: selectedFile ? URL.createObjectURL(selectedFile) : null,
+      video_url: videoFile ? URL.createObjectURL(videoFile) : null,
+      local_image: selectedFile || undefined,
+      local_video: videoFile || undefined,
+      local_status: "sending",
+    };
+    pendingMessages.current.set(message.id, message);
+    autoScroll.current = true;
+    setMessages((previous) => [...previous, message]);
+    setNewMessage("");
+    setSelectedFile(null);
+    setImagePreview(null);
+    setVideoFile(null);
+    stopTyping();
+    void deliverMessage(message);
+    queueMicrotask(() => {
+      submitting.current = false;
+      setSending(false);
+    });
+  };
+  const loadEarlier = async () => {
+    if (loadingOlder || !conversation || !messages.length) return;
+    const first = messages.find(
+      (message) => !message.local_status || message.local_status === "sent",
+    );
+    if (!first) return;
+    const context = requestContext.current;
+    setLoadingOlder(true);
+    autoScroll.current = false;
+    const { data } = await supabase
+      .from("messages")
+      .select("*")
+      .eq("conversation_id", conversation.id)
+      .or(
+        `created_at.lt.${first.created_at},and(created_at.eq.${first.created_at},id.lt.${first.id})`,
+      )
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(50);
+    if (context !== requestContext.current) return;
+    if (data)
+      setMessages((previous) =>
+        Array.from(
+          new Map(
+            [...data.reverse(), ...previous].map((message) => [
+              message.id,
+              message,
+            ]),
+          ).values(),
+        ).sort(
+          (a, b) =>
+            a.created_at.localeCompare(b.created_at) ||
+            a.id.localeCompare(b.id),
+        ),
+      );
+    setLoadingOlder(false);
+  };
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !file.type.startsWith("image/") || file.size > 10 * 1024 * 1024) return;
+    if (
+      !file ||
+      !file.type.startsWith("image/") ||
+      file.size > 10 * 1024 * 1024
+    )
+      return;
     setSelectedFile(file);
     const reader = new FileReader();
     reader.onload = (ev) => setImagePreview(ev.target?.result as string);
@@ -491,23 +811,32 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
     try {
       const edited = await editVideo(file, 15 * 1024 * 1024);
       if (edited) setVideoFile(edited);
-    } catch (error) { toast({ title: 'Video unavailable', description: error instanceof Error ? error.message : 'Please try again.', variant: 'destructive' }); }
+    } catch (error) {
+      toast({
+        title: "Video unavailable",
+        description:
+          error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleVideoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (videoInputRef.current) videoInputRef.current.value = '';
+    if (videoInputRef.current) videoInputRef.current.value = "";
     await prepareVideo(file);
   };
 
   const handleDownload = async (url: string, defaultFilename: string) => {
     try {
-      const response = await fetch(await resolvePrivateMediaSource(url), { cache: 'no-store' });
-      if (!response.ok) throw new Error('Download unavailable');
+      const response = await fetch(await resolvePrivateMediaSource(url), {
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error("Download unavailable");
       const blob = await response.blob();
       const blobUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = blobUrl;
       link.download = defaultFilename;
       document.body.appendChild(link);
@@ -515,7 +844,11 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
       document.body.removeChild(link);
       window.URL.revokeObjectURL(blobUrl);
     } catch (e) {
-      toast({ title: 'Download unavailable', description: 'Please try again.', variant: 'destructive' });
+      toast({
+        title: "Download unavailable",
+        description: "Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -537,15 +870,22 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
     return (
       <div className="flex flex-col h-full items-center justify-center bg-[var(--yrdly-dark)] text-foreground font-yrdly-body">
         <MessageCircle className="w-12 h-12 mb-4 text-primary opacity-40" />
-        <p className="text-foreground mb-4 font-yrdly-body">Conversation not found</p>
-        <button onClick={() => router.push("/messages")} className="rounded-full px-6 py-2 text-primary-foreground text-sm bg-primary font-yrdly-body">
+        <p className="text-foreground mb-4 font-yrdly-body">
+          Conversation not found
+        </p>
+        <button
+          onClick={() => router.push("/messages")}
+          className="rounded-full px-6 py-2 text-primary-foreground text-sm bg-primary font-yrdly-body"
+        >
           Back to Messages
         </button>
       </div>
     );
   }
 
-  const activityStatus = getActivityStatus((otherParticipant as any)?.last_seen);
+  const activityStatus = getActivityStatus(
+    (otherParticipant as any)?.last_seen,
+  );
 
   const titleName = otherParticipant.name || "Neighbour";
   const avatarSrc = otherParticipant.avatar_url;
@@ -561,7 +901,7 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
             onClick={() => (onBack ? onBack() : router.push("/messages"))}
             className={cn(
               "w-9 h-9 rounded-xl flex items-center justify-center border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] transition-colors hover:bg-white/5",
-              isEmbedded && "md:hidden"
+              isEmbedded && "md:hidden",
             )}
           >
             <ArrowLeft className="w-4 h-4 text-foreground" />
@@ -588,9 +928,19 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
                 <h2 className="text-sm font-bold text-foreground font-yrdly-display truncate max-w-[160px]">
                   {titleName}
                 </h2>
-                {otherParticipant && ((otherParticipant as any)?.verified_seller || (otherParticipant as any)?.is_verified || (otherParticipant as any)?.phone_verified) && (
-                  <VerifiedBadge size={15} type={(otherParticipant as any)?.verified_seller ? "seller" : "user"} />
-                )}
+                {otherParticipant &&
+                  ((otherParticipant as any)?.verified_seller ||
+                    (otherParticipant as any)?.is_verified ||
+                    (otherParticipant as any)?.phone_verified) && (
+                    <VerifiedBadge
+                      size={15}
+                      type={
+                        (otherParticipant as any)?.verified_seller
+                          ? "seller"
+                          : "user"
+                      }
+                    />
+                  )}
               </div>
               <p className="text-[0.65rem] text-[var(--yrdly-label)] font-yrdly-body">
                 {activityStatus}
@@ -604,7 +954,9 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
             className="w-9 h-9 rounded-xl flex items-center justify-center border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] transition-colors hover:bg-white/5"
             onClick={(e) => {
               const menu = e.currentTarget.nextElementSibling as HTMLElement;
-              if (menu) menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+              if (menu)
+                menu.style.display =
+                  menu.style.display === "block" ? "none" : "block";
             }}
           >
             <MoreVertical className="w-4 h-4 text-[var(--yrdly-label)]" />
@@ -612,14 +964,14 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
 
           <GlassCard className="options-menu hidden absolute right-0 top-11 w-48 py-1.5 z-40 rounded-xl p-0 shadow-xl border border-[var(--yrdly-glass-border)]">
             <button
-                className="w-full text-left px-4 py-2.5 text-xs text-[var(--yrdly-label)] hover:text-foreground hover:bg-white/5 transition-colors font-yrdly-body"
-                onClick={async () => {
-                  if (confirm('Report this user?')) {
-                    alert('User reported successfully.');
-                  }
-                }}
-              >
-                Report User
+              className="w-full text-left px-4 py-2.5 text-xs text-[var(--yrdly-label)] hover:text-foreground hover:bg-white/5 transition-colors font-yrdly-body"
+              onClick={async () => {
+                if (confirm("Report this user?")) {
+                  alert("User reported successfully.");
+                }
+              }}
+            >
+              Report User
             </button>
             <button
               className="w-full text-left px-4 py-2.5 text-xs text-red-500 hover:bg-red-500/10 transition-colors flex items-center gap-2 font-yrdly-body"
@@ -632,19 +984,28 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
               <button
                 className="w-full text-left px-4 py-2.5 text-xs text-red-500 hover:bg-red-500/10 transition-colors font-yrdly-body"
                 onClick={async () => {
-                  if (confirm('Block this user?')) {
+                  if (confirm("Block this user?")) {
                     try {
-                      const { data: profile } = await supabase.from('users').select('blocked_users').eq('id', user!.id).single();
+                      const { data: profile } = await supabase
+                        .from("users")
+                        .select("blocked_users")
+                        .eq("id", user!.id)
+                        .single();
                       if (profile && otherParticipant) {
                         const blocked = profile.blocked_users || [];
                         if (!blocked.includes(otherParticipant.id)) {
-                          await supabase.from('users').update({ blocked_users: [...blocked, otherParticipant.id] }).eq('id', user!.id);
+                          await supabase
+                            .from("users")
+                            .update({
+                              blocked_users: [...blocked, otherParticipant.id],
+                            })
+                            .eq("id", user!.id);
                         }
-                        alert('User blocked successfully.');
-                        router.push('/messages');
+                        alert("User blocked successfully.");
+                        router.push("/messages");
                       }
                     } catch (e) {
-                      alert('Error blocking user.');
+                      alert("Error blocking user.");
                     }
                   }
                 }}
@@ -681,9 +1042,11 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
               <h3 className="text-xs font-bold text-foreground truncate font-yrdly-display">
                 {conversation.item_title}
               </h3>
-              {typeof conversation.item_price === 'number' && (
+              {typeof conversation.item_price === "number" && (
                 <p className="text-xs font-bold mt-0.5 text-primary font-yrdly-display">
-                  {conversation.item_price === 0 ? 'FREE' : `₦${conversation.item_price.toLocaleString()}`}
+                  {conversation.item_price === 0
+                    ? "FREE"
+                    : `₦${conversation.item_price.toLocaleString()}`}
                 </p>
               )}
             </div>
@@ -692,43 +1055,97 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
       )}
 
       {/* ── Messages List ── */}
-      <main className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+      <main
+        ref={messageListRef}
+        className="flex-1 overflow-y-auto px-4 py-4 space-y-3"
+        onScroll={(event) => {
+          const element = event.currentTarget;
+          autoScroll.current =
+            element.scrollHeight - element.scrollTop - element.clientHeight <
+            100;
+        }}
+      >
+        {messages.length >= 50 && (
+          <button
+            disabled={loadingOlder}
+            onClick={() => void loadEarlier()}
+            className="block mx-auto py-2 text-primary text-sm"
+          >
+            {loadingOlder ? "Loading…" : "Load earlier messages"}
+          </button>
+        )}
+        {uploadProgress !== null && (
+          <div className="flex justify-between text-sm">
+            <span>Uploading · {Math.round(uploadProgress * 100)}%</span>
+            <button onClick={() => uploadController.current?.abort()}>
+              Cancel
+            </button>
+          </div>
+        )}
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full min-h-[300px] py-12 px-4 text-center">
             <div className="w-16 h-16 rounded-full bg-[#82DB7E]/10 border border-[#82DB7E]/20 flex items-center justify-center mb-3">
               <MessageCircle className="w-8 h-8 text-[#82DB7E]" />
             </div>
-            <p className="text-foreground text-base font-bold font-yrdly-display">No messages yet</p>
+            <p className="text-foreground text-base font-bold font-yrdly-display">
+              No messages yet
+            </p>
             <p className="text-xs text-[var(--yrdly-label)] mt-1 max-w-xs font-yrdly-body">
-              Say hello {otherParticipant?.name ? `to ${otherParticipant.name.split(" ")[0]}` : ''} 👋
+              Say hello{" "}
+              {otherParticipant?.name
+                ? `to ${otherParticipant.name.split(" ")[0]}`
+                : ""}{" "}
+              👋
             </p>
           </div>
         ) : (
           messages.map((msg, index) => {
             const isOwn = msg.sender_id === user?.id;
             const sender = participants[msg.sender_id];
-            
+
             const currentMsgDate = new Date(msg.created_at);
-            const prevMsgDate = index > 0 ? new Date(messages[index - 1].created_at) : null;
-            const needsDateHeader = !prevMsgDate || currentMsgDate.toDateString() !== prevMsgDate.toDateString();
-            
+            const prevMsgDate =
+              index > 0 ? new Date(messages[index - 1].created_at) : null;
+            const needsDateHeader =
+              !prevMsgDate ||
+              currentMsgDate.toDateString() !== prevMsgDate.toDateString();
+
             let dateText = "";
             if (needsDateHeader) {
               const today = new Date();
               const yesterday = new Date(today);
               yesterday.setDate(yesterday.getDate() - 1);
-              
+
               if (currentMsgDate.toDateString() === today.toDateString()) {
                 dateText = "TODAY";
-              } else if (currentMsgDate.toDateString() === yesterday.toDateString()) {
+              } else if (
+                currentMsgDate.toDateString() === yesterday.toDateString()
+              ) {
                 dateText = "YESTERDAY";
               } else {
-                dateText = currentMsgDate.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: currentMsgDate.getFullYear() !== today.getFullYear() ? "numeric" : undefined }).toUpperCase();
+                dateText = currentMsgDate
+                  .toLocaleDateString("en-GB", {
+                    day: "numeric",
+                    month: "short",
+                    year:
+                      currentMsgDate.getFullYear() !== today.getFullYear()
+                        ? "numeric"
+                        : undefined,
+                  })
+                  .toUpperCase();
               }
             }
 
             return (
-              <div key={msg.id} className="flex flex-col">
+              <div
+                key={msg.id}
+                data-message-id={msg.id}
+                className="flex flex-col"
+                style={{
+                  contentVisibility: "auto",
+                  containIntrinsicSize: "auto 80px",
+                }}
+              >
                 {needsDateHeader && (
                   <div className="flex justify-center my-3">
                     <span className="text-[0.625rem] font-bold tracking-widest rounded-full px-3 py-1 bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] text-[var(--yrdly-label)] font-yrdly-display">
@@ -736,7 +1153,9 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
                     </span>
                   </div>
                 )}
-                <div className={`flex items-end gap-2.5 max-w-[85%] group ${isOwn ? "self-end flex-row-reverse" : "self-start"}`}>
+                <div
+                  className={`flex items-end gap-2.5 max-w-[85%] group ${isOwn ? "self-end flex-row-reverse" : "self-start"}`}
+                >
                   {!isOwn && (
                     <Avatar className="w-7 h-7 flex-shrink-0">
                       <AvatarImage src={sender?.avatar_url} />
@@ -752,41 +1171,77 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
                         <MoreVertical className="w-3.5 h-3.5" />
                       </button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align={isOwn ? "end" : "start"} className="w-48 bg-[var(--yrdly-dark)] border border-[var(--yrdly-glass-border)] text-foreground font-yrdly-body">
+                    <DropdownMenuContent
+                      align={isOwn ? "end" : "start"}
+                      className="w-48 bg-[var(--yrdly-dark)] border border-[var(--yrdly-glass-border)] text-foreground font-yrdly-body"
+                    >
                       {(msg.text || msg.content) && (
-                        <DropdownMenuItem onClick={() => {
-                          navigator.clipboard.writeText(msg.text || msg.content || "");
-                          toast({ title: "Copied to clipboard" });
-                        }} className="cursor-pointer">
+                        <DropdownMenuItem
+                          onClick={() => {
+                            navigator.clipboard.writeText(
+                              msg.text || msg.content || "",
+                            );
+                            toast({ title: "Copied to clipboard" });
+                          }}
+                          className="cursor-pointer"
+                        >
                           <Copy className="w-3.5 h-3.5 mr-2" /> Copy text
                         </DropdownMenuItem>
                       )}
                       {isOwn && (msg.text || msg.content) && (
-                        <DropdownMenuItem onClick={() => {
-                          const val = msg.text || msg.content || "";
-                          const updated = prompt("Edit message:", val);
-                          if (updated && updated.trim() !== val) {
-                            handleEditMessage(msg.id, updated);
-                          }
-                        }} className="cursor-pointer">
+                        <DropdownMenuItem
+                          onClick={() => {
+                            const val = msg.text || msg.content || "";
+                            const updated = prompt("Edit message:", val);
+                            if (updated && updated.trim() !== val) {
+                              handleEditMessage(msg.id, updated);
+                            }
+                          }}
+                          className="cursor-pointer"
+                        >
                           <Edit className="w-3.5 h-3.5 mr-2" /> Edit message
                         </DropdownMenuItem>
                       )}
-                      <DropdownMenuItem onClick={() => handleDeleteMessageForMe(msg.id)} className="text-red-400 focus:text-red-400 cursor-pointer">
+                      <DropdownMenuItem
+                        onClick={() => handleDeleteMessageForMe(msg.id)}
+                        className="text-red-400 focus:text-red-400 cursor-pointer"
+                      >
                         <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete for me
                       </DropdownMenuItem>
-                      {isOwn && ((Date.now() - new Date(msg.created_at).getTime()) / 60000) <= 15 && (
-                        <DropdownMenuItem onClick={() => handleDeleteMessageForEveryone(msg.id)} className="text-red-400 focus:text-red-400 cursor-pointer">
-                          <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete for everyone
-                        </DropdownMenuItem>
-                      )}
+                      {isOwn &&
+                        (Date.now() - new Date(msg.created_at).getTime()) /
+                          60000 <=
+                          15 && (
+                          <DropdownMenuItem
+                            onClick={() =>
+                              handleDeleteMessageForEveryone(msg.id)
+                            }
+                            className="text-red-400 focus:text-red-400 cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete for
+                            everyone
+                          </DropdownMenuItem>
+                        )}
                     </DropdownMenuContent>
                   </DropdownMenu>
 
                   <div className="flex flex-col gap-1">
-                    {(msg.image_url || (msg.media_type === 'image' && msg.media_url)) && (
-                      <div className="relative group rounded-2xl overflow-hidden border border-[var(--yrdly-glass-border)] cursor-pointer" style={{ maxWidth: 280 }} onClick={() => setFullscreenImage(msg.image_url || msg.media_url!)}>
-                        <PrivateMediaImage src={msg.image_url || msg.media_url!} alt="Message image" width={280} height={280} className="w-full h-auto object-cover" />
+                    {(msg.image_url ||
+                      (msg.media_type === "image" && msg.media_url)) && (
+                      <div
+                        className="relative group rounded-2xl overflow-hidden border border-[var(--yrdly-glass-border)] cursor-pointer"
+                        style={{ maxWidth: 280 }}
+                        onClick={() =>
+                          setFullscreenImage(msg.image_url || msg.media_url!)
+                        }
+                      >
+                        <PrivateMediaImage
+                          src={msg.image_url || msg.media_url!}
+                          alt="Message image"
+                          width={280}
+                          height={280}
+                          className="w-full h-auto object-cover"
+                        />
                         <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                           <span className="bg-black/50 text-white p-2 rounded-full backdrop-blur-sm">
                             <ImagePlus className="w-5 h-5" />
@@ -795,7 +1250,14 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
                       </div>
                     )}
                     {msg.video_url && (
-                      <div className="rounded-2xl overflow-hidden relative group border border-[var(--yrdly-glass-border)]" style={{ maxWidth: 280, width: "100%", background: "#000" }}>
+                      <div
+                        className="rounded-2xl overflow-hidden relative group border border-[var(--yrdly-glass-border)]"
+                        style={{
+                          maxWidth: 280,
+                          width: "100%",
+                          background: "#000",
+                        }}
+                      >
                         <PrivateMediaVideo
                           src={msg.video_url}
                           controls
@@ -806,10 +1268,13 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
                           className="w-full h-auto"
                           style={{ maxHeight: 360 }}
                         />
-                        <button 
+                        <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDownload(msg.video_url!, `video-${Date.now()}.mp4`);
+                            handleDownload(
+                              msg.video_url!,
+                              `video-${Date.now()}.mp4`,
+                            );
                           }}
                           className="absolute top-2 right-2 p-2 bg-black/50 hover:bg-black/80 rounded-full text-white backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity z-10"
                           title="Download Video"
@@ -825,8 +1290,29 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
                         {msg.text || msg.content}
                       </div>
                     )}
-                    <span className={`text-[0.625rem] px-1 font-yrdly-body text-[var(--yrdly-label)] ${isOwn ? "text-right" : "text-left"}`}>
+                    <span
+                      className={`text-[0.625rem] px-1 font-yrdly-body text-[var(--yrdly-label)] ${isOwn ? "text-right" : "text-left"}`}
+                    >
                       {formatTime(msg.created_at)}
+                      {isOwn &&
+                        (msg.local_status === "failed" ? (
+                          <button
+                            className="ml-2 text-red-500"
+                            onClick={() => void deliverMessage(msg)}
+                          >
+                            Failed · Retry
+                          </button>
+                        ) : (
+                          <span className="ml-2">
+                            {msg.local_status === "sending"
+                              ? "Sending…"
+                              : msg.is_read
+                                ? "Read"
+                                : msg.delivered_by?.length
+                                  ? "Delivered"
+                                  : "Sent"}
+                          </span>
+                        ))}
                     </span>
                   </div>
                 </div>
@@ -841,8 +1327,11 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
             <GlassCard className="flex items-center gap-2 rounded-full px-3 py-2">
               <div className="flex gap-1">
                 {[0, 150, 300].map((delay) => (
-                  <div key={delay} className="w-1.5 h-1.5 rounded-full animate-bounce bg-primary"
-                    style={{ animationDelay: `-${delay}ms` }} />
+                  <div
+                    key={delay}
+                    className="w-1.5 h-1.5 rounded-full animate-bounce bg-primary"
+                    style={{ animationDelay: `-${delay}ms` }}
+                  />
                 ))}
               </div>
               <span className="text-[0.65rem] text-[var(--yrdly-label)] font-yrdly-body">
@@ -856,46 +1345,104 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
       </main>
 
       {/* ── Input ── */}
-      <footer className="flex-shrink-0 p-3 sm:p-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-xl"
+      <footer
+        className="flex-shrink-0 p-3 sm:p-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-xl"
         style={{
-          background: 'color-mix(in srgb, var(--c-card) 88%, transparent)',
+          background: "color-mix(in srgb, var(--c-card) 88%, transparent)",
           borderTop: "1px solid var(--c-border)",
           boxShadow: "0 -4px 20px rgba(0,0,0,0.10)",
-        }}>
+        }}
+      >
         {/* Image preview */}
         {imagePreview && (
           <div className="relative mb-3 inline-block">
-            <Image src={imagePreview} alt="Preview" width={80} height={80} className="rounded-[10px] w-20 h-20 object-cover" />
+            <Image
+              src={imagePreview}
+              alt="Preview"
+              width={80}
+              height={80}
+              className="rounded-[10px] w-20 h-20 object-cover"
+            />
             <button
-              onClick={() => { setSelectedFile(null); setImagePreview(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+              onClick={() => {
+                setSelectedFile(null);
+                setImagePreview(null);
+                if (fileInputRef.current) fileInputRef.current.value = "";
+              }}
               className="absolute -top-2 -right-2 w-6 h-6 rounded-full text-foreground text-xs flex items-center justify-center"
-              style={{ background: "#E53935" }}>×</button>
+              style={{ background: "#E53935" }}
+            >
+              ×
+            </button>
           </div>
         )}
         {/* Video preview */}
         {videoPreview && (
           <div className="relative mb-3 inline-block">
-            <video src={videoPreview.includes('#t=') ? videoPreview : `${videoPreview}#t=0.001`} preload="metadata" className="rounded-[10px] w-20 h-20 object-cover" />
-            <button type="button" disabled={sending || isEditingVideo} onClick={() => { if (videoFile) void prepareVideo(videoFile); }} className="mt-1 text-xs text-primary">Edit video</button>
+            <video
+              src={
+                videoPreview.includes("#t=")
+                  ? videoPreview
+                  : `${videoPreview}#t=0.001`
+              }
+              preload="metadata"
+              className="rounded-[10px] w-20 h-20 object-cover"
+            />
             <button
-              onClick={() => { setVideoFile(null); setVideoPreview(null); }}
+              type="button"
+              disabled={sending || isEditingVideo}
+              onClick={() => {
+                if (videoFile) void prepareVideo(videoFile);
+              }}
+              className="mt-1 text-xs text-primary"
+            >
+              Edit video
+            </button>
+            <button
+              onClick={() => {
+                setVideoFile(null);
+                setVideoPreview(null);
+              }}
               className="absolute -top-2 -right-2 w-6 h-6 rounded-full text-foreground text-xs flex items-center justify-center"
-              style={{ background: "#E53935" }}>×</button>
+              style={{ background: "#E53935" }}
+            >
+              ×
+            </button>
           </div>
         )}
         <form onSubmit={handleSend} className="flex items-center gap-3">
-          <button type="button" onClick={() => fileInputRef.current?.click()}
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
             className="p-2.5 rounded-full flex-shrink-0 transition-all duration-200 hover:scale-105 text-primary"
             style={{ background: "var(--c-card2)" }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "color-mix(in srgb, var(--primary) 15%, var(--c-card2))")}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--c-card2)")}>
+            onMouseEnter={(e) =>
+              ((e.currentTarget as HTMLElement).style.background =
+                "color-mix(in srgb, var(--primary) 15%, var(--c-card2))")
+            }
+            onMouseLeave={(e) =>
+              ((e.currentTarget as HTMLElement).style.background =
+                "var(--c-card2)")
+            }
+          >
             <ImagePlus className="w-5 h-5" />
           </button>
-          <button type="button" disabled={sending || isEditingVideo} aria-label="Attach video" onClick={() => videoInputRef.current?.click()}
+          <button
+            type="button"
+            disabled={sending || isEditingVideo}
+            aria-label="Attach video"
+            onClick={() => videoInputRef.current?.click()}
             className="p-2.5 rounded-full flex-shrink-0 transition-all duration-200 hover:scale-105 text-primary"
             style={{ background: "var(--c-card2)" }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "color-mix(in srgb, var(--primary) 15%, var(--c-card2))")}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--c-card2)")}>
+            onMouseEnter={(e) =>
+              ((e.currentTarget as HTMLElement).style.background =
+                "color-mix(in srgb, var(--primary) 15%, var(--c-card2))")
+            }
+            onMouseLeave={(e) =>
+              ((e.currentTarget as HTMLElement).style.background =
+                "var(--c-card2)")
+            }
+          >
             <VideoIcon className="w-5 h-5" />
           </button>
           <div className="flex-1 relative">
@@ -903,31 +1450,60 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
               type="text"
               placeholder="Message..."
               value={newMessage}
-              onChange={(e) => { setNewMessage(e.target.value); handleTyping(); }}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSend(e as any); } }}
+              onChange={(e) => {
+                setNewMessage(e.target.value);
+                handleTyping();
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleSend(e as any);
+                }
+              }}
               disabled={sending}
               className="w-full rounded-full px-5 py-3 text-base md:text-[0.875rem] text-foreground bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] font-yrdly-body outline-none focus:ring-2 focus:ring-primary/50"
             />
           </div>
           <button
             type="submit"
-            disabled={(!newMessage.trim() && !selectedFile && !videoFile) || sending || isEditingVideo}
-            className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 bg-primary text-primary-foreground transition-all duration-200 active:scale-95 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100 shadow-md">
-            {sending ? <Loader2 className="w-5 h-5 text-primary-foreground animate-spin" /> : <Send className="w-5 h-5 text-primary-foreground" />}
+            disabled={
+              (!newMessage.trim() && !selectedFile && !videoFile) ||
+              sending ||
+              isEditingVideo
+            }
+            className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 bg-primary text-primary-foreground transition-all duration-200 active:scale-95 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100 shadow-md"
+          >
+            {sending ? (
+              <Loader2 className="w-5 h-5 text-primary-foreground animate-spin" />
+            ) : (
+              <Send className="w-5 h-5 text-primary-foreground" />
+            )}
           </button>
         </form>
-        <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />
-        <input ref={videoInputRef} type="file" accept="video/mp4,video/webm,video/quicktime" onChange={handleVideoSelect} className="hidden" />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleImageSelect}
+          className="hidden"
+        />
+        <input
+          ref={videoInputRef}
+          type="file"
+          accept="video/mp4,video/webm,video/quicktime"
+          onChange={handleVideoSelect}
+          className="hidden"
+        />
       </footer>
 
       {/* Fullscreen Image Modal */}
       {fullscreenImage && (
-        <div 
+        <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-4 backdrop-blur-sm"
           onClick={() => setFullscreenImage(null)}
         >
           <div className="absolute top-4 right-4 flex gap-4 z-10">
-            <button 
+            <button
               onClick={(e) => {
                 e.stopPropagation();
                 handleDownload(fullscreenImage, `image-${Date.now()}.jpg`);
@@ -937,7 +1513,7 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
             >
               <Download className="w-6 h-6" />
             </button>
-            <button 
+            <button
               onClick={() => setFullscreenImage(null)}
               className="text-white p-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors backdrop-blur-md"
               title="Close"
@@ -946,12 +1522,12 @@ export function ConversationScreen({ conversationId, onBack, isEmbedded = false 
             </button>
           </div>
           <PrivateMediaImage
-            src={fullscreenImage} 
-            alt="Fullscreen" 
+            src={fullscreenImage}
+            alt="Fullscreen"
             width={1200}
             height={1200}
-            className="max-w-full max-h-[90vh] object-contain rounded-md" 
-            onClick={(e) => e.stopPropagation()} 
+            className="max-w-full max-h-[90vh] object-contain rounded-md"
+            onClick={(e) => e.stopPropagation()}
           />
         </div>
       )}

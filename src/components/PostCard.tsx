@@ -80,13 +80,18 @@ function fmt(n: number) {
 function CategoryTag({ category }: { category: string }) {
   const label = category || "General";
   const styles: Record<string, string> = {
-    General: "bg-[#E0F2FE] text-[#0284C7] border-[#BAE6FD] dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-900/60",
-    Event: "bg-[#F3E8FF] text-[#7E22CE] border-[#E9D5FF] dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-900/60",
-    "For Sale": "bg-[#DCFCE7] text-[#15803D] border-[#BBF7D0] dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-900/60",
+    General:
+      "bg-[#E0F2FE] text-[#0284C7] border-[#BAE6FD] dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-900/60",
+    Event:
+      "bg-[#F3E8FF] text-[#7E22CE] border-[#E9D5FF] dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-900/60",
+    "For Sale":
+      "bg-[#DCFCE7] text-[#15803D] border-[#BBF7D0] dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-900/60",
   };
   const style = styles[label] || styles.General;
   return (
-    <span className={`px-3 py-1 rounded-full font-yrdly-body font-semibold text-[0.75rem] leading-[14px] border ${style}`}>
+    <span
+      className={`px-3 py-1 rounded-full font-yrdly-body font-semibold text-[0.75rem] leading-[14px] border ${style}`}
+    >
       {label}
     </span>
   );
@@ -98,7 +103,7 @@ export interface MediaItem {
 }
 
 /* ─── swipeable media carousel for post card ────────────────────────── */
-function MediaCollage({
+export function MediaCollage({
   items,
   onImageClick,
   videoRef,
@@ -111,6 +116,7 @@ function MediaCollage({
   seekFlash,
   handleVideoTap,
   poster,
+  expanded = false,
 }: {
   items: MediaItem[];
   onImageClick: (index: number) => void;
@@ -124,6 +130,7 @@ function MediaCollage({
   seekFlash?: "back" | "forward" | null;
   handleVideoTap?: (e: React.MouseEvent<HTMLVideoElement>) => void;
   poster?: string;
+  expanded?: boolean;
 }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [mediaAspects, setMediaAspects] = useState<Record<string, number>>({});
@@ -131,6 +138,39 @@ function MediaCollage({
   const dragStartPos = useRef<{ x: number; y: number } | null>(null);
 
   const isSwiping = useRef(false);
+  const mediaKey = items.map((item) => `${item.type}:${item.url}`).join("|");
+  useEffect(() => {
+    const videos = Array.from(
+      scrollRef.current?.querySelectorAll("video") || [],
+    );
+    const selected =
+      videos.find((video) => video.dataset.active === "true") || null;
+    if (videoRef) videoRef.current = selected;
+    videos.forEach((video) => {
+      if (video !== selected) video.pause();
+    });
+    if (!selected) return;
+    const update = (visible: boolean) => {
+      if (!visible || document.hidden || isVideoPaused) selected.pause();
+      else if (!expanded) void selected.play().catch(() => {});
+    };
+    let visible = false;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        visible = entries.some((entry) => entry.isIntersecting);
+        update(visible);
+      },
+      { threshold: 0.6 },
+    );
+    const onVisibility = () => update(visible);
+    observer.observe(selected);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      observer.disconnect();
+      document.removeEventListener("visibilitychange", onVisibility);
+      selected.pause();
+    };
+  }, [activeIndex, mediaKey, isVideoPaused, videoRef, expanded]);
 
   const handleScroll = () => {
     if (!scrollRef.current) return;
@@ -174,7 +214,10 @@ function MediaCollage({
                 }}
                 onPointerMove={(e) => {
                   if (dragStartPos.current) {
-                    const dist = Math.hypot(e.clientX - dragStartPos.current.x, e.clientY - dragStartPos.current.y);
+                    const dist = Math.hypot(
+                      e.clientX - dragStartPos.current.x,
+                      e.clientY - dragStartPos.current.y,
+                    );
                     if (dist > 10) {
                       isSwiping.current = true;
                     }
@@ -193,9 +236,13 @@ function MediaCollage({
                   fill
                   className="object-contain post-media-image"
                   sizes="(max-width: 640px) 100vw, 626px"
-                  onLoad={event => {
+                  onLoad={(event) => {
                     const image = event.currentTarget;
-                    if (image.naturalWidth > 0 && image.naturalHeight > 0) setMediaAspects(previous => ({ ...previous, [item.url]: image.naturalWidth / image.naturalHeight }));
+                    if (image.naturalWidth > 0 && image.naturalHeight > 0)
+                      setMediaAspects((previous) => ({
+                        ...previous,
+                        [item.url]: image.naturalWidth / image.naturalHeight,
+                      }));
                   }}
                 />
               </div>
@@ -203,11 +250,17 @@ function MediaCollage({
           }
 
           return (
-            <div key={i} className="relative flex-shrink-0 w-full h-full snap-center bg-black overflow-hidden">
+            <div
+              key={i}
+              className="relative flex-shrink-0 w-full h-full snap-center bg-black overflow-hidden"
+            >
               <video
-                ref={videoRef}
-                src={item.url.includes("#t=") ? item.url : `${item.url}#t=0.001`}
+                data-active={activeIndex === i}
+                src={
+                  item.url.includes("#t=") ? item.url : `${item.url}#t=0.001`
+                }
                 playsInline
+                controls={expanded}
                 disablePictureInPicture
                 controlsList="nodownload noremoteplayback nopictureinpicture"
                 muted={isVideoMuted}
@@ -215,19 +268,56 @@ function MediaCollage({
                 preload="metadata"
                 poster={poster}
                 className="w-full h-full object-contain post-media-image"
-                onLoadedMetadata={event => {
+                onLoadedMetadata={(event) => {
                   const video = event.currentTarget;
-                  if (video.videoWidth > 0 && video.videoHeight > 0) setMediaAspects(previous => ({ ...previous, [item.url]: video.videoWidth / video.videoHeight }));
+                  if (video.videoWidth > 0 && video.videoHeight > 0)
+                    setMediaAspects((previous) => ({
+                      ...previous,
+                      [item.url]: video.videoWidth / video.videoHeight,
+                    }));
                 }}
-                onTimeUpdate={() => {
-                  if (videoRef?.current && setVideoProgress) {
-                    const progress = (videoRef.current.currentTime / videoRef.current.duration) * 100;
+                onPlay={(event) => {
+                  document.querySelectorAll("video").forEach((video) => {
+                    if (video !== event.currentTarget && !video.paused)
+                      video.pause();
+                  });
+                }}
+                onVolumeChange={(event) => {
+                  if (!event.currentTarget.muted)
+                    document.querySelectorAll("video").forEach((video) => {
+                      if (
+                        video !== event.currentTarget &&
+                        !video.paused &&
+                        !video.muted
+                      )
+                        video.pause();
+                    });
+                }}
+                onTimeUpdate={(event) => {
+                  if (activeIndex === i && setVideoProgress) {
+                    const progress =
+                      (event.currentTarget.currentTime /
+                        event.currentTarget.duration) *
+                      100;
                     setVideoProgress(progress || 0);
                   }
                 }}
-                onClick={handleVideoTap}
+                onClick={expanded ? undefined : handleVideoTap}
               />
 
+              {!expanded && (
+                <button
+                  type="button"
+                  aria-label="Open post video"
+                  className="absolute top-3 left-3 rounded-full bg-black/70 px-3 py-2 text-xs text-white"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onImageClick(i);
+                  }}
+                >
+                  Open post
+                </button>
+              )}
               {/* Tap-to-pause overlay icon */}
               {isVideoPaused && !seekFlash && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
@@ -248,7 +338,9 @@ function MediaCollage({
                     ) : (
                       <RotateCw className="w-5 h-5 text-white" />
                     )}
-                    <span className="text-[0.625rem] font-medium text-white font-yrdly-body">5s</span>
+                    <span className="text-[0.625rem] font-medium text-white font-yrdly-body">
+                      5s
+                    </span>
                   </div>
                 </div>
               )}
@@ -263,7 +355,11 @@ function MediaCollage({
                   aria-label={isVideoMuted ? "Unmute video" : "Mute video"}
                   className="absolute bottom-3 right-3 z-10 flex items-center justify-center bg-black/50 hover:bg-black/70 transition-colors rounded-full w-8 h-8"
                 >
-                  {isVideoMuted ? <VolumeX className="w-4 h-4 text-white" /> : <Volume2 className="w-4 h-4 text-white" />}
+                  {isVideoMuted ? (
+                    <VolumeX className="w-4 h-4 text-white" />
+                  ) : (
+                    <Volume2 className="w-4 h-4 text-white" />
+                  )}
                 </button>
               )}
 
@@ -323,7 +419,7 @@ function MediaCollage({
               key={i}
               className={cn(
                 "h-1.5 rounded-full transition-all duration-200",
-                i === activeIndex ? "w-4 bg-[#82DB7E]" : "w-1.5 bg-white/60"
+                i === activeIndex ? "w-4 bg-[#82DB7E]" : "w-1.5 bg-white/60",
               )}
             />
           ))}
@@ -342,7 +438,7 @@ function ModalMediaCarousel({
   initialIndex: number;
 }) {
   const [activeIndex, setActiveIndex] = useState(
-    Math.max(0, Math.min(initialIndex, items.length - 1))
+    Math.max(0, Math.min(initialIndex, items.length - 1)),
   );
   const scrollRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
@@ -352,7 +448,8 @@ function ModalMediaCarousel({
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
       if (scrollRef.current) {
-        scrollRef.current.scrollLeft = activeIndex * scrollRef.current.clientWidth;
+        scrollRef.current.scrollLeft =
+          activeIndex * scrollRef.current.clientWidth;
       }
     });
     return () => cancelAnimationFrame(frame);
@@ -412,10 +509,13 @@ function ModalMediaCarousel({
         onPointerMove={handlePointerMove}
         onPointerUp={endDrag}
         onPointerLeave={endDrag}
-        className={`flex w-full h-full overflow-y-hidden overscroll-x-contain snap-x snap-mandatory scrollbar-hide select-none ${items.length > 1 ? "overflow-x-auto cursor-grab active:cursor-grabbing" : "overflow-x-hidden"}`}
+        className={`absolute inset-0 flex w-full h-full overflow-y-hidden overscroll-x-contain snap-x snap-mandatory scrollbar-hide select-none ${items.length > 1 ? "overflow-x-auto cursor-grab active:cursor-grabbing" : "overflow-x-hidden"}`}
       >
         {items.map((item, i) => (
-          <div key={i} className="relative flex-shrink-0 w-full h-full snap-center bg-black overflow-hidden">
+          <div
+            key={i}
+            className="relative flex-shrink-0 w-full h-full snap-center bg-black overflow-hidden"
+          >
             {item.type === "image" ? (
               <Image
                 src={item.url}
@@ -427,7 +527,9 @@ function ModalMediaCarousel({
               />
             ) : (
               <video
-                src={item.url.includes("#t=") ? item.url : `${item.url}#t=0.001`}
+                src={
+                  item.url.includes("#t=") ? item.url : `${item.url}#t=0.001`
+                }
                 controls
                 playsInline
                 preload="metadata"
@@ -477,7 +579,7 @@ function ModalMediaCarousel({
               key={i}
               className={cn(
                 "h-1.5 rounded-full transition-all duration-200",
-                i === activeIndex ? "w-4 bg-[#82DB7E]" : "w-1.5 bg-white/60"
+                i === activeIndex ? "w-4 bg-[#82DB7E]" : "w-1.5 bg-white/60",
               )}
             />
           ))}
@@ -561,7 +663,7 @@ function EngagementRow({
           <Bookmark
             className={cn(
               "w-5 h-5 transition-colors",
-              isBookmarked ? "text-primary" : "text-[var(--yrdly-label)]"
+              isBookmarked ? "text-primary" : "text-[var(--yrdly-label)]",
             )}
             style={{ fill: isBookmarked ? "currentColor" : "transparent" }}
           />
@@ -572,12 +674,23 @@ function EngagementRow({
 }
 
 /* ─── main PostCard ─────────────────────────────────────────────── */
-const POST_REPORT_REASONS = ["Spam", "Harassment or bullying", "Hate speech", "Inappropriate content", "Scam or fraud", "Other"];
+const POST_REPORT_REASONS = [
+  "Spam",
+  "Harassment or bullying",
+  "Hate speech",
+  "Inappropriate content",
+  "Scam or fraud",
+  "Other",
+];
 
 interface PostCardProps {
   post: Post;
   onDelete?: (postId: string) => void;
-  onCreatePost?: (postData: any, postId?: string, imageFiles?: FileList) => Promise<void>;
+  onCreatePost?: (
+    postData: any,
+    postId?: string,
+    imageFiles?: FileList,
+  ) => Promise<void>;
 }
 
 function useVisualViewportKeyboard(active: boolean) {
@@ -592,7 +705,10 @@ function useVisualViewportKeyboard(active: boolean) {
     const handleViewportChange = () => {
       const vv = window.visualViewport;
       if (!vv) return;
-      const kh = Math.max(0, window.innerHeight - vv.height - (vv.offsetTop || 0));
+      const kh = Math.max(
+        0,
+        window.innerHeight - vv.height - (vv.offsetTop || 0),
+      );
       setKeyboardHeight(kh > 60 ? kh : 0);
     };
 
@@ -601,8 +717,14 @@ function useVisualViewportKeyboard(active: boolean) {
     handleViewportChange();
 
     return () => {
-      window.visualViewport?.removeEventListener("resize", handleViewportChange);
-      window.visualViewport?.removeEventListener("scroll", handleViewportChange);
+      window.visualViewport?.removeEventListener(
+        "resize",
+        handleViewportChange,
+      );
+      window.visualViewport?.removeEventListener(
+        "scroll",
+        handleViewportChange,
+      );
     };
   }, [active]);
 
@@ -614,7 +736,9 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
   const { toast } = useToast();
   const [reportOpen, setReportOpen] = useState(false);
   const [reporting, setReporting] = useState(false);
-  const [selectedReportReason, setSelectedReportReason] = useState<string | null>(null);
+  const [selectedReportReason, setSelectedReportReason] = useState<
+    string | null
+  >(null);
   const [reportDetails, setReportDetails] = useState("");
   const router = useRouter();
   const { activeFilter } = useLocation();
@@ -646,37 +770,21 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
   const [isVideoMuted, setIsVideoMuted] = useState(true);
   const [isVideoPaused, setIsVideoPaused] = useState(false);
   const [seekFlash, setSeekFlash] = useState<"back" | "forward" | null>(null);
-  const seekFlashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const seekFlashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
-  const activeVideoUrl = post.video_url || ((post as any).video_urls && (post as any).video_urls[0]) || null;
-
-  /* ── auto-pause video when scrolled out of view ── */
-  useEffect(() => {
-    if (!videoRef.current || !activeVideoUrl) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (!entry.isIntersecting && !videoRef.current?.paused) {
-            videoRef.current?.pause();
-          } else if (entry.isIntersecting && videoRef.current?.paused && !isVideoPaused) {
-            document.querySelectorAll('video').forEach(v => {
-              if (v !== videoRef.current && !v.paused) v.pause();
-            });
-            videoRef.current?.play().catch(e => console.log('Autoplay prevented:', e));
-          }
-        });
-      },
-      { threshold: 0.6 }
-    );
-    
-    observer.observe(videoRef.current);
-    return () => observer.disconnect();
-  }, [activeVideoUrl, isVideoPaused]);
+  const videoUrls = Array.from(
+    new Set([
+      ...(post.video_urls || []),
+      ...(post.video_url ? [post.video_url] : []),
+    ]),
+  );
 
   useEffect(() => {
     return () => {
-      if (seekFlashTimeoutRef.current) clearTimeout(seekFlashTimeoutRef.current);
+      if (seekFlashTimeoutRef.current)
+        clearTimeout(seekFlashTimeoutRef.current);
     };
   }, []);
 
@@ -690,7 +798,8 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
     const ratio = rect.width > 0 ? tapX / rect.width : 0.5;
 
     const flashSeek = (direction: "back" | "forward") => {
-      if (seekFlashTimeoutRef.current) clearTimeout(seekFlashTimeoutRef.current);
+      if (seekFlashTimeoutRef.current)
+        clearTimeout(seekFlashTimeoutRef.current);
       setSeekFlash(direction);
       seekFlashTimeoutRef.current = setTimeout(() => setSeekFlash(null), 600);
     };
@@ -699,7 +808,10 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
       video.currentTime = Math.max(video.currentTime - 5, 0);
       flashSeek("back");
     } else if (ratio > 0.65) {
-      video.currentTime = Math.min(video.currentTime + 5, video.duration || video.currentTime + 5);
+      video.currentTime = Math.min(
+        video.currentTime + 5,
+        video.duration || video.currentTime + 5,
+      );
       flashSeek("forward");
     } else {
       if (video.paused) {
@@ -716,37 +828,92 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
   useEffect(() => {
     const fetch = async () => {
       if (!post.user_id) {
-        setAuthor({ id: "unknown", uid: "unknown", name: post.author_name || "Anonymous", avatar_url: post.author_image || "https://placehold.co/100x100.png", timestamp: post.timestamp });
+        setAuthor({
+          id: "unknown",
+          uid: "unknown",
+          name: post.author_name || "Anonymous",
+          avatar_url: post.author_image || "https://placehold.co/100x100.png",
+          timestamp: post.timestamp,
+        });
         setLoadingAuthor(false);
         return;
       }
       try {
         setLoadingAuthor(true);
         if (post.user) {
-          setAuthor({ id: post.user_id, uid: post.user_id, name: post.user.name || post.author_name || "Anonymous", avatar_url: post.user.avatar_url || post.author_image || "https://placehold.co/100x100.png", timestamp: (post.user as any).created_at || post.timestamp, verified_seller: (post.user as any).verified_seller, is_verified: (post.user as any).is_verified, phone_verified: (post.user as any).phone_verified } as any);
+          setAuthor({
+            id: post.user_id,
+            uid: post.user_id,
+            name: post.user.name || post.author_name || "Anonymous",
+            avatar_url:
+              post.user.avatar_url ||
+              post.author_image ||
+              "https://placehold.co/100x100.png",
+            timestamp: (post.user as any).created_at || post.timestamp,
+            verified_seller: (post.user as any).verified_seller,
+            is_verified: (post.user as any).is_verified,
+            phone_verified: (post.user as any).phone_verified,
+          } as any);
           setLoadingAuthor(false);
         } else {
-          const { data, error } = await supabase.from('public_profiles').select("id, name, avatar_url, created_at, verified_seller, phone_verified").eq("id", post.user_id).single();
-          setAuthor(error
-            ? { id: post.user_id, uid: post.user_id, name: post.author_name || "Anonymous", avatar_url: post.author_image || "https://placehold.co/100x100.png", timestamp: post.timestamp }
-            : { id: data.id, uid: data.id, name: data.name || "Anonymous", avatar_url: data.avatar_url || "https://placehold.co/100x100.png", timestamp: data.created_at || post.timestamp, verified_seller: data.verified_seller, is_verified: (data as any).is_verified || false, phone_verified: data.phone_verified } as any
+          const { data, error } = await supabase
+            .from("public_profiles")
+            .select(
+              "id, name, avatar_url, created_at, verified_seller, phone_verified",
+            )
+            .eq("id", post.user_id)
+            .single();
+          setAuthor(
+            error
+              ? {
+                  id: post.user_id,
+                  uid: post.user_id,
+                  name: post.author_name || "Anonymous",
+                  avatar_url:
+                    post.author_image || "https://placehold.co/100x100.png",
+                  timestamp: post.timestamp,
+                }
+              : ({
+                  id: data.id,
+                  uid: data.id,
+                  name: data.name || "Anonymous",
+                  avatar_url:
+                    data.avatar_url || "https://placehold.co/100x100.png",
+                  timestamp: data.created_at || post.timestamp,
+                  verified_seller: data.verified_seller,
+                  is_verified: (data as any).is_verified || false,
+                  phone_verified: data.phone_verified,
+                } as any),
           );
           setLoadingAuthor(false);
         }
       } catch {
-        setAuthor({ id: post.user_id, uid: post.user_id, name: post.author_name || "Anonymous", avatar_url: post.author_image || "https://placehold.co/100x100.png", timestamp: post.timestamp });
+        setAuthor({
+          id: post.user_id,
+          uid: post.user_id,
+          name: post.author_name || "Anonymous",
+          avatar_url: post.author_image || "https://placehold.co/100x100.png",
+          timestamp: post.timestamp,
+        });
         setLoadingAuthor(false);
       }
     };
     fetch();
-  }, [post.user_id, post.user, post.timestamp, post.author_image, post.author_name]);
+  }, [
+    post.user_id,
+    post.user,
+    post.timestamp,
+    post.author_image,
+    post.author_name,
+  ]);
 
   /* ── realtime post updates & comment count sync ── */
   useEffect(() => {
     if (!post.id) return;
     setLikes(post.liked_by?.length || 0);
     setCommentCount(post.comment_count || 0);
-    if (currentUser && post.liked_by) setIsLiked(post.liked_by.includes(currentUser.id));
+    if (currentUser && post.liked_by)
+      setIsLiked(post.liked_by.includes(currentUser.id));
 
     // Verify exact comment count from comments table on mount
     supabase
@@ -757,23 +924,49 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
         if (!error && count !== null && count !== undefined) {
           setCommentCount(count);
           if (count !== post.comment_count) {
-            supabase.from("posts").update({ comment_count: count }).eq("id", post.id).then();
+            supabase
+              .from("posts")
+              .update({ comment_count: count })
+              .eq("id", post.id)
+              .then();
           }
         }
       });
 
-    const ch = supabase.channel(`post-${post.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "posts", filter: `id=eq.${post.id}` }, (payload) => {
-        if (payload.new) {
-          const p = payload.new as any;
-          setLikes(p.liked_by?.length || 0);
-          setCommentCount(p.comment_count || 0);
-          if (currentUser && p.liked_by) setIsLiked(p.liked_by.includes(currentUser.id));
-        }
-      }).subscribe();
-    return () => { supabase.removeChannel(ch); };
+    const ch = supabase
+      .channel(`post-${post.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "posts",
+          filter: `id=eq.${post.id}`,
+        },
+        (payload) => {
+          if (payload.new) {
+            const p = payload.new as any;
+            setLikes(p.liked_by?.length || 0);
+            setCommentCount(p.comment_count || 0);
+            if (currentUser && p.liked_by)
+              setIsLiked(p.liked_by.includes(currentUser.id));
+          }
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
   }, [post.id, post.liked_by, post.comment_count, currentUser]);
 
+  useEffect(() => {
+    const bookmark = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      if (detail?.postId === post.id) setIsBookmarked(detail.saved);
+    };
+    window.addEventListener("yrdly:bookmark", bookmark);
+    return () => window.removeEventListener("yrdly:bookmark", bookmark);
+  }, [post.id]);
   /* ── bookmark state ── */
   useEffect(() => {
     if (!currentUser || !post.id) return;
@@ -798,7 +991,11 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
       if (error) {
         setIsBookmarked(false);
         if (error.code !== "23505") {
-          toast({ variant: "destructive", title: "Error", description: "Could not save post." });
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not save post.",
+          });
         }
       }
     } else {
@@ -808,7 +1005,11 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
         .match({ post_id: post.id, user_id: currentUser.id });
       if (error) {
         setIsBookmarked(true);
-        toast({ variant: "destructive", title: "Error", description: "Could not remove bookmark." });
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Could not remove bookmark.",
+        });
       }
     }
   };
@@ -836,14 +1037,26 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
       }
 
       if (nextIsLiked) {
-        try { const { NotificationTriggers } = await import("@/lib/notification-triggers"); await NotificationTriggers.onPostLiked(post.id, currentUser.id); } catch {}
+        try {
+          const { NotificationTriggers } =
+            await import("@/lib/notification-triggers");
+          await NotificationTriggers.onPostLiked(post.id, currentUser.id);
+        } catch {}
       } else {
-        try { const { NotificationTriggers } = await import("@/lib/notification-triggers"); await NotificationTriggers.onPostUnliked(post.id, currentUser.id); } catch {}
+        try {
+          const { NotificationTriggers } =
+            await import("@/lib/notification-triggers");
+          await NotificationTriggers.onPostUnliked(post.id, currentUser.id);
+        } catch {}
       }
     } catch {
       setIsLiked(previousIsLiked);
       setLikes(previousLikes);
-      toast({ variant: "destructive", title: "Error", description: "Failed to update like." });
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update like.",
+      });
     }
   };
 
@@ -856,20 +1069,29 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
       try {
         await navigator.share({ url });
         if (currentUser?.id) {
-          const { NotificationTriggers } = await import("@/lib/notification-triggers");
+          const { NotificationTriggers } =
+            await import("@/lib/notification-triggers");
           await NotificationTriggers.onPostShared(post.id, currentUser.id);
         }
       } catch {}
     } else {
       try {
         await navigator.clipboard.writeText(url);
-        toast({ title: "Link copied!", description: "Post link copied to clipboard." });
+        toast({
+          title: "Link copied!",
+          description: "Post link copied to clipboard.",
+        });
         if (currentUser?.id) {
-          const { NotificationTriggers } = await import("@/lib/notification-triggers");
+          const { NotificationTriggers } =
+            await import("@/lib/notification-triggers");
           await NotificationTriggers.onPostShared(post.id, currentUser.id);
         }
       } catch {
-        toast({ variant: "destructive", title: "Error", description: "Could not copy link." });
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Could not copy link.",
+        });
       }
     }
   };
@@ -885,14 +1107,17 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
       });
 
       if (primaryErr && primaryErr.code !== "23505") {
-        console.warn('[PostCard] post_reports insert failed, falling back to reports table:', primaryErr.message);
+        console.warn(
+          "[PostCard] post_reports insert failed, falling back to reports table:",
+          primaryErr.message,
+        );
         const { error: fallbackErr } = await supabase.from("reports").insert({
           reporter_id: currentUser.id,
           user_id: currentUser.id,
-          category: 'post_report',
+          category: "post_report",
           subject: `Post Report: ${reason}`,
           description: `Reported post ${post.id}. Reason: ${reason}`,
-          status: 'open',
+          status: "open",
         });
         if (fallbackErr) throw fallbackErr;
       }
@@ -901,12 +1126,22 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
       setSelectedReportReason(null);
       setReportDetails("");
       toast({
-        title: primaryErr && primaryErr.code === "23505" ? "Already reported" : "Post reported",
-        description: primaryErr && primaryErr.code === "23505" ? "You've already reported this post." : "Thanks, we'll review it.",
+        title:
+          primaryErr && primaryErr.code === "23505"
+            ? "Already reported"
+            : "Post reported",
+        description:
+          primaryErr && primaryErr.code === "23505"
+            ? "You've already reported this post."
+            : "Thanks, we'll review it.",
       });
     } catch (err: any) {
-      console.error('[PostCard] Report submission error:', err);
-      toast({ variant: "destructive", title: "Error", description: "Could not submit report." });
+      console.error("[PostCard] Report submission error:", err);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Could not submit report.",
+      });
     } finally {
       setReporting(false);
     }
@@ -916,12 +1151,23 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
     if (!currentUser || !post.id || currentUser.id !== post.user_id) return;
     try {
       const { error } = await supabase.from("posts").delete().eq("id", post.id);
-      if (error) { toast({ variant: "destructive", title: "Error", description: error.message || "Failed to delete post." }); return; }
+      if (error) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: error.message || "Failed to delete post.",
+        });
+        return;
+      }
       await supabase.from("comments").delete().eq("post_id", post.id);
       toast({ title: "Post deleted" });
       if (onDelete) await onDelete(post.id);
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to delete post." });
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to delete post.",
+      });
     }
   };
 
@@ -930,49 +1176,101 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
     const sortedIds = [currentUser.id, author.id].sort();
     try {
       if (post.category === "For Sale") {
-        const { data: existing } = await supabase.from("conversations").select("id").contains("participant_ids", [currentUser.id]).eq("type", "marketplace").eq("item_id", post.id);
+        const { data: existing } = await supabase
+          .from("conversations")
+          .select("id")
+          .contains("participant_ids", [currentUser.id])
+          .eq("type", "marketplace")
+          .eq("item_id", post.id);
         let cid: string;
         if (existing && existing.length > 0) {
           cid = existing[0].id;
         } else {
-          const { data: nc } = await supabase.from("conversations").insert({ participant_ids: sortedIds, type: "marketplace", item_id: post.id, item_title: post.text || "Item", item_image: post.image_url || post.image_urls?.[0] || "", item_price: post.price || 0, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }).select("id").single();
-          if (!nc) { toast({ variant: "destructive", title: "Error", description: "Could not create conversation." }); return; }
+          const { data: nc } = await supabase
+            .from("conversations")
+            .insert({
+              participant_ids: sortedIds,
+              type: "marketplace",
+              item_id: post.id,
+              item_title: post.text || "Item",
+              item_image: post.image_url || post.image_urls?.[0] || "",
+              item_price: post.price || 0,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .select("id")
+            .single();
+          if (!nc) {
+            toast({
+              variant: "destructive",
+              title: "Error",
+              description: "Could not create conversation.",
+            });
+            return;
+          }
           cid = nc.id;
         }
         router.push(`/messages/${cid}`);
       } else {
-        const { data: all } = await supabase.from("conversations").select("id, participant_ids").contains("participant_ids", [currentUser.id]);
-        const existing = all?.filter((c) => c.participant_ids.includes(author.id) && c.participant_ids.length === 2);
+        const { data: all } = await supabase
+          .from("conversations")
+          .select("id, participant_ids")
+          .contains("participant_ids", [currentUser.id]);
+        const existing = all?.filter(
+          (c) =>
+            c.participant_ids.includes(author.id) &&
+            c.participant_ids.length === 2,
+        );
         let cid: string;
         if (existing && existing.length > 0) {
           cid = existing[0].id;
         } else {
-          const { data: nc } = await supabase.from("conversations").insert({ participant_ids: sortedIds, created_at: new Date().toISOString() }).select("id").single();
-          if (!nc) { toast({ variant: "destructive", title: "Error", description: "Could not create conversation." }); return; }
+          const { data: nc } = await supabase
+            .from("conversations")
+            .insert({
+              participant_ids: sortedIds,
+              created_at: new Date().toISOString(),
+            })
+            .select("id")
+            .single();
+          if (!nc) {
+            toast({
+              variant: "destructive",
+              title: "Error",
+              description: "Could not create conversation.",
+            });
+            return;
+          }
           cid = nc.id;
         }
         router.push(`/messages/${cid}`);
       }
     } catch {
-      toast({ variant: "destructive", title: "Error", description: "Could not open conversation." });
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Could not open conversation.",
+      });
     }
   };
 
   const openProfile = () => {
-    if (author && author.id !== currentUser?.id) router.push(`/profile/${author.id}`);
+    if (author && author.id !== currentUser?.id)
+      router.push(`/profile/${author.id}`);
   };
 
   // Shared destination logic so tapping the post body and tapping a photo
   // always land in the same place.
   const goToPostDestination = () => {
+    window.dispatchEvent(new Event("yrdly:remember-feed"));
     if (post.category === "For Sale") {
       router.push(`/marketplace/${post.id}`);
       return;
     }
     if (post.category === "Event") {
       if (post.event_link) {
-        const cleanLink = post.event_link.split('?')[0];
-        const parts = cleanLink.split('/');
+        const cleanLink = post.event_link.split("?")[0];
+        const parts = cleanLink.split("/");
         const eventId = parts.pop() || parts.pop();
         if (eventId) {
           router.push(`/events/${eventId}`);
@@ -986,7 +1284,12 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
   };
 
   const handleCardClick = (e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('button, a, [role="dialog"], [role="menu"]')) return;
+    if (
+      (e.target as HTMLElement).closest(
+        'button, a, [role="dialog"], [role="menu"]',
+      )
+    )
+      return;
     if (window.getSelection()?.toString()) return;
     if (!isCommentsOpen) {
       goToPostDestination();
@@ -1001,8 +1304,16 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
   const getEventDate = () => {
     if (!post.event_date) return "";
     try {
-      return new Date(post.event_date).toLocaleDateString("en-GB", { hour: "2-digit", minute: "2-digit", weekday: "short", month: "short", day: "numeric" });
-    } catch { return ""; }
+      return new Date(post.event_date).toLocaleDateString("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      });
+    } catch {
+      return "";
+    }
   };
 
   const getLocation = (loc: unknown): string => {
@@ -1012,12 +1323,15 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
     return "";
   };
 
-  const urls = post.image_urls?.length ? post.image_urls : post.image_url ? [post.image_url] : [];
+  const urls = post.image_urls?.length
+    ? post.image_urls
+    : post.image_url
+      ? [post.image_url]
+      : [];
   const mediaItems: MediaItem[] = [
     ...urls.map((url) => ({ type: "image" as const, url })),
-    ...(activeVideoUrl ? [{ type: "video" as const, url: activeVideoUrl }] : []),
+    ...videoUrls.map((url) => ({ type: "video" as const, url })),
   ];
-
 
   /* ── post header ── */
   const PostHeader = (
@@ -1029,7 +1343,12 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
           <button onClick={openProfile} className="flex-shrink-0">
             <Avatar className="h-10 w-10">
               <AvatarImage src={author?.avatar_url} />
-              <AvatarFallback className="text-xs text-foreground font-yrdly-body" style={{ background: GREEN }}>{author?.name?.charAt(0) || "?"}</AvatarFallback>
+              <AvatarFallback
+                className="text-xs text-foreground font-yrdly-body"
+                style={{ background: GREEN }}
+              >
+                {author?.name?.charAt(0) || "?"}
+              </AvatarFallback>
             </Avatar>
           </button>
         )}
@@ -1042,18 +1361,37 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
               <button onClick={openProfile} className="flex items-center gap-1">
-                <span className="font-yrdly-display font-bold text-[0.875rem] text-foreground hover:underline">{author?.name || "Anonymous"}</span>
-                {(author?.verified_seller || (author as any)?.is_verified || (author as any)?.phone_verified || (post.user as any)?.verified_seller || (post.user as any)?.is_verified || (post.user as any)?.phone_verified) && (
-                  <VerifiedBadge size={16} type={(author?.verified_seller || (post.user as any)?.verified_seller) ? "seller" : "user"} />
+                <span className="font-yrdly-display font-bold text-[0.875rem] text-foreground hover:underline">
+                  {author?.name || "Anonymous"}
+                </span>
+                {(author?.verified_seller ||
+                  (author as any)?.is_verified ||
+                  (author as any)?.phone_verified ||
+                  (post.user as any)?.verified_seller ||
+                  (post.user as any)?.is_verified ||
+                  (post.user as any)?.phone_verified) && (
+                  <VerifiedBadge
+                    size={16}
+                    type={
+                      author?.verified_seller ||
+                      (post.user as any)?.verified_seller
+                        ? "seller"
+                        : "user"
+                    }
+                  />
                 )}
               </button>
-              <span className="text-[var(--yrdly-label)] text-[0.6875rem]">•</span>
+              <span className="text-[var(--yrdly-label)] text-[0.6875rem]">
+                •
+              </span>
               <span className="font-yrdly-body font-normal text-[0.6875rem] text-[var(--yrdly-label)]">
                 {timeAgo(post.timestamp ? new Date(post.timestamp) : null)}
               </span>
               {showUserLocationOnPost && postLocationLabel && (
                 <>
-                  <span className="text-[var(--yrdly-label)] text-[0.6875rem]">•</span>
+                  <span className="text-[var(--yrdly-label)] text-[0.6875rem]">
+                    •
+                  </span>
                   <span className="font-yrdly-body font-normal text-[0.6875rem] text-[var(--yrdly-label)] flex items-center gap-0.5">
                     <MapPin className="w-3 h-3 text-primary inline-block" />
                     {postLocationLabel}
@@ -1062,8 +1400,12 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
               )}
               {post.is_edited && (
                 <>
-                  <span className="text-[var(--yrdly-label)] text-[0.6875rem]">•</span>
-                  <span className="font-yrdly-body font-normal text-[0.6875rem] text-[var(--yrdly-label)]">edited</span>
+                  <span className="text-[var(--yrdly-label)] text-[0.6875rem]">
+                    •
+                  </span>
+                  <span className="font-yrdly-body font-normal text-[0.6875rem] text-[var(--yrdly-label)]">
+                    edited
+                  </span>
                 </>
               )}
             </div>
@@ -1076,12 +1418,21 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
           <>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button aria-label="Post options" className="p-2 -m-2 rounded hover:bg-accent text-[var(--yrdly-label)] hover:text-foreground">
+                <button
+                  aria-label="Post options"
+                  className="p-2 -m-2 rounded hover:bg-accent text-[var(--yrdly-label)] hover:text-foreground"
+                >
                   <MoreHorizontal className="w-5 h-5" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-card border-border font-yrdly-body">
-                <DropdownMenuItem onSelect={() => setReportOpen(true)} className="text-red-400 focus:text-red-400 focus:bg-red-500/10 cursor-pointer">
+              <DropdownMenuContent
+                align="end"
+                className="bg-card border-border font-yrdly-body"
+              >
+                <DropdownMenuItem
+                  onSelect={() => setReportOpen(true)}
+                  className="text-red-400 focus:text-red-400 focus:bg-red-500/10 cursor-pointer"
+                >
                   <Flag className="mr-2 h-4 w-4" /> Report
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -1098,8 +1449,12 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
             >
               <AlertDialogContent className="max-h-[85dvh] overflow-y-auto bg-card border-border text-foreground rounded-[24px] max-w-[400px] font-yrdly-body">
                 <AlertDialogHeader className="text-center">
-                  <AlertDialogTitle className="font-yrdly-display">Report post</AlertDialogTitle>
-                  <AlertDialogDescription>Why are you reporting this?</AlertDialogDescription>
+                  <AlertDialogTitle className="font-yrdly-display">
+                    Report post
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Why are you reporting this?
+                  </AlertDialogDescription>
                 </AlertDialogHeader>
                 <div className="flex flex-col gap-2 mt-2">
                   {POST_REPORT_REASONS.map((reason) => (
@@ -1119,8 +1474,13 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
                 </div>
                 {selectedReportReason && (
                   <div className="mt-3 space-y-2">
-                    <label htmlFor="post-report-details" className="text-sm font-medium">
-                      {selectedReportReason === "Other" ? "Describe what you want to report" : "Additional details (optional)"}
+                    <label
+                      htmlFor="post-report-details"
+                      className="text-sm font-medium"
+                    >
+                      {selectedReportReason === "Other"
+                        ? "Describe what you want to report"
+                        : "Additional details (optional)"}
                     </label>
                     <textarea
                       id="post-report-details"
@@ -1140,7 +1500,8 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
                     disabled={
                       reporting ||
                       !selectedReportReason ||
-                      (selectedReportReason === "Other" && !reportDetails.trim())
+                      (selectedReportReason === "Other" &&
+                        !reportDetails.trim())
                     }
                     onClick={() => {
                       if (!selectedReportReason) return;
@@ -1156,7 +1517,9 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
                   >
                     {reporting ? "Submitting..." : "Submit report"}
                   </button>
-                  <AlertDialogCancel className="w-full mt-0 bg-transparent hover:bg-accent text-foreground border border-border rounded-[14px] h-12 font-semibold">Cancel</AlertDialogCancel>
+                  <AlertDialogCancel className="w-full mt-0 bg-transparent hover:bg-accent text-foreground border border-border rounded-[14px] h-12 font-semibold">
+                    Cancel
+                  </AlertDialogCancel>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
@@ -1170,22 +1533,41 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
                   <MoreHorizontal className="w-5 h-5" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-card border-border font-yrdly-body">
+              <DropdownMenuContent
+                align="end"
+                className="bg-card border-border font-yrdly-body"
+              >
                 {(() => {
-                  const canEdit = (Date.now() - new Date(post.created_at || post.timestamp || Date.now()).getTime()) <= 15 * 60 * 1000;
+                  const canEdit =
+                    Date.now() -
+                      new Date(
+                        post.created_at || post.timestamp || Date.now(),
+                      ).getTime() <=
+                    15 * 60 * 1000;
                   if (!canEdit) return null;
-                  
+
                   if (post.category === "Event") {
                     return (
-                      <DropdownMenuItem onClick={() => router.push(`/events/${post.id}/manage`)} className="focus:bg-accent cursor-pointer">
+                      <DropdownMenuItem
+                        onClick={() => router.push(`/events/${post.id}/manage`)}
+                        className="focus:bg-accent cursor-pointer"
+                      >
                         <Edit className="mr-2 h-4 w-4" /> Manage Event
                       </DropdownMenuItem>
                     );
                   }
 
-                  if ((post as any).category === "For Sale" || (post as any).category === "Giveaway") {
+                  if (
+                    (post as any).category === "For Sale" ||
+                    (post as any).category === "Giveaway"
+                  ) {
                     return (
-                      <DropdownMenuItem onClick={() => router.push(`/marketplace/edit/${post.id}`)} className="focus:bg-accent cursor-pointer">
+                      <DropdownMenuItem
+                        onClick={() =>
+                          router.push(`/marketplace/edit/${post.id}`)
+                        }
+                        className="focus:bg-accent cursor-pointer"
+                      >
                         <Edit className="mr-2 h-4 w-4" /> Edit Listing
                       </DropdownMenuItem>
                     );
@@ -1194,7 +1576,10 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
                   return null;
                 })()}
                 <AlertDialogTrigger asChild>
-                  <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-400 focus:text-red-400 focus:bg-red-500/10">
+                  <DropdownMenuItem
+                    onSelect={(e) => e.preventDefault()}
+                    className="text-red-400 focus:text-red-400 focus:bg-red-500/10"
+                  >
                     <Trash2 className="mr-2 h-4 w-4" /> Delete
                   </DropdownMenuItem>
                 </AlertDialogTrigger>
@@ -1202,12 +1587,23 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
             </DropdownMenu>
             <AlertDialogContent className="bg-card border-border font-yrdly-body">
               <AlertDialogHeader>
-                <AlertDialogTitle className="font-yrdly-display">Delete post?</AlertDialogTitle>
-                <AlertDialogDescription className="font-yrdly-body">This will permanently delete your post and all its comments.</AlertDialogDescription>
+                <AlertDialogTitle className="font-yrdly-display">
+                  Delete post?
+                </AlertDialogTitle>
+                <AlertDialogDescription className="font-yrdly-body">
+                  This will permanently delete your post and all its comments.
+                </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel className="bg-muted border-0 font-yrdly-body">Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700 font-yrdly-body">Delete</AlertDialogAction>
+                <AlertDialogCancel className="bg-muted border-0 font-yrdly-body">
+                  Cancel
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDelete}
+                  className="bg-red-600 hover:bg-red-700 font-yrdly-body"
+                >
+                  Delete
+                </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
@@ -1250,20 +1646,26 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
         )}
         {/* Description text */}
         {post.text && post.title && (
-          <p className="px-yrdly-md pb-yrdly-xs font-yrdly-body font-normal text-[0.8125rem] text-[var(--yrdly-label)] leading-[15px]">{post.text}</p>
+          <p className="px-yrdly-md pb-yrdly-xs font-yrdly-body font-normal text-[0.8125rem] text-[var(--yrdly-label)] leading-[15px]">
+            {post.text}
+          </p>
         )}
         {/* Event meta */}
         <div className="px-yrdly-md pb-yrdly-sm space-y-2 font-yrdly-body">
           {post.event_date && (
             <div className="flex items-center gap-2 text-[var(--yrdly-label)]">
               <Calendar className="w-5 h-5 flex-shrink-0" />
-              <span className="font-yrdly-body font-normal text-[0.8125rem]">{getEventDate()}</span>
+              <span className="font-yrdly-body font-normal text-[0.8125rem]">
+                {getEventDate()}
+              </span>
             </div>
           )}
           {post.event_location && (
             <div className="flex items-center gap-2 text-[var(--yrdly-label)]">
               <MapPin className="w-5 h-5 flex-shrink-0" />
-              <span className="font-yrdly-body font-normal text-[0.8125rem]">{getLocation(post.event_location)}</span>
+              <span className="font-yrdly-body font-normal text-[0.8125rem]">
+                {getLocation(post.event_location)}
+              </span>
             </div>
           )}
         </div>
@@ -1273,7 +1675,10 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
             <span className="font-yrdly-display font-bold text-[1.5rem] leading-[28px] text-primary">
               {formatPrice(post.price)}
             </span>
-            <button onClick={handleShare} className="text-[var(--yrdly-label)] hover:text-foreground">
+            <button
+              onClick={handleShare}
+              className="text-[var(--yrdly-label)] hover:text-foreground"
+            >
               <Share2 className="w-5 h-5" />
             </button>
           </div>
@@ -1287,7 +1692,9 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
       <>
         {PostHeader}
         {/* Item name */}
-        <p className="px-yrdly-md pb-yrdly-xs font-yrdly-display font-semibold text-[1.125rem] text-foreground leading-[21px]">{itemTitle}</p>
+        <p className="px-yrdly-md pb-yrdly-xs font-yrdly-display font-semibold text-[1.125rem] text-foreground leading-[21px]">
+          {itemTitle}
+        </p>
         {/* Media */}
         {mediaItems.length > 0 && (
           <div className="px-yrdly-sm pb-yrdly-sm">
@@ -1313,26 +1720,36 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
         </p>
         {/* Description / subtitle */}
         {desc && (
-          <p className="px-yrdly-md pb-yrdly-sm font-yrdly-body font-normal text-[0.8125rem] text-[var(--yrdly-label)] leading-[15px]">{desc}</p>
+          <p className="px-yrdly-md pb-yrdly-sm font-yrdly-body font-normal text-[0.8125rem] text-[var(--yrdly-label)] leading-[15px]">
+            {desc}
+          </p>
         )}
         {/* Message seller */}
         <div className="flex items-center justify-between px-yrdly-md pb-yrdly-sm gap-2">
-          <div
-            className="flex-1 flex items-center rounded-full overflow-hidden h-10 gap-2 px-4 border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] backdrop-blur-md"
-          >
+          <div className="flex-1 flex items-center rounded-full overflow-hidden h-10 gap-2 px-4 border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] backdrop-blur-md">
             <Avatar className="h-6 w-6 flex-shrink-0">
               <AvatarImage src={author?.avatar_url} />
-              <AvatarFallback className="text-[0.5625rem] text-foreground font-yrdly-body" style={{ background: GREEN }}>{author?.name?.charAt(0)}</AvatarFallback>
+              <AvatarFallback
+                className="text-[0.5625rem] text-foreground font-yrdly-body"
+                style={{ background: GREEN }}
+              >
+                {author?.name?.charAt(0)}
+              </AvatarFallback>
             </Avatar>
             <button
               onClick={handleMessageSeller}
               className="flex-1 text-left font-yrdly-body italic font-extralight text-[0.625rem] text-[var(--yrdly-label)]"
             >
-              {currentUser?.id === author?.id ? "Your listing" : "Send seller a message"}
+              {currentUser?.id === author?.id
+                ? "Your listing"
+                : "Send seller a message"}
             </button>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={handleShare} className="text-[var(--yrdly-label)] hover:text-foreground">
+            <button
+              onClick={handleShare}
+              className="text-[var(--yrdly-label)] hover:text-foreground"
+            >
               <Share2 className="w-5 h-5" />
             </button>
           </div>
@@ -1344,7 +1761,8 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
     const text = post.text || "";
     const maxLength = 180;
     const shouldTruncate = text.length > maxLength;
-    const displayText = isTextExpanded || !shouldTruncate ? text : text.slice(0, maxLength) + "…";
+    const displayText =
+      isTextExpanded || !shouldTruncate ? text : text.slice(0, maxLength) + "…";
 
     cardContent = (
       <>
@@ -1356,7 +1774,10 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
               {displayText}
               {shouldTruncate && (
                 <button
-                  onClick={(e) => { e.stopPropagation(); setIsTextExpanded(!isTextExpanded); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsTextExpanded(!isTextExpanded);
+                  }}
                   className="ml-1 font-yrdly-body font-medium text-[0.75rem] text-[var(--yrdly-label)] hover:text-primary"
                 >
                   {isTextExpanded ? "see less" : "see more"}
@@ -1411,17 +1832,26 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
       </GlassCard>
 
       {/* Comments — Mobile Drawer / Desktop Modal */}
-      <Drawer open={isCommentsOpen} onOpenChange={setIsCommentsOpen} repositionInputs={false}>
+      <Drawer
+        open={isCommentsOpen}
+        onOpenChange={setIsCommentsOpen}
+        repositionInputs={false}
+      >
         <DrawerContent
           className="p-0 border-t md:border border-[var(--yrdly-glass-border)] rounded-t-[24px] md:rounded-xl max-h-[88vh] md:max-h-[90vh] md:h-[min(90vh,700px)] md:max-w-[935px] md:mx-auto overflow-hidden"
           style={{
-            transform: keyboardHeight > 0 ? `translate3d(0, -${keyboardHeight}px, 0)` : undefined,
+            transform:
+              keyboardHeight > 0
+                ? `translate3d(0, -${keyboardHeight}px, 0)`
+                : undefined,
             transition: "transform 0.25s cubic-bezier(0.2, 0.9, 0.3, 1)",
           }}
         >
           <DrawerHeader className="sr-only">
             <DrawerTitle>Comments</DrawerTitle>
-            <DrawerDescription>View and post comments on this post.</DrawerDescription>
+            <DrawerDescription>
+              View and post comments on this post.
+            </DrawerDescription>
           </DrawerHeader>
 
           <div className="w-full h-full flex flex-col md:flex-row bg-background overflow-hidden min-h-0 flex-1 relative">
@@ -1437,7 +1867,10 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
             {/* Left — image, video, or text-only writing (Desktop) */}
             {mediaItems.length > 0 ? (
               <div className="hidden md:block relative flex-1 min-w-0 h-full bg-black overflow-hidden">
-                <ModalMediaCarousel items={mediaItems} initialIndex={selectedImageIndex} />
+                <ModalMediaCarousel
+                  items={mediaItems}
+                  initialIndex={selectedImageIndex}
+                />
               </div>
             ) : (
               <div className="hidden md:flex flex-1 min-w-0 h-full bg-[var(--yrdly-glass-bg)] overflow-hidden flex-col p-10 justify-center">

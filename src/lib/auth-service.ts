@@ -1,6 +1,7 @@
-import { safeRelativePath } from './auth-navigation';
-import { supabase } from './supabase';
-import { User } from '@supabase/supabase-js';
+import { checkActiveSession, endRevokedSession } from "./session-policy";
+import { safeRelativePath } from "./auth-navigation";
+import { supabase } from "./supabase";
+import { User } from "@supabase/supabase-js";
 
 export interface AuthUser {
   id: string;
@@ -34,7 +35,13 @@ export interface AuthUser {
   is_online?: boolean;
   last_seen?: string;
   // Onboarding fields
-  onboarding_status?: 'signup' | 'email_verification' | 'profile_setup' | 'welcome' | 'tour' | 'completed';
+  onboarding_status?:
+    | "signup"
+    | "email_verification"
+    | "profile_setup"
+    | "welcome"
+    | "tour"
+    | "completed";
   profile_completed?: boolean;
   onboarding_completed_at?: string;
   tour_completed?: boolean;
@@ -51,13 +58,21 @@ export interface AuthUser {
 }
 
 export class AuthService {
-  static async signUp(email: string, password: string, name: string, username?: string) {
+  static async signUp(
+    email: string,
+    password: string,
+    name: string,
+    username?: string,
+  ) {
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: typeof window !== "undefined" ? `${window.location.origin}/auth/callback` : undefined,
+          emailRedirectTo:
+            typeof window !== "undefined"
+              ? `${window.location.origin}/auth/callback`
+              : undefined,
           data: {
             name,
             username,
@@ -70,26 +85,38 @@ export class AuthService {
           return { user: data.user, error: null };
         }
         const errMsg = (error.message || "").toLowerCase();
-        if (errMsg.includes("already registered") || errMsg.includes("already in use") || errMsg.includes("user_already_exists")) {
+        if (
+          errMsg.includes("already registered") ||
+          errMsg.includes("already in use") ||
+          errMsg.includes("user_already_exists")
+        ) {
           return {
             user: null,
-            error: new Error("An account with this email address already exists. Please log in instead."),
+            error: new Error(
+              "An account with this email address already exists. Please log in instead.",
+            ),
           };
         }
         throw error;
       }
 
       // Supabase email enumeration protection returns empty identities array for existing users
-      if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      if (
+        data?.user &&
+        Array.isArray(data.user.identities) &&
+        data.user.identities.length === 0
+      ) {
         return {
           user: null,
-          error: new Error("An account with this email address already exists. Please log in instead."),
+          error: new Error(
+            "An account with this email address already exists. Please log in instead.",
+          ),
         };
       }
 
       return { user: data.user, error: null };
     } catch (error) {
-      console.error('Sign up error:', error);
+      console.error("Sign up error:", error);
       return { user: null, error };
     }
   }
@@ -104,29 +131,43 @@ export class AuthService {
 
       if (error) throw error;
 
+      if (data.user && (await checkActiveSession(true)) === false) {
+        await endRevokedSession();
+        throw new Error("This session has been replaced by a newer sign-in.");
+      }
       if (data.user) {
         const { data: profile, error: profileError } = await supabase
-          .from('users')
-          .select('is_suspended, is_banned, status, suspension_reason')
-          .eq('id', data.user.id)
+          .from("users")
+          .select("is_suspended, is_banned, status, suspension_reason")
+          .eq("id", data.user.id)
           .maybeSingle();
 
         if (profileError || !profile) {
-          await supabase.auth.signOut();
-          throw new Error('Account status could not be verified. Please try again.');
+          await supabase.auth.signOut({ scope: "local" });
+          throw new Error(
+            "Account status could not be verified. Please try again.",
+          );
         }
-        if (profile && (profile.is_suspended || profile.is_banned || profile.status === 'suspended' || profile.status === 'banned')) {
-          await supabase.auth.signOut();
+        if (
+          profile &&
+          (profile.is_suspended ||
+            profile.is_banned ||
+            profile.status === "suspended" ||
+            profile.status === "banned")
+        ) {
+          await supabase.auth.signOut({ scope: "local" });
           return {
             user: null,
-            error: new Error('Your account has been suspended or banned. You cannot log in or transact.'),
+            error: new Error(
+              "Your account has been suspended or banned. You cannot log in or transact.",
+            ),
           };
         }
       }
 
       return { user: data.user, error: null };
     } catch (error) {
-      console.error('Sign in error:', error);
+      console.error("Sign in error:", error);
       return { user: null, error };
     }
   }
@@ -135,13 +176,13 @@ export class AuthService {
   static async signInWithGoogle(next?: string) {
     try {
       // Always redirect back to the current origin (works for any domain)
-      const callbackUrl = new URL('/auth/callback', window.location.origin);
-      const destination = safeRelativePath(next, '');
-      if (destination) callbackUrl.searchParams.set('next', destination);
+      const callbackUrl = new URL("/auth/callback", window.location.origin);
+      const destination = safeRelativePath(next, "");
+      if (destination) callbackUrl.searchParams.set("next", destination);
       const redirectUrl = callbackUrl.toString();
-        
+
       const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
+        provider: "google",
         options: {
           redirectTo: redirectUrl,
         },
@@ -151,7 +192,7 @@ export class AuthService {
 
       return { data, error: null };
     } catch (error) {
-      console.error('Google sign in error:', error);
+      console.error("Google sign in error:", error);
       return { data: null, error };
     }
   }
@@ -160,13 +201,13 @@ export class AuthService {
   static async signInWithApple(next?: string) {
     try {
       // Always redirect back to the current origin (works for any domain)
-      const callbackUrl = new URL('/auth/callback', window.location.origin);
-      const destination = safeRelativePath(next, '');
-      if (destination) callbackUrl.searchParams.set('next', destination);
+      const callbackUrl = new URL("/auth/callback", window.location.origin);
+      const destination = safeRelativePath(next, "");
+      if (destination) callbackUrl.searchParams.set("next", destination);
       const redirectUrl = callbackUrl.toString();
-        
+
       const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'apple',
+        provider: "apple",
         options: {
           redirectTo: redirectUrl,
         },
@@ -176,7 +217,7 @@ export class AuthService {
 
       return { data, error: null };
     } catch (error) {
-      console.error('Apple sign in error:', error);
+      console.error("Apple sign in error:", error);
       return { data: null, error };
     }
   }
@@ -184,11 +225,11 @@ export class AuthService {
   // Sign out
   static async signOut() {
     try {
-      const { error } = await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut({ scope: "local" });
       if (error) throw error;
       return { error: null };
     } catch (error) {
-      console.error('Sign out error:', error);
+      console.error("Sign out error:", error);
       return { error };
     }
   }
@@ -202,19 +243,26 @@ export class AuthService {
   // wired up in use-supabase-auth.tsx) keeps this in sync afterward.
   static async getCurrentUser(): Promise<User | null> {
     try {
-      const { data: { session }, error } = await supabase.auth.getSession();
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession();
       if (error) {
         // Don't log AuthSessionMissingError as it's expected when user is logged out
-        if (error.message !== 'Auth session missing!') {
-          console.error('Get current user error:', error);
+        if (error.message !== "Auth session missing!") {
+          console.error("Get current user error:", error);
         }
+        return null;
+      }
+      if (session && (await checkActiveSession(true)) === false) {
+        await endRevokedSession();
         return null;
       }
       return session?.user ?? null;
     } catch (error: any) {
       // Don't log AuthSessionMissingError as it's expected when user is logged out
-      if (error.message !== 'Auth session missing!') {
-        console.error('Get current user error:', error);
+      if (error.message !== "Auth session missing!") {
+        console.error("Get current user error:", error);
       }
       return null;
     }
@@ -224,19 +272,19 @@ export class AuthService {
   static async getUserProfile(userId: string): Promise<AuthUser | null> {
     try {
       const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
+        .from("users")
+        .select("*")
+        .eq("id", userId)
         .maybeSingle(); // Use maybeSingle() instead of single() to handle 0 rows gracefully
 
       if (error) {
-        console.error('Database error fetching user profile:', error);
+        console.error("Database error fetching user profile:", error);
         return null;
       }
-      
+
       return data;
     } catch (error) {
-      console.error('Get user profile error:', error);
+      console.error("Get user profile error:", error);
       return null;
     }
   }
@@ -250,93 +298,130 @@ export class AuthService {
         return;
       }
 
-      const finalName = name || user.user_metadata?.name || user.email?.split('@')[0];
+      const finalName =
+        name || user.user_metadata?.name || user.email?.split("@")[0];
 
-      const { error } = await supabase
-        .from('users')
-        .insert({
-          id: user.id,
-          name: finalName,
-          email: user.email,
-          avatar_url: user.user_metadata?.avatar_url,
-          // All users must complete profile setup to set their location
-          profile_completed: false,
-          onboarding_status: 'profile_setup',
-          notification_settings: {
-            friendRequests: true,
-            messages: true,
-            postUpdates: true,
-            comments: true,
-            postLikes: true,
-            eventInvites: true,
-          },
-        });
+      const { error } = await supabase.from("users").insert({
+        id: user.id,
+        name: finalName,
+        email: user.email,
+        avatar_url: user.user_metadata?.avatar_url,
+        // All users must complete profile setup to set their location
+        profile_completed: false,
+        onboarding_status: "profile_setup",
+        notification_settings: {
+          friendRequests: true,
+          messages: true,
+          postUpdates: true,
+          comments: true,
+          postLikes: true,
+          eventInvites: true,
+        },
+      });
 
       if (error) {
         // If it's a duplicate key error, the profile already exists, which is fine
-        if (error.code === '23505') {
+        if (error.code === "23505") {
           return;
         }
-        console.error('Database error creating user profile:', error);
+        console.error("Database error creating user profile:", error);
         throw error;
       }
     } catch (error) {
-      console.error('Create user profile error:', error);
+      console.error("Create user profile error:", error);
       throw error;
     }
   }
 
   // Update user profile
-  static async updateUserProfile(userId: string, updates: Partial<AuthUser> & Record<string, any>) {
+  static async updateUserProfile(
+    userId: string,
+    updates: Partial<AuthUser> & Record<string, any>,
+  ) {
     try {
-      const allowed = new Set(['name', 'legal_name', 'username', 'avatar_url', 'bio',
-        'interests', 'notification_settings', 'share_location', 'current_location',
-        'location_updated_at', 'location', 'home_state', 'home_lga', 'home_ward',
-        'home_lat', 'home_lng', 'profile_completed', 'onboarding_status',
-        'onboarding_completed_at', 'tour_completed', 'discoverable', 'is_online', 'last_seen']);
-      const cleanUpdates = Object.fromEntries(Object.entries(updates).filter(([key]) => allowed.has(key)));
+      const allowed = new Set([
+        "name",
+        "legal_name",
+        "username",
+        "avatar_url",
+        "bio",
+        "interests",
+        "notification_settings",
+        "share_location",
+        "current_location",
+        "location_updated_at",
+        "location",
+        "home_state",
+        "home_lga",
+        "home_ward",
+        "home_lat",
+        "home_lng",
+        "profile_completed",
+        "onboarding_status",
+        "onboarding_completed_at",
+        "tour_completed",
+        "discoverable",
+        "is_online",
+        "last_seen",
+      ]);
+      const cleanUpdates = Object.fromEntries(
+        Object.entries(updates).filter(([key]) => allowed.has(key)),
+      );
 
       if (cleanUpdates.username) {
-        cleanUpdates.username = cleanUpdates.username.replace(/^@/, '').trim().toLowerCase();
+        cleanUpdates.username = cleanUpdates.username
+          .replace(/^@/, "")
+          .trim()
+          .toLowerCase();
       }
 
       const { error } = await supabase
-        .from('users')
+        .from("users")
         .update(cleanUpdates)
-        .eq('id', userId);
+        .eq("id", userId);
 
       if (error) throw error;
     } catch (error) {
-      console.error('Update user profile error:', error);
+      console.error("Update user profile error:", error);
       throw error;
     }
   }
 
   // Check if account can be safely deleted without pending transactions/disputes
-  static async canDeleteAccount(userId: string): Promise<{ canDelete: boolean; reason?: string }> {
+  static async canDeleteAccount(
+    userId: string,
+  ): Promise<{ canDelete: boolean; reason?: string }> {
     try {
       // Check for pending escrow transactions
       const { data: pendingTx } = await supabase
-        .from('escrow_transactions')
-        .select('id')
+        .from("escrow_transactions")
+        .select("id")
         .or(`buyer_id.eq.${userId},seller_id.eq.${userId}`)
-        .in('status', ['pending', 'paid', 'shipped', 'delivered', 'disputed'])
+        .in("status", ["pending", "paid", "shipped", "delivered", "disputed"])
         .limit(1);
 
       if (pendingTx && pendingTx.length > 0) {
-        return { canDelete: false, reason: 'You have active escrow transactions in progress. Please complete or cancel them before deleting your account.' };
+        return {
+          canDelete: false,
+          reason:
+            "You have active escrow transactions in progress. Please complete or cancel them before deleting your account.",
+        };
       }
 
       // Check for open disputes
       const { data: openDisputes } = await supabase
-        .from('escrow_transactions')
-        .select('id')
+        .from("escrow_transactions")
+        .select("id")
         .or(`buyer_id.eq.${userId},seller_id.eq.${userId}`)
-        .eq('status', 'disputed')
+        .eq("status", "disputed")
         .limit(1);
 
       if (openDisputes && openDisputes.length > 0) {
-        return { canDelete: false, reason: 'You have open marketplace disputes. Please resolve all open disputes before deleting your account.' };
+        return {
+          canDelete: false,
+          reason:
+            "You have open marketplace disputes. Please resolve all open disputes before deleting your account.",
+        };
       }
 
       return { canDelete: true };
@@ -346,29 +431,32 @@ export class AuthService {
   }
 
   // Check if a username is available (case-insensitive)
-  static async checkUsernameAvailability(username: string, excludeUserId?: string): Promise<boolean> {
+  static async checkUsernameAvailability(
+    username: string,
+    excludeUserId?: string,
+  ): Promise<boolean> {
     try {
-      const clean = username.replace(/^@/, '').trim().toLowerCase();
+      const clean = username.replace(/^@/, "").trim().toLowerCase();
       if (!clean) return true;
 
       let query = supabase
-        .from('public_profiles')
-        .select('id')
-        .ilike('username', clean);
+        .from("public_profiles")
+        .select("id")
+        .ilike("username", clean);
 
       if (excludeUserId) {
-        query = query.neq('id', excludeUserId);
+        query = query.neq("id", excludeUserId);
       }
 
       const { data, error } = await query;
       if (error) {
-        console.error('Error checking username availability:', error);
+        console.error("Error checking username availability:", error);
         return true;
       }
 
       return !data || data.length === 0;
     } catch (e) {
-      console.error('Check username availability error:', e);
+      console.error("Check username availability error:", e);
       return true;
     }
   }
@@ -383,7 +471,7 @@ export class AuthService {
       if (error) throw error;
       return { error: null };
     } catch (error) {
-      console.error('Reset password error:', error);
+      console.error("Reset password error:", error);
       return { error };
     }
   }
@@ -398,7 +486,7 @@ export class AuthService {
       if (error) throw error;
       return { error: null };
     } catch (error) {
-      console.error('Update password error:', error);
+      console.error("Update password error:", error);
       return { error };
     }
   }
@@ -406,7 +494,26 @@ export class AuthService {
   // Listen to auth state changes
   static onAuthStateChange(callback: (user: User | null) => void) {
     return supabase.auth.onAuthStateChange((event, session) => {
-      callback(session?.user ?? null);
+      setTimeout(() => {
+        void (async () => {
+          if (
+            session &&
+            (await supabase.auth.getSession()).data.session?.access_token !==
+              session.access_token
+          )
+            return;
+          if (
+            session &&
+            (await checkActiveSession(
+              event === "SIGNED_IN" || event === "INITIAL_SESSION",
+            )) === false
+          ) {
+            await endRevokedSession();
+            return;
+          }
+          callback(session?.user ?? null);
+        })();
+      }, 0);
     });
   }
 }

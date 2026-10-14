@@ -7,6 +7,9 @@ const supabaseStorageHost = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL || 'htt
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Share previews must receive complete metadata in the initial HTML, including
+  // clients whose preview user agents are absent from Next's default bot list.
+  htmlLimitedBots: /.*/,
   distDir: process.env.YRDLY_QA_BUILD === 'true' ? '.next-qa' : '.next',
   // Optimize images for mobile
   images: {

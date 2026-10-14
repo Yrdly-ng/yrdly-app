@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
-import Cropper, { Area } from "react-easy-crop";
+import React, { useEffect, useRef, useState } from "react";
+import type { Area } from "react-easy-crop";
+import { CropSelection } from "./CropSelection";
+import { centeredVideoCrop, type VideoCrop } from "@/lib/video-editing";
 import { Loader2 } from "lucide-react";
 import {
   Dialog,
@@ -12,7 +14,6 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 
 const ASPECTS = [
   { label: "1:1", value: 1 },
@@ -31,10 +32,17 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-async function cropToFile(src: string, area: Area, original: File): Promise<File> {
+async function cropToFile(
+  src: string,
+  area: Area,
+  original: File,
+): Promise<File> {
   const img = await loadImage(src);
 
-  const scale = Math.min(1, MAX_OUTPUT_SIDE / Math.max(area.width, area.height));
+  const scale = Math.min(
+    1,
+    MAX_OUTPUT_SIDE / Math.max(area.width, area.height),
+  );
   const outW = Math.round(area.width * scale);
   const outH = Math.round(area.height * scale);
 
@@ -53,11 +61,12 @@ async function cropToFile(src: string, area: Area, original: File): Promise<File
     canvas.toBlob(
       (b) => (b ? resolve(b) : reject(new Error("Crop failed"))),
       type,
-      0.92
-    )
+      0.92,
+    ),
   );
 
-  const ext = type === "image/png" ? "png" : type === "image/webp" ? "webp" : "jpg";
+  const ext =
+    type === "image/png" ? "png" : type === "image/webp" ? "webp" : "jpg";
   const base = original.name.replace(/\.[^.]+$/, "") || "image";
   return new File([blob], `${base}-cropped.${ext}`, { type });
 }
@@ -82,128 +91,171 @@ export default function ImageCropDialog({
   onCancel,
   progressLabel,
 }: ImageCropDialogProps) {
-  const [src, setSrc] = useState<string | null>(null);
-  const [crop, setCrop] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
-  const [aspect, setAspect] = useState(ASPECTS[0].value);
-  const [pixels, setPixels] = useState<Area | null>(null);
+  const [src, setSrc] = useState("");
+  const [dimensions, setDimensions] = useState({ width: 1, height: 1 });
+  const [crop, setCrop] = useState<VideoCrop>({
+    x: 0,
+    y: 0,
+    width: 1,
+    height: 1,
+  });
+  const [aspect, setAspect] = useState<number | null>(null);
   const [working, setWorking] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Create / revoke the object URL for the current file
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const sourceRevision = useRef(0);
+  const ready = useRef(false);
   useEffect(() => {
-    if (!file) {
-      setSrc(null);
-      return;
-    }
+    if (!file) return;
+    let active = true;
+    const revision = ++sourceRevision.current;
+    ready.current = false;
+    setLoading(true);
+    setWorking(false);
     const url = URL.createObjectURL(file);
     setSrc(url);
-    setCrop({ x: 0, y: 0 });
-    setZoom(1);
-    setAspect(ASPECTS[0].value);
-    setPixels(null);
-    setError(null);
-    return () => URL.revokeObjectURL(url);
+    setCrop({ x: 0, y: 0, width: 1, height: 1 });
+    setAspect(null);
+    setError("");
+    void loadImage(url)
+      .then((image) => {
+        if (active && revision === sourceRevision.current) {
+          setDimensions({
+            width: image.naturalWidth,
+            height: image.naturalHeight,
+          });
+          ready.current = true;
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setError("Could not open this photo.");
+          setLoading(false);
+        }
+      });
+    return () => {
+      active = false;
+      sourceRevision.current++;
+      ready.current = false;
+      URL.revokeObjectURL(url);
+    };
   }, [file]);
-
-  const onCropComplete = useCallback((_: Area, areaPixels: Area) => {
-    setPixels(areaPixels);
-  }, []);
-
-  const handleConfirm = async () => {
-    if (!file || !src || !pixels) return;
+  async function confirm() {
+    if (!file || working || !ready.current) return;
+    const revision = sourceRevision.current;
     setWorking(true);
-    setError(null);
+    setError("");
     try {
-      const cropped = await cropToFile(src, pixels, file);
-      onConfirm(cropped);
-    } catch (e: any) {
-      setError(e?.message || "Could not crop this image.");
+      const output = await cropToFile(
+        src,
+        {
+          x: crop.x * dimensions.width,
+          y: crop.y * dimensions.height,
+          width: crop.width * dimensions.width,
+          height: crop.height * dimensions.height,
+        },
+        file,
+      );
+      if (revision === sourceRevision.current) onConfirm(output);
+    } catch {
+      setError("Could not save this crop. Your original photo is safe.");
     } finally {
-      setWorking(false);
+      if (revision === sourceRevision.current) setWorking(false);
     }
-  };
-
+  }
   return (
-    <Dialog open={!!file} onOpenChange={(open) => !open && !working && onCancel()}>
-      <DialogContent className="max-w-lg p-0 overflow-hidden gap-0">
-        <DialogHeader className="px-4 pt-4 pb-3">
+    <Dialog
+      open={!!file}
+      onOpenChange={(open) => {
+        if (!open && !working) onCancel();
+      }}
+    >
+      <DialogContent className="max-w-2xl gap-4">
+        <DialogHeader>
           <DialogTitle>Crop photo</DialogTitle>
           <DialogDescription>
-            {progressLabel ? `${progressLabel} · ` : ""}Drag to reposition, pinch or use the slider to zoom.
+            {progressLabel} Drag the edges to crop, pinch to zoom, or drag the
+            frame to reposition.
           </DialogDescription>
         </DialogHeader>
-
-        <div className="relative w-full h-[55vh] max-h-[420px] bg-black">
-          {src && (
-            <Cropper
-              image={src}
-              crop={crop}
-              zoom={zoom}
-              aspect={aspect}
-              onCropChange={setCrop}
-              onZoomChange={setZoom}
-              onCropComplete={onCropComplete}
-              objectFit="contain"
-            />
-          )}
-        </div>
-
-        <div className="px-4 py-3 space-y-3">
-          <div className="flex items-center gap-2">
-            {ASPECTS.map((a) => (
-              <button
-                key={a.label}
-                type="button"
-                onClick={() => setAspect(a.value)}
-                className={cn(
-                  "px-3 py-1 rounded-full text-xs font-semibold transition-colors",
-                  aspect === a.value
-                    ? "bg-primary text-foreground"
-                    : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                )}
-              >
-                {a.label}
-              </button>
-            ))}
+        {loading ? (
+          <div role="status" className="flex justify-center p-12">
+            <Loader2 className="animate-spin" aria-label="Opening photo" />
           </div>
-
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-muted-foreground w-9">Zoom</span>
-            <input
-              type="range"
-              min={1}
-              max={3}
-              step={0.01}
-              value={zoom}
-              onChange={(e) => setZoom(Number(e.target.value))}
-              className="flex-1 accent-primary"
-              aria-label="Zoom"
+        ) : (
+          <CropSelection
+            crop={crop}
+            onChange={setCrop}
+            aspect={aspect}
+            sourceAspect={dimensions.width / dimensions.height}
+            disabled={working || !!error}
+          >
+            <img
+              src={src}
+              alt="Photo to crop"
+              className="w-full h-full object-contain"
             />
-          </div>
-
-          {error && <p className="text-xs text-destructive">{error}</p>}
+          </CropSelection>
+        )}
+        <div className="flex flex-wrap gap-2">
+          {[
+            { label: "Freeform", value: null },
+            { label: "Original", value: dimensions.width / dimensions.height },
+            ...ASPECTS,
+            { label: "9:16", value: 9 / 16 },
+          ].map((option) => (
+            <Button
+              key={option.label}
+              type="button"
+              variant={aspect === option.value ? "default" : "secondary"}
+              disabled={working}
+              onClick={() => {
+                setAspect(option.value);
+                setCrop(
+                  centeredVideoCrop(
+                    dimensions.width,
+                    dimensions.height,
+                    option.value,
+                  ),
+                );
+              }}
+            >
+              {option.label}
+            </Button>
+          ))}
         </div>
-
-        <DialogFooter className="px-4 pb-4 gap-2 sm:gap-2">
-          <Button type="button" variant="ghost" onClick={onCancel} disabled={working}>
-            Discard
+        {error && (
+          <p role="alert" className="text-destructive text-sm">
+            {error}
+          </p>
+        )}
+        <DialogFooter>
+          <Button variant="ghost" disabled={working} onClick={onCancel}>
+            Cancel
           </Button>
           <Button
-            type="button"
-            variant="outline"
-            onClick={() => file && onUseOriginal(file)}
+            variant="secondary"
             disabled={working}
+            onClick={() => {
+              setCrop({ x: 0, y: 0, width: 1, height: 1 });
+              setAspect(null);
+            }}
           >
-            Use original
+            Reset
           </Button>
           <Button
-            type="button"
-            onClick={handleConfirm}
-            disabled={working || !pixels}
-            className="bg-primary text-foreground font-bold hover:bg-primary/90"
+            variant="outline"
+            disabled={working}
+            onClick={() => file && onUseOriginal(file)}
           >
-            {working ? <Loader2 className="w-4 h-4 animate-spin" /> : "Crop"}
+            Keep original
+          </Button>
+          <Button
+            disabled={working || loading || !ready.current}
+            onClick={() => void confirm()}
+          >
+            {working ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirm"}
           </Button>
         </DialogFooter>
       </DialogContent>

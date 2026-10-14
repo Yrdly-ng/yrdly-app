@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
+import { MediaCollage, type MediaItem } from "./PostCard";
 import { useRouter } from "next/navigation";
 import {
   ChevronLeft,
@@ -9,10 +10,10 @@ import {
   Heart,
   MessageCircleMore,
   Share2,
+  Bookmark,
   MoreHorizontal,
   Trash2,
   Edit,
-  Play,
   X,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -34,7 +35,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { usePosts } from "@/hooks/use-posts";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
@@ -54,7 +54,10 @@ interface PostDetailViewProps {
   onCommentCountChange?: (count: number) => void;
 }
 
-export function PostDetailView({ post, onCommentCountChange }: PostDetailViewProps) {
+export function PostDetailView({
+  post,
+  onCommentCountChange,
+}: PostDetailViewProps) {
   const router = useRouter();
   const { user: currentUser, profile: userDetails } = useAuth();
   const { toast } = useToast();
@@ -67,29 +70,9 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
   const likePendingRef = useRef(false);
   const [isEventEditDialogOpen, setIsEventEditDialogOpen] = useState(false);
   const [isPostEditDialogOpen, setIsPostEditDialogOpen] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [saved, setSaved] = useState(false);
+  const savePending = useRef(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  const carouselRef = useRef<HTMLDivElement>(null);
-  const { createPost } = usePosts();
-
-  const handleScroll = () => {
-    if (!carouselRef.current) return;
-    const el = carouselRef.current;
-    const scrollPos = el.scrollLeft;
-    const width = el.clientWidth;
-    if (width > 0) {
-      const idx = Math.round(scrollPos / width);
-      setActiveIndex(idx);
-    }
-  };
-
-  const scrollToSlide = (idx: number) => {
-    if (!carouselRef.current) return;
-    const width = carouselRef.current.clientWidth;
-    carouselRef.current.scrollTo({ left: width * idx, behavior: "smooth" });
-    setActiveIndex(idx);
-  };
-
   useEffect(() => {
     const fetchAuthor = async () => {
       if (!post.user_id) {
@@ -108,19 +91,29 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
           id: post.user_id,
           uid: post.user_id,
           name: post.user.name || post.author_name || "Anonymous",
-          avatar_url: post.user.avatar_url || post.author_image || "https://placehold.co/100x100.png",
+          avatar_url:
+            post.user.avatar_url ||
+            post.author_image ||
+            "https://placehold.co/100x100.png",
           timestamp: post.timestamp,
         });
         setLoadingAuthor(false);
         return;
       }
-      const { data } = await supabase.from('public_profiles').select("id, name, avatar_url, created_at").eq("id", post.user_id).single();
+      const { data } = await supabase
+        .from("public_profiles")
+        .select("id, name, avatar_url, created_at")
+        .eq("id", post.user_id)
+        .single();
       if (data) {
         setAuthor({
           id: data.id,
           uid: data.id,
           name: data.name || post.author_name || "Anonymous",
-          avatar_url: data.avatar_url || post.author_image || "https://placehold.co/100x100.png",
+          avatar_url:
+            data.avatar_url ||
+            post.author_image ||
+            "https://placehold.co/100x100.png",
           timestamp: data.created_at || post.timestamp,
         });
       } else {
@@ -135,22 +128,39 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
       setLoadingAuthor(false);
     };
     fetchAuthor();
-  }, [post.user_id, post.user, post.author_name, post.author_image, post.timestamp]);
+  }, [
+    post.user_id,
+    post.user,
+    post.author_name,
+    post.author_image,
+    post.timestamp,
+  ]);
 
   useEffect(() => {
     setLikes(post.liked_by?.length || 0);
     setCommentCount(post.comment_count || 0);
-    if (currentUser && post.liked_by) setIsLiked(post.liked_by.includes(currentUser.id));
+    if (currentUser && post.liked_by)
+      setIsLiked(post.liked_by.includes(currentUser.id));
     const ch = supabase
       .channel(`post-detail-${post.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "posts", filter: `id=eq.${post.id}` }, (payload: any) => {
-        if (payload.new) {
-          const p = payload.new;
-          setLikes(p.liked_by?.length || 0);
-          setCommentCount(p.comment_count || 0);
-          if (currentUser && p.liked_by) setIsLiked(p.liked_by.includes(currentUser.id));
-        }
-      })
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "posts",
+          filter: `id=eq.${post.id}`,
+        },
+        (payload: any) => {
+          if (payload.new) {
+            const p = payload.new;
+            setLikes(p.liked_by?.length || 0);
+            setCommentCount(p.comment_count || 0);
+            if (currentUser && p.liked_by)
+              setIsLiked(p.liked_by.includes(currentUser.id));
+          }
+        },
+      )
       .subscribe();
     return () => {
       void supabase.removeChannel(ch);
@@ -158,8 +168,7 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
   }, [post.id, post.liked_by, post.comment_count, currentUser]);
 
   const handleBack = () => {
-    if (post.category === "Event") router.push("/events");
-    else if (post.category === "For Sale") router.push("/marketplace");
+    if (window.history.length > 1) router.back();
     else router.push("/home");
   };
 
@@ -171,26 +180,87 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
     const previousIsLiked = isLiked;
     const nextIsLiked = !previousIsLiked;
     setIsLiked(nextIsLiked);
-    setLikes((previousLikes) => Math.max(0, previousLikes + (nextIsLiked ? 1 : -1)));
+    setLikes((previousLikes) =>
+      Math.max(0, previousLikes + (nextIsLiked ? 1 : -1)),
+    );
 
     try {
       const { data, error } = await supabase.rpc("toggle_post_like", {
         p_post_id: post.id,
         p_user_id: currentUser.id,
       });
-      if (error || !data) throw error || new Error("Like update returned no data.");
+      if (error || !data)
+        throw error || new Error("Like update returned no data.");
       setIsLiked(data.is_liked);
       setLikes(data.likes_count);
+      window.dispatchEvent(
+        new CustomEvent("yrdly:post-update", {
+          detail: { postId: post.id, updates: { liked_by: data.liked_by } },
+        }),
+      );
     } catch (error) {
       console.error("Error updating post like:", error);
       setIsLiked(previousIsLiked);
-      setLikes((previousLikes) => Math.max(0, previousLikes + (previousIsLiked ? 1 : -1)));
-      toast({ variant: "destructive", title: "Error", description: "Could not update your like." });
+      setLikes((previousLikes) =>
+        Math.max(0, previousLikes + (previousIsLiked ? 1 : -1)),
+      );
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Could not update your like.",
+      });
     } finally {
       likePendingRef.current = false;
       setIsLikePending(false);
     }
   }, [currentUser, isLiked, post.id, toast]);
+
+  useEffect(() => {
+    if (!currentUser) {
+      setSaved(false);
+      return;
+    }
+    let active = true;
+    void supabase
+      .from("post_bookmarks")
+      .select("id")
+      .eq("post_id", post.id)
+      .eq("user_id", currentUser.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (active) setSaved(!!data);
+      });
+    return () => {
+      active = false;
+    };
+  }, [post.id, currentUser?.id]);
+  const toggleSaved = async () => {
+    if (!currentUser || savePending.current) return;
+    savePending.current = true;
+    const before = saved;
+    setSaved(!before);
+    try {
+      const result = before
+        ? await supabase
+            .from("post_bookmarks")
+            .delete()
+            .eq("post_id", post.id)
+            .eq("user_id", currentUser.id)
+        : await supabase
+            .from("post_bookmarks")
+            .insert({ post_id: post.id, user_id: currentUser.id });
+      if (result.error) throw result.error;
+      window.dispatchEvent(
+        new CustomEvent("yrdly:bookmark", {
+          detail: { postId: post.id, saved: !before },
+        }),
+      );
+    } catch {
+      setSaved(before);
+    } finally {
+      savePending.current = false;
+    }
+  };
 
   const handleShare = useCallback(async () => {
     const url = `${window.location.origin}/posts/${post.id}`;
@@ -198,7 +268,8 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
       try {
         await navigator.share({ title: "Post on Yrdly", url });
         if (currentUser?.id) {
-          const { NotificationTriggers } = await import("@/lib/notification-triggers");
+          const { NotificationTriggers } =
+            await import("@/lib/notification-triggers");
           await NotificationTriggers.onPostShared(post.id, currentUser.id);
         }
         toast({ title: "Post shared!" });
@@ -206,7 +277,8 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
     } else {
       await navigator.clipboard.writeText(url);
       if (currentUser?.id) {
-        const { NotificationTriggers } = await import("@/lib/notification-triggers");
+        const { NotificationTriggers } =
+          await import("@/lib/notification-triggers");
         await NotificationTriggers.onPostShared(post.id, currentUser.id);
       }
       toast({ title: "Link copied!" });
@@ -217,7 +289,11 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
     if (!currentUser || currentUser.id !== post.user_id) return;
     const { error } = await supabase.from("posts").delete().eq("id", post.id);
     if (error) {
-      toast({ variant: "destructive", title: "Delete failed", description: error.message });
+      toast({
+        variant: "destructive",
+        title: "Delete failed",
+        description: error.message,
+      });
       return;
     }
     await supabase.from("comments").delete().eq("post_id", post.id);
@@ -230,25 +306,37 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
       setCommentCount(count);
       onCommentCountChange?.(count);
     },
-    [onCommentCountChange]
+    [onCommentCountChange],
   );
 
-  const urls = post.image_urls?.length ? post.image_urls : post.image_url ? [post.image_url] : [];
-  const videoUrl = post.video_url || ((post as any).video_urls?.[0] as string | undefined);
-  const hasVideo = Boolean(videoUrl);
-  const hasThreeOrMore = urls.length >= 3;
+  const urls = post.image_urls?.length
+    ? post.image_urls
+    : post.image_url
+      ? [post.image_url]
+      : [];
+  const videoUrls = Array.from(
+    new Set([
+      ...(post.video_urls || []),
+      ...(post.video_url ? [post.video_url] : []),
+    ]),
+  );
+  const mediaItems: MediaItem[] = [
+    ...urls.map((url) => ({ type: "image" as const, url })),
+    ...videoUrls.map((url) => ({ type: "video" as const, url })),
+  ];
 
   return (
     <div
       className={cn(
-        "w-full rounded-[16px] overflow-hidden border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] backdrop-blur-xl text-[var(--yrdly-text-primary)] font-yrdly-body shadow-xl"
+        "w-full rounded-[16px] overflow-hidden border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] backdrop-blur-xl text-[var(--yrdly-text-primary)] font-yrdly-body shadow-xl",
       )}
     >
       {/* Top bar: back + "Post" */}
-      <div
-        className="flex items-center gap-3 px-4 py-3 border-b border-[var(--yrdly-glass-border)] bg-white/[0.03]"
-      >
-        <button onClick={handleBack} className="p-1 -ml-1 rounded hover:bg-accent text-[var(--yrdly-text-primary)]">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--yrdly-glass-border)] bg-white/[0.03]">
+        <button
+          onClick={handleBack}
+          className="p-1 -ml-1 rounded hover:bg-accent text-[var(--yrdly-text-primary)]"
+        >
           <ChevronLeft className="w-6 h-6" />
         </button>
         <span className="font-yrdly-display font-semibold text-sm leading-tight text-[var(--yrdly-text-primary)]">
@@ -268,14 +356,22 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
               ) : (
                 <Avatar className="h-10 w-10 flex-shrink-0">
                   <AvatarImage src={author?.avatar_url} />
-                  <AvatarFallback className="bg-[#82DB7E] text-[#050505] font-yrdly-display text-sm font-bold">{author?.name?.charAt(0) || "?"}</AvatarFallback>
+                  <AvatarFallback className="bg-[#82DB7E] text-[#050505] font-yrdly-display text-sm font-bold">
+                    {author?.name?.charAt(0) || "?"}
+                  </AvatarFallback>
                 </Avatar>
               )}
               <div className="min-w-0">
-                <p className="font-yrdly-display font-bold text-sm text-[var(--yrdly-text-primary)] truncate">{author?.name || "Anonymous"}</p>
+                <p className="font-yrdly-display font-bold text-sm text-[var(--yrdly-text-primary)] truncate">
+                  {author?.name || "Anonymous"}
+                </p>
                 <p className="font-yrdly-body font-normal text-[0.6875rem] text-[var(--yrdly-label)]">
                   {timeAgo(post.timestamp ? new Date(post.timestamp) : null)}
-                  {post.updated_at && (new Date(post.updated_at).getTime() - new Date(post.timestamp).getTime() > 2000) && " (edited)"}
+                  {post.updated_at &&
+                    new Date(post.updated_at).getTime() -
+                      new Date(post.timestamp).getTime() >
+                      2000 &&
+                    " (edited)"}
                 </p>
               </div>
             </div>
@@ -294,113 +390,17 @@ export function PostDetailView({ post, onCommentCountChange }: PostDetailViewPro
             </p>
           </div>
 
-          {/* Image swiper carousel with a full-bleed mobile presentation and tap-to-open lightbox */}
-          {urls.length > 0 && (
-
-            <div className="px-3 pb-4">
-              {urls.length === 1 ? (
-                <div
-                  className="relative w-full overflow-hidden rounded-2xl h-[360px] sm:h-[480px] lg:h-[540px] max-h-[640px] bg-black cursor-pointer group"
-                  onClick={() => setLightboxIndex(0)}
-                >
-                  <Image
-                    src={urls[0]}
-                    alt="Post media"
-                    fill
-className="object-contain"
-  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 60vw, 900px"
-                  />
-                </div>
-              ) : (
-                <div className="relative group w-full overflow-hidden rounded-2xl h-[360px] sm:h-[480px] lg:h-[540px] bg-black">
-                  <div
-                    ref={carouselRef}
-                    onScroll={handleScroll}
-                    className="flex w-full h-full overflow-x-auto overflow-y-hidden overscroll-x-contain snap-x snap-mandatory scroll-smooth"
-                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-                  >
-                    {urls.map((u, i) => (
-                      <div
-                        key={i}
-                        className="relative w-full h-full flex-shrink-0 snap-start cursor-pointer overflow-hidden"
-                        onClick={() => setLightboxIndex(i)}
-                      >
-<Image
-  src={u}
-  alt={`Post media ${i + 1}`}
-  fill
-  className="object-contain"
-                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 60vw, 900px"
-                        />
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Prev / Next Chevrons */}
-                  {activeIndex > 0 && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        scrollToSlide(activeIndex - 1);
-                      }}
-                      className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-black/80"
-                      aria-label="Previous image"
-                    >
-                      <ChevronLeft className="w-5 h-5" />
-                    </button>
-                  )}
-
-                  {activeIndex < urls.length - 1 && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        scrollToSlide(activeIndex + 1);
-                      }}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-black/80"
-                      aria-label="Next image"
-                    >
-                      <ChevronRight className="w-5 h-5" />
-                    </button>
-                  )}
-
-                  {/* Slide Counter Badge */}
-                  <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-[10px] font-bold bg-black/60 text-white z-10 pointer-events-none font-yrdly-body">
-                    {activeIndex + 1} / {urls.length}
-                  </div>
-
-                  {/* Dot Indicators */}
-                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-sm z-10 pointer-events-none">
-                    {urls.map((_, i) => (
-                      <div
-                        key={i}
-                        className={cn(
-                          "h-1.5 rounded-full transition-all duration-200",
-                          i === activeIndex ? "w-4 bg-[#82DB7E]" : "w-1.5 bg-white/60"
-                        )}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Video player */}
-          {hasVideo && videoUrl && (
-            <div className="px-3 pb-4">
-              <div className="relative overflow-hidden rounded-xl bg-black">
-                <video
-                  src={videoUrl.includes('#t=') ? videoUrl : `${videoUrl}#t=0.001`}
-                  controls
-                  playsInline
-                  disablePictureInPicture
-                  controlsList="nodownload noremoteplayback nopictureinpicture"
-                  preload="auto"
-                  poster={post.video_thumbnail_url ?? undefined}
-                  className="max-h-[500px] w-full object-contain lg:max-h-[600px]"
-                  style={{ borderRadius: 12 }}
-                />
-              </div>
+          {mediaItems.length > 0 && (
+            <div className="pb-4">
+              <MediaCollage
+                items={mediaItems}
+                expanded
+                poster={post.video_thumbnail_url ?? undefined}
+                onImageClick={(index) => {
+                  if (mediaItems[index]?.type === "image")
+                    setLightboxIndex(index);
+                }}
+              />
             </div>
           )}
 
@@ -414,15 +414,41 @@ className="object-contain"
                   aria-pressed={isLiked}
                   className="flex items-center justify-center w-11 h-11 p-2.5 rounded-lg bg-[#D9D9D9]/20 hover:bg-accent disabled:cursor-not-allowed"
                 >
-                  <Heart className={cn("w-5 h-5", isLiked && "fill-[#82DB7E] text-[#82DB7E]")} />
+                  <Heart
+                    className={cn(
+                      "w-5 h-5",
+                      isLiked && "fill-[#82DB7E] text-[#82DB7E]",
+                    )}
+                  />
                 </button>
-                <span className="font-sans font-light italic text-xs text-foreground">{formatCount(likes)}</span>
+                <span className="font-sans font-light italic text-xs text-foreground">
+                  {formatCount(likes)}
+                </span>
               </div>
               <div className="flex items-center gap-1.5">
                 <MessageCircleMore className="w-5 h-5 text-foreground" />
-                <span className="font-sans font-light text-xs text-foreground">{formatCount(commentCount)}</span>
+                <span className="font-sans font-light text-xs text-foreground">
+                  {formatCount(commentCount)}
+                </span>
               </div>
-              <button onClick={handleShare} className="p-1 rounded hover:bg-accent">
+              <button
+                onClick={() => void toggleSaved()}
+                disabled={!currentUser}
+                aria-label={saved ? "Remove bookmark" : "Save post"}
+                aria-pressed={saved}
+                className="p-2 rounded hover:bg-accent"
+              >
+                <Bookmark
+                  className={cn(
+                    "w-5 h-5",
+                    saved && "fill-primary text-primary",
+                  )}
+                />
+              </button>
+              <button
+                onClick={handleShare}
+                className="p-1 rounded hover:bg-accent"
+              >
                 <Share2 className="w-6 h-6" />
               </button>
             </div>
@@ -434,22 +460,43 @@ className="object-contain"
                       <MoreHorizontal className="w-6 h-6" />
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="bg-card border-border">
+                  <DropdownMenuContent
+                    align="end"
+                    className="bg-card border-border"
+                  >
                     {(() => {
-                      const canEdit = (Date.now() - new Date(post.created_at || post.timestamp || Date.now()).getTime()) <= 15 * 60 * 1000;
+                      const canEdit =
+                        Date.now() -
+                          new Date(
+                            post.created_at || post.timestamp || Date.now(),
+                          ).getTime() <=
+                        15 * 60 * 1000;
                       if (!canEdit) return null;
-                      
+
                       if (post.category === "Event") {
                         return (
-                          <DropdownMenuItem onClick={() => router.push(`/events/${post.id}/manage`)} className="text-foreground focus:bg-accent cursor-pointer">
+                          <DropdownMenuItem
+                            onClick={() =>
+                              router.push(`/events/${post.id}/manage`)
+                            }
+                            className="text-foreground focus:bg-accent cursor-pointer"
+                          >
                             <Edit className="mr-2 h-4 w-4" /> Manage Event
                           </DropdownMenuItem>
                         );
                       }
 
-                      if ((post as any).category === "For Sale" || (post as any).category === "Giveaway") {
+                      if (
+                        (post as any).category === "For Sale" ||
+                        (post as any).category === "Giveaway"
+                      ) {
                         return (
-                          <DropdownMenuItem onClick={() => router.push(`/marketplace/edit/${post.id}`)} className="text-foreground focus:bg-accent cursor-pointer">
+                          <DropdownMenuItem
+                            onClick={() =>
+                              router.push(`/marketplace/edit/${post.id}`)
+                            }
+                            className="text-foreground focus:bg-accent cursor-pointer"
+                          >
                             <Edit className="mr-2 h-4 w-4" /> Edit Listing
                           </DropdownMenuItem>
                         );
@@ -473,8 +520,13 @@ className="object-contain"
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel className="bg-background/10 text-foreground border-0">Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+                    <AlertDialogCancel className="bg-background/10 text-foreground border-0">
+                      Cancel
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDelete}
+                      className="bg-red-600 hover:bg-red-700"
+                    >
                       Delete
                     </AlertDialogAction>
                   </AlertDialogFooter>
@@ -577,7 +629,9 @@ className="object-contain"
                   onClick={() => setLightboxIndex(i)}
                   className={cn(
                     "w-2.5 h-2.5 rounded-full transition-all",
-                    i === lightboxIndex ? "bg-[#82DB7E] scale-125" : "bg-white/40 hover:bg-white/70"
+                    i === lightboxIndex
+                      ? "bg-[#82DB7E] scale-125"
+                      : "bg-white/40 hover:bg-white/70",
                   )}
                 />
               ))}

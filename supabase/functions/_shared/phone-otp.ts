@@ -18,9 +18,11 @@ export async function authorize(req: Request) {
   const token = req.headers.get('authorization')?.match(/^Bearer\s+(\S+)$/i)?.[1];
   if (!token) return { error: reply({ error: 'Unauthorized' }, 401) };
   const url = Deno.env.get('SUPABASE_URL') || '';
-  const auth = createClient(url, Deno.env.get('SUPABASE_ANON_KEY') || namedKey('SUPABASE_PUBLISHABLE_KEYS'), { auth: { persistSession: false } });
+  const auth = createClient(url, Deno.env.get('SUPABASE_ANON_KEY') || namedKey('SUPABASE_PUBLISHABLE_KEYS'), { global: { headers: { Authorization: `Bearer ${token}` } }, auth: { persistSession: false } });
   const { data, error } = await auth.auth.getUser(token);
   if (error || !data.user) return { error: reply({ error: 'Unauthorized' }, 401) };
+  const active = await auth.rpc('is_current_session_active');
+  if (active.error || active.data !== true) return { error: reply({ error: 'Session revoked' }, 401) };
   const admin = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || namedKey('SUPABASE_SECRET_KEYS'), { auth: { persistSession: false } });
   const profile = await admin.from('users').select('is_suspended,is_banned,status').eq('id', data.user.id).maybeSingle();
   if (profile.error || !profile.data) return { error: reply({ error: 'Account unavailable' }, 503) };

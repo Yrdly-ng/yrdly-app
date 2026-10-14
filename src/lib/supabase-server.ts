@@ -1,10 +1,10 @@
-import { brandedSupabaseUrl } from './supabase-url';
-import { authCookieDomain } from './auth-navigation';
+import { brandedSupabaseUrl } from "./supabase-url";
+import { authCookieDomain } from "./auth-navigation";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { createClient as createJsClient } from "@supabase/supabase-js";
 import { cookies, headers } from "next/headers";
-import { AuthError, type UserResponse } from '@supabase/supabase-js';
-import { isUserSuspendedOrBanned } from './user-suspension';
+import { AuthError, type UserResponse } from "@supabase/supabase-js";
+import { isUserSuspendedOrBanned } from "./user-suspension";
 
 export async function createClient() {
   const cookieStore = await cookies();
@@ -17,13 +17,19 @@ export async function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookieOptions: {
-        name: 'sb-yoiyqxtpmxnrrbqqidcs-auth-token',
+        name: "sb-yoiyqxtpmxnrrbqqidcs-auth-token",
       },
       cookies: {
         getAll() {
           return cookieStore.getAll();
         },
-        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+        setAll(
+          cookiesToSet: {
+            name: string;
+            value: string;
+            options: CookieOptions;
+          }[],
+        ) {
           try {
             cookiesToSet.forEach(({ name, value, options }) => {
               const finalOptions = {
@@ -37,7 +43,7 @@ export async function createClient() {
           }
         },
       },
-    }
+    },
   );
 }
 
@@ -58,24 +64,47 @@ export async function getAuthenticatedUser(request?: Request) {
         {
           global: { headers: { Authorization: `Bearer ${token}` } },
           auth: { autoRefreshToken: false, persistSession: false },
-        }
+        },
       );
-      return authorizeAccount(await supabaseAuth.auth.getUser());
+      return authorizeAccount(await supabaseAuth.auth.getUser(), supabaseAuth);
     }
   }
 
   // Fallback to cookie-based SSR client
   const supabase = await createClient();
-  return authorizeAccount(await supabase.auth.getUser());
+  return authorizeAccount(await supabase.auth.getUser(), supabase);
 }
 
-async function authorizeAccount(result: UserResponse): Promise<UserResponse> {
+async function authorizeAccount(
+  result: UserResponse,
+  client: {
+    rpc: (fn: string) => PromiseLike<{ data: unknown; error: unknown }>;
+  },
+): Promise<UserResponse> {
   if (result.error || !result.data.user) return result;
   try {
+    const active = await client.rpc("is_current_session_active");
+    if (active.error)
+      return {
+        data: { user: null },
+        error: new AuthError("Session status unavailable", 503),
+      };
+    if (active.data !== true)
+      return {
+        data: { user: null },
+        error: new AuthError("Session revoked. Please sign in again.", 401),
+      };
     const state = await isUserSuspendedOrBanned(result.data.user.id);
-    if (state.suspended) return { data: { user: null }, error: new AuthError('Account suspended', 403) };
+    if (state.suspended)
+      return {
+        data: { user: null },
+        error: new AuthError("Account suspended", 403),
+      };
   } catch {
-    return { data: { user: null }, error: new AuthError('Account status unavailable', 503) };
+    return {
+      data: { user: null },
+      error: new AuthError("Account status unavailable", 503),
+    };
   }
   return result;
 }

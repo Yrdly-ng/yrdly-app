@@ -22,9 +22,11 @@ serve(async (req) => {
     if (!backendKey) {
       const token = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
       if (!token) return reply({ error: 'Unauthorized' }, 401);
-      const auth = createClient(url, Deno.env.get('SUPABASE_ANON_KEY') || namedKeys('SUPABASE_PUBLISHABLE_KEYS')[0] || '');
+      const auth = createClient(url, Deno.env.get('SUPABASE_ANON_KEY') || namedKeys('SUPABASE_PUBLISHABLE_KEYS')[0] || '', { global: { headers: { Authorization: `Bearer ${token}` } } });
       const { data, error } = await auth.auth.getUser(token);
       if (error || !data.user) return reply({ error: 'Unauthorized' }, 401);
+      const active = await auth.rpc('is_current_session_active');
+      if (active.error || active.data !== true) return reply({ error: 'Session revoked' }, 401);
       userId = data.user.id;
     }
     const reader = req.body?.getReader();
