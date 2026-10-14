@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main, fix/audit-oct-2026]
+    paths-ignore: ['docs/**', '**/*.md']
 
 permissions:
   contents: read
