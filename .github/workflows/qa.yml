@@ -3,7 +3,7 @@ name: Isolated QA
 on:
   workflow_dispatch:
   push:
-    branches: [fix/audit-oct-2026]
+    branches: [main, fix/audit-oct-2026]
 
 permissions:
   contents: read
