@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from './use-supabase-auth';
-import { authenticatedFetch } from '@/lib/authenticated-fetch';
-import { parsePrivateMediaReference } from '@/lib/private-media';
+import { authenticatedFetch } from '@/lib/auth/authenticated-fetch';
+import { parsePrivateMediaReference } from '@/lib/media/private-media';
 
 export async function resolvePrivateMediaSource(source: string): Promise<string> {
   const reference = parsePrivateMediaReference(source);

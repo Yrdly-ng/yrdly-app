@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TicketService } from '@/lib/ticket-service';
-import { getAuthenticatedUser } from '@/lib/supabase-server';
+import { TicketService } from '@/lib/events/ticket-service';
+import { getAuthenticatedUser } from '@/lib/supabase/supabase-server';
 
 export async function POST(request: NextRequest) {
   try {

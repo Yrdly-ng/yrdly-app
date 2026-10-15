@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getAuthenticatedUser } from '@/lib/supabase-server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
-import { PaylukService } from '@/lib/payluk-service';
-import { applyDisputeSettlement } from '@/lib/dispute-settlement';
+import { getAuthenticatedUser } from '@/lib/supabase/supabase-server';
+import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
+import { PaylukService } from '@/lib/payments/payluk-service';
+import { applyDisputeSettlement } from '@/lib/disputes/dispute-settlement';
 
 const reconcileSchema = z.object({
   outcome: z.enum(['applied', 'not_applied']),

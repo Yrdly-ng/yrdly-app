@@ -3,9 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase/supabase";
 import type { Post as PostType } from "@/types";
-import { NotificationTriggers } from "@/lib/notification-triggers";
+import { NotificationTriggers } from "@/lib/notifications/notification-triggers";
 
 export function useMarketplaceActions() {
   const router = useRouter();

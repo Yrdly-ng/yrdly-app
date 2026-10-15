@@ -1,10 +1,10 @@
 "use client";
 
-import { BusinessChatScreen } from "@/components/BusinessChatScreen";
+import { BusinessChatScreen } from "@/components/messages/BusinessChatScreen";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
-import { supabase } from "@/lib/supabase";
-import { NotificationService } from "@/lib/notification-service";
+import { supabase } from "@/lib/supabase/supabase";
+import { NotificationService } from "@/lib/notifications/notification-service";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import type { Business, CatalogItem } from "@/types";
 

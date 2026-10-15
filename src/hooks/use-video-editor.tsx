@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 
-const VideoEditDialog = dynamic(() => import("@/components/VideoEditDialog"), {
+const VideoEditDialog = dynamic(() => import("@/components/media/VideoEditDialog"), {
   ssr: false,
 });
 const ALLOWED = new Set(["video/mp4", "video/webm", "video/quicktime"]);

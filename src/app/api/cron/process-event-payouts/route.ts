@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { EventEscrowService } from '@/lib/event-escrow-service';
+import { EventEscrowService } from '@/lib/events/event-escrow-service';
 
 /**
  * GET /api/cron/process-event-payouts

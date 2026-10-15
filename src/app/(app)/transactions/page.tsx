@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/hooks/use-supabase-auth';
-import { EscrowService } from '@/lib/escrow-service';
+import { EscrowService } from '@/lib/payments/escrow-service';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Package, ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -43,7 +43,7 @@ export default function TransactionsPage() {
     if (!user) return;
     setLoading(true);
     try {
-      const { supabase } = await import('@/lib/supabase');
+      const { supabase } = await import('@/lib/supabase/supabase');
       const { data: { session } } = await supabase.auth.getSession();
 
       const response = await fetch('/api/transactions', {

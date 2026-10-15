@@ -1,15 +1,15 @@
 "use client";
 
-import { safeRelativePath } from '@/lib/auth-navigation';
+import { safeRelativePath } from '@/lib/auth/auth-navigation';
 
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { SceneBg, GlassCard, GlassInput, StepBar, PrimaryBtn } from '@/components/onboarding/primitives';
-import { AuthService } from '@/lib/auth-service';
-import { StorageService } from '@/lib/storage-service';
+import { AuthService } from '@/lib/auth/auth-service';
+import { StorageService } from '@/lib/media/storage-service';
 import { useAuth } from '@/hooks/use-supabase-auth';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase/supabase';
 import { useGpsLocation } from '@/hooks/use-gps-location';
 import { Camera, MapPin, Navigation, AlertTriangle, Loader2, Heart, ArrowLeft, ArrowRight } from 'lucide-react';
 import POPULAR_INTERESTS from '@/data/interests.json';
@@ -317,7 +317,7 @@ function OnboardingProfileContent() {
         welcome_message_sent: true,
       } as any);
 
-      const { NotificationTriggers } = await import('@/lib/notification-triggers');
+      const { NotificationTriggers } = await import('@/lib/notifications/notification-triggers');
       await NotificationTriggers.onUserSignup(user.id, handle.trim() || user.user_metadata?.name || 'neighbor');
 
       router.replace(`/onboarding/tour${nextPath ? `?next=${encodeURIComponent(nextPath)}` : ''}`);

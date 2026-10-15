@@ -13,6 +13,9 @@ function load(file, mocks = {}) {
   const module = { exports: {} };
   const localRequire = id => {
     if (Object.hasOwn(mocks, id)) return mocks[id];
+    const basename = path.basename(id).replace(/\.tsx?$/, '');
+    const mockKey = Object.keys(mocks).find(key => path.basename(key).replace(/\.tsx?$/, '') === basename);
+    if (mockKey) return mocks[mockKey];
     if (id === 'next/server') return { NextRequest: Request, NextResponse: { json: (body, init) => Response.json(body, init) } };
     if (id === 'server-only') return {};
     if (id.startsWith('@/')) return load(`src/${id.slice(2)}.ts`, mocks);
@@ -49,7 +52,7 @@ for (const scenario of ['success','retry','mismatch','uncertain','lost-claim','o
         q.update=payload=>{if(scenario==='lost-claim')return chain({data:null});Object.assign(tx,payload);return chain({data:{id:tx.id}});};return q;
       },
     };
-    const {createCheckoutForBooking}=load('src/lib/booking-payments.ts',{
+    const {createCheckoutForBooking}=load('src/lib/bookings/booking-payments.ts',{
       './supabase-admin':{supabaseAdmin:admin},
       './payment-reconciliation':{flagPayment:async()=>{flags++;}},
       './escrow-payment':{applyEscrowPayment:async()=>{throw new Error('Unpaid checkout must not be fulfilled');}},
@@ -79,7 +82,7 @@ for (const scenario of ['success','retry','mismatch','uncertain','lost-claim','o
 }
 
 test('booking percentage deposits retain kobo precision',()=>{
-  const {computeDepositAmount}=load('src/lib/booking-payments.ts',{'./supabase-admin':{supabaseAdmin:{}},'./payluk-service':{PaylukService:{}},'./payluk-onboarding':{},'./payment-reconciliation':{},'./escrow-payment':{}});
+  const {computeDepositAmount}=load('src/lib/bookings/booking-payments.ts',{'./supabase-admin':{supabaseAdmin:{}},'./payluk-service':{PaylukService:{}},'./payluk-onboarding':{},'./payment-reconciliation':{},'./escrow-payment':{}});
   assert.equal(computeDepositAmount({price:12345.67,deposit_percent:15}),1851.85);
   assert.equal(computeDepositAmount({price:12345.67,deposit_amount:1001.11,deposit_percent:15}),1001.11);
 });
@@ -88,7 +91,7 @@ for(const scenario of ['unpaid','read-timeout','delete-timeout','paid','outsider
   test(`booking checkout cancellation protects funds: ${scenario}`,async()=>{
     let deleted=0,flags=0,applied=0;
     const tx={id:'order',buyer_id:'buyer',seller_id:'seller',item_id:'booking',item_type:'booking',status:scenario==='in-flight'?'creating_escrow':'pending',amount:2500,commission:75,payluk_tx_ref:'PY_TOKEN',payluk_escrow_id:'escrow-id',metadata:{payluk_fee_mode:'buyer_commission_v1'}};
-    const {cancelBookingCheckout}=load('src/lib/booking-payments.ts',{
+    const {cancelBookingCheckout}=load('src/lib/bookings/booking-payments.ts',{
       './supabase-admin':{supabaseAdmin:{from:()=>{const q=chain({data:scenario==='outsider'?null:tx});q.update=p=>{Object.assign(tx,p);return chain({data:{id:tx.id}});};return q;}}},
       './payluk-onboarding':{getPaylukCustomerId:async()=> 'provider-seller'},
       './payment-reconciliation':{flagPayment:async()=>{flags++;}},
@@ -106,7 +109,7 @@ for(const scenario of ['success','paid-replay','unpaid','fee-mismatch','principa
   test(`booking verification requires the owned settled amount: ${scenario}`,async()=>{
     let applied=0,flags=0,verified=0;
     const tx={id:'order',buyer_id:'buyer',item_id:'booking',status:scenario==='paid-replay'?'paid':'pending',amount:2500,commission:75,payluk_tx_ref:'PY_TOKEN',payluk_escrow_id:'escrow-id',metadata:{payluk_fee_mode:'buyer_commission_v1'}};
-    const {verifyBookingCheckout}=load('src/lib/booking-payments.ts',{
+    const {verifyBookingCheckout}=load('src/lib/bookings/booking-payments.ts',{
       './supabase-admin':{supabaseAdmin:{from:()=>{const q=chain({data:scenario==='outsider'?null:tx});q.eq=(column,value)=>{if(column==='buyer_id')assert.equal(value,scenario==='outsider'?'outsider':'buyer');return q;};return q;}}},
       './payluk-service':{PaylukService:{verifyEscrow:async()=>{verified++;return{status:scenario==='unpaid'?'PENDING':'ONGOING',amount:scenario==='principal-mismatch'?2501:2500,additionalFee:scenario==='fee-mismatch'?0:75,whoPays:'seller'};}}},
       './payluk-onboarding':{},'./payment-reconciliation':{flagPayment:async()=>{flags++;}},'./escrow-payment':{applyEscrowPayment:async()=>{applied++;}},
@@ -231,7 +234,7 @@ for (const credential of ['anonymous','publishable','user-jwt','forged-secret','
 }
 
 test('server functions send modern secret only on apikey and preserve timeout/error handling', async () => {
-  const { invokeServerFunction } = load('src/lib/server-functions.ts', {
+  const { invokeServerFunction } = load('src/lib/notifications/server-functions.ts', {
     env: { SUPABASE_SERVICE_ROLE_KEY: 'sb_secret_backend-only', NEXT_PUBLIC_SUPABASE_URL: 'https://qa.invalid' },
     fetch: async (_url, options) => {
       assert.equal(options.headers.apikey, 'sb_secret_backend-only');
@@ -276,7 +279,7 @@ for (const scenario of ['safe-public','unsafe-public','pending-copy-fails','safe
 }
 
 test('seller balance excludes ticket revenue and reserves pending withdrawals', async () => {
-  const { PayoutService } = load('src/lib/payout-service.ts', {
+  const { PayoutService } = load('src/lib/payments/payout-service.ts', {
     './supabase-admin': { supabaseAdmin: { from: table => chain({ data: table === 'escrow_transactions'
       ? [{ seller_amount:1000,status:'completed',item_type:'post',payment_provider:'payluk' },{ seller_amount:9000,status:'completed',item_type:'ticket',payment_provider:'payluk' },{ seller_amount:5000,status:'completed',item_type:'post',payment_provider:'retired-provider' }]
       : [{ amount:100,status:'completed' },{ amount:200,status:'processing' }] }) } },
@@ -328,7 +331,7 @@ function payoutHarness({ verifyStatus = 'success', walletBalance = 2500, earning
       payout={id:'owned-payout',seller_id:'seller',amount:1200,status:'pending'};return {data:payout.id};
     },
   };
-  const {PaylukService} = load('src/lib/payluk-service.ts',{'./payluk-onboarding':{},fetch:async (url,options)=>{
+  const {PaylukService} = load('src/lib/payments/payluk-service.ts',{'./payluk-onboarding':{},fetch:async (url,options)=>{
     calls.push(new URL(url).pathname);
     if (url.endsWith('/wallet')) return Response.json({status:200,data:{mainBalance:walletBalance}});
     if (url.endsWith('/create-intent')) {
@@ -340,7 +343,7 @@ function payoutHarness({ verifyStatus = 'success', walletBalance = 2500, earning
     if (verifyStatus==='timeout') throw new Error('Verify response lost');
     return Response.json({status:200,data:{status:verifyStatus}});
   }});
-  const {PayoutService} = load('src/lib/payout-service.ts',{
+  const {PayoutService} = load('src/lib/payments/payout-service.ts',{
     './supabase-admin':{supabaseAdmin:admin},'./payluk-service':{PaylukService},
     './payluk-onboarding':{getPaylukCustomerId:async()=>{calls.push('/v1/customer/get/validated');return 'customer';}},
     './server-notification-service':{NotificationService:{createPayoutProcessedNotification:async()=>{},createPayoutFailedNotification:async()=>{}}},
@@ -372,7 +375,7 @@ for(const status of ['pending','timeout']) test(`payout ${status} retains its su
 
 test('withdrawal execution retains other reservations and rejects insufficient provider funds before staging',async()=>{
   const h=payoutHarness();const id=await h.PayoutService.reservePayout('seller','bank',1200);
-  const {PaylukService}=load('src/lib/payluk-service.ts',{'./payluk-onboarding':{},fetch:async url=>{
+  const {PaylukService}=load('src/lib/payments/payluk-service.ts',{'./payluk-onboarding':{},fetch:async url=>{
     assert.ok(url.endsWith('/wallet'),'No intent may be staged with insufficient wallet funds');
     return Response.json({status:200,data:{mainBalance:1199}});
   }});
@@ -433,7 +436,7 @@ for(const scenario of ['preparing-failed','preparing-processing','submitted-miss
 }
 
 test('authenticated GET sends no request body', async () => {
-  const { authenticatedFetch } = load('src/lib/authenticated-fetch.ts', {
+  const { authenticatedFetch } = load('src/lib/auth/authenticated-fetch.ts', {
     './supabase':{ supabase:{ auth:{ getSession:async ()=>({ data:{ session:{ access_token:'test-token' } } }) } } },
     fetch:async (_url,options)=>{ assert.equal(options.method,'GET');assert.equal(options.body,undefined);return Response.json({ payouts:[] }); },
   });
@@ -473,7 +476,7 @@ for (const status of ['REFUNDED', 'COMPLETED', 'SPLIT']) {
     let finalized = false, sent;
     const refund = status === 'REFUNDED' ? 1000 : status === 'SPLIT' ? 400 : 0;
     const seller = 1000 - refund;
-    const service = load('src/lib/payluk-service.ts', { './payluk-onboarding': {}, fetch: async (_url, options) => {
+    const service = load('src/lib/payments/payluk-service.ts', { './payluk-onboarding': {}, fetch: async (_url, options) => {
       if (options.method === 'GET') return Response.json({status:200,data:{id:'owned-escrow',status}});
       sent = options.body;
       const hasAllocation = sent.has('sellerAmount') || sent.has('buyerAmount');
@@ -503,7 +506,7 @@ for (const status of ['REFUNDED', 'COMPLETED', 'SPLIT']) {
 
 test('marketplace message writes once to messages without requiring item_chats', async () => {
   const writes = [];
-  const { SupabaseChatService } = load('src/lib/supabase-chat-service.ts', {
+  const { SupabaseChatService } = load('src/lib/supabase/supabase-chat-service.ts', {
     '@/lib/supabase':{ supabase:{ from:table => {
       assert.notEqual(table,'chat_messages');assert.notEqual(table,'item_chats');
       const q = chain({ data:{ participant_ids:['seller'] } });
@@ -517,7 +520,7 @@ test('marketplace message writes once to messages without requiring item_chats',
 });
 
 test('onboarding rejects an unverified phone before calling Payluk', async () => {
-  const { ensurePaylukCustomer } = load('src/lib/payluk-onboarding.ts', {
+  const { ensurePaylukCustomer } = load('src/lib/payments/payluk-onboarding.ts', {
     './supabase-admin': { supabaseAdmin: { from: () => chain({ data: { phone: '08012345678', phone_verified: false } }) } },
     './payluk-service': { PaylukService: {} },
   });
@@ -526,7 +529,7 @@ test('onboarding rejects an unverified phone before calling Payluk', async () =>
 
 test('stored Payluk identity with a different phone is rejected without remapping', async () => {
   let reads = 0;
-  const { ensurePaylukCustomer } = load('src/lib/payluk-onboarding.ts', {
+  const { ensurePaylukCustomer } = load('src/lib/payments/payluk-onboarding.ts', {
     './supabase-admin': { supabaseAdmin: { from: () => { reads++; return chain({ data: { phone: '08012345678', phone_verified: true, payluk_customer_id: 'existing' } }); } } },
     './payluk-service': { PaylukService: { getCustomerById: async () => ({ customerId: 'existing', phone: '08098765432' }) } },
   });
@@ -536,7 +539,7 @@ test('stored Payluk identity with a different phone is rejected without remappin
 
 test('Payluk mapping held by another Yrdly user is rejected', async () => {
   let reads = 0;
-  const { ensurePaylukCustomer } = load('src/lib/payluk-onboarding.ts', {
+  const { ensurePaylukCustomer } = load('src/lib/payments/payluk-onboarding.ts', {
     './supabase-admin': { supabaseAdmin: { from: () => chain({ data: ++reads === 1
       ? { phone: '08012345678', phone_verified: true, payluk_customer_id: 'existing' } : [{ id: 'other' }] }) } },
     './payluk-service': { PaylukService: { getCustomerById: async () => ({ customerId: 'existing', phone: '+2348012345678' }) } },
@@ -555,7 +558,7 @@ test('escrow transition refuses another seller', async () => {
 });
 
 test('payout accounts enforce verification and cooling period', () => {
-  const { payoutAccountError } = load('src/lib/payout-account.ts');
+  const { payoutAccountError } = load('src/lib/payments/payout-account.ts');
   assert.match(payoutAccountError({ is_active: true, verification_status: 'pending' }), /verified/);
   assert.match(payoutAccountError({ is_active: true, verification_status: 'verified', account_updated_at: new Date().toISOString() }), /24 hours/);
   assert.equal(payoutAccountError({ is_active: true, verification_status: 'verified', account_updated_at: null }), null);
@@ -567,7 +570,7 @@ for (const [status, expected] of [['pending','pending'],['failed','failed'],['su
   test(`withdrawal envelope 200 with ${status} yields ${expected}`, async () => {
     let persisted = false;
     let executions = 0;
-    const { PaylukService } = load('src/lib/payluk-service.ts', {
+    const { PaylukService } = load('src/lib/payments/payluk-service.ts', {
       './payluk-onboarding': {},
       fetch: async (url, options) => {
         if (url.endsWith('/v1/wallet')) return Response.json({ status: 200, data: { mainBalance: 10000 } });
@@ -592,7 +595,7 @@ for (const [status, expected] of [['pending','pending'],['failed','failed'],['su
 }
 
 test('network loss after transfer execution keeps the result pending', async () => {
-  const { PaylukService } = load('src/lib/payluk-service.ts', { './payluk-onboarding': {}, fetch: async (url, options) => {
+  const { PaylukService } = load('src/lib/payments/payluk-service.ts', { './payluk-onboarding': {}, fetch: async (url, options) => {
     if (url.endsWith('/v1/wallet')) return Response.json({ status: 200, data: { mainBalance: 10000 } });
     if (url.endsWith('/v1/payment/create-intent')) {
       const intent = JSON.parse(options.body);
@@ -609,7 +612,7 @@ test('network loss after transfer execution keeps the result pending', async () 
 for (const bankCode of ['999992', '044', 'provider-bank-code']) {
   test(`bank-list code ${bankCode} survives account resolution, preview and withdrawal`, async () => {
     let intents = 0, executions = 0;
-    const { PaylukService } = load('src/lib/payluk-service.ts', {
+    const { PaylukService } = load('src/lib/payments/payluk-service.ts', {
       './payluk-onboarding': {},
       fetch: async (url, options) => {
         if (url.endsWith('/v1/payment/bank-list')) return Response.json({ status: 200, data: [{ name: 'QA Bank', code: bankCode }] });
@@ -642,20 +645,20 @@ for (const bankCode of ['999992', '044', 'provider-bank-code']) {
 }
 
 test('suspension lookup errors fail closed', async () => {
-  const { isUserSuspendedOrBanned } = load('src/lib/user-suspension.ts', {
+  const { isUserSuspendedOrBanned } = load('src/lib/moderation/user-suspension.ts', {
     './supabase-admin': { supabaseAdmin: { from: () => chain({ error: { message: 'database unavailable' } }) } },
   });
   await assert.rejects(isUserSuspendedOrBanned('user'), /could not be verified/);
 });
 
 test('provider references never get compared with a UUID id column', () => {
-  const { paymentReferenceFilter } = load('src/lib/payment-state.ts');
+  const { paymentReferenceFilter } = load('src/lib/payments/payment-state.ts');
   assert.equal(paymentReferenceFilter('provider-123', ['id','payment_reference']), 'payment_reference.eq.provider-123');
   assert.throws(() => paymentReferenceFilter('x,amount.gt.0', ['id','payment_reference']), /Invalid payment reference/);
 });
 
 test('organizer-paid commission preserves ticket price and verifies the provider fee allocation', () => {
-  const { paylukAmountsMatch, paylukEscrowPrincipal } = load('src/lib/payment-state.ts');
+  const { paylukAmountsMatch, paylukEscrowPrincipal } = load('src/lib/payments/payment-state.ts');
   const ticket = { amount: 2500, commission: 75, metadata: { payluk_fee_mode: 'seller_commission_v1' } };
   assert.equal(paylukEscrowPrincipal(ticket), 2425);
   assert.equal(paylukAmountsMatch(ticket, { amount: 2425, additionalFee: 75, whoPays: 'seller' }), true);
@@ -696,7 +699,7 @@ test(`event payout ${scenario} includes USED tickets and only withdraws released
     };
     return query;
   } };
-  const { EventEscrowService } = load('src/lib/event-escrow-service.ts', {
+  const { EventEscrowService } = load('src/lib/events/event-escrow-service.ts', {
     '@supabase/supabase-js': { createClient: () => admin },
     './payluk-service': { PaylukService: {
       verifyEscrow: async token => { assert.equal(token, 'owned-token'); return { status: scenario === 'held' || (scenario === 'claim-timeout-confirmed' && !claims) ? 'ONGOING' : 'COMPLETED', amount: 1940, fee: 38.80, additionalFee: 60, whoPays: 'seller' }; },
@@ -841,7 +844,7 @@ for (const scenario of ['pending', 'funded', 'new-buyer']) {
 }
 
 test('late payment is held for reconciliation instead of reporting success', async () => {
-  const { applyEscrowPayment } = load('src/lib/escrow-payment.ts', {
+  const { applyEscrowPayment } = load('src/lib/payments/escrow-payment.ts', {
     './supabase-admin': { supabaseAdmin: { rpc: async () => ({ data:'review' }) } },
     './payment-reconciliation': {},
   });
@@ -934,7 +937,7 @@ test('legacy payment success webhook verifies escrowDetails.paymentToken', async
 
 test('payment write failure records a durable reconciliation flag before returning failure', async () => {
   let flagged = false;
-  const { applyEscrowPayment } = load('src/lib/escrow-payment.ts', {
+  const { applyEscrowPayment } = load('src/lib/payments/escrow-payment.ts', {
     './supabase-admin': { supabaseAdmin: { rpc: async () => ({ error:{ code:'db-error' } }) } },
     './payment-reconciliation': { flagPayment: async () => { flagged = true; } },
   });
@@ -944,7 +947,7 @@ test('payment write failure records a durable reconciliation flag before returni
 
 
 test('auth redirect rejects backslashes and external origins', () => {
-  const { safeRelativePath,authCookieDomain } = load('src/lib/auth-navigation.ts');
+  const { safeRelativePath,authCookieDomain } = load('src/lib/auth/auth-navigation.ts');
   for (const input of ['/\\attacker.example/path','//attacker.example','https://attacker.example','/ /evil']) assert.equal(safeRelativePath(input,'/home'),'/home');
   assert.equal(safeRelativePath('/my-tickets?success=1'),'/my-tickets?success=1');
   assert.equal(authCookieDomain('preview.vercel.app'),undefined);
@@ -965,7 +968,7 @@ for (const host of ['localhost:9002','audit-preview.vercel.app','app.yrdly.ng'])
 for (const scenario of ['allowed','disallowed','redirect','oversize','timeout']) {
   test(`image loader ${scenario}`, async () => {
     let calls = 0;
-    const { fetchSafeImage } = load('src/lib/safe-image-fetch.ts', { fetch:async (_url,options) => {
+    const { fetchSafeImage } = load('src/lib/media/safe-image-fetch.ts', { fetch:async (_url,options) => {
       calls++;assert.equal(options.redirect,'manual');assert.ok(options.signal);
       if (scenario === 'timeout') throw new DOMException('Timed out','TimeoutError');
       if (scenario === 'redirect') return new Response(null,{ status:302,headers:{ location:'http://127.0.0.1' } });
@@ -981,7 +984,7 @@ for (const scenario of ['allowed','disallowed','redirect','oversize','timeout'])
 for (const scenario of ['found', 'missing', 'bad-phone', 'unauthorized', 'locked', 'server-error']) {
   test(`Payluk phone lookup distinguishes absent customers from provider failures: ${scenario}`, async () => {
     const http = { found: 200, missing: 400, 'bad-phone': 400, unauthorized: 401, locked: 423, 'server-error': 500 }[scenario];
-    const { PaylukService, PaylukRequestError } = load('src/lib/payluk-service.ts', {
+    const { PaylukService, PaylukRequestError } = load('src/lib/payments/payluk-service.ts', {
       './payluk-onboarding': {},
       fetch: async () => Response.json(scenario === 'found'
         ? { status: 200, data: { data: [{ customerId: 'fixture-customer', phone: '+2348012345678' }] } }
@@ -995,7 +998,7 @@ for (const scenario of ['found', 'missing', 'bad-phone', 'unauthorized', 'locked
 
 test('new payment identity is created from confirmed Auth email and bound to the verified phone', async () => {
   let reads = 0, created = 0;
-  const { ensurePaylukCustomer } = load('src/lib/payluk-onboarding.ts', {
+  const { ensurePaylukCustomer } = load('src/lib/payments/payluk-onboarding.ts', {
     './supabase-admin': { supabaseAdmin: {
       from: () => chain({ data: ++reads === 1 ? { phone: '08012345678', phone_verified: true, legal_name: 'Fixture Buyer' } : reads === 2 ? [] : { payluk_customer_id: 'new-customer' } }),
       auth: { admin: { getUserById: async () => ({ data: { user: { email: 'confirmed@example.test', email_confirmed_at: '2026-10-10' } } }) } },
@@ -1017,7 +1020,7 @@ test('new payment identity is created from confirmed Auth email and bound to the
 
 test('onboarding has an overall deadline and never scans customer pages', async () => {
   let lookups = 0;
-  const { ensurePaylukCustomer } = load('src/lib/payluk-onboarding.ts', {
+  const { ensurePaylukCustomer } = load('src/lib/payments/payluk-onboarding.ts', {
     globals:{ setTimeout:callback => setTimeout(callback,1) },
     './supabase-admin': { supabaseAdmin:{ from:()=>chain({ data:{ phone:'08012345678',phone_verified:true } }) } },
     './payluk-service': { PaylukService:{ getCustomerByPhone:()=> { lookups++;return new Promise(()=>{}); },listCustomers:()=> { throw Error('Never scan'); } } },
@@ -1067,7 +1070,7 @@ test('push edge function rejects a regular user token before reading subscriptio
 });
 
 test('private media references preserve object names and recognize historical project URLs', () => {
-  const media = load('src/lib/private-media.ts');
+  const media = load('src/lib/media/private-media.ts');
   const objectPath = 'chat/12345678-1234-1234-1234-123456789abc/photo with space.png';
   const reference = media.privateMediaReference('chat-images', objectPath);
   assert.equal(media.parsePrivateMediaReference(reference).path, objectPath);
@@ -1082,7 +1085,7 @@ test('private media references preserve object names and recognize historical pr
 
 for (const objectPath of ['../secret', 'chat//photo', 'chat/./photo', 'chat/%2e%2e/photo', 'chat/\\photo', 'chat/photo?token=x', 'chat/photo#fragment', 'chat/\u0000photo']) {
   test(`private media rejects unsafe object path ${JSON.stringify(objectPath)}`, () => {
-    const { validatePrivateMediaPath } = load('src/lib/private-media.ts');
+    const { validatePrivateMediaPath } = load('src/lib/media/private-media.ts');
     assert.throws(() => validatePrivateMediaPath(objectPath), /Invalid media path/);
   });
 }
@@ -1175,7 +1178,7 @@ test('private media clears access on account changes and discards stale signer r
 for (const missing of ['NEXT_PUBLIC_SUPABASE_URL','SUPABASE_SERVICE_ROLE_KEY']) {
   test(`admin client refuses missing ${missing} without an anonymous fallback`, () => {
     let creations = 0;
-    assert.throws(()=>load('src/lib/supabase-admin.ts', {
+    assert.throws(()=>load('src/lib/supabase/supabase-admin.ts', {
       env:{ NEXT_PUBLIC_SUPABASE_URL:'https://test.invalid', SUPABASE_SERVICE_ROLE_KEY:'server-test', NEXT_PUBLIC_SUPABASE_ANON_KEY:'anonymous-test', [missing]:'' },
       '@supabase/supabase-js': { createClient:()=>{ creations++; return {}; } },
     }), /Server Supabase configuration is missing/);
@@ -1218,7 +1221,7 @@ test('service worker never caches private storage URLs or signing responses', ()
 });
 
 test('private image rendering bypasses the shared Next.js image cache', () => {
-  const { PrivateMediaImage } = load('src/components/PrivateMedia.tsx', {
+  const { PrivateMediaImage } = load('src/components/media/PrivateMedia.tsx', {
     '@/hooks/use-private-media':{ usePrivateMedia:()=>({ url:'https://signed.example/private',error:false }) },
     'next/image':{ __esModule:true,default:'image' }, 'react/jsx-runtime':{ jsx:(type,props)=>({ type,props }) },
   });
@@ -1230,7 +1233,7 @@ test('private image rendering bypasses the shared Next.js image cache', () => {
 for (const enabled of [false,true]) {
   test(`private media reference rollout ${enabled ? 'enabled' : 'disabled'} preserves shared-client compatibility`, () => {
     let publicUrls = 0;
-    const { StorageService } = load('src/lib/storage-service.ts', {
+    const { StorageService } = load('src/lib/media/storage-service.ts', {
       env:{ NEXT_PUBLIC_PRIVATE_MEDIA_REFERENCES:String(enabled) },
       './supabase':{ supabase:{ storage:{ from:bucket=>({ getPublicUrl:objectPath=>{
         publicUrls++; return { data:{ publicUrl:`https://api.yrdly.ng/storage/v1/object/public/${bucket}/${objectPath}` } };
@@ -1239,7 +1242,7 @@ for (const enabled of [false,true]) {
     const source = StorageService.getPublicUrl('chat-images', `${mediaConversation}/photo.png`);
     assert.equal(source.startsWith('storage://'), enabled);
     assert.equal(publicUrls, enabled ? 0 : 1);
-    const parsed = load('src/lib/private-media.ts').parsePrivateMediaReference(source);
+    const parsed = load('src/lib/media/private-media.ts').parsePrivateMediaReference(source);
     assert.equal(parsed.path, `${mediaConversation}/photo.png`);
     assert.equal(parsed.bucket, 'chat-images');
   });
@@ -1296,7 +1299,7 @@ for (const scenario of ['missing', 'unsupported', 'other-buyer', 'pending', 'amo
       item_type: 'ticket', payment_provider: scenario === 'unsupported' ? 'retired-provider' : 'payluk',
       payluk_tx_ref: 'PY_TOKEN', status: scenario === 'replay' ? 'paid' : 'pending', amount: 2000,
       ...(scenario.startsWith('organizer-') ? { commission: 60, metadata: { payluk_fee_mode: 'seller_commission_v1' } } : {}) };
-    const { TicketService } = load('src/lib/ticket-service.ts', {
+    const { TicketService } = load('src/lib/events/ticket-service.ts', {
       '@/lib/supabase-admin': { supabaseAdmin: { from: () => {
         const q = chain({ data: scenario === 'missing' ? null : tx });
         q.update = () => { updated++; if (scenario === 'concurrent-callback') { tx.status = 'paid'; return chain({ data: null }); } return chain({ data: { ...tx, status: 'paid' } }); };
@@ -1347,7 +1350,7 @@ for (const scenario of ['success', 'provider-failure', 'commission-failure', 'on
         }; return q;
       },
     };
-    const { createTicketCheckout } = load('src/lib/ticket-checkout.ts', {
+    const { createTicketCheckout } = load('src/lib/events/ticket-checkout.ts', {
       '@/lib/supabase-admin': { supabaseAdmin: admin },
       '@/lib/payluk-onboarding': { getPaylukCustomerId: async id => { if (scenario === 'onboarding-failure') throw new Error('Phone verification required'); return 'provider-' + id; } },
       '@/lib/ticket-service': { TicketService: {} },
@@ -1386,7 +1389,7 @@ for (const scenario of ['unpaid', 'read-timeout', 'delete-timeout', 'paid', 'out
     let deleted = 0, released = 0, flags = 0;
     const tx = { id: 'order', item_type: 'ticket', buyer_id: 'buyer', seller_id: 'organizer', status: scenario === 'in-flight' ? 'creating_escrow' : 'pending',
       payluk_escrow_id: 'escrow', payluk_tx_ref: 'PY_TOKEN', amount: 4000, commission: 120, metadata: { payluk_fee_mode: 'seller_commission_v1' } };
-    const { cancelTicketCheckout } = load('src/lib/ticket-checkout.ts', {
+    const { cancelTicketCheckout } = load('src/lib/events/ticket-checkout.ts', {
       '@/lib/supabase-admin': { supabaseAdmin: {
         from: () => { const q = chain({ data: tx }); q.update = payload => { Object.assign(tx,payload); return chain({ data: { id:tx.id } }); }; return q; },
         rpc: async (name,args) => { assert.equal(name,'release_ticket_checkout'); assert.equal(args.p_deleted_escrow_id,'escrow'); released++; tx.status='cancelled'; return {error:null}; },
@@ -1520,7 +1523,7 @@ for (const scenario of ['replay', 'fulfillment-failure']) {
 }
 
 test('Payluk test-mode account resolution fails closed on provider errors', async () => {
-  const { PaylukService } = load('src/lib/payluk-service.ts', {
+  const { PaylukService } = load('src/lib/payments/payluk-service.ts', {
     env: { PAYLUK_SECRET_KEY: 'sk_test_fixture' }, './payluk-onboarding': {},
     fetch: async () => { throw new Error('Test provider unavailable'); },
   });
@@ -1535,7 +1538,7 @@ for (const [mode,amount,commission,fee,refund,seller,expectedBuyer,expectedSelle
  ['buyer_commission_v1',2500,75,50,2500,0,2450,0],
  ['buyer_commission_v1',2500,75,50,0,2500,0,2450],
 ]) test(`dispute allocation conserves the actual pool: ${mode}/${refund}/${amount}`,()=>{
- const {planDisputeSettlement}=load('src/lib/dispute-settlement.ts',{'@/lib/supabase-admin':{},'@/lib/payluk-service':{}});
+ const {planDisputeSettlement}=load('src/lib/disputes/dispute-settlement.ts',{'@/lib/supabase-admin':{},'@/lib/payluk-service':{}});
  const tx={id:'tx',amount,commission,payluk_escrow_id:'escrow',metadata:{payluk_fee_mode:mode}};
  const principal=mode==='seller_commission_v1'?amount-commission:amount;
  const plan=planDisputeSettlement(tx,{refund_amount:refund,seller_amount:seller},{id:'escrow',amount:principal,additionalFee:commission,fee,whoPays:'seller',settlementType:'STANDARD'});
@@ -1544,7 +1547,7 @@ for (const [mode,amount,commission,fee,refund,seller,expectedBuyer,expectedSelle
  assert.equal(plan.additionalFeeRefundable,refund>0);
 });
 for(const scenario of ['foreign-escrow','principal','commission','fee','milestone','fractional-ruling'])test(`dispute plan rejects unverified allocation: ${scenario}`,()=>{
- const {planDisputeSettlement}=load('src/lib/dispute-settlement.ts',{'@/lib/supabase-admin':{},'@/lib/payluk-service':{}});
+ const {planDisputeSettlement}=load('src/lib/disputes/dispute-settlement.ts',{'@/lib/supabase-admin':{},'@/lib/payluk-service':{}});
  const tx={id:'tx',amount:2500,commission:75,payluk_escrow_id:'escrow',metadata:{payluk_fee_mode:'buyer_commission_v1'}};
  const remote={id:scenario==='foreign-escrow'?'other':'escrow',amount:scenario==='principal'?2600:2500,fee:scenario==='fee'?2600:50,additionalFee:scenario==='commission'?0:75,whoPays:'seller',settlementType:scenario==='milestone'?'MILESTONE':'STANDARD'};
  assert.throws(()=>planDisputeSettlement(tx,{refund_amount:scenario==='fractional-ruling'?1250.001:1250,seller_amount:1250},remote));
@@ -1552,17 +1555,17 @@ for(const scenario of ['foreign-escrow','principal','commission','fee','mileston
 
 for (const value of [0,950,1000,1053,1199.99,1200.001,NaN,Infinity,-1200,'1200',null]) {
   test(`paid price rejects ${String(value)}`, () => {
-    const { isPaidPrice } = load('src/lib/price-policy.ts');
+    const { isPaidPrice } = load('src/lib/marketplace/price-policy.ts');
     assert.equal(isPaidPrice(value),false);
   });
 }
 for (const value of [1200,1200.01,1234.56,2500]) {
   test(`paid price accepts ${value}`, () => {
-    assert.equal(load('src/lib/price-policy.ts').isPaidPrice(value),true);
+    assert.equal(load('src/lib/marketplace/price-policy.ts').isPaidPrice(value),true);
   });
 }
 test('deposit policy checks the charged amount and full-payment priority', () => {
-  const { servicePriceError } = load('src/lib/price-policy.ts');
+  const { servicePriceError } = load('src/lib/marketplace/price-policy.ts');
   assert.equal(servicePriceError({price:null}),null);
   assert.equal(servicePriceError({price:0}),null);
   assert.match(servicePriceError({price:1199.99}),/1,200/);
@@ -1578,7 +1581,7 @@ for (const mode of ['previewWithdrawal','withdrawToBank']) {
   for (const amount of [999.99,1000,1010.74,1010.75]) {
     test(`${mode} enforces the net bank minimum at debit budget ${amount}`, async () => {
       const created=[],executed=[];
-      const { PaylukService } = load('src/lib/payluk-service.ts', {
+      const { PaylukService } = load('src/lib/payments/payluk-service.ts', {
         './payluk-onboarding':{}, fetch:async(url,options)=>{
           if(url.endsWith('/v1/wallet'))return Response.json({status:200,data:{mainBalance:5000}});
           if(url.endsWith('/v1/payment/create-intent')){
@@ -1631,12 +1634,12 @@ for (const [endpoint, query] of [
   ['geocode/json', 'latlng=NaN,3'],
   ['geocode/json', 'latlng=6,3,4'],
 ]) test(`Maps proxy rejects unsafe address input: ${endpoint} ${query.slice(0, 45)}`, () => {
-  const { buildMapsRequest } = load('src/lib/maps-proxy.ts');
+  const { buildMapsRequest } = load('src/lib/location/maps-proxy.ts');
   assert.throws(() => buildMapsRequest(endpoint.split('/'), new URLSearchParams(query)));
 });
 
 test('Maps proxy fixes host, Nigeria scope and billable details fields', () => {
-  const { buildMapsRequest } = load('src/lib/maps-proxy.ts');
+  const { buildMapsRequest } = load('src/lib/location/maps-proxy.ts');
   const auto = buildMapsRequest(['place','autocomplete','json'], new URLSearchParams('input=Lagos&key=client-value&language=fr&components=country:us'));
   assert.equal(auto.origin, 'https://maps.googleapis.com');
   assert.equal(auto.searchParams.get('components'), 'country:ng');
@@ -1650,7 +1653,7 @@ test('Maps proxy fixes host, Nigeria scope and billable details fields', () => {
 for (const enabled of [false,true]) test(`web reverse geocoding preserves location matching with proxy ${enabled}`,async()=>{
   let requested;
   const query={select:()=>query,range:async()=>({data:[{state:'Lagos',lga:'Lagos Island',ward:'Ward',latitude:6,longitude:3}],error:null})};
-  const {reverseGeocode}=load('src/lib/geocoding-service.ts',{
+  const {reverseGeocode}=load('src/lib/location/geocoding-service.ts',{
     env:{NEXT_PUBLIC_MAPS_PROXY_ENABLED:enabled?'true':'false',NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:'public-test-only'},
     '@/lib/supabase':{supabase:{from:table=>{assert.equal(table,'lga_wards');return query;}}},
     fetch:async(url,options)=>{

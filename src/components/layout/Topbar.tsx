@@ -6,9 +6,9 @@ import { MapPin, Bell } from "@phosphor-icons/react";
 import Link from "next/link";
 import Image from "next/image";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/shared/utils";
 
-import { LocationChip } from "@/components/LocationChip";
+import { LocationChip } from "@/components/location/LocationChip";
 
 interface TopbarNavItem {
   href: string;

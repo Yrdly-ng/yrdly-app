@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { ResendEmailService } from '@/lib/resend-service';
-import { emailTemplates } from '@/lib/email-templates';
+import { ResendEmailService } from '@/lib/email/resend-service';
+import { emailTemplates } from '@/lib/email/email-templates';
 
 // We must use the service role key to bypass Row Level Security 
 // and read all users' notifications.

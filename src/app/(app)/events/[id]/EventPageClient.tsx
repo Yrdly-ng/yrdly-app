@@ -1,6 +1,6 @@
 "use client";
 
-import { authenticatedFetch } from "@/lib/authenticated-fetch";
+import { authenticatedFetch } from "@/lib/auth/authenticated-fetch";
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -22,16 +22,16 @@ import {
   AlertCircle,
   BadgeCheck,
 } from "lucide-react";
-import { ImageSwiper } from "@/components/ImageSwiper";
+import { ImageSwiper } from "@/components/media/ImageSwiper";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/lib/supabase";
-import { getEventById } from "@/lib/event-service";
-import { AttendeeAvatars } from "@/components/AttendeeAvatars";
+import { supabase } from "@/lib/supabase/supabase";
+import { getEventById } from "@/lib/events/event-service";
+import { AttendeeAvatars } from "@/components/events/AttendeeAvatars";
 import type { Event, TicketTier } from "@/types/events";
 
 function formatDate(iso: string) {

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
-import { sendPushNotification } from '@/lib/server-push-notification';
+import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
+import { sendPushNotification } from '@/lib/notifications/server-push-notification';
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');

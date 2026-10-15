@@ -215,7 +215,7 @@ Marketplace listings use `posts` (`For Sale` / `Giveaway`); business catalog lis
 
 Payment verification and signed webhooks commit local payment/inventory state through the database. Escrow transitions include pending, paid, shipped, delivered, completed, disputed and cancelled. Refund amounts are recorded separately; never infer a refund solely from a cancelled status.
 
-The canonical commission is 3%, defined in `src/lib/constants.ts`. Marketplace checkout adds the platform commission as an additional fee; event commission is deducted at organizer payout. Reconcile provider fees and actual settlement in the sandbox before launch changes.
+The canonical commission is 3%, defined in `src/lib/shared/constants.ts`. Marketplace checkout adds the platform commission as an additional fee; event commission is deducted at organizer payout. Reconcile provider fees and actual settlement in the sandbox before launch changes.
 
 ## 8. Payment Flow
 
@@ -223,15 +223,15 @@ Payluk is the only payment provider. See [payments.md](payments.md) for the curr
 
 | File | Role |
 |---|---|
-| `src/lib/payluk-service.ts` | Server-side Payluk API requests |
-| `src/lib/payluk-onboarding.ts` | Customer identity and onboarding |
+| `src/lib/payments/payluk-service.ts` | Server-side Payluk API requests |
+| `src/lib/payments/payluk-onboarding.ts` | Customer identity and onboarding |
 | `src/components/escrow/BuyButton.tsx` | Marketplace checkout |
 | `src/app/api/payment/initialize/route.ts` | Reserves marketplace order and initializes escrow |
 | `src/app/api/payment/verify/route.ts` | Buyer-authorized Payluk verification |
 | `src/app/api/events/tickets/purchase/route.ts` | Free tickets or paid Payluk escrow |
-| `src/lib/ticket-service.ts` | Payment verification and idempotent ticket issuance |
+| `src/lib/events/ticket-service.ts` | Payment verification and idempotent ticket issuance |
 | `src/app/api/webhooks/payluk/route.ts` | Signed payment and escrow events |
-| `src/lib/event-escrow-service.ts` | Organizer bank payouts with persisted attempt references |
+| `src/lib/events/event-escrow-service.ts` | Organizer bank payouts with persisted attempt references |
 
 Paid event refunds and cancellations require support-assisted Payluk escrow resolution. The API keeps paid tickets unchanged until the refund is confirmed. Free tickets can be cancelled directly. Unknown historical payment providers require reconciliation and are never silently relabelled.
 
@@ -288,11 +288,11 @@ For exact request and response shapes, read each route. Treat browser callback s
 
 | File | Purpose |
 |---|---|
-| `src/lib/supabase.ts` | Browser Supabase client (anon key) |
-| `src/lib/supabase-admin.ts` | Server Supabase client (service role) |
+| `src/lib/supabase/supabase.ts` | Browser Supabase client (anon key) |
+| `src/lib/supabase/supabase-admin.ts` | Server Supabase client (service role) |
 | `src/lib/designTokens.ts` | Stitch design system colour/font tokens |
-| `src/lib/escrow-service.ts` | Escrow CRUD operations |
-| `src/lib/transaction-status-service.ts` | `confirmShipped`, `confirmDelivered`, etc. |
+| `src/lib/payments/escrow-service.ts` | Escrow CRUD operations |
+| `src/lib/payments/transaction-status-service.ts` | `confirmShipped`, `confirmDelivered`, etc. |
 | `src/components/ui/dialog.tsx` | Radix dialog with `hideClose` prop |
 | `src/components/escrow/BuyButton.tsx` | Full Order Summary sheet + payment init |
 | `src/app/layout.tsx` | Root layout — viewport meta (iOS zoom fix) |

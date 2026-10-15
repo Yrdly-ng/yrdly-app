@@ -1,7 +1,7 @@
 
 "use client";
 
-import { MessagesScreen } from "@/components/MessagesScreen";
+import { MessagesScreen } from "@/components/messages/MessagesScreen";
 import { useParams } from 'next/navigation';
 
 export default function ConversationPage() {

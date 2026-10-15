@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthenticatedUser } from '@/lib/supabase-server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
-import { BookingCheckoutError, computeDepositAmount, createCheckoutForBooking } from '@/lib/booking-payments';
-import { isPaidPrice, MINIMUM_PRICE_MESSAGE } from '@/lib/price-policy';
+import { getAuthenticatedUser } from '@/lib/supabase/supabase-server';
+import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
+import { BookingCheckoutError, computeDepositAmount, createCheckoutForBooking } from '@/lib/bookings/booking-payments';
+import { isPaidPrice, MINIMUM_PRICE_MESSAGE } from '@/lib/marketplace/price-policy';
 
 export async function POST(req: NextRequest) {
   const { data: { user }, error: authError } = await getAuthenticatedUser(req);

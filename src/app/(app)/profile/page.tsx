@@ -1,6 +1,6 @@
 "use client";
 
-import { ProfileScreen } from "@/components/ProfileScreen";
+import { ProfileScreen } from "@/components/profile/ProfileScreen";
 import { useAuth } from "@/hooks/use-supabase-auth";
 
 export default function ProfilePage() {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import { reverseGeocode, ResolvedLocation, OUTSIDE_NIGERIA } from "@/lib/geocoding-service";
+import { reverseGeocode, ResolvedLocation, OUTSIDE_NIGERIA } from "@/lib/location/geocoding-service";
 
 // ── Types ───────────────────────────────────────────────────────
 

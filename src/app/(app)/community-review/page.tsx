@@ -4,8 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Check, X } from "lucide-react";
 import { useAuth } from "@/hooks/use-supabase-auth";
-import { supabase } from "@/lib/supabase";
-import { Community, CommunityService } from "@/lib/community-service";
+import { supabase } from "@/lib/supabase/supabase";
+import { Community, CommunityService } from "@/lib/communities/community-service";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 

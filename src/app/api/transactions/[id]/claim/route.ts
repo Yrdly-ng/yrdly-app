@@ -1,11 +1,11 @@
-import { getAuthenticatedUser } from '@/lib/supabase-server';
+import { getAuthenticatedUser } from '@/lib/supabase/supabase-server';
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
 import { EscrowStatus } from '@/types/escrow';
-import { MARKETPLACE_CONSTANTS } from '@/lib/constants';
-import { PayoutService } from '@/lib/payout-service';
-import { PaylukService } from '@/lib/payluk-service';
-import { getPaylukCustomerId } from '@/lib/payluk-onboarding';
+import { MARKETPLACE_CONSTANTS } from '@/lib/shared/constants';
+import { PayoutService } from '@/lib/payments/payout-service';
+import { PaylukService } from '@/lib/payments/payluk-service';
+import { getPaylukCustomerId } from '@/lib/payments/payluk-onboarding';
 
 export async function POST(
   request: Request,

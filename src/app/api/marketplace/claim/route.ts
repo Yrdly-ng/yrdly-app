@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase-admin";
+import { supabaseAdmin } from "@/lib/supabase/supabase-admin";
 import { DeliveryOption, PaymentMethod, EscrowStatus } from "@/types/escrow";
-import { getAuthenticatedUser } from "@/lib/supabase-server";
+import { getAuthenticatedUser } from "@/lib/supabase/supabase-server";
 
 /**
  * POST /api/marketplace/claim
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { isUserSuspendedOrBanned } = await import('@/lib/user-suspension');
+    const { isUserSuspendedOrBanned } = await import('@/lib/moderation/user-suspension');
     const { suspended: buyerSuspended } = await isUserSuspendedOrBanned(buyerId);
     if (buyerSuspended) {
       return NextResponse.json(

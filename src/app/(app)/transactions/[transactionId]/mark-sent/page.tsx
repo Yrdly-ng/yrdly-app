@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-supabase-auth";
-import { TransactionStatusService } from "@/lib/transaction-status-service";
+import { TransactionStatusService } from "@/lib/payments/transaction-status-service";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, ShieldCheck, HeadphonesIcon } from "lucide-react";
 

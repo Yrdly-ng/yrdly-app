@@ -1,6 +1,6 @@
-import { fetchSafeImage } from '@/lib/safe-image-fetch';
+import { fetchSafeImage } from '@/lib/media/safe-image-fetch';
 import sharp from 'sharp';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
 
 // Small square avatar used as the link-preview thumbnail (WhatsApp, iMessage, etc.).
 // X sends a tiny avatar (about 128px). WhatsApp then shows it as a small round profile picture

@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 
 import './globals.css';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/shared/utils';
 import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider } from '@/hooks/use-supabase-auth';
 import { Analytics } from '@vercel/analytics/react';
@@ -9,8 +9,8 @@ import { SpeedInsights } from '@vercel/speed-insights/next';
 import { ThemeProvider } from "@/components/ThemeProvider";
 import Script from "next/script";
 import { AmbientBackground } from '@/components/ui/AmbientBackground';
-import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister';
-import { PushNotificationManager } from '@/components/PushNotificationManager';
+import { ServiceWorkerRegister } from '@/components/providers/ServiceWorkerRegister';
+import { PushNotificationManager } from '@/components/notifications/PushNotificationManager';
 import { CrispChat } from '@/components/CrispChat';
 
 export const metadata: Metadata = {

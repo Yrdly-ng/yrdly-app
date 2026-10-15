@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getAuthenticatedUser } from '@/lib/supabase-server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
-import { downloadDisputeEvidence } from '@/lib/dispute-evidence-server';
-import { PaylukService } from '@/lib/payluk-service';
+import { getAuthenticatedUser } from '@/lib/supabase/supabase-server';
+import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
+import { downloadDisputeEvidence } from '@/lib/disputes/dispute-evidence-server';
+import { PaylukService } from '@/lib/payments/payluk-service';
 
 const evidenceSchema = z.object({
   description: z.string().trim().max(4000).optional(),

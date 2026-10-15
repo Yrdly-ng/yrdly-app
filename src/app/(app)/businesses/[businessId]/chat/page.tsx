@@ -1,9 +1,9 @@
 "use client";
 
-import { BusinessChatScreen } from "@/components/BusinessChatScreen";
+import { BusinessChatScreen } from "@/components/messages/BusinessChatScreen";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase/supabase";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import type { Business } from "@/types";
 

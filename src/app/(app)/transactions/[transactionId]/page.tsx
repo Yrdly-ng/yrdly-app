@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-supabase-auth';
-import { TransactionStatusService } from '@/lib/transaction-status-service';
+import { TransactionStatusService } from '@/lib/payments/transaction-status-service';
 import { useToast } from '@/hooks/use-toast';
 import { 
   CheckCircle, 
@@ -23,10 +23,10 @@ import {
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { GlassCard } from '@/components/ui/glass-card';
-import { SupabaseChatService } from '@/lib/supabase-chat-service';
-import { MARKETPLACE_CONSTANTS } from '@/lib/constants';
+import { SupabaseChatService } from '@/lib/supabase/supabase-chat-service';
+import { MARKETPLACE_CONSTANTS } from '@/lib/shared/constants';
 import { SubmitReviewDialog } from '@/components/reviews/SubmitReviewDialog';
-import { ReviewService } from '@/lib/review-service';
+import { ReviewService } from '@/lib/reviews/review-service';
 
 interface TransactionDetails {
   id: string;
@@ -105,7 +105,7 @@ export default function TransactionDetailsPage() {
       // Auto-verify payment if landed on page while status is still PENDING
       if (user && user.id === data.buyer_id && (data.status === 'pending' || data.status === 'creating_escrow')) {
         try {
-          const { supabase } = await import('@/lib/supabase');
+          const { supabase } = await import('@/lib/supabase/supabase');
           const { data: { session } } = await supabase.auth.getSession();
           const verifyRes = await fetch('/api/payment/verify', {
             method: 'POST',

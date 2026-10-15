@@ -8,7 +8,7 @@ import {
   UserReportItem,
   CommentReportItem,
   PostReportItem,
-} from '@/lib/moderation-admin';
+} from '@/lib/moderation/moderation-admin';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -19,7 +19,7 @@ import { AlertTriangle, Clock, CheckCircle, XCircle, ImageIcon, MessageSquare, S
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { PrivateMediaImage } from '@/components/PrivateMedia';
+import { PrivateMediaImage } from '@/components/media/PrivateMedia';
 
 export default function AdminModerationPage() {
   const { user } = useAuth();

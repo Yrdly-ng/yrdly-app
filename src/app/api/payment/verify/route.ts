@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
-import { getAuthenticatedUser } from '@/lib/supabase-server';
-import { PaylukService } from '@/lib/payluk-service';
-import { applyEscrowPayment } from '@/lib/escrow-payment';
-import { flagPayment } from '@/lib/payment-reconciliation';
-import { paylukAmountsMatch } from '@/lib/payment-state';
+import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
+import { getAuthenticatedUser } from '@/lib/supabase/supabase-server';
+import { PaylukService } from '@/lib/payments/payluk-service';
+import { applyEscrowPayment } from '@/lib/payments/escrow-payment';
+import { flagPayment } from '@/lib/payments/payment-reconciliation';
+import { paylukAmountsMatch } from '@/lib/payments/payment-state';
 
 export async function POST(request: NextRequest) {
   try {

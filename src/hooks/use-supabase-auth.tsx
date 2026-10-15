@@ -9,10 +9,10 @@ import {
   useState,
 } from "react";
 import { User } from "@supabase/supabase-js";
-import { AuthService, AuthUser } from "@/lib/auth-service";
-import { supabase } from "@/lib/supabase";
-import { watchSession } from "@/lib/session-policy";
-import { clientFeedState } from "@/lib/client-feed-state";
+import { AuthService, AuthUser } from "@/lib/auth/auth-service";
+import { supabase } from "@/lib/supabase/supabase";
+import { watchSession } from "@/lib/auth/session-policy";
+import { clientFeedState } from "@/lib/activity/client-feed-state";
 
 interface AuthContextType {
   user: User | null;

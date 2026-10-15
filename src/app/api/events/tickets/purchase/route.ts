@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthenticatedUser } from "@/lib/supabase-server";
-import { supabaseAdmin } from '@/lib/supabase-admin';
-import { EVENT_CONSTANTS } from '@/lib/constants';
-import { isMoneyAmount, isPaidPrice, MINIMUM_PRICE_MESSAGE } from '@/lib/price-policy';
-import { ResendEmailService } from '@/lib/resend-service';
+import { getAuthenticatedUser } from "@/lib/supabase/supabase-server";
+import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
+import { EVENT_CONSTANTS } from '@/lib/shared/constants';
+import { isMoneyAmount, isPaidPrice, MINIMUM_PRICE_MESSAGE } from '@/lib/marketplace/price-policy';
+import { ResendEmailService } from '@/lib/email/resend-service';
 import QRCode from 'qrcode';
-import { createTicketCheckout, TicketCheckoutError } from '@/lib/ticket-checkout';
-import { sendPushNotification } from '@/lib/server-push-notification';
+import { createTicketCheckout, TicketCheckoutError } from '@/lib/events/ticket-checkout';
+import { sendPushNotification } from '@/lib/notifications/server-push-notification';
 
 /**
  * POST /api/events/tickets/purchase
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid session' }, { status: authError?.status === 403 ? 403 : authError?.status === 503 ? 503 : 401 });
     }
 
-    const { isUserSuspendedOrBanned } = await import('@/lib/user-suspension');
+    const { isUserSuspendedOrBanned } = await import('@/lib/moderation/user-suspension');
     const { suspended: buyerSuspended } = await isUserSuspendedOrBanned(user.id);
     if (buyerSuspended) {
       return NextResponse.json(

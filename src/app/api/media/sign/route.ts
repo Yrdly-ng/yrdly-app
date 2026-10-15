@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { getAuthenticatedUser } from '@/lib/supabase-server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
-import { PRIVATE_MEDIA_BUCKETS, mediaConversationId, validatePrivateMediaPath } from '@/lib/private-media';
+import { getAuthenticatedUser } from '@/lib/supabase/supabase-server';
+import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
+import { PRIVATE_MEDIA_BUCKETS, mediaConversationId, validatePrivateMediaPath } from '@/lib/media/private-media';
 
 const response = (body: unknown, status = 200) => NextResponse.json(body, {
   status, headers: { 'Cache-Control': 'private, no-store', 'Vary': 'Cookie, Authorization' },

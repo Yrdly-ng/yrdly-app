@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthenticatedUser } from '@/lib/supabase-server';
-import { PayoutService } from '@/lib/payout-service';
+import { getAuthenticatedUser } from '@/lib/supabase/supabase-server';
+import { PayoutService } from '@/lib/payments/payout-service';
 
 export async function GET(request: NextRequest) {
   try {

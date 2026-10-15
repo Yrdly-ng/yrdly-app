@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase/supabase';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -11,7 +11,7 @@ import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/com
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-import { PushNotificationService } from '@/lib/push-notification-service';
+import { PushNotificationService } from '@/lib/notifications/push-notification-service';
 import type { NotificationSettings } from "../../../../types";
 
 export default function NotificationSettingsPage() {

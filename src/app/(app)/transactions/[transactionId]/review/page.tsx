@@ -4,9 +4,9 @@ import { useState, useCallback, useEffect } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { ReviewService } from "@/lib/review-service";
+import { ReviewService } from "@/lib/reviews/review-service";
 import { useAuth } from "@/hooks/use-supabase-auth";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase/supabase";
 
 /* ── Design tokens ─────────────────────────────────── */
 const BG     = "var(--c-bg)";

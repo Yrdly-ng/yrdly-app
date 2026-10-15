@@ -1,6 +1,6 @@
 import { NextRequest,NextResponse } from 'next/server';
-import { getAuthenticatedUser } from '@/lib/supabase-server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { getAuthenticatedUser } from '@/lib/supabase/supabase-server';
+import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
 
 /** Recalculate from persisted bookings and approved appeals; never accept a client strike count. */
 export async function POST(request:NextRequest) {

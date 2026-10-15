@@ -45,7 +45,7 @@ function loader(mocks = {}) {
   return load;
 }
 
-const geometry = loader()("src/lib/video-editing.ts");
+const geometry = loader()("src/lib/media/video-editing.ts");
 const metadata = { width: 800, height: 600, duration: 5 };
 const edit = {
   start: 1,
@@ -171,7 +171,7 @@ function browserHarness(scenario = "success") {
       },
     },
   };
-  const api = loader({ mediabunny: media })("src/lib/browser-video-editor.ts");
+  const api = loader({ mediabunny: media })("src/lib/media/browser-video-editor.ts");
   return { api, controller, inspect: () => ({ executed, disposed, options }) };
 }
 

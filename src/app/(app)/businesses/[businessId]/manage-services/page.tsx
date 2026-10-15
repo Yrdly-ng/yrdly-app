@@ -4,9 +4,9 @@
 import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useServiceOfferings } from '@/hooks/use-bookings';
-import { BookingService } from '@/lib/booking-service';
-import { MIN_PAID_PRICE } from '@/lib/constants';
-import { servicePriceError } from '@/lib/price-policy';
+import { BookingService } from '@/lib/bookings/booking-service';
+import { MIN_PAID_PRICE } from '@/lib/shared/constants';
+import { servicePriceError } from '@/lib/marketplace/price-policy';
 
 export default function ManageServicesWebPage() {
   const params = useParams();

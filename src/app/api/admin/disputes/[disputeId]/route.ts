@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getAuthenticatedUser } from '@/lib/supabase-server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
-import { PaylukService } from '@/lib/payluk-service';
-import { downloadDisputeEvidence } from '@/lib/dispute-evidence-server';
+import { getAuthenticatedUser } from '@/lib/supabase/supabase-server';
+import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
+import { PaylukService } from '@/lib/payments/payluk-service';
+import { downloadDisputeEvidence } from '@/lib/disputes/dispute-evidence-server';
 
 const updateSchema = z.object({
   notes: z.string().trim().max(5000).optional(),

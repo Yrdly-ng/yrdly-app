@@ -10,19 +10,19 @@ import {
   User,
 } from "@phosphor-icons/react";
 import { useAuth } from "@/hooks/use-supabase-auth";
-import { ProfileDropdown } from "@/components/ProfileDropdown";
+import { ProfileDropdown } from "@/components/profile/ProfileDropdown";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { NotificationsDropdown } from "@/components/NotificationsDropdown";
-import { SearchDialog } from "@/components/SearchDialog";
-import { supabase } from "@/lib/supabase";
-import { cn } from "@/lib/utils";
-import { AlertService, type Alert } from "@/lib/alert-service";
+import { NotificationsDropdown } from "@/components/notifications/NotificationsDropdown";
+import { SearchDialog } from "@/components/search/SearchDialog";
+import { supabase } from "@/lib/supabase/supabase";
+import { cn } from "@/lib/shared/utils";
+import { AlertService, type Alert } from "@/lib/notifications/alert-service";
 import { Siren, X } from "@phosphor-icons/react";
-import { CreateMenuOverlay } from "@/components/CreateMenuOverlay";
+import { CreateMenuOverlay } from "@/components/layout/CreateMenuOverlay";
 import { Topbar } from "./Topbar";
 import { BottomNav } from "./BottomNav";
 import { Sidebar } from "./Sidebar";
-import { getPageWidthTier } from "@/lib/layout-utils";
+import { getPageWidthTier } from "@/lib/shared/layout-utils";
 
 interface MainLayoutProps {
   children: React.ReactNode;

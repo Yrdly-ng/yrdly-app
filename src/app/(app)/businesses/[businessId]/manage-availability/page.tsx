@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useProviderAvailability } from '@/hooks/use-bookings';
-import { BookingService } from '@/lib/booking-service';
-import { supabase } from '@/lib/supabase';
+import { BookingService } from '@/lib/bookings/booking-service';
+import { supabase } from '@/lib/supabase/supabase';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 

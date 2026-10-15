@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
-import { getAuthenticatedUser } from '@/lib/supabase-server';
+import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
+import { getAuthenticatedUser } from '@/lib/supabase/supabase-server';
 
 /**
  * GET /api/tickets/[token]

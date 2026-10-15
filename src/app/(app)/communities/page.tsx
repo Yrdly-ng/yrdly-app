@@ -4,9 +4,9 @@ import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
 import { UsersThree, MagnifyingGlass, Lock, ArrowRight, SpinnerGap, Plus, ShieldCheck } from "@phosphor-icons/react";
-import { CommunityService, Community } from "@/lib/community-service";
+import { CommunityService, Community } from "@/lib/communities/community-service";
 import { useAuth } from "@/hooks/use-supabase-auth";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/shared/utils";
 
 function CommunitySubmitButton({ saving, awaitingApproval }: { saving: boolean; awaitingApproval: boolean }) {
   const { pending } = useFormStatus();

@@ -1,15 +1,15 @@
 "use client";
 
-import { authenticatedFetch } from '@/lib/authenticated-fetch';
+import { authenticatedFetch } from '@/lib/auth/authenticated-fetch';
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { usePosts } from "@/hooks/use-posts";
 import { useCategories } from "@/hooks/use-categories";
-import { supabase } from "@/lib/supabase";
-import { ModerationService } from "@/lib/moderation-service";
-import { LocationInput, StructuredLocation } from "@/components/LocationInput";
+import { supabase } from "@/lib/supabase/supabase";
+import { ModerationService } from "@/lib/moderation/moderation-service";
+import { LocationInput, StructuredLocation } from "@/components/location/LocationInput";
 import { useToast } from "@/hooks/use-toast";
 import {
   ArrowLeft,
@@ -28,9 +28,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
-import { MIN_PAID_PRICE } from "@/lib/constants";
-import { isPaidPrice, MINIMUM_PRICE_MESSAGE } from "@/lib/price-policy";
+import { cn } from "@/lib/shared/utils";
+import { MIN_PAID_PRICE } from "@/lib/shared/constants";
+import { isPaidPrice, MINIMUM_PRICE_MESSAGE } from "@/lib/marketplace/price-policy";
 
 const STEPS = ["Photos", "Details", "Description", "Review"];
 const CONDITIONS = ["New", "Used – Like New", "Used – Good", "Fair"];

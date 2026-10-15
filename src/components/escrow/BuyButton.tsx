@@ -5,8 +5,8 @@ import { X, Lock, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useRouter } from "next/navigation";
-import { MARKETPLACE_CONSTANTS } from "@/lib/constants";
-import { supabase } from "@/lib/supabase";
+import { MARKETPLACE_CONSTANTS } from "@/lib/shared/constants";
+import { supabase } from "@/lib/supabase/supabase";
 
 
 import { GlassCard } from "@/components/ui/glass-card";

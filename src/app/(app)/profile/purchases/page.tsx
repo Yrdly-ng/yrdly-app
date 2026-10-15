@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/use-supabase-auth';
-import { ItemTrackingService, PurchaseHistory } from '@/lib/item-tracking-service';
+import { ItemTrackingService, PurchaseHistory } from '@/lib/marketplace/item-tracking-service';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -20,7 +20,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { SupabaseChatService } from '@/lib/supabase-chat-service';
+import { SupabaseChatService } from '@/lib/supabase/supabase-chat-service';
 
 export default function PurchaseHistoryPage() {
   const { user } = useAuth();

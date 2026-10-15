@@ -1,13 +1,13 @@
 "use client";
 
-import { authenticatedFetch } from '@/lib/authenticated-fetch';
+import { authenticatedFetch } from '@/lib/auth/authenticated-fetch';
 import React, { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { usePosts } from "@/hooks/use-posts";
-import { supabase } from "@/lib/supabase";
-import { ModerationService } from "@/lib/moderation-service";
+import { supabase } from "@/lib/supabase/supabase";
+import { ModerationService } from "@/lib/moderation/moderation-service";
 import { useToast } from "@/hooks/use-toast";
 import {
   ArrowLeft,
@@ -23,8 +23,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
-import ImageCropDialog from "@/components/ImageCropDialog";
+import { cn } from "@/lib/shared/utils";
+import ImageCropDialog from "@/components/media/ImageCropDialog";
 import { useVideoEditor } from '@/hooks/use-video-editor';
 
 export default function CreatePostPage() {
@@ -265,7 +265,7 @@ export default function CreatePostPage() {
       if (insertErr) throw insertErr;
 
       if (newPost) {
-        const { NotificationTriggers } = await import('@/lib/notification-triggers');
+        const { NotificationTriggers } = await import('@/lib/notifications/notification-triggers');
         await NotificationTriggers.onMentionsInContent(user.id, newPost.id, trimmedText);
       }
 

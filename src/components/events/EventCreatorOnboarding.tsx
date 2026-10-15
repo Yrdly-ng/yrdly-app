@@ -1,10 +1,10 @@
 "use client";
 
-import { EVENT_CONSTANTS } from "@/lib/constants";
+import { EVENT_CONSTANTS } from "@/lib/shared/constants";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase/supabase";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { X, Ticket, Banknote, Zap, CheckCircle2, ArrowRight, Loader2 } from "lucide-react";
 

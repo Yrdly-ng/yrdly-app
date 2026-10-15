@@ -1,15 +1,15 @@
 "use client";
 
-import { authenticatedFetch } from "@/lib/authenticated-fetch";
+import { authenticatedFetch } from "@/lib/auth/authenticated-fetch";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase/supabase";
 import { ArrowLeft, X, AlertTriangle, Check, ShieldAlert, Loader2 } from "lucide-react";
-import { LocationInput } from "@/components/LocationInput";
-import { cn } from "@/lib/utils";
+import { LocationInput } from "@/components/location/LocationInput";
+import { cn } from "@/lib/shared/utils";
 
 const SEVERITY_COLORS = {
   information: {

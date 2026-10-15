@@ -52,7 +52,7 @@ try {
     console.log(`${result.error ? 'FAIL' : 'PASS'} mobile profile contract: ${table} (${callers[0]})`);
   }
   // Execute the real dependency-free mobile API transport with an owned QA session.
-  const output = ts.transpileModule(await readFile(resolve(mobile, 'src/lib/api-client.ts'), 'utf8'), {
+  const output = ts.transpileModule(await readFile(resolve(mobile, 'src/lib/network/api-client.ts'), 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
   const module = { exports: {} };

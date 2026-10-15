@@ -10,7 +10,7 @@ import {
   ToastViewport,
 } from "@/components/ui/toast"
 import { CheckCircle2, AlertCircle } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/shared/utils"
 
 export function Toaster() {
   const { toasts } = useToast()

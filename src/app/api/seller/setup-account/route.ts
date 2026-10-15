@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthenticatedUser } from "@/lib/supabase-server";
-import { supabaseAdmin } from '@/lib/supabase-admin';
-import { PaylukService } from '@/lib/payluk-service';
+import { getAuthenticatedUser } from "@/lib/supabase/supabase-server";
+import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
+import { PaylukService } from '@/lib/payments/payluk-service';
 
 /**
  * Normalises a name string for fuzzy comparison:

@@ -1,6 +1,6 @@
 import { createHmac } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthenticatedUser } from '@/lib/supabase-server';
+import { getAuthenticatedUser } from '@/lib/supabase/supabase-server';
 
 function jsonResponse(body: Record<string, string>, status: number) {
   return NextResponse.json(body, {

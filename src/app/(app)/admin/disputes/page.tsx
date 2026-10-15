@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/use-supabase-auth';
-import { DisputeService, DisputeData } from '@/lib/dispute-service';
+import { DisputeService, DisputeData } from '@/lib/disputes/dispute-service';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';

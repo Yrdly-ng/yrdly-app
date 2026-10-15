@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/use-supabase-auth';
-import type { PayoutRequest } from '@/lib/payout-service';
-import { authenticatedFetch } from '@/lib/authenticated-fetch';
+import type { PayoutRequest } from '@/lib/payments/payout-service';
+import { authenticatedFetch } from '@/lib/auth/authenticated-fetch';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
-import { AppHeader } from '@/components/AppHeader';
+import { AppHeader } from '@/components/layout/AppHeader';
 
 export default function PayoutHistoryPage() {
   const { user, loading:authLoading } = useAuth();

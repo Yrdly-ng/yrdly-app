@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthenticatedUser } from '@/lib/supabase-server';
-import { cancelTicketCheckout, TicketCheckoutError } from '@/lib/ticket-checkout';
+import { getAuthenticatedUser } from '@/lib/supabase/supabase-server';
+import { cancelTicketCheckout, TicketCheckoutError } from '@/lib/events/ticket-checkout';
 
 export async function POST(request: NextRequest) {
   const { data: { user }, error } = await getAuthenticatedUser(request);

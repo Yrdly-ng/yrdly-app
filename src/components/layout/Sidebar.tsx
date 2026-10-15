@@ -12,8 +12,8 @@ import {
   Plus,
 } from "@phosphor-icons/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { LocationChip } from "@/components/LocationChip";
-import { cn } from "@/lib/utils";
+import { LocationChip } from "@/components/location/LocationChip";
+import { cn } from "@/lib/shared/utils";
 
 import { useTheme } from "next-themes";
 

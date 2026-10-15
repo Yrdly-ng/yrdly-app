@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { ArrowLeft, Plus, Calendar, MapPin, Users, QrCode, Settings } from "lucide-react";
-import { getOrganizerEvents } from "@/lib/event-service";
+import { getOrganizerEvents } from "@/lib/events/event-service";
 import { useAuth } from "@/hooks/use-supabase-auth";
 
 const FONT = "var(--font-work-sans)";

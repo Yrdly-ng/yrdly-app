@@ -1,7 +1,7 @@
 
 "use client";
 
-import { MarketplaceScreen } from "@/components/MarketplaceScreen";
+import { MarketplaceScreen } from "@/components/marketplace/MarketplaceScreen";
 import { useMarketplaceActions } from "@/hooks/use-marketplace-actions";
 
 export default function MarketplacePage() {

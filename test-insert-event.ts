@@ -1,4 +1,4 @@
-import { supabaseAdmin } from './src/lib/supabase-admin';
+import { supabaseAdmin } from './src/lib/supabase/supabase-admin';
 
 async function testInsert() {
   const { data, error } = await supabaseAdmin

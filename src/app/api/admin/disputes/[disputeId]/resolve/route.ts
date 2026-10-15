@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getAuthenticatedUser } from '@/lib/supabase-server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
-import { NotificationService } from '@/lib/server-notification-service';
-import { PaylukService } from '@/lib/payluk-service';
-import { applyDisputeSettlement, saveDisputePlan } from '@/lib/dispute-settlement';
+import { getAuthenticatedUser } from '@/lib/supabase/supabase-server';
+import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
+import { NotificationService } from '@/lib/notifications/server-notification-service';
+import { PaylukService } from '@/lib/payments/payluk-service';
+import { applyDisputeSettlement, saveDisputePlan } from '@/lib/disputes/dispute-settlement';
 
 const resolveSchema = z.object({
   resolution: z.string().trim().min(1).max(1000),

@@ -3,12 +3,12 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-supabase-auth";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase/supabase";
 import { ArrowLeft, Camera, User, Phone, Mail, Globe, Check, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { StorageService } from "@/lib/storage-service";
-import { AuthService } from "@/lib/auth-service";
+import { StorageService } from "@/lib/media/storage-service";
+import { AuthService } from "@/lib/auth/auth-service";
 
 export default function EditProfilePage() {
   const router = useRouter();

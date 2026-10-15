@@ -3,10 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Check, Warning } from "@phosphor-icons/react";
-import { AlertService, type AlertSeverity } from "@/lib/alert-service";
+import { AlertService, type AlertSeverity } from "@/lib/notifications/alert-service";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/shared/utils";
 
 const FONT = "var(--font-work-sans)";
 

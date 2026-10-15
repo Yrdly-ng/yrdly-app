@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ArrowLeft, Sun, Moon, Monitor } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/shared/utils";
 
 const options = [
   {

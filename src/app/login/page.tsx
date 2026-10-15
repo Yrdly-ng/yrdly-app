@@ -1,14 +1,14 @@
 "use client";
 
-import { safeRelativePath } from '@/lib/auth-navigation';
+import { safeRelativePath } from '@/lib/auth/auth-navigation';
 
 import React, { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AuthService } from "@/lib/auth-service";
+import { AuthService } from "@/lib/auth/auth-service";
 import { useAuth } from "@/hooks/use-supabase-auth";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase/supabase";
 import { User, AtSign, Mail, Lock, Eye, EyeOff, Loader2, AlertCircle } from "lucide-react";
-import { ErrorMessageFormatter } from "@/lib/error-messages";
+import { ErrorMessageFormatter } from "@/lib/shared/error-messages";
 
 const isPasswordStrong = (pwd: string) =>
   pwd.length >= 8 && /[A-Z]/.test(pwd) && /[0-9]/.test(pwd) && /[^A-Za-z0-9]/.test(pwd);

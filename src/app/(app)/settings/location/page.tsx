@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useLocationData } from "@/hooks/use-location-data";
 import { ChevronLeft, MapPin, Navigation, Check } from "lucide-react";
-import { supabase } from "@/lib/supabase";
-import { resolveCoords, OUTSIDE_NIGERIA } from "@/lib/geocoding-service";
+import { supabase } from "@/lib/supabase/supabase";
+import { resolveCoords, OUTSIDE_NIGERIA } from "@/lib/location/geocoding-service";
 import { useToast } from "@/hooks/use-toast";
 
 export default function LocationSettingsPage() {

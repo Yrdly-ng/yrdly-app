@@ -1,6 +1,6 @@
 "use client";
 
-import { safeRelativePath } from '@/lib/auth-navigation';
+import { safeRelativePath } from '@/lib/auth/auth-navigation';
 
 import React, { useState, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";

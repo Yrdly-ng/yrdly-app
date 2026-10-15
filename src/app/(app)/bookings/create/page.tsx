@@ -4,9 +4,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-supabase-auth';
 import { useAvailableSlots } from '@/hooks/use-bookings';
-import { BookingService } from '@/lib/booking-service';
-import { NotificationTriggers } from '@/lib/notification-triggers';
-import { supabase } from '@/lib/supabase';
+import { BookingService } from '@/lib/bookings/booking-service';
+import { NotificationTriggers } from '@/lib/notifications/notification-triggers';
+import { supabase } from '@/lib/supabase/supabase';
 
 export default function CreateBookingWebPage() {
   const searchParams = useSearchParams();

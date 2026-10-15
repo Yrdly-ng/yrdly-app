@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import { ONBOARDING_THEME } from '@/constants/onboarding-theme';
 import { ChevronLeft, CheckCircle, Circle, Eye, EyeOff } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/shared/utils';
 
 const { colors } = ONBOARDING_THEME;
 

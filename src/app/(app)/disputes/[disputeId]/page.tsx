@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-supabase-auth';
-import { DisputeService, DisputeData, DisputeEvidence } from '@/lib/dispute-service';
+import { DisputeService, DisputeData, DisputeEvidence } from '@/lib/disputes/dispute-service';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -26,9 +26,9 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
-import { AppHeader } from '@/components/AppHeader';
-import { SupabaseChatService } from '@/lib/supabase-chat-service';
-import { StorageService } from '@/lib/storage-service';
+import { AppHeader } from '@/components/layout/AppHeader';
+import { SupabaseChatService } from '@/lib/supabase/supabase-chat-service';
+import { StorageService } from '@/lib/media/storage-service';
 
 export default function DisputeDetailsPage() {
   const params = useParams();

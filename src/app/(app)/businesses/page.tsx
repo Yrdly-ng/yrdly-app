@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense } from "react";
-import { BusinessesScreen } from "@/components/BusinessesScreen";
+import { BusinessesScreen } from "@/components/businesses/BusinessesScreen";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function BusinessesPage() {

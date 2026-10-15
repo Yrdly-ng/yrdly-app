@@ -34,8 +34,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-supabase-auth';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/lib/supabase';
-import { cn } from '@/lib/utils';
+import { supabase } from '@/lib/supabase/supabase';
+import { cn } from '@/lib/shared/utils';
 import type { Post, User } from '@/types';
 import Image from 'next/image';
 
@@ -264,7 +264,7 @@ export function CommentSection({
                 if (pr) { const n = (pr.comment_count || 0) + 1; await supabase.from('posts').update({ comment_count: n }).eq('id', postId); onCommentCountChange(n); }
             }
             try {
-                const { NotificationTriggers } = await import('@/lib/notification-triggers');
+                const { NotificationTriggers } = await import('@/lib/notifications/notification-triggers');
                 await Promise.all([
                     NotificationTriggers.onPostCommented(postId, currentUser.id, text),
                     NotificationTriggers.onMentionsInContent(currentUser.id, postId, text),

@@ -3,9 +3,9 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Bookmark } from "@phosphor-icons/react";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase/supabase";
 import { useAuth } from "@/hooks/use-supabase-auth";
-import { PostCard } from "@/components/PostCard";
+import { PostCard } from "@/components/posts/PostCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Post } from "@/types";
 

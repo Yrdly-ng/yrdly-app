@@ -1,9 +1,9 @@
-import { PaylukService } from '@/lib/payluk-service';
-import { getPaylukCustomerId } from '@/lib/payluk-onboarding';
-import { getAuthenticatedUser } from '@/lib/supabase-server';
+import { PaylukService } from '@/lib/payments/payluk-service';
+import { getPaylukCustomerId } from '@/lib/payments/payluk-onboarding';
+import { getAuthenticatedUser } from '@/lib/supabase/supabase-server';
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
-import { PayoutService } from '@/lib/payout-service';
+import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
+import { PayoutService } from '@/lib/payments/payout-service';
 
 export async function POST(
   request: Request,

@@ -2,7 +2,7 @@
 
 import { useGpsLocation } from "@/hooks/use-gps-location";
 import { MapPin, Navigation, Map, AlertCircle, Loader2, CheckCircle2 } from "lucide-react";
-import { OUTSIDE_NIGERIA } from "@/lib/geocoding-service";
+import { OUTSIDE_NIGERIA } from "@/lib/location/geocoding-service";
 
 interface GpsLocationStepProps {
   onLocationFound: (location: { state: string; lga: string; ward: string; lat?: number; lng?: number }) => void;

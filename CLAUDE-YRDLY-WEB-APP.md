@@ -55,7 +55,7 @@ This is a Next.js monolith with client screens, Supabase browser/server helpers,
 
 - Supabase `auth.users` is the identity. `public.users` is the Yrdly profile keyed by that identity; it holds display name, username, location, verification, role, and product preferences. Auth context exposes both `user` and `profile`.
 - `posts` stores general social content and many marketplace listings (often category `For Sale`). Older events may also be represented as posts. Deletion can affect likes, comments, saves, notifications, reports, moderation rows, and transaction links.
-- Normalized events use `events`, `ticket_tiers`, `tickets`, and payment/payout state. `src/lib/event-service.ts` retains a fallback for legacy event posts.
+- Normalized events use `events`, `ticket_tiers`, `tickets`, and payment/payout state. `src/lib/events/event-service.ts` retains a fallback for legacy event posts.
 - Business/service commerce uses `businesses`, `catalog_items`, `service_offerings`, staff, availability schedules/exceptions, `quote_requests`, and `bookings`.
 - `escrow_transactions` is separate from the listed item: it tracks buyer/seller, amount/fees, item type and ID, provider references, payment/delivery timestamps, status, and dispute state.
 - Conversations/messages, notifications, community memberships/posts, reports, moderation queue, reviews, and safety alerts provide supporting social/trust features.
@@ -70,13 +70,13 @@ This is a Next.js monolith with client screens, Supabase browser/server helpers,
 3. The signed-in surface is `src/app/(app)/`; its layout and `OnboardingGuard` control profile setup and verification.
 4. `middleware.ts` restricts signup by country when geo headers are available and redirects `/login` and `/signup` to the marketing website. Inspect it before changing auth destinations.
 
-Start with `src/lib/auth-service.ts`, `src/hooks/use-supabase-auth.tsx`, `src/app/(app)/layout.tsx`, `src/components/OnboardingGuard.tsx`, onboarding screens, and `src/app/auth/callback/route.ts`.
+Start with `src/lib/auth/auth-service.ts`, `src/hooks/use-supabase-auth.tsx`, `src/app/(app)/layout.tsx`, `src/components/onboarding/OnboardingGuard.tsx`, onboarding screens, and `src/app/auth/callback/route.ts`.
 
 ### Feed, communities, and chat
 
-- Feed: `src/app/(app)/home/page.tsx`, `src/hooks/use-posts.tsx`, and `src/components/PostCard.tsx`/post detail components. Posts can be text, media, local events, alerts, or for-sale items; trace category/type assumptions before modifying a shared post surface.
-- Communities: screens under `src/app/(app)/communities`, service `src/lib/community-service.ts`. Community creation/submission, approval, membership/join requests, community posts/comments/likes, and moderation are represented separately from ordinary feed posts. Migrations define approval and RLS behavior.
-- Messaging: `src/app/(app)/messages`, `src/components/messages`, and `src/lib/supabase-chat-service.ts`. Realtime message events, conversation state, unread counts, and push notifications may involve triggers/Edge Functions in addition to screen code.
+- Feed: `src/app/(app)/home/page.tsx`, `src/hooks/use-posts.tsx`, and `src/components/posts/PostCard.tsx`/post detail components. Posts can be text, media, local events, alerts, or for-sale items; trace category/type assumptions before modifying a shared post surface.
+- Communities: screens under `src/app/(app)/communities`, service `src/lib/communities/community-service.ts`. Community creation/submission, approval, membership/join requests, community posts/comments/likes, and moderation are represented separately from ordinary feed posts. Migrations define approval and RLS behavior.
+- Messaging: `src/app/(app)/messages`, `src/components/messages`, and `src/lib/supabase/supabase-chat-service.ts`. Realtime message events, conversation state, unread counts, and push notifications may involve triggers/Edge Functions in addition to screen code.
 - Alerts, reports, moderation, and admin actions use dedicated routes/services. A hidden button or client role check is not an authorization boundary.
 
 ### Marketplace: list, buy, deliver, resolve
@@ -98,20 +98,20 @@ Trace `src/components/escrow/*`, `/api/payment/initialize`, `/api/payment/verify
 2. Customers choose a service, optional staff member, date, and time. `BookingService.getAvailableSlots` considers offering duration, weekly hours, blackout/custom hours, and existing non-cancelled bookings.
 3. A customer request, business confirmation/decline, cancellation, completion, no-show, payment, and review are related but distinct state transitions. Deposit/full-payment flags and escrow settings on the service affect checkout requirements. Cancellation windows and no-show strikes affect trust eligibility.
 4. A quote may be approved and converted to a booking. `POST /api/bookings/checkout` performs conversion/booking creation with server-side operations; inspect rollback/idempotency behavior to avoid duplicate booking rows.
-5. Main routes live under `src/app/(app)/bookings` and business management routes. `src/lib/booking-service.ts`, `quote-service.ts`, `staff-service.ts`, API handlers, and migrations implement availability and state rules.
+5. Main routes live under `src/app/(app)/bookings` and business management routes. `src/lib/bookings/booking-service.ts`, `quote-service.ts`, `staff-service.ts`, API handlers, and migrations implement availability and state rules.
 
 ### Events, tickets, and check-in
 
 1. Organizers create an event and ticket tiers via event UI and `POST /api/events/create`; visibility and publication status control discovery.
-2. `src/lib/event-service.ts` loads published events/tier data and attendee previews, and supports legacy event posts. Event pages are under `src/app/(app)/events`; organizer views also appear in `my-events`.
+2. `src/lib/events/event-service.ts` loads published events/tier data and attendee previews, and supports legacy event posts. Event pages are under `src/app/(app)/events`; organizer views also appear in `my-events`.
 3. Paid ticket purchase/verification uses ticket/payment API routes and provider webhooks. Ticket status and `ticket_tiers.sold` capacity counts must remain consistent; migrations include capacity/integrity guards.
 4. Organizer scan/check-in validates ticket ownership/status and persists check-in. Cancellation, refund, payout, and scheduled reminders use distinct API/cron flows.
 
-For ticket changes trace event screens, `src/lib/event-service.ts`, `/api/events/*`, `/api/tickets/*`, payment webhook routes, and relevant migrations. Do not confuse this with the public website's separate email/QR registration flow.
+For ticket changes trace event screens, `src/lib/events/event-service.ts`, `/api/events/*`, `/api/tickets/*`, payment webhook routes, and relevant migrations. Do not confuse this with the public website's separate email/QR registration flow.
 
 ### Notifications, trust, and administration
 
-An action can write an in-app `notifications` row through `src/lib/notification-service.ts`, a server route, or a database trigger. Push delivery is a separate path involving device subscriptions and `supabase/functions/send-push-notification`. Also check `src/lib/notification-routing.ts` when a notification opens a screen. Preserve deduplication, actor grouping, unread state, and deep-link semantics.
+An action can write an in-app `notifications` row through `src/lib/notifications/notification-service.ts`, a server route, or a database trigger. Push delivery is a separate path involving device subscriptions and `supabase/functions/send-push-notification`. Also check `src/lib/notifications/notification-routing.ts` when a notification opens a screen. Preserve deduplication, actor grouping, unread state, and deep-link semantics.
 
 Disputes, content reports, moderation, appeals, safety alerts, and admin tools are spread across user-facing screens, `/api` handlers, services, RLS policies, RPCs, and migrations. Enforce permissions server/database side and preserve audit fields/state transitions.
 

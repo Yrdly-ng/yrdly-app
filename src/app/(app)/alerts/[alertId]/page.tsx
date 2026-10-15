@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { ArrowLeft, AlertTriangle, ShieldCheck, MapPin, Calendar, Share2 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase/supabase";
 import { useToast } from "@/hooks/use-toast";
 
 const FONT = "var(--font-work-sans)";

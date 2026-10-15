@@ -18,8 +18,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { authenticatedFetch } from "@/lib/authenticated-fetch";
-import { supabase } from "@/lib/supabase";
+import { authenticatedFetch } from "@/lib/auth/authenticated-fetch";
+import { supabase } from "@/lib/supabase/supabase";
 
 const FONT = "var(--font-work-sans), sans-serif";
 const RALEWAY = "var(--font-raleway), sans-serif";

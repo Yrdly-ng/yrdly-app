@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthenticatedUser } from '@/lib/supabase-server';
-import { NotificationService } from '@/lib/server-notification-service';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { getAuthenticatedUser } from '@/lib/supabase/supabase-server';
+import { NotificationService } from '@/lib/notifications/server-notification-service';
+import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { data: { user }, error: authError } = await getAuthenticatedUser(request);

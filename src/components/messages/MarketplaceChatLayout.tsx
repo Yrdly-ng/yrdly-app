@@ -8,19 +8,19 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/shared/utils";
 import { SendHorizonal, Search, ArrowLeft, ShoppingBag, ImagePlus, X } from "lucide-react";
 import { Textarea } from "../ui/textarea";
-import { SupabaseChatService } from "@/lib/supabase-chat-service";
+import { SupabaseChatService } from "@/lib/supabase/supabase-chat-service";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { PrivateMediaImage } from '@/components/PrivateMedia';
+import { PrivateMediaImage } from '@/components/media/PrivateMedia';
 import { Progress } from "../ui/progress";
-import { OnlineStatusService } from "@/lib/online-status";
+import { OnlineStatusService } from "@/lib/shared/online-status";
 import { AvatarOnlineIndicator } from "../ui/online-indicator";
-import { supabase } from "@/lib/supabase";
-import { StorageService } from "@/lib/storage-service";
+import { supabase } from "@/lib/supabase/supabase";
+import { StorageService } from "@/lib/media/storage-service";
 import type { User } from "@/types";
 
 // Utility function to get chat wallpaper based on theme
@@ -331,7 +331,7 @@ export function MarketplaceChatLayout({
       // Trigger notification for the other participant
       if (buyer?.uid) {
         try {
-          const { NotificationTriggers } = await import("@/lib/notification-triggers");
+          const { NotificationTriggers } = await import("@/lib/notifications/notification-triggers");
           await NotificationTriggers.onMessageSent(
             buyer.uid,
             user.id,

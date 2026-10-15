@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { BookingService, TimeSlot } from '../lib/booking-service';
+import { BookingService, TimeSlot } from '../lib/bookings/booking-service';
 import {
   ServiceOffering,
   ProviderAvailability,

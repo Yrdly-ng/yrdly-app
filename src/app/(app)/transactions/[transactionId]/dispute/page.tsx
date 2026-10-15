@@ -5,8 +5,8 @@ import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Camera, X, AlertTriangle, FileText } from "lucide-react";
-import { DisputeService, DisputeEvidence } from "@/lib/dispute-service";
-import { StorageService } from "@/lib/storage-service";
+import { DisputeService, DisputeEvidence } from "@/lib/disputes/dispute-service";
+import { StorageService } from "@/lib/media/storage-service";
 
 /* ── Design tokens ─────────────────────────────────── */
 const BG    = "var(--c-bg)";

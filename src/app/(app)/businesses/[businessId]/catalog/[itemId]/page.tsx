@@ -1,9 +1,9 @@
 "use client";
 
-import { CatalogItemScreen } from "@/components/CatalogItemScreen";
+import { CatalogItemScreen } from "@/components/catalog/CatalogItemScreen";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase/supabase";
 import type { Business, CatalogItem } from "@/types";
 
 export default function CatalogItemPage() {

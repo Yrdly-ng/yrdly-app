@@ -1,15 +1,15 @@
-import { clientFeedState } from "@/lib/client-feed-state";
-import { authenticatedFetch } from "@/lib/authenticated-fetch";
+import { clientFeedState } from "@/lib/activity/client-feed-state";
+import { authenticatedFetch } from "@/lib/auth/authenticated-fetch";
 import { useState, useEffect, useCallback, useRef } from "react";
 // Removed Firebase imports - now using Supabase
 import { useAuth } from "@/hooks/use-supabase-auth";
-import { supabase } from "@/lib/supabase";
-import { StorageService } from "@/lib/storage-service";
-import { UserActivityService } from "@/lib/user-activity-service";
+import { supabase } from "@/lib/supabase/supabase";
+import { StorageService } from "@/lib/media/storage-service";
+import { UserActivityService } from "@/lib/activity/user-activity-service";
 
 import { Post, Business } from "@/types";
 import { useToast } from "./use-toast";
-import { reverseGeocode, UNMATCHED_LOCATION } from "@/lib/geocoding-service";
+import { reverseGeocode, UNMATCHED_LOCATION } from "@/lib/location/geocoding-service";
 
 import { LocationFilter } from "@/contexts/LocationContext";
 
@@ -565,7 +565,7 @@ export const usePosts = (filter?: LocationFilter | null) => {
               return [newPost as Post, ...prev];
             });
             const { NotificationTriggers } =
-              await import("@/lib/notification-triggers");
+              await import("@/lib/notifications/notification-triggers");
             await NotificationTriggers.onMentionsInContent(
               user.id,
               newPost.id,

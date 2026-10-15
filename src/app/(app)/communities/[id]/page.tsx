@@ -6,10 +6,10 @@ import {
   ArrowLeft, Bell, BellSlash, Heart, ChatCircle, PaperPlaneTilt,
   UsersThree, SpinnerGap, Warning, Trash,
 } from "@phosphor-icons/react";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase/supabase";
 import { useAuth } from "@/hooks/use-supabase-auth";
-import { CommunityService, Community, CommunityPost, CommunityMembership, CommunityJoinRequest } from "@/lib/community-service";
-import { cn } from "@/lib/utils";
+import { CommunityService, Community, CommunityPost, CommunityMembership, CommunityJoinRequest } from "@/lib/communities/community-service";
+import { cn } from "@/lib/shared/utils";
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();

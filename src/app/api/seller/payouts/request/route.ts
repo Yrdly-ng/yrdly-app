@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthenticatedUser } from '@/lib/supabase-server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
-import { PayoutService } from '@/lib/payout-service';
-import { payoutAccountError } from '@/lib/payout-account';
+import { getAuthenticatedUser } from '@/lib/supabase/supabase-server';
+import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
+import { PayoutService } from '@/lib/payments/payout-service';
+import { payoutAccountError } from '@/lib/payments/payout-account';
 
 export async function POST(request: NextRequest) {
   try {

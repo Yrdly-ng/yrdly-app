@@ -2,16 +2,16 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CommunityScreen } from "@/components/CommunityScreen";
-import { MarketplaceScreen } from "@/components/MarketplaceScreen";
-import { EventsScreen } from "@/components/EventsScreen";
-import { BusinessesScreen } from "@/components/BusinessesScreen";
+import { CommunityScreen } from "@/components/communities/CommunityScreen";
+import { MarketplaceScreen } from "@/components/marketplace/MarketplaceScreen";
+import { EventsScreen } from "@/components/events/EventsScreen";
+import { BusinessesScreen } from "@/components/businesses/BusinessesScreen";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMarketplaceActions } from "@/hooks/use-marketplace-actions";
-import { AlertService } from "@/lib/alert-service";
+import { AlertService } from "@/lib/notifications/alert-service";
 import { Compass, ShoppingBag, Calendar, Briefcase } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { LocationChip } from "@/components/LocationChip";
+import { cn } from "@/lib/shared/utils";
+import { LocationChip } from "@/components/location/LocationChip";
 
 const FONT = "var(--font-work-sans)";
 const RALEWAY = "var(--font-raleway)";

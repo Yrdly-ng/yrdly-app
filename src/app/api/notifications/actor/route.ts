@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthenticatedUser } from '@/lib/supabase-server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
-import { NotificationService } from '@/lib/server-notification-service';
+import { getAuthenticatedUser } from '@/lib/supabase/supabase-server';
+import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
+import { NotificationService } from '@/lib/notifications/server-notification-service';
 
 /** Client notifications are derived from a persisted action, never financial claims. */
 export async function POST(request: NextRequest) {

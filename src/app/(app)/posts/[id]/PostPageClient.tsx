@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase/supabase";
 import { Post as PostType } from "@/types";
-import { PostDetailView } from "@/components/PostDetailView";
+import { PostDetailView } from "@/components/posts/PostDetailView";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter } from "next/navigation";
 

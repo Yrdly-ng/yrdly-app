@@ -4,7 +4,7 @@ import { useOnboarding } from '@/hooks/use-onboarding';
 import { Progress } from '@/components/ui/progress';
 import { CheckCircle } from 'lucide-react';
 
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/shared/utils';
 
 interface OnboardingProgressProps {
   className?: string;

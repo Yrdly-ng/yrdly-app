@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthenticatedUser } from '@/lib/supabase-server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { getAuthenticatedUser } from '@/lib/supabase/supabase-server';
+import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
-import { downloadDisputeEvidence, signDisputeEvidence } from '@/lib/dispute-evidence-server';
-import { NotificationService } from '@/lib/server-notification-service';
-import { PaylukService } from '@/lib/payluk-service';
+import { downloadDisputeEvidence, signDisputeEvidence } from '@/lib/disputes/dispute-evidence-server';
+import { NotificationService } from '@/lib/notifications/server-notification-service';
+import { PaylukService } from '@/lib/payments/payluk-service';
 
 const evidenceSchema = z.object({
   description: z.string().trim().min(20).max(4000),

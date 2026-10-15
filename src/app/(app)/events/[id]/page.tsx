@@ -1,4 +1,4 @@
-import { publicLinkMetadata } from "@/lib/public-link-metadata";
+import { publicLinkMetadata } from "@/lib/shared/public-link-metadata";
 import EventPageClient from "./EventPageClient";
 
 export const revalidate = 0;

@@ -1,8 +1,8 @@
-import { invokeServerFunction } from '@/lib/server-functions';
+import { invokeServerFunction } from '@/lib/notifications/server-functions';
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthenticatedUser } from '@/lib/supabase-server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
-import { isMoneyAmount, isPaidPrice, MINIMUM_PRICE_MESSAGE } from '@/lib/price-policy';
+import { getAuthenticatedUser } from '@/lib/supabase/supabase-server';
+import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
+import { isMoneyAmount, isPaidPrice, MINIMUM_PRICE_MESSAGE } from '@/lib/marketplace/price-policy';
 
 async function save(request: NextRequest, editing: boolean) {
   const { data: { user }, error } = await getAuthenticatedUser(request);

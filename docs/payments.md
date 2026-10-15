@@ -162,7 +162,7 @@ marketplace full dispute refund and split resolution have passed
 using Payluk's [test bank](https://docs.payluk.ng/guides/payluk-test-bank), without
 wallet top-up/deposit. Funded ledger fixtures are retained. Current evidence and
 remaining event, payout and production requirements are in
-[QA_RESULTS.md](../QA_RESULTS.md). Local mocked tests do not establish provider
+[QA_RESULTS.md](qa/QA_RESULTS.md). Local mocked tests do not establish provider
 settlement.
 
 ## Local removal verification — 10 October 2026

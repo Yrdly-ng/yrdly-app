@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from 'react';
-import { AppealService } from '@/lib/appeal-service';
+import { AppealService } from '@/lib/disputes/appeal-service';
 export default function AppealsAdminPage(){
   const [appeals,setAppeals]=useState<any[]>([]); const [busy,setBusy]=useState<string|null>(null);
   useEffect(()=>{ AppealService.listAllAppeals().then(setAppeals).catch(()=>{}); },[]);

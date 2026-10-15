@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase-admin";
+import { supabaseAdmin } from "@/lib/supabase/supabase-admin";
 import { DeliveryOption, PaymentMethod, EscrowStatus } from "@/types/escrow";
-import { isPaidPrice } from '@/lib/price-policy';
-import { MARKETPLACE_CONSTANTS } from "@/lib/constants";
-import { getAuthenticatedUser } from "@/lib/supabase-server";
-import { PaylukService } from "@/lib/payluk-service";
-import { flagPayment } from '@/lib/payment-reconciliation';
-import { applyEscrowPayment } from '@/lib/escrow-payment';
-import { getPaylukCustomerId } from "@/lib/payluk-onboarding";
+import { isPaidPrice } from '@/lib/marketplace/price-policy';
+import { MARKETPLACE_CONSTANTS } from "@/lib/shared/constants";
+import { getAuthenticatedUser } from "@/lib/supabase/supabase-server";
+import { PaylukService } from "@/lib/payments/payluk-service";
+import { flagPayment } from '@/lib/payments/payment-reconciliation';
+import { applyEscrowPayment } from '@/lib/payments/escrow-payment';
+import { getPaylukCustomerId } from "@/lib/payments/payluk-onboarding";
 
 export const maxDuration = 30;
 
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { isUserSuspendedOrBanned } = await import('@/lib/user-suspension');
+    const { isUserSuspendedOrBanned } = await import('@/lib/moderation/user-suspension');
     const { suspended: buyerSuspended } = await isUserSuspendedOrBanned(buyerId);
     if (buyerSuspended) {
       return NextResponse.json(

@@ -1,6 +1,6 @@
-import { fetchSafeImage } from '@/lib/safe-image-fetch';
+import { fetchSafeImage } from '@/lib/media/safe-image-fetch';
 import sharp from 'sharp';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
 
 // Large link-preview image for posts that have a photo or a video.
 // Photo posts use their first photo; video posts use the saved thumbnail with a play badge.

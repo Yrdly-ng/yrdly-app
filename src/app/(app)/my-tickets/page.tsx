@@ -1,6 +1,6 @@
 "use client";
 
-import { authenticatedFetch } from "@/lib/authenticated-fetch";
+import { authenticatedFetch } from "@/lib/auth/authenticated-fetch";
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -10,7 +10,7 @@ import { Ticket, CalendarDays, MapPin, QrCode, ChevronRight, Loader2, CheckCircl
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-supabase-auth";
-import { getMyTickets } from "@/lib/event-service";
+import { getMyTickets } from "@/lib/events/event-service";
 import type { Ticket as TicketType } from "@/types/events";
 
 function formatDate(iso: string) {

@@ -1,4 +1,4 @@
-import { productionAppHost } from './src/lib/auth-navigation';
+import { productionAppHost } from './src/lib/auth/auth-navigation';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 

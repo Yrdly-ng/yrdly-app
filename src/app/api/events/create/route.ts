@@ -1,9 +1,9 @@
-import { isMoneyAmount } from '@/lib/price-policy';
-import { invokeServerFunction } from '@/lib/server-functions';
+import { isMoneyAmount } from '@/lib/marketplace/price-policy';
+import { invokeServerFunction } from '@/lib/notifications/server-functions';
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthenticatedUser } from '@/lib/supabase-server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
-import { EVENT_CONSTANTS } from '@/lib/constants';
+import { getAuthenticatedUser } from '@/lib/supabase/supabase-server';
+import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
+import { EVENT_CONSTANTS } from '@/lib/shared/constants';
 
 export const dynamic = 'force-dynamic';
 

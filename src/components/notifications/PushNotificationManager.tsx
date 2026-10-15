@@ -1,0 +1,214 @@
+"use client";
+
+import { useEffect, useState } from 'react';
+import { useAuth } from '@/hooks/use-supabase-auth';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/lib/supabase/supabase';
+import { Bell, X } from 'lucide-react';
+
+export function PushNotificationManager() {
+    const { user, profile } = useAuth();
+    const { toast } = useToast();
+    const [isSupported, setIsSupported] = useState(false);
+    const [permission, setPermission] = useState<NotificationPermission>('default');
+    const [showBanner, setShowBanner] = useState(true);
+
+    useEffect(() => {
+        // Check if push notifications are supported
+        if ('Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window) {
+            setIsSupported(true);
+            setPermission(Notification.permission);
+        }
+    }, []);
+
+    const subscribeUser = async (): Promise<boolean> => {
+        try {
+            if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || !user || !profile) return false;
+
+            const registration = await navigator.serviceWorker.ready;
+            
+            const applicationServerKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+            const base64 = applicationServerKey
+                .replace(/-/g, '+')
+                .replace(/_/g, '/');
+            const padded = base64 + '='.repeat((4 - base64.length % 4) % 4);
+            
+            const binaryString = atob(padded);
+            const keyArray = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                keyArray[i] = binaryString.charCodeAt(i);
+            }
+            
+            const subscription = await registration.pushManager.getSubscription()
+                ?? await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: keyArray
+                });
+
+            const subscriptionJson = subscription.toJSON();
+            const { data: existing, error: lookupError } = await supabase
+                .from('push_subscriptions')
+                .select('id')
+                .eq('user_id', user.id)
+                .filter('subscription->>endpoint', 'eq', subscription.endpoint)
+                .maybeSingle();
+
+            if (lookupError) throw lookupError;
+
+            if (existing) {
+                const { error } = await supabase
+                    .from('push_subscriptions')
+                    .update({ subscription: subscriptionJson, updated_at: new Date().toISOString() })
+                    .eq('id', existing.id);
+                if (error) throw error;
+            } else {
+                const { error } = await supabase.from('push_subscriptions').insert({
+                    user_id: user.id,
+                    subscription: subscriptionJson,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                });
+
+                // Strict Mode or two tabs can race the lookup. If the other
+                // request inserted the endpoint first, refresh that row.
+                if (error?.code === '23505') {
+                    const { data: racedRow, error: raceLookupError } = await supabase
+                        .from('push_subscriptions')
+                        .select('id')
+                        .eq('user_id', user.id)
+                        .filter('subscription->>endpoint', 'eq', subscription.endpoint)
+                        .maybeSingle();
+                    if (raceLookupError || !racedRow) throw error;
+
+                    const { error: updateError } = await supabase
+                        .from('push_subscriptions')
+                        .update({ subscription: subscriptionJson, updated_at: new Date().toISOString() })
+                        .eq('id', racedRow.id);
+                    if (updateError) throw updateError;
+                } else if (error) {
+                    throw error;
+                }
+            }
+            return true;
+
+        } catch (error) {
+            console.error("Push notification setup error:", error);
+            return false;
+        }
+    };
+
+    // Auto-subscribe if permission is already granted and profile exists in public.users
+    useEffect(() => {
+        if (!user || !profile || !isSupported) return;
+        if (permission === 'granted') {
+            subscribeUser();
+        }
+    }, [user, profile, isSupported, permission]);
+
+    // Real-time listener: capture & display every notification (messages, friend requests, alerts, etc.)
+    useEffect(() => {
+        if (!user) return;
+
+        const channelId = `realtime_notifications_${user.id}_${Math.random().toString(36).substring(2, 9)}`;
+        const channel = supabase
+            .channel(channelId)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'notifications',
+                    filter: `user_id=eq.${user.id}`,
+                },
+                async (payload) => {
+                    const newNotif = payload.new as any;
+                    if (!newNotif) return;
+
+                    // 1. Show in-app Toast notification
+                    toast({
+                        title: newNotif.title || 'Notification 🔔',
+                        description: newNotif.message || '',
+                    });
+
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [user, toast]);
+
+    // Handle user tapping Enable Notifications button
+    const handleEnableNotifications = async () => {
+        try {
+            const result = await Notification.requestPermission();
+            setPermission(result);
+            if (result === 'granted') {
+                const subscribed = await subscribeUser();
+                toast(subscribed ? {
+                    title: "Notifications Enabled",
+                    description: "You'll now receive updates and messages in real time.",
+                } : {
+                    variant: "destructive",
+                    title: "Notifications couldn't be set up",
+                    description: "Please try again. If the issue continues, refresh the app and retry.",
+                });
+            } else if (result === 'denied') {
+                toast({
+                    variant: "destructive",
+                    title: "Permission Denied",
+                    description: "Notifications are blocked. You can enable them in your device browser settings.",
+                });
+            }
+        } catch (err) {
+            console.error("Request permission error:", err);
+        } finally {
+            setShowBanner(false);
+        }
+    };
+
+    // Render interactive prompt banner if permission is default and user profile exists
+    if (permission === 'default' && showBanner && isSupported && user && profile) {
+        return (
+            <div className="fixed top-20 left-4 right-4 md:left-auto md:right-6 md:w-96 z-[100] animate-in fade-in slide-in-from-top-4 duration-300">
+                <div className="bg-[var(--c-card)] border border-[#82DB7E]/40 rounded-2xl p-4 shadow-2xl backdrop-blur-xl flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-full bg-[#82DB7E]/15 flex items-center justify-center flex-shrink-0 text-[#82DB7E]">
+                        <Bell className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <h4 className="text-sm font-bold text-foreground font-yrdly-display">Turn on Notifications</h4>
+                        <p className="text-xs text-[var(--c-text-muted)] mt-0.5 font-yrdly-body">
+                            Get real-time alerts when neighbours message you or share updates.
+                        </p>
+                        <div className="flex items-center gap-2 mt-3">
+                            <button
+                                type="button"
+                                onClick={handleEnableNotifications}
+                                className="px-4 py-1.5 rounded-full bg-[#82DB7E] text-black text-xs font-bold hover:opacity-90 transition-opacity active:scale-95"
+                            >
+                                Enable
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setShowBanner(false)}
+                                className="px-3 py-1.5 rounded-full text-xs text-[var(--c-text-muted)] hover:text-foreground transition-colors"
+                            >
+                                Not now
+                            </button>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => setShowBanner(false)}
+                        className="text-[var(--c-text-muted)] hover:text-foreground p-1"
+                    >
+                        <X className="w-4 h-4" />
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    return null;
+}

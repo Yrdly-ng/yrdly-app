@@ -3,9 +3,9 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, PaperPlaneTilt, SpinnerGap } from "@phosphor-icons/react";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase/supabase";
 import { useAuth } from "@/hooks/use-supabase-auth";
-import { CommunityService, CommunityPost, CommunityComment } from "@/lib/community-service";
+import { CommunityService, CommunityPost, CommunityComment } from "@/lib/communities/community-service";
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();

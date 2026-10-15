@@ -4,8 +4,8 @@ import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronDown, ChevronUp, Image as ImageIcon, X, Loader2, Check } from 'lucide-react';
 import { useAuth } from '@/hooks/use-supabase-auth';
-import { supabase } from '@/lib/supabase';
-import { StorageService } from '@/lib/storage-service';
+import { supabase } from '@/lib/supabase/supabase';
+import { StorageService } from '@/lib/media/storage-service';
 import { useToast } from '@/hooks/use-toast';
 
 const REPORT_CATEGORIES = [

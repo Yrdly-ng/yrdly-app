@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthenticatedUser } from '@/lib/supabase-server';
-import { PaylukService } from '@/lib/payluk-service';
+import { getAuthenticatedUser } from '@/lib/supabase/supabase-server';
+import { PaylukService } from '@/lib/payments/payluk-service';
 
 async function resolveHandler(bankCode: string, accountNumber: string, request: NextRequest) {
   const { data: { user }, error: authError } = await getAuthenticatedUser(request);

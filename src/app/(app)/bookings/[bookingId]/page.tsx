@@ -3,11 +3,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-supabase-auth';
-import { BookingService, CANCELLATION_WINDOW_HOURS } from '@/lib/booking-service';
-import { NotificationTriggers } from '@/lib/notification-triggers';
-import { supabase } from '@/lib/supabase';
+import { BookingService, CANCELLATION_WINDOW_HOURS } from '@/lib/bookings/booking-service';
+import { NotificationTriggers } from '@/lib/notifications/notification-triggers';
+import { supabase } from '@/lib/supabase/supabase';
 import { Booking } from '@/types';
-import { authenticatedFetch } from '@/lib/authenticated-fetch';
+import { authenticatedFetch } from '@/lib/auth/authenticated-fetch';
 
 interface BookingCheckout {
   transactionId: string;
