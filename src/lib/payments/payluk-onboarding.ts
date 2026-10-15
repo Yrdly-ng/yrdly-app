@@ -10,6 +10,15 @@ export class PaymentPhoneVerificationError extends Error {
   }
 }
 
+export class PaymentIdentityMismatchError extends Error {
+  readonly code = 'PAYMENT_IDENTITY_MISMATCH';
+
+  constructor(readonly userId: string) {
+    super('The linked payment account does not match the verified phone number.');
+    this.name = 'PaymentIdentityMismatchError';
+  }
+}
+
 function normalizePhone(value: string): string {
   const digits = value.replace(/\D/g, '');
   if (/^234[789]\d{9}$/.test(digits)) return `0${digits.slice(3)}`;
@@ -42,7 +51,7 @@ async function ensureWithinDeadline(userId: string, deadline: AbortSignal): Prom
   const phone = normalizePhone(user.phone);
   const validate = async (customer: PaylukCustomer) => {
     if (!customer?.customerId || normalizePhone(customer.phone || '') !== phone) {
-      throw new Error('Payment identity could not be verified. Contact support; your stored mapping has not been changed.');
+      throw new PaymentIdentityMismatchError(userId);
     }
     const { data: duplicate, error: lookupError } = await supabaseAdmin.from('users')
       .select('id').eq('payluk_customer_id', customer.customerId).neq('id', userId).limit(1);

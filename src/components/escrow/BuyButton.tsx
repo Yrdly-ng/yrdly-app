@@ -121,6 +121,24 @@ export function BuyButton({
         return;
       }
 
+      if (!res.ok && data.error === 'BUYER_PAYMENT_IDENTITY_MISMATCH') {
+        toast({
+          title: "Payment account needs attention",
+          description: data.message || "Contact Yrdly Support to reconcile your linked Payluk account before trying again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!res.ok && data.error === 'SELLER_PAYMENT_IDENTITY_MISMATCH') {
+        toast({
+          title: "Seller payment account needs attention",
+          description: data.message || "The seller needs to contact Yrdly Support before this item can be purchased.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       if (!res.ok || (!data.paylukPaymentToken && !data.paymentLink)) {
         console.error("[BuyButton] Payment initialization failed:", res.status, data);
         toast({

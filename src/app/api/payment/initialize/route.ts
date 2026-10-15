@@ -29,6 +29,20 @@ function phoneVerificationResponse(error: unknown, buyerId?: string) {
   }, { status: 409 });
 }
 
+function paymentIdentityResponse(error: unknown, buyerId?: string) {
+  if (!buyerId || !error || typeof error !== 'object' ||
+      !('code' in error) || error.code !== 'PAYMENT_IDENTITY_MISMATCH' ||
+      !('userId' in error) || typeof error.userId !== 'string') return null;
+
+  const isBuyer = error.userId === buyerId;
+  return NextResponse.json({
+    error: isBuyer ? 'BUYER_PAYMENT_IDENTITY_MISMATCH' : 'SELLER_PAYMENT_IDENTITY_MISMATCH',
+    message: isBuyer
+      ? 'Your Yrdly phone and linked Payluk account do not match. Contact Yrdly Support to safely reconcile your payment account before trying again.'
+      : 'The seller’s linked payment account needs to be reconciled before this item can be purchased. Please try another listing or contact the seller.',
+  }, { status: 409 });
+}
+
 
 /**
  * POST /api/payment/initialize
@@ -384,7 +398,8 @@ export async function POST(request: NextRequest) {
         if (commission > 0) await PaylukService.addAdditionalFee(paylukPaymentToken,commission,setupDeadline);
       } catch (paylukError: any) {
         const verificationResponse = phoneVerificationResponse(paylukError, authenticatedBuyerId);
-        if (!verificationResponse) console.error("[PaymentInit] Payluk createEscrow error:", paylukError);
+        const identityResponse = paymentIdentityResponse(paylukError, authenticatedBuyerId);
+        if (!verificationResponse && !identityResponse) console.error("[PaymentInit] Payluk createEscrow error:", paylukError);
         
         if (!submittedToProvider) {
           const { error } = await supabaseAdmin.rpc('abandon_checkout_reservation',{ p_transaction_id:transactionId });
@@ -397,6 +412,7 @@ export async function POST(request: NextRequest) {
         }
 
         if (verificationResponse) return verificationResponse;
+        if (identityResponse) return identityResponse;
 
         return NextResponse.json(
           { error: paylukError?.message || "Failed to initialize Payluk escrow" },
@@ -436,6 +452,8 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const verificationResponse = phoneVerificationResponse(error, authenticatedBuyerId);
     if (verificationResponse) return verificationResponse;
+    const identityResponse = paymentIdentityResponse(error, authenticatedBuyerId);
+    if (identityResponse) return identityResponse;
     console.error("Payment initialization error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
