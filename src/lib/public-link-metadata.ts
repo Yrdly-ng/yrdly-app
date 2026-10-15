@@ -29,6 +29,8 @@ const money = (value: unknown) =>
     maximumFractionDigits: 2,
   }).format(Number(value) || 0);
 
+// React cache deduplicates work within one render only. The route stays dynamic
+// so a visibility or moderation change takes effect on the next preview request.
 export const publicLinkMetadata = cache(
   async (kind: Kind, id: string): Promise<Metadata> => {
     const canonical = `${ORIGIN}/${kind}/${encodeURIComponent(id)}`;
