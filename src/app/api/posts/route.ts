@@ -4,6 +4,8 @@ import { getAuthenticatedUser } from '@/lib/supabase/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
 import { isMoneyAmount, isPaidPrice, MINIMUM_PRICE_MESSAGE } from '@/lib/marketplace/price-policy';
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 async function save(request: NextRequest, editing: boolean) {
   const { data: { user }, error } = await getAuthenticatedUser(request);
   if (error || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -14,6 +16,21 @@ async function save(request: NextRequest, editing: boolean) {
       (input.price != null && !isMoneyAmount(input.price)) ||
       (input.image_urls != null && (!Array.isArray(input.image_urls) || input.image_urls.length > 10 || input.image_urls.some((url: unknown) => typeof url !== 'string')))) {
     return NextResponse.json({ error: 'Invalid post details' }, { status: 400 });
+  }
+  const clientPostId = !editing ? input.id : undefined;
+  if (clientPostId !== undefined && (typeof clientPostId !== 'string' || !UUID_PATTERN.test(clientPostId))) {
+    return NextResponse.json({ error: 'Invalid post identifier' }, { status: 400 });
+  }
+  // Mobile retries reuse the draft's client-generated ID. Return the original
+  // row before moderation or uploads can create side effects a second time.
+  if (clientPostId) {
+    const { data: existing, error: lookupError } = await supabaseAdmin.from('posts')
+      .select('*').eq('id', clientPostId).maybeSingle();
+    if (lookupError) return NextResponse.json({ error: 'Could not verify post status' }, { status: 503 });
+    if (existing) {
+      if (existing.user_id !== user.id) return NextResponse.json({ error: 'Post identifier unavailable' }, { status: 409 });
+      return NextResponse.json({ data: existing, error: null });
+    }
   }
   let category = input.category;
   let price = input.price;
@@ -43,9 +60,19 @@ async function save(request: NextRequest, editing: boolean) {
     ...(!editing ? { timestamp: new Date().toISOString(), state: input.state ?? profile.home_state,
       lga: input.lga ?? profile.home_lga, ward: input.ward ?? profile.home_ward } : { is_edited: true }) };
   const query = editing ? supabaseAdmin.from('posts').update(payload).eq('id', body.id).eq('user_id', user.id)
-    : supabaseAdmin.from('posts').insert(payload);
+    : supabaseAdmin.from('posts').insert(clientPostId ? { ...payload, id: clientPostId } : payload);
   const { data, error: saveError } = await query.select().single();
-  if (saveError) return NextResponse.json({ error: 'Could not save post' }, { status: 500 });
+  if (saveError) {
+    // Two retries can race after both observe no row. The primary-key winner is
+    // authoritative; reconcile the loser to that row instead of surfacing a
+    // false failure or creating another post.
+    if (!editing && clientPostId) {
+      const { data: existing } = await supabaseAdmin.from('posts').select('*')
+        .eq('id', clientPostId).eq('user_id', user.id).maybeSingle();
+      if (existing) return NextResponse.json({ data: existing, error: null });
+    }
+    return NextResponse.json({ error: 'Could not save post' }, { status: 500 });
+  }
   if (!approved) {
     const { error: queueError } = await supabaseAdmin.from('moderation_queue').insert({ content_id: data.id, table_name: 'posts',
       user_id: user.id, status: 'pending', reason: 'Server moderation requires review', text_content: input.text || input.title || '', image_urls: input.image_urls || [] });
@@ -56,3 +83,15 @@ async function save(request: NextRequest, editing: boolean) {
 
 export async function POST(request: NextRequest) { return save(request, false); }
 export async function PATCH(request: NextRequest) { return save(request, true); }
+
+export async function GET(request: NextRequest) {
+  const { data: { user }, error } = await getAuthenticatedUser(request);
+  if (error || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const id = request.nextUrl.searchParams.get('id');
+  if (!id || !UUID_PATTERN.test(id)) return NextResponse.json({ error: 'Invalid post identifier' }, { status: 400 });
+  const { data, error: lookupError } = await supabaseAdmin.from('posts').select('*')
+    .eq('id', id).eq('user_id', user.id).maybeSingle();
+  if (lookupError) return NextResponse.json({ error: 'Could not verify post status' }, { status: 503 });
+  if (!data) return NextResponse.json({ error: 'Post not found' }, { status: 404 });
+  return NextResponse.json({ data, error: null });
+}
