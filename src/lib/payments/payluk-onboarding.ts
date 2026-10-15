@@ -1,6 +1,15 @@
 import { supabaseAdmin } from '../supabase/supabase-admin';
 import { PaylukService, type PaylukCustomer } from './payluk-service';
 
+export class PaymentPhoneVerificationError extends Error {
+  readonly code = 'PAYMENT_PHONE_VERIFICATION_REQUIRED';
+
+  constructor(readonly userId: string) {
+    super('Verify your phone number before using payments.');
+    this.name = 'PaymentPhoneVerificationError';
+  }
+}
+
 function normalizePhone(value: string): string {
   const digits = value.replace(/\D/g, '');
   if (/^234[789]\d{9}$/.test(digits)) return `0${digits.slice(3)}`;
@@ -29,7 +38,7 @@ async function ensureWithinDeadline(userId: string, deadline: AbortSignal): Prom
     .select('payluk_customer_id, name, legal_name, phone, phone_verified')
     .eq('id', userId).single();
   if (error || !user) throw new Error('Payment profile could not be loaded. Please retry.');
-  if (!user.phone_verified || !user.phone) throw new Error('Verify your phone number before using payments.');
+  if (!user.phone_verified || !user.phone) throw new PaymentPhoneVerificationError(userId);
   const phone = normalizePhone(user.phone);
   const validate = async (customer: PaylukCustomer) => {
     if (!customer?.customerId || normalizePhone(customer.phone || '') !== phone) {

@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { X, Lock, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useRouter } from "next/navigation";
 import { MARKETPLACE_CONSTANTS } from "@/lib/shared/constants";
@@ -93,6 +94,32 @@ export function BuyButton({
       });
 
       const data = await res.json();
+
+      if (!res.ok && data.error === 'PHONE_VERIFICATION_REQUIRED') {
+        setOpen(false);
+        const returnPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+        toast({
+          title: "Verify your phone number",
+          description: "Verify your number to continue with payment, then return here to buy this item.",
+          action: (
+            <ToastAction
+              altText="Verify your phone number"
+              onClick={() => router.push(`/onboarding/verify-phone?next=${encodeURIComponent(returnPath)}`)}
+            >
+              Verify phone
+            </ToastAction>
+          ),
+        });
+        return;
+      }
+
+      if (!res.ok && data.error === 'SELLER_PHONE_UNVERIFIED') {
+        toast({
+          title: "Seller verification needed",
+          description: data.message || "The seller needs to verify their phone number before you can buy this item. Please contact the seller.",
+        });
+        return;
+      }
 
       if (!res.ok || (!data.paylukPaymentToken && !data.paymentLink)) {
         console.error("[BuyButton] Payment initialization failed:", res.status, data);

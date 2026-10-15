@@ -15,6 +15,20 @@ export const maxDuration = 30;
 const RATE_LIMIT_MAX = 10;
 const RATE_LIMIT_WINDOW_SECONDS = 60;
 
+function phoneVerificationResponse(error: unknown, buyerId?: string) {
+  if (!buyerId || !error || typeof error !== 'object' ||
+      !('code' in error) || error.code !== 'PAYMENT_PHONE_VERIFICATION_REQUIRED' ||
+      !('userId' in error) || typeof error.userId !== 'string') return null;
+
+  const isBuyer = error.userId === buyerId;
+  return NextResponse.json({
+    error: isBuyer ? 'PHONE_VERIFICATION_REQUIRED' : 'SELLER_PHONE_UNVERIFIED',
+    message: isBuyer
+      ? 'Please verify your phone number to continue with payment.'
+      : 'The seller needs to verify their phone number before this item can be purchased. Please contact the seller.',
+  }, { status: 409 });
+}
+
 
 /**
  * POST /api/payment/initialize
@@ -26,6 +40,7 @@ const RATE_LIMIT_WINDOW_SECONDS = 60;
  * never exposed to the browser.
  */
 export async function POST(request: NextRequest) {
+  let authenticatedBuyerId: string | undefined;
   try {
     // ── Authenticate the caller ───────────────────────────────────────────────
     const { data: { user }, error: authError } = await getAuthenticatedUser(request);
@@ -36,6 +51,7 @@ export async function POST(request: NextRequest) {
         { status: authError?.status === 403 ? 403 : authError?.status === 503 ? 503 : 401 }
       );
     }
+    authenticatedBuyerId = user.id;
 
     // ── Atomic rate limiting (keyed by user_id, not IP) ──────────────────────
     // IP-based limiting breaks on shared carrier NAT (common on mobile networks).
@@ -367,7 +383,8 @@ export async function POST(request: NextRequest) {
         if (persistError || !persisted) throw new Error('Could not persist payment setup');
         if (commission > 0) await PaylukService.addAdditionalFee(paylukPaymentToken,commission,setupDeadline);
       } catch (paylukError: any) {
-        console.error("[PaymentInit] Payluk createEscrow error:", paylukError);
+        const verificationResponse = phoneVerificationResponse(paylukError, authenticatedBuyerId);
+        if (!verificationResponse) console.error("[PaymentInit] Payluk createEscrow error:", paylukError);
         
         if (!submittedToProvider) {
           const { error } = await supabaseAdmin.rpc('abandon_checkout_reservation',{ p_transaction_id:transactionId });
@@ -379,14 +396,7 @@ export async function POST(request: NextRequest) {
           await flagPayment('payluk',paylukEscrowId || transactionId,transactionId,'creation_uncertain');
         }
 
-        const errMsg = paylukError?.message || "";
-        if (errMsg.includes('must have a verified phone number')) {
-           const isBuyer = errMsg.includes(buyerId);
-           return NextResponse.json(
-             { error: isBuyer ? 'PHONE_VERIFICATION_REQUIRED' : 'SELLER_PHONE_UNVERIFIED' },
-             { status: 409 }
-           );
-        }
+        if (verificationResponse) return verificationResponse;
 
         return NextResponse.json(
           { error: paylukError?.message || "Failed to initialize Payluk escrow" },
@@ -424,6 +434,8 @@ export async function POST(request: NextRequest) {
       buyerPaylukId,
     });
   } catch (error) {
+    const verificationResponse = phoneVerificationResponse(error, authenticatedBuyerId);
+    if (verificationResponse) return verificationResponse;
     console.error("Payment initialization error:", error);
     return NextResponse.json(
       { error: "Internal server error" },

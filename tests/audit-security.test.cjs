@@ -789,6 +789,45 @@ test('event creation removes incomplete event when tier save fails', async () =>
 });
 
 
+for (const scenario of ['buyer', 'seller', 'retry-buyer']) {
+  test(`marketplace checkout reports phone verification instead of 502: ${scenario}`, async () => {
+    let abandoned = 0, escrowReads = 0;
+    const { ensurePaylukCustomer } = load('src/lib/payments/payluk-onboarding.ts', {
+      './supabase-admin': { supabaseAdmin: { from: () => chain({ data: { phone: null, phone_verified: false } }) } },
+      './payluk-service': { PaylukService: {} },
+    });
+    const { POST } = load('src/app/api/payment/initialize/route.ts', {
+      '@/lib/supabase-server': { getAuthenticatedUser: async () => ({ data: { user: { id: 'buyer', email: 'buyer@example.test' } } }) },
+      '@/lib/user-suspension': { isUserSuspendedOrBanned: async () => ({ suspended: false }) },
+      '@/lib/payluk-onboarding': { getPaylukCustomerId: id => id === (scenario === 'seller' ? 'seller' : 'buyer') ? ensurePaylukCustomer(id) : Promise.resolve(`provider-${id}`) },
+      '@/lib/escrow-payment': {},
+      '@/lib/payment-reconciliation': { flagPayment: () => assert.fail('No escrow was created; no reconciliation required') },
+      '@/lib/payluk-service': { PaylukService: {
+        verifyEscrow: async () => ({ status: 'PENDING', state: 'AWAITING_PAYMENT' }),
+        updateCustomerPermissions: () => assert.fail('Phone verification must precede provider writes'),
+        createEscrow: () => assert.fail('No charge or escrow may be created'),
+      } },
+      '@/lib/supabase-admin': { supabaseAdmin: {
+        rpc: async name => {
+          if (name === 'abandon_checkout_reservation') abandoned++;
+          return { data: name === 'consume_rate_limit' ? true : 'local-tx' };
+        },
+        from: table => chain({ data: table === 'posts'
+          ? { id: 'item', user_id: 'seller', title: 'Item', price: 2500, is_sold: false, category: 'For Sale', moderation_status: 'approved' }
+          : escrowReads++ === 0
+            ? scenario === 'retry-buyer' ? [{ id: 'prior', buyer_id: 'buyer', status: 'pending', payluk_tx_ref: 'token', payluk_escrow_id: 'remote' }] : []
+            : { id: 'local-tx' } }),
+      } },
+    });
+    const response = await POST(new Request('https://qa.invalid', { method: 'POST', body: JSON.stringify({ itemId: 'item', buyerId: 'buyer', sellerId: 'seller', price: 2500 }) }));
+    assert.equal(response.status, 409);
+    const data = await response.json();
+    assert.equal(data.error, scenario === 'seller' ? 'SELLER_PHONE_UNVERIFIED' : 'PHONE_VERIFICATION_REQUIRED');
+    assert.match(data.message, scenario === 'seller' ? /seller/i : /verify your phone/i);
+    assert.equal(abandoned, scenario === 'retry-buyer' ? 0 : 1);
+  });
+}
+
 test('checkout retry reconciles a funded prior escrow without cancelling or charging again', async () => {
   let writes = 0;
   const { POST } = load('src/app/api/payment/initialize/route.ts', {
