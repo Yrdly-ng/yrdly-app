@@ -66,13 +66,11 @@ export async function GET(request: Request) {
       return onboardingRedirect('/onboarding/verify-phone');
     }
 
-    // Collect a phone number for OAuth users before the profile onboarding flow.
-    if (!profile.phone) {
-      return onboardingRedirect('/onboarding/verify-phone');
-    }
-
-    // If profile exists but onboarding is not completed
+    // Incomplete OAuth profiles must verify a phone before profile setup.
     if (!profile.profile_completed) {
+      if (!profile.phone) {
+        return onboardingRedirect('/onboarding/verify-phone');
+      }
       return onboardingRedirect('/onboarding/profile');
     }
 

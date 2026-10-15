@@ -12,7 +12,7 @@ export default function VerifyPhonePage() {
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const { sendPhoneOtp } = useAuth();
+  const { sendPhoneOtp, profile } = useAuth();
 
   const getNextParam = () => {
     if (typeof window === "undefined") return "";
@@ -111,6 +111,10 @@ export default function VerifyPhonePage() {
               type="button"
               onClick={() => {
                 const next = getNextParam();
+                if (profile?.profile_completed) {
+                  router.replace(next || "/home");
+                  return;
+                }
                 router.push(`/onboarding/profile?phoneSkipped=true${next ? `&next=${encodeURIComponent(next)}` : ""}`);
               }}
               className="text-xs font-bold text-[#82DB7E] hover:underline"

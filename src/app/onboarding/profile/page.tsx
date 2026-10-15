@@ -40,7 +40,7 @@ function OnboardingProfileContent() {
   const phoneSkipped = searchParams.get('phoneSkipped') === 'true';
   const requestedNext = searchParams.get('next');
   const nextPath = safeRelativePath(requestedNext, '');
-  const { user } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
   const [step, setStep] = useState<1 | 2>(1);
   const gps = useGpsLocation();
   const places = usePlaces();
@@ -68,14 +68,40 @@ function OnboardingProfileContent() {
   const [loading, setLoading] = useState(false);
   const [saveError, setSaveError] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const initializedProfileUser = useRef<string | null>(null);
 
   const FEATURED_INTERESTS = POPULAR_INTERESTS.slice(0, 24);
 
   useEffect(() => {
-    if (user?.user_metadata?.username) {
-      setHandle(user.user_metadata.username);
+    if (!user || authLoading || initializedProfileUser.current === user.id) return;
+    initializedProfileUser.current = user.id;
+
+    setHandle(profile?.username || user.user_metadata?.username || '');
+    setBio(profile?.bio || '');
+    setSelectedInterests(profile?.interests || []);
+    setAvatarUri(
+      profile?.avatar_url ||
+        user.user_metadata?.avatar_url ||
+        user.user_metadata?.picture ||
+        null,
+    );
+
+    const state = profile?.home_state || profile?.location?.state;
+    const lga = profile?.home_lga || profile?.location?.lga;
+    const ward = profile?.home_ward || profile?.location?.ward;
+    if (state && lga && ward) {
+      const savedLocation: ResolvedWard = {
+        state,
+        lga,
+        ward,
+        label: `${ward}, ${lga}, ${state}`,
+        lat: profile?.home_lat ?? undefined,
+        lng: profile?.home_lng ?? undefined,
+      };
+      setSelectedLoc(savedLocation);
+      setLocQuery(savedLocation.label);
     }
-  }, [user]);
+  }, [authLoading, profile, user]);
 
   const handlePickAvatar = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -86,7 +112,7 @@ function OnboardingProfileContent() {
   };
 
   useEffect(() => {
-    if (gps.status === 'success' && gps.location) {
+    if (gps.status === 'success' && gps.location && !selectedLoc) {
       const { state, lga, ward, displayAddress, lat, lng } = gps.location;
       const resolved: ResolvedWard = { state, lga, ward, label: `${ward}, ${lga}, ${state}`, lat, lng };
       setSelectedLoc(resolved);
@@ -95,7 +121,7 @@ function OnboardingProfileContent() {
     } else if (gps.status === 'denied' || gps.status === 'error' || gps.status === 'timeout') {
       setLocError(gps.error || 'Could not detect location. Please search or select manually.');
     }
-  }, [gps.status, gps.location, gps.error]);
+  }, [gps.status, gps.location, gps.error, selectedLoc]);
 
   const handleLocQuery = (v: string) => {
     setLocQuery(v);
@@ -287,7 +313,7 @@ function OnboardingProfileContent() {
     setSaveError('');
 
     try {
-      let avatarUrl = user.user_metadata?.avatar_url || null;
+      let avatarUrl = profile?.avatar_url || user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
 
       if (avatarFile) {
         const { url: uploadedUrl, error: uploadErr } = await StorageService.uploadUserAvatar(user.id, avatarFile);

@@ -14,7 +14,7 @@ function VerifyPhoneOtpForm() {
   const pinId = searchParams.get("pinId") || "";
   const requestedNext = searchParams.get("next");
   const nextPath = safeRelativePath(requestedNext, "");
-  const { verifyPhoneOtp } = useAuth();
+  const { verifyPhoneOtp, profile } = useAuth();
 
   const [digits, setDigits] = useState(["", "", "", "", "", ""]);
   const [countdown, setCountdown] = useState(45);
@@ -60,6 +60,10 @@ function VerifyPhoneOtpForm() {
         setError(otpError || "Invalid verification code");
       } else {
         // Termii's verified number is stored by the OTP function, never by query string.
+        if (profile?.profile_completed) {
+          router.replace(nextPath || "/home");
+          return;
+        }
         router.push(`/onboarding/profile${nextPath ? `?next=${encodeURIComponent(nextPath)}` : ""}`);
       }
     } catch (e: any) {
