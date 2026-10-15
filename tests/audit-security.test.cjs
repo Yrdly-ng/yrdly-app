@@ -151,7 +151,7 @@ for (const scenario of ['no-profile', 'no-phone', 'incomplete-profile', 'anonymo
 }
 
 for (const operation of ['send', 'verify']) {
-  for (const scenario of ['anonymous', 'invalid-token', 'suspended', 'bad-input', 'rate-limit', 'provider-failure', 'success', ...(operation === 'verify' ? ['other-owner', 'wrong-phone', 'wrong-code', 'replay'] : ['save-failure'])]) {
+  for (const scenario of ['anonymous', 'invalid-token', 'revoked-session', 'session-unavailable', 'suspended', 'bad-input', 'rate-limit', 'provider-failure', 'success', ...(operation === 'verify' ? ['other-owner', 'wrong-phone', 'wrong-code', 'replay'] : ['save-failure'])]) {
     test(`phone OTP ${operation} enforces identity and challenge state: ${scenario}`, async () => {
       let handler, providerCalls = 0, saved, completed = 0;
       const owner = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
@@ -179,7 +179,13 @@ for (const operation of ['send', 'verify']) {
       };
       const mocks = {
         'https://deno.land/std@0.168.0/http/server.ts': { serve: fn => { handler = fn; } },
-        'https://esm.sh/@supabase/supabase-js@2': { createClient: (_url, key) => key === 'public-fixture' ? { auth: { getUser: async token => ({ data: { user: token === 'valid' ? { id: owner } : null } }) } } : admin },
+        'https://esm.sh/@supabase/supabase-js@2': { createClient: (_url, key) => key === 'public-fixture' ? {
+          auth: { getUser: async token => ({ data: { user: token === 'valid' ? { id: owner } : null } }) },
+          rpc: async name => {
+            assert.equal(name, 'is_current_session_active');
+            return { data: scenario !== 'revoked-session', error: scenario === 'session-unavailable' ? { code: 'service_unavailable' } : null };
+          },
+        } : admin },
         globals: { Deno: { env: { get: name => ({ SUPABASE_URL: 'https://qa.invalid', SUPABASE_ANON_KEY: 'public-fixture', SUPABASE_SERVICE_ROLE_KEY: 'backend-fixture', TERMII_API_KEY: 'provider-fixture' })[name] } } },
         fetch: async (_url, options) => {
           providerCalls++;
@@ -194,9 +200,9 @@ for (const operation of ['send', 'verify']) {
       const body = scenario === 'bad-input' ? { phone: 123, pinId: 'fixture-challenge', pin: 123456 }
         : operation === 'send' ? { phone: '07000000001' } : { pinId: 'fixture-challenge', pin: '123456' };
       const response = await handler(new Request('https://qa.invalid', { method: 'POST', headers, body: JSON.stringify(body) }));
-      const statuses = { anonymous: 401, 'invalid-token': 401, suspended: 403, 'bad-input': 400, 'rate-limit': 429, 'provider-failure': 503, success: 200, 'other-owner': 400, 'wrong-phone': 400, 'wrong-code': 400, replay: 400, 'save-failure': 503 };
+      const statuses = { anonymous: 401, 'invalid-token': 401, 'revoked-session': 401, 'session-unavailable': 401, suspended: 403, 'bad-input': 400, 'rate-limit': 429, 'provider-failure': 503, success: 200, 'other-owner': 400, 'wrong-phone': 400, 'wrong-code': 400, replay: 400, 'save-failure': 503 };
       assert.equal(response.status, statuses[scenario]);
-      if (['anonymous', 'invalid-token', 'suspended', 'bad-input', 'rate-limit', 'other-owner'].includes(scenario)) assert.equal(providerCalls, 0);
+      if (['anonymous', 'invalid-token', 'revoked-session', 'session-unavailable', 'suspended', 'bad-input', 'rate-limit', 'other-owner'].includes(scenario)) assert.equal(providerCalls, 0);
       if (operation === 'send' && scenario === 'success') assert.deepEqual(JSON.parse(JSON.stringify(saved)), { pin_id: 'fixture-challenge', user_id: owner, phone });
       if (operation === 'verify' && ['other-owner', 'wrong-phone', 'wrong-code'].includes(scenario)) assert.equal(completed, 0);
       assert.ok(!(await response.text()).includes('provider-fixture'));
