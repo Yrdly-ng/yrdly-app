@@ -33,6 +33,7 @@ const svg='<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600"><rec
   if(url.origin===base && !url.pathname.startsWith('/_next/image')) return route.continue();
   if(url.pathname.startsWith('/_next/image')||url.hostname==='images.example.test'||url.hostname.includes('unsplash')) return route.fulfill({contentType:'image/svg+xml',body:svg});
   if(url.pathname.includes('/auth/v1/user')) return route.fulfill({json:session.user});
+  if(['/rest/v1/rpc/is_current_session_active','/rest/v1/rpc/activate_latest_session'].includes(url.pathname)) return route.fulfill({json:true});
   if(url.pathname.includes('/rest/v1/')) {
     const table=url.pathname.split('/rest/v1/')[1].split('/')[0];
     if(table==='community_submission_dismissals' && route.request().method()==='POST') { dismissals.push(route.request().postDataJSON()); return route.fulfill({json:[]}); }
