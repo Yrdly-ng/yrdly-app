@@ -223,7 +223,7 @@ NOTIFY pgrst, 'reload schema';
 
 ## Phase 0 / Phase 1
 
-Phase 0 confirmed that this is an App Router application with `src/app/layout.tsx` as the root layout. It mounts `AuthProvider` around the route children and global client components. The client auth context is `useAuth` from `src/hooks/use-supabase-auth.tsx`; profile shape is `AuthUser` in `src/lib/auth-service.ts`. Sign-out is `signOut` in the auth context at `src/hooks/use-supabase-auth.tsx`.
+Phase 0 confirmed that this is an App Router application with `src/app/layout.tsx` as the root layout. It mounts `AuthProvider` around the route children and global client components. The client auth context is `useAuth` from `src/hooks/use-supabase-auth.tsx`; profile shape is `AuthUser` in `src/lib/auth/auth-service.ts`. Sign-out is `signOut` in the auth context at `src/hooks/use-supabase-auth.tsx`.
 
 The selected support entry point is `src/app/(app)/settings/help/page.tsx`, beside the existing Email Support action. The inspected `next.config.mjs` headers only set JSON content types for two well-known files; `middleware.ts` and `vercel.json` do not set a CSP. No CSP change is needed.
 

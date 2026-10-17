@@ -249,6 +249,9 @@ importers:
       e2e:
         specifier: ^0.15.1
         version: 0.15.1
+      prettier:
+        specifier: ^3.9.10
+        version: 3.9.10
       rimraf:
         specifier: ^5.0.7
         version: 5.0.10
@@ -3491,6 +3494,11 @@ packages:
 
   prettier@3.8.3:
     resolution: {integrity: sha512-7igPTM53cGHMW8xWuVTydi2KO233VFiTNyF5hLJqpilHfmn8C8gPf+PS7dUT64YcXFbiMGZxS9pCSxL/Dxm/Jw==}
+    engines: {node: '>=14'}
+    hasBin: true
+
+  prettier@3.9.10:
+    resolution: {integrity: sha512-skGHTH1Yb9QvaTC4hWnRTzEYtCpApF0UMBPz+t/0ZPzP8ihefo/btKd+QA7pUE0fEwA1SbS/NmhyEcstdXOIdA==}
     engines: {node: '>=14'}
     hasBin: true
 
@@ -7308,6 +7316,8 @@ snapshots:
   prelude-ls@1.2.1: {}
 
   prettier@3.8.3: {}
+
+  prettier@3.9.10: {}
 
   prop-types@15.8.1:
     dependencies:

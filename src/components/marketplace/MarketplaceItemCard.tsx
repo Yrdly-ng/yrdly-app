@@ -1,14 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import {
-  Heart,
-  MessageCircle,
-  ShoppingBag,
-  MapPin,
-} from "lucide-react";
+import { Bookmark, MessageCircle, ShoppingBag, MapPin } from "lucide-react";
 import type { Post } from "@/types/index";
 import { formatPrice } from "@/lib/shared/utils";
 import { useAuth } from "@/hooks/use-supabase-auth";
@@ -28,7 +23,8 @@ type BadgeType = "Just Listed" | "Popular" | "Price Reduced" | "Free";
 function getBadge(item: Post): BadgeType | null {
   if (item.price === 0) return "Free";
   const ageHours =
-    (Date.now() - new Date(item.timestamp || item.created_at || "").getTime()) / 3600000;
+    (Date.now() - new Date(item.timestamp || item.created_at || "").getTime()) /
+    3600000;
   if (ageHours < 6) return "Just Listed";
   if ((item as any).view_count > 50) return "Popular";
   if ((item as any).price_reduced) return "Price Reduced";
@@ -44,43 +40,89 @@ export function MarketplaceItemCard({
   const { user } = useAuth();
   const router = useRouter();
   const isOwner = user?.id === item.user_id;
-  const [saved, setSaved] = useState(user ? (item.liked_by || []).includes(user.id) : false);
+  const [saved, setSaved] = useState(false);
+  const savePending = useRef(false);
+  const saveRevision = useRef(0);
 
   useEffect(() => {
-    setSaved(user ? (item.liked_by || []).includes(user.id) : false);
-  }, [item.liked_by, user]);
+    let active = true;
+    const currentRevision = ++saveRevision.current;
+    setSaved(false);
+
+    const handleBookmark = (event: Event) => {
+      const detail = (event as CustomEvent<{ postId: string; saved: boolean }>)
+        .detail;
+      if (detail?.postId === item.id) {
+        saveRevision.current++;
+        setSaved(detail.saved);
+      }
+    };
+    window.addEventListener("yrdly:bookmark", handleBookmark);
+
+    if (user) {
+      void supabase
+        .from("post_bookmarks")
+        .select("id")
+        .eq("post_id", item.id)
+        .eq("user_id", user.id)
+        .maybeSingle()
+        .then(({ data, error }) => {
+          if (active && !error && currentRevision === saveRevision.current)
+            setSaved(!!data);
+        });
+    }
+
+    return () => {
+      active = false;
+      window.removeEventListener("yrdly:bookmark", handleBookmark);
+    };
+  }, [item.id, user?.id]);
 
   const parsedUrls = Array.isArray(item.image_urls)
     ? item.image_urls
     : typeof item.image_urls === "string"
-    ? JSON.parse(item.image_urls || "[]")
-    : [];
+      ? JSON.parse(item.image_urls || "[]")
+      : [];
   const imageUrl =
-    parsedUrls.length > 0 ? parsedUrls[0] : item.image_url || item.video_thumbnail_url;
+    parsedUrls.length > 0
+      ? parsedUrls[0]
+      : item.image_url || item.video_thumbnail_url;
   const sellerName = item.user?.name || item.author_name || "Seller";
   const sellerAvatar = item.user?.avatar_url || item.author_image;
   const isVerifiedSeller = item.user?.verified_seller;
   const badge = getBadge(item);
-  const locationText = item.lga && item.state ? `${item.lga}, ${item.state}` : item.state || "";
+  const locationText =
+    item.lga && item.state ? `${item.lga}, ${item.state}` : item.state || "";
 
   const toggleSaved = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!user) return;
-    const previousSaved = saved;
-    setSaved(!previousSaved);
+    if (!user || savePending.current) return;
+    savePending.current = true;
+    saveRevision.current++;
+    const nextSaved = !saved;
+    setSaved(nextSaved);
 
     try {
-      const { data, error } = await supabase.rpc("toggle_post_like", {
-        p_post_id: item.id,
-        p_user_id: user.id,
-      });
-      if (error) throw error;
-      if (data) {
-        setSaved(data.is_liked);
-      }
-    } catch (err) {
-      console.error("Failed to toggle like", err);
-      setSaved(previousSaved);
+      const result = nextSaved
+        ? await supabase
+            .from("post_bookmarks")
+            .insert({ post_id: item.id, user_id: user.id })
+        : await supabase
+            .from("post_bookmarks")
+            .delete()
+            .match({ post_id: item.id, user_id: user.id });
+      if (result.error && !(nextSaved && result.error.code === "23505"))
+        throw result.error;
+      window.dispatchEvent(
+        new CustomEvent("yrdly:bookmark", {
+          detail: { postId: item.id, saved: nextSaved },
+        }),
+      );
+    } catch (error) {
+      console.error("Failed to toggle saved item", error);
+      setSaved(!nextSaved);
+    } finally {
+      savePending.current = false;
     }
   };
 
@@ -130,9 +172,10 @@ export function MarketplaceItemCard({
             onClick={toggleSaved}
             className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-background/70 backdrop-blur-md transition-all hover:bg-background/90 active:scale-95 shadow-sm"
           >
-            <Heart className={`h-4 w-4 ${saved ? "fill-red-500 text-red-500" : "text-foreground"}`} />
+            <Bookmark
+              className={`h-4 w-4 ${saved ? "fill-red-500 text-red-500" : "text-foreground"}`}
+            />
           </button>
-
         </div>
 
         {/* Content Body */}
@@ -141,12 +184,19 @@ export function MarketplaceItemCard({
             {item.title || item.text || "Item"}
           </h4>
 
-          <p className="break-words text-base sm:text-lg font-bold tracking-tight text-foreground">{item.price === 0 ? "Free" : formatPrice(item.price)}</p>
+          <p className="break-words text-base sm:text-lg font-bold tracking-tight text-foreground">
+            {item.price === 0 ? "Free" : formatPrice(item.price)}
+          </p>
           {/* Seller information */}
           <div className="flex min-w-0 items-center gap-2 text-muted-foreground">
             <div className="relative h-6 w-6 shrink-0 rounded-full overflow-hidden bg-primary/20 flex items-center justify-center">
               {sellerAvatar ? (
-                <Image src={sellerAvatar} alt={sellerName} fill className="object-cover" />
+                <Image
+                  src={sellerAvatar}
+                  alt={sellerName}
+                  fill
+                  className="object-cover"
+                />
               ) : (
                 <span className="text-[0.625rem] font-bold text-primary">
                   {sellerName.charAt(0).toUpperCase()}
@@ -160,7 +210,9 @@ export function MarketplaceItemCard({
           </div>
 
           <div className="flex flex-wrap gap-x-2 text-xs text-muted-foreground">
-            {(item as any).item_condition && <span>{(item as any).item_condition}</span>}
+            {(item as any).item_condition && (
+              <span>{(item as any).item_condition}</span>
+            )}
             {badge && <span>{badge}</span>}
           </div>
           {!!locationText && (
