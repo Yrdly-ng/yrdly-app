@@ -4,12 +4,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, Send, Smile, MoreVertical } from "lucide-react";
+import { ArrowLeft, Send, MoreVertical } from "lucide-react";
 import type { Business, CatalogItem, BusinessMessage } from "@/types/index";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { supabase } from "@/lib/supabase/supabase";
 import Image from "next/image";
+import dynamic from "next/dynamic";
+import { PrivateMediaImage } from "@/components/media/PrivateMedia";
+import {
+  getGiphyMediaUrl,
+  registerGiphySend,
+  type GiphyGif,
+} from "@/lib/messages/giphy";
+const GiphyPicker = dynamic(
+  () => import("./GiphyPicker").then((module) => module.GiphyPicker),
+  { ssr: false },
+);
+type BusinessChatMessage = BusinessMessage & { image_url?: string | null };
 
 interface BusinessChatScreenProps {
   business: Business;
@@ -18,10 +30,20 @@ interface BusinessChatScreenProps {
   onBack: () => void;
 }
 
-export function BusinessChatScreen({ business, item, conversationId: initialConvId, onBack }: BusinessChatScreenProps) {
+export function BusinessChatScreen({
+  business,
+  item,
+  conversationId: initialConvId,
+  onBack,
+}: BusinessChatScreenProps) {
   const { user, profile } = useAuth();
   const [message, setMessage] = useState("");
-  const [messages, setMessages] = useState<BusinessMessage[]>([]);
+  const [gifPickerVisible, setGifPickerVisible] = useState(false);
+  const sendingGif = useRef(false);
+  useEffect(() => {
+    setGifPickerVisible(false);
+  }, [business.id, initialConvId, user?.id]);
+  const [messages, setMessages] = useState<BusinessChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [convId, setConvId] = useState<string | undefined>(initialConvId);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -31,11 +53,11 @@ export function BusinessChatScreen({ business, item, conversationId: initialConv
     if (convId || !user || !business) return;
     const findConv = async () => {
       const { data } = await supabase
-        .from('conversations')
-        .select('id')
-        .contains('participant_ids', [user.id])
-        .eq('type', 'business')
-        .eq('business_id', business.id)
+        .from("conversations")
+        .select("id")
+        .contains("participant_ids", [user.id])
+        .eq("type", "business")
+        .eq("business_id", business.id)
         .maybeSingle();
       if (data?.id) {
         setConvId(data.id);
@@ -53,79 +75,118 @@ export function BusinessChatScreen({ business, item, conversationId: initialConv
         const activeConvId = convId || initialConvId;
         if (activeConvId) {
           const { data: dbMsgs } = await supabase
-            .from('messages')
-            .select('*')
-            .eq('conversation_id', activeConvId)
-            .order('created_at', { ascending: true });
+            .from("messages")
+            .select("*")
+            .eq("conversation_id", activeConvId)
+            .order("created_at", { ascending: true });
           if (dbMsgs) mainMsgs = dbMsgs;
         }
 
         const { data: bizMsgs } = await supabase
-          .from('business_messages')
-          .select(`
+          .from("business_messages")
+          .select(
+            `
             *,
             users!business_messages_sender_id_fkey(
               name,
               avatar_url
             )
-          `)
-          .eq('business_id', business.id)
-          .order('created_at', { ascending: true });
+          `,
+          )
+          .eq("business_id", business.id)
+          .order("created_at", { ascending: true });
 
         // Filter bizMsgs by item_id if provided
         let filteredBizData = bizMsgs || [];
         if (item?.id) {
-          filteredBizData = filteredBizData.filter(msg => msg.item_id === item.id);
+          filteredBizData = filteredBizData.filter(
+            (msg) => msg.item_id === item.id,
+          );
         } else {
-          filteredBizData = filteredBizData.filter(msg => !msg.item_id);
+          filteredBizData = filteredBizData.filter((msg) => !msg.item_id);
         }
 
         // Fetch user data for senders in mainMsgs
-        const mainSenderIds = Array.from(new Set(mainMsgs.map(m => m.sender_id))).filter(Boolean);
+        const mainSenderIds = Array.from(
+          new Set(mainMsgs.map((m) => m.sender_id)),
+        ).filter(Boolean);
         let usersMap = new Map();
         if (mainSenderIds.length > 0) {
           const { data: usersData } = await supabase
-            .from('public_profiles')
-            .select('id, name, avatar_url')
-            .in('id', mainSenderIds);
+            .from("public_profiles")
+            .select("id, name, avatar_url")
+            .in("id", mainSenderIds);
           if (usersData) {
-            usersMap = new Map(usersData.map(u => [u.id, u]));
+            usersMap = new Map(usersData.map((u) => [u.id, u]));
           }
         }
 
-        const formattedMain: BusinessMessage[] = mainMsgs.map(m => {
+        const formattedMain: BusinessChatMessage[] = mainMsgs.map((m) => {
           const sender = usersMap.get(m.sender_id);
           return {
             id: m.id,
             business_id: business.id,
             sender_id: m.sender_id,
-            sender_name: sender?.name || (m.sender_id === user.id ? (profile?.name || "You") : "User"),
-            sender_avatar: sender?.avatar_url || (m.sender_id === user.id ? profile?.avatar_url : undefined),
+            sender_name:
+              sender?.name ||
+              (m.sender_id === user.id ? profile?.name || "You" : "User"),
+            sender_avatar:
+              sender?.avatar_url ||
+              (m.sender_id === user.id ? profile?.avatar_url : undefined),
             content: m.text || m.content || "",
-            timestamp: new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            image_url:
+              m.image_url || (m.media_type === "image" ? m.media_url : null),
+            timestamp: new Date(m.created_at).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
             is_read: m.is_read || false,
-            created_at: m.created_at
+            created_at: m.created_at,
           };
         });
 
-        const formattedBiz: BusinessMessage[] = filteredBizData.map(msg => ({
-          id: msg.id,
-          business_id: msg.business_id,
-          sender_id: msg.sender_id,
-          sender_name: msg.users?.name || (msg.sender_id === user.id ? (profile?.name || "You") : "User"),
-          sender_avatar: msg.users?.avatar_url || (msg.sender_id === user.id ? profile?.avatar_url : undefined),
-          content: msg.content,
-          timestamp: new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-          is_read: msg.is_read,
-          item_id: msg.item_id,
-          created_at: msg.created_at
-        }));
+        const formattedBiz: BusinessChatMessage[] = filteredBizData.map(
+          (msg) => ({
+            id: msg.id,
+            business_id: msg.business_id,
+            sender_id: msg.sender_id,
+            sender_name:
+              msg.users?.name ||
+              (msg.sender_id === user.id ? profile?.name || "You" : "User"),
+            sender_avatar:
+              msg.users?.avatar_url ||
+              (msg.sender_id === user.id ? profile?.avatar_url : undefined),
+            content: msg.content,
+            timestamp: new Date(msg.created_at).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+            is_read: msg.is_read,
+            item_id: msg.item_id,
+            created_at: msg.created_at,
+          }),
+        );
 
         // Merge both message arrays and deduplicate by content + timestamp proximity
-        const map = new Map<string, BusinessMessage>();
-        [...formattedMain,...formattedBiz.filter(legacy => !formattedMain.some(current => current.sender_id === legacy.sender_id &&
-          current.content === legacy.content && Math.abs(Date.parse(current.created_at || '')-Date.parse(legacy.created_at || '')) < 1500))].forEach(msg => {
-          const createdTime = msg.created_at ? new Date(msg.created_at).getTime() : Date.now();
+        const map = new Map<string, BusinessChatMessage>();
+        [
+          ...formattedMain,
+          ...formattedBiz.filter(
+            (legacy) =>
+              !formattedMain.some(
+                (current) =>
+                  current.sender_id === legacy.sender_id &&
+                  current.content === legacy.content &&
+                  Math.abs(
+                    Date.parse(current.created_at || "") -
+                      Date.parse(legacy.created_at || ""),
+                  ) < 1500,
+              ),
+          ),
+        ].forEach((msg) => {
+          const createdTime = msg.created_at
+            ? new Date(msg.created_at).getTime()
+            : Date.now();
           const key = `${msg.sender_id}_${msg.content.trim()}_${createdTime}`;
           if (!map.has(key)) {
             map.set(key, msg);
@@ -133,7 +194,9 @@ export function BusinessChatScreen({ business, item, conversationId: initialConv
         });
 
         const merged = Array.from(map.values()).sort(
-          (a, b) => (a.created_at ? new Date(a.created_at).getTime() : 0) - (b.created_at ? new Date(b.created_at).getTime() : 0)
+          (a, b) =>
+            (a.created_at ? new Date(a.created_at).getTime() : 0) -
+            (b.created_at ? new Date(b.created_at).getTime() : 0),
         );
 
         setMessages(merged);
@@ -152,72 +215,106 @@ export function BusinessChatScreen({ business, item, conversationId: initialConv
     if (activeConvId) {
       const msgChannel = supabase
         .channel(`messages_channel_${activeConvId}`)
-        .on('postgres_changes', {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `conversation_id=eq.${activeConvId}`
-        }, async (payload) => {
-          const newM = payload.new as any;
-          if (user && newM.sender_id === user.id) return;
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "messages",
+            filter: `conversation_id=eq.${activeConvId}`,
+          },
+          async (payload) => {
+            const newM = payload.new as any;
+            if (user && newM.sender_id === user.id) return;
 
-          const { data: uData } = await supabase.from('public_profiles').select('name, avatar_url').eq('id', newM.sender_id).maybeSingle();
-          const transformed: BusinessMessage = {
-            id: newM.id,
-            business_id: business.id,
-            sender_id: newM.sender_id,
-            sender_name: uData?.name || "User",
-            sender_avatar: uData?.avatar_url,
-            content: newM.text || newM.content || "",
-            timestamp: new Date(newM.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-            is_read: newM.is_read || false,
-            created_at: newM.created_at
-          };
-          setMessages(prev => {
-            if (prev.some(m => m.id === transformed.id || (m.sender_id === transformed.sender_id && m.content === transformed.content))) return prev;
-            return [...prev, transformed];
-          });
-        })
+            const { data: uData } = await supabase
+              .from("public_profiles")
+              .select("name, avatar_url")
+              .eq("id", newM.sender_id)
+              .maybeSingle();
+            const transformed: BusinessChatMessage = {
+              id: newM.id,
+              business_id: business.id,
+              sender_id: newM.sender_id,
+              sender_name: uData?.name || "User",
+              sender_avatar: uData?.avatar_url,
+              content: newM.text || newM.content || "",
+              image_url:
+                newM.image_url ||
+                (newM.media_type === "image" ? newM.media_url : null),
+              timestamp: new Date(newM.created_at).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+              is_read: newM.is_read || false,
+              created_at: newM.created_at,
+            };
+            setMessages((prev) => {
+              if (prev.some((m) => m.id === transformed.id)) return prev;
+              return [...prev, transformed];
+            });
+          },
+        )
         .subscribe();
       channels.push(msgChannel);
     }
 
     const bizChannel = supabase
-      .channel(`biz_messages_${business.id}_${item?.id || 'gen'}`)
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'business_messages',
-        filter: `business_id=eq.${business.id}`
-      }, async (payload) => {
-        const newMessage = payload.new as any;
-        if (user && newMessage.sender_id === user.id) return;
-        if (item?.id && newMessage.item_id !== item.id) return;
-        if (!item?.id && newMessage.item_id) return;
+      .channel(`biz_messages_${business.id}_${item?.id || "gen"}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "business_messages",
+          filter: `business_id=eq.${business.id}`,
+        },
+        async (payload) => {
+          const newMessage = payload.new as any;
+          if (user && newMessage.sender_id === user.id) return;
+          if (item?.id && newMessage.item_id !== item.id) return;
+          if (!item?.id && newMessage.item_id) return;
 
-        const { data: userData } = await supabase.from('public_profiles').select('name, avatar_url').eq('id', newMessage.sender_id).maybeSingle();
-        const transformed: BusinessMessage = {
-          id: newMessage.id,
-          business_id: newMessage.business_id,
-          sender_id: newMessage.sender_id,
-          sender_name: userData?.name || "User",
-          sender_avatar: userData?.avatar_url,
-          content: newMessage.content,
-          timestamp: new Date(newMessage.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-          is_read: newMessage.is_read,
-          item_id: newMessage.item_id,
-          created_at: newMessage.created_at
-        };
-        setMessages(prev => {
-          if (prev.some(m => m.id === transformed.id || (m.sender_id === transformed.sender_id && m.content === transformed.content))) return prev;
-          return [...prev, transformed];
-        });
-      })
+          const { data: userData } = await supabase
+            .from("public_profiles")
+            .select("name, avatar_url")
+            .eq("id", newMessage.sender_id)
+            .maybeSingle();
+          const transformed: BusinessChatMessage = {
+            id: newMessage.id,
+            business_id: newMessage.business_id,
+            sender_id: newMessage.sender_id,
+            sender_name: userData?.name || "User",
+            sender_avatar: userData?.avatar_url,
+            content: newMessage.content,
+            timestamp: new Date(newMessage.created_at).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+            is_read: newMessage.is_read,
+            item_id: newMessage.item_id,
+            created_at: newMessage.created_at,
+          };
+          setMessages((prev) => {
+            if (
+              prev.some(
+                (m) =>
+                  m.id === transformed.id ||
+                  (m.sender_id === transformed.sender_id &&
+                    m.content === transformed.content &&
+                    m.image_url === transformed.image_url),
+              )
+            )
+              return prev;
+            return [...prev, transformed];
+          });
+        },
+      )
       .subscribe();
     channels.push(bizChannel);
 
     return () => {
-      channels.forEach(ch => supabase.removeChannel(ch));
+      channels.forEach((ch) => supabase.removeChannel(ch));
     };
   }, [user, business, item, convId, initialConvId, profile]);
 
@@ -235,87 +332,156 @@ export function BusinessChatScreen({ business, item, conversationId: initialConv
     const messageContent = message.trim();
     const tempId = `temp-${Date.now()}`;
     const activeConvId = convId || initialConvId;
-    
-    const optimisticMessage: BusinessMessage = {
+
+    const optimisticMessage: BusinessChatMessage = {
       id: tempId,
       business_id: business.id,
       sender_id: user.id,
       sender_name: profile?.name || user.user_metadata?.name || "You",
       sender_avatar: profile?.avatar_url || user.user_metadata?.avatar_url,
       content: messageContent,
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      timestamp: new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
       is_read: true,
       item_id: item?.id,
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
     };
 
-    setMessages(prev => [...prev, optimisticMessage]);
+    setMessages((prev) => [...prev, optimisticMessage]);
     setMessage("");
 
     try {
-      if (!activeConvId) throw new Error('Conversation is still loading. Please retry.');
-      const { data:insertedMessage,error } = await supabase.from('messages').insert({
-        conversation_id:activeConvId,sender_id:user.id,text:messageContent,content:messageContent,
-        is_read:true,read_by:[user.id],created_at:new Date().toISOString(),
-      }).select().single();
-      if (error) { setMessages(prev => prev.filter(msg => msg.id !== tempId));throw error; }
+      if (!activeConvId)
+        throw new Error("Conversation is still loading. Please retry.");
+      const { data: insertedMessage, error } = await supabase
+        .from("messages")
+        .insert({
+          conversation_id: activeConvId,
+          sender_id: user.id,
+          text: messageContent,
+          content: messageContent,
+          is_read: true,
+          read_by: [user.id],
+          created_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+      if (error) {
+        setMessages((prev) => prev.filter((msg) => msg.id !== tempId));
+        throw error;
+      }
 
       if (insertedMessage) {
         const { data: userData } = await supabase
-          .from('public_profiles')
-          .select('name, avatar_url')
-          .eq('id', user.id)
+          .from("public_profiles")
+          .select("name, avatar_url")
+          .eq("id", user.id)
           .single();
 
-        const realMessage: BusinessMessage = {
+        const realMessage: BusinessChatMessage = {
           id: insertedMessage.id,
           business_id: business.id,
           sender_id: insertedMessage.sender_id,
           sender_name: userData?.name || profile?.name || "You",
           sender_avatar: userData?.avatar_url || profile?.avatar_url,
           content: insertedMessage.content,
-          timestamp: new Date(insertedMessage.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          timestamp: new Date(insertedMessage.created_at).toLocaleTimeString(
+            [],
+            { hour: "2-digit", minute: "2-digit" },
+          ),
           is_read: insertedMessage.is_read,
           item_id: item?.id,
-          created_at: insertedMessage.created_at
+          created_at: insertedMessage.created_at,
         };
 
-        setMessages(prev => 
-          prev.map(msg => msg.id === tempId ? realMessage : msg)
+        setMessages((prev) =>
+          prev.map((msg) => (msg.id === tempId ? realMessage : msg)),
         );
       }
 
       // 3. Update conversation's last message
       if (activeConvId) {
         await supabase
-          .from('conversations')
+          .from("conversations")
           .update({
             last_message_text: messageContent,
             last_message_timestamp: new Date().toISOString(),
             last_message_sender_id: user.id,
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
           })
-          .eq('id', activeConvId);
+          .eq("id", activeConvId);
       } else {
         await supabase
-          .from('conversations')
+          .from("conversations")
           .update({
             last_message_text: messageContent,
             last_message_timestamp: new Date().toISOString(),
             last_message_sender_id: user.id,
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
           })
-          .eq('business_id', business.id)
-          .contains('participant_ids', [user.id]);
+          .eq("business_id", business.id)
+          .contains("participant_ids", [user.id]);
       }
     } catch (error) {
-      setMessages(prev => prev.filter(msg => msg.id !== tempId));
-      console.error('Error sending message:', error);
+      setMessages((prev) => prev.filter((msg) => msg.id !== tempId));
+      console.error("Error sending message:", error);
+    }
+  };
+
+  const sendGif = async (gif: GiphyGif) => {
+    const activeConvId = convId || initialConvId;
+    if (!user || !activeConvId || sendingGif.current)
+      throw new Error("Conversation is still loading. Please retry.");
+    const source = getGiphyMediaUrl(gif);
+    sendingGif.current = true;
+    try {
+      const { data, error } = await supabase
+        .from("messages")
+        .insert({
+          id: crypto.randomUUID(),
+          conversation_id: activeConvId,
+          sender_id: user.id,
+          text: "",
+          image_url: source,
+          media_url: source,
+          media_type: "image",
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      setMessages((previous) => [
+        ...previous,
+        {
+          id: data.id,
+          business_id: business.id,
+          sender_id: user.id,
+          sender_name: profile?.name || "You",
+          sender_avatar: profile?.avatar_url,
+          content: "",
+          image_url: source,
+          timestamp: new Date(data.created_at).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          created_at: data.created_at,
+          is_read: false,
+        },
+      ]);
+      registerGiphySend(gif);
+      setGifPickerVisible(false);
+      await supabase
+        .from("conversations")
+        .update({ last_message_text: "GIF", updated_at: data.created_at })
+        .eq("id", activeConvId);
+    } finally {
+      sendingGif.current = false;
     }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
@@ -334,23 +500,33 @@ export function BusinessChatScreen({ business, item, conversationId: initialConv
 
   return (
     <div className="flex flex-col h-[100dvh] bg-background">
+      {gifPickerVisible && (
+        <GiphyPicker
+          onClose={() => setGifPickerVisible(false)}
+          onSelect={sendGif}
+        />
+      )}
       {/* Header */}
       <div className="flex items-center gap-3 p-4 border-b border-border bg-card flex-shrink-0">
         <Button aria-label="Back" variant="ghost" size="icon" onClick={onBack}>
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0">
-          <Image 
-            src={business.logo || business.owner_avatar || "/placeholder.svg"} 
-            alt={business.name} 
+          <Image
+            src={business.logo || business.owner_avatar || "/placeholder.svg"}
+            alt={business.name}
             width={40}
             height={40}
-            className="w-full h-full object-cover" 
+            className="w-full h-full object-cover"
           />
         </div>
         <div className="flex-1 min-w-0">
-          <h2 className="font-semibold text-foreground truncate">{business.name}</h2>
-          <p className="text-sm text-muted-foreground truncate">{business.category}</p>
+          <h2 className="font-semibold text-foreground truncate">
+            {business.name}
+          </h2>
+          <p className="text-sm text-muted-foreground truncate">
+            {business.category}
+          </p>
         </div>
         <Button aria-label="More options" variant="ghost" size="icon">
           <MoreVertical className="w-5 h-5" />
@@ -360,7 +536,9 @@ export function BusinessChatScreen({ business, item, conversationId: initialConv
       {/* Item context (if discussing a specific item) */}
       {item && (
         <div className="p-4 border-b border-border bg-muted/30 flex-shrink-0">
-          <p className="text-xs text-muted-foreground mb-2">Discussing this item:</p>
+          <p className="text-xs text-muted-foreground mb-2">
+            Discussing this item:
+          </p>
           <Card className="p-3">
             <div className="flex gap-3">
               <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-muted">
@@ -373,9 +551,15 @@ export function BusinessChatScreen({ business, item, conversationId: initialConv
                 />
               </div>
               <div className="flex-1 min-w-0">
-                <h4 className="font-semibold text-sm text-foreground truncate">{item.title}</h4>
-                <p className="text-lg font-bold text-primary">₦{item.price.toLocaleString()}</p>
-                {!item.in_stock && <p className="text-xs text-destructive">Out of stock</p>}
+                <h4 className="font-semibold text-sm text-foreground truncate">
+                  {item.title}
+                </h4>
+                <p className="text-lg font-bold text-primary">
+                  ₦{item.price.toLocaleString()}
+                </p>
+                {!item.in_stock && (
+                  <p className="text-xs text-destructive">Out of stock</p>
+                )}
               </div>
             </div>
           </Card>
@@ -387,27 +571,47 @@ export function BusinessChatScreen({ business, item, conversationId: initialConv
         {messages.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-muted-foreground">
-              {item ? `Start a conversation about ${item.title}` : `Start a conversation with ${business.name}`}
+              {item
+                ? `Start a conversation about ${item.title}`
+                : `Start a conversation with ${business.name}`}
             </p>
           </div>
         ) : (
           messages.map((msg) => {
             const isOwn = msg.sender_id === user?.id;
             return (
-              <div key={msg.id} className={`flex gap-2 ${isOwn ? "flex-row-reverse" : ""}`}>
+              <div
+                key={msg.id}
+                className={`flex gap-2 ${isOwn ? "flex-row-reverse" : ""}`}
+              >
                 <Avatar className="w-8 h-8 flex-shrink-0">
                   <AvatarImage src={msg.sender_avatar || "/placeholder.svg"} />
                   <AvatarFallback>{msg.sender_name[0]}</AvatarFallback>
                 </Avatar>
-                <div className={`flex flex-col gap-1 max-w-[75%] ${isOwn ? "items-end" : ""}`}>
+                <div
+                  className={`flex flex-col gap-1 max-w-[75%] ${isOwn ? "items-end" : ""}`}
+                >
                   <div
                     className={`rounded-2xl px-4 py-2 ${
-                      isOwn ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+                      isOwn
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-foreground"
                     }`}
                   >
-                    <p className="text-sm">{msg.content}</p>
+                    {msg.image_url && (
+                      <PrivateMediaImage
+                        src={msg.image_url}
+                        alt="Message image"
+                        width={240}
+                        height={200}
+                        className="max-h-64 w-auto rounded-lg object-contain"
+                      />
+                    )}
+                    {msg.content && <p className="text-sm">{msg.content}</p>}
                   </div>
-                  <span className="text-xs text-muted-foreground px-2">{msg.timestamp}</span>
+                  <span className="text-xs text-muted-foreground px-2">
+                    {msg.timestamp}
+                  </span>
                 </div>
               </div>
             );
@@ -419,17 +623,28 @@ export function BusinessChatScreen({ business, item, conversationId: initialConv
       {/* Input area - Fixed at bottom */}
       <div className="border-t border-border p-4 bg-card flex-shrink-0">
         <div className="flex items-center gap-2">
-          <Button aria-label="Choose emoji" variant="ghost" size="icon" className="flex-shrink-0">
-            <Smile className="w-5 h-5" />
+          <Button
+            aria-label="Send a GIF"
+            variant="ghost"
+            className="flex-shrink-0"
+            disabled={!(convId || initialConvId)}
+            onClick={() => setGifPickerVisible(true)}
+          >
+            GIF
           </Button>
           <Input
-            placeholder={item ? `Ask about ${item.title}...` : `Message ${business.name}...`}
+            placeholder={
+              item
+                ? `Ask about ${item.title}...`
+                : `Message ${business.name}...`
+            }
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyPress}
             className="flex-1 bg-background border-border"
           />
-          <Button aria-label="Send message"
+          <Button
+            aria-label="Send message"
             size="icon"
             className="flex-shrink-0 bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={handleSend}

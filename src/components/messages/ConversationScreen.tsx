@@ -48,7 +48,18 @@ import {
 
 import { GlassCard } from "@/components/ui/glass-card";
 import { cn } from "@/lib/shared/utils";
+import dynamic from "next/dynamic";
+import {
+  getGiphyMediaUrl,
+  registerGiphySend,
+  type GiphyGif,
+} from "@/lib/messages/giphy";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
+
+const GiphyPicker = dynamic(
+  () => import("./GiphyPicker").then((module) => module.GiphyPicker),
+  { ssr: false },
+);
 
 interface ConversationRow {
   id: string;
@@ -82,6 +93,7 @@ interface ChatMessage {
   read_by?: string[];
   delivered_by?: string[];
   local_status?: "sending" | "sent" | "failed";
+  local_gif_url?: string;
   local_image?: File;
   local_video?: File;
 }
@@ -97,17 +109,6 @@ function formatTime(iso: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
-}
-
-function getActivityStatus(lastSeen: string | null | undefined): string {
-  if (!lastSeen) return "Last seen recently";
-  const diff = Math.floor((Date.now() - new Date(lastSeen).getTime()) / 60000);
-  if (diff < 1) return "Active now";
-  if (diff < 5) return "Last seen just now";
-  if (diff < 60) return `Last seen ${diff} min ago`;
-  const h = Math.floor(diff / 60);
-  if (h < 24) return `Last seen ${h}h ago`;
-  return `Last seen ${Math.floor(h / 24)}d ago`;
 }
 
 export function ConversationScreen({
@@ -194,6 +195,7 @@ export function ConversationScreen({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [participants, setParticipants] = useState<Record<string, User>>({});
   const [newMessage, setNewMessage] = useState("");
+  const [gifPickerVisible, setGifPickerVisible] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -246,6 +248,7 @@ export function ConversationScreen({
     setSelectedFile(null);
     setVideoFile(null);
     setImagePreview(null);
+    setGifPickerVisible(false);
     autoScroll.current = true;
   }, [user?.id, conversationId]);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
@@ -297,7 +300,7 @@ export function ConversationScreen({
       const { data } = await supabase
         .from("public_profiles")
         .select(
-          "id, name, avatar_url, created_at, last_seen, is_online, verified_seller, phone_verified",
+          "id, name, username, avatar_url, created_at, last_seen, is_online, phone_verified",
         )
         .in("id", conversation.participant_ids);
       const map: Record<string, User> = {};
@@ -558,27 +561,7 @@ export function ConversationScreen({
     };
   }, [conversation?.id, user?.id]);
 
-  /* ── Activity ── */
-  useEffect(() => {
-    if (!user) return;
-    const update = async () => {
-      await supabase
-        .from("users")
-        .update({ last_seen: new Date().toISOString(), is_online: true })
-        .eq("id", user.id);
-    };
-    update();
-    const interval = setInterval(update, 30000);
-    const onVisible = () => {
-      if (!document.hidden) update();
-    };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
-  }, [user]);
-
+  // The protected app layout owns the shared activity heartbeat.
   const otherParticipant = conversation
     ? participants[
         conversation.participant_ids.find((id) => id !== user?.id) || ""
@@ -602,7 +585,7 @@ export function ConversationScreen({
         requestContext.current !== context
       )
         throw new Error("Session ended");
-      let imageUrl: string | null = null,
+      let imageUrl: string | null = message.local_gif_url || null,
         videoUrl: string | null = null;
       const attachments = [
         ["chat-images", message.local_image],
@@ -754,6 +737,44 @@ export function ConversationScreen({
       setSending(false);
     });
   };
+  const sendGif = async (gif: GiphyGif) => {
+    if (!user || !conversation || submitting.current || isEditingVideo)
+      throw new Error("Please wait before sending another GIF.");
+    const source = getGiphyMediaUrl(gif);
+    submitting.current = true;
+    setSending(true);
+    const context = requestContext.current;
+    const message: ChatMessage = {
+      id: crypto.randomUUID(),
+      conversation_id: conversation.id,
+      sender_id: user.id,
+      text: "",
+      image_url: source,
+      local_gif_url: source,
+      created_at: new Date().toISOString(),
+      is_read: false,
+      read_by: [],
+      local_status: "sending",
+    };
+    try {
+      pendingMessages.current.set(message.id, message);
+      autoScroll.current = true;
+      setMessages((previous) => [...previous, message]);
+      setGifPickerVisible(false);
+      await deliverMessage(message);
+      if (
+        requestContext.current === context &&
+        !pendingMessages.current.has(message.id)
+      )
+        registerGiphySend(gif);
+    } finally {
+      if (requestContext.current === context) {
+        submitting.current = false;
+        setSending(false);
+      }
+    }
+  };
+
   const loadEarlier = async () => {
     if (loadingOlder || !conversation || !messages.length) return;
     const first = messages.find(
@@ -883,16 +904,18 @@ export function ConversationScreen({
     );
   }
 
-  const activityStatus = getActivityStatus(
-    (otherParticipant as any)?.last_seen,
-  );
-
   const titleName = otherParticipant.name || "Neighbour";
   const avatarSrc = otherParticipant.avatar_url;
 
   return (
     <div className="w-full h-full flex-1 flex flex-col min-h-0 bg-[var(--yrdly-dark)] text-foreground font-yrdly-body relative">
       {videoEditor}
+      {gifPickerVisible && (
+        <GiphyPicker
+          onClose={() => setGifPickerVisible(false)}
+          onSelect={sendGif}
+        />
+      )}
       {/* ── Top Bar ── */}
       <header className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 bg-[var(--yrdly-dark)]/90 backdrop-blur-md border-b border-[var(--yrdly-glass-border)]">
         <div className="flex items-center gap-3">
@@ -928,22 +951,12 @@ export function ConversationScreen({
                 <h2 className="text-sm font-bold text-foreground font-yrdly-display truncate max-w-[160px]">
                   {titleName}
                 </h2>
-                {otherParticipant &&
-                  ((otherParticipant as any)?.verified_seller ||
-                    (otherParticipant as any)?.is_verified ||
-                    (otherParticipant as any)?.phone_verified) && (
-                    <VerifiedBadge
-                      size={15}
-                      type={
-                        (otherParticipant as any)?.verified_seller
-                          ? "seller"
-                          : "user"
-                      }
-                    />
-                  )}
+                {(otherParticipant as any)?.phone_verified && (
+                  <VerifiedBadge size={15} type="user" />
+                )}
               </div>
               <p className="text-[0.65rem] text-[var(--yrdly-label)] font-yrdly-body">
-                {activityStatus}
+                {`@${(otherParticipant as any)?.username || otherParticipant.name || "user"}`}
               </p>
             </div>
           </div>
@@ -1411,6 +1424,15 @@ export function ConversationScreen({
           </div>
         )}
         <form onSubmit={handleSend} className="flex items-center gap-3">
+          <button
+            type="button"
+            aria-label="Send a GIF"
+            disabled={sending || isEditingVideo}
+            onClick={() => setGifPickerVisible(true)}
+            className="rounded-full bg-primary/10 px-3 py-2 text-xs font-bold text-primary disabled:opacity-50"
+          >
+            GIF
+          </button>
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}

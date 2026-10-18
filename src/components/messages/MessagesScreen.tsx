@@ -3,16 +3,30 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, MessageSquare, Plus, Trash2, X, ShoppingBag } from "lucide-react";
+import {
+  Search,
+  MessageSquare,
+  Plus,
+  Trash2,
+  X,
+  ShoppingBag,
+} from "lucide-react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { supabase } from "@/lib/supabase/supabase";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/shared/utils";
 import { ConversationScreen } from "@/components/messages/ConversationScreen";
 
+import { getUserActivityStatus } from "@/lib/activity/online-status";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 
 const GREEN = "#82DB7E";
@@ -30,7 +44,8 @@ interface Conversation {
   timestamp: string;
   unreadCount: number;
   isVerified?: boolean;
-  isSeller?: boolean;
+  isOnline: boolean;
+  lastSeen: string | null;
   context?: {
     itemId?: string;
     itemTitle?: string;
@@ -46,7 +61,8 @@ function timeLabel(ts: string): string {
     const now = new Date();
     const diffMs = now.getTime() - d.getTime();
     const diffHrs = diffMs / (1000 * 60 * 60);
-    if (diffHrs < 24) return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    if (diffHrs < 24)
+      return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
   } catch {
     return "";
@@ -56,15 +72,18 @@ function timeLabel(ts: string): string {
 function ConversationItem({
   item,
   isActive,
+  now,
   onSelect,
   onDelete,
 }: {
   item: Conversation;
   isActive?: boolean;
+  now: number;
   onSelect: (id: string, e?: React.MouseEvent) => void;
   onDelete: (id: string, e: React.MouseEvent) => void;
 }) {
   const isUnread = item.unreadCount > 0;
+  const activity = getUserActivityStatus(item.isOnline, item.lastSeen, now);
 
   return (
     <div
@@ -72,7 +91,7 @@ function ConversationItem({
       className={cn(
         "group flex items-center gap-3.5 px-4 py-3 cursor-pointer transition-all hover:bg-white/5 border-l-4 border-transparent relative",
         isUnread && "bg-[#82DB7E]/[0.03]",
-        isActive && "bg-[#82DB7E]/10 border-l-[#82DB7E]"
+        isActive && "bg-[#82DB7E]/10 border-l-[#82DB7E]",
       )}
     >
       {/* Avatar */}
@@ -91,7 +110,16 @@ function ConversationItem({
             {item.participantName.charAt(0).toUpperCase()}
           </div>
         )}
-        <div className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-[#82DB7E] border-2 border-[var(--yrdly-dark)]" />
+        {activity !== "offline" && (
+          <span
+            role="img"
+            aria-label={activity === "active" ? "Active" : "Away"}
+            className={cn(
+              "absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-[var(--yrdly-dark)]",
+              activity === "active" ? "bg-[#82DB7E]" : "bg-yellow-400",
+            )}
+          />
+        )}
       </div>
 
       {/* Details */}
@@ -101,19 +129,19 @@ function ConversationItem({
             <span
               className={cn(
                 "text-sm font-semibold truncate text-foreground font-yrdly-display",
-                isUnread && "font-extrabold"
+                isUnread && "font-extrabold",
               )}
             >
               {item.participantName}
             </span>
-            {item.isVerified && (
-              <VerifiedBadge size={15} type={item.isSeller ? "seller" : "user"} />
-            )}
+            {item.isVerified && <VerifiedBadge size={15} type="user" />}
           </div>
           <span
             className={cn(
               "text-xs font-mono flex-shrink-0",
-              isUnread ? "text-[#82DB7E] font-bold" : "text-[var(--yrdly-label)]"
+              isUnread
+                ? "text-[#82DB7E] font-bold"
+                : "text-[var(--yrdly-label)]",
             )}
           >
             {timeLabel(item.timestamp)}
@@ -124,7 +152,9 @@ function ConversationItem({
           <p
             className={cn(
               "text-xs truncate font-yrdly-body",
-              isUnread ? "text-foreground font-medium" : "text-[var(--yrdly-label)]"
+              isUnread
+                ? "text-foreground font-medium"
+                : "text-[var(--yrdly-label)]",
             )}
           >
             {item.lastMessage}
@@ -159,14 +189,19 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
   const router = useRouter();
   const { toast } = useToast();
 
-  const [selectedConvId, setSelectedConvId] = useState<string | null>(initialConvId || null);
+  const [selectedConvId, setSelectedConvId] = useState<string | null>(
+    initialConvId || null,
+  );
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [now, setNow] = useState(() => Date.now());
   const [searching, setSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterTab>("all");
 
-  const [friends, setFriends] = useState<{ id: string; name: string; avatar_url: string }[]>([]);
+  const [friends, setFriends] = useState<
+    { id: string; name: string; avatar_url: string }[]
+  >([]);
   const [friendsLoading, setFriendsLoading] = useState(false);
   const [isNewMessageOpen, setIsNewMessageOpen] = useState(false);
 
@@ -201,29 +236,33 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
         .neq("sender_id", user.id)
         .in(
           "conversation_id",
-          data.map((c: any) => c.id)
+          data.map((c: any) => c.id),
         );
 
       const unreadCounts = (unreadData || [])
         .filter((curr: any) => !curr.read_by?.includes(user.id))
         .reduce((acc: Record<string, number>, curr: any) => {
-        acc[curr.conversation_id] = (acc[curr.conversation_id] || 0) + 1;
-        return acc;
-      }, {});
+          acc[curr.conversation_id] = (acc[curr.conversation_id] || 0) + 1;
+          return acc;
+        }, {});
 
       const otherUserIds = Array.from(
         new Set(
           data
-            .map((c: any) => c.participant_ids?.find((id: string) => id !== user.id))
-            .filter(Boolean)
-        )
+            .map((c: any) =>
+              c.participant_ids?.find((id: string) => id !== user.id),
+            )
+            .filter(Boolean),
+        ),
       ) as string[];
 
       let usersMap = new Map();
       if (otherUserIds.length > 0) {
         const { data: usersData } = await supabase
-          .from('public_profiles')
-          .select("id, name, username, avatar_url, verified_seller, phone_verified")
+          .from("public_profiles")
+          .select(
+            "id, name, username, avatar_url, phone_verified, is_online, last_seen",
+          )
           .in("id", otherUserIds);
 
         if (usersData) {
@@ -232,28 +271,42 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
       }
 
       const formatted: Conversation[] = data
-        .filter((c: any) => !c.deleted_by?.includes(user.id) || (unreadCounts[c.id] || 0) > 0)
+        .filter(
+          (c: any) =>
+            !c.deleted_by?.includes(user.id) || (unreadCounts[c.id] || 0) > 0,
+        )
         .map((c: any) => {
-          const otherId = c.participant_ids?.find((id: string) => id !== user.id);
+          const otherId = c.participant_ids?.find(
+            (id: string) => id !== user.id,
+          );
           const otherUser = usersMap.get(otherId);
 
           let convType: ConvType = "friend";
-          if (c.type === "marketplace" || (c.item_id && c.type !== "briefcase" && c.type !== "business"))
+          if (
+            c.type === "marketplace" ||
+            (c.item_id && c.type !== "briefcase" && c.type !== "business")
+          )
             convType = "marketplace";
-          else if (c.type === "briefcase" || c.type === "business" || c.business_id) convType = "briefcase";
+          else if (
+            c.type === "briefcase" ||
+            c.type === "business" ||
+            c.business_id
+          )
+            convType = "briefcase";
 
           const isBiz = convType === "briefcase" || !!c.business_id;
           const participantName = isBiz
             ? c.business_name || c.item_title || otherUser?.name || "Business"
             : otherUser?.name || c.item_title || "Neighbour";
-          const participantAvatar = isBiz && (c.business_image || c.item_image)
-            ? c.business_image || c.item_image
-            : otherUser?.avatar_url && !otherUser.avatar_url.startsWith("file://")
-            ? otherUser.avatar_url
-            : null;
+          const participantAvatar =
+            isBiz && (c.business_image || c.item_image)
+              ? c.business_image || c.item_image
+              : otherUser?.avatar_url &&
+                  !otherUser.avatar_url.startsWith("file://")
+                ? otherUser.avatar_url
+                : null;
 
-          const isVerified = isBiz || !!otherUser?.verified_seller || !!otherUser?.is_verified || !!otherUser?.phone_verified;
-          const isSeller = isBiz || !!otherUser?.verified_seller;
+          const isVerified = !!otherUser?.phone_verified;
 
           return {
             id: c.id,
@@ -265,7 +318,8 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
             timestamp: c.updated_at || c.created_at,
             unreadCount: unreadCounts[c.id] || 0,
             isVerified,
-            isSeller,
+            isOnline: !!otherUser?.is_online,
+            lastSeen: otherUser?.last_seen || null,
             context:
               c.item_title || c.item_id || c.business_name
                 ? {
@@ -292,11 +346,15 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
     if (!user) return;
     const channel = supabase
       .channel("conversations_realtime_web")
-      .on("postgres_changes", { event: "*", schema: "public", table: "conversations" }, () =>
-        fetchConversations()
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "conversations" },
+        () => fetchConversations(),
       )
-      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () =>
-        fetchConversations()
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "messages" },
+        () => fetchConversations(),
       )
       .subscribe();
 
@@ -305,15 +363,41 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
     };
   }, [user, fetchConversations]);
 
+  useEffect(() => {
+    if (!user?.id) return;
+    const refresh = () => {
+      if (!document.hidden) {
+        setNow(Date.now());
+        void fetchConversations();
+      }
+    };
+    const tick = setInterval(() => {
+      if (!document.hidden) setNow(Date.now());
+    }, 15000);
+    const poll = setInterval(refresh, 30000);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      clearInterval(tick);
+      clearInterval(poll);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [user?.id, fetchConversations]);
+
   const filteredConversations = useMemo(() => {
     return conversations.filter((c) => {
       if (activeFilter === "friends" && c.type !== "friend") return false;
-      if (activeFilter === "marketplace" && c.type !== "marketplace") return false;
+      if (activeFilter === "marketplace" && c.type !== "marketplace")
+        return false;
       if (activeFilter === "business" && c.type !== "briefcase") return false;
 
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        return c.participantName.toLowerCase().includes(q) || c.lastMessage.toLowerCase().includes(q);
+        return (
+          c.participantName.toLowerCase().includes(q) ||
+          c.lastMessage.toLowerCase().includes(q)
+        );
       }
       return true;
     });
@@ -328,11 +412,19 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
     router.push(`/messages/${id}`);
   };
 
-  const handleDeleteConversation = async (conversationId: string, e: React.MouseEvent) => {
+  const handleDeleteConversation = async (
+    conversationId: string,
+    e: React.MouseEvent,
+  ) => {
     e.preventDefault();
     e.stopPropagation();
     if (!user) return;
-    if (!confirm("Are you sure you want to delete this conversation? This action cannot be undone.")) return;
+    if (
+      !confirm(
+        "Are you sure you want to delete this conversation? This action cannot be undone.",
+      )
+    )
+      return;
 
     try {
       const { data, error } = await supabase
@@ -374,11 +466,15 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
     const loadFriends = async () => {
       setFriendsLoading(true);
       try {
-        const { data: userData } = await supabase.from("users").select("friends").eq("id", user.id).single();
+        const { data: userData } = await supabase
+          .from("users")
+          .select("friends")
+          .eq("id", user.id)
+          .single();
         const friendIds = userData?.friends || [];
         if (friendIds.length > 0) {
           const { data: friendsData } = await supabase
-            .from('public_profiles')
+            .from("public_profiles")
             .select("id, name, avatar_url")
             .in("id", friendIds);
           setFriends(friendsData || []);
@@ -436,7 +532,7 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
       <div
         className={cn(
           "w-full md:w-80 lg:w-96 flex flex-col h-full shrink-0 border-r border-[var(--yrdly-glass-border)] bg-[var(--yrdly-dark)]",
-          selectedConvId ? "hidden md:flex" : "flex"
+          selectedConvId ? "hidden md:flex" : "flex",
         )}
       >
         {/* Header */}
@@ -473,7 +569,9 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
           ) : (
             <>
               <div className="flex items-center gap-2.5">
-                <h1 className="text-2xl font-extrabold text-foreground font-yrdly-display">Messages</h1>
+                <h1 className="text-2xl font-extrabold text-foreground font-yrdly-display">
+                  Messages
+                </h1>
                 {totalUnread > 0 && (
                   <span
                     className="px-2 py-0.5 rounded-full text-xs font-bold text-black"
@@ -493,7 +591,10 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
                   <Search className="w-4 h-4" />
                 </button>
 
-                <Dialog open={isNewMessageOpen} onOpenChange={setIsNewMessageOpen}>
+                <Dialog
+                  open={isNewMessageOpen}
+                  onOpenChange={setIsNewMessageOpen}
+                >
                   <DialogTrigger asChild>
                     <button
                       type="button"
@@ -505,39 +606,43 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
                   </DialogTrigger>
                   <DialogContent className="bg-[var(--yrdly-dark)] border border-[var(--yrdly-glass-border)] text-foreground font-yrdly-body max-w-md rounded-2xl p-5">
                     <DialogHeader>
-                      <DialogTitle className="font-yrdly-display font-bold text-lg">New Chat</DialogTitle>
+                      <DialogTitle className="font-yrdly-display font-bold text-lg">
+                        New Chat
+                      </DialogTitle>
                     </DialogHeader>
 
                     <div className="py-1 max-h-[280px] overflow-y-auto space-y-1">
-                        {friendsLoading ? (
-                          <div className="flex justify-center py-6">
-                            <Skeleton className="w-6 h-6 rounded-full" />
-                          </div>
-                        ) : friends.length === 0 ? (
-                          <div className="p-6 text-center text-xs text-[var(--yrdly-label)]">
-                            You have no connections to message yet.
-                          </div>
-                        ) : (
-                          friends.map((friend) => (
-                            <button
-                              key={friend.id}
-                              onClick={() => handleStartChat(friend.id)}
-                              className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/5 transition-colors text-left"
-                            >
-                              <Avatar className="w-9 h-9 border border-[var(--yrdly-glass-border)]">
-                                <AvatarImage src={friend.avatar_url || "/placeholder.svg"} />
-                                <AvatarFallback className="bg-primary text-black font-bold font-yrdly-display text-xs">
-                                  {friend.name?.charAt(0) || "?"}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="flex-1 overflow-hidden">
-                                <p className="font-bold text-sm truncate text-foreground font-yrdly-display">
-                                  {friend.name}
-                                </p>
-                              </div>
-                            </button>
-                          ))
-                        )}
+                      {friendsLoading ? (
+                        <div className="flex justify-center py-6">
+                          <Skeleton className="w-6 h-6 rounded-full" />
+                        </div>
+                      ) : friends.length === 0 ? (
+                        <div className="p-6 text-center text-xs text-[var(--yrdly-label)]">
+                          You have no connections to message yet.
+                        </div>
+                      ) : (
+                        friends.map((friend) => (
+                          <button
+                            key={friend.id}
+                            onClick={() => handleStartChat(friend.id)}
+                            className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/5 transition-colors text-left"
+                          >
+                            <Avatar className="w-9 h-9 border border-[var(--yrdly-glass-border)]">
+                              <AvatarImage
+                                src={friend.avatar_url || "/placeholder.svg"}
+                              />
+                              <AvatarFallback className="bg-primary text-black font-bold font-yrdly-display text-xs">
+                                {friend.name?.charAt(0) || "?"}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 overflow-hidden">
+                              <p className="font-bold text-sm truncate text-foreground font-yrdly-display">
+                                {friend.name}
+                              </p>
+                            </div>
+                          </button>
+                        ))
+                      )}
                     </div>
                   </DialogContent>
                 </Dialog>
@@ -561,7 +666,7 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
                       "px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all border flex-shrink-0",
                       active
                         ? "bg-[#82DB7E]/10 border-[#82DB7E]/30 text-[#82DB7E] font-bold"
-                        : "bg-transparent border-[var(--yrdly-glass-border)] text-[var(--yrdly-label)] hover:text-foreground"
+                        : "bg-transparent border-[var(--yrdly-glass-border)] text-[var(--yrdly-label)] hover:text-foreground",
                     )}
                   >
                     {item.label}
@@ -577,7 +682,10 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
           {loading ? (
             <div className="space-y-2 p-4">
               {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="flex items-center gap-3.5 p-3 rounded-2xl border border-[var(--yrdly-glass-border)] bg-card">
+                <div
+                  key={i}
+                  className="flex items-center gap-3.5 p-3 rounded-2xl border border-[var(--yrdly-glass-border)] bg-card"
+                >
                   <Skeleton className="w-12 h-12 rounded-full flex-shrink-0" />
                   <div className="flex-1 space-y-2">
                     <Skeleton className="h-4 w-32" />
@@ -592,7 +700,9 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
                 <MessageSquare className="w-8 h-8 text-[#82DB7E]" />
               </div>
               <div>
-                <h3 className="text-base font-bold font-yrdly-display text-foreground mb-1">No messages yet</h3>
+                <h3 className="text-base font-bold font-yrdly-display text-foreground mb-1">
+                  No messages yet
+                </h3>
                 <p className="text-xs text-muted-foreground max-w-xs">
                   Say hello to someone in your neighbourhood.
                 </p>
@@ -609,6 +719,7 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
           ) : (
             filteredConversations.map((item) => (
               <ConversationItem
+                now={now}
                 key={item.id}
                 item={item}
                 isActive={selectedConvId === item.id}
@@ -624,7 +735,7 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
       <div
         className={cn(
           "flex-1 flex flex-col h-full min-h-0 bg-[var(--yrdly-dark)]/50",
-          !selectedConvId ? "hidden md:flex" : "flex"
+          !selectedConvId ? "hidden md:flex" : "flex",
         )}
       >
         {selectedConvId ? (
@@ -642,9 +753,12 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
             <div className="w-20 h-20 rounded-3xl bg-surface border border-[var(--yrdly-glass-border)] flex items-center justify-center mb-4 text-[#82DB7E]">
               <MessageSquare className="w-10 h-10" />
             </div>
-            <h2 className="text-xl font-bold font-yrdly-display text-foreground mb-1">Your Messages</h2>
+            <h2 className="text-xl font-bold font-yrdly-display text-foreground mb-1">
+              Your Messages
+            </h2>
             <p className="text-sm text-[var(--yrdly-label)] max-w-sm font-yrdly-body">
-              Select a conversation from the sidebar to chat with neighbours, sellers, or local businesses.
+              Select a conversation from the sidebar to chat with neighbours,
+              sellers, or local businesses.
             </p>
           </div>
         )}
