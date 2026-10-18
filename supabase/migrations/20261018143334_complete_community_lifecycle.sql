@@ -573,4 +573,117 @@ DO $schedule$ BEGIN
    $job$);
  END IF;
 END $schedule$;
+-- Older installed clients still use table writes. Route membership writes
+-- through the same commands; privileged internal writes bypass this adapter.
+CREATE FUNCTION private.community_legacy_membership() RETURNS trigger
+LANGUAGE plpgsql SECURITY INVOKER SET search_path='' AS $$
+BEGIN
+ IF current_user<>'authenticated' THEN
+   IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;
+ END IF;
+ IF TG_OP='INSERT' THEN
+   IF NEW.role<>'member' OR NEW.status<>'active' OR NEW.is_auto_joined THEN RAISE EXCEPTION 'Invalid member role or status'; END IF;
+   IF NEW.user_id=auth.uid() THEN
+     PERFORM public.community_action(NEW.community_id,'join','{}');
+   ELSIF NOT (public.is_community_mod_or_admin(NEW.community_id,auth.uid()) AND EXISTS(
+     SELECT 1 FROM public.community_memberships WHERE community_id=NEW.community_id AND user_id=NEW.user_id AND status='active' AND role='member'
+   )) THEN RAISE EXCEPTION 'Approve a join request before adding a member'; END IF;
+ ELSIF TG_OP='DELETE' THEN
+   PERFORM public.community_action(OLD.community_id,CASE WHEN OLD.user_id=auth.uid() THEN 'leave' ELSE 'remove' END,jsonb_build_object('userId',OLD.user_id));
+ ELSE
+   IF (to_jsonb(NEW)-ARRAY['role','status','is_muted','muted_at','updated_at']) IS DISTINCT FROM (to_jsonb(OLD)-ARRAY['role','status','is_muted','muted_at','updated_at']) THEN RAISE EXCEPTION 'Membership identity cannot be changed'; END IF;
+   IF NEW.status IS DISTINCT FROM OLD.status THEN
+     IF NEW.status<>'banned' THEN RAISE EXCEPTION 'Use the community admission controls'; END IF;
+     PERFORM public.community_action(OLD.community_id,'ban',jsonb_build_object('userId',OLD.user_id));
+   ELSIF NEW.role IS DISTINCT FROM OLD.role THEN
+     PERFORM public.community_action(OLD.community_id,'role',jsonb_build_object('userId',OLD.user_id,'role',NEW.role));
+   ELSE
+     IF OLD.user_id<>auth.uid() THEN RAISE EXCEPTION 'Change your own notification preferences only'; END IF;
+     PERFORM public.community_action(OLD.community_id,'mute',jsonb_build_object('muted',NEW.is_muted));
+   END IF;
+ END IF;
+ RETURN NULL;
+END; $$;
+CREATE TRIGGER community_legacy_membership BEFORE INSERT OR UPDATE OR DELETE ON public.community_memberships
+ FOR EACH ROW EXECUTE FUNCTION private.community_legacy_membership();
+GRANT INSERT,UPDATE,DELETE ON public.community_memberships TO authenticated;
+
+CREATE FUNCTION private.community_legacy_request() RETURNS trigger
+LANGUAGE plpgsql SECURITY INVOKER SET search_path='' AS $$
+BEGIN
+ IF current_user<>'authenticated' THEN RETURN NEW; END IF;
+ IF TG_OP='INSERT' THEN
+   IF NEW.user_id<>auth.uid() OR NEW.status<>'pending' THEN RAISE EXCEPTION 'Submit your own pending request'; END IF;
+   PERFORM public.community_action(NEW.community_id,'request',jsonb_build_object('message',NEW.message));
+ ELSE
+   IF NEW.id<>OLD.id OR NEW.community_id<>OLD.community_id OR NEW.user_id<>OLD.user_id THEN RAISE EXCEPTION 'Request identity cannot be changed'; END IF;
+   PERFORM public.community_action(OLD.community_id,'review_request',jsonb_build_object('userId',OLD.user_id,'decision',NEW.status));
+ END IF;
+ RETURN NULL;
+END; $$;
+CREATE TRIGGER community_legacy_request BEFORE INSERT OR UPDATE ON public.community_join_requests
+ FOR EACH ROW EXECUTE FUNCTION private.community_legacy_request();
+GRANT INSERT,UPDATE ON public.community_join_requests TO authenticated;
+
+-- Content INSERT returns a real row for older .select().single() callers.
+-- It always enters trusted moderation; clients cannot publish it themselves.
+CREATE FUNCTION private.community_legacy_content() RETURNS trigger
+LANGUAGE plpgsql SECURITY INVOKER SET search_path='' AS $$
+DECLARE cid uuid; author uuid; is_post boolean:=TG_TABLE_NAME='community_posts'; images text[]:='{}'; videos text[]:='{}';
+BEGIN
+ IF current_user<>'authenticated' THEN
+   IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;
+ END IF;
+ IF TG_OP='DELETE' THEN cid:=OLD.community_id; author:=OLD.author_id;
+ ELSE cid:=NEW.community_id; author:=NEW.author_id; END IF;
+ IF NOT public.is_current_session_active() OR NOT EXISTS(SELECT 1 FROM public.community_memberships WHERE community_id=cid AND user_id=auth.uid() AND status='active') THEN RAISE EXCEPTION 'Join this community first'; END IF;
+ IF TG_OP='DELETE' THEN
+   IF author<>auth.uid() AND NOT public.is_community_mod_or_admin(cid,auth.uid()) THEN RAISE EXCEPTION 'Not authorized'; END IF;
+   RETURN OLD;
+ END IF;
+ IF TG_OP='UPDATE' THEN
+   IF NEW.id<>OLD.id OR NEW.community_id<>OLD.community_id OR NEW.author_id<>OLD.author_id THEN RAISE EXCEPTION 'Content identity cannot be changed'; END IF;
+   IF NEW.moderation_status IS DISTINCT FROM OLD.moderation_status THEN
+     PERFORM public.community_action(cid,'review_content',jsonb_build_object('reviewId',(SELECT id FROM public.community_content_reviews WHERE target_id=OLD.id AND status='pending' ORDER BY created_at DESC LIMIT 1),'decision',NEW.moderation_status));
+   ELSIF is_post AND (to_jsonb(NEW)->'is_pinned') IS DISTINCT FROM (to_jsonb(OLD)->'is_pinned') THEN
+     PERFORM public.community_action(cid,'pin',jsonb_build_object('postId',OLD.id,'pinned',to_jsonb(NEW)->'is_pinned'));
+   ELSE RAISE EXCEPTION 'Use community edit controls'; END IF;
+   RETURN NULL;
+ END IF;
+ IF author<>auth.uid() OR char_length(btrim(coalesce(NEW.content,''))) NOT BETWEEN 1 AND (CASE WHEN is_post THEN 1000 ELSE 500 END) THEN RAISE EXCEPTION 'Invalid content or author'; END IF;
+ IF is_post THEN
+   images:=coalesce(NEW.image_urls,'{}'); videos:=coalesce(NEW.video_urls,'{}');
+   IF cardinality(images)+cardinality(videos)>0 THEN RAISE EXCEPTION 'Update the app to attach community media'; END IF;
+   NEW.is_announcement:=false; NEW.is_pinned:=false; NEW.like_count:=0; NEW.comment_count:=0;
+ ELSE
+   IF NOT EXISTS(SELECT 1 FROM public.community_posts WHERE id=NEW.post_id AND community_id=cid AND moderation_status='approved') THEN RAISE EXCEPTION 'Post is no longer available'; END IF;
+   IF NEW.parent_comment_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM public.community_comments WHERE id=NEW.parent_comment_id AND post_id=NEW.post_id AND moderation_status='approved') THEN RAISE EXCEPTION 'Reply is no longer available'; END IF;
+ END IF;
+ SELECT name,avatar_url INTO NEW.author_name,NEW.author_image FROM public.users WHERE id=auth.uid();
+ NEW.moderation_status:='pending'; NEW.mentioned_user_ids:='{}'; NEW.created_at:=now();
+ RETURN NEW;
+END; $$;
+CREATE TRIGGER a_community_legacy_post BEFORE INSERT OR UPDATE OR DELETE ON public.community_posts
+ FOR EACH ROW EXECUTE FUNCTION private.community_legacy_content();
+CREATE TRIGGER a_community_legacy_comment BEFORE INSERT OR UPDATE OR DELETE ON public.community_comments
+ FOR EACH ROW EXECUTE FUNCTION private.community_legacy_content();
+GRANT INSERT,UPDATE,DELETE ON public.community_posts,public.community_comments TO authenticated;
+
+CREATE FUNCTION private.community_queue_inserted_content() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE rid uuid; is_post boolean:=TG_TABLE_NAME='community_posts';
+BEGIN
+ IF NEW.moderation_status<>'pending' THEN RETURN NULL; END IF;
+ INSERT INTO public.community_content_reviews(community_id,kind,target_id,author_id,content,image_urls,video_urls)
+ VALUES(NEW.community_id,CASE WHEN is_post THEN 'post' ELSE 'comment' END,NEW.id,NEW.author_id,NEW.content,
+   CASE WHEN is_post THEN coalesce((SELECT array_agg(v) FROM jsonb_array_elements_text(coalesce(nullif(to_jsonb(NEW)->'image_urls','null'::jsonb),'[]'::jsonb)) v),'{}') ELSE '{}' END,
+   CASE WHEN is_post THEN coalesce((SELECT array_agg(v) FROM jsonb_array_elements_text(coalesce(nullif(to_jsonb(NEW)->'video_urls','null'::jsonb),'[]'::jsonb)) v),'{}') ELSE '{}' END) RETURNING id INTO rid;
+ INSERT INTO public.community_jobs(community_id,kind,payload) VALUES(NEW.community_id,'moderation',jsonb_build_object('reviewId',rid));
+ RETURN NULL;
+END; $$;
+REVOKE ALL ON FUNCTION private.community_queue_inserted_content() FROM PUBLIC,anon,authenticated;
+CREATE TRIGGER community_queue_inserted_post AFTER INSERT ON public.community_posts FOR EACH ROW WHEN (CURRENT_USER='authenticated') EXECUTE FUNCTION private.community_queue_inserted_content();
+CREATE TRIGGER community_queue_inserted_comment AFTER INSERT ON public.community_comments FOR EACH ROW WHEN (CURRENT_USER='authenticated') EXECUTE FUNCTION private.community_queue_inserted_content();
+
+
 COMMIT;
