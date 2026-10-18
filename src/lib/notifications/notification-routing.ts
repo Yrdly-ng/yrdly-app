@@ -103,6 +103,11 @@ export function getNotificationDestination({ type, relatedId, data }: Notificati
       const alertId = firstId(data?.id, data?.alertId, data?.alert_id, relatedId);
       return alertId ? `/alerts/${alertId}` : "/alerts";
     }
+    case 'community_update': {
+      const cid=firstId(data?.communityId,data?.community_id,relatedId);
+      const pid=firstId(data?.postId,data?.post_id);
+      return cid?pid?`/communities/${cid}/posts/${pid}`:`/communities/${cid}`:'/communities';
+    }
     default:
       return "/home";
   }

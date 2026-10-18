@@ -1,0 +1,2 @@
+[functions.process-community-jobs]
+verify_jwt = false

@@ -250,6 +250,17 @@ serve(async (req) => {
         .maybeSingle();
       const pushData = delivery.payload.data as
         Record<string, unknown> | undefined;
+      if(pushData?.type==='community_update' && typeof pushData.communityId==='string') {
+        const membership=await admin.from('community_memberships').select('is_muted,status').eq('community_id',pushData.communityId).eq('user_id',delivery.user_id).maybeSingle();
+        if(membership.error) {
+          await updateDelivery(admin,delivery.id,{status:'queued',next_attempt_at:new Date(Date.now()+60000).toISOString(),last_error:'Could not verify community notification preferences'});
+          continue;
+        }
+        if(membership.data?.is_muted || (['reply','mention','announcement'].includes(String(pushData.event)) && membership.data?.status!=='active')) {
+          await updateDelivery(admin,delivery.id,{status:'skipped',last_error:'Community muted or membership ended'});
+          continue;
+        }
+      }
       const preference = preferenceMap[String(pushData?.type ?? "")];
       if (
         preference &&
