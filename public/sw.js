@@ -1,6 +1,7 @@
 // Yrdly Service Worker
 // Version is injected at build time by scripts/inject-sw-version.js
-const CACHE_VERSION = 'local-1791286401902';
+const CACHE_VERSION = 'local-1792348104987';
+if (typeof importScripts === 'function') importScripts(`/notification-routing.js?v=${CACHE_VERSION}`);
 const CACHE_NAME = `yrdly-v${CACHE_VERSION}`;
 
 // Assets to pre-cache on install
@@ -115,7 +116,7 @@ self.addEventListener('push', (event) => {
       body: data.body || '',
       icon: data.icon || '/icon-192x192.png',
       badge: '/icon-192x192.png',
-      data: data.url ? { url: data.url } : undefined,
+      data: self.yrdlyNotificationRouting.normalizeNotificationPayload(data),
       vibrate: [100, 50, 100],
     })
   );
@@ -123,7 +124,14 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const targetUrl = new URL(event.notification.data?.url || '/', self.location.origin).href;
+  const payload = self.yrdlyNotificationRouting.normalizeNotificationPayload(event.notification.data || {});
+  const route = self.yrdlyNotificationRouting.getPushNotificationDestination(payload);
+  const target = new URL(route, self.location.origin);
+  // The authenticated app rechecks ownership and access before mounting the detail.
+  target.searchParams.set('notificationTarget', route);
+  if (payload.notificationId) target.searchParams.set('notificationId', payload.notificationId);
+  if (payload.recipientId) target.searchParams.set('recipientId', payload.recipientId);
+  const targetUrl = target.href;
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       const existing = clientList.find((c) => c.url === targetUrl && 'focus' in c);

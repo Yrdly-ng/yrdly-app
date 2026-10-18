@@ -2,7 +2,8 @@
 
 import Script from 'next/script';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
+import { NotificationRouteGuard } from '@/components/notifications/NotificationRouteGuard';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/use-supabase-auth';
 import { PushNotificationManager } from '@/components/notifications/PushNotificationManager';
@@ -65,7 +66,9 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
       <ServiceWorkerRegistration />
       <PullToRefresh>
         <MainLayout>
-          {children}
+          <Suspense fallback={<div role="status">Opening notification…</div>}>
+            <NotificationRouteGuard>{children}</NotificationRouteGuard>
+          </Suspense>
         </MainLayout>
       </PullToRefresh>
       {/* Offline Status Component */}

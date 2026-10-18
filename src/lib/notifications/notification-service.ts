@@ -61,7 +61,13 @@ export type NotificationType =
   | 'booking_no_show'
   | 'quote_estimated'
   | 'quote_converted'
-  | 'appeal_decided';
+  | 'appeal_decided'
+  | 'new_follower'
+  | 'booking_declined'
+  | 'booking_late_cancelled'
+  | 'booking_reminder'
+  | 'safety_alert'
+  | 'alert';
 
 export interface CreateNotificationParams {
   userId: string;

@@ -22,7 +22,7 @@ import { useFriendshipContext } from "@/contexts/FriendshipContext";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/shared/utils";
-import { getNotificationDestination } from "@/lib/notifications/notification-routing";
+import { prepareNotificationNavigation } from "@/lib/notifications/notification-navigation";
 import { AlertService } from "@/lib/notifications/alert-service";
 
 const GREEN = "#82DB7E";
@@ -39,6 +39,7 @@ interface Notification {
   from_user_name?: string;
   from_user_avatar?: string;
   related_id?: string;
+  related_type?: string;
 }
 
 const FILTER_TABS = ["All", "Alerts", "Community", "Unread", "Marketplace", "Events"];
@@ -118,6 +119,7 @@ export function NotificationsScreen() {
           from_user_name: sender?.name || notif.data?.fromUserName || notif.data?.from_user_name,
           from_user_avatar: sender?.avatar_url || notif.data?.from_user_avatar,
           related_id: notif.related_id,
+              related_type: notif.related_type,
         };
       }) as Notification[];
 
@@ -237,13 +239,26 @@ export function NotificationsScreen() {
     }
   };
 
-  const handleNotificationClick = (item: Notification) => {
-    if (!item.is_read) handleMarkAsRead(item.id);
-    router.push(getNotificationDestination({
-      type: item.type,
-      relatedId: item.related_id,
-      data: item.data,
-    }));
+  const handleNotificationClick = async (item: Notification) => {
+    if (!user) return;
+    try {
+      const result = await prepareNotificationNavigation({
+        ...item, sender_id: item.from_user_id,
+      });
+      // Ignore a tap completed after an account switch.
+      const { data: session } = await supabase.auth.getSession();
+      if (session.session?.user.id !== user.id) return;
+      if (result.failed) {
+        toast({ title: 'Could not open notification. Please try again.', variant: 'destructive' });
+        return;
+      }
+      if (result.unavailable) toast({ title: 'This item was removed or is no longer accessible.' });
+      if (!item.is_read) handleMarkAsRead(item.id);
+
+      router.push(result.destination);
+    } catch {
+      toast({ title: 'Could not open notification. Please try again.', variant: 'destructive' });
+    }
   };
 
   const filteredNotifications = useMemo(() => {

@@ -11,7 +11,7 @@ import { useFriendshipContext } from "@/contexts/FriendshipContext";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNowStrict } from 'date-fns';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { getNotificationDestination } from "@/lib/notifications/notification-routing";
+import { prepareNotificationNavigation } from "@/lib/notifications/notification-navigation";
 
 const GREEN = "hsl(var(--primary))";
 const GREEN_LIGHT = "#82DB7E";
@@ -39,6 +39,7 @@ interface Notification {
   from_user_name?: string;
   from_user_avatar?: string;
   related_id?: string;
+  related_type?: string;
 }
 
 // Map types to circular badge colors and icons
@@ -73,19 +74,26 @@ function NotificationItem({ notification, onMarkAsRead, onDelete, onClose }: {
   const { refreshUserStatus } = useFriendshipContext();
 
   // Navigate to the source of the notification, close dropdown, mark as read
-  const handleNavigate = () => {
-    // Mark as read (fire and forget)
-    if (!notification.is_read) {
-      onMarkAsRead(notification.id);
+  const handleNavigate = async () => {
+    if (!currentUser) return;
+    try {
+      const result = await prepareNotificationNavigation({
+        ...notification, sender_id: notification.from_user_id,
+      });
+      // Ignore a tap completed after an account switch.
+      const { data: session } = await supabase.auth.getSession();
+      if (session.session?.user.id !== currentUser.id) return;
+      if (result.failed) {
+        toast({ title: 'Could not open notification. Please try again.', variant: 'destructive' });
+        return;
+      }
+      if (result.unavailable) toast({ title: 'This item was removed or is no longer accessible.' });
+      if (!notification.is_read) onMarkAsRead(notification.id);
+      onClose();
+      router.push(result.destination);
+    } catch {
+      toast({ title: 'Could not open notification. Please try again.', variant: 'destructive' });
     }
-    // Close the dropdown
-    onClose();
-
-    router.push(getNotificationDestination({
-      type: notification.type,
-      relatedId: notification.related_id,
-      data: notification.data,
-    }));
   };
 
   const handleAction = async (action: string) => {
@@ -305,6 +313,7 @@ export function NotificationsDropdown({ isOpen, onClose, onNotificationCountChan
               from_user_name: sender?.name || notif.data?.fromUserName || notif.data?.from_user_name,
               from_user_avatar: sender?.avatar_url || notif.data?.from_user_avatar,
               related_id: notif.related_id,
+              related_type: notif.related_type,
             };
           });
           setNotifications(formatted as Notification[]);
@@ -325,6 +334,7 @@ export function NotificationsDropdown({ isOpen, onClose, onNotificationCountChan
             is_read: n.is_read, created_at: n.created_at, from_user_id: n.sender_id || n.data?.from_user_id,
             from_user_name: n.data?.fromUserName || n.data?.from_user_name, from_user_avatar: n.data?.from_user_avatar,
             related_id: n.related_id,
+            related_type: n.related_type,
           }, ...prev.slice(0, 9)]);
         } else if (payload.eventType === 'UPDATE') {
           const u = payload.new as any;

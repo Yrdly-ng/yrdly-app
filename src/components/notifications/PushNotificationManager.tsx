@@ -1,5 +1,8 @@
 "use client";
 
+import { useRouter } from 'next/navigation';
+import { ToastAction } from '@/components/ui/toast';
+import { getNotificationDestination } from '@/lib/notifications/notification-routing';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/use-supabase-auth';
 import { useToast } from '@/hooks/use-toast';
@@ -8,6 +11,7 @@ import { Bell, X } from 'lucide-react';
 
 export function PushNotificationManager() {
     const { user, profile } = useAuth();
+    const router = useRouter();
     const { toast } = useToast();
     const [isSupported, setIsSupported] = useState(false);
     const [permission, setPermission] = useState<NotificationPermission>('default');
@@ -124,10 +128,13 @@ export function PushNotificationManager() {
                     const newNotif = payload.new as any;
                     if (!newNotif) return;
 
-                    // 1. Show in-app Toast notification
+                    const destination = getNotificationDestination(newNotif);
+                    const route = `${destination}${destination.includes('?') ? '&' : '?'}notificationId=${encodeURIComponent(newNotif.id)}&recipientId=${encodeURIComponent(user.id)}`;
+                    // Open through the same ownership and target checks as a browser push.
                     toast({
                         title: newNotif.title || 'Notification 🔔',
                         description: newNotif.message || '',
+                        action: <ToastAction altText="Open notification" onClick={() => router.push(route)}>View</ToastAction>,
                     });
 
                 }
@@ -137,7 +144,7 @@ export function PushNotificationManager() {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [user, toast]);
+    }, [user, toast, router]);
 
     // Handle user tapping Enable Notifications button
     const handleEnableNotifications = async () => {
