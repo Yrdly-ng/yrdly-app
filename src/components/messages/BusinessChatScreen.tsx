@@ -361,7 +361,6 @@ export function BusinessChatScreen({
           conversation_id: activeConvId,
           sender_id: user.id,
           text: messageContent,
-          content: messageContent,
           is_read: true,
           read_by: [user.id],
           created_at: new Date().toISOString(),
@@ -386,7 +385,7 @@ export function BusinessChatScreen({
           sender_id: insertedMessage.sender_id,
           sender_name: userData?.name || profile?.name || "You",
           sender_avatar: userData?.avatar_url || profile?.avatar_url,
-          content: insertedMessage.content,
+          content: insertedMessage.text || "",
           timestamp: new Date(insertedMessage.created_at).toLocaleTimeString(
             [],
             { hour: "2-digit", minute: "2-digit" },

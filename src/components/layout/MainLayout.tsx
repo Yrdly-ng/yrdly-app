@@ -300,7 +300,7 @@ export function MainLayout({ children }: MainLayoutProps) {
         <main
           className={cn(
             "flex-1 w-full min-w-0",
-            isMapPage
+            isMapPage || isChatPage
               ? "h-[100dvh] p-0 overflow-hidden"
               : isEdgeToEdgePage
               ? "h-[calc(100dvh-64px)] md:h-[calc(100dvh-84px)] lg:h-[100dvh] p-0 pb-20 lg:pb-0 overflow-y-auto overflow-x-hidden"
