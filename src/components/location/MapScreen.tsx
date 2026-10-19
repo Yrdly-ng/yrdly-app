@@ -1,807 +1,840 @@
 "use client";
 
-import { authenticatedFetch } from '@/lib/auth/authenticated-fetch';
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import Image from 'next/image';
-import { 
-  Search, 
-  Navigation, 
-  Calendar, 
-  Briefcase, 
-  Users, 
-  MapPin, 
-  Locate, 
-  ArrowLeft, 
-  Car, 
-  Tag, 
-  MessageSquare, 
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import states from "@/data/states.json";
+import { useRouter } from "next/navigation";
+import {
+  AdvancedMarker,
+  Map,
+  useApiLoadingStatus,
+  useMap,
+} from "@vis.gl/react-google-maps";
+import {
+  ArrowLeft,
+  Calendar,
+  Car,
+  ChevronDown,
+  ChevronUp,
+  Locate,
+  MapPin,
+  Search,
+  Store,
+  Tag,
+  Users,
   X,
-  Layers,
-  ChevronRight
-} from 'lucide-react';
-import { Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
-import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase/supabase';
-import { useAuth } from '@/hooks/use-supabase-auth';
-import { useLocation } from '@/contexts/LocationContext';
-import { Drawer as VaulDrawer } from 'vaul';
-import Supercluster from 'supercluster';
-import { cn } from '@/lib/shared/utils';
+} from "lucide-react";
+import Supercluster from "supercluster";
+import { authenticatedFetch } from "@/lib/auth/authenticated-fetch";
+import { supabase } from "@/lib/supabase/supabase";
+import { useAuth } from "@/hooks/use-supabase-auth";
+import { useLocation } from "@/contexts/LocationContext";
+import { cn } from "@/lib/shared/utils";
+import {
+  coordinates,
+  mappableRowsFilter,
+  normalizeEta,
+  filterMarkers,
+  loadMapSources,
+  markerRoute,
+  MARKER_COLORS,
+  MARKER_LABELS,
+  type MapFilter,
+  type MapMarker,
+  type MapSource,
+} from "@/lib/location/map-model";
 
-type FilterType = 'all' | 'marketplace' | 'friends' | 'events' | 'businesses' | 'posts';
-
-type MapMarker = {
-  id: string;
-  type: 'friend' | 'business' | 'event' | 'marketplace' | 'post';
-  lat: number;
-  lng: number;
-  title: string;
-  subtitle?: string;
-  targetId: string;
-  avatar_url?: string;
-  image?: string;
-  price?: number;
-};
-
-type ActivityItem = {
-  id: string;
-  kind: 'post' | 'market' | 'event' | 'biz' | 'friend';
-  title: string;
-  subtitle: string;
-  image?: string;
-  time: string;
-  meta?: string;
-  route: string;
-  lat?: number;
-  lng?: number;
-  price?: number;
-};
-
-const FILTERS: {
-  key: FilterType;
-  label: string;
-  icon: React.ReactNode;
-  color: string;
-}[] = [
-  { key: 'all',          label: 'All',         icon: <Layers className="w-3.5 h-3.5" />,        color: '#82DB7E' },
-  { key: 'marketplace',  label: 'Marketplace', icon: <Tag className="w-3.5 h-3.5" />,           color: '#82DB7E' },
-  { key: 'friends',      label: 'Friends',     icon: <Users className="w-3.5 h-3.5" />,         color: '#82DB7E' },
-  { key: 'events',       label: 'Events',      icon: <Calendar className="w-3.5 h-3.5" />,      color: '#82DB7E' },
-  { key: 'businesses',   label: 'Businesses',  icon: <Briefcase className="w-3.5 h-3.5" />,     color: '#82DB7E' },
-  { key: 'posts',        label: 'Posts',       icon: <MessageSquare className="w-3.5 h-3.5" />, color: '#82DB7E' },
+const DEFAULT_CENTER = { lat: 6.5244, lng: 3.3792 };
+const FILTERS: { key: MapFilter; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "marketplace", label: "Marketplace" },
+  { key: "friend", label: "Friends" },
+  { key: "event", label: "Events" },
+  { key: "business", label: "Businesses" },
 ];
-
-const PIN_COLORS: Record<string, string> = {
-  friend: '#8B5CF6',
-  business: '#3B82F6',
-  event: '#F59E0B',
-  post: '#82DB7E',
-  marketplace: '#82DB7E',
+const ICONS = {
+  marketplace: Tag,
+  event: Calendar,
+  business: Store,
+  friend: Users,
 };
+const control =
+  "flex min-h-11 min-w-11 items-center justify-center rounded-2xl border border-white/15 bg-[#14231B] text-white shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#82DB7E]";
 
-const DARK_MAP_STYLES = [
-  { elementType: 'geometry', stylers: [{ color: '#0d1117' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#8a9bb0' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#0d1117' }] },
-  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1a2332' }] },
-  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#0d1117' }] },
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0d2236' }] },
-  { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#0d1a0f' }] },
-  { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] },
-  { featureType: 'transit', elementType: 'labels', stylers: [{ visibility: 'off' }] },
-];
-
-const NIGERIA_CENTER = { lat: 6.5244, lng: 3.3792 };
-
-const applyJitter = (lat: number, lng: number, offset = 0.002) => {
-  return {
-    lat: lat + (Math.random() - 0.5) * offset,
-    lng: lng + (Math.random() - 0.5) * offset,
-  };
-};
-
-function formatTimeOrDate(d: string) {
-  const diff = Date.now() - new Date(d).getTime();
-  if (diff < 0) {
-    const date = new Date(d);
-    return date.toLocaleDateString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-    });
-  }
-  const m = Math.floor(diff / 60000);
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
+function PlacePhoto({ marker }: { marker: MapMarker }) {
+  const [failed, setFailed] = useState<string>();
+  return marker.image && failed !== marker.image ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={marker.image}
+      alt=""
+      onError={() => setFailed(marker.image)}
+      className="h-20 w-20 shrink-0 rounded-2xl object-cover"
+    />
+  ) : (
+    <MarkerToken marker={marker} selected />
+  );
 }
 
-function getDistanceStr(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const R = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const km = R * c;
-  if (km < 1) return `${Math.round(km * 1000)}m away`;
-  return `${km.toFixed(1)}km away`;
+function MarkerToken({
+  marker,
+  selected = false,
+}: {
+  marker: MapMarker;
+  selected?: boolean;
+}) {
+  const [failed, setFailed] = useState<string>();
+  const Icon = ICONS[marker.type];
+  const friend = marker.type === "friend";
+  return (
+    <span
+      className={cn(
+        "flex shrink-0 items-center justify-center overflow-hidden border-2 shadow-[0_3px_10px_#0006] ring-1 ring-[#F2F5E8]/70",
+        friend ? "rounded-full" : "rounded-[14px]",
+        selected ? "h-11 w-11 ring-2" : "h-10 w-10",
+      )}
+      style={{
+        background: selected ? "#82DB7E" : "#14231B",
+        color: selected ? "#0B0D0B" : MARKER_COLORS[marker.type],
+        borderColor: selected ? "#F2F5E8" : MARKER_COLORS[marker.type],
+      }}
+    >
+      {friend && marker.image && failed !== marker.image ? (
+        // Map avatars may include legacy remote hosts; a failed image falls back to the category icon.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={marker.image}
+          alt=""
+          className="h-full w-full object-cover"
+          onError={() => setFailed(marker.image)}
+        />
+      ) : (
+        <Icon size={20} aria-hidden="true" />
+      )}
+    </span>
+  );
 }
 
-function MapLogicOverlay({ setBounds, setZoom }: { setBounds: (b: [number, number, number, number] | null) => void; setZoom: (z: number) => void }) {
-  const map = useMap();
-  useEffect(() => {
-    if (!map) return;
-    const update = () => {
-      const b = map.getBounds();
-      if (b) {
-        setBounds([
-          b.getSouthWest().lng(),
-          b.getSouthWest().lat(),
-          b.getNorthEast().lng(),
-          b.getNorthEast().lat(),
-        ]);
-      }
-      setZoom(map.getZoom() || 14);
-    };
-    update();
-    const l1 = map.addListener('idle', update);
-    return () => { (window as any).google?.maps?.event?.removeListener(l1); };
-  }, [map, setBounds, setZoom]);
-  return null;
-}
-
-interface MapScreenProps { className?: string }
-
-export function MapScreen({ className }: MapScreenProps) {
-  const { user, profile } = useAuth();
-  const { activeFilter } = useLocation();
+export function MapScreen({ className }: { className?: string }) {
+  const { user } = useAuth();
+  const { activeFilter, displayLabel, setGlobalFilter, userProfileLocation } =
+    useLocation();
   const router = useRouter();
   const map = useMap();
-
-  const [allMarkers, setAllMarkers]   = useState<MapMarker[]>([]);
-  const [activity, setActivity]       = useState<ActivityItem[]>([]);
-  const [loading, setLoading]         = useState(true);
-  const [filter, setFilter]           = useState<FilterType>('all');
+  const apiStatus = useApiLoadingStatus();
+  const [markers, setMarkers] = useState<MapMarker[]>([]);
+  const [failedSources, setFailedSources] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [retry, setRetry] = useState(0);
+  const revision = useRef(0);
+  const [filter, setFilter] = useState<MapFilter>("all");
+  const [search, setSearch] = useState("");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [resultsOpen, setResultsOpen] = useState(false);
   const [showsTraffic, setShowsTraffic] = useState(false);
-  const [selectedPin, setSelectedPin] = useState<MapMarker | null>(null);
-  const [search, setSearch]           = useState('');
-  const [showSearch, setShowSearch]   = useState(false);
-  const [userCoords, setUserCoords]   = useState<{ lat: number; lng: number } | null>(null);
-  const [eta, setEta]                 = useState<{ duration_seconds: number; duration_in_traffic_seconds: number; distance_meters: number } | null>(null);
-  const [etaLoading, setEtaLoading]   = useState(false);
+  const [userCoords, setUserCoords] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
+  const [pendingCenter, setPendingCenter] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
+  const [locationError, setLocationError] = useState("");
+  const [locating, setLocating] = useState(false);
+  const locationRevision = useRef(0);
+  const cameraSet = useRef(false);
+  const cameraInteraction = useRef(0);
+  const lastArea = useRef<string | null>(null);
+  const previewRef = useRef<HTMLHeadingElement>(null);
+  const resultToggleRef = useRef<HTMLButtonElement>(null);
+  const focusOrigin = useRef<string | null>(null);
+  const restoreFocus = useRef(false);
+  const [resultAnnouncement, setResultAnnouncement] = useState("");
+  const [bounds, setBounds] = useState<[number, number, number, number] | null>(
+    null,
+  );
+  const [zoom, setZoom] = useState(11);
+  const [eta, setEta] = useState<{
+    duration_seconds: number;
+    duration_in_traffic_seconds: number;
+    distance_meters: number;
+  } | null>(null);
+  const [etaStatus, setEtaStatus] = useState<"idle" | "loading" | "error">(
+    "idle",
+  );
 
-  // Supercluster tracking
-  const [bounds, setBounds] = useState<[number, number, number, number] | null>(null);
-  const [zoom, setZoom]     = useState(14);
-  const [clusters, setClusters] = useState<ReturnType<typeof supercluster.getClusters>>([]);
-
-  const supercluster = useMemo(() => new Supercluster({ radius: 60, maxZoom: 16 }), []);
-
-  useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        () => {}
+  const requestLocation = useCallback((recenter = true) => {
+    const interaction = cameraInteraction.current;
+    const current = ++locationRevision.current;
+    if (!navigator.geolocation) {
+      setLocationError(
+        "Location is unavailable in this browser. You can still explore results.",
       );
-    }
-  }, []);
-
-  // Fetch ETA when selected pin or userCoords change
-  useEffect(() => {
-    if (!selectedPin || !userCoords) {
-      setEta(null);
       return;
     }
-    let active = true;
-    const fetchEta = async () => {
-      setEtaLoading(true);
-      setEta(null);
-      try {
-        const res = await fetch('/api/directions/eta', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            origin: { lat: userCoords.lat, lng: userCoords.lng },
-            destination: { lat: selectedPin.lat, lng: selectedPin.lng },
-          }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (active) setEta(data);
+    setLocating(true);
+    setLocationError("");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        if (current !== locationRevision.current) return;
+        const point = coordinates(
+          position.coords.latitude,
+          position.coords.longitude,
+        );
+        if (point) {
+          setUserCoords(point);
+          if (
+            cameraInteraction.current === interaction &&
+            (recenter || !cameraSet.current)
+          )
+            setPendingCenter(point);
         }
-      } catch (err) {
-        console.warn('Failed to fetch ETA:', err);
-      } finally {
-        if (active) setEtaLoading(false);
-      }
+        setLocating(false);
+      },
+      (error) => {
+        if (current !== locationRevision.current) return;
+        setLocating(false);
+        setLocationError(
+          error.code === 1
+            ? "Location access is off. Enable it in browser settings or explore the selected area."
+            : "We couldn't find your location. You can still explore the selected area.",
+        );
+      },
+      { timeout: 10000, maximumAge: 60000 },
+    );
+  }, []);
+
+  useEffect(() => {
+    const current = ++revision.current;
+    setLoading(true);
+    setSelectedId(null);
+    const areaKey = JSON.stringify([activeFilter?.state, activeFilter?.lga]);
+    if (lastArea.current !== areaKey) {
+      cameraSet.current = false;
+      cameraInteraction.current++;
+      lastArea.current = areaKey;
+    }
+    const area = <T,>(query: T): T => {
+      type Filterable = { eq: (column: string, value: string) => unknown };
+      let result = query;
+      if (activeFilter?.state)
+        result = (result as Filterable).eq("state", activeFilter.state) as T;
+      if (activeFilter?.lga)
+        result = (result as Filterable).eq("lga", activeFilter.lga) as T;
+      return result;
     };
-    fetchEta();
-    return () => { active = false; };
+    const sources: MapSource[] = [
+      {
+        key: "event",
+        label: "Events",
+        kind: "event",
+        load: () =>
+          area(
+            supabase
+              .from("events")
+              .select("id,title,location_address,cover_image_url,lat,lng")
+              .eq("status", "PUBLISHED")
+              .neq("is_archived", true)
+              .gte("lat", -90)
+              .lte("lat", 90)
+              .gte("lng", -180)
+              .lte("lng", 180),
+          ).limit(50),
+      },
+      {
+        key: "business",
+        label: "Businesses",
+        kind: "business",
+        load: () =>
+          area(
+            supabase
+              .from("businesses")
+              .select("id,name,location,image_urls,lat,lng")
+              .eq("is_active", true)
+              .or(mappableRowsFilter("location")),
+          ).limit(50),
+      },
+      {
+        key: "marketplace",
+        label: "Marketplace",
+        kind: "marketplace",
+        load: () =>
+          area(
+            supabase
+              .from("posts")
+              .select(
+                "id,title,price,image_urls,image_url,video_thumbnail_url,event_location,lat,lng,location_address",
+              )
+              .eq("category", "For Sale")
+              .or("is_sold.eq.false,is_sold.is.null")
+              .or(mappableRowsFilter("event_location")),
+          ).limit(30),
+      },
+    ];
+    if (user?.id)
+      sources.push({
+        key: "friend",
+        label: "Friends",
+        kind: "friend",
+        load: () => authenticatedFetch("/api/profiles/friend-locations", {}),
+      });
+    void loadMapSources(sources, true)
+      .then((result) => {
+        if (current !== revision.current) return;
+        setMarkers(result.markers);
+        setFailedSources(result.failedSources);
+      })
+      .finally(() => {
+        if (current === revision.current) setLoading(false);
+      });
+    return () => {
+      revision.current++;
+    };
+  }, [user?.id, activeFilter?.state, activeFilter?.lga, retry]);
+
+  useEffect(() => {
+    requestLocation(false);
+    return () => {
+      locationRevision.current++;
+    };
+  }, [requestLocation]);
+
+  const visibleMarkers = useMemo(
+    () => filterMarkers(markers, filter, search),
+    [markers, filter, search],
+  );
+  const selectedPin =
+    visibleMarkers.find((marker) => marker.id === selectedId) || null;
+  useEffect(() => {
+    if (selectedPin) previewRef.current?.focus();
+    else if (restoreFocus.current) {
+      restoreFocus.current = false;
+      const origin = focusOrigin.current
+        ? document.getElementById(focusOrigin.current)
+        : null;
+      (origin || resultToggleRef.current)?.focus();
+    }
+  }, [selectedPin?.id]);
+  useEffect(() => {
+    if (loading) return;
+    const timer = setTimeout(
+      () =>
+        setResultAnnouncement(
+          `${visibleMarkers.length} results in ${displayLabel}`,
+        ),
+      350,
+    );
+    return () => clearTimeout(timer);
+  }, [loading, visibleMarkers.length, displayLabel]);
+  const closePreview = () => {
+    restoreFocus.current = true;
+    setSelectedId(null);
+  };
+  const openPreview = (marker: MapMarker, origin: string) => {
+    focusOrigin.current = origin;
+    setSelectedId(marker.id);
+    cameraSet.current = true;
+    cameraInteraction.current++;
+  };
+  useEffect(() => {
+    if (selectedId && !selectedPin) setSelectedId(null);
+  }, [selectedId, selectedPin]);
+
+  useEffect(() => {
+    if (!map || !pendingCenter) return;
+    map.panTo(pendingCenter);
+    map.setZoom(14);
+    cameraSet.current = true;
+    setPendingCenter(null);
+  }, [map, pendingCenter]);
+  useEffect(() => {
+    if (!map || loading || cameraSet.current) return;
+    cameraSet.current = true;
+    const places = markers.filter((marker) => marker.type !== "friend");
+    if (places.length) {
+      const box = new google.maps.LatLngBounds();
+      places.forEach((marker) => box.extend(marker));
+      map.fitBounds(box, 90);
+      if (places.length === 1) map.setZoom(14);
+    }
+  }, [map, loading, markers]);
+  useEffect(() => {
+    if (!map || !showsTraffic) return;
+    const traffic = new google.maps.TrafficLayer();
+    traffic.setMap(map);
+    return () => traffic.setMap(null);
+  }, [map, showsTraffic]);
+
+  useEffect(() => {
+    setEta(null);
+    setEtaStatus("idle");
+    if (!selectedPin || selectedPin.type === "friend" || !userCoords) return;
+    const controller = new AbortController();
+    setEtaStatus("loading");
+    const timer = setTimeout(() => controller.abort(), 8000);
+    void fetch("/api/directions/eta", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        origin: userCoords,
+        destination: { lat: selectedPin.lat, lng: selectedPin.lng },
+      }),
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Unavailable");
+        return response.json();
+      })
+      .then((data) => {
+        if (!controller.signal.aborted) {
+          const validEta = normalizeEta(data);
+          if (!validEta) throw new Error("Invalid drive time");
+          setEta(validEta);
+          setEtaStatus("idle");
+        }
+      })
+      .catch(() => {
+        if (!disposed) setEtaStatus("error");
+      })
+      .finally(() => clearTimeout(timer));
+    let disposed = false;
+    return () => {
+      disposed = true;
+      controller.abort();
+      clearTimeout(timer);
+    };
   }, [selectedPin, userCoords]);
 
-  // Fetch markers matching mobile implementation
-  useEffect(() => {
-    const fetchMarkers = async () => {
-      setLoading(true);
-      const found: MapMarker[] = [];
-
-      const filterState = activeFilter?.state || profile?.home_state;
-      const filterLga   = activeFilter?.lga   || profile?.home_lga;
-
-      // 1. Friends
-      if (user?.id) {
-        const { data: frds } = await authenticatedFetch('/api/profiles/friend-locations', {}).catch(() => ({ data: [] }));
-        {
-          (frds || []).forEach((f: any) => {
-            const lat = parseFloat(f.current_location?.lat ?? f.current_location?.geopoint?.latitude);
-            const lng = parseFloat(f.current_location?.lng ?? f.current_location?.geopoint?.longitude);
-            if (!isNaN(lat) && !isNaN(lng)) {
-              const jittered = applyJitter(lat, lng);
-              found.push({
-                id: `friend-${f.id}`,
-                type: 'friend',
-                lat: jittered.lat,
-                lng: jittered.lng,
-                title: f.name || 'Friend',
-                subtitle: 'Friend',
-                targetId: f.id,
-                avatar_url: f.avatar_url,
-              });
-            }
-          });
-        }
-      }
-
-      // 2. Events (events table)
-      let qNewEvts = supabase
-        .from('events')
-        .select('id,title,location_address,cover_image_url,lat,lng')
-        .eq('status', 'PUBLISHED')
-        .neq('is_archived', true)
-        .not('lat', 'is', null)
-        .not('lng', 'is', null);
-      if (filterLga)   qNewEvts = qNewEvts.eq('lga', filterLga);
-      else if (filterState) qNewEvts = qNewEvts.eq('state', filterState);
-      const { data: newEvts } = await qNewEvts.limit(50);
-      (newEvts || []).forEach((e: any) => {
-        const lat = parseFloat(e.lat);
-        const lng = parseFloat(e.lng);
-        if (!isNaN(lat) && !isNaN(lng)) {
-          found.push({
-            id: `nevt-${e.id}`,
-            type: 'event',
-            lat,
-            lng,
-            title: e.title || 'Event',
-            subtitle: e.location_address || 'Event',
-            targetId: e.id,
-            avatar_url: e.cover_image_url,
-            image: e.cover_image_url,
-          });
-        }
-      });
-
-      // 3. Businesses
-      let qBiz = supabase
-        .from('businesses')
-        .select('id,name,location,image_urls,lat,lng')
-        .eq('is_active', true);
-      if (filterLga)   qBiz = qBiz.eq('lga', filterLga);
-      else if (filterState) qBiz = qBiz.eq('state', filterState);
-      const { data: businesses } = await qBiz.limit(50);
-      (businesses || []).forEach((b: any) => {
-        const lat = parseFloat(b.lat ?? b.location?.lat);
-        const lng = parseFloat(b.lng ?? b.location?.lng);
-        if (!isNaN(lat) && !isNaN(lng)) {
-          found.push({
-            id: `biz-${b.id}`,
-            type: 'business',
-            lat,
-            lng,
-            title: b.name || 'Business',
-            subtitle: b.location?.address || 'Local Business',
-            targetId: b.id,
-            avatar_url: b.image_urls?.[0],
-            image: b.image_urls?.[0],
-          });
-        }
-      });
-
-      // 4. Marketplace items
-      let qMkt = supabase
-        .from('posts')
-        .select('id,title,price,image_urls,event_location,lat,lng,location_address')
-        .eq('category', 'For Sale')
-        .or('is_sold.eq.false,is_sold.is.null')
-        .not('lat', 'is', null)
-        .not('lng', 'is', null);
-      if (filterLga)   qMkt = qMkt.eq('lga', filterLga);
-      else if (filterState) qMkt = qMkt.eq('state', filterState);
-      const { data: mkt } = await qMkt.limit(30);
-      (mkt || []).forEach((p: any) => {
-        const lat = parseFloat(p.lat ?? p.event_location?.lat);
-        const lng = parseFloat(p.lng ?? p.event_location?.lng);
-        if (!isNaN(lat) && !isNaN(lng)) {
-          const jittered = applyJitter(lat, lng);
-          found.push({
-            id: `mkt-${p.id}`,
-            type: 'marketplace',
-            lat: jittered.lat,
-            lng: jittered.lng,
-            title: p.title || 'Item for Sale',
-            subtitle: p.price ? `₦${Number(p.price).toLocaleString()}` : p.location_address || 'Nearby Item',
-            price: p.price,
-            targetId: p.id,
-            avatar_url: p.image_urls?.[0],
-            image: p.image_urls?.[0],
-          });
-        }
-      });
-
-      setAllMarkers(found);
-      setLoading(false);
-    };
-
-    fetchMarkers();
-  }, [user?.id, activeFilter?.lga, activeFilter?.state, profile?.home_state, profile?.home_lga]);
-
-  const visibleMarkers = useMemo(() => {
-    const byFilter =
-      filter === 'all'
-        ? allMarkers
-        : allMarkers.filter((m) => {
-            if (filter === 'friends') return m.type === 'friend';
-            if (filter === 'events') return m.type === 'event';
-            if (filter === 'businesses') return m.type === 'business';
-            if (filter === 'marketplace') return m.type === 'marketplace';
-            if (filter === 'posts') return m.type === 'post';
-            return true;
-          });
-    if (!search.trim()) return byFilter;
-    const q = search.toLowerCase();
-    return byFilter.filter(
-      (m) => m.title.toLowerCase().includes(q) || (m.subtitle || '').toLowerCase().includes(q)
+  const clusterIndex = useMemo(() => {
+    const index = new Supercluster<{ marker: MapMarker }>({
+      radius: 60,
+      maxZoom: 16,
+    });
+    index.load(
+      visibleMarkers.map((marker) => ({
+        type: "Feature",
+        properties: { marker },
+        geometry: { type: "Point", coordinates: [marker.lng, marker.lat] },
+      })),
     );
-  }, [allMarkers, filter, search]);
-
-  // Load supercluster
-  useEffect(() => {
-    const points = visibleMarkers.map((m) => ({
-      type: 'Feature' as const,
-      properties: { cluster: false, ...m },
-      geometry: { type: 'Point' as const, coordinates: [m.lng, m.lat] },
-    }));
-    supercluster.load(points);
-    if (bounds) {
-      setClusters(supercluster.getClusters(bounds, zoom));
-    }
-  }, [visibleMarkers, supercluster, bounds, zoom]);
-
-  const areaName = activeFilter?.lga || activeFilter?.state || profile?.home_lga || profile?.home_state || 'Your Area';
-
-  const locateMe = useCallback(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((pos) => {
-        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        setUserCoords(coords);
-        if (map) {
-          map.panTo(coords);
-          map.setZoom(15);
-        }
-      });
-    } else if (userCoords && map) {
-      map.panTo(userCoords);
-      map.setZoom(15);
-    }
-  }, [map, userCoords]);
+    return index;
+  }, [visibleMarkers]);
+  const clusters = useMemo(
+    () => (bounds ? clusterIndex.getClusters(bounds, Math.round(zoom)) : []),
+    [clusterIndex, bounds, zoom],
+  );
+  const selectMarker = (marker: MapMarker) => {
+    openPreview(marker, `result-${marker.id}`);
+    map?.panTo(marker);
+    map?.setZoom(Math.max(15, map.getZoom() || 0));
+  };
+  const apiFailed = apiStatus === "FAILED" || apiStatus === "AUTH_FAILURE";
 
   return (
-    <div className={cn("relative w-full overflow-hidden bg-[#0d1117] text-white font-yrdly-body h-[100dvh]", className)}>
-      
-      {/* ── GOOGLE MAP ── */}
+    <div
+      className={cn(
+        "relative h-[100dvh] w-full overflow-hidden bg-[#E8EDE7] font-yrdly-body",
+        className,
+      )}
+    >
       <Map
         mapId={process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID || "DEMO_MAP_ID"}
-        defaultCenter={userCoords ?? NIGERIA_CENTER}
-        defaultZoom={userCoords ? 14 : 11}
+        defaultCenter={DEFAULT_CENTER}
+        defaultZoom={11}
         gestureHandling="greedy"
         disableDefaultUI
-        styles={DARK_MAP_STYLES}
-        className="w-full h-full absolute inset-0"
+        className="absolute inset-0 h-full w-full"
+        onDragstart={() => {
+          cameraSet.current = true;
+          cameraInteraction.current++;
+          setPendingCenter(null);
+        }}
+        onCameraChanged={(event) => {
+          const b = event.detail.bounds;
+          setBounds([b.west, b.south, b.east, b.north]);
+          setZoom(event.detail.zoom);
+        }}
       >
-        <MapLogicOverlay setBounds={setBounds} setZoom={setZoom} />
-
-        {/* User Location Pulsing Blue Dot */}
         {userCoords && (
-          <AdvancedMarker position={userCoords} zIndex={100}>
-            <div className="relative flex items-center justify-center">
-              <div className="absolute w-12 h-12 bg-blue-500/25 rounded-full animate-ping" />
-              <div className="absolute w-7 h-7 bg-blue-500/40 rounded-full animate-pulse" />
-              <div className="relative w-3.5 h-3.5 bg-blue-500 rounded-full border-2 border-white shadow-md" />
-            </div>
+          <AdvancedMarker
+            position={userCoords}
+            title="Your location"
+            anchorLeft="-50%"
+            anchorTop="-50%"
+          >
+            <span className="block h-4 w-4 rounded-full border-[3px] border-white bg-blue-600 shadow-md" />
           </AdvancedMarker>
         )}
-
-        {/* Clusters & Custom Mobile Markers */}
         {clusters.map((cluster) => {
           const [lng, lat] = cluster.geometry.coordinates;
-          const { cluster: isCluster, point_count } = cluster.properties;
-
-          if (isCluster) {
+          if ("cluster" in cluster.properties && cluster.properties.cluster) {
+            const count = cluster.properties.point_count;
             return (
               <AdvancedMarker
                 key={`cluster-${cluster.id}`}
                 position={{ lat, lng }}
-                onClick={() => {
-                  if (!map) return;
-                  const expansionZoom = supercluster.getClusterExpansionZoom(cluster.id as number);
-                  map.setZoom(expansionZoom);
-                  map.panTo({ lat, lng });
-                }}
+                anchorLeft="-50%"
+                anchorTop="-50%"
+                title={`${count} results. Zoom in to explore`}
               >
-                <div className="w-11 h-11 rounded-full bg-[#82DB7E] text-[#0B0D0B] font-yrdly-display font-extrabold text-sm flex items-center justify-center border-3 border-white shadow-2xl transition-transform hover:scale-110">
-                  {point_count}
-                </div>
+                <button
+                  type="button"
+                  aria-label={`${count} results. Zoom in to explore`}
+                  onClick={() => {
+                    cameraSet.current = true;
+                    cameraInteraction.current++;
+                    map?.setZoom(
+                      clusterIndex.getClusterExpansionZoom(
+                        cluster.id as number,
+                      ),
+                    );
+                    map?.panTo({ lat, lng });
+                  }}
+                  className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-[#F2F5E8] bg-[#82DB7E] text-base font-extrabold text-[#0B0D0B] shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#14231B]"
+                >
+                  {count}
+                </button>
               </AdvancedMarker>
             );
           }
-
-          const m = cluster.properties as unknown as MapMarker;
-          const isSelected = selectedPin?.id === m.id;
-
+          const marker = cluster.properties.marker as MapMarker;
+          const selected = marker.id === selectedId;
           return (
             <AdvancedMarker
-              key={m.id}
-              position={{ lat: m.lat, lng: m.lng }}
-              onClick={() => setSelectedPin(isSelected ? null : m)}
+              key={marker.id}
+              position={marker}
+              anchorLeft="-50%"
+              anchorTop="-50%"
+              zIndex={selected ? 100 : 1}
+              title={`${MARKER_LABELS[marker.type]}: ${marker.title}`}
             >
-              <div className="flex flex-col items-center cursor-pointer group transition-transform duration-200 hover:scale-110">
-                {/* Friend Marker: Purple ring around avatar + purple dot */}
-                {m.type === 'friend' ? (
-                  <div className="flex flex-col items-center">
-                    <div className="w-[44px] h-[44px] rounded-full border-[2.5px] border-[#8B5CF6] overflow-hidden bg-[#1a1a2e] shadow-xl flex items-center justify-center">
-                      {m.avatar_url ? (
-                        <Image src={m.avatar_url} alt="" width={40} height={40} className="w-full h-full object-cover rounded-full" />
-                      ) : (
-                        <Users className="w-5 h-5 text-white" />
-                      )}
-                    </div>
-                    <div className="w-2 h-2 rounded-full bg-[#8B5CF6] mt-0.5 shadow-md" />
-                  </div>
-                ) : m.type === 'business' ? (
-                  /* Business Marker: 40x40 rounded box + blue dot */
-                  <div className="flex flex-col items-center">
-                    <div className="w-10 h-10 rounded-xl bg-[rgba(59,130,246,0.15)] border border-[rgba(255,255,255,0.12)] backdrop-blur-md flex items-center justify-center shadow-xl">
-                      <Briefcase className="w-4 h-4 text-[#3B82F6]" />
-                    </div>
-                    <div className="w-2 h-2 rounded-full bg-[#3B82F6] mt-0.5 shadow-md" />
-                  </div>
-                ) : m.type === 'marketplace' ? (
-                  /* Marketplace Marker: 40x40 rounded box + green dot */
-                  <div className="flex flex-col items-center">
-                    <div className="w-10 h-10 rounded-xl bg-[rgba(130,219,126,0.15)] border border-[rgba(255,255,255,0.12)] backdrop-blur-md flex items-center justify-center shadow-xl">
-                      <Tag className="w-4 h-4 text-[#82DB7E]" />
-                    </div>
-                    <div className="w-2 h-2 rounded-full bg-[#82DB7E] mt-0.5 shadow-md" />
-                  </div>
-                ) : (
-                  /* Event / Post Marker: 40x40 rounded box + amber dot */
-                  <div className="flex flex-col items-center">
-                    <div className="w-10 h-10 rounded-xl bg-[rgba(245,158,11,0.15)] border border-[rgba(255,255,255,0.12)] backdrop-blur-md flex items-center justify-center shadow-xl">
-                      <Calendar className="w-4 h-4 text-[#F59E0B]" />
-                    </div>
-                    <div className="w-2 h-2 rounded-full bg-[#F59E0B] mt-0.5 shadow-md" />
-                  </div>
-                )}
-              </div>
+              <button
+                type="button"
+                aria-label={`${MARKER_LABELS[marker.type]}: ${marker.title}`}
+                id={`marker-${marker.id}`}
+                aria-pressed={selected}
+                className="flex h-12 w-12 items-center justify-center rounded-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#14231B]"
+                onClick={() =>
+                  selected
+                    ? closePreview()
+                    : openPreview(marker, `marker-${marker.id}`)
+                }
+              >
+                <MarkerToken marker={marker} selected={selected} />
+              </button>
             </AdvancedMarker>
           );
         })}
       </Map>
 
-      {/* ── TOP OVERLAYS (Matches Mobile Header 1:1) ── */}
-      <div className="absolute top-0 left-0 right-0 z-20 pt-4 px-4 space-y-3 pointer-events-none">
-        <div className="flex items-center gap-3 pointer-events-auto">
-          {/* Back Button */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 space-y-2 p-3 sm:p-5">
+        <div className="pointer-events-auto flex max-w-xl items-center gap-2">
           <button
-            onClick={() => {
-              if (typeof window !== 'undefined' && window.history.length > 2) {
-                router.back();
-              } else {
-                router.push('/home');
-              }
-            }}
-            className="w-9 h-9 rounded-full bg-[rgba(0,0,0,0.6)] border border-[rgba(255,255,255,0.12)] backdrop-blur-md flex items-center justify-center text-white shadow-lg transition-transform active:scale-95 flex-shrink-0"
+            type="button"
+            className={control}
             aria-label="Back"
+            onClick={() =>
+              window.history.length > 2 ? router.back() : router.push("/home")
+            }
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft size={19} />
           </button>
-
-          {/* Location Pill or Expandable Search Input */}
-          {showSearch ? (
-            <div className="flex-1 flex items-center gap-2 bg-[rgba(0,0,0,0.75)] border border-[rgba(255,255,255,0.15)] rounded-2xl px-3.5 py-1.5 backdrop-blur-md shadow-lg">
-              <Search className="w-4 h-4 text-[#82DB7E] flex-shrink-0" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search map..."
-                autoFocus
-                className="flex-1 bg-transparent border-none outline-none text-xs text-white placeholder:text-neutral-400 font-medium"
-              />
-              <button
-                onClick={() => {
-                  setShowSearch(false);
-                  setSearch('');
-                }}
-                className="text-neutral-400 hover:text-white"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          ) : (
-            <div 
-              onClick={() => setShowSearch(true)}
-              className="flex-1 flex items-center bg-[rgba(0,0,0,0.6)] border border-[rgba(255,255,255,0.12)] rounded-2xl px-3.5 py-2 backdrop-blur-md shadow-lg cursor-pointer hover:bg-[rgba(0,0,0,0.75)] transition-colors"
+          <div className="min-w-0 flex-1 rounded-2xl border border-white/15 bg-[#14231B] px-4 py-2 text-white shadow-lg">
+            <h1 className="font-yrdly-display text-base font-bold">
+              Explore nearby
+            </h1>
+            <select
+              aria-label="Choose map area"
+              value={
+                activeFilter?.lga ? "current-area" : activeFilter?.state || ""
+              }
+              onChange={(event) => {
+                const value = event.target.value;
+                if (value === "current-area") return;
+                setGlobalFilter(
+                  value === "home-lga"
+                    ? userProfileLocation
+                    : value
+                      ? { state: value }
+                      : null,
+                );
+              }}
+              className="min-h-11 w-full min-w-0 bg-[#14231B] text-xs text-[#C7D5CB] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#82DB7E]"
             >
-              <MapPin className="w-3.5 h-3.5 text-[#82DB7E] flex-shrink-0" />
-              <span className="text-xs font-semibold text-white ml-2 truncate font-yrdly-display">
-                {areaName}
-              </span>
-            </div>
-          )}
-
-          {/* Search Trigger Button (when search bar hidden) */}
-          {!showSearch && (
-            <button
-              onClick={() => setShowSearch(true)}
-              className="w-9 h-9 rounded-full bg-[rgba(0,0,0,0.6)] border border-[rgba(255,255,255,0.12)] backdrop-blur-md flex items-center justify-center text-white/80 shadow-lg transition-transform active:scale-95 flex-shrink-0"
-              aria-label="Search"
-            >
-              <Search className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-
-        {/* Filter Chips Bar (Horizontal Scroll 1:1 Mobile) */}
-        <div className="flex gap-2 overflow-x-auto pb-1 pointer-events-auto" style={{ scrollbarWidth: 'none' }}>
-          {FILTERS.map((f) => {
-            const active = filter === f.key;
-            return (
-              <button
-                key={f.key}
-                onClick={() => setFilter(f.key)}
-                className={cn(
-                  "flex-shrink-0 flex items-center gap-1.5 px-3.5 h-7 rounded-full text-xs font-medium transition-all shadow-md active:scale-95",
-                  active
-                    ? "bg-[#82DB7E] text-[#0B0D0B] font-bold"
-                    : "bg-[rgba(0,0,0,0.55)] border border-[rgba(255,255,255,0.12)] text-white/70 backdrop-blur-md hover:text-white"
-                )}
-              >
-                {f.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── FLOATING CONTROLS (Right Side 1:1 Mobile) ── */}
-      <div 
-        className={cn(
-          "absolute right-4 z-20 flex flex-col items-end gap-3 transition-all duration-300 pointer-events-auto",
-          selectedPin ? "bottom-[230px]" : "bottom-[160px]"
-        )}
-      >
-        {/* Traffic Switch Toggle */}
-        <div className="flex items-center gap-2 bg-[#101418]/90 border border-[rgba(255,255,255,0.12)] backdrop-blur-md rounded-full pl-3 pr-2 py-1.5 shadow-xl">
-          <Car className="w-4 h-4 text-white/80" />
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input 
-              type="checkbox" 
-              checked={showsTraffic} 
-              onChange={(e) => setShowsTraffic(e.target.checked)}
-              className="sr-only peer"
-            />
-            <div className="w-8 h-4 bg-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-[#82DB7E]" />
-          </label>
-        </div>
-
-        {/* Recenter / Locate Me Button */}
-        <button
-          onClick={locateMe}
-          title="Locate me"
-          className="w-11 h-11 rounded-full bg-[rgba(0,0,0,0.75)] border border-[rgba(255,255,255,0.12)] backdrop-blur-md flex items-center justify-center text-white/90 shadow-2xl transition-transform active:scale-95 hover:scale-105"
-        >
-          <Locate className="w-5 h-5 text-[#82DB7E]" />
-        </button>
-      </div>
-
-      {/* ── PIN PREVIEW BOTTOM SHEET (When Pin Selected - 1:1 Mobile) ── */}
-      {selectedPin && (
-        <div className="absolute bottom-0 left-0 right-0 z-30 bg-[#161c24] border-t border-[rgba(255,255,255,0.12)] rounded-t-[24px] p-5 pt-3 shadow-[0_-20px_40px_rgba(0,0,0,0.6)] backdrop-blur-xl animate-in slide-in-from-bottom duration-200">
-          {/* Top Handle Bar */}
-          <div className="w-9 h-1 rounded-full bg-white/20 mx-auto mb-4" />
-
-          {/* Close button top right */}
-          <button 
-            onClick={() => setSelectedPin(null)} 
-            className="absolute top-4 right-4 text-neutral-400 hover:text-white"
-          >
-            <X className="w-4 h-4" />
-          </button>
-
-          <div className="flex items-start gap-3.5">
-            {/* Image / Avatar Box */}
-            <div className="w-[72px] h-[72px] rounded-2xl overflow-hidden bg-[#101418] border border-[rgba(255,255,255,0.1)] flex-shrink-0 relative flex items-center justify-center shadow-md">
-              {selectedPin.image || selectedPin.avatar_url ? (
-                <Image 
-                  src={(selectedPin.image || selectedPin.avatar_url)!} 
-                  alt="" 
-                  fill 
-                  className="object-cover" 
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-[#1a1a2e]">
-                  {selectedPin.type === 'event' && <Calendar className="w-6 h-6 text-[#F59E0B]" />}
-                  {selectedPin.type === 'business' && <Briefcase className="w-6 h-6 text-[#3B82F6]" />}
-                  {selectedPin.type === 'friend' && <Users className="w-6 h-6 text-[#8B5CF6]" />}
-                  {selectedPin.type === 'marketplace' && <Tag className="w-6 h-6 text-[#82DB7E]" />}
-                </div>
+              <option value="">All Nigeria</option>
+              {userProfileLocation?.lga && (
+                <option value="home-lga">
+                  {userProfileLocation.lga}, {userProfileLocation.state}
+                </option>
               )}
-            </div>
-
-            {/* Info details */}
-            <div className="flex-1 min-w-0 pr-6">
-              <div className="inline-block px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider mb-1.5 border"
-                style={{
-                  backgroundColor: `${PIN_COLORS[selectedPin.type]}18`,
-                  borderColor: `${PIN_COLORS[selectedPin.type]}40`,
-                  color: PIN_COLORS[selectedPin.type],
-                }}
-              >
-                {selectedPin.type}
-              </div>
-              <h3 className="text-base font-bold text-white truncate font-yrdly-display leading-snug">
-                {selectedPin.title}
-              </h3>
-              <p className="text-xs text-neutral-400 truncate mt-0.5 font-yrdly-body">
-                {selectedPin.subtitle}
-              </p>
-
-              {/* ETA Display */}
-              {(etaLoading || eta || (userCoords && selectedPin)) && (
-                <div className="flex items-center gap-1.5 mt-2 text-xs">
-                  <Car className="w-3.5 h-3.5 text-neutral-400" />
-                  {etaLoading ? (
-                    <span className="text-neutral-400">Calculating ETA...</span>
-                  ) : eta ? (
-                    <span className="font-semibold text-white">
-                      {Math.ceil((eta.duration_in_traffic_seconds || eta.duration_seconds || 0) / 60)} min drive
-                      <span className="text-neutral-400 font-normal"> · {((eta.distance_meters || 0) / 1000).toFixed(1)} km</span>
-                    </span>
-                  ) : userCoords ? (
-                    <span className="text-neutral-400">
-                      {getDistanceStr(userCoords.lat, userCoords.lng, selectedPin.lat, selectedPin.lng)}
-                    </span>
-                  ) : null}
-                </div>
+              {activeFilter?.lga && (
+                <option value="current-area">{displayLabel}</option>
               )}
-            </div>
+              {states.filter(Boolean).map((state) => (
+                <option key={state} value={state}>
+                  {state}
+                </option>
+              ))}
+            </select>
           </div>
-
-          {/* Action button full width */}
           <button
-            onClick={() => {
-              if (selectedPin.type === 'friend') router.push(`/profile/${selectedPin.targetId}`);
-              else if (selectedPin.type === 'event') router.push(`/events/${selectedPin.targetId}`);
-              else if (selectedPin.type === 'business') router.push(`/businesses/${selectedPin.targetId}`);
-              else if (selectedPin.type === 'marketplace') router.push(`/marketplace/${selectedPin.targetId}`);
-              setSelectedPin(null);
-            }}
-            className="w-full mt-4 py-3 rounded-xl bg-[#82DB7E] hover:bg-[#72cb6e] text-[#0B0D0B] font-extrabold text-sm font-yrdly-display transition-colors active:scale-[0.99] flex items-center justify-center gap-1.5 shadow-lg"
+            type="button"
+            className={control}
+            aria-label={locating ? "Finding your location" : "Locate me"}
+            aria-busy={locating}
+            disabled={locating}
+            onClick={() => requestLocation()}
           >
-            <span>
-              View {selectedPin.type === 'friend' ? 'Profile' : selectedPin.type === 'event' ? 'Event' : selectedPin.type === 'business' ? 'Business' : 'Item'}
-            </span>
-            <ChevronRight className="w-4 h-4" />
+            <Locate size={20} className={locating ? "animate-pulse" : ""} />
           </button>
         </div>
-      )}
-
-      {/* ── EXPANDABLE BOTTOM SHEET (When No Pin Selected - 1:1 Mobile Activity Feed) ── */}
-      {!selectedPin && (
-        <VaulDrawer.Root 
-          snapPoints={[140, 420, '0.85']} 
-          activeSnapPoint={140} 
-          setActiveSnapPoint={() => {}} 
-          modal={false} 
-          open={true} 
-          dismissible={false}
-        >
-          <VaulDrawer.Portal>
-            <VaulDrawer.Content 
-              className="fixed inset-x-0 bottom-0 z-20 flex flex-col rounded-t-[24px] border-t border-[rgba(255,255,255,0.12)] shadow-[0_-20px_40px_rgba(0,0,0,0.5)] transition-all bg-[#0d1117]/95 backdrop-blur-xl font-yrdly-body"
-            >
-              <div className="w-full flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing">
-                <div className="h-1 w-9 rounded-full bg-white/20" />
-              </div>
-              
-              <div className="px-5 pb-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-base font-bold font-yrdly-display text-white">Nearby Activity</h2>
-                    <p className="text-xs text-neutral-400 font-medium mt-0.5">
-                      {visibleMarkers.length} places in this area
-                    </p>
-                  </div>
-                  <button onClick={() => router.push('/home')} className="text-xs font-bold text-[#82DB7E]">
-                    See all ›
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex-1 overflow-y-auto px-5 pb-8 space-y-2.5" style={{ scrollbarWidth: 'none' }}>
-                {visibleMarkers.slice(0, 20).map((m) => (
-                  <button
-                    key={m.id}
-                    onClick={() => {
-                      setSelectedPin(m);
-                      if (map) { map.panTo({ lat: m.lat, lng: m.lng }); map.setZoom(16); }
-                    }}
-                    className="w-full rounded-2xl p-3 flex items-center gap-3.5 text-left transition-colors hover:bg-white/5 border border-white/5 bg-white/[0.03] backdrop-blur-md"
-                  >
-                    <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 relative shadow-sm bg-[#1a1a2e]">
-                      {m.image || m.avatar_url ? (
-                        <Image src={(m.image || m.avatar_url)!} alt="" fill className="object-cover" sizes="48px" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          {m.type === 'event' && <Calendar className="w-5 h-5 text-[#F59E0B]" />}
-                          {m.type === 'business' && <Briefcase className="w-5 h-5 text-[#3B82F6]" />}
-                          {m.type === 'friend' && <Users className="w-5 h-5 text-[#8B5CF6]" />}
-                          {m.type === 'marketplace' && <Tag className="w-5 h-5 text-[#82DB7E]" />}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex flex-col flex-1 min-w-0 font-yrdly-body">
-                      <span className="text-[10px] font-extrabold uppercase tracking-wider mb-0.5" style={{ color: PIN_COLORS[m.type] || '#82DB7E' }}>
-                        {m.type}
-                      </span>
-                      <p className="text-xs font-bold text-white truncate font-yrdly-display">{m.title}</p>
-                      <p className="text-[11px] text-neutral-400 truncate mt-0.5">{m.subtitle || 'Nearby'}</p>
-                    </div>
-                    {m.price !== undefined && (
-                      <div className="font-yrdly-display font-extrabold text-xs text-[#82DB7E] pl-2 flex-shrink-0">
-                        {m.price === 0 ? 'Free' : `₦${(m.price).toLocaleString()}`}
-                      </div>
-                    )}
-                  </button>
-                ))}
-
-                {visibleMarkers.length === 0 && !loading && (
-                  <div className="flex flex-col items-center justify-center py-8 text-center text-neutral-400 font-yrdly-body">
-                    <Navigation className="w-7 h-7 mb-2 opacity-50 text-[#82DB7E]" />
-                    <p className="text-xs font-medium">No places found in this view.</p>
-                    <p className="text-[11px] mt-1 text-neutral-500">Pan or zoom the map to explore.</p>
-                  </div>
-                )}
-              </div>
-            </VaulDrawer.Content>
-          </VaulDrawer.Portal>
-        </VaulDrawer.Root>
-      )}
-
-      {loading && (
-        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-[#0d1117]/80 backdrop-blur-sm">
-          <div className="w-10 h-10 border-3 border-[#82DB7E] border-t-transparent animate-spin rounded-full mb-3" />
-          <span className="text-xs font-semibold text-[#82DB7E]">Locating area...</span>
+        <div className="pointer-events-auto flex max-w-xl gap-2">
+          <label className="flex min-w-0 flex-1 items-center gap-2 rounded-2xl border border-white/15 bg-[#14231B] px-3 text-white shadow-lg focus-within:ring-2 focus-within:ring-[#82DB7E]">
+            <Search size={18} aria-hidden="true" />
+            <input
+              aria-label="Search map results"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search this area"
+              className="h-11 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[#C7D5CB]"
+            />
+            {search && (
+              <button
+                type="button"
+                className="flex h-11 w-11 items-center justify-center"
+                aria-label="Clear search"
+                onClick={() => setSearch("")}
+              >
+                <X size={18} />
+              </button>
+            )}
+          </label>
+          <button
+            type="button"
+            onClick={() => setShowsTraffic((value) => !value)}
+            aria-pressed={showsTraffic}
+            aria-label="Show traffic"
+            className={cn(
+              control,
+              "gap-1.5 px-3 text-xs",
+              showsTraffic && "!bg-[#82DB7E] !text-[#0B0D0B]",
+            )}
+          >
+            <Car size={18} />
+            <span className="hidden sm:inline">Traffic</span>
+          </button>
         </div>
-      )}
+        <div
+          className="pointer-events-auto flex max-w-full gap-2 overflow-x-auto sm:max-w-xl"
+          aria-label="Map categories"
+        >
+          {FILTERS.map((option) => (
+            <button
+              type="button"
+              key={option.key}
+              aria-pressed={filter === option.key}
+              onClick={() => setFilter(option.key)}
+              className={cn(
+                "min-h-11 shrink-0 rounded-full border px-4 text-xs font-semibold shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#82DB7E]",
+                filter === option.key
+                  ? "border-[#82DB7E] bg-[#82DB7E] text-[#0B0D0B]"
+                  : "border-white/15 bg-[#14231B] text-white",
+              )}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <p className="sr-only" role="status" aria-live="polite">
+        {resultAnnouncement}
+      </p>
+      <section
+        onKeyDown={(event) => {
+          if (event.key === "Escape" && selectedPin) {
+            event.stopPropagation();
+            closePreview();
+          }
+        }}
+        aria-label={selectedPin ? "Selected place" : "Map results"}
+        className="absolute inset-x-3 bottom-3 z-20 flex max-h-[calc(100dvh-240px)] flex-col overflow-hidden rounded-3xl border border-white/15 bg-[#14231B] text-white shadow-2xl sm:left-auto sm:right-5 sm:w-[370px] sm:max-h-[65dvh]"
+      >
+        <div
+          className="overflow-y-auto p-4"
+          style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}
+        >
+          {(locationError || apiFailed) && (
+            <div
+              role="status"
+              className="mb-3 rounded-xl bg-white/10 p-3 text-xs leading-relaxed"
+            >
+              {apiFailed
+                ? "The map is unavailable. You can still browse the results below."
+                : locationError}
+              {!apiFailed && (
+                <button
+                  type="button"
+                  onClick={() => requestLocation()}
+                  className="ml-2 min-h-11 font-bold text-[#82DB7E]"
+                >
+                  Retry location
+                </button>
+              )}
+            </div>
+          )}
+          {!!failedSources.length && (
+            <div
+              role="status"
+              className="mb-3 rounded-xl bg-white/10 p-3 text-xs"
+            >
+              Couldn&apos;t load {failedSources.join(", ")}. Other results are shown.
+              <button
+                type="button"
+                onClick={() => setRetry((value) => value + 1)}
+                className="ml-2 min-h-11 font-bold text-[#82DB7E]"
+              >
+                Retry results
+              </button>
+            </div>
+          )}
+          {selectedPin ? (
+            <>
+              <div className="flex items-start gap-3">
+                <PlacePhoto marker={selectedPin} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-[#82DB7E]">
+                    {MARKER_LABELS[selectedPin.type]}
+                  </p>
+                  <h2
+                    ref={previewRef}
+                    tabIndex={-1}
+                    className="mt-1 outline-none line-clamp-2 font-yrdly-display text-lg font-bold"
+                  >
+                    {selectedPin.title}
+                  </h2>
+                  <p className="mt-1 text-sm text-[#C7D5CB]">
+                    {selectedPin.subtitle}
+                  </p>
+                  {selectedPin.type === "marketplace" && (
+                    <p className="mt-1 text-xs text-[#C7D5CB]">
+                      Approximate location
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/10"
+                  aria-label="Close place preview"
+                  onClick={closePreview}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              {selectedPin.type !== "friend" && (
+                <p role="status" className="mt-3 text-xs text-[#C7D5CB]">
+                  {etaStatus === "loading"
+                    ? "Calculating drive time…"
+                    : etaStatus === "error"
+                      ? "Drive time unavailable"
+                      : eta
+                        ? `${Math.ceil((eta.duration_in_traffic_seconds || eta.duration_seconds || 0) / 60)} min drive · ${(eta.distance_meters / 1000).toFixed(1)} km`
+                        : ""}
+                </p>
+              )}
+              <Link
+                href={markerRoute(selectedPin)}
+                className="mt-4 flex min-h-11 items-center justify-center rounded-xl bg-[#82DB7E] px-4 py-3 text-sm font-bold text-[#0B0D0B] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              >
+                View{" "}
+                {selectedPin.type === "friend"
+                  ? "profile"
+                  : MARKER_LABELS[selectedPin.type].toLowerCase()}
+              </Link>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <h2 className="font-yrdly-display text-lg font-bold">
+                    {loading
+                      ? "Loading results…"
+                      : `${visibleMarkers.length} results`}
+                  </h2>
+                  <p className="text-xs text-[#C7D5CB]">
+                    {FILTERS.find((option) => option.key === filter)?.label} ·
+                    selected area
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setResultsOpen((value) => !value)}
+                  ref={resultToggleRef}
+                  aria-expanded={resultsOpen}
+                  aria-controls="map-result-list"
+                  className="flex min-h-11 items-center gap-1 rounded-xl px-2 text-xs font-bold text-[#82DB7E]"
+                >
+                  {resultsOpen ? "Hide results" : "Show results"}
+                  {resultsOpen ? (
+                    <ChevronDown size={16} />
+                  ) : (
+                    <ChevronUp size={16} />
+                  )}
+                </button>
+              </div>
+              {resultsOpen && (
+                <div id="map-result-list" className="mt-3 space-y-2">
+                  {!loading && !visibleMarkers.length && (
+                    <div className="py-4 text-center">
+                      <MapPin className="mx-auto mb-2 text-[#82DB7E]" />
+                      <p>No matching results</p>
+                      <p className="mt-1 text-xs text-[#C7D5CB]">
+                        Try another category or search in this area.
+                      </p>
+                      <button
+                        type="button"
+                        className="mt-2 min-h-11 text-sm font-bold text-[#82DB7E]"
+                        onClick={() => {
+                          setSearch("");
+                          setFilter("all");
+                        }}
+                      >
+                        Clear filters and search
+                      </button>
+                    </div>
+                  )}
+                  {visibleMarkers.map((marker) => (
+                    <button
+                      type="button"
+                      key={marker.id}
+                      id={`result-${marker.id}`}
+                      onClick={() => selectMarker(marker)}
+                      className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 text-left hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#82DB7E]"
+                    >
+                      <MarkerToken marker={marker} />
+                      <span className="min-w-0 flex-1">
+                        <span
+                          className="block text-[10px] font-bold uppercase tracking-wide"
+                          style={{ color: MARKER_COLORS[marker.type] }}
+                        >
+                          {MARKER_LABELS[marker.type]}
+                        </span>
+                        <span className="mt-0.5 block line-clamp-2 text-sm font-semibold">
+                          {marker.title}
+                        </span>
+                        <span className="mt-1 block truncate text-xs text-[#C7D5CB]">
+                          {marker.subtitle}
+                        </span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </section>
     </div>
   );
 }
