@@ -12,6 +12,7 @@ import { AmbientBackground } from '@/components/ui/AmbientBackground';
 import { ServiceWorkerRegister } from '@/components/providers/ServiceWorkerRegister';
 import { PushNotificationManager } from '@/components/notifications/PushNotificationManager';
 import { CrispChat } from '@/components/CrispChat';
+import { TelemetryHandler } from '@/components/providers/TelemetryHandler';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://app.yrdly.ng'),
@@ -74,6 +75,7 @@ export default function RootLayout({
           storageKey="yrdly-theme"
         >
           <AuthProvider>
+            <TelemetryHandler />
             {children}
             <PushNotificationManager />
             <CrispChat />

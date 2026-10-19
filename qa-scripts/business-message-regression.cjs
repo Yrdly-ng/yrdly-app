@@ -28,6 +28,7 @@ test('business profile first-contact route creates conversation and sends visibl
     let conversationId;
     let rendered = [];
     const errors = [];
+    const events = [];
     const user = { id: '00000000-0000-0000-0000-000000000001' };
     const business = { id: '00000000-0000-0000-0000-000000000002', owner_id: '00000000-0000-0000-0000-000000000003', name: 'Business fixture', logo: 'https://example.test/logo.jpg' };
     const supabase = { from(table) { return {
@@ -49,10 +50,28 @@ test('business profile first-contact route creates conversation and sends visibl
     assert.ok(conversationId, 'first contact creates a conversation');
     await callback('src/components/messages/BusinessChatScreen.tsx','handleSend',{
       supabase, business, user, profile:{name:'Fixture sender'}, item:undefined, message:'Hello business',convId:conversationId,initialConvId:undefined,
+      captureWebError(){},trackWebEvent: (...args) => events.push(args),
       setMessages: update => { rendered=update(rendered); },setMessage(){},console:consoleMock,
     })();
     assert.deepEqual(errors.map(args=>args[1]?.message),[], 'send should not reject the real client payload');
     assert.equal((await db.query('SELECT text FROM messages')).rows[0]?.text,'Hello business');
     assert.equal(rendered[0]?.content,'Hello business','acknowledged message stays visible');
+    assert.deepEqual(events,[['message_sent']], 'successful send emits one event without message contents');
   } finally {await db.close();}
+});
+
+
+test('rejected business message reports a handled operation and does not count a successful send', async () => {
+  const failure = {code:'PGRST204',message:'private database details'};
+  const reports=[]; const events=[]; let rendered=[];
+  await callback('src/components/messages/BusinessChatScreen.tsx','handleSend',{
+    supabase:{from(){return {insert(){return {select(){return {single:async()=>({error:failure})};}};}};}},
+    business:{id:'fixture-business'}, user:{id:'fixture-user'},profile:{}, item:undefined,
+    message:'private message',convId:'fixture-conversation',initialConvId:undefined,
+    setMessages:update=>{rendered=update(rendered);},setMessage(){},console:{error(){}},
+    captureWebError:(...args)=>reports.push(args),trackWebEvent:(...args)=>events.push(args),
+  })();
+  assert.deepEqual(events,[]);
+  assert.deepEqual(reports,[[failure,{operation:'chat.send'}]]);
+  assert.deepEqual(rendered,[]);
 });

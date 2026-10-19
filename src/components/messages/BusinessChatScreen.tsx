@@ -1,5 +1,7 @@
 "use client";
 
+import { captureWebError } from '@/lib/telemetry/sentry';
+import { trackWebEvent } from '@/lib/telemetry/analytics';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -373,6 +375,7 @@ export function BusinessChatScreen({
       }
 
       if (insertedMessage) {
+        void trackWebEvent('message_sent');
         const { data: userData } = await supabase
           .from("public_profiles")
           .select("name, avatar_url")
@@ -425,6 +428,7 @@ export function BusinessChatScreen({
       }
     } catch (error) {
       setMessages((prev) => prev.filter((msg) => msg.id !== tempId));
+      captureWebError(error, { operation: 'chat.send' });
       console.error("Error sending message:", error);
     }
   };

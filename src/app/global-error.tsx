@@ -2,10 +2,11 @@
 
 import NextError from "next/error";
 import { useEffect } from "react";
+import { captureWebError } from "@/lib/telemetry/sentry";
 
 export default function GlobalError({ error }: { error: Error & { digest?: string } }) {
   useEffect(() => {
-    console.error(error);
+    captureWebError(error, { operation: "app.error_boundary" });
   }, [error]);
 
   return (

@@ -1,7 +1,10 @@
 // next.config.mjs
 import { fileURLToPath } from 'url';
 import path from 'path';
+import sentry from '@sentry/nextjs/config';
+const { withSentryConfig } = sentry;
 
+const posthogRegion = /^https:\/\/eu(?:\.i)?\.posthog\.com\/?$/.test(process.env.NEXT_PUBLIC_POSTHOG_HOST || '') ? 'eu' : 'us';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const supabaseStorageHost = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://yoiyqxtpmxnrrbqqidcs.supabase.co').hostname;
 
@@ -67,15 +70,15 @@ const nextConfig = {
     return [
       {
         source: "/ingest/static/:path*",
-        destination: "https://us-assets.i.posthog.com/static/:path*",
+        destination: `https://${posthogRegion}-assets.i.posthog.com/static/:path*`,
       },
       {
         source: "/ingest/array/:path*",
-        destination: "https://us-assets.i.posthog.com/array/:path*",
+        destination: `https://${posthogRegion}-assets.i.posthog.com/array/:path*`,
       },
       {
         source: "/ingest/:path*",
-        destination: "https://us.i.posthog.com/:path*",
+        destination: `https://${posthogRegion}.i.posthog.com/:path*`,
       },
     ];
   },
@@ -99,4 +102,17 @@ const nextConfig = {
   skipTrailingSlashRedirect: true,
 };
 
-export default nextConfig;
+const uploadSourceMaps = Boolean(process.env.SENTRY_AUTH_TOKEN && process.env.SENTRY_ORG && process.env.SENTRY_PROJECT)
+  && process.env.NEXT_PUBLIC_TELEMETRY_DISABLED !== 'true'
+  && process.env.SENTRY_DISABLE_AUTO_UPLOAD !== 'true';
+
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG || 'yrdly-ltd',
+  project: process.env.SENTRY_PROJECT || 'yrdly-app',
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  telemetry: false,
+  silent: !process.env.CI,
+  sourcemaps: { disable: !uploadSourceMaps, deleteSourcemapsAfterUpload: true },
+  // Errors are captured by the SDK; no performance or navigation tracing is enabled.
+  buildTimeInstrumentation: false,
+});

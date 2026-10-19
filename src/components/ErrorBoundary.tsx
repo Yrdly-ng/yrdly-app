@@ -1,5 +1,6 @@
 "use client";
 
+import { captureWebError } from '@/lib/telemetry/sentry';
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -37,6 +38,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    captureWebError(error, { operation: 'app.error_boundary' });
     this.setState({
       error,
       errorInfo,
@@ -131,6 +133,7 @@ export class ErrorBoundary extends Component<Props, State> {
 // Hook version for functional components
 export function useErrorHandler() {
   return (error: Error, errorInfo?: string) => {
+    captureWebError(error, { operation: 'app.logger' });
     if (process.env.NODE_ENV === 'development') {
       console.error('Error caught by useErrorHandler:', error, errorInfo);
     }

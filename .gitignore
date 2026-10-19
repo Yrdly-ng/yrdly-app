@@ -59,3 +59,6 @@ firebase-service-account.json
 .claude/
 .env*
 .env.local
+
+# Safe configuration template
+!.env.example

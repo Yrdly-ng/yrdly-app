@@ -1,5 +1,7 @@
 "use client";
 
+import { captureWebError } from '@/lib/telemetry/sentry';
+import { trackWebEvent } from '@/lib/telemetry/analytics';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -357,9 +359,11 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
     try {
       const savedBusinessId = await createBusiness(businessData, businessToEdit?.id, validImageFiles);
       if (!savedBusinessId) throw new Error('The business could not be saved. Please try again.');
+      void trackWebEvent('business_saved');
       handleOpenChange(false);
       onCreated?.(savedBusinessId);
     } catch (error) {
+      captureWebError(error, { operation: 'business.save' });
       setSubmitError(error instanceof Error ? error.message : 'Failed to save business. Please try again.');
     } finally {
       setLoading(false);
