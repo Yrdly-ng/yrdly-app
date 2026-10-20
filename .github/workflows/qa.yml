@@ -43,6 +43,7 @@ jobs:
           node-version: '24'
       - run: npm install --global pnpm@11.2.2
       - run: pnpm install --frozen-lockfile
+      - run: pnpm test:maps && pnpm test:telemetry
       - run: node qa-scripts/write-ci-env.mjs
       - run: node qa-scripts/seed.mjs
       - run: node qa-scripts/community-privileges-regression.mjs

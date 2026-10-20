@@ -32,7 +32,7 @@ import { useLocation } from "@/contexts/LocationContext";
 import { cn } from "@/lib/shared/utils";
 import {
   coordinates,
-  mappableRowsFilter,
+  matchesMapArea,
   normalizeEta,
   filterMarkers,
   loadMapSources,
@@ -43,6 +43,8 @@ import {
   type MapMarker,
   type MapSource,
 } from "@/lib/location/map-model";
+
+import { createMapLocationResolver } from "@/lib/location/map-location";
 
 const DEFAULT_CENTER = { lat: 6.5244, lng: 3.3792 };
 const FILTERS: { key: MapFilter; label: string }[] = [
@@ -119,6 +121,17 @@ export function MapScreen({ className }: { className?: string }) {
   const { user } = useAuth();
   const { activeFilter, displayLabel, setGlobalFilter, userProfileLocation } =
     useLocation();
+  const resolveMapLocation = useMemo(
+    () =>
+      createMapLocationResolver((address) =>
+        authenticatedFetch(
+          `/api/maps/geocode/json?address=${encodeURIComponent(address)}`,
+          undefined,
+          "GET",
+        ),
+      ),
+    [user?.id],
+  );
   const router = useRouter();
   const map = useMap();
   const apiStatus = useApiLoadingStatus();
@@ -164,49 +177,66 @@ export function MapScreen({ className }: { className?: string }) {
     "idle",
   );
 
-  const requestLocation = useCallback((recenter = true) => {
-    const interaction = cameraInteraction.current;
-    const current = ++locationRevision.current;
-    if (!navigator.geolocation) {
-      setLocationError(
-        "Location is unavailable in this browser. You can still explore results.",
-      );
-      return;
-    }
-    setLocating(true);
-    setLocationError("");
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        if (current !== locationRevision.current) return;
-        const point = coordinates(
-          position.coords.latitude,
-          position.coords.longitude,
-        );
-        if (point) {
-          setUserCoords(point);
-          if (
-            cameraInteraction.current === interaction &&
-            (recenter || !cameraSet.current)
-          )
-            setPendingCenter(point);
-        }
-        setLocating(false);
-      },
-      (error) => {
-        if (current !== locationRevision.current) return;
-        setLocating(false);
+  const requestLocation = useCallback(
+    (recenter = true) => {
+      const interaction = cameraInteraction.current;
+      const current = ++locationRevision.current;
+      if (!navigator.geolocation) {
         setLocationError(
-          error.code === 1
-            ? "Location access is off. Enable it in browser settings or explore the selected area."
-            : "We couldn't find your location. You can still explore the selected area.",
+          "Location is unavailable in this browser. You can still explore results.",
         );
-      },
-      { timeout: 10000, maximumAge: 60000 },
-    );
-  }, []);
+        return;
+      }
+      setLocating(true);
+      setLocationError("");
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          if (current !== locationRevision.current) return;
+          const point = coordinates(
+            position.coords.latitude,
+            position.coords.longitude,
+          );
+          if (point) {
+            setUserCoords(point);
+            if (user?.id)
+              void supabase
+                .from("users")
+                .update({ current_location: point })
+                .eq("id", user.id)
+                .then(({ error }) => {
+                  if (error && current === locationRevision.current)
+                    setLocationError(
+                      "Your position is shown, but sharing it failed. Tap locate to retry.",
+                    );
+                });
+            if (
+              cameraInteraction.current === interaction &&
+              (recenter || !cameraSet.current)
+            )
+              setPendingCenter(point);
+          }
+          setLocating(false);
+        },
+        (error) => {
+          if (current !== locationRevision.current) return;
+          setLocating(false);
+          setLocationError(
+            error.code === 1
+              ? "Location access is off. Enable it in browser settings or explore the selected area."
+              : "We couldn't find your location. You can still explore the selected area.",
+          );
+        },
+        { timeout: 10000, maximumAge: 60000 },
+      );
+    },
+    [user?.id],
+  );
 
   useEffect(() => {
     const current = ++revision.current;
+    const controller = new AbortController();
+    setMarkers([]);
+    setFailedSources([]);
     setLoading(true);
     setSelectedId(null);
     const areaKey = JSON.stringify([activeFilter?.state, activeFilter?.lga]);
@@ -216,15 +246,36 @@ export function MapScreen({ className }: { className?: string }) {
       lastArea.current = areaKey;
     }
     const area = <T,>(query: T): T => {
-      type Filterable = { eq: (column: string, value: string) => unknown };
+      type Filterable = { or: (filter: string) => unknown };
       let result = query;
+      // Keep legacy rows with missing area columns so their public address can be resolved.
       if (activeFilter?.state)
-        result = (result as Filterable).eq("state", activeFilter.state) as T;
+        result = (result as Filterable).or(
+          `state.eq.${JSON.stringify(activeFilter.state)},state.is.null`,
+        ) as T;
       if (activeFilter?.lga)
-        result = (result as Filterable).eq("lga", activeFilter.lga) as T;
+        result = (result as Filterable).or(
+          `lga.eq.${JSON.stringify(activeFilter.lga)},lga.is.null`,
+        ) as T;
       return result;
     };
     const sources: MapSource[] = [
+      {
+        key: "legacy-event",
+        label: "Community events",
+        kind: "event",
+        load: () =>
+          area(
+            supabase
+              .from("posts")
+              .select(
+                "id,title,event_location,location,image_urls,lat,lng,state,lga,ward",
+              )
+              .eq("category", "Event")
+              .gte("event_date", new Date().toISOString())
+              .or("event_link.is.null,event_link.not.like.yrdly://events/%"),
+          ).limit(30),
+      },
       {
         key: "event",
         label: "Events",
@@ -233,13 +284,12 @@ export function MapScreen({ className }: { className?: string }) {
           area(
             supabase
               .from("events")
-              .select("id,title,location_address,cover_image_url,lat,lng")
+              .select(
+                "id,title,location_address,cover_image_url,lat,lng,state,lga,ward",
+              )
               .eq("status", "PUBLISHED")
-              .neq("is_archived", true)
-              .gte("lat", -90)
-              .lte("lat", 90)
-              .gte("lng", -180)
-              .lte("lng", 180),
+              .or("is_archived.eq.false,is_archived.is.null")
+              .or("location_online.eq.false,location_online.is.null"),
           ).limit(50),
       },
       {
@@ -250,9 +300,8 @@ export function MapScreen({ className }: { className?: string }) {
           area(
             supabase
               .from("businesses")
-              .select("id,name,location,image_urls,lat,lng")
-              .eq("is_active", true)
-              .or(mappableRowsFilter("location")),
+              .select("id,name,location,image_urls,lat,lng,state,lga,ward")
+              .eq("is_active", true),
           ).limit(50),
       },
       {
@@ -264,11 +313,10 @@ export function MapScreen({ className }: { className?: string }) {
             supabase
               .from("posts")
               .select(
-                "id,title,price,image_urls,image_url,video_thumbnail_url,event_location,lat,lng,location_address",
+                "id,title,price,image_urls,image_url,video_thumbnail_url,event_location,location,lat,lng,state,lga,ward",
               )
-              .eq("category", "For Sale")
-              .or("is_sold.eq.false,is_sold.is.null")
-              .or(mappableRowsFilter("event_location")),
+              .in("category", ["For Sale", "Giveaway"])
+              .or("is_sold.eq.false,is_sold.is.null"),
           ).limit(30),
       },
     ];
@@ -279,10 +327,20 @@ export function MapScreen({ className }: { className?: string }) {
         kind: "friend",
         load: () => authenticatedFetch("/api/profiles/friend-locations", {}),
       });
-    void loadMapSources(sources, true)
+    void loadMapSources(
+      sources,
+      true,
+      12000,
+      resolveMapLocation,
+      controller.signal,
+    )
       .then((result) => {
         if (current !== revision.current) return;
-        setMarkers(result.markers);
+        setMarkers(
+          result.markers.filter((marker) =>
+            matchesMapArea(marker, activeFilter),
+          ),
+        );
         setFailedSources(result.failedSources);
       })
       .finally(() => {
@@ -290,10 +348,19 @@ export function MapScreen({ className }: { className?: string }) {
       });
     return () => {
       revision.current++;
+      controller.abort();
     };
-  }, [user?.id, activeFilter?.state, activeFilter?.lga, retry]);
+  }, [
+    user?.id,
+    activeFilter?.state,
+    activeFilter?.lga,
+    retry,
+    resolveMapLocation,
+  ]);
 
   useEffect(() => {
+    setUserCoords(null);
+    setPendingCenter(null);
     requestLocation(false);
     return () => {
       locationRevision.current++;
@@ -689,7 +756,8 @@ export function MapScreen({ className }: { className?: string }) {
               role="status"
               className="mb-3 rounded-xl bg-white/10 p-3 text-xs"
             >
-              Couldn&apos;t load {failedSources.join(", ")}. Other results are shown.
+              Couldn&apos;t load {failedSources.join(", ")}. Other results are
+              shown.
               <button
                 type="button"
                 onClick={() => setRetry((value) => value + 1)}

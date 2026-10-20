@@ -19,7 +19,8 @@
     "test:e2e": "e2e run",
     "test:e2e:smoke": "e2e run tests/smoke.e2e.ts",
     "db:wipe": "node scripts/wipe-database.js",
-    "test:telemetry": "node --test tests/web-telemetry.test.cjs"
+    "test:telemetry": "node --test tests/web-telemetry.test.cjs",
+    "test:maps": "node --test tests/map-model.test.cjs tests/map-location.test.cjs tests/map-query.test.cjs"
   },
   "dependencies": {
     "@googlemaps/markerclusterer": "^2.6.2",

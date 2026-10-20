@@ -14,6 +14,8 @@ export interface MapMarker {
   title: string;
   subtitle: string;
   image?: string;
+  state?: string;
+  lga?: string;
 }
 export const MARKER_LABELS: Record<MarkerKind, string> = {
   marketplace: "Listing",
@@ -46,6 +48,28 @@ export function coordinates(
     : null;
 }
 
+/** Choose a complete valid pair; never combine coordinates from different locations. */
+export function mapCoordinates(row: Record<string, any>, kind: MarkerKind) {
+  const candidates =
+    kind === "friend"
+      ? [row.current_location]
+      : [
+          row,
+          ...(kind === "business"
+            ? [row.location]
+            : [row.event_location, row.location]),
+        ];
+  for (const value of candidates) {
+    if (!value || typeof value !== "object") continue;
+    const point =
+      coordinates(value.lat, value.lng) ||
+      coordinates(value.latitude, value.longitude) ||
+      coordinates(value.geopoint?.latitude, value.geopoint?.longitude);
+    if (point) return point;
+  }
+  return null;
+}
+
 export function normalizeMarker(
   row: Record<string, any>,
   kind: MarkerKind,
@@ -58,15 +82,8 @@ export function normalizeMarker(
       ? row.current_location
       : kind === "business"
         ? row.location
-        : row.event_location;
-  const point = coordinates(
-    kind === "friend"
-      ? (location?.lat ?? location?.geopoint?.latitude)
-      : (row.lat ?? location?.lat ?? location?.geopoint?.latitude),
-    kind === "friend"
-      ? (location?.lng ?? location?.geopoint?.longitude)
-      : (row.lng ?? location?.lng ?? location?.geopoint?.longitude),
-  );
+        : row.event_location || row.location;
+  const point = mapCoordinates(row, kind);
   if (!point) return null;
   // Preserve the web map's existing approximate friend/listing positions.
   if (jitter && (kind === "friend" || kind === "marketplace")) {
@@ -81,6 +98,7 @@ export function normalizeMarker(
   }
   const title = row.title || row.name;
   const address = row.location_address || location?.address;
+  const approximation = row.map_approximate ? " · Approximate area" : "";
   const image = getListingCover({
     image_urls: row.image_urls,
     image_url:
@@ -101,11 +119,13 @@ export function normalizeMarker(
           ? getListingPriceLabel(
               row.price,
               (value) => `₦${value.toLocaleString("en-NG")}`,
-            )
+            ) + approximation
           : typeof address === "string" && address.trim()
-            ? address
-            : MARKER_LABELS[kind],
+            ? address + approximation
+            : MARKER_LABELS[kind] + approximation,
     image,
+    state: row.state || location?.state || row.map_state,
+    lga: row.lga || location?.lga || row.map_lga,
   };
 }
 
@@ -115,38 +135,98 @@ export interface MapSource {
   kind: MarkerKind;
   load: () => PromiseLike<{ data: unknown; error?: unknown }>;
 }
+export type MapLocationResolver = (
+  row: Record<string, any>,
+  kind: MarkerKind,
+  signal?: AbortSignal,
+) => Promise<Record<string, any>>;
+
 export async function loadMapSources(
   sources: MapSource[],
   jitter = false,
   timeoutMs = 12000,
+  resolveLocation?: MapLocationResolver,
+  signal?: AbortSignal,
 ) {
   const results = await Promise.all(
     sources.map(async (source) => {
       let timer: ReturnType<typeof setTimeout> | undefined;
+      const completed = new Map<number, MapMarker>();
+      let failed = false;
+      let finished = false;
+      const controller = new AbortController();
+      let cancel: (() => void) | undefined;
       try {
-        const result = await Promise.race([
-          Promise.resolve().then(source.load),
+        // The deadline covers both database loading and subsequent address resolution.
+        await Promise.race([
+          (async () => {
+            if (signal?.aborted) throw new Error("Cancelled");
+            const result = await source.load();
+            if (finished) return;
+            if (
+              result.error ||
+              (result.data != null && !Array.isArray(result.data))
+            )
+              throw new Error("Source unavailable");
+            await Promise.all(
+              ((result.data || []) as Record<string, any>[]).map(
+                async (row, index) => {
+                  if (!row || typeof row !== "object") return;
+                  const existing = normalizeMarker(
+                    row,
+                    source.kind,
+                    source.key,
+                    jitter,
+                  );
+                  if (existing) completed.set(index, existing);
+                  if (
+                    source.kind === "friend" ||
+                    !resolveLocation ||
+                    (existing?.state && existing?.lga)
+                  )
+                    return;
+                  try {
+                    const located = await resolveLocation(
+                      row,
+                      source.kind,
+                      controller.signal,
+                    );
+                    if (finished) return;
+                    const marker = normalizeMarker(
+                      located,
+                      source.kind,
+                      source.key,
+                      jitter,
+                    );
+                    if (marker) completed.set(index, marker);
+                  } catch {
+                    if (!finished) failed = true;
+                  }
+                },
+              ),
+            );
+          })(),
           new Promise<never>((_, reject) => {
+            cancel = () => reject(new Error("Cancelled"));
+            if (signal?.aborted) cancel();
+            else signal?.addEventListener("abort", cancel, { once: true });
             timer = setTimeout(() => reject(new Error("Timed out")), timeoutMs);
           }),
         ]);
-        if (
-          result.error ||
-          (result.data != null && !Array.isArray(result.data))
-        )
-          throw new Error("Source unavailable");
-        const markers: MapMarker[] = [];
-        for (const row of (result.data || []) as Record<string, any>[]) {
-          if (!row || typeof row !== "object") continue;
-          const marker = normalizeMarker(row, source.kind, source.key, jitter);
-          if (marker) markers.push(marker);
-        }
-        return { markers, failed: "" };
       } catch {
-        return { markers: [] as MapMarker[], failed: source.label };
+        failed = true;
       } finally {
+        finished = true;
+        controller.abort();
+        if (cancel) signal?.removeEventListener("abort", cancel);
         clearTimeout(timer);
       }
+      return {
+        markers: [...completed.entries()]
+          .sort(([a], [b]) => a - b)
+          .map(([, marker]) => marker),
+        failed: failed ? source.label : "",
+      };
     }),
   );
   return {
@@ -171,6 +251,7 @@ export function filterMarkers(
   );
 }
 export function markerRoute(marker: MapMarker) {
+  if (marker.id.startsWith("legacy-event-")) return `/posts/${marker.targetId}`;
   const route = {
     marketplace: "marketplace",
     event: "events",
@@ -210,4 +291,22 @@ export function normalizeEta(value: unknown): MapEta | null {
         ? data.overview_polyline
         : undefined,
   };
+}
+
+/** Legacy rows can be selected by resolved area without leaking unrelated areas into the results. */
+export function matchesMapArea(
+  marker: MapMarker,
+  area?: { state?: string; lga?: string } | null,
+) {
+  if (marker.type === "friend") return true;
+  const canonical = (value: string | undefined) =>
+    (typeof value === "string" ? value : "")
+      .toLowerCase()
+      .replace(/(?: state| local government area| lga)$/g, "")
+      .replace(/[^a-z0-9]/g, "")
+      .replace(/^(fct|abujafct)$/, "federalcapitalterritory");
+  return (
+    (!area?.state || canonical(marker.state) === canonical(area.state)) &&
+    (!area?.lga || canonical(marker.lga) === canonical(area.lga))
+  );
 }
