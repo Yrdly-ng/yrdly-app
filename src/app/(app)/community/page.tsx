@@ -1,7 +1,5 @@
-"use client";
-
-import { CommunityScreen } from "@/components/communities/CommunityScreen";
+import { redirect } from "next/navigation";
 
 export default function CommunityPage() {
-  return <CommunityScreen />;
+  redirect("/explore?tab=discover&mode=nearby");
 }

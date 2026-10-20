@@ -21,7 +21,8 @@
     "db:wipe": "node scripts/wipe-database.js",
     "test:telemetry": "node --test tests/web-telemetry.test.cjs",
     "test:maps": "node --test tests/map-model.test.cjs tests/map-location.test.cjs tests/map-query.test.cjs tests/map-presentation.test.cjs",
-    "test:directions": "node --test tests/directions-*.test.cjs"
+    "test:directions": "node --test tests/directions-*.test.cjs",
+    "test:explore": "node --test tests/nearby-screen.test.cjs tests/explore-community-flow.test.cjs"
   },
   "dependencies": {
     "@googlemaps/markerclusterer": "^2.6.2",

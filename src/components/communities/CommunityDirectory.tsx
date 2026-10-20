@@ -10,7 +10,10 @@ import { supabase } from "@/lib/supabase/supabase";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { communityButton, communityField } from "./CommunityTools";
 
-export function CommunityDirectory() {
+export function CommunityDirectory({
+  embedded = false,
+  visible = true,
+}: { embedded?: boolean; visible?: boolean } = {}) {
   const router = useRouter();
   const { user, profile } = useAuth();
   const [tab, setTab] = useState<"mine" | "discover">("mine");
@@ -40,7 +43,7 @@ export function CommunityDirectory() {
     return () => clearTimeout(timer);
   }, [query]);
   const load = useCallback(async () => {
-    if (!user?.id) return;
+    if (!user?.id || !visible) return;
     const started = ++request.current;
     setError("");
     try {
@@ -69,7 +72,7 @@ export function CommunityDirectory() {
     } finally {
       if (started === request.current) setLoading(false);
     }
-  }, [user?.id, profile?.home_state, debounced]);
+  }, [user?.id, profile?.home_state, debounced, visible]);
   useEffect(() => {
     setMine([]);
     setInvitations([]);
@@ -78,6 +81,7 @@ export function CommunityDirectory() {
     setLoading(true);
   }, [user?.id]);
   useEffect(() => {
+    if (!user?.id || !visible) return;
     void load();
     const channel = supabase.channel(`web-community-directory-${user?.id}`);
     for (const table of [
@@ -102,7 +106,7 @@ export function CommunityDirectory() {
       window.removeEventListener("focus", focus);
       void supabase.removeChannel(channel);
     };
-  }, [load, user?.id]);
+  }, [load, user?.id, visible]);
   const respond = async (cid: string, action: string) => {
     if (inFlight.current) return;
     inFlight.current = true;
@@ -178,14 +182,27 @@ export function CommunityDirectory() {
           item.name.toLowerCase().includes(query.trim().toLowerCase()),
         )
       : discovered;
+  const Container = embedded ? "section" : "main";
+  const Heading = embedded ? "h2" : "h1";
   const awaiting = pendingNames.includes(
     name.trim().replace(/\s+/g, " ").toLowerCase(),
   );
   return (
-    <main className="mx-auto max-w-2xl space-y-5 px-4 py-6 pb-28">
-      <header className="flex items-center justify-between gap-3">
+    <Container
+      aria-label={embedded ? "Community directory" : undefined}
+      className={
+        embedded
+          ? "w-full min-w-0 space-y-5 pb-6"
+          : "mx-auto max-w-2xl space-y-5 px-4 py-6 pb-28"
+      }
+    >
+      <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Communities</h1>
+          <Heading
+            className={embedded ? "text-lg font-bold" : "text-2xl font-bold"}
+          >
+            Communities
+          </Heading>
           <p className="mt-1 text-sm text-muted-foreground">
             Find your neighbourhood and interest groups.
           </p>
@@ -296,23 +313,31 @@ export function CommunityDirectory() {
         value={query}
         onChange={(event) => setQuery(event.target.value)}
       />
-      <nav aria-label="Community directory" className="flex gap-3">
+      <nav aria-label="Community directory" className="flex flex-wrap gap-2">
         <button
-          className={communityButton + (tab === "mine" ? " bg-primary/10" : "")}
+          className={
+            communityButton +
+            " min-h-11" +
+            (tab === "mine" ? " bg-primary/10" : "")
+          }
+          aria-pressed={tab === "mine"}
           onClick={() => setTab("mine")}
         >
           My Communities
         </button>
         <button
           className={
-            communityButton + (tab === "discover" ? " bg-primary/10" : "")
+            communityButton +
+            " min-h-11" +
+            (tab === "discover" ? " bg-primary/10" : "")
           }
+          aria-pressed={tab === "discover"}
           onClick={() => setTab("discover")}
         >
           Discover
         </button>
         <button
-          className={communityButton + " ml-auto"}
+          className={communityButton + " min-h-11 sm:ml-auto"}
           onClick={() => void load()}
         >
           Refresh
@@ -477,6 +502,6 @@ export function CommunityDirectory() {
           </DialogContent>
         </Dialog>
       )}
-    </main>
+    </Container>
   );
 }

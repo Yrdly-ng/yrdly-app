@@ -1,3 +1,5 @@
-'use client';
-import {CommunityDirectory} from '@/components/communities/CommunityDirectory';
-export default function CommunitiesPage(){return <CommunityDirectory/>;}
+import { redirect } from "next/navigation";
+
+export default function CommunitiesPage() {
+  redirect("/explore?tab=discover&mode=communities");
+}

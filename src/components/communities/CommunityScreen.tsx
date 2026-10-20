@@ -1,23 +1,34 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  type ReactNode,
+} from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, UserPlus, Search, MessageSquare, UserCheck, ShieldAlert, Sparkles, Store, MapPin } from "lucide-react";
+import { Users, UserPlus, MessageSquare, MapPin } from "lucide-react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { useFriendshipGlobal } from "@/hooks/use-friendship-global";
 import { useLocation } from "@/contexts/LocationContext";
-import { LocationChip } from "@/components/location/LocationChip";
+import {
+  boundedPeopleRequest,
+  loadNearbyPeople,
+  publicPerson,
+  type PublicPerson,
+  type DiscoverFilter,
+} from "@/lib/people/nearby";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
 
 const GREEN = "hsl(var(--primary))";
 
-type MainTab = "friends" | "discover";
-type DiscoverFilter = "all" | "neighbors" | "mutuals" | "sellers";
+export type PeopleMode = "nearby" | "communities" | "circle";
 
 // Helper component for user action buttons with real-time friendship status
 function UserActionButton({
@@ -82,134 +93,163 @@ function UserActionButton({
   }
 }
 
-export function CommunityScreen({ className }: { className?: string }) {
-  const { user: currentUser, profile } = useAuth();
+export function CommunityScreen({
+  className,
+  mode,
+  onModeChange,
+  communitiesContent,
+}: {
+  className?: string;
+  mode?: PeopleMode;
+  onModeChange?: (mode: PeopleMode) => void;
+  communitiesContent?: ReactNode;
+}) {
+  const { user: currentUser, profile, loading: authLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const { activeFilter } = useLocation();
-
-  const [activeTab, setActiveTab] = useState<MainTab>("discover");
+  const [localMode, setLocalMode] = useState<PeopleMode>("nearby");
+  const activeMode = mode ?? localMode;
+  const [visitedCommunities, setVisitedCommunities] = useState(
+    activeMode === "communities",
+  );
+  useEffect(() => {
+    if (activeMode === "communities") setVisitedCommunities(true);
+  }, [activeMode]);
+  const setMode = (next: PeopleMode) => {
+    setLocalMode(next);
+    onModeChange?.(next);
+  };
   const [discoverFilter, setDiscoverFilter] = useState<DiscoverFilter>("all");
-  const [searchQuery, setSearchQuery] = useState("");
-
-  const [friends, setFriends] = useState<any[]>([]);
-  const [pendingRequests, setPendingRequests] = useState<any[]>([]);
-  
-  const [neighbors, setNeighbors] = useState<any[]>([]);
-  const [mutuals, setMutuals] = useState<any[]>([]);
-  const [sellers, setSellers] = useState<any[]>([]);
-  const [allDiscovered, setAllDiscovered] = useState<any[]>([]);
-
+  const [searchQuery] = useState("");
+  const [friends, setFriends] = useState<
+    { reqId: string; user: PublicPerson }[]
+  >([]);
+  const [pendingRequests, setPendingRequests] = useState<
+    { id: string; from_user: PublicPerson }[]
+  >([]);
+  const [followingIds, setFollowingIds] = useState<string[]>([]);
+  const [allDiscovered, setAllDiscovered] = useState<PublicPerson[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const fetchData = useCallback(async () => {
-    if (!currentUser) return;
-    setLoading(true);
-    try {
-      // 1. Fetch Following & Followers from followers table
-      const [{ data: followingData }, { data: followersData }] = await Promise.all([
-        supabase
-          .from("followers")
-          .select("following_id, following:public_profiles!followers_following_id_fkey(id, name, avatar_url, location)")
-          .eq("follower_id", currentUser.id),
-        supabase
-          .from("followers")
-          .select("follower_id, follower:public_profiles!followers_follower_id_fkey(id, name, avatar_url, location)")
-          .eq("following_id", currentUser.id),
-      ]);
-
-      const followingList = followingData || [];
-      const followersList = followersData || [];
-
-      const followingIds = new Set(followingList.map((f: any) => f.following_id));
-      const followerIds = new Set(followersList.map((f: any) => f.follower_id));
-
-      // Mutual Friends
-      const friendList: any[] = [];
-      followingList.forEach((f: any) => {
-        if (followerIds.has(f.following_id) && f.following) {
-          friendList.push({
-            reqId: f.following_id,
-            user: f.following,
-          });
-        }
-      });
-
-      // Incoming Requests (Users following me that I have not followed back)
-      const reqList: any[] = [];
-      followersList.forEach((f: any) => {
-        if (!followingIds.has(f.follower_id) && f.follower) {
-          reqList.push({
-            id: f.follower_id,
-            from_user: f.follower,
-          });
-        }
-      });
-
-      setFriends(friendList);
-      setPendingRequests(reqList);
-
-      // 3. Community discovery
-      const targetLocation = activeFilter || profile?.location;
-      let userQuery = supabase
-        .from("users")
-        .select("id, name, avatar_url, location, friends, discoverable")
-        .neq("id", currentUser.id)
-        .limit(100);
-
-      if (targetLocation?.state) {
-        userQuery = userQuery.contains("location", { state: targetLocation.state });
-      }
-
-      const { data: userData } = await userQuery;
-
-      const blocked = profile?.blocked_users || [];
-      const myFriendIds = friendList.map((f) => f.user.id);
-
-      const discovered = (userData || [])
-        .filter((u: any) => !blocked.includes(u.id))
-        .filter((u: any) => !myFriendIds.includes(u.id))
-        .filter((u: any) => !followingIds.has(u.id))
-        .filter((u: any) => u.discoverable !== false);
-
-      setAllDiscovered(discovered);
-
-      const nearby = discovered.filter((u: any) => {
-        if (!targetLocation?.lga) return true;
-        return u.location?.lga === targetLocation.lga;
-      });
-      setNeighbors(nearby);
-
-      const mutual = discovered.filter((u: any) => {
-        const theirFriends = u.friends || [];
-        return theirFriends.some((fid: string) => myFriendIds.includes(fid));
-      });
-      setMutuals(mutual);
-
-      if (targetLocation?.state) {
-        const { data: postData } = await supabase
-          .from("posts")
-          .select("user_id")
-          .eq("category", "For Sale")
-          .eq("is_sold", false)
-          .eq("state", targetLocation.state)
-          .limit(100);
-
-        if (postData) {
-          const sellerIds = Array.from(new Set(postData.map((p) => p.user_id)));
-          setSellers(discovered.filter((u: any) => sellerIds.includes(u.id)));
-        }
-      }
-    } catch (error) {
-      console.error("Error fetching community data:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [currentUser, activeFilter, profile?.location, profile?.blocked_users]);
+  const [circleLoading, setCircleLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [circleError, setCircleError] = useState(false);
+  const [revision, setRevision] = useState(0);
+  const fetchData = useCallback(() => setRevision((value) => value + 1), []);
+  const userId = currentUser?.id;
+  const state = activeFilter?.state;
+  const lga = activeFilter?.lga;
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    const controller = new AbortController();
+    let disposed = false;
+    setFriends([]);
+    setPendingRequests([]);
+    setFollowingIds([]);
+    setCircleError(false);
+    if (!userId || authLoading) {
+      setCircleLoading(!!authLoading);
+      return;
+    }
+    setCircleLoading(true);
+    void boundedPeopleRequest(controller, async (signal) => {
+      const [following, followers] = await Promise.all([
+        supabase
+          .from("followers")
+          .select(
+            "following_id, following:public_profiles!followers_following_id_fkey(id, name, avatar_url, location)",
+          )
+          .eq("follower_id", userId)
+          .abortSignal(signal),
+        supabase
+          .from("followers")
+          .select(
+            "follower_id, follower:public_profiles!followers_follower_id_fkey(id, name, avatar_url, location)",
+          )
+          .eq("following_id", userId)
+          .abortSignal(signal),
+      ]);
+      if (
+        following.error ||
+        followers.error ||
+        !Array.isArray(following.data) ||
+        !Array.isArray(followers.data)
+      )
+        throw new Error("Unable to load your circle");
+      const outgoing = new Set<string>(
+        following.data.map((row) => row.following_id),
+      );
+      const incoming = new Set<string>(
+        followers.data.map((row) => row.follower_id),
+      );
+      const friends = following.data.flatMap((row) => {
+        const person = publicPerson(
+          Array.isArray(row.following) ? row.following[0] : row.following,
+        );
+        return person && incoming.has(row.following_id)
+          ? [{ reqId: row.following_id, user: person }]
+          : [];
+      });
+      const requests = followers.data.flatMap((row) => {
+        const person = publicPerson(
+          Array.isArray(row.follower) ? row.follower[0] : row.follower,
+        );
+        return person && !outgoing.has(row.follower_id)
+          ? [{ id: row.follower_id, from_user: person }]
+          : [];
+      });
+      return { friends, requests, outgoing: [...outgoing] };
+    })
+      .then((result) => {
+        if (disposed) return;
+        setFriends(result.friends);
+        setPendingRequests(result.requests);
+        setFollowingIds(result.outgoing);
+      })
+      .catch(() => {
+        if (!disposed) setCircleError(true);
+      })
+      .finally(() => {
+        if (!disposed) setCircleLoading(false);
+      });
+    return () => {
+      disposed = true;
+      controller.abort();
+    };
+  }, [userId, authLoading, revision]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let disposed = false;
+    setAllDiscovered([]);
+    setError(false);
+    if (!userId || authLoading) {
+      setLoading(!!authLoading);
+      return;
+    }
+    setLoading(true);
+    void boundedPeopleRequest(controller, (signal) =>
+      loadNearbyPeople(supabase, {
+        userId,
+        filter: discoverFilter,
+        location: state || lga ? { state, lga } : null,
+        signal,
+      }),
+    )
+      .then((people) => {
+        if (!disposed) setAllDiscovered(people);
+      })
+      .catch(() => {
+        if (!disposed) setError(true);
+      })
+      .finally(() => {
+        if (!disposed) setLoading(false);
+      });
+    return () => {
+      disposed = true;
+      controller.abort();
+    };
+  }, [userId, authLoading, discoverFilter, state, lga, revision]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -224,7 +264,7 @@ export function CommunityScreen({ className }: { className?: string }) {
           table: "followers",
           filter: `following_id=eq.${currentUser.id}`,
         },
-        () => fetchData()
+        () => fetchData(),
       )
       .subscribe();
 
@@ -261,7 +301,11 @@ export function CommunityScreen({ className }: { className?: string }) {
       }
     } catch (error) {
       console.error("Error starting chat:", error);
-      toast({ title: "Error", description: "Failed to open conversation.", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: "Failed to open conversation.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -280,28 +324,31 @@ export function CommunityScreen({ className }: { className?: string }) {
   }, [friends, searchQuery]);
 
   const displayedDiscoverList = useMemo(() => {
-    let list = allDiscovered;
-    if (discoverFilter === "neighbors") list = neighbors;
-    else if (discoverFilter === "mutuals") list = mutuals;
-    else if (discoverFilter === "sellers") list = sellers;
-
+    const blocked = Array.isArray(profile?.blocked_users)
+      ? profile.blocked_users
+      : [];
+    const list = allDiscovered.filter(
+      (person) =>
+        !blocked.includes(person.id) && !followingIds.includes(person.id),
+    );
     if (!searchQuery.trim()) return list;
-    const q = searchQuery.toLowerCase();
-    return list.filter((u) => u.name?.toLowerCase().includes(q));
-  }, [allDiscovered, neighbors, mutuals, sellers, discoverFilter, searchQuery]);
+    return list.filter((person) =>
+      person.name.toLowerCase().includes(searchQuery.toLowerCase()),
+    );
+  }, [allDiscovered, followingIds, profile?.blocked_users, searchQuery]);
 
   return (
-    <div className={`min-h-[100dvh] pb-32 bg-[var(--yrdly-dark)] text-foreground ${className || ""}`}>
+    <div
+      className={`min-h-[100dvh] pb-32 bg-[var(--yrdly-dark)] text-foreground ${className || ""}`}
+    >
       <div className="max-w-none w-full px-yrdly-md pt-6 space-y-6">
-
-
-
         {/* ── Sub-Tab Segmented Switcher (Nearby vs My Circle - Mobile Parity) ── */}
         <div className="flex rounded-full p-1 border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] backdrop-blur-md">
           <button
-            onClick={() => setActiveTab("discover")}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full text-xs font-semibold font-yrdly-display transition-all ${
-              activeTab === "discover"
+            onClick={() => setMode("nearby")}
+            aria-pressed={activeMode === "nearby"}
+            className={`min-h-11 flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full text-xs font-semibold font-yrdly-display transition-all ${
+              activeMode === "nearby"
                 ? "bg-[#82DB7E] text-black shadow-sm"
                 : "text-[var(--yrdly-text-secondary)] hover:text-foreground font-medium"
             }`}
@@ -309,15 +356,17 @@ export function CommunityScreen({ className }: { className?: string }) {
             Nearby
           </button>
           <button
-            onClick={() => router.push("/communities")}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full text-xs font-semibold font-yrdly-display transition-all text-[var(--yrdly-text-secondary)] hover:text-foreground font-medium"
+            onClick={() => setMode("communities")}
+            aria-pressed={activeMode === "communities"}
+            className={`min-h-11 flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full text-xs font-semibold font-yrdly-display transition-all ${activeMode === "communities" ? "bg-[#82DB7E] text-black shadow-sm" : "text-[var(--yrdly-text-secondary)] hover:text-foreground font-medium"}`}
           >
             Communities
           </button>
           <button
-            onClick={() => setActiveTab("friends")}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full text-xs font-semibold font-yrdly-display transition-all ${
-              activeTab === "friends"
+            onClick={() => setMode("circle")}
+            aria-pressed={activeMode === "circle"}
+            className={`min-h-11 flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full text-xs font-semibold font-yrdly-display transition-all ${
+              activeMode === "circle"
                 ? "bg-[#82DB7E] text-black shadow-sm"
                 : "text-[var(--yrdly-text-secondary)] hover:text-foreground font-medium"
             }`}
@@ -329,7 +378,7 @@ export function CommunityScreen({ className }: { className?: string }) {
         </div>
 
         {/* ── Sub-Filters Chips (When Nearby active) ── */}
-        {activeTab === "discover" && (
+        {activeMode === "nearby" && (
           <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
             {[
               { key: "all", label: "All" },
@@ -355,12 +404,21 @@ export function CommunityScreen({ className }: { className?: string }) {
           </div>
         )}
 
-
         {/* ── Content Body ── */}
-        {loading ? (
+        {(visitedCommunities || activeMode === "communities") && (
+          <div hidden={activeMode !== "communities"}>{communitiesContent}</div>
+        )}
+        {activeMode === "communities" ? null : !authLoading && !currentUser ? (
+          <p className="py-8 text-center text-sm">
+            Sign in to discover people nearby.
+          </p>
+        ) : (activeMode === "circle" ? circleLoading : loading) ? (
           <div className="space-y-3 py-4">
             {[1, 2, 3, 4].map((i) => (
-              <GlassCard key={i} className="flex items-center gap-3 p-3 rounded-2xl">
+              <GlassCard
+                key={i}
+                className="flex items-center gap-3 p-3 rounded-2xl"
+              >
                 <Skeleton className="w-12 h-12 rounded-full" />
                 <div className="flex-1 space-y-2">
                   <Skeleton className="h-4 w-32" />
@@ -369,10 +427,20 @@ export function CommunityScreen({ className }: { className?: string }) {
               </GlassCard>
             ))}
           </div>
-        ) : activeTab === "friends" ? (
+        ) : (activeMode === "circle" ? circleError : error) ? (
+          <div role="alert" className="space-y-3 py-8 text-center">
+            <p className="text-sm">
+              We couldn&apos;t load{" "}
+              {activeMode === "circle" ? "your circle" : "nearby people"}.
+              Please try again.
+            </p>
+            <Button onClick={fetchData} className="min-h-11 rounded-full">
+              Retry
+            </Button>
+          </div>
+        ) : activeMode === "circle" ? (
           /* ── FRIENDS TAB ── */
           <div className="space-y-6">
-
             {/* Pending Friend Requests */}
             {pendingRequests.length > 0 && (
               <section className="space-y-3">
@@ -395,7 +463,13 @@ export function CommunityScreen({ className }: { className?: string }) {
                           onClick={() => router.push(`/profile/${sender.id}`)}
                         >
                           <AvatarImage src={sender.avatar_url} />
-                          <AvatarFallback style={{ background: GREEN, color: "#fff", fontWeight: 700 }}>
+                          <AvatarFallback
+                            style={{
+                              background: GREEN,
+                              color: "#fff",
+                              fontWeight: 700,
+                            }}
+                          >
                             {sender.name?.charAt(0).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
@@ -412,7 +486,10 @@ export function CommunityScreen({ className }: { className?: string }) {
                             </p>
                           )}
                         </div>
-                        <UserActionButton userId={sender.id} onFriendAction={fetchData} />
+                        <UserActionButton
+                          userId={sender.id}
+                          onFriendAction={fetchData}
+                        />
                       </GlassCard>
                     );
                   })}
@@ -433,10 +510,16 @@ export function CommunityScreen({ className }: { className?: string }) {
                     No friends found
                   </h3>
                   <p className="text-xs text-[var(--yrdly-label)] max-w-xs mb-4 font-yrdly-body">
-                    {searchQuery ? "No matching friends for your search." : "Discover neighbors around you and build your local network!"}
+                    {searchQuery
+                      ? "No matching friends for your search."
+                      : "Discover neighbors around you and build your local network!"}
                   </p>
                   {!searchQuery && (
-                    <Button size="sm" onClick={() => setActiveTab("discover")} className="rounded-full font-yrdly-body">
+                    <Button
+                      size="sm"
+                      onClick={() => setMode("nearby")}
+                      className="rounded-full font-yrdly-body"
+                    >
                       Discover Neighbors
                     </Button>
                   )}
@@ -458,7 +541,13 @@ export function CommunityScreen({ className }: { className?: string }) {
                           onClick={() => router.push(`/profile/${u.id}`)}
                         >
                           <AvatarImage src={u.avatar_url} />
-                          <AvatarFallback style={{ background: GREEN, color: "#fff", fontWeight: 700 }}>
+                          <AvatarFallback
+                            style={{
+                              background: GREEN,
+                              color: "#fff",
+                              fontWeight: 700,
+                            }}
+                          >
                             {u.name?.charAt(0).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
@@ -483,7 +572,10 @@ export function CommunityScreen({ className }: { className?: string }) {
                           >
                             <MessageSquare className="w-4 h-4" />
                           </button>
-                          <UserActionButton userId={u.id} onFriendAction={fetchData} />
+                          <UserActionButton
+                            userId={u.id}
+                            onFriendAction={fetchData}
+                          />
                         </div>
                       </GlassCard>
                     );
@@ -495,7 +587,6 @@ export function CommunityScreen({ className }: { className?: string }) {
         ) : (
           /* ── DISCOVER TAB ── */
           <div className="space-y-4">
-
             {/* Discovered Users List */}
             {displayedDiscoverList.length === 0 ? (
               <GlassCard className="flex flex-col items-center justify-center py-12 text-center rounded-3xl p-6">
@@ -524,7 +615,13 @@ export function CommunityScreen({ className }: { className?: string }) {
                         onClick={() => router.push(`/profile/${u.id}`)}
                       >
                         <AvatarImage src={u.avatar_url} />
-                        <AvatarFallback style={{ background: GREEN, color: "#fff", fontWeight: 700 }}>
+                        <AvatarFallback
+                          style={{
+                            background: GREEN,
+                            color: "#fff",
+                            fontWeight: 700,
+                          }}
+                        >
                           {u.name?.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
@@ -542,7 +639,10 @@ export function CommunityScreen({ className }: { className?: string }) {
                           </p>
                         )}
                       </div>
-                      <UserActionButton userId={u.id} onFriendAction={fetchData} />
+                      <UserActionButton
+                        userId={u.id}
+                        onFriendAction={fetchData}
+                      />
                     </GlassCard>
                   );
                 })}
