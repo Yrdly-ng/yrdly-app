@@ -20,6 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import Image from "next/image";
 import { BuyButton } from "@/components/escrow/BuyButton";
 import { ClaimButton } from "@/components/escrow/ClaimButton";
+import { GetDirectionsLink } from "@/components/location/GetDirectionsLink";
 
 /* ─── colour tokens matching the yrdly design system ─────────────────────────── */
 const BG = "var(--yrdly-dark)";
@@ -509,6 +510,8 @@ export default function MarketplaceItemPage() {
 
           {/* Directions / location */}
           <div className="px-6 pb-6">
+            <GetDirectionsLink target={{ type: "marketplace", id: item.id }} className="mb-3 w-full" />
+            <p className="mb-3 text-xs text-muted-foreground">Directions lead to the approximate pickup area. Ask the seller for the agreed pickup point.</p>
             <p
               className="font-bold text-[0.8125rem] text-foreground mb-3"
               style={{ fontFamily: FONT_RALEWAY }}

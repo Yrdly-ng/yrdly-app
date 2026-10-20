@@ -37,6 +37,7 @@ import { WriteBusinessReviewDialog } from "@/components/reviews/WriteBusinessRev
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { useServiceOfferings } from "@/hooks/use-bookings";
+import { GetDirectionsLink } from "@/components/location/GetDirectionsLink";
 
 interface BusinessDetailScreenProps {
   business: Business;
@@ -413,18 +414,7 @@ export function BusinessDetailScreen({
             </div>
           </div>
 
-          <a
-            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-              typeof business.location === 'string'
-                ? business.location
-                : business.location?.address
-                  ? business.location.address
-                  : [business.lga, business.state].filter(Boolean).join(", ")
-            )}`}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-2 text-muted-foreground hover:underline"
-          >
+          <div className="flex items-center gap-2 text-muted-foreground">
             <MapPin className="w-4 h-4 text-primary flex-shrink-0" />
             <span className="text-sm" title={typeof business.location === 'string' ? business.location : business.location?.address || 'Location not specified'}>
               {typeof business.location === 'string' 
@@ -436,7 +426,8 @@ export function BusinessDetailScreen({
                     : 'Location not specified'
               }
             </span>
-          </a>
+          </div>
+          <GetDirectionsLink target={{ type: "business", id: business.id }} className="mt-3" />
         </div>
 
         {/* Action buttons */}

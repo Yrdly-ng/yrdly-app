@@ -32,6 +32,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase/supabase";
 import { getEventById } from "@/lib/events/event-service";
 import { AttendeeAvatars } from "@/components/events/AttendeeAvatars";
+import { GetDirectionsLink } from "@/components/location/GetDirectionsLink";
 import type { Event, TicketTier } from "@/types/events";
 
 function formatDate(iso: string) {
@@ -463,6 +464,8 @@ export default function EventDetailPage() {
                 </div>
               </div>
             )}
+
+            {!event.location_online && <GetDirectionsLink target={{ type: "event", id: event.id }} />}
 
             {event.location_online && event.online_link && (
               <div className="flex items-center gap-3 text-muted-foreground">

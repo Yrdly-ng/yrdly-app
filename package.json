@@ -20,7 +20,8 @@
     "test:e2e:smoke": "e2e run tests/smoke.e2e.ts",
     "db:wipe": "node scripts/wipe-database.js",
     "test:telemetry": "node --test tests/web-telemetry.test.cjs",
-    "test:maps": "node --test tests/map-model.test.cjs tests/map-location.test.cjs tests/map-query.test.cjs tests/map-presentation.test.cjs"
+    "test:maps": "node --test tests/map-model.test.cjs tests/map-location.test.cjs tests/map-query.test.cjs tests/map-presentation.test.cjs",
+    "test:directions": "node --test tests/directions-*.test.cjs"
   },
   "dependencies": {
     "@googlemaps/markerclusterer": "^2.6.2",
@@ -107,6 +108,7 @@
     "@types/node": "^20",
     "@types/supercluster": "^7.1.3",
     "e2e": "^0.15.1",
+    "jsdom": "28.0.0",
     "prettier": "^3.9.10",
     "rimraf": "^5.0.7",
     "supabase": "^2.48.3"

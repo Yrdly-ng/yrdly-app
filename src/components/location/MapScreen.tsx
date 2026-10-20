@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import states from "@/data/states.json";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   AdvancedMarker,
   Map,
@@ -34,7 +34,6 @@ import {
   coordinates,
   mapCoordinates,
   matchesMapArea,
-  normalizeEta,
   filterMarkers,
   loadMapSources,
   markerRoute,
@@ -46,6 +45,17 @@ import {
 } from "@/lib/location/map-model";
 
 import { createMapLocationResolver } from "@/lib/location/map-location";
+import {
+  buildDirectionsHref,
+  readDirectionsTarget,
+  directionsTargetForMarker,
+  decodeRoutePolyline,
+} from "@/lib/location/directions-client";
+import type {
+  DirectionsDestination,
+  DirectionsRoute,
+} from "@/lib/location/directions-types";
+import { DirectionsPanel } from "./DirectionsPanel";
 
 const DEFAULT_CENTER = { lat: 6.5244, lng: 3.3792 };
 const FILTERS: { key: MapFilter; label: string }[] = [
@@ -134,6 +144,16 @@ export function MapScreen({ className }: { className?: string }) {
     [user?.id],
   );
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const directionsTarget = useMemo(
+    () => readDirectionsTarget(searchParams),
+    [searchParams],
+  );
+  const [directionsDestination, setDirectionsDestination] =
+    useState<DirectionsDestination | null>(null);
+  const [plannedRoute, setPlannedRoute] = useState<DirectionsRoute | null>(
+    null,
+  );
   const map = useMap();
   const apiStatus = useApiLoadingStatus();
   const [markers, setMarkers] = useState<MapMarker[]>([]);
@@ -170,14 +190,6 @@ export function MapScreen({ className }: { className?: string }) {
     null,
   );
   const [zoom, setZoom] = useState(11);
-  const [eta, setEta] = useState<{
-    duration_seconds: number;
-    duration_in_traffic_seconds: number;
-    distance_meters: number;
-  } | null>(null);
-  const [etaStatus, setEtaStatus] = useState<"idle" | "loading" | "error">(
-    "idle",
-  );
 
   const requestLocation = useCallback(
     (recenter = true) => {
@@ -433,14 +445,14 @@ export function MapScreen({ className }: { className?: string }) {
   }, [selectedId, selectedPin]);
 
   useEffect(() => {
-    if (!map || !pendingCenter) return;
+    if (!map || !pendingCenter || directionsTarget) return;
     map.panTo(pendingCenter);
     map.setZoom(14);
     cameraSet.current = true;
     setPendingCenter(null);
-  }, [map, pendingCenter]);
+  }, [map, pendingCenter, directionsTarget]);
   useEffect(() => {
-    if (!map || loading || cameraSet.current) return;
+    if (!map || loading || cameraSet.current || directionsTarget) return;
     cameraSet.current = true;
     const places = markers.filter((marker) => marker.type !== "friend");
     if (places.length) {
@@ -449,7 +461,7 @@ export function MapScreen({ className }: { className?: string }) {
       map.fitBounds(box, 90);
       if (places.length === 1) map.setZoom(14);
     }
-  }, [map, loading, markers]);
+  }, [map, loading, markers, directionsTarget]);
   useEffect(() => {
     if (!map || !showsTraffic) return;
     const traffic = new google.maps.TrafficLayer();
@@ -458,44 +470,44 @@ export function MapScreen({ className }: { className?: string }) {
   }, [map, showsTraffic]);
 
   useEffect(() => {
-    setEta(null);
-    setEtaStatus("idle");
-    if (!selectedPin || selectedPin.type === "friend" || !userCoords) return;
-    const controller = new AbortController();
-    setEtaStatus("loading");
-    const timer = setTimeout(() => controller.abort(), 8000);
-    void fetch("/api/directions/eta", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        origin: userCoords,
-        destination: { lat: selectedPin.lat, lng: selectedPin.lng },
-      }),
-      signal: controller.signal,
-    })
-      .then(async (response) => {
-        if (!response.ok) throw new Error("Unavailable");
-        return response.json();
-      })
-      .then((data) => {
-        if (!controller.signal.aborted) {
-          const validEta = normalizeEta(data);
-          if (!validEta) throw new Error("Invalid drive time");
-          setEta(validEta);
-          setEtaStatus("idle");
-        }
-      })
-      .catch(() => {
-        if (!disposed) setEtaStatus("error");
-      })
-      .finally(() => clearTimeout(timer));
-    let disposed = false;
-    return () => {
-      disposed = true;
-      controller.abort();
-      clearTimeout(timer);
-    };
-  }, [selectedPin, userCoords]);
+    setPlannedRoute(null);
+    setDirectionsDestination(null);
+  }, [directionsTarget?.type, directionsTarget?.id, user?.id]);
+
+  useEffect(() => {
+    if (!map || !directionsDestination) return;
+    cameraSet.current = true;
+    map.panTo(directionsDestination);
+    map.setZoom(14);
+  }, [map, directionsDestination]);
+
+  useEffect(() => {
+    if (!map || !plannedRoute) return;
+    const path = decodeRoutePolyline(plannedRoute.overview_polyline);
+    if (!path.length) return;
+    const line = new google.maps.Polyline({
+      map,
+      path,
+      strokeColor: "#82DB7E",
+      strokeOpacity: 1,
+      strokeWeight: 6,
+    });
+    const box = new google.maps.LatLngBounds();
+    path.forEach((point) => box.extend(point));
+    cameraSet.current = true;
+    map.fitBounds(
+      box,
+      window.innerWidth >= 640
+        ? { top: 60, bottom: 60, left: 45, right: 430 }
+        : {
+            top: 60,
+            bottom: Math.round(window.innerHeight * 0.58),
+            left: 35,
+            right: 35,
+          },
+    );
+    return () => line.setMap(null);
+  }, [map, plannedRoute]);
 
   const clusterIndex = useMemo(() => {
     const index = new Supercluster<{ marker: MapMarker }>({
@@ -557,69 +569,96 @@ export function MapScreen({ className }: { className?: string }) {
             <span className="block h-4 w-4 rounded-full border-[3px] border-white bg-blue-600 shadow-md" />
           </AdvancedMarker>
         )}
-        {clusters.map((cluster) => {
-          const [lng, lat] = cluster.geometry.coordinates;
-          if ("cluster" in cluster.properties && cluster.properties.cluster) {
-            const count = cluster.properties.point_count;
+        {!directionsTarget &&
+          clusters.map((cluster) => {
+            const [lng, lat] = cluster.geometry.coordinates;
+            if ("cluster" in cluster.properties && cluster.properties.cluster) {
+              const count = cluster.properties.point_count;
+              return (
+                <AdvancedMarker
+                  key={`cluster-${cluster.id}`}
+                  position={{ lat, lng }}
+                  anchorLeft="-50%"
+                  anchorTop="-50%"
+                  title={`${count} results. Zoom in to explore`}
+                >
+                  <button
+                    type="button"
+                    aria-label={`${count} results. Zoom in to explore`}
+                    onClick={() => {
+                      cameraSet.current = true;
+                      cameraInteraction.current++;
+                      map?.setZoom(
+                        clusterIndex.getClusterExpansionZoom(
+                          cluster.id as number,
+                        ),
+                      );
+                      map?.panTo({ lat, lng });
+                    }}
+                    className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-[#F2F5E8] bg-[#82DB7E] text-base font-extrabold text-[#0B0D0B] shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#14231B]"
+                  >
+                    {count}
+                  </button>
+                </AdvancedMarker>
+              );
+            }
+            const marker = cluster.properties.marker as MapMarker;
+            const selected = marker.id === selectedId;
             return (
               <AdvancedMarker
-                key={`cluster-${cluster.id}`}
-                position={{ lat, lng }}
+                key={marker.id}
+                position={marker}
                 anchorLeft="-50%"
                 anchorTop="-50%"
-                title={`${count} results. Zoom in to explore`}
+                zIndex={selected ? 100 : 1}
+                title={`${MARKER_LABELS[marker.type]}: ${marker.title}`}
               >
                 <button
                   type="button"
-                  aria-label={`${count} results. Zoom in to explore`}
-                  onClick={() => {
-                    cameraSet.current = true;
-                    cameraInteraction.current++;
-                    map?.setZoom(
-                      clusterIndex.getClusterExpansionZoom(
-                        cluster.id as number,
-                      ),
-                    );
-                    map?.panTo({ lat, lng });
-                  }}
-                  className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-[#F2F5E8] bg-[#82DB7E] text-base font-extrabold text-[#0B0D0B] shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#14231B]"
+                  aria-label={`${MARKER_LABELS[marker.type]}: ${marker.title}`}
+                  id={`marker-${marker.id}`}
+                  aria-pressed={selected}
+                  className="flex h-12 w-12 items-center justify-center rounded-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#14231B]"
+                  onClick={() =>
+                    selected
+                      ? closePreview()
+                      : openPreview(marker, `marker-${marker.id}`)
+                  }
                 >
-                  {count}
+                  <MarkerToken marker={marker} selected={selected} />
                 </button>
               </AdvancedMarker>
             );
-          }
-          const marker = cluster.properties.marker as MapMarker;
-          const selected = marker.id === selectedId;
-          return (
-            <AdvancedMarker
-              key={marker.id}
-              position={marker}
-              anchorLeft="-50%"
-              anchorTop="-50%"
-              zIndex={selected ? 100 : 1}
-              title={`${MARKER_LABELS[marker.type]}: ${marker.title}`}
-            >
-              <button
-                type="button"
-                aria-label={`${MARKER_LABELS[marker.type]}: ${marker.title}`}
-                id={`marker-${marker.id}`}
-                aria-pressed={selected}
-                className="flex h-12 w-12 items-center justify-center rounded-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#14231B]"
-                onClick={() =>
-                  selected
-                    ? closePreview()
-                    : openPreview(marker, `marker-${marker.id}`)
-                }
-              >
-                <MarkerToken marker={marker} selected={selected} />
-              </button>
-            </AdvancedMarker>
-          );
-        })}
+          })}
+        {directionsTarget && directionsDestination && (
+          <AdvancedMarker
+            position={directionsDestination}
+            title={directionsDestination.title}
+          >
+            <MarkerToken
+              marker={{
+                id: "directions-destination",
+                targetId: directionsDestination.id,
+                type:
+                  directionsDestination.type === "legacy-event"
+                    ? "event"
+                    : directionsDestination.type,
+                lat: directionsDestination.lat,
+                lng: directionsDestination.lng,
+                title: directionsDestination.title,
+                subtitle: directionsDestination.address,
+                image: directionsDestination.image,
+              }}
+              selected
+            />
+          </AdvancedMarker>
+        )}
       </Map>
 
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 space-y-2 p-3 sm:p-5">
+      <div
+        hidden={!!directionsTarget}
+        className="pointer-events-none absolute inset-x-0 top-0 z-10 space-y-2 p-3 sm:p-5"
+      >
         <div className="pointer-events-auto flex max-w-xl items-center gap-2">
           <button
             type="button"
@@ -742,209 +781,233 @@ export function MapScreen({ className }: { className?: string }) {
       <p className="sr-only" role="status" aria-live="polite">
         {resultAnnouncement}
       </p>
-      <section
-        onKeyDown={(event) => {
-          if (event.key === "Escape" && selectedPin) {
-            event.stopPropagation();
-            closePreview();
-          }
-        }}
-        aria-label={selectedPin ? "Selected place" : "Map results"}
-        className="absolute inset-x-3 bottom-3 z-20 flex max-h-[calc(100dvh-240px)] flex-col overflow-hidden rounded-3xl border border-white/15 bg-[#14231B] text-white shadow-2xl sm:left-auto sm:right-5 sm:w-[370px] sm:max-h-[65dvh]"
-      >
-        <div
-          className="overflow-y-auto p-4"
-          style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}
+      {directionsTarget ? (
+        <section
+          aria-label="Directions"
+          className="absolute inset-x-3 bottom-3 z-20 max-h-[58dvh] overflow-y-auto rounded-3xl border border-white/15 bg-[#14231B] shadow-2xl sm:inset-x-auto sm:right-5 sm:w-[390px] sm:max-h-[80dvh]"
+          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         >
-          {(locationError || apiFailed) && (
-            <div
-              role="status"
-              className="mb-3 rounded-xl bg-white/10 p-3 text-xs leading-relaxed"
-            >
-              {apiFailed
-                ? "The map is unavailable. You can still browse the results below."
-                : locationError}
-              {!apiFailed && (
+          {apiFailed && (
+            <p role="status" className="p-4 text-sm text-amber-100">
+              The map is unavailable. Your route information remains below.
+            </p>
+          )}
+          <DirectionsPanel
+            key={`${user?.id}:${directionsTarget.type}:${directionsTarget.id}`}
+            target={directionsTarget}
+            currentLocation={userCoords}
+            locating={locating}
+            locationError={locationError}
+            onLocate={() => requestLocation()}
+            onClose={() => router.replace("/map", { scroll: false })}
+            onDestination={setDirectionsDestination}
+            onRoute={setPlannedRoute}
+          />
+        </section>
+      ) : (
+        <section
+          onKeyDown={(event) => {
+            if (event.key === "Escape" && selectedPin) {
+              event.stopPropagation();
+              closePreview();
+            }
+          }}
+          aria-label={selectedPin ? "Selected place" : "Map results"}
+          className="absolute inset-x-3 bottom-3 z-20 flex max-h-[calc(100dvh-240px)] flex-col overflow-hidden rounded-3xl border border-white/15 bg-[#14231B] text-white shadow-2xl sm:left-auto sm:right-5 sm:w-[370px] sm:max-h-[65dvh]"
+        >
+          <div
+            className="overflow-y-auto p-4"
+            style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}
+          >
+            {(locationError || apiFailed) && (
+              <div
+                role="status"
+                className="mb-3 rounded-xl bg-white/10 p-3 text-xs leading-relaxed"
+              >
+                {apiFailed
+                  ? "The map is unavailable. You can still browse the results below."
+                  : locationError}
+                {!apiFailed && (
+                  <button
+                    type="button"
+                    onClick={() => requestLocation()}
+                    className="ml-2 min-h-11 font-bold text-[#82DB7E]"
+                  >
+                    Retry location
+                  </button>
+                )}
+              </div>
+            )}
+            {!!failedSources.length && (
+              <div
+                role="status"
+                className="mb-3 rounded-xl bg-white/10 p-3 text-xs"
+              >
+                Couldn&apos;t load {failedSources.join(", ")}. Other results are
+                shown.
                 <button
                   type="button"
-                  onClick={() => requestLocation()}
+                  onClick={() => setRetry((value) => value + 1)}
                   className="ml-2 min-h-11 font-bold text-[#82DB7E]"
                 >
-                  Retry location
+                  Retry results
                 </button>
-              )}
-            </div>
-          )}
-          {!!failedSources.length && (
-            <div
-              role="status"
-              className="mb-3 rounded-xl bg-white/10 p-3 text-xs"
-            >
-              Couldn&apos;t load {failedSources.join(", ")}. Other results are
-              shown.
-              <button
-                type="button"
-                onClick={() => setRetry((value) => value + 1)}
-                className="ml-2 min-h-11 font-bold text-[#82DB7E]"
+              </div>
+            )}
+            {!!unresolvedSources.length && (
+              <div
+                role="status"
+                className="mb-3 rounded-xl bg-white/10 p-3 text-xs"
               >
-                Retry results
-              </button>
-            </div>
-          )}
-          {!!unresolvedSources.length && (
-            <div
-              role="status"
-              className="mb-3 rounded-xl bg-white/10 p-3 text-xs"
-            >
-              Some {unresolvedSources.join(", ")} locations couldn&apos;t be
-              placed on the map. Available pins are shown.
-              <button
-                type="button"
-                onClick={() => setRetry((value) => value + 1)}
-                className="ml-2 min-h-11 font-bold text-[#82DB7E]"
-              >
-                Retry locations
-              </button>
-            </div>
-          )}
-          {selectedPin ? (
-            <>
-              <div className="flex items-start gap-3">
-                <PlacePhoto marker={selectedPin} />
-                <div className="min-w-0 flex-1">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-[#82DB7E]">
-                    {MARKER_LABELS[selectedPin.type]}
-                  </p>
-                  <h2
-                    ref={previewRef}
-                    tabIndex={-1}
-                    className="mt-1 outline-none line-clamp-2 font-yrdly-display text-lg font-bold"
-                  >
-                    {selectedPin.title}
-                  </h2>
-                  <p className="mt-1 text-sm text-[#C7D5CB]">
-                    {selectedPin.subtitle}
-                  </p>
-                  {selectedPin.type === "marketplace" && (
-                    <p className="mt-1 text-xs text-[#C7D5CB]">
-                      Approximate location
+                Some {unresolvedSources.join(", ")} locations couldn&apos;t be
+                placed on the map. Available pins are shown.
+                <button
+                  type="button"
+                  onClick={() => setRetry((value) => value + 1)}
+                  className="ml-2 min-h-11 font-bold text-[#82DB7E]"
+                >
+                  Retry locations
+                </button>
+              </div>
+            )}
+            {selectedPin ? (
+              <>
+                <div className="flex items-start gap-3">
+                  <PlacePhoto marker={selectedPin} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-[#82DB7E]">
+                      {MARKER_LABELS[selectedPin.type]}
                     </p>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/10"
-                  aria-label="Close place preview"
-                  onClick={closePreview}
-                >
-                  <X size={20} />
-                </button>
-              </div>
-              {selectedPin.type !== "friend" && (
-                <p role="status" className="mt-3 text-xs text-[#C7D5CB]">
-                  {etaStatus === "loading"
-                    ? "Calculating drive time…"
-                    : etaStatus === "error"
-                      ? "Drive time unavailable"
-                      : eta
-                        ? `${Math.ceil((eta.duration_in_traffic_seconds || eta.duration_seconds || 0) / 60)} min drive · ${(eta.distance_meters / 1000).toFixed(1)} km`
-                        : ""}
-                </p>
-              )}
-              <Link
-                href={markerRoute(selectedPin)}
-                className="mt-4 flex min-h-11 items-center justify-center rounded-xl bg-[#82DB7E] px-4 py-3 text-sm font-bold text-[#0B0D0B] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-              >
-                View{" "}
-                {selectedPin.type === "friend"
-                  ? "profile"
-                  : MARKER_LABELS[selectedPin.type].toLowerCase()}
-              </Link>
-            </>
-          ) : (
-            <>
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <h2 className="font-yrdly-display text-lg font-bold">
-                    {loading
-                      ? "Loading results…"
-                      : `${visibleMarkers.length} ${visibleMarkers.length === 1 ? "result" : "results"}`}
-                  </h2>
-                  <p className="text-xs text-[#C7D5CB]">
-                    {FILTERS.find((option) => option.key === filter)?.label} ·
-                    selected area
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setResultsOpen((value) => !value)}
-                  ref={resultToggleRef}
-                  aria-expanded={resultsOpen}
-                  aria-controls="map-result-list"
-                  className="flex min-h-11 items-center gap-1 rounded-xl px-2 text-xs font-bold text-[#82DB7E]"
-                >
-                  {resultsOpen ? "Hide results" : "Show results"}
-                  {resultsOpen ? (
-                    <ChevronDown size={16} />
-                  ) : (
-                    <ChevronUp size={16} />
-                  )}
-                </button>
-              </div>
-              {resultsOpen && (
-                <div id="map-result-list" className="mt-3 space-y-2">
-                  {!loading && !visibleMarkers.length && (
-                    <div className="py-4 text-center">
-                      <MapPin className="mx-auto mb-2 text-[#82DB7E]" />
-                      <p>No matching results</p>
+                    <h2
+                      ref={previewRef}
+                      tabIndex={-1}
+                      className="mt-1 outline-none line-clamp-2 font-yrdly-display text-lg font-bold"
+                    >
+                      {selectedPin.title}
+                    </h2>
+                    <p className="mt-1 text-sm text-[#C7D5CB]">
+                      {selectedPin.subtitle}
+                    </p>
+                    {selectedPin.type === "marketplace" && (
                       <p className="mt-1 text-xs text-[#C7D5CB]">
-                        {filter === "friend"
-                          ? "Friends appear here when you follow each other and they share their location."
-                          : "Try another category or search in this area."}
+                        Approximate location
                       </p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/10"
+                    aria-label="Close place preview"
+                    onClick={closePreview}
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+                {directionsTargetForMarker(selectedPin) && (
+                  <Link
+                    href={buildDirectionsHref(
+                      directionsTargetForMarker(selectedPin)!,
+                    )}
+                    className="mt-4 flex min-h-11 items-center justify-center rounded-xl bg-[#82DB7E] px-4 py-3 text-sm font-bold text-[#0B0D0B]"
+                  >
+                    Get directions
+                  </Link>
+                )}
+                <Link
+                  href={markerRoute(selectedPin)}
+                  className="mt-4 flex min-h-11 items-center justify-center rounded-xl bg-[#82DB7E] px-4 py-3 text-sm font-bold text-[#0B0D0B] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                >
+                  View{" "}
+                  {selectedPin.type === "friend"
+                    ? "profile"
+                    : MARKER_LABELS[selectedPin.type].toLowerCase()}
+                </Link>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <h2 className="font-yrdly-display text-lg font-bold">
+                      {loading
+                        ? "Loading results…"
+                        : `${visibleMarkers.length} ${visibleMarkers.length === 1 ? "result" : "results"}`}
+                    </h2>
+                    <p className="text-xs text-[#C7D5CB]">
+                      {FILTERS.find((option) => option.key === filter)?.label} ·
+                      selected area
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setResultsOpen((value) => !value)}
+                    ref={resultToggleRef}
+                    aria-expanded={resultsOpen}
+                    aria-controls="map-result-list"
+                    className="flex min-h-11 items-center gap-1 rounded-xl px-2 text-xs font-bold text-[#82DB7E]"
+                  >
+                    {resultsOpen ? "Hide results" : "Show results"}
+                    {resultsOpen ? (
+                      <ChevronDown size={16} />
+                    ) : (
+                      <ChevronUp size={16} />
+                    )}
+                  </button>
+                </div>
+                {resultsOpen && (
+                  <div id="map-result-list" className="mt-3 space-y-2">
+                    {!loading && !visibleMarkers.length && (
+                      <div className="py-4 text-center">
+                        <MapPin className="mx-auto mb-2 text-[#82DB7E]" />
+                        <p>No matching results</p>
+                        <p className="mt-1 text-xs text-[#C7D5CB]">
+                          {filter === "friend"
+                            ? "Friends appear here when you follow each other and they share their location."
+                            : "Try another category or search in this area."}
+                        </p>
+                        <button
+                          type="button"
+                          className="mt-2 min-h-11 text-sm font-bold text-[#82DB7E]"
+                          onClick={() => {
+                            setSearch("");
+                            setFilter("all");
+                          }}
+                        >
+                          Clear filters and search
+                        </button>
+                      </div>
+                    )}
+                    {visibleMarkers.map((marker) => (
                       <button
                         type="button"
-                        className="mt-2 min-h-11 text-sm font-bold text-[#82DB7E]"
-                        onClick={() => {
-                          setSearch("");
-                          setFilter("all");
-                        }}
+                        key={marker.id}
+                        id={`result-${marker.id}`}
+                        onClick={() => selectMarker(marker)}
+                        className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 text-left hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#82DB7E]"
                       >
-                        Clear filters and search
+                        <MarkerToken marker={marker} />
+                        <span className="min-w-0 flex-1">
+                          <span
+                            className="block text-[10px] font-bold uppercase tracking-wide"
+                            style={{ color: MARKER_COLORS[marker.type] }}
+                          >
+                            {MARKER_LABELS[marker.type]}
+                          </span>
+                          <span className="mt-0.5 block line-clamp-2 text-sm font-semibold">
+                            {marker.title}
+                          </span>
+                          <span className="mt-1 block truncate text-xs text-[#C7D5CB]">
+                            {marker.subtitle}
+                          </span>
+                        </span>
                       </button>
-                    </div>
-                  )}
-                  {visibleMarkers.map((marker) => (
-                    <button
-                      type="button"
-                      key={marker.id}
-                      id={`result-${marker.id}`}
-                      onClick={() => selectMarker(marker)}
-                      className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 text-left hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#82DB7E]"
-                    >
-                      <MarkerToken marker={marker} />
-                      <span className="min-w-0 flex-1">
-                        <span
-                          className="block text-[10px] font-bold uppercase tracking-wide"
-                          style={{ color: MARKER_COLORS[marker.type] }}
-                        >
-                          {MARKER_LABELS[marker.type]}
-                        </span>
-                        <span className="mt-0.5 block line-clamp-2 text-sm font-semibold">
-                          {marker.title}
-                        </span>
-                        <span className="mt-1 block truncate text-xs text-[#C7D5CB]">
-                          {marker.subtitle}
-                        </span>
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </section>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
