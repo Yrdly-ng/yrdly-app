@@ -99,12 +99,25 @@ export function normalizeMarker(
   const title = row.title || row.name;
   const address = row.location_address || location?.address;
   const approximation = row.map_approximate ? " · Approximate area" : "";
-  const image = getListingCover({
-    image_urls: row.image_urls,
-    image_url:
-      kind === "friend" ? row.avatar_url : row.cover_image_url || row.image_url,
-    video_thumbnail_url: row.video_thumbnail_url,
-  });
+  const image =
+    getListingCover({
+      image_urls:
+        kind === "business"
+          ? [row.logo_url, row.logo]
+          : kind === "event"
+            ? [row.cover_image_url]
+            : kind === "friend"
+              ? [row.avatar_url]
+              : [],
+    }) ||
+    getListingCover({
+      image_urls: row.image_urls,
+      image_url:
+        kind === "friend"
+          ? row.avatar_url
+          : row.cover_image_url || row.image_url,
+      video_thumbnail_url: row.video_thumbnail_url,
+    });
   return {
     id: `${prefix}-${row.id}`,
     targetId: row.id,
@@ -153,6 +166,8 @@ export async function loadMapSources(
       let timer: ReturnType<typeof setTimeout> | undefined;
       const completed = new Map<number, MapMarker>();
       let failed = false;
+      let loaded = false;
+      const unresolved = new Set<number>();
       let finished = false;
       const controller = new AbortController();
       let cancel: (() => void) | undefined;
@@ -168,6 +183,7 @@ export async function loadMapSources(
               (result.data != null && !Array.isArray(result.data))
             )
               throw new Error("Source unavailable");
+            loaded = true;
             await Promise.all(
               ((result.data || []) as Record<string, any>[]).map(
                 async (row, index) => {
@@ -179,6 +195,7 @@ export async function loadMapSources(
                     jitter,
                   );
                   if (existing) completed.set(index, existing);
+                  else unresolved.add(index);
                   if (
                     source.kind === "friend" ||
                     !resolveLocation ||
@@ -198,9 +215,13 @@ export async function loadMapSources(
                       source.key,
                       jitter,
                     );
-                    if (marker) completed.set(index, marker);
+                    if (marker) {
+                      completed.set(index, marker);
+                      unresolved.delete(index);
+                    }
                   } catch {
-                    if (!finished) failed = true;
+                    // A failed lookup does not mean the database source failed.
+                    // Existing coordinates remain usable even without area enrichment.
                   }
                 },
               ),
@@ -214,7 +235,7 @@ export async function loadMapSources(
           }),
         ]);
       } catch {
-        failed = true;
+        failed = !loaded;
       } finally {
         finished = true;
         controller.abort();
@@ -226,12 +247,16 @@ export async function loadMapSources(
           .sort(([a], [b]) => a - b)
           .map(([, marker]) => marker),
         failed: failed ? source.label : "",
+        unresolved: loaded && unresolved.size ? source.label : "",
       };
     }),
   );
   return {
     markers: results.flatMap((result) => result.markers),
     failedSources: results.map((result) => result.failed).filter(Boolean),
+    unresolvedSources: results
+      .map((result) => result.unresolved)
+      .filter(Boolean),
   };
 }
 

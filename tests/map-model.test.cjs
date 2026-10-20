@@ -67,3 +67,42 @@ test('query filters keep legacy locations while excluding empty primary coordina
   assert.match(requested.searchParams.getAll('or')[1], /event_location->geopoint->>latitude/);
   assert.equal(requested.searchParams.get('limit'), '30');
 });
+
+test("map images preserve listing media, friend avatars, event covers, and business logos", () => {
+  for (const [kind, row, image] of [
+    [
+      "marketplace",
+      { image_urls: '["https://fixture.test/listing.jpg"]' },
+      "listing",
+    ],
+    [
+      "friend",
+      {
+        current_location: { lat: 6.5, lng: 3.4 },
+        avatar_url: "https://fixture.test/avatar.jpg",
+      },
+      "avatar",
+    ],
+    ["event", { cover_image_url: "https://fixture.test/event.jpg" }, "event"],
+    [
+      "business",
+      {
+        logo_url: "https://fixture.test/logo.jpg",
+        image_urls: ["https://fixture.test/interior.jpg"],
+      },
+      "logo",
+    ],
+    [
+      "business",
+      {
+        logo_url: "javascript:unsafe",
+        image_urls: '["https://fixture.test/interior.jpg"]',
+      },
+      "interior",
+    ],
+  ])
+    assert.equal(
+      model.normalizeMarker({ ...listing, ...row }, kind, kind).image,
+      `https://fixture.test/${image}.jpg`,
+    );
+});

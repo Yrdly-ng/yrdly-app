@@ -15,6 +15,7 @@ type Point = {
 type Geocode = (address: string) => Promise<{
   status?: string;
   results?: Array<{
+    types?: string[];
     address_components?: Array<{ long_name: string; types: string[] }>;
     geometry?: {
       location?: { lat: number; lng: number };
@@ -142,7 +143,34 @@ export function createMapLocationResolver(
                 if (point) return point;
                 throw new Error("Address lookup unavailable");
               }
-              const match = result.results?.[0];
+              const canonical = (value: string | undefined) =>
+                (value || "")
+                  .toLowerCase()
+                  .replace(/(?: state| local government area| lga)$/g, "")
+                  .replace(/[^a-z0-9]/g, "")
+                  .replace(/^(fct|abujafct)$/, "federalcapitalterritory");
+              const match = result.results?.find((candidate) => {
+                // A country/state centroid is not a venue. Never label another state's result as this area.
+                if (
+                  candidate.types?.includes("country") ||
+                  candidate.types?.includes("administrative_area_level_1")
+                )
+                  return false;
+                const component = (type: string) =>
+                  candidate.address_components?.find((entry) =>
+                    entry.types.includes(type),
+                  )?.long_name;
+                const matchedState = component("administrative_area_level_1");
+                const matchedLga = component("administrative_area_level_2");
+                return (
+                  (!state ||
+                    !matchedState ||
+                    canonical(state) === canonical(matchedState)) &&
+                  (!lga ||
+                    !matchedLga ||
+                    canonical(lga) === canonical(matchedLga))
+                );
+              });
               const point = coordinates(
                 match?.geometry?.location?.lat,
                 match?.geometry?.location?.lng,
@@ -182,9 +210,12 @@ export function createMapLocationResolver(
         }
       });
       cache.set(key, pending);
-      void pending.catch(() => {
+      const evict = () => {
         if (cache.get(key) === pending) cache.delete(key);
-      });
+      };
+      void pending.then((point) => {
+        if (!point) evict();
+      }, evict);
     }
     const point = await cache.get(key)!;
     return point

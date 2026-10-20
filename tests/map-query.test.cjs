@@ -72,6 +72,10 @@ test("actual map queries retain address-only rows, include giveaways, and avoid 
   assert.ok(market, "Giveaway listings are included");
   const modern = requests.find((r) => r.pathname.endsWith("/events"));
   assert.ok(modern);
+  assert.ok(modern.searchParams.get("select").includes("cover_image_url"));
+  const business = requests.find((r) => r.pathname.endsWith("/businesses"));
+  assert.ok(business.searchParams.get("select").includes("logo_url"));
+  assert.ok(market.searchParams.get("select").includes("image_urls"));
   assert.match(
     modern.searchParams.getAll("or").join(","),
     /location_online\.eq\.false,location_online\.is\.null/,

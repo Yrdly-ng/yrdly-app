@@ -32,6 +32,7 @@ import { useLocation } from "@/contexts/LocationContext";
 import { cn } from "@/lib/shared/utils";
 import {
   coordinates,
+  mapCoordinates,
   matchesMapArea,
   normalizeEta,
   filterMarkers,
@@ -101,7 +102,7 @@ function MarkerToken({
         borderColor: selected ? "#F2F5E8" : MARKER_COLORS[marker.type],
       }}
     >
-      {friend && marker.image && failed !== marker.image ? (
+      {marker.image && failed !== marker.image ? (
         // Map avatars may include legacy remote hosts; a failed image falls back to the category icon.
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -137,6 +138,7 @@ export function MapScreen({ className }: { className?: string }) {
   const apiStatus = useApiLoadingStatus();
   const [markers, setMarkers] = useState<MapMarker[]>([]);
   const [failedSources, setFailedSources] = useState<string[]>([]);
+  const [unresolvedSources, setUnresolvedSources] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [retry, setRetry] = useState(0);
   const revision = useRef(0);
@@ -237,6 +239,7 @@ export function MapScreen({ className }: { className?: string }) {
     const controller = new AbortController();
     setMarkers([]);
     setFailedSources([]);
+    setUnresolvedSources([]);
     setLoading(true);
     setSelectedId(null);
     const areaKey = JSON.stringify([activeFilter?.state, activeFilter?.lga]);
@@ -300,7 +303,9 @@ export function MapScreen({ className }: { className?: string }) {
           area(
             supabase
               .from("businesses")
-              .select("id,name,location,image_urls,lat,lng,state,lga,ward")
+              .select(
+                "id,name,location,logo_url,image_urls,lat,lng,state,lga,ward",
+              )
               .eq("is_active", true),
           ).limit(50),
       },
@@ -331,7 +336,10 @@ export function MapScreen({ className }: { className?: string }) {
       sources,
       true,
       12000,
-      resolveMapLocation,
+      (row, kind, signal) =>
+        !activeFilter?.state && !activeFilter?.lga && mapCoordinates(row, kind)
+          ? Promise.resolve(row)
+          : resolveMapLocation(row, kind, signal),
       controller.signal,
     )
       .then((result) => {
@@ -342,6 +350,22 @@ export function MapScreen({ className }: { className?: string }) {
           ),
         );
         setFailedSources(result.failedSources);
+        const missingAreaSources = result.markers
+          .filter(
+            (marker) =>
+              marker.type !== "friend" &&
+              ((activeFilter?.state && !marker.state) ||
+                (activeFilter?.lga && !marker.lga)),
+          )
+          .map(
+            (marker) =>
+              sources.find((source) => marker.id.startsWith(`${source.key}-`))
+                ?.label,
+          )
+          .filter((label): label is string => !!label);
+        setUnresolvedSources([
+          ...new Set([...result.unresolvedSources, ...missingAreaSources]),
+        ]);
       })
       .finally(() => {
         if (current === revision.current) setLoading(false);
@@ -388,7 +412,7 @@ export function MapScreen({ className }: { className?: string }) {
     const timer = setTimeout(
       () =>
         setResultAnnouncement(
-          `${visibleMarkers.length} results in ${displayLabel}`,
+          `${visibleMarkers.length} ${visibleMarkers.length === 1 ? "result" : "results"} in ${displayLabel}`,
         ),
       350,
     );
@@ -767,6 +791,22 @@ export function MapScreen({ className }: { className?: string }) {
               </button>
             </div>
           )}
+          {!!unresolvedSources.length && (
+            <div
+              role="status"
+              className="mb-3 rounded-xl bg-white/10 p-3 text-xs"
+            >
+              Some {unresolvedSources.join(", ")} locations couldn&apos;t be
+              placed on the map. Available pins are shown.
+              <button
+                type="button"
+                onClick={() => setRetry((value) => value + 1)}
+                className="ml-2 min-h-11 font-bold text-[#82DB7E]"
+              >
+                Retry locations
+              </button>
+            </div>
+          )}
           {selectedPin ? (
             <>
               <div className="flex items-start gap-3">
@@ -828,7 +868,7 @@ export function MapScreen({ className }: { className?: string }) {
                   <h2 className="font-yrdly-display text-lg font-bold">
                     {loading
                       ? "Loading results…"
-                      : `${visibleMarkers.length} results`}
+                      : `${visibleMarkers.length} ${visibleMarkers.length === 1 ? "result" : "results"}`}
                   </h2>
                   <p className="text-xs text-[#C7D5CB]">
                     {FILTERS.find((option) => option.key === filter)?.label} ·
@@ -858,7 +898,9 @@ export function MapScreen({ className }: { className?: string }) {
                       <MapPin className="mx-auto mb-2 text-[#82DB7E]" />
                       <p>No matching results</p>
                       <p className="mt-1 text-xs text-[#C7D5CB]">
-                        Try another category or search in this area.
+                        {filter === "friend"
+                          ? "Friends appear here when you follow each other and they share their location."
+                          : "Try another category or search in this area."}
                       </p>
                       <button
                         type="button"
