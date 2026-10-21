@@ -299,6 +299,41 @@ async function createPaylukWithdrawalIntent(params: {
   return intent;
 }
 
+/** Stage at most three intents; only the caller may execute the final one. */
+async function stageBudgetedWithdrawal(params: Parameters<typeof createPaylukWithdrawalIntent>[0]): Promise<
+  { intent: PaylukWithdrawalIntent; minimumError?: never } |
+  { intent?: never; minimumError: ReturnType<typeof withdrawalMinimumError> & { reference: string } }
+> {
+  // Payluk can require amount + fee to fit the wallet even when only staging.
+  // Quoting the full debit budget as a bank amount leaves no room for that fee.
+  const minimumIntent = await createPaylukWithdrawalIntent({
+    ...params,
+    amount: PAYLUK_WITHDRAWAL_MINIMUM,
+    reference: `${params.reference}-quote`,
+  });
+  let intent = minimumIntent;
+  let netAmount = withdrawalNet(params.amount, intent.fee);
+  if (netAmount < PAYLUK_WITHDRAWAL_MINIMUM) {
+    return { minimumError: { ...withdrawalMinimumError(intent.fee), reference: intent.reference } };
+  }
+  if (netAmount === intent.amount) return { intent };
+
+  intent = await createPaylukWithdrawalIntent({ ...params, amount: netAmount, reference: `${params.reference}-net` });
+  if (intent.amount + intent.fee > params.amount) {
+    // A returned fee can change with the amount. Adjust once, then the caller
+    // checks the final debit. An opaque provider rejection stops staging;
+    // neither fee guesses nor transfer retries are safe substitutes for a quote.
+    netAmount = withdrawalNet(params.amount, intent.fee);
+    if (netAmount < PAYLUK_WITHDRAWAL_MINIMUM) {
+      return { minimumError: { ...withdrawalMinimumError(intent.fee), reference: intent.reference } };
+    }
+    intent = netAmount === minimumIntent.amount
+      ? minimumIntent
+      : await createPaylukWithdrawalIntent({ ...params, amount: netAmount, reference: `${params.reference}-net-adjusted` });
+  }
+  return { intent };
+}
+
 // ── Service ─────────────────────────────────────────────────────────────────
 
 export class PaylukService {
@@ -882,44 +917,18 @@ export class PaylukService {
         };
       }
 
-      // The entered amount is the seller's total debit budget. Quote Payluk's
-      // fee, then stage the bank payout for budget minus that fee.
-      const feeQuote = await createPaylukWithdrawalIntent({
+      const staged = await stageBudgetedWithdrawal({
         customerId: params.sellerPaylukCustomerId,
         amount: params.amount,
-        reference: `${params.reference}-quote`,
+        reference: params.reference,
         bankCode: params.bankCode,
         bankName: params.bankName,
         accountNumber: params.accountNumber,
         accountName: params.accountName,
       });
-      let netAmount = withdrawalNet(params.amount, feeQuote.fee);
-      if (netAmount < PAYLUK_WITHDRAWAL_MINIMUM) return { ...withdrawalMinimumError(feeQuote.fee),reference:feeQuote.reference };
-
-      let intent = await createPaylukWithdrawalIntent({
-        customerId: params.sellerPaylukCustomerId,
-        amount: netAmount,
-        reference: `${params.reference}-net`,
-        bankCode: params.bankCode,
-        bankName: params.bankName,
-        accountNumber: params.accountNumber,
-        accountName: params.accountName,
-      });
-      let totalPaylukDebit = intent.amount + intent.fee;
-      if (totalPaylukDebit > params.amount) {
-        netAmount = withdrawalNet(params.amount, intent.fee);
-        if (netAmount < PAYLUK_WITHDRAWAL_MINIMUM) return { ...withdrawalMinimumError(intent.fee),reference:intent.reference };
-        intent = await createPaylukWithdrawalIntent({
-          customerId: params.sellerPaylukCustomerId,
-          amount: netAmount,
-          reference: `${params.reference}-net-adjusted`,
-          bankCode: params.bankCode,
-          bankName: params.bankName,
-          accountNumber: params.accountNumber,
-          accountName: params.accountName,
-        });
-        totalPaylukDebit = intent.amount + intent.fee;
-      }
+      if (staged.minimumError) return staged.minimumError;
+      const intent = staged.intent;
+      const totalPaylukDebit = intent.amount + intent.fee;
 
       const intentAmount = intent.amount;
       const intentFee = intent.fee;
@@ -1038,49 +1047,18 @@ export class PaylukService {
         };
       }
 
-      // The seller's requested amount is their total wallet-debit budget.
-      // Quote the fee, then create the final intent for budget minus fee.
-      const intentAttemptReference = params.reference;
-      const feeQuote = await createPaylukWithdrawalIntent({
+      const staged = await stageBudgetedWithdrawal({
         customerId: params.sellerPaylukCustomerId,
         amount: params.amount,
-        reference: `${intentAttemptReference}-quote`,
+        reference: params.reference,
         bankCode: params.bankCode,
         bankName: params.bankName,
         accountNumber: params.accountNumber,
         accountName: params.accountName,
       });
-      let netAmount = withdrawalNet(params.amount, feeQuote.fee);
-      if (netAmount < PAYLUK_WITHDRAWAL_MINIMUM) return { ...withdrawalMinimumError(feeQuote.fee),outcome:'failed',reference:feeQuote.reference };
-
-      let intent = await createPaylukWithdrawalIntent({
-        customerId: params.sellerPaylukCustomerId,
-        amount: netAmount,
-        reference: `${intentAttemptReference}-net`,
-        bankCode: params.bankCode,
-        bankName: params.bankName,
-        accountNumber: params.accountNumber,
-        accountName: params.accountName,
-      });
-      let totalPaylukDebit = intent.amount + intent.fee;
-
-      // The fee can depend on the payout amount. If the net intent's fee quote
-      // differs, make one adjusted intent and use only its exact returned fee.
-      if (totalPaylukDebit > params.amount) {
-        netAmount = withdrawalNet(params.amount, intent.fee);
-        if (netAmount < PAYLUK_WITHDRAWAL_MINIMUM) return { ...withdrawalMinimumError(intent.fee),outcome:'failed',reference:intent.reference };
-
-        intent = await createPaylukWithdrawalIntent({
-          customerId: params.sellerPaylukCustomerId,
-          amount: netAmount,
-          reference: `${intentAttemptReference}-net-adjusted`,
-          bankCode: params.bankCode,
-          bankName: params.bankName,
-          accountNumber: params.accountNumber,
-          accountName: params.accountName,
-        });
-        totalPaylukDebit = intent.amount + intent.fee;
-      }
+      if (staged.minimumError) return { ...staged.minimumError, outcome: 'failed' };
+      const intent = staged.intent;
+      const totalPaylukDebit = intent.amount + intent.fee;
 
       const spendLimit = Math.min(params.amount, effectiveAvailableBalance);
       if (totalPaylukDebit > spendLimit) {

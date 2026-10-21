@@ -82,6 +82,17 @@ a NGN 1,010.75 debit budget therefore fits that quoted transfer. Fees are quoted
 at withdrawal time, not hardcoded. The preview harness verified the controlled
 beneficiary and staged intents only; no outbound bank transfer was executed.
 
+Withdrawal preview and execution first quote the NGN 1,000 bank minimum, then
+stage the requested wallet deduction minus the returned fee. Quoting the entire
+wallet deduction as a bank amount can fail at intent creation because Payluk
+checks that amount plus its fee against the wallet. An exact minimum quote is
+reused; other requests use at most two more intents to account for a changed fee.
+Only a final intent whose bank amount and fee fit both the reserved deduction and
+available funds can be verified. Rejected or unstable quotes stop before execution;
+they do not trigger a transfer retry. Mocked regressions cover a NGN 1,176 budget
+with both NGN 1,176 and NGN 1,185.25 available, enforcing fee-inclusive balances
+when each intent is created. These tests do not establish live bank settlement.
+
 Bank codes come from Payluk's current bank list and pass unchanged through
 account verification, preview and withdrawal. Hardcoded code translation caused
 a verified sandbox linking failure and has been removed. Historical bank

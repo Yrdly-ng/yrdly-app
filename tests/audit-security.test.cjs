@@ -1626,6 +1626,79 @@ test('deposit policy checks the charged amount and full-payment priority', () =>
 });
 
 for (const mode of ['previewWithdrawal','withdrawToBank']) {
+  for (const walletBalance of [1176,1185.25]) {
+    test(`${mode} funds a full-budget payout without quoting the fee on top of that budget (${walletBalance})`, async () => {
+      const created=[],executed=[];
+      let savedReference;
+      const { PaylukService }=load('src/lib/payments/payluk-service.ts',{
+        './payluk-onboarding':{},fetch:async(url,options)=>{
+          if(url.endsWith('/v1/wallet'))return Response.json({status:200,data:{mainBalance:walletBalance}});
+          const input=JSON.parse(options.body);
+          if(url.endsWith('/v1/payment/create-intent')){
+            created.push(input.amount);
+            if(Math.round((input.amount+10.75)*100)>Math.round(walletBalance*100)){
+              return Response.json({status:400,message:'Insufficient balance',data:{}},{status:400});
+            }
+            return Response.json({status:200,data:{amount:input.amount,fee:10.75,reference:input.reference}});
+          }
+          assert.ok(url.endsWith('/v1/payment/verify'));
+          assert.equal(input.reference,savedReference,'Persist the exact final intent before executing');
+          executed.push(input.reference);
+          return Response.json({status:200,data:{status:'success'}});
+        }
+      });
+      const result=await PaylukService[mode]({sellerPaylukCustomerId:'qa',amount:1176,yrdlyAvailableBalance:1176,
+        bankCode:'044',accountNumber:'0000000000',reference:'qa-full-budget',onIntentReady:async reference=>{savedReference=reference;}});
+      assert.equal(result.success,true);
+      assert.deepEqual(created,[1000,1165.25]);
+      assert.equal(result.intentAmount,1165.25);
+      assert.equal(result.totalPaylukDebit,1176);
+      assert.equal(executed.length,mode==='withdrawToBank'?1:0);
+    });
+  }
+
+  for(const scenario of ['minimum-unaffordable','minimum-exact','fee-tier-adjustment','fee-tier-rejected','unstable-fee','invalid-quote']){
+    test(`${mode} safely stages a withdrawal with ${scenario}`,async()=>{
+      const created=[],executed=[];
+      const budget=scenario==='minimum-unaffordable'?1010.74:scenario==='minimum-exact'?1010.75:1176;
+      const walletBalance=['fee-tier-adjustment','unstable-fee'].includes(scenario)?2000:budget;
+      const {PaylukService}=load('src/lib/payments/payluk-service.ts',{
+        './payluk-onboarding':{},fetch:async(url,options)=>{
+          if(url.endsWith('/v1/wallet'))return Response.json({status:200,data:{mainBalance:walletBalance}});
+          const input=JSON.parse(options.body);
+          if(url.endsWith('/v1/payment/create-intent')){
+            created.push(input.amount);
+            const fee=created.length===1?10.75:scenario==='unstable-fee'?created.length*50:
+              scenario.startsWith('fee-tier')?50:10.75;
+            if(Math.round((input.amount+fee)*100)>Math.round(walletBalance*100)){
+              return Response.json({status:400,message:'Insufficient balance',data:{}},{status:400});
+            }
+            return Response.json({status:200,data:{amount:input.amount,fee:scenario==='invalid-quote'?-1:fee,reference:input.reference}});
+          }
+          assert.ok(url.endsWith('/v1/payment/verify'));executed.push(input.reference);
+          return Response.json({status:200,data:{status:'success'}});
+        }
+      });
+      const result=await PaylukService[mode]({sellerPaylukCustomerId:'qa',amount:budget,yrdlyAvailableBalance:budget,
+        bankCode:'044',accountNumber:'0000000000',reference:'qa-bounded',onIntentReady:async()=>{}});
+      const success=['minimum-exact','fee-tier-adjustment'].includes(scenario);
+      assert.equal(result.success,success);
+      assert.equal(executed.length,success&&mode==='withdrawToBank'?1:0);
+      assert.equal(created[0],1000);
+      assert.ok(created.length<=3,'Fee staging is bounded to protect the provider request budget');
+      if(scenario==='minimum-exact'){
+        assert.deepEqual(created,[1000],'Reuse the exact minimum intent instead of staging it twice');
+        assert.equal(result.intentAmount,1000);assert.equal(result.totalPaylukDebit,1010.75);
+      }
+      if(scenario==='fee-tier-adjustment'){
+        assert.deepEqual(created,[1000,1165.25,1126]);assert.equal(result.intentAmount,1126);
+        assert.equal(result.totalPaylukDebit,1176);
+      }
+    });
+  }
+}
+
+for (const mode of ['previewWithdrawal','withdrawToBank']) {
   for (const amount of [999.99,1000,1010.74,1010.75]) {
     test(`${mode} enforces the net bank minimum at debit budget ${amount}`, async () => {
       const created=[],executed=[];
@@ -1648,7 +1721,7 @@ for (const mode of ['previewWithdrawal','withdrawToBank']) {
         assert.equal(created.length,amount<1000?0:1);
       }else{
         assert.equal(result.success,true);
-        assert.deepEqual(created,[1010.75,1000]);
+        assert.deepEqual(created,[1000]);
         assert.equal(result.intentAmount,1000);
         assert.equal(executed.length,mode==='withdrawToBank'?1:0);
       }
