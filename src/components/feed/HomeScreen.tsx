@@ -170,6 +170,7 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
         let query = supabase
           .from("posts")
           .select("id, category, title, text, image_url, image_urls, liked_by")
+          .eq("activity_origin", "organic")
           .gte("created_at", since);
 
         if (activeFilter?.state) {
@@ -311,7 +312,7 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
   }, [activeFilter]);
 
   const {
-    posts,
+    posts: allPosts,
     loading,
     loadingMore,
     hasMore,
@@ -319,6 +320,12 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
     deletePost,
     createPost,
   } = usePosts(activeFilter);
+
+  const [hideVirtualAccounts, setHideVirtualAccounts] = useState(false);
+  useEffect(() => {
+    try { setHideVirtualAccounts(localStorage.getItem("yrdly.hideVirtualAccounts") === "true"); } catch { /* Storage may be unavailable. */ }
+  }, []);
+  const posts = hideVirtualAccounts ? allPosts.filter(post => post.activity_origin !== "synthetic" && post.user?.account_kind !== "managed_virtual") : allPosts;
 
   // Fetch unread notification count
   useEffect(() => {
@@ -521,6 +528,13 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
           onContinue={() => router.push("/marketplace/create")}
         />
 
+        <label className="flex items-center gap-2 text-sm text-muted-foreground py-3 cursor-pointer">
+          <input type="checkbox" checked={hideVirtualAccounts} onChange={(event) => {
+            setHideVirtualAccounts(event.target.checked);
+            try { localStorage.setItem("yrdly.hideVirtualAccounts", String(event.target.checked)); } catch { /* Keep the preference for this session. */ }
+          }} />
+          Hide virtual account posts
+        </label>
         {/* ── Feed List ── */}
         {loading ? (
           <div className="space-y-4">
@@ -555,8 +569,9 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
         ) : (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <p className="text-sm text-[var(--yrdly-label)] font-yrdly-body">
-              No posts yet. Be the first to post in your neighbourhood!
+              {hideVirtualAccounts ? "No visible posts. Virtual account posts are hidden." : "No posts yet. Be the first to post in your neighbourhood!"}
             </p>
+            {hideVirtualAccounts && hasMore && <button type="button" onClick={loadMore} disabled={loadingMore} className="mt-3 text-sm text-primary underline">{loadingMore ? "Loading more…" : "Load more posts"}</button>}
           </div>
         )}
       </div>

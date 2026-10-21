@@ -66,7 +66,8 @@ export const usePosts = (filter?: LocationFilter | null) => {
           avatar_url,
           created_at,
           verified_seller,
-          phone_verified
+          phone_verified,
+          account_kind
         )
       `);
 
@@ -230,7 +231,7 @@ export const usePosts = (filter?: LocationFilter | null) => {
               try {
                 const { data: userData, error: userError } = await supabase
                   .from("public_profiles")
-                  .select("id, name, avatar_url, created_at")
+                  .select("id, name, avatar_url, created_at, account_kind")
                   .eq("id", newPost.user_id)
                   .single();
 
@@ -270,7 +271,7 @@ export const usePosts = (filter?: LocationFilter | null) => {
               try {
                 const { data: userData, error: userError } = await supabase
                   .from("public_profiles")
-                  .select("id, name, avatar_url, created_at")
+                  .select("id, name, avatar_url, created_at, account_kind")
                   .eq("id", updatedPost.user_id)
                   .single();
 
@@ -334,6 +335,7 @@ export const usePosts = (filter?: LocationFilter | null) => {
                 author_name: profile.name || post.author_name || "Unknown User",
                 author_image: profile.avatar_url || post.author_image,
                 user: {
+                  account_kind: profile.account_kind,
                   id: user.id,
                   name: profile.name || post.user?.name || "Unknown User",
                   avatar_url: profile.avatar_url || post.user?.avatar_url,

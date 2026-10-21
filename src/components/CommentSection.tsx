@@ -62,6 +62,7 @@ interface Comment {
     isLikedByMe: boolean;
     verifiedSeller?: boolean;
     isVerified?: boolean;
+    activityOrigin?: "organic" | "synthetic";
 }
 
 const QUICK_EMOJIS = [
@@ -163,7 +164,7 @@ export function CommentSection({
         const fetch = async () => {
             const { data, error } = await supabase
                 .from('comments')
-                .select('*, user:public_profiles!comments_user_id_fkey(verified_seller, phone_verified)')
+                .select('*, user:public_profiles!comments_user_id_fkey(verified_seller, phone_verified, account_kind)')
                 .eq('post_id', postId)
                 .order('timestamp', { ascending: true });
             if (!error && data) {
@@ -180,6 +181,7 @@ export function CommentSection({
                 }
 
                 const mapped = data.map((c: any) => ({
+                    activityOrigin: c.activity_origin,
                     id: c.id,
                     userId: c.user_id,
                     authorName: c.author_name,
@@ -194,12 +196,10 @@ export function CommentSection({
                 }));
                 setComments(mapped);
                 setLikedComments(new Set(userLikes));
-                const count = mapped.length;
+                const count = mapped.filter(c => c.activityOrigin !== "synthetic").length;
                 onCommentCountChange?.(count);
                 const { data: pr } = await supabase.from('posts').select('comment_count').eq('id', postId).single();
-                if (pr && (pr.comment_count ?? 0) !== count) {
-                    await supabase.from('posts').update({ comment_count: count }).eq('id', postId);
-                }
+                if (pr) onCommentCountChange?.(pr.comment_count || 0);
             }
         };
         fetch();
@@ -209,7 +209,7 @@ export function CommentSection({
             .on('postgres_changes', { event: '*', schema: 'public', table: 'comments', filter: `post_id=eq.${postId}` }, (payload) => {
                 if (payload.eventType === 'INSERT' && payload.new) {
                     const d = payload.new as any;
-                    const nc: Comment = { id: d.id, userId: d.user_id, authorName: d.author_name, authorImage: d.author_image, text: d.text, timestamp: d.timestamp, parentId: d.parent_id, likeCount: d.like_count || 0, isLikedByMe: false };
+                    const nc: Comment = { activityOrigin: d.activity_origin, id: d.id, userId: d.user_id, authorName: d.author_name, authorImage: d.author_image, text: d.text, timestamp: d.timestamp, parentId: d.parent_id, likeCount: d.like_count || 0, isLikedByMe: false };
                     setComments(prev => [...prev.filter(c => c.id !== nc.id), nc].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()));
                     requestAnimationFrame(() => scrollCommentsToBottom('smooth'));
                 } else if (payload.eventType === 'UPDATE' && payload.new) {
@@ -226,8 +226,8 @@ export function CommentSection({
     const isFirstSync = useRef(true);
     useEffect(() => {
         if (isFirstSync.current) { isFirstSync.current = false; return; }
-        onCommentCountChange?.(comments.length);
-    }, [comments.length, onCommentCountChange]);
+        onCommentCountChange?.(comments.filter(c => c.activityOrigin !== "synthetic").length);
+    }, [comments, onCommentCountChange]);
 
     useEffect(() => {
         if (replyingTo && inputRef.current) inputRef.current.focus();
@@ -261,7 +261,7 @@ export function CommentSection({
             setComments(prev => prev.map(c => c.id === optimistic.id ? { id: data.id, userId: data.user_id, authorName: data.author_name, authorImage: data.author_image, text: data.text, timestamp: data.timestamp, parentId: data.parent_id, likeCount: 0, isLikedByMe: false } : c));
             if (onCommentCountChange) {
                 const { data: pr } = await supabase.from('posts').select('comment_count').eq('id', postId).single();
-                if (pr) { const n = (pr.comment_count || 0) + 1; await supabase.from('posts').update({ comment_count: n }).eq('id', postId); onCommentCountChange(n); }
+                if (pr) onCommentCountChange(pr.comment_count || 0);
             }
             try {
                 const { NotificationTriggers } = await import('@/lib/notifications/notification-triggers');
@@ -369,7 +369,7 @@ export function CommentSection({
             if (error) throw error;
             if (onCommentCountChange) {
                 const { data: pr } = await supabase.from('posts').select('comment_count').eq('id', postId).single();
-                if (pr) { const n = Math.max((pr.comment_count || 0) - 1, 0); await supabase.from('posts').update({ comment_count: n }).eq('id', postId); onCommentCountChange(n); }
+                if (pr) onCommentCountChange(pr.comment_count || 0);
             }
             toast({ title: 'Comment deleted' });
         } catch { toast({ variant: 'destructive', title: 'Error', description: 'Could not delete comment.' }); }
@@ -432,6 +432,7 @@ export function CommentSection({
                                 {timeAgoStr(comment.timestamp)}
                             </span>
                         </div>
+                        {comment.activityOrigin === "synthetic" && <p className="text-xs text-muted-foreground">YRDLY virtual account</p>}
                         {isReply && parentAuthorName && (
                             <p className="text-[0.75rem] text-muted-foreground mb-0.5">
                                 Replying to <span className="text-primary">@{parentAuthorName.replace(/\s+/g, '')}</span>
@@ -726,6 +727,7 @@ export function CommentSection({
                             {/* Post content */}
                             <div className="flex-1 min-w-0">
                                 <p className="text-[0.875rem] font-bold text-foreground" style={{ fontFamily: FONT_RALEWAY }}>{author.name}</p>
+                                {(post.activity_origin === "synthetic" || author.account_kind === "managed_virtual") && <p className="text-xs text-muted-foreground">YRDLY virtual account</p>}
                                 <p className="text-[0.6875rem] text-foreground mb-2" style={{ fontFamily: FONT_RALEWAY }}>{timeAgoStr(post.timestamp)}</p>
                                 <p className="text-[0.8125rem] font-light text-foreground leading-[15px] mb-2" style={{ fontFamily: FONT_RALEWAY }}>{post.text}</p>
                                 <p className="text-[0.8125rem] text-muted-foreground" style={{ fontFamily: FONT_RALEWAY }}>

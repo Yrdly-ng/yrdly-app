@@ -1,7 +1,7 @@
 "use client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { User, Settings, Bookmark, UserPlus, LogOut } from "lucide-react";
+import { User, Settings, Bookmark, UserPlus, LogOut, Shield } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { AuthService } from "@/lib/auth/auth-service";
@@ -41,6 +41,7 @@ export function ProfileDropdown({ onClose }: ProfileDropdownProps) {
   };
 
   const menuItems = [
+    ...((profile as { is_admin?: boolean } | null)?.is_admin ? [{ label: "Virtual accounts", icon: Shield, onClick: () => navigate("/admin/virtual-accounts") }] : []),
     {
       label: "Profile",
       icon: User,

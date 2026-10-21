@@ -58,6 +58,17 @@ export function UserProfileDialog({ user: profileUser, open, onOpenChange }: Use
     // Ensure we only trigger the notification once per open session
     const hasTriggeredViewRef = reactUseRef<boolean>(false);
 
+    const [resolvedKind, setResolvedKind] = useState<{ id: string; kind: User['account_kind'] } | null>(null);
+    const accountKind = profileUser?.account_kind || (resolvedKind?.id === profileUser?.id ? resolvedKind.kind : undefined);
+    useEffect(() => {
+        if (!open || !profileUser?.id || profileUser.account_kind) return;
+        let active = true;
+        void supabase.from('public_profiles').select('account_kind').eq('id', profileUser.id).single().then(({ data }) => {
+            if (active && data) setResolvedKind({ id: profileUser.id, kind: data.account_kind });
+        });
+        return () => { active = false; };
+    }, [open, profileUser?.id, profileUser?.account_kind]);
+
     // ── Single source of truth for friendship state ──
     const friendship = useFriendshipGlobal(profileUser?.id);
     const { status: friendshipStatus, isLoading: friendshipLoading } = friendship;
@@ -120,11 +131,11 @@ export function UserProfileDialog({ user: profileUser, open, onOpenChange }: Use
         fetchReviews();
         
         // Trigger profile view notification
-        if (!hasTriggeredViewRef.current && currentUser.id !== profileUser.id) {
+        if (accountKind === "human" && !hasTriggeredViewRef.current && currentUser.id !== profileUser.id) {
             hasTriggeredViewRef.current = true;
             NotificationTriggers.onProfileView(profileUser.id, currentUser.id).catch(console.error);
         }
-    }, [open, currentUser, profileUser, onOpenChange, hasTriggeredViewRef]);
+    }, [open, currentUser, profileUser, onOpenChange, hasTriggeredViewRef, accountKind]);
 
     // Reset the triggered ref when dialog closes
     useEffect(() => {
@@ -166,6 +177,7 @@ export function UserProfileDialog({ user: profileUser, open, onOpenChange }: Use
 
     // ── Message ──
     const handleMessageClick = async () => {
+        if (accountKind !== "human") return;
         if (!currentUser || !profileUser) return;
         const sortedParticipantIds = [currentUser.id, profileUser.id].sort();
         try {
@@ -214,6 +226,7 @@ export function UserProfileDialog({ user: profileUser, open, onOpenChange }: Use
                 </div>
             );
         }
+        if (accountKind !== 'human') return null;
         switch (friendshipStatus) {
             case 'friends':
                 return (
@@ -372,6 +385,7 @@ export function UserProfileDialog({ user: profileUser, open, onOpenChange }: Use
                                 <VerifiedBadge size={20} type={(profileUser as any).verified_seller ? 'seller' : 'user'} />
                             )}
                         </h1>
+                        {accountKind === "managed_virtual" && <p className="text-sm text-muted-foreground text-center mt-2">YRDLY virtual account · A fictional persona managed by YRDLY. Private messages and friend requests are unavailable.</p>}
                         {profileUser.location && (
                             <div className="flex items-center text-sm text-muted-foreground mt-1">
                                 <MapPin className="h-4 w-4 mr-1" />

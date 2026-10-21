@@ -6,6 +6,7 @@ export const pageRoutes = [
   "/admin/disputes",
   "/admin/moderation",
   "/admin/requests",
+  "/admin/virtual-accounts",
   "/alerts/new",
   "/bookings/create",
   "/events/create",

@@ -1,2 +1,6 @@
 [functions.process-community-jobs]
 verify_jwt = false
+
+[functions.process-managed-virtual-jobs]
+# Backend key is validated explicitly; ordinary user JWTs cannot invoke it.
+verify_jwt = false
