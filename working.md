@@ -236,16 +236,3 @@ Official docs reviewed:
 Phase 1 is implemented in `src/components/CrispChat.tsx`, `src/app/layout.tsx`, and `src/app/(app)/settings/help/page.tsx`. The integration uses `next/script` with `lazyOnload`, keeps the bubble hidden until the support action opens it, identifies only the approved fields from a profile matching the auth user ID, and queues the documented non-reloading session reset only after a previous signed-in ID is cleared or replaced. Email Support remains intact. No CSP or package files were changed.
 
 Validation: `./node_modules/.bin/tsc --noEmit` completed with no output and exit code 0. Final scoped diff and Git status were reviewed; no commit, push, install, build, or deployment was run.
-
-
-# Managed virtual accounts implementation
-
-Implement the approved 50-account plan with production unchanged and all activity disabled by default.
-
-- Database: persistent classification/registry, bounded scheduled jobs, audit, authoritative organic/synthetic counters, database-enforced action policy and emergency stop.
-- Provisioning: reviewed fictional Nigerian-inspired manifest, resumable 50-slot Auth/profile provisioning, no interactive access.
-- Clients: discoverable disclosure in web/mobile profiles, posts and comments; no contact actions; preserve organic engagement.
-- Administration: preview/review/schedule drafts, account status, configuration, audit and immediate stop.
-- Validation seams: provisioning command, database direct-write/RPC interface, worker execution and existing client integration tests. These follow the approved implementation plan.
-- Review against initial app HEAD 5ea144b9d110e4608d2bfc452d6f3b599fa3dd6a and mobile HEAD 7dada931c87c867a4b9c8866643904440722a87b, using the conversation requirements as the spec.
-- Commit only this feature's changes on the current branches after validation and review. Do not provision remote accounts, apply remote migrations, deploy, or enable activity.

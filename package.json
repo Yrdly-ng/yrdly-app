@@ -7,7 +7,6 @@
     "pnpm": ">=9"
   },
   "scripts": {
-    "test:managed-accounts": "node --test tests/managed-auth.test.cjs tests/managed-provisioning.test.cjs && node tests/fixtures/run-managed-virtual.cjs",
     "dev": "next dev --turbo -p 9002",
     "dev:webpack": "next dev -p 9002",
     "genkit:dev": "genkit start -- tsx src/ai/dev.ts",

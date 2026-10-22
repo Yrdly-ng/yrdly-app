@@ -850,7 +850,6 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
               post.author_image ||
               "https://placehold.co/100x100.png",
             timestamp: (post.user as any).created_at || post.timestamp,
-            account_kind: post.user.account_kind,
             verified_seller: (post.user as any).verified_seller,
             is_verified: (post.user as any).is_verified,
             phone_verified: (post.user as any).phone_verified,
@@ -860,7 +859,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
           const { data, error } = await supabase
             .from("public_profiles")
             .select(
-              "id, name, avatar_url, created_at, verified_seller, phone_verified, account_kind",
+              "id, name, avatar_url, created_at, verified_seller, phone_verified",
             )
             .eq("id", post.user_id)
             .single();
@@ -881,7 +880,6 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
                   avatar_url:
                     data.avatar_url || "https://placehold.co/100x100.png",
                   timestamp: data.created_at || post.timestamp,
-                  account_kind: data.account_kind,
                   verified_seller: data.verified_seller,
                   is_verified: (data as any).is_verified || false,
                   phone_verified: data.phone_verified,
@@ -1361,7 +1359,6 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
           </div>
         ) : (
           <div className="min-w-0">
-            {(post.activity_origin === "synthetic" || author?.account_kind === "managed_virtual" || post.user?.account_kind === "managed_virtual") && <p className="text-xs text-muted-foreground">YRDLY virtual account</p>}
             <div className="flex items-center gap-1.5 flex-wrap">
               <button onClick={openProfile} className="flex items-center gap-1">
                 <span className="font-yrdly-display font-bold text-[0.875rem] text-foreground hover:underline">
@@ -1810,7 +1807,6 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
         )}
         {/* Engagement */}
         <div className="px-yrdly-md pb-yrdly-md pt-yrdly-xs">
-          {(post.synthetic_like_count || post.synthetic_comment_count) ? <p className="text-xs text-muted-foreground mb-2">{post.synthetic_like_count || 0} virtual likes · {post.synthetic_comment_count || 0} virtual comments</p> : null}
           <EngagementRow
             likes={likes}
             commentCount={commentCount}

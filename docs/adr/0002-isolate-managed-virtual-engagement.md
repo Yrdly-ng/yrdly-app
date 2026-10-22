@@ -1,3 +1,0 @@
-# Isolate managed virtual engagement
-
-Managed virtual accounts reuse Auth identities, profiles, home-feed posts and comments, but their likes live outside `posts.liked_by` so existing clients cannot count them toward organic popularity. Database guards require a transaction-bound execution permit for managed content and deny unrelated actions even on privileged write paths; a shared configuration lock serializes execution with emergency stop. Identities remain permanently classified, cannot sign in interactively, and start paused; reviewed drafts and bounded scheduled execution are required before publishing.

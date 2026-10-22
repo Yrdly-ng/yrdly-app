@@ -4,7 +4,6 @@ import { supabase } from "../supabase/supabase";
 import { User } from "@supabase/supabase-js";
 
 export interface AuthUser {
-  account_kind?: "human" | "managed_virtual";
   id: string;
   email?: string;
   name?: string;
@@ -58,11 +57,6 @@ export interface AuthUser {
   updated_at?: string;
 }
 
-// app_metadata is assigned by the backend; user_metadata is never an authority.
-export function isManagedVirtualIdentity(user: User | null | undefined): boolean {
-  return user?.app_metadata?.account_kind === 'managed_virtual';
-}
-
 export class AuthService {
   static async signUp(
     email: string,
@@ -85,11 +79,6 @@ export class AuthService {
           },
         },
       });
-
-      if (isManagedVirtualIdentity(data?.user)) {
-        await supabase.auth.signOut({ scope: 'local' });
-        throw new Error('YRDLY virtual accounts cannot sign in.');
-      }
 
       if (error) {
         if (data?.user) {
@@ -142,10 +131,6 @@ export class AuthService {
 
       if (error) throw error;
 
-      if (isManagedVirtualIdentity(data.user)) {
-        await supabase.auth.signOut({ scope: 'local' });
-        throw new Error('YRDLY virtual accounts cannot sign in.');
-      }
       if (data.user && (await checkActiveSession(true)) === false) {
         await endRevokedSession();
         throw new Error("This session has been replaced by a newer sign-in.");
@@ -153,7 +138,7 @@ export class AuthService {
       if (data.user) {
         const { data: profile, error: profileError } = await supabase
           .from("users")
-          .select("is_suspended, is_banned, status, suspension_reason, account_kind")
+          .select("is_suspended, is_banned, status, suspension_reason")
           .eq("id", data.user.id)
           .maybeSingle();
 
@@ -162,10 +147,6 @@ export class AuthService {
           throw new Error(
             "Account status could not be verified. Please try again.",
           );
-        }
-        if (profile?.account_kind === 'managed_virtual') {
-          await supabase.auth.signOut({ scope: 'local' });
-          throw new Error('YRDLY virtual accounts cannot sign in.');
         }
         if (
           profile &&
@@ -273,10 +254,6 @@ export class AuthService {
         }
         return null;
       }
-      if (isManagedVirtualIdentity(session?.user)) {
-        await supabase.auth.signOut({ scope: 'local' });
-        return null;
-      }
       if (session && (await checkActiveSession(true)) === false) {
         await endRevokedSession();
         return null;
@@ -314,7 +291,6 @@ export class AuthService {
 
   // Create user profile in public.users table
   static async createUserProfile(user: User, name: string) {
-    if (isManagedVirtualIdentity(user)) throw new Error('YRDLY virtual accounts cannot sign in.');
     try {
       // First check if profile already exists
       const existingProfile = await this.getUserProfile(user.id);
@@ -526,11 +502,6 @@ export class AuthService {
               session.access_token
           )
             return;
-          if (isManagedVirtualIdentity(session?.user)) {
-            await supabase.auth.signOut({ scope: 'local' });
-            callback(null);
-            return;
-          }
           if (
             session &&
             (await checkActiveSession(
