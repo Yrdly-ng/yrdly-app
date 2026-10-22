@@ -204,3 +204,7 @@ Sale completion, claim, provider webhooks and automatic delivery release credit 
 ### Ten-minute item reservations
 
 Unpaid item checkout reservations expire ten minutes after created_at, independent of page refreshes. Checkout checks expiry before rejecting another buyer. Provider-backed reservations require confirmed unpaid status and successful provider escrow deletion before local cancellation and stock restoration. Paid or uncertain provider outcomes remain protected against a duplicate sale. A scheduled sweep handles idle reservations; checkout enforces the boundary on demand. Apply 20261022161340_enforce_checkout_reservation_expiry.sql with the server release.
+
+### Delayed withdrawal reconciliation
+
+The scheduled maintenance endpoint checks one submitted Payluk withdrawal at a time, using payment history only. It never calls payment verify or creates another intent. A unique matching successful history record with a valid debit within the reservation completes the ledger; a confirmed failed/reversed outcome releases the hold. Missing, ambiguous, unknown, invalid-amount or unavailable responses leave funds held. After fifteen minutes a transactional one-time alert notifies seller and admins; subsequent provider checks continue at most once per five minutes per withdrawal. No automatic resend is permitted. Apply 20261022163313_reconcile_delayed_manual_withdrawals.sql before deploying the server.

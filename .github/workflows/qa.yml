@@ -48,7 +48,7 @@ jobs:
       - run: node qa-scripts/seed.mjs
       - run: node qa-scripts/community-privileges-regression.mjs
       - run: node qa-scripts/password-security-regression.mjs
-      - run: node --test tests/audit-security.test.cjs tests/video-editing.test.cjs tests/automatic-payout-flow.test.cjs tests/automatic-payout-recovery.test.cjs tests/checkout-reservation-expiry.test.cjs
+      - run: node --test tests/audit-security.test.cjs tests/video-editing.test.cjs tests/automatic-payout-flow.test.cjs tests/automatic-payout-recovery.test.cjs tests/checkout-reservation-expiry.test.cjs tests/withdrawal-reconciliation.test.cjs
       - run: node qa-scripts/ticket-reservation-regression.mjs
       - run: node qa-scripts/booking-checkout-regression.mjs
       - run: node qa-scripts/dispute-allocation-regression.mjs

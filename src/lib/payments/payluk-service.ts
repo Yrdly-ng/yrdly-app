@@ -988,12 +988,20 @@ export class PaylukService {
   }
 
   static async getWithdrawalStatus(customerId: string, reference: string): Promise<WithdrawalOutcome> {
+    return (await this.getWithdrawalDetails(customerId, reference)).outcome;
+  }
+
+  static async getWithdrawalDetails(customerId: string, reference: string): Promise<{ outcome: WithdrawalOutcome; debit?: number }> {
     const response = await paylukRequest<any>(`/v1/payment/history?reference=${encodeURIComponent(reference)}`, { customerId, method: 'GET' });
     const entries = Array.isArray(response.data) ? response.data : response.data?.data;
     if (!Array.isArray(entries)) throw new Error('Invalid Payluk reconciliation response');
     const matches = entries.filter((entry: any) => entry.reference === reference && entry.transactionType === 'withdrawal');
-    if (matches.length !== 1) return 'pending';
-    return withdrawalOutcome(matches[0].status);
+    if (matches.length !== 1) return { outcome: 'pending' };
+    const entry = matches[0];
+    const amount = Number(entry.amount), fee = Number(entry.fee);
+    const debit = Math.round((amount + fee) * 100) / 100;
+    return { outcome: withdrawalOutcome(entry.status),
+      ...(entry.amount != null && entry.fee != null && Number.isFinite(debit) && amount > 0 && fee >= 0 ? { debit } : {}) };
   }
 
   static async withdrawToBank(params: {
@@ -1111,6 +1119,7 @@ export class PaylukService {
         success: false,
         reference: activeReference,
         error: executionStarted ? 'Transfer outcome is uncertain; reconcile this payout before retrying.' : paylukRetryAfterSeconds(err) ? payoutRateLimitMessage(paylukRetryAfterSeconds(err)!) : err.message || 'Withdrawal request failed',
+        ...(executionStarted ? { reason: `Transfer submitted; provider result unavailable (${err instanceof PaylukRequestError ? `HTTP ${err.httpStatus}` : ['TimeoutError', 'AbortError'].includes(err?.name) ? 'request timed out' : 'response could not be confirmed'}). Do not retry until reconciled.` } : {}),
         retryAfterSeconds: executionStarted ? undefined : paylukRetryAfterSeconds(err),
         transientFailure: !executionStarted && isTransientPaylukFailure(err),
       };
