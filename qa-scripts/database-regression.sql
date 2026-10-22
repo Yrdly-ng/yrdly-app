@@ -129,11 +129,9 @@ BEGIN
  (gen_random_uuid()::text,buyer,actor,100000,3000,103000,100000,'completed','card','{}','ticket','payluk');
  INSERT INTO public.seller_accounts(user_id,account_type,account_details,is_active,verification_status,account_updated_at,payout_enabled)
  VALUES(actor,'bank_account','{}',true,'verified',now(),false) RETURNING id INTO account;
- denied := false;
- BEGIN PERFORM public.reserve_seller_payout(actor,account,7000,1000000,NULL);
- EXCEPTION WHEN raise_exception THEN denied := true; END;
- IF NOT denied THEN RAISE EXCEPTION 'Cooling-off account accepted'; END IF;
- UPDATE public.seller_accounts SET account_updated_at=now()-interval '2 days',verification_status='pending' WHERE id=account;
+ PERFORM public.reserve_seller_payout(actor,account,1,1000000,NULL);
+ DELETE FROM public.payout_requests WHERE seller_id=actor AND account_id=account AND status='pending' AND amount=1;
+ UPDATE public.seller_accounts SET verification_status='pending' WHERE id=account;
  denied := false;
  BEGIN PERFORM public.reserve_seller_payout(actor,account,7000,1000000,NULL);
  EXCEPTION WHEN raise_exception THEN denied := true; END;
@@ -143,7 +141,7 @@ BEGIN
  BEGIN PERFORM public.reserve_seller_payout(buyer,account,7000,1000000,NULL);
  EXCEPTION WHEN raise_exception THEN denied := true; END;
  IF NOT denied THEN RAISE EXCEPTION 'Wrong account owner accepted'; END IF;
- results := results || '[{"test":"payout account ownership verification and cooling-off","result":"PASS"}]'::jsonb;
+ results := results || '[{"test":"payout account ownership verification and immediate eligibility","result":"PASS"}]'::jsonb;
  denied := false;
  BEGIN PERFORM public.reserve_seller_payout(actor,account,11000,1000000,NULL);
  EXCEPTION WHEN check_violation THEN denied := true; END;

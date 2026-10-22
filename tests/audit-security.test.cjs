@@ -566,11 +566,28 @@ test('escrow transition refuses another seller', async () => {
   assert.equal(result.status, 403);
 });
 
-test('payout accounts enforce verification and cooling period', () => {
+test('payout accounts require verification and allow immediate account changes', () => {
   const { payoutAccountError } = load('src/lib/payments/payout-account.ts');
   assert.match(payoutAccountError({ is_active: true, verification_status: 'pending' }), /verified/);
-  assert.match(payoutAccountError({ is_active: true, verification_status: 'verified', account_updated_at: new Date().toISOString() }), /24 hours/);
+  assert.equal(payoutAccountError({ is_active: true, verification_status: 'verified', account_updated_at: new Date().toISOString() }), null);
+  assert.match(payoutAccountError({ is_active: false, verification_status: 'verified' }), /active/);
   assert.equal(payoutAccountError({ is_active: true, verification_status: 'verified', account_updated_at: null }), null);
+});
+
+test('payout account API reports immediate availability to existing clients', async () => {
+  const { GET } = load('src/app/api/seller/setup-account/route.ts', {
+    '@/lib/supabase/supabase-server': { getAuthenticatedUser: async () => ({ data: { user: { id: 'seller' } } }) },
+    '@/lib/supabase/supabase-admin': { supabaseAdmin: { from: table => chain({ data: table === 'seller_accounts' ? {
+      verification_status: 'verified', account_updated_at: new Date().toISOString(), account_details: {},
+    } : [] }) } },
+    '@/lib/payments/payluk-service': { PaylukService: {} },
+  });
+  const response = await GET(new Request('http://localhost/api/seller/setup-account'));
+  const { account } = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(account.isVerified, true);
+  assert.equal(account.inCoolingOff, false);
+  assert.equal(account.coolingOffEnds, null);
 });
 
 module.exports = { load, chain };

@@ -103,7 +103,6 @@ try {
         assert.equal(accounts[0].account_details.account_number, beneficiary.accountNumber);
         assert.equal(accounts[0].account_details.bank_code, beneficiary.bankCode);
         assert.equal(accounts[0].verification_status, 'verified');
-        assert.ok(!accounts[0].account_updated_at, 'Do not bypass a cooling-off period');
       } else {
         if (!Object.hasOwn(state, 'originalLegalName')) state.originalLegalName = profile.legal_name;
         await save();

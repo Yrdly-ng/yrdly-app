@@ -31,7 +31,7 @@ function namesMatch(a: string, b: string): boolean {
  * 1. Resolves the bank account via Payluk and verifies the name
  *    matches the authenticated user's profile name.
  * 2. Stores the verified account in `seller_accounts`
- *    status and an `account_updated_at` timestamp for the cooling-off guard.
+ *    status and an `account_updated_at` timestamp for account history.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -111,8 +111,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Store in seller_accounts ───────────────────────────
-    // For initial setup: no account_updated_at (allows immediate selling)
-    // For updates: set account_updated_at to trigger 24-hour cooling-off
+    // Keep the account-change timestamp for history; initial setup has no prior account.
     const now = new Date().toISOString();
     const { error: insertError } = await supabaseAdmin
       .from('seller_accounts')
@@ -178,12 +177,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ account: null });
     }
 
-    const accountUpdatedAt = data.account_updated_at;
-    const coolingOffEnds = accountUpdatedAt
-      ? new Date(new Date(accountUpdatedAt).getTime() + 24 * 60 * 60 * 1000).toISOString()
-      : null;
-    const inCoolingOff = coolingOffEnds ? new Date() < new Date(coolingOffEnds) : false;
-
     const { data: failedPayoutsData } = await supabaseAdmin
       .from('payout_requests')
       .select('id, amount, failure_reason, requested_at')
@@ -197,8 +190,9 @@ export async function GET(request: NextRequest) {
         accountNumber: data.account_details?.account_number || '',
         bankCode: data.account_details?.bank_code || '',
         isVerified: data.verification_status === 'verified',
-        inCoolingOff,
-        coolingOffEnds,
+        // Keep compatibility with installed clients that read these fields.
+        inCoolingOff: false,
+        coolingOffEnds: null,
         createdAt: data.created_at,
       },
       failedPayouts: failedPayoutsData || [],
