@@ -1,4 +1,4 @@
-import { paylukRetryAfterSeconds, payoutRateLimitMessage } from './payluk-rate-limit';
+import { isTransientPaylukFailure, paylukRetryAfterSeconds, payoutRateLimitMessage } from './payluk-rate-limit';
 import { supabaseAdmin } from '../supabase/supabase-admin';
 import { PaylukService } from './payluk-service';
 import { getPaylukCustomerId } from './payluk-onboarding';
@@ -157,10 +157,28 @@ export class PayoutService {
         }
       }
 
-      const payoutRequest = { id:await this.reservePayout(transaction.seller_id,sellerAccount.id,payoutAmount,transactionId) };
+      const recoveryEnabled = process.env.AUTO_PAYOUT_RECOVERY_ENABLED === 'true';
+      let recoveryToken: string | undefined;
+      let payoutId: string;
+      if (recoveryEnabled) {
+        const balance = await this.getSellerLedgerBalance(transaction.seller_id);
+        const { data, error } = await supabaseAdmin.rpc('reserve_automatic_seller_payout', {
+          p_seller_id: transaction.seller_id, p_account_id: sellerAccount.id,
+          p_amount: payoutAmount, p_wallet_limit: balance.availableBalance + balance.pendingPayouts,
+          p_transaction_id: transactionId,
+        });
+        if (error || !data?.id || !data?.token) throw new Error('Automatic payout could not be reserved');
+        payoutId = data.id;
+        recoveryToken = data.token;
+      } else {
+        payoutId = await this.reservePayout(transaction.seller_id, sellerAccount.id, payoutAmount, transactionId);
+      }
 
-      // Process the payout
-      const result = await this.processPayout(payoutRequest.id);
+      const result = await this.processPayout(payoutId, recoveryToken);
+      if (recoveryToken) {
+        const { AutomaticPayoutRecovery } = await import('./automatic-payout-recovery');
+        await AutomaticPayoutRecovery.recordResult(payoutId, recoveryToken, result);
+      }
       if (!result.success) throw new Error(result.error || 'Automatic payout failed');
 
     } catch (error) {
@@ -183,7 +201,7 @@ export class PayoutService {
   /**
    * Process a payout request
    */
-  static async processPayout(payoutRequestId: string): Promise<{
+  static async processPayout(payoutRequestId: string, recoveryToken?: string): Promise<{
     success: boolean;
     error?: string;
     reason?: string;
@@ -193,6 +211,7 @@ export class PayoutService {
     totalPaylukDebit?: number;
     retryAfterSeconds?: number;
     retryable?: boolean;
+    transientFailure?: boolean;
   }> {
     try {
       // Get payout request details
@@ -223,6 +242,14 @@ export class PayoutService {
       const attemptReference = `payout-${payoutRequestId}-${randomUUID()}`;
 
       // CAS guard: update status from 'pending' to 'processing' atomically
+      let claimed = false;
+      if (recoveryToken) {
+        const { data, error } = await supabaseAdmin.rpc('start_automatic_payout_attempt', {
+          p_payout_id: payoutRequestId, p_token: recoveryToken, p_reference: attemptReference,
+        });
+        claimed = !error && data === true;
+
+      } else {
       const { data: updatedRows, error: casError } = await supabaseAdmin
         .from('payout_requests')
         .update({
@@ -235,10 +262,9 @@ export class PayoutService {
         .eq('status', 'pending')
         .select('id');
 
-      if (casError || !updatedRows || updatedRows.length === 0) {
-        console.warn(`[PayoutService] Payout ${payoutRequestId} is already being processed or completed by another worker.`);
-        return { success: false, error: 'Payout is already processing or completed' };
+        claimed = !casError && !!updatedRows?.length;
       }
+      if (!claimed) return { success: false, error: 'Payout is already processing or completed' };
 
       // Get seller account details
       const accountDetails = payoutRequest.seller_account?.account_details as Record<string, string> | null;
@@ -252,6 +278,7 @@ export class PayoutService {
       let persistedReference = attemptReference;
       let submissionMayHaveStarted = false;
       let retryAfterSeconds: number | undefined;
+      let transientFailure = false;
       let maximumWithdrawable: number | undefined;
       let intentFee: number | undefined;
       let actualNetPayoutAmount: number | undefined;
@@ -289,7 +316,18 @@ export class PayoutService {
               accountName,
               reference: attemptReference,
               yrdlyAvailableBalance: yrdlyAvailableBalance,
-              onIntentReady: async reference => {
+              onIntentReady: async (reference, quote) => {
+                if (recoveryToken) {
+                  const { data, error } = await supabaseAdmin.rpc('submit_automatic_payout_attempt', {
+                    p_payout_id: payoutRequestId, p_token: recoveryToken,
+                    p_expected_reference: attemptReference, p_reference: reference,
+                    p_debit: quote.amount + quote.fee, p_net: quote.amount,
+                  });
+                  if (error || !data) throw new Error('Automatic payout lease expired; transfer was not executed');
+                  submissionMayHaveStarted = true;
+                  persistedReference = reference;
+                  return;
+                }
                 submissionMayHaveStarted = true;
                 const { data: saved, error } = await supabaseAdmin.from('payout_requests')
                   .update({ transaction_reference: reference, execution_stage: 'submitted' }).eq('id', payoutRequestId)
@@ -303,6 +341,7 @@ export class PayoutService {
             transferSuccess = paylukResult.outcome === 'success';
             transferPending = paylukResult.outcome === 'pending';
             retryAfterSeconds = paylukResult.retryAfterSeconds;
+            transientFailure = paylukResult.transientFailure === true;
             actualNetPayoutAmount = paylukResult.intentAmount;
             intentFee = paylukResult.intentFee;
             actualTotalDebit = paylukResult.totalPaylukDebit;
@@ -373,7 +412,7 @@ export class PayoutService {
           if (failedError || !failedRows?.length) return { success: false, retryable: false, error: 'Payout status needs reconciliation. Do not retry yet.' };
 
           // Pending outcomes must not be announced as failed.
-          if (!transferPending) try {
+          if (!transferPending && !recoveryToken) try {
             await NotificationService.createPayoutFailedNotification(
               payoutRequest.seller_id,
               payoutRequest.amount,
@@ -392,6 +431,7 @@ export class PayoutService {
             intentFee,
             retryAfterSeconds,
             retryable: !transferPending,
+            transientFailure,
           };
         }
 
@@ -416,7 +456,7 @@ export class PayoutService {
           .eq('execution_stage', submissionMayHaveStarted ? 'submitted' : 'preparing').select('id');
         if (saveError || !changed?.length) return { success: false, retryable: false, error: 'Payout status needs reconciliation. Do not retry yet.' };
 
-        if (!submissionMayHaveStarted) try {
+        if (!submissionMayHaveStarted && !recoveryToken) try {
           await NotificationService.createPayoutFailedNotification(
             payoutRequest.seller_id, payoutRequest.amount, errorMsg, payoutRequestId
           );
@@ -428,6 +468,7 @@ export class PayoutService {
           error: submissionMayHaveStarted ? 'Transfer outcome is uncertain; reconcile this payout before retrying.' : errorMsg,
           retryable: !submissionMayHaveStarted,
           retryAfterSeconds: submissionMayHaveStarted ? undefined : delay,
+          transientFailure: !submissionMayHaveStarted && isTransientPaylukFailure(transferError),
         };
       }
 

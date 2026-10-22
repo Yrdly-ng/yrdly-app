@@ -1,4 +1,4 @@
-import { paylukRateLimitDelay, paylukRetryAfterSeconds, payoutRateLimitMessage } from './payluk-rate-limit';
+import { isTransientPaylukFailure, paylukRateLimitDelay, paylukRetryAfterSeconds, payoutRateLimitMessage } from './payluk-rate-limit';
 import { withdrawalOutcome, type WithdrawalOutcome } from './payment-state';
 // Server-side only - Payluk service
 // This service should only be used in API routes, not in client components.
@@ -75,8 +75,9 @@ async function paylukRequest<T>(
     data = JSON.parse(rawBody) as PaylukEnvelope<T>;
   } catch {
     if (res.status === 429) throw new PaylukRequestError('Payluk request rate limit reached', 429, 429, 'Too many requests', paylukRateLimitDelay(res.headers));
-    throw new Error(
-      `[Payluk] ${fetchOptions.method || 'GET'} ${endpoint} — HTTP ${res.status}: non-JSON response`
+    throw new PaylukRequestError(
+      `[Payluk] ${fetchOptions.method || 'GET'} ${endpoint} — HTTP ${res.status}: non-JSON response`,
+      res.status, res.status, 'Non-JSON response'
     );
   }
 
@@ -1004,7 +1005,7 @@ export class PaylukService {
     accountName?: string;
     reference: string;
     yrdlyAvailableBalance?: number;
-    onIntentReady: (reference: string) => Promise<void>;
+    onIntentReady: (reference: string, quote: { amount: number; fee: number }) => Promise<void>;
   }): Promise<{
     outcome: WithdrawalOutcome;
     success: boolean;
@@ -1017,6 +1018,7 @@ export class PaylukService {
     reason?: string;
     paylukStatus?: string;
     retryAfterSeconds?: number;
+    transientFailure?: boolean;
   }> {
     let executionStarted = false;
     let activeReference = params.reference;
@@ -1081,7 +1083,7 @@ export class PaylukService {
       const activeIntentRef = intent.reference;
 
       activeReference = activeIntentRef;
-      await params.onIntentReady(activeIntentRef);
+      await params.onIntentReady(activeIntentRef, { amount: activeIntentAmount, fee: activeIntentFee });
       executionStarted = true;
 
       // 6. Execute / verify payment intent (totalPaylukDebit <= effectiveAvailableBalance)
@@ -1110,6 +1112,7 @@ export class PaylukService {
         reference: activeReference,
         error: executionStarted ? 'Transfer outcome is uncertain; reconcile this payout before retrying.' : paylukRetryAfterSeconds(err) ? payoutRateLimitMessage(paylukRetryAfterSeconds(err)!) : err.message || 'Withdrawal request failed',
         retryAfterSeconds: executionStarted ? undefined : paylukRetryAfterSeconds(err),
+        transientFailure: !executionStarted && isTransientPaylukFailure(err),
       };
     }
   }

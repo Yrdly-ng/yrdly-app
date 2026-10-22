@@ -22,3 +22,14 @@ export function paylukRateLimitDelay(headers: Headers): number {
 export function payoutRateLimitMessage(seconds: number): string {
   return `Payluk is busy. Wait ${seconds} seconds before retrying this payout.`;
 }
+
+/** Only known transport/temporary provider failures may be retried before submission. */
+export function isTransientPaylukFailure(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const status = 'httpStatus' in error ? Number(error.httpStatus) : NaN;
+  if (status === 429 || status === 408 || (status >= 500 && status <= 599)) return true;
+  const name = 'name' in error ? String(error.name) : '';
+  const message = 'message' in error ? String(error.message) : '';
+  return message === 'Payment identity lookup timed out. Please retry.' || name === 'TimeoutError' || name === 'AbortError' ||
+    (name === 'TypeError' && /fetch failed|network/i.test(message));
+}

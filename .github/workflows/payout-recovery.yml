@@ -1,0 +1,24 @@
+name: Recover automatic payouts
+
+on:
+  schedule:
+    - cron: '2-57/5 * * * *'
+
+permissions: {}
+concurrency:
+  group: automatic-payout-recovery
+  cancel-in-progress: false
+
+jobs:
+  recover:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Recover one eligible automatic payout
+        env:
+          PAYOUT_RECOVERY_CRON_SECRET: ${{ secrets.PAYOUT_RECOVERY_CRON_SECRET }}
+        run: |
+          test -n "$PAYOUT_RECOVERY_CRON_SECRET"
+          curl --fail --silent --show-error --max-time 65 \
+            --header "Authorization: Bearer $PAYOUT_RECOVERY_CRON_SECRET" \
+            https://app.yrdly.ng/api/cron/recover-payouts

@@ -195,3 +195,34 @@ settlement.
 - VERIFIED: `npm run build` exits successfully and lists 173 routes. The app-paths manifest contains no retired gateway endpoints and includes `/api/seller/banks`.
 - VERIFIED: obsolete local gateway credentials were removed without displaying values; Payluk credentials were preserved. No secrets were added to tracked files.
 - Not verified: live Payluk settlement, bank delivery and browser interaction. No production database mutation, provider transaction, Git push or deployment was performed for this removal.
+
+
+### Automatic payout recovery
+
+Set `AUTO_PAYOUT_RECOVERY_ENABLED=true` only after applying
+`20261022101737_automatic_payout_recovery.sql`. Newly reserved automatic marketplace
+payouts enroll atomically with their reservation; existing and manual withdrawals
+are never enrolled or backfilled. The initial attempt remains immediate. Safe
+pre-submission HTTP 429/408/5xx and transport failures retry at most three times
+(four total attempts), after at least five minutes with exponential backoff and
+respect for Retry-After. Permanent failures stop for review.
+
+The authenticated `/api/cron/recover-payouts` endpoint processes at most one
+eligible row per call. `.github/workflows/payout-recovery.yml` schedules it every
+five minutes; GitHub may delay schedules. Set the same dedicated
+`PAYOUT_RECOVERY_CRON_SECRET` in production and GitHub Actions. A database lease
+serializes scheduled calls, and both starting an attempt and persisting its
+submitted intent require the current unexpired token. These controls do not
+replace Payluk's shared key quota across all application traffic.
+
+Submitted attempts use read-only payment history reconciliation. Missing,
+duplicate, unknown or pending history never authorizes a new transfer. The quote
+is bound to the submitted reference; a manual retry changing that reference
+stops automatic recovery. After eight unsuccessful checks, or when the provider
+confirms failure, recovery stops and inserts seller/admin in-app attention
+notifications once. Uncertain transfers retain their balance reservation.
+
+Disabling the environment flag prevents new enrollment and scheduled recovery.
+Deployment requires the migration, application release and scheduler in that
+order. Tests execute real handlers/services and migration functions against
+PGlite with a fake provider; they do not move money or prove live bank settlement.

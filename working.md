@@ -236,3 +236,11 @@ Official docs reviewed:
 Phase 1 is implemented in `src/components/CrispChat.tsx`, `src/app/layout.tsx`, and `src/app/(app)/settings/help/page.tsx`. The integration uses `next/script` with `lazyOnload`, keeps the bubble hidden until the support action opens it, identifies only the approved fields from a profile matching the auth user ID, and queues the documented non-reloading session reset only after a previous signed-in ID is cleared or replaced. Email Support remains intact. No CSP or package files were changed.
 
 Validation: `./node_modules/.bin/tsc --noEmit` completed with no output and exit code 0. Final scoped diff and Git status were reviewed; no commit, push, install, build, or deployment was run.
+
+# Automatic payout recovery — approved 2026-10-22
+
+Implement a durable service-role-only queue for newly reserved automatic marketplace payouts. Keep initial execution immediate. Exclude existing payouts and all manual withdrawals. Retry only proven pre-submission transient failures with bounded exponential delay and Retry-After; reconcile submitted references through read-only Payluk payment history. Never infer failure from missing or ambiguous history. Serialize scheduled work with database leases and fence stale workers. Exhausted, permanent, or unresolved outcomes require manual attention and an in-app alert. Verify with fake provider and local PostgreSQL tests; no real-money test or historical payout retry is authorized.
+
+Deployment order: migration, application, scheduler. Dedicated PAYOUT_RECOVERY_CRON_SECRET protects the worker. GitHub Actions supplies the five-minute schedule because the production Vercel plan does not support this cron frequency. Tests and deployment are authorized by the user's “finish up”; production execution remains the manager's responsibility.
+
+Recovery verification adds real SQL/service tests for transient backoff, bounded retries, exact-reference read-only reconciliation, lease fencing, manual/duplicate races, no legacy/manual enrollment, dedicated cron authorization and private database privileges. No live financial calls are made.
