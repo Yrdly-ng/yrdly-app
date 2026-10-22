@@ -119,6 +119,15 @@ BEGIN
 END $$;
 CREATE TRIGGER guard_managed_identity BEFORE INSERT OR UPDATE ON public.users FOR EACH ROW EXECUTE FUNCTION private.guard_managed_identity();
 
+-- Preserve human auto-enrolment; managed profiles never join location communities.
+DO $$ BEGIN
+ IF to_regprocedure('public.fn_auto_join_ward_community()') IS NOT NULL THEN
+  DROP TRIGGER IF EXISTS tr_auto_join_ward_community ON public.users;
+  CREATE TRIGGER tr_auto_join_ward_community AFTER INSERT OR UPDATE OF home_ward,home_lga,home_state ON public.users
+   FOR EACH ROW WHEN (NEW.account_kind='human') EXECUTE FUNCTION public.fn_auto_join_ward_community();
+ END IF;
+END $$;
+
 CREATE OR REPLACE VIEW public.public_profiles WITH(security_invoker=false) AS
 SELECT id,name,username,avatar_url,bio,interests,created_at,updated_at,
  home_state,home_lga,verified_seller,phone_verified,rating,review_count,discoverable,is_online,last_seen,
@@ -149,17 +158,17 @@ BEGIN
  IF NOT EXISTS(SELECT 1 FROM auth.users WHERE id=p_user_id AND raw_app_meta_data->>'managed_virtual_slot'=p_slot::text AND banned_until>now()) THEN RAISE EXCEPTION 'Provision a banned managed Auth identity with matching slot metadata'; END IF;
  IF EXISTS(SELECT 1 FROM public.posts WHERE user_id=p_user_id) OR EXISTS(SELECT 1 FROM public.comments WHERE user_id=p_user_id)
  OR EXISTS(SELECT 1 FROM auth.sessions WHERE user_id=p_user_id) THEN RAISE EXCEPTION 'Provision a new unused identity'; END IF;
- INSERT INTO public.users(id,name,email,username,bio,interests,home_state,home_lga)
+ INSERT INTO public.users(id,name,email,username,bio,interests)
  SELECT p_user_id,(p_persona->>'name')||' · YRDLY virtual',u.email,p_persona->>'username',
   coalesce(p_persona->>'bio','Fictional YRDLY-managed virtual account.'),
-  (jsonb_populate_record(NULL::public.users,jsonb_build_object('interests',coalesce(p_persona->'interests','[]'::jsonb)))).interests,
-  p_persona->'location'->>'state',p_persona->'location'->>'lga'
+  (jsonb_populate_record(NULL::public.users,jsonb_build_object('interests',coalesce(p_persona->'interests','[]'::jsonb)))).interests
  FROM auth.users u WHERE u.id=p_user_id
  ON CONFLICT(id) DO UPDATE SET name=excluded.name,email=excluded.email,username=excluded.username,
-  bio=excluded.bio,interests=excluded.interests,home_state=excluded.home_state,home_lga=excluded.home_lga;
+  bio=excluded.bio,interests=excluded.interests;
  INSERT INTO public.managed_virtual_accounts(slot,user_id,persona) VALUES(p_slot,p_user_id,p_persona);
  UPDATE public.users SET account_kind='managed_virtual',verified_seller=false,phone_verified=false,is_admin=false,
- is_online=false,last_seen=NULL WHERE id=p_user_id;
+ is_online=false,last_seen=NULL,home_state=p_persona->'location'->>'state',
+ home_lga=p_persona->'location'->>'lga' WHERE id=p_user_id;
  INSERT INTO public.managed_virtual_audit(account_id,operation,outcome,detail) VALUES(p_user_id,'register','applied',jsonb_build_object('slot',p_slot));
  RETURN p_user_id;
 END $$;
@@ -494,7 +503,7 @@ DO $$ BEGIN
     AND EXISTS(SELECT 1 FROM vault.decrypted_secrets WHERE name='project_url')
     AND EXISTS(SELECT 1 FROM vault.decrypted_secrets WHERE name='service_role_key');
   $job$);
-  UPDATE cron.job SET active=false WHERE jobname='process-managed-virtual-jobs';
+  PERFORM cron.alter_job(jobid, active := false) FROM cron.job WHERE jobname='process-managed-virtual-jobs';
  END IF;
 END $$;
 NOTIFY pgrst,'reload schema';

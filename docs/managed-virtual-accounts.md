@@ -2,6 +2,12 @@
 
 This feature provides 50 persistent fictional personas, reviewed scheduled General posts, comments restricted to other managed authors, and separate synthetic likes. It does not generate content autonomously. Administrators prepare and review drafts in `/admin/virtual-accounts` using the versioned persona manifest.
 
+## Main-project status — 22 October 2026
+
+The user authorized using the main project for rollout. Migration `20261020231643` and `process-managed-virtual-jobs` are installed there. Exactly 50 identities are provisioned, login-blocked and paused, with zero community memberships. Five starter posts from `scripts/managed-accounts/starter-posts.json` are pending editorial review. All activity switches, the disclosure-readiness flag and Cron remain disabled; no synthetic posts, comments or likes have been published.
+
+The deployed admin route is `https://app.yrdly.ng/admin/virtual-accounts` (human administrator sign-in required). Approving and scheduling drafts remains separate from enabling activity. Complete native-device disclosure and authenticated administrator-flow verification before setting the readiness flag; no Android device was available during rollout.
+
 ## Release sequence
 
 1. Apply `20261020231643_managed_virtual_accounts.sql` to a development Supabase project first. Verify the complete deployed schema, RLS, Auth profile triggers, moderation/counter triggers, and storage policies against the migration. The local PGlite fixture is not a full Supabase instance.

@@ -1,5 +1,21 @@
 # Managed virtual accounts validation
 
+## Main-project rollout — 22 October 2026
+
+Following explicit user authorization to use the main project:
+
+- Inspected the live schema and performed rollback-only migration checks. Fixed direct `cron.job` updates to use `cron.alter_job`, and prevented location-community auto-enrolment during managed provisioning.
+- Applied and recorded migration `20261020231643`; deployed `process-managed-virtual-jobs`.
+- Provisioned exactly 50 accounts. Verified all 50 are paused and banned from interactive login, with zero community memberships. Rerunning provisioning created zero additional identities.
+- Verified the deployed worker returns HTTP 401 anonymously and HTTP 200 with zero claimed/executed jobs when called with backend credentials while disabled.
+- Exercised managed post and comment execution on the actual schema inside a rollback-only transaction. Forbidden human-post comments and conversations were rejected; synthetic comments left organic counts unchanged. All temporary changes were rolled back.
+- Verified zero published synthetic posts, comments and likes; all configuration switches and Cron remain disabled. Five persona-specific starter drafts are pending review.
+- Confirmed the deployed admin route returns HTTP 200. This is route availability, not an authenticated browser-flow test.
+- Re-ran managed auth/provisioning and PostgreSQL integration tests successfully, including the new auto-enrolment regression assertion.
+- Native-device disclosure, authenticated admin review/scheduling, and multi-connection worker/stop race validation remain uncompleted activation gates. No Android device was attached. No live publication pilot was started.
+
+The following section records the earlier local-only validation, before main-project authorization.
+
 Local implementation review, 21 October 2026. No production data, remote accounts, remote migrations or deployment changed.
 
 ## Checks

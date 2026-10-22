@@ -17,6 +17,19 @@ CREATE TABLE public.notifications(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 CREATE TABLE public.push_notification_deliveries(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid REFERENCES public.users,notification_id uuid REFERENCES public.notifications,payload jsonb);
 CREATE TABLE public.comment_likes(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid REFERENCES public.users,comment_id uuid REFERENCES public.comments);
 
+-- Model the existing location-enrolment side effect during profile provisioning.
+ALTER TABLE public.users ADD COLUMN home_ward text;
+CREATE TABLE public.community_memberships(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid REFERENCES public.users);
+CREATE FUNCTION public.fn_auto_join_ward_community() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF NEW.home_state IS NOT NULL AND NEW.home_lga IS NOT NULL THEN
+  INSERT INTO public.community_memberships(user_id) VALUES(NEW.id);
+ END IF;
+ RETURN NEW;
+END $$;
+CREATE TRIGGER tr_auto_join_ward_community AFTER INSERT OR UPDATE OF home_ward,home_lga,home_state ON public.users
+FOR EACH ROW EXECUTE FUNCTION public.fn_auto_join_ward_community();
+
 -- Copied verbatim from 20261014164602: real session recording and current-session check.
 CREATE FUNCTION private.record_new_account_session() RETURNS trigger
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$

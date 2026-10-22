@@ -4,9 +4,12 @@ INSERT INTO public.users(id,name,is_admin) SELECT id,'Fixture',id='00000000-0000
 INSERT INTO auth.sessions(id,user_id) VALUES('10000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000001');
 SELECT set_config('request.jwt.claims','{"role":"service_role","session_id":"10000000-0000-0000-0000-000000000001"}',false);
 UPDATE auth.users SET raw_app_meta_data=jsonb_build_object('managed_virtual_slot',right(id::text,1)::int-1),banned_until=now()+interval '100 years' WHERE id<>'00000000-0000-0000-0000-000000000001';
-SELECT public.managed_virtual_register(1,'00000000-0000-0000-0000-000000000002','{"name":"Fictional Teni"}');
+SELECT public.managed_virtual_register(1,'00000000-0000-0000-0000-000000000002','{"name":"Fictional Teni","location":{"state":"Lagos","lga":"Lagos Mainland"}}');
 SELECT public.managed_virtual_register(2,'00000000-0000-0000-0000-000000000003','{"name":"Fictional Chisom"}');
 DO $$ BEGIN
+ IF EXISTS(SELECT 1 FROM public.community_memberships WHERE user_id='00000000-0000-0000-0000-000000000002') THEN
+  RAISE EXCEPTION 'FAIL: managed provisioning automatically joined a community';
+ END IF;
  BEGIN
   INSERT INTO public.posts(user_id,text,category) VALUES('00000000-0000-0000-0000-000000000002','Bypass','General');
   RAISE EXCEPTION 'FAIL: privileged direct virtual post succeeded';
