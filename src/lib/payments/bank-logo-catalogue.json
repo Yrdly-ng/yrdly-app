@@ -190,30 +190,6 @@
     ]
   },
   {
-    "file": "parkway-ready-cash.png",
-    "codes": [
-      "100003",
-      "311"
-    ],
-    "names": [
-      "PARKWAY-READYCASH",
-      "Parkway - ReadyCash",
-      "parkway ready cash"
-    ]
-  },
-  {
-    "file": "chikum-microfinance-bank-ng.png",
-    "codes": [
-      "090141",
-      "312"
-    ],
-    "names": [
-      "CHIKUM MICROFINANCE BANK",
-      "Chikum Microfinance bank",
-      "chikum microfinance bank ng"
-    ]
-  },
-  {
     "file": "asosavings.png",
     "codes": [
       "090001",
@@ -231,16 +207,6 @@
     ],
     "names": [
       "abbey mortgage bank ng"
-    ]
-  },
-  {
-    "file": "firsttrust-mortgage-bank-nigeria-ng.png",
-    "codes": [
-      "413"
-    ],
-    "names": [
-      "FirstTrust Mortgage Bank Nigeria",
-      "firsttrust mortgage bank nigeria ng"
     ]
   },
   {
@@ -274,18 +240,6 @@
     ]
   },
   {
-    "file": "coronation-merchant-bank-ng.png",
-    "codes": [
-      "060001",
-      "559"
-    ],
-    "names": [
-      "CORONATION MERCHANT BANK",
-      "Coronation Merchant Bank",
-      "coronation merchant bank ng"
-    ]
-  },
-  {
     "file": "nova-bank-ng.png",
     "codes": [
       "561"
@@ -303,18 +257,6 @@
     "names": [
       "GREENWICH MERCHANT BANK",
       "greenwich merchant bank ng"
-    ]
-  },
-  {
-    "file": "carbon.png",
-    "codes": [
-      "100026",
-      "565"
-    ],
-    "names": [
-      "CARBON",
-      "Carbon",
-      "carbon"
     ]
   },
   {
@@ -365,29 +307,6 @@
     ]
   },
   {
-    "file": "gateway-mortgage-bank.png",
-    "codes": [
-      "070009",
-      "812"
-    ],
-    "names": [
-      "GATEWAY MORTGAGE BANK",
-      "Gateway Mortgage Bank LTD",
-      "gateway mortgage bank"
-    ]
-  },
-  {
-    "file": "futminna-microfinance-bank-ng.png",
-    "codes": [
-      "090438",
-      "832"
-    ],
-    "names": [
-      "FUTMINNA MICROFINANCE BANK",
-      "futminna microfinance bank ng"
-    ]
-  },
-  {
     "file": "cashconnect-mfb-ng.png",
     "codes": [
       "090360",
@@ -432,18 +351,6 @@
     ]
   },
   {
-    "file": "aramoko-mfb.png",
-    "codes": [
-      "090307",
-      "50083"
-    ],
-    "names": [
-      "ARAMOKO MICROFINANCE BANK",
-      "Aramoko MFB",
-      "aramoko mfb"
-    ]
-  },
-  {
     "file": "assets-microfinance-bank-ng.png",
     "codes": [
       "090473",
@@ -452,28 +359,6 @@
     "names": [
       "Assets Microfinance Bank",
       "assets microfinance bank ng"
-    ]
-  },
-  {
-    "file": "banc-corp-microfinance-bank-ng.png",
-    "codes": [
-      "090581",
-      "50117"
-    ],
-    "names": [
-      "BANC CORP MICROFINANCE BANK",
-      "banc corp microfinance bank ng"
-    ]
-  },
-  {
-    "file": "beststar-microfinance-bank-ng.png",
-    "codes": [
-      "090615",
-      "50123"
-    ],
-    "names": [
-      "Beststar Microfinance Bank",
-      "beststar microfinance bank ng"
     ]
   },
   {
@@ -486,52 +371,6 @@
       "EYOWO",
       "Eyowo",
       "eyowo"
-    ]
-  },
-  {
-    "file": "dot-microfinance-bank-ng.png",
-    "codes": [
-      "090470",
-      "50162"
-    ],
-    "names": [
-      "DOT MICROFINANCE BANK",
-      "Dot Microfinance Bank",
-      "dot microfinance bank ng"
-    ]
-  },
-  {
-    "file": "chanelle-microfinance-bank-limited-ng.png",
-    "codes": [
-      "50171"
-    ],
-    "names": [
-      "Chanelle Microfinance Bank Limited",
-      "chanelle microfinance bank limited ng"
-    ]
-  },
-  {
-    "file": "kredi-money-mfb.png",
-    "codes": [
-      "090380",
-      "50200"
-    ],
-    "names": [
-      "KREDI MONEY MICROFINANCE BANK ",
-      "Kredi Money MFB LTD",
-      "kredi money mfb"
-    ]
-  },
-  {
-    "file": "corestep-mfb.png",
-    "codes": [
-      "090365",
-      "50204"
-    ],
-    "names": [
-      "CORESTEP MICROFINANCE BANK",
-      "Corestep MFB",
-      "corestep mfb"
     ]
   },
   {
@@ -549,18 +388,6 @@
     ]
   },
   {
-    "file": "ekimogun-mfb-ng.png",
-    "codes": [
-      "090552",
-      "50263"
-    ],
-    "names": [
-      "Ekimogun MFB",
-      "Ekimogun Microfinance Bank",
-      "ekimogun mfb ng"
-    ]
-  },
-  {
     "file": "fedeth-mfb-ng.png",
     "codes": [
       "50298"
@@ -570,106 +397,12 @@
     ]
   },
   {
-    "file": "mint-mfb.png",
-    "codes": [
-      "090763",
-      "50304"
-    ],
-    "names": [
-      "MINT MFB",
-      "Mint MFB",
-      "mint mfb"
-    ]
-  },
-  {
-    "file": "flourish-mfb-ng.png",
-    "codes": [
-      "50315"
-    ],
-    "names": [
-      "FLOURISH MFB",
-      "flourish mfb ng"
-    ]
-  },
-  {
-    "file": "hasal-microfinance-bank.png",
-    "codes": [
-      "090121",
-      "50383"
-    ],
-    "names": [
-      "HASAL MICROFINANCE BANK",
-      "Hasal Microfinance Bank",
-      "hasal microfinance bank"
-    ]
-  },
-  {
-    "file": "ikoyi-osun-mfb.png",
-    "codes": [
-      "090536",
-      "50439"
-    ],
-    "names": [
-      "Ikoyi Osun MFB",
-      "Ikoyi-Osun Microfinance Bank",
-      "ikoyi osun mfb"
-    ]
-  },
-  {
-    "file": "ilaro-poly-microfinance-bank-ng.png",
-    "codes": [
-      "090571",
-      "50442"
-    ],
-    "names": [
-      "Ilaro Poly Microfinance Bank",
-      "Ilaro Poly Microfinance Bank Ltd",
-      "ilaro poly microfinance bank ng"
-    ]
-  },
-  {
-    "file": "imowo-mfb-ng.png",
-    "codes": [
-      "090417",
-      "50453"
-    ],
-    "names": [
-      "IMOWO MICROFINANCE BANK",
-      "Imowo MFB",
-      "imowo mfb ng"
-    ]
-  },
-  {
-    "file": "infinity-mfb.png",
-    "codes": [
-      "090157",
-      "50457"
-    ],
-    "names": [
-      "INFINITY MICROFINANCE BANK",
-      "Infinity MFB",
-      "infinity mfb"
-    ]
-  },
-  {
     "file": "loma-mfb-ng.png",
     "codes": [
       "50491"
     ],
     "names": [
       "loma mfb ng"
-    ]
-  },
-  {
-    "file": "kadpoly-mfb.png",
-    "codes": [
-      "090320",
-      "50502"
-    ],
-    "names": [
-      "KADPOLY MICROFINANCE BANK",
-      "Kadpoly MFB",
-      "kadpoly mfb"
     ]
   },
   {
@@ -685,18 +418,6 @@
     ]
   },
   {
-    "file": "links-mfb.png",
-    "codes": [
-      "090435",
-      "50549"
-    ],
-    "names": [
-      "LINKS MICROFINANCE BANK",
-      "Links MFB",
-      "links mfb"
-    ]
-  },
-  {
     "file": "mayfair-mfb.png",
     "codes": [
       "090321",
@@ -705,18 +426,6 @@
     "names": [
       "MAYFAIR MICROFINANCE BANK",
       "mayfair mfb"
-    ]
-  },
-  {
-    "file": "shield-mfb-ng.png",
-    "codes": [
-      "090559",
-      "50582"
-    ],
-    "names": [
-      "Shield MFB",
-      "Shield Microfinance Bank Ltd",
-      "shield mfb ng"
     ]
   },
   {
@@ -739,16 +448,6 @@
     "names": [
       "Oluchukwu Microfinance Bank",
       "oluchukwu microfinance bank ltd ng"
-    ]
-  },
-  {
-    "file": "goodnews-microfinance-bank-ng.png",
-    "codes": [
-      "50739"
-    ],
-    "names": [
-      "Goodnews Microfinance Bank",
-      "goodnews microfinance bank ng"
     ]
   },
   {
@@ -798,18 +497,6 @@
     ]
   },
   {
-    "file": "solid-rock-mfb.png",
-    "codes": [
-      "090524",
-      "50800"
-    ],
-    "names": [
-      "Solid Rock MFB",
-      "Solidrock Microfinance Bank",
-      "solid rock mfb"
-    ]
-  },
-  {
     "file": "stateside-microfinance-bank-ng.png",
     "codes": [
       "090583",
@@ -818,28 +505,6 @@
     "names": [
       "STATESIDE MFB",
       "stateside microfinance bank ng"
-    ]
-  },
-  {
-    "file": "cemcs-microfinance-bank.png",
-    "codes": [
-      "090154",
-      "50823"
-    ],
-    "names": [
-      "CEMCS MICROFINANCE BANK",
-      "CEMCS Microfinance Bank",
-      "cemcs microfinance bank"
-    ]
-  },
-  {
-    "file": "uc-microfinance-bank-ltd-u-and-c-mfb-ng.png",
-    "codes": [
-      "50840"
-    ],
-    "names": [
-      "U&C Microfinance Bank Ltd (U AND C MFB)",
-      "uc microfinance bank ltd u and c mfb ng"
     ]
   },
   {
@@ -866,36 +531,12 @@
     ]
   },
   {
-    "file": "unical-mfb.png",
-    "codes": [
-      "090193",
-      "50871"
-    ],
-    "names": [
-      "UNICAL MICROFINANCE BANK",
-      "Unical MFB",
-      "unical mfb"
-    ]
-  },
-  {
     "file": "uzondu-microfinance-bank-awka-anambra-state-ng.png",
     "codes": [
       "50894"
     ],
     "names": [
       "uzondu microfinance bank awka anambra state ng"
-    ]
-  },
-  {
-    "file": "consumer-microfinance-bank-ng.png",
-    "codes": [
-      "090130",
-      "50910"
-    ],
-    "names": [
-      "CONSUMER MICROFINANCE BANK",
-      "Consumer Microfinance Bank",
-      "consumer microfinance bank ng"
     ]
   },
   {
@@ -923,33 +564,12 @@
     ]
   },
   {
-    "file": "supreme-mfb-ng.png",
-    "codes": [
-      "50968"
-    ],
-    "names": [
-      "supreme mfb ng"
-    ]
-  },
-  {
     "file": "rephidim.gif",
     "codes": [
       "50994"
     ],
     "names": [
       "rephidim"
-    ]
-  },
-  {
-    "file": "solid-allianze-mfb.png",
-    "codes": [
-      "090506",
-      "51062"
-    ],
-    "names": [
-      "SOLID ALLIANZE MICROFINANCE BANK",
-      "Solid Allianze MFB",
-      "solid allianze mfb"
     ]
   },
   {
@@ -992,18 +612,6 @@
     ]
   },
   {
-    "file": "above-only-mfb.png",
-    "codes": [
-      "090260",
-      "51204"
-    ],
-    "names": [
-      "ABOVE ONLY MICROFINANCE BANK ",
-      "Above Only MFB",
-      "above only mfb"
-    ]
-  },
-  {
     "file": "tcf-mfb.png",
     "codes": [
       "51211"
@@ -1022,41 +630,6 @@
     "names": [
       "PECANTRUST MICROFINANCE BANK",
       "pecantrust microfinance bank limited ng"
-    ]
-  },
-  {
-    "file": "bainescredit-mfb.png",
-    "codes": [
-      "090188",
-      "51229"
-    ],
-    "names": [
-      "BAINES CREDIT MICROFINANCE BANK",
-      "Bainescredit MFB",
-      "bainescredit mfb"
-    ]
-  },
-  {
-    "file": "ibile-mfb.png",
-    "codes": [
-      "090118",
-      "51244"
-    ],
-    "names": [
-      "IBILE MICROFINANCE BANK",
-      "Ibile Microfinance Bank",
-      "ibile mfb"
-    ]
-  },
-  {
-    "file": "hackman-microfinance-bank.png",
-    "codes": [
-      "090147",
-      "51251"
-    ],
-    "names": [
-      "HACKMAN MICROFINANCE BANK",
-      "hackman microfinance bank"
     ]
   },
   {
@@ -1129,17 +702,6 @@
     ]
   },
   {
-    "file": "crescent-mfb.png",
-    "codes": [
-      "090526",
-      "51297"
-    ],
-    "names": [
-      "Crescent Microfinance Bank",
-      "crescent mfb"
-    ]
-  },
-  {
     "file": "kanopoly-mfb-ng.png",
     "codes": [
       "090592",
@@ -1158,30 +720,6 @@
     "names": [
       "Sparkle Microfinance Bank",
       "sparkle microfinance bank"
-    ]
-  },
-  {
-    "file": "abulesoro-mfb-ng.png",
-    "codes": [
-      "090545",
-      "51312"
-    ],
-    "names": [
-      "Abulesoro MFB",
-      "Abulesoro Microfinance Bank Ltd",
-      "abulesoro mfb ng"
-    ]
-  },
-  {
-    "file": "firmus-mfb.png",
-    "codes": [
-      "090366",
-      "51314"
-    ],
-    "names": [
-      "FIRMUS MICROFINANCE BANK",
-      "Firmus MFB",
-      "firmus mfb"
     ]
   },
   {
@@ -1267,46 +805,12 @@
     ]
   },
   {
-    "file": "waya-microfinance-bank-ng.png",
-    "codes": [
-      "090590",
-      "51355"
-    ],
-    "names": [
-      "WAYA MICROFINANCE BANK LTD",
-      "Waya Microfinance Bank",
-      "waya microfinance bank ng"
-    ]
-  },
-  {
     "file": "net-microfinance-bank-ng.png",
     "codes": [
       "51361"
     ],
     "names": [
       "net microfinance bank ng"
-    ]
-  },
-  {
-    "file": "lbic-plc.png",
-    "codes": [
-      "90052"
-    ],
-    "names": [
-      "Lagos Building Investment Company Plc.",
-      "lbic plc"
-    ]
-  },
-  {
-    "file": "refuge-mortgage-bank.png",
-    "codes": [
-      "070011",
-      "90067"
-    ],
-    "names": [
-      "REFUGE MORTGAGE BANK",
-      "Refuge Mortgage Bank",
-      "refuge mortgage bank"
     ]
   },
   {
@@ -1331,33 +835,12 @@
     ]
   },
   {
-    "file": "gomoney.png",
-    "codes": [
-      "100022"
-    ],
-    "names": [
-      "GoMoney",
-      "Gomoney",
-      "gomoney"
-    ]
-  },
-  {
     "file": "kongapay-tech-ltd.png",
     "codes": [
       "100025"
     ],
     "names": [
       "kongapay tech ltd"
-    ]
-  },
-  {
-    "file": "titan-paystack.png",
-    "codes": [
-      "100039"
-    ],
-    "names": [
-      "Titan Paystack",
-      "titan paystack"
     ]
   },
   {
@@ -1368,17 +851,6 @@
     "names": [
       "9mobile 9Payment Service Bank",
       "9mobile 9payment service bank ng"
-    ]
-  },
-  {
-    "file": "hopepsb-ng.png",
-    "codes": [
-      "120002"
-    ],
-    "names": [
-      "HOPEPSB",
-      "HopePSB",
-      "hopepsb ng"
     ]
   },
   {
@@ -1514,18 +986,6 @@
       "GLOBUS BANK",
       "Globus Bank",
       "globus bank"
-    ]
-  },
-  {
-    "file": "astrapolaris-mfb.png",
-    "codes": [
-      "090172",
-      "MFB50094"
-    ],
-    "names": [
-      "ASTRAPOLARIS MICROFINANCE BANK",
-      "Astrapolaris MFB LTD",
-      "astrapolaris mfb"
     ]
   },
   {
@@ -1781,15 +1241,6 @@
     ]
   },
   {
-    "file": "garun-mallam-mfb-ng.png",
-    "codes": [
-      "MFB51093"
-    ],
-    "names": [
-      "garun mallam mfb ng"
-    ]
-  },
-  {
     "file": "goldman-mfb-ng.png",
     "codes": [
       "090574"
@@ -1806,17 +1257,6 @@
     ],
     "names": [
       "good shepherd microfinance bank ng"
-    ]
-  },
-  {
-    "file": "isua-mfb-ng.png",
-    "codes": [
-      "090701"
-    ],
-    "names": [
-      "ISUA MFB",
-      "ISUA MICROFINANCE BANK ",
-      "isua mfb ng"
     ]
   },
   {
@@ -1837,25 +1277,6 @@
     "names": [
       "MUTUAL BENEFITS MICROFINANCE BANK",
       "mutual benefits microfinance bank ng"
-    ]
-  },
-  {
-    "file": "ndcc-microfinance-bank-ng.png",
-    "codes": [
-      "090679"
-    ],
-    "names": [
-      "ndcc microfinance bank ng"
-    ]
-  },
-  {
-    "file": "pathfinder-microfinance-bank-limited-ng.png",
-    "codes": [
-      "090680"
-    ],
-    "names": [
-      "PATHFINDER MFB",
-      "pathfinder microfinance bank limited ng"
     ]
   },
   {
@@ -1886,15 +1307,6 @@
     ]
   },
   {
-    "file": "randalpha-microfinance-bank-ng.png",
-    "codes": [
-      "090496"
-    ],
-    "names": [
-      "randalpha microfinance bank ng"
-    ]
-  },
-  {
     "file": "stanford-microfinance-bank-ng.png",
     "codes": [
       "090162"
@@ -1910,16 +1322,6 @@
     ],
     "names": [
       "the alternative bank ng"
-    ]
-  },
-  {
-    "file": "transpay-mfb-ng.png",
-    "codes": [
-      "090708"
-    ],
-    "names": [
-      "TransPay MICROFINANCE BANK ",
-      "transpay mfb ng"
     ]
   },
   {

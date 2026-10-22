@@ -132,8 +132,13 @@ function getNotificationDestination(input) {
             return disputeId ? `/disputes/${disputeId}` : "/disputes";
         }
         case "payout_processed":
-        case "payout_failed":
-            return "/profile/payout-settings";
+        case "payout_failed": {
+            const payoutId = firstId(data.payoutId, data.payout_id, data.relatedType === 'escrow_transaction' ? undefined : relatedId);
+            if (payoutId)
+                return `/profile/payouts/${encodeURIComponent(payoutId)}`;
+            const transactionId = firstId(data.transactionId, data.transaction_id, data.relatedType === 'escrow_transaction' ? relatedId : undefined);
+            return transactionId ? `/transactions/${encodeURIComponent(transactionId)}` : '/profile/payouts';
+        }
         case "safety_alert":
         case "alert": {
             const alertId = firstId(data?.alertId, data?.alert_id, relatedId, data?.id);
@@ -161,6 +166,13 @@ function getNotificationDestination(input) {
 function getNotificationTarget(data) {
     data = normalizeNotificationPayload(data);
     const type = typeof data.type === "string" ? data.type : "";
+    if (['payout_processed', 'payout_failed'].includes(type)) {
+        const id = firstId(data.payoutId, data.payout_id, data.relatedType === 'escrow_transaction' ? undefined : data.relatedId);
+        if (id)
+            return { table: 'payout_requests', id, fallback: '/profile/payouts' };
+        const transactionId = firstId(data.transactionId, data.transaction_id, data.relatedType === 'escrow_transaction' ? data.relatedId : undefined);
+        return transactionId ? { table: 'escrow_transactions', id: transactionId, fallback: '/transactions' } : null;
+    }
     if ((type === "payment_successful" &&
         !data.transactionId &&
         !data.transaction_id &&
@@ -288,6 +300,9 @@ function getNotificationTarget(data) {
             if (["/profile/payout-settings", "/settings/payout-settings"].includes(url.pathname))
                 return null;
             const parts = url.pathname.split("/").filter(Boolean);
+            if (parts[0] === 'profile' && parts[1] === 'payouts') {
+                return parts[2] ? { table: 'payout_requests', id: decodeURIComponent(parts[2]), fallback: '/profile/payouts' } : null;
+            }
             const types = {
                 messages: "message",
                 chat: "message",
@@ -340,6 +355,8 @@ function getPushNotificationDestination(input) {
     });
     if (getNotificationTarget({ ...data, url: undefined }))
         return typed;
+    if (["payout_processed", "payout_failed"].includes(data.type))
+        return typed;
     if (typeof data.url !== "string")
         return typed;
     try {
@@ -369,8 +386,10 @@ function getPushNotificationDestination(input) {
             "/communities",
             "/notifications",
             "/profile/payout-settings",
+            "/profile/payouts",
         ];
-        if (/^\/messages\/marketplace\/[^/]+$/.test(path) ||
+        if (/^\/profile\/payouts\/[^/]+$/.test(path) ||
+            /^\/messages\/marketplace\/[^/]+$/.test(path) ||
             /^\/businesses\/[^/]+(?:\/catalog\/[^/]+)?\/chat$/.test(path) ||
             list.includes(path) ||
             /^\/(?:messages|posts|profile|events|businesses|bookings|marketplace|transactions|disputes|alerts|communities)\/[^/]+$/.test(path) ||

@@ -173,6 +173,12 @@ export class PayoutService {
       }
       if (!claimed) return { success: false, error: 'Payout is already processing or completed' };
 
+      if (recoveryToken) {
+        await supabaseAdmin.from('payout_requests').update({
+          receipt_snapshot: payoutAccountSnapshot(payoutRequest.seller_account?.account_details),
+        }).eq('id', payoutRequestId).eq('transaction_reference', attemptReference).eq('status', 'processing');
+      }
+
       // Get seller account details
       const accountDetails = payoutRequest.seller_account?.account_details as Record<string, string> | null;
       const accountType = payoutRequest.seller_account?.account_type;

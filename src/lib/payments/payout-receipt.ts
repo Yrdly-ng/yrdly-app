@@ -17,7 +17,7 @@ export interface PayoutReceipt {
   netAmount: number | null;
 }
 const text = (...values: unknown[]): string | null => values.find((v): v is string => typeof v === 'string' && v.trim().length > 0) || null;
-const money = (value: unknown): number | null => value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value)) && Number(value) >= 0 ? Number(value) : null;
+const money = (value: unknown): number | null => (typeof value === 'number' || (typeof value === 'string' && value.trim() !== '')) && Number.isFinite(Number(value)) && Number(value) >= 0 ? Number(value) : null;
 export function payoutDate(...values: unknown[]): string | null {
   for (const value of values) {
     if (!(value instanceof Date) && (typeof value !== 'string' || !value.trim())) continue;
@@ -28,7 +28,7 @@ export function payoutDate(...values: unknown[]): string | null {
 }
 export function formatPayoutDate(value: unknown): string {
   const date = payoutDate(value);
-  return date ? new Date(date).toLocaleString('en-NG', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Date unavailable';
+  return date ? new Date(date).toLocaleString('en-NG', { timeZone: 'Africa/Lagos', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Date unavailable';
 }
 export function payoutAccountSnapshot(account: Record<string, unknown> | null | undefined) {
   const number = text(account?.account_number, account?.accountNumber);

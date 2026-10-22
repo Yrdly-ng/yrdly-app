@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircle2, XCircle, Clock3, Printer, RotateCw } from 'lucide-react';
+import { BankLogo } from '@/components/BankLogo';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -17,17 +18,20 @@ export default function PayoutReceiptPage() {
   const { payoutId } = useParams<{ payoutId: string }>();
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const [payout, setPayout] = useState<PayoutReceipt | null>(null);
+  const [result, setResult] = useState<{ owner: string; id: string; payout: PayoutReceipt } | null>(null);
+  const payout = result?.owner === user?.id && result?.id === payoutId ? result.payout : null;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const load = useCallback(async () => {
-    setLoading(true); setError(null); setPayout(null);
+    if (!user) return;
+    const owner = user.id;
+    setLoading(true); setError(null); setResult(null);
     try {
       const result = await authenticatedFetch<{ payout: PayoutReceipt }>(`/api/seller/payouts/${encodeURIComponent(payoutId)}`, {}, 'GET');
-      setPayout(result.payout);
+      setResult({ owner, id: payoutId, payout: result.payout });
     } catch (error) { setError(error instanceof Error ? error.message : 'Could not load receipt'); }
     finally { setLoading(false); }
-  }, [payoutId]);
+  }, [payoutId, user]);
   useEffect(() => {
     if (authLoading) return;
     if (!user) { router.replace(`/login?redirect=${encodeURIComponent(`/profile/payouts/${payoutId}`)}`); return; }
@@ -69,6 +73,7 @@ export default function PayoutReceiptPage() {
               </div>
               <CardContent className="p-6">
                 {failed && payout.failureReason ? <p className="mb-6 rounded-lg bg-destructive/10 p-3 text-sm text-destructive break-words">{payout.failureReason}</p> : null}
+                {payout.bankName ? <div className="mb-5 flex items-center gap-3"><BankLogo code={payout.bankCode || ''} name={payout.bankName} size={40} /><span className="text-sm font-medium">{payout.bankName}</span></div> : null}
                 <dl className="space-y-4">{fields.map(([label, value]) => <div key={label} className="flex flex-col gap-1 text-sm sm:flex-row sm:justify-between sm:gap-6"><dt className="shrink-0 text-muted-foreground">{label}</dt><dd className="min-w-0 break-words font-medium sm:text-right">{value}</dd></div>)}</dl>
                 {!payout.bankName && !payout.accountNumber ? <p className="mt-6 border-t pt-4 text-xs text-muted-foreground">The bank destination was not recorded for this older withdrawal.</p> : null}
               </CardContent>
