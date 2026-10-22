@@ -312,7 +312,7 @@ test('legacy payout with unknown provider is blocked before any provider request
   assert.equal(response.status,409);
 });
 
-function payoutHarness({ verifyStatus = 'success', walletBalance = 2500, earnings = 2500, otherReserved = 0, lostClaim = false, intentError = false } = {}) {
+function payoutHarness({ verifyStatus = 'success', walletBalance = 2500, earnings = 2500, otherReserved = 0, lostClaim = false, intentError = false, identityError = false, throwAfterIntent = false, raceOnIdentity = false } = {}) {
   const calls = [], updates = [];
   let payout;
   const account = { id:'bank',is_active:true,verification_status:'verified',account_updated_at:null,account_type:'bank_account',
@@ -353,14 +353,23 @@ function payoutHarness({ verifyStatus = 'success', walletBalance = 2500, earning
     return Response.json({status:200,data:{status:verifyStatus}});
   }});
   const {PayoutService} = load('src/lib/payments/payout-service.ts',{
-    './supabase-admin':{supabaseAdmin:admin},'./payluk-service':{PaylukService},
-    './payluk-onboarding':{getPaylukCustomerId:async()=>{calls.push('/v1/customer/get/validated');return 'customer';}},
+    './supabase-admin':{supabaseAdmin:admin},'./payluk-service':{PaylukService:throwAfterIntent ? {...PaylukService,withdrawToBank:async params=>{
+      await params.onIntentReady('durable-intent'); throw new Error('Unexpected error after intent persistence');
+    }} : PaylukService},
+    './payluk-onboarding':{getPaylukCustomerId:async()=>{
+      calls.push('/v1/customer/get/validated');
+      if (identityError && payout?.status === 'processing') {
+        if (raceOnIdentity) Object.assign(payout,{transaction_reference:'newer-attempt',execution_stage:'submitted'});
+        throw Object.assign(new Error('Too many request'),{httpStatus:429,retryAfterSeconds:47});
+      }
+      return 'customer';
+    }},
     './server-notification-service':{NotificationService:{createPayoutProcessedNotification:async()=>{},createPayoutFailedNotification:async()=>{}}},
   });
   return {PayoutService,admin,calls,updates,account,get payout(){return payout;}};
 }
 
-test('one hosted withdrawal stays within seven provider calls and reserves before execution',async()=>{
+test('one hosted withdrawal uses five provider calls and reserves before execution',async()=>{
   const h=payoutHarness();
   const {POST}=load('src/app/api/seller/payouts/request/route.ts',{
     '@/lib/supabase-server':{getAuthenticatedUser:async()=>({data:{user:{id:'seller'}}})},
@@ -368,7 +377,7 @@ test('one hosted withdrawal stays within seven provider calls and reserves befor
   });
   const response=await POST(new Request('https://qa.invalid/api/seller/payouts/request',{method:'POST',body:JSON.stringify({amount:1200})}));
   assert.equal(response.status,200);assert.equal(h.payout.status,'completed');
-  assert.equal(h.calls.length,7);assert.equal(h.calls.filter(x=>x.endsWith('/wallet')).length,2);
+  assert.equal(h.calls.length,5);assert.equal(h.calls.filter(x=>x.endsWith('/wallet')).length,1);
   assert.equal(h.calls.filter(x=>x.endsWith('/verify')).length,1);
   assert.equal(h.payout.amount,1200);const body=await response.json();
   assert.equal(body.amountSentToBank,1189.25);assert.equal(body.fee,10.75);assert.equal(body.totalDebited,1200);
@@ -434,7 +443,7 @@ for(const scenario of ['preparing-failed','preparing-processing','submitted-miss
       }}},
       '@/lib/payluk-service':{PaylukService:{getWithdrawalStatus:async()=>{history++;return scenario==='provider-success'?'success':['provider-failed','stale-attempt'].includes(scenario)?'failed':'pending';}}},
       '@/lib/payluk-onboarding':{getPaylukCustomerId:async()=> 'customer'},
-      '@/lib/payout-service':{PayoutService:{getSellerBalance:async()=>({availableBalance:2500,pendingPayouts:0}),processPayout:async()=>{executions++;return {success:true};}}},
+      '@/lib/payout-service':{PayoutService:{getSellerLedgerBalance:async()=>({availableBalance:2500,pendingPayouts:0}),processPayout:async()=>{executions++;return {success:true};}}},
     });
     const response=await POST(new Request('https://qa.invalid',{method:'POST',headers:{authorization:'Bearer test'}}),{params:Promise.resolve({payoutId:'payout'})});
     assert.equal(history,scenario==='preparing-failed'?0:1);
@@ -1859,4 +1868,64 @@ for (const endpoint of ['place/autocomplete/json','place/details/json']) test(`M
   assert.equal(response.status,200);
   const body = await response.json();
   if (body.predictions) assert.equal(body.predictions.length,10); else assert.deepEqual(body.result,payload.result);
+});
+
+for (const raceOnIdentity of [false,true]) test(`identity rate limit before withdrawal releases only its own preparation: race=${raceOnIdentity}`,async()=>{
+  const h=payoutHarness({identityError:true,raceOnIdentity});
+  const id=await h.PayoutService.reservePayout('seller','bank',1200);
+  const result=await h.PayoutService.processPayout(id);
+  assert.equal(result.success,false);
+  assert.equal(h.payout.status,raceOnIdentity?'processing':'failed');
+  assert.equal(h.payout.execution_stage,raceOnIdentity?'submitted':'preparing');
+  assert.equal(h.calls.some(x=>x.endsWith('/verify')),false);
+  if (!raceOnIdentity) {assert.equal(result.retryAfterSeconds,47);assert.equal(result.retryable,true);}
+  else assert.equal(h.payout.transaction_reference,'newer-attempt');
+});
+test('unexpected service error after intent persistence preserves uncertain execution',async()=>{
+  const h=payoutHarness({throwAfterIntent:true});const id=await h.PayoutService.reservePayout('seller','bank',1200);
+  const result=await h.PayoutService.processPayout(id);
+  assert.equal(result.success,false);assert.equal(h.payout.status,'processing');
+  assert.equal(h.payout.transaction_reference,'durable-intent');assert.equal(result.retryable,false);
+});
+for (const mode of ['previewWithdrawal','withdrawToBank']) test(`${mode} stops on a wallet rate limit and exposes provider retry delay`,async()=>{
+  let calls=0;
+  const {PaylukService}=load('src/lib/payments/payluk-service.ts',{'./payluk-onboarding':{},fetch:async()=>{
+    calls++;return new Response('Too many request',{status:429,headers:{'Retry-After':'47'}});
+  }});
+  const result=await PaylukService[mode]({sellerPaylukCustomerId:'customer',amount:1200,reference:'attempt',bankCode:'001',accountNumber:'0000000000',onIntentReady:async()=>{throw Error('Must not execute');}});
+  assert.equal(calls,1);assert.equal(result.success,false);assert.equal(result.retryAfterSeconds,47);
+});
+
+test('payout request exposes Retry-After and retryable status for preparation throttling',async()=>{
+  const h=payoutHarness({identityError:true});
+  const {POST}=load('src/app/api/seller/payouts/request/route.ts',{
+    '@/lib/supabase-server':{getAuthenticatedUser:async()=>({data:{user:{id:'seller'}}})},
+    '@/lib/supabase-admin':{supabaseAdmin:h.admin},'@/lib/payout-service':{PayoutService:h.PayoutService},
+  });
+  const response=await POST(new Request('https://qa.invalid',{method:'POST',body:JSON.stringify({amount:1200})}));
+  assert.equal(response.status,429);assert.equal(response.headers.get('retry-after'),'47');
+  const result=await response.json();assert.equal(result.retryable,true);assert.equal(result.payoutId,'owned-payout');
+  assert.equal(h.payout.status,'failed');assert.match(result.message,/Wait 47 seconds/);
+});
+for (const [headers,delay] of [[{'Retry-After':'23'},23],[{'RateLimit':'limit=10, remaining=0, reset=42'},42],[{'RateLimit':'"default";r=0;t=39'},39],[{},60]]) {
+  test(`Payluk read preserves rate-limit delay ${JSON.stringify(headers)}`,async()=>{
+    let calls=0;
+    const {PaylukService}=load('src/lib/payments/payluk-service.ts',{'./payluk-onboarding':{},fetch:async()=>{
+      calls++;return Response.json({status:429,message:'Too many request'},{status:429,headers});
+    }});
+    await assert.rejects(PaylukService.getCustomerWallet('customer'),error=>error.httpStatus===429&&error.retryAfterSeconds===delay);
+    assert.equal(calls,1,'Do not busy retry a shared provider key');
+  });
+}
+test('verification rate limit never automatically executes again or releases reserved funds',async()=>{
+  let verifies=0;
+  const {PaylukService}=load('src/lib/payments/payluk-service.ts',{'./payluk-onboarding':{},fetch:async(url,options)=>{
+    if(url.endsWith('/wallet'))return Response.json({status:200,data:{mainBalance:2000}});
+    const input=JSON.parse(options.body);
+    if(url.endsWith('/create-intent'))return Response.json({status:200,data:{amount:input.amount,fee:10.75,reference:input.reference}});
+    verifies++;return Response.json({status:429,message:'Too many request'},{status:429,headers:{'Retry-After':'47'}});
+  }});
+  const result=await PaylukService.withdrawToBank({sellerPaylukCustomerId:'customer',amount:1200,reference:'attempt',bankCode:'001',accountNumber:'0000000000',onIntentReady:async()=>{}});
+  assert.equal(verifies,1);assert.equal(result.outcome,'pending');assert.equal(result.retryAfterSeconds,undefined);
+  assert.match(result.error,/reconcile/);
 });

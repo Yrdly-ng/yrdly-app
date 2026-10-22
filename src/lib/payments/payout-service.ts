@@ -1,3 +1,4 @@
+import { paylukRetryAfterSeconds, payoutRateLimitMessage } from './payluk-rate-limit';
 import { supabaseAdmin } from '../supabase/supabase-admin';
 import { PaylukService } from './payluk-service';
 import { getPaylukCustomerId } from './payluk-onboarding';
@@ -169,7 +170,7 @@ export class PayoutService {
   }
 
   static async reservePayout(sellerId:string,accountId:string,amount:number,transactionId?:string): Promise<string> {
-    const balance = await this.getSellerBalance(sellerId);
+    const balance = await this.getSellerLedgerBalance(sellerId);
     if (amount > balance.availableBalance) throw new Error('INSUFFICIENT_BALANCE');
     const { data,error } = await supabaseAdmin.rpc('reserve_seller_payout',{
       p_seller_id:sellerId,p_account_id:accountId,p_amount:amount,
@@ -190,6 +191,8 @@ export class PayoutService {
     intentFee?: number;
     netAmount?: number;
     totalPaylukDebit?: number;
+    retryAfterSeconds?: number;
+    retryable?: boolean;
   }> {
     try {
       // Get payout request details
@@ -245,7 +248,10 @@ export class PayoutService {
       let transferPending = false;
       let transferErrorMsg = 'Transfer failed';
       let transferReason = '';
-      let transactionReference = '';
+      let transactionReference = attemptReference;
+      let persistedReference = attemptReference;
+      let submissionMayHaveStarted = false;
+      let retryAfterSeconds: number | undefined;
       let maximumWithdrawable: number | undefined;
       let intentFee: number | undefined;
       let actualNetPayoutAmount: number | undefined;
@@ -284,16 +290,19 @@ export class PayoutService {
               reference: attemptReference,
               yrdlyAvailableBalance: yrdlyAvailableBalance,
               onIntentReady: async reference => {
+                submissionMayHaveStarted = true;
                 const { data: saved, error } = await supabaseAdmin.from('payout_requests')
                   .update({ transaction_reference: reference, execution_stage: 'submitted' }).eq('id', payoutRequestId)
                   .eq('status', 'processing').eq('execution_stage', 'preparing').eq('transaction_reference', attemptReference)
                   .select('id').maybeSingle();
                 if (error || !saved) throw new Error('Could not persist withdrawal reference; transfer was not executed.');
+                persistedReference = reference;
               },
             });
 
             transferSuccess = paylukResult.outcome === 'success';
             transferPending = paylukResult.outcome === 'pending';
+            retryAfterSeconds = paylukResult.retryAfterSeconds;
             actualNetPayoutAmount = paylukResult.intentAmount;
             intentFee = paylukResult.intentFee;
             actualTotalDebit = paylukResult.totalPaylukDebit;
@@ -323,7 +332,7 @@ export class PayoutService {
               processed_at: new Date().toISOString(),
             })
             .eq('id', payoutRequestId)
-            .eq('status', 'processing')
+            .eq('status', 'processing').eq('transaction_reference', persistedReference)
             .select('id');
           if (finalizeError || !finalized?.length) {
             console.error('[PayoutService] Transfer accepted but payout record needs manual reconciliation', {
@@ -351,7 +360,7 @@ export class PayoutService {
           };
         } else {
           // Update payout request as failed (releasing Yrdly available balance)
-          await supabaseAdmin
+          const { data: failedRows, error: failedError } = await supabaseAdmin
             .from('payout_requests')
             .update({
               status: transferPending ? 'processing' : 'failed',
@@ -359,10 +368,12 @@ export class PayoutService {
               failure_reason: transferReason || transferErrorMsg,
               processed_at: new Date().toISOString(),
             })
-            .eq('id', payoutRequestId).eq('status','processing');
+            .eq('id', payoutRequestId).eq('status','processing').eq('transaction_reference', persistedReference)
+            .eq('execution_stage', submissionMayHaveStarted ? 'submitted' : 'preparing').select('id');
+          if (failedError || !failedRows?.length) return { success: false, retryable: false, error: 'Payout status needs reconciliation. Do not retry yet.' };
 
-          // Send failure notification
-          try {
+          // Pending outcomes must not be announced as failed.
+          if (!transferPending) try {
             await NotificationService.createPayoutFailedNotification(
               payoutRequest.seller_id,
               payoutRequest.amount,
@@ -379,34 +390,45 @@ export class PayoutService {
             reason: transferReason,
             maximumWithdrawable,
             intentFee,
+            retryAfterSeconds,
+            retryable: !transferPending,
           };
         }
 
       } catch (transferError: any) {
         console.error('Transfer error:', transferError);
         
-        const errorMsg = transferError instanceof Error ? transferError.message : 'Unknown error';
-        await supabaseAdmin
+        const delay = paylukRetryAfterSeconds(transferError);
+        const errorMsg = !submissionMayHaveStarted && delay
+          ? payoutRateLimitMessage(delay)
+          : transferError instanceof Error ? transferError.message : 'Unknown error';
+        // Only the worker that still owns this preparation can release its funds.
+        // Once intent persistence is attempted, retain the reservation on uncertainty.
+        const { data: changed, error: saveError } = await supabaseAdmin
           .from('payout_requests')
           .update({
-            status: 'processing',
-            failure_reason: `Uncertain transfer; reconcile before retry: ${errorMsg}`,
+            status: submissionMayHaveStarted ? 'processing' : 'failed',
+            failure_reason: submissionMayHaveStarted ? `Uncertain transfer; reconcile before retry: ${errorMsg}` : errorMsg,
             processed_at: new Date().toISOString(),
           })
-          .eq('id', payoutRequestId).eq('status','processing');
+          .eq('id', payoutRequestId).eq('status', 'processing')
+          .eq('transaction_reference', persistedReference)
+          .eq('execution_stage', submissionMayHaveStarted ? 'submitted' : 'preparing').select('id');
+        if (saveError || !changed?.length) return { success: false, retryable: false, error: 'Payout status needs reconciliation. Do not retry yet.' };
 
-        try {
+        if (!submissionMayHaveStarted) try {
           await NotificationService.createPayoutFailedNotification(
-            payoutRequest.seller_id,
-            payoutRequest.amount,
-            errorMsg,
-            payoutRequestId
+            payoutRequest.seller_id, payoutRequest.amount, errorMsg, payoutRequestId
           );
         } catch (notificationError) {
           console.error('Failed to send payout failure notification:', notificationError);
         }
-
-        return { success: false, error: errorMsg };
+        return {
+          success: false,
+          error: submissionMayHaveStarted ? 'Transfer outcome is uncertain; reconcile this payout before retrying.' : errorMsg,
+          retryable: !submissionMayHaveStarted,
+          retryAfterSeconds: submissionMayHaveStarted ? undefined : delay,
+        };
       }
 
     } catch (error: any) {

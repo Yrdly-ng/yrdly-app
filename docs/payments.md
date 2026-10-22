@@ -107,15 +107,25 @@ even though it is absent from the general bank list. The optional `provider-test
 mode uses this separately verified fixture; the controlled beneficiary is kept
 separately. This is a QA fixture exception, not a production bank-code fallback.
 
-A normal seller withdrawal uses seven provider requests, including identity
-validation, reservation wallet lookup, a final execution wallet check, two fee
-intents and verification. Payluk's key-wide 10/minute limit still applies across
+A normal seller withdrawal uses five provider requests: identity validation,
+one execution wallet check, two fee intents and verification. Reservation and
+retry preflight use the earned-funds ledger under the seller lock; execution
+still checks the live provider wallet before staging. Preview similarly uses
+one identity lookup and one wallet check. Payluk's key-wide 10/minute limit still applies across
 concurrent customers and applications; this is not a load-capacity guarantee.
-The request no longer repeats balance lookups in each layer.
+The request no longer repeats balance lookups in each layer. Provider 429
+responses stop the operation and return `retryAfterSeconds` plus `Retry-After`
+on payout APIs (provider delay when supplied, otherwise 60 seconds). There is
+no automatic payment verification retry or process-local limiter pretending
+to enforce the shared key quota. Preview also stops if its wallet read fails.
 
 Each attempt stores `execution_stage=preparing` and a fresh reference before
 provider work; the exact final intent and `submitted` marker are saved before
-verification. A failed preparing attempt may retry the same ledger row. Submitted,
+verification. Identity, ledger and wallet failures before submission become failed only if
+the worker still owns the exact preparing attempt reference. A failed preparing
+attempt may retry the same ledger row. Exceptions after intent persistence is
+attempted remain reserved for reconciliation; a stale worker cannot change a
+newer attempt. Pending outcomes do not send failure notifications. Submitted,
 processing and legacy attempts require definitive provider reconciliation;
 empty history is uncertain. Requeue compares the observed status and reference
 inside the seller lock, so stale concurrent proof cannot restart a newer attempt.

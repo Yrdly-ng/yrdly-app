@@ -1,3 +1,4 @@
+import { paylukRetryAfterSeconds } from '@/lib/payments/payluk-rate-limit';
 import { PaylukService } from '@/lib/payments/payluk-service';
 import { getPaylukCustomerId } from '@/lib/payments/payluk-onboarding';
 import { getAuthenticatedUser } from '@/lib/supabase/supabase-server';
@@ -60,7 +61,7 @@ export async function POST(
       return NextResponse.json({ error: 'Legacy payout has no durable provider reference. Support must reconcile it before retry.' }, { status: 409 });
     }
     // Re-reserve under the same seller lock used by new withdrawal requests.
-    const balance = await PayoutService.getSellerBalance(user.id);
+    const balance = await PayoutService.getSellerLedgerBalance(user.id);
     const { data: reset, error: updateError } = await supabaseAdmin.rpc('requeue_seller_payout', {
       p_payout_id:payoutId,p_seller_id:user.id,p_wallet_limit:balance.availableBalance+balance.pendingPayouts,
       p_expected_reference: payout.transaction_reference, p_expected_status: payout.status,
@@ -86,11 +87,16 @@ export async function POST(
     return NextResponse.json({ 
       success: result.success,
       error: result.success ? undefined : result.error,
-      payout: updatedPayout 
-    }, { status: result.success ? 200 : 502 });
+      payout: updatedPayout,
+      retryAfterSeconds: result.retryAfterSeconds,
+      retryable: result.retryable
+    }, { status: result.success ? 200 : result.retryAfterSeconds ? 429 : 502,
+      headers: result.retryAfterSeconds ? { 'Retry-After': String(result.retryAfterSeconds) } : undefined });
 
   } catch (error: any) {
     console.error('Error retrying payout:', error);
+    const delay = paylukRetryAfterSeconds(error);
+    if (delay) return NextResponse.json({ error: 'Payluk is busy. Wait before reconciling this payout again.', retryAfterSeconds: delay }, { status: 429, headers: { 'Retry-After': String(delay) } });
     return NextResponse.json(
       { error: error.message || 'Failed to retry payout' },
       { status: 500 }

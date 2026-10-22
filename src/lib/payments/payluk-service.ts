@@ -1,3 +1,4 @@
+import { paylukRateLimitDelay, paylukRetryAfterSeconds, payoutRateLimitMessage } from './payluk-rate-limit';
 import { withdrawalOutcome, type WithdrawalOutcome } from './payment-state';
 // Server-side only - Payluk service
 // This service should only be used in API routes, not in client components.
@@ -35,7 +36,7 @@ interface PaylukEnvelope<T> {
 // ── Request helpers ─────────────────────────────────────────────────────────
 
 export class PaylukRequestError extends Error {
-  constructor(message: string, readonly httpStatus: number, readonly providerStatus: number | boolean, readonly providerMessage: string) {
+  constructor(message: string, readonly httpStatus: number, readonly providerStatus: number | boolean, readonly providerMessage: string, readonly retryAfterSeconds?: number) {
     super(message);
     this.name = 'PaylukRequestError';
   }
@@ -73,6 +74,7 @@ async function paylukRequest<T>(
     rawBody = await res.text();
     data = JSON.parse(rawBody) as PaylukEnvelope<T>;
   } catch {
+    if (res.status === 429) throw new PaylukRequestError('Payluk request rate limit reached', 429, 429, 'Too many requests', paylukRateLimitDelay(res.headers));
     throw new Error(
       `[Payluk] ${fetchOptions.method || 'GET'} ${endpoint} — HTTP ${res.status}: non-JSON response`
     );
@@ -83,7 +85,7 @@ async function paylukRequest<T>(
     throw new PaylukRequestError(
       `[Payluk] ${fetchOptions.method || 'GET'} ${endpoint} — HTTP ${res.status}` +
       ` (Payluk status: ${data.status}): ${errMsg}`,
-      res.status, data.status, errMsg,
+      res.status, data.status, errMsg, res.status === 429 ? paylukRateLimitDelay(res.headers) : undefined,
     );
   }
 
@@ -888,6 +890,7 @@ export class PaylukService {
     minimumBankAmount?: number;
     error?: string;
     reason?: string;
+    retryAfterSeconds?: number;
   }> {
     try {
       if (!Number.isFinite(params.amount) || !Number.isSafeInteger(Math.round(params.amount*100)) ||
@@ -895,13 +898,8 @@ export class PaylukService {
         return { success:false,reference:params.reference,error:'Enter a valid withdrawal amount with at most two decimal places.' };
       }
       if (params.amount < PAYLUK_WITHDRAWAL_MINIMUM) return { ...withdrawalMinimumError(),reference:params.reference };
-      let paylukMainBalance = Infinity;
-      try {
-        const wallet = await this.getCustomerWallet(params.sellerPaylukCustomerId);
-        paylukMainBalance = wallet.mainBalance ?? 0;
-      } catch (walletErr) {
-        console.warn('[PaylukService] Could not fetch customer wallet, using Yrdly balance:', walletErr);
-      }
+      const wallet = await this.getCustomerWallet(params.sellerPaylukCustomerId);
+      const paylukMainBalance = wallet.mainBalance ?? 0;
 
       const effectiveAvailableBalance = params.yrdlyAvailableBalance !== undefined
         ? Math.min(params.yrdlyAvailableBalance, paylukMainBalance)
@@ -963,7 +961,8 @@ export class PaylukService {
       return {
         success: false,
         reference: params.reference,
-        error: err.message || 'Failed to preview withdrawal',
+        error: paylukRetryAfterSeconds(err) ? payoutRateLimitMessage(paylukRetryAfterSeconds(err)!) : err.message || 'Failed to preview withdrawal',
+        retryAfterSeconds: paylukRetryAfterSeconds(err),
       };
     }
   }
@@ -1017,6 +1016,7 @@ export class PaylukService {
     error?: string;
     reason?: string;
     paylukStatus?: string;
+    retryAfterSeconds?: number;
   }> {
     let executionStarted = false;
     let activeReference = params.reference;
@@ -1108,7 +1108,8 @@ export class PaylukService {
         outcome: executionStarted ? 'pending' : 'failed',
         success: false,
         reference: activeReference,
-        error: err.message || 'Withdrawal request failed',
+        error: executionStarted ? 'Transfer outcome is uncertain; reconcile this payout before retrying.' : paylukRetryAfterSeconds(err) ? payoutRateLimitMessage(paylukRetryAfterSeconds(err)!) : err.message || 'Withdrawal request failed',
+        retryAfterSeconds: executionStarted ? undefined : paylukRetryAfterSeconds(err),
       };
     }
   }

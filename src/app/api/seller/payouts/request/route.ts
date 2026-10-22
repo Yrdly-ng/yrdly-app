@@ -1,3 +1,4 @@
+import { paylukRetryAfterSeconds, payoutRateLimitMessage } from '@/lib/payments/payluk-rate-limit';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/supabase/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
@@ -46,8 +47,8 @@ export async function POST(request: NextRequest) {
     const accountError = payoutAccountError(sellerAccount);
     if (accountError) return NextResponse.json({ error: accountError }, { status: 403 });
 
-    // reservePayout checks provider and ledger availability once, then the SQL
-    // reservation rechecks concurrent requests under the seller lock.
+    // Reserve earned funds under the seller lock; processPayout performs the
+    // authoritative provider wallet check immediately before staging.
     let payoutId: string;
     try {
       payoutId = await PayoutService.reservePayout(user.id, sellerAccount.id, amount);
@@ -68,6 +69,8 @@ export async function POST(request: NextRequest) {
       intentFee?: number;
       netAmount?: number;
       totalPaylukDebit?: number;
+      retryAfterSeconds?: number;
+      retryable?: boolean;
     } | undefined;
     try {
       processResult = await PayoutService.processPayout(payout.id);
@@ -87,7 +90,10 @@ export async function POST(request: NextRequest) {
         requestedAmount: amount,
         fee: processResult.intentFee,
         maximumWithdrawable: processResult.maximumWithdrawable,
-      }, { status: 400 });
+        retryAfterSeconds: processResult.retryAfterSeconds,
+        retryable: processResult.retryable,
+      }, { status: processResult.retryAfterSeconds ? 429 : 400,
+        headers: processResult.retryAfterSeconds ? { 'Retry-After': String(processResult.retryAfterSeconds) } : undefined });
     }
 
     return NextResponse.json({
@@ -99,6 +105,8 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Payout request error:', error);
+    const delay = paylukRetryAfterSeconds(error);
+    if (delay) return NextResponse.json({ error: payoutRateLimitMessage(delay), retryAfterSeconds: delay }, { status: 429, headers: { 'Retry-After': String(delay) } });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

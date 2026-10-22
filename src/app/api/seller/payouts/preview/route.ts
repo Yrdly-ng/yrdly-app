@@ -1,3 +1,4 @@
+import { paylukRetryAfterSeconds, payoutRateLimitMessage } from '@/lib/payments/payluk-rate-limit';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/supabase/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
@@ -19,7 +20,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
     }
     // Validate seller's current available balance
-    const currentBalance = await PayoutService.getSellerBalance(user.id);
+    const currentBalance = await PayoutService.getSellerLedgerBalance(user.id);
     if (amount > currentBalance.availableBalance) {
       return NextResponse.json(
         {
@@ -76,8 +77,10 @@ export async function POST(request: NextRequest) {
             requestedAmount: amount,
             fee: previewResult.intentFee,
             maximumWithdrawable: previewResult.maximumWithdrawable,
+            retryAfterSeconds: previewResult.retryAfterSeconds,
           },
-          { status: 400 }
+          { status: previewResult.retryAfterSeconds ? 429 : 400,
+            headers: previewResult.retryAfterSeconds ? { 'Retry-After': String(previewResult.retryAfterSeconds) } : undefined }
         );
       }
 
@@ -103,6 +106,8 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Payout preview error:', error);
+    const delay = paylukRetryAfterSeconds(error);
+    if (delay) return NextResponse.json({ error: payoutRateLimitMessage(delay), retryAfterSeconds: delay }, { status: 429, headers: { 'Retry-After': String(delay) } });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
