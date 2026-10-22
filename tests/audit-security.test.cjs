@@ -542,7 +542,10 @@ test('stored Payluk identity with a different phone is rejected without remappin
     './supabase-admin': { supabaseAdmin: { from: () => { reads++; return chain({ data: { phone: '08012345678', phone_verified: true, payluk_customer_id: 'existing' } }); } } },
     './payluk-service': { PaylukService: { getCustomerById: async () => ({ customerId: 'existing', phone: '08098765432' }) } },
   });
-  await assert.rejects(ensurePaylukCustomer('buyer'), /identity could not be verified/);
+  await assert.rejects(ensurePaylukCustomer('buyer'), {
+    name: 'PaymentIdentityMismatchError',
+    code: 'PAYMENT_IDENTITY_MISMATCH',
+  });
   assert.equal(reads, 1);
 });
 
