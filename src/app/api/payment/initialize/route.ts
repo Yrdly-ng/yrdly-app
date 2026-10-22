@@ -237,7 +237,7 @@ export async function POST(request: NextRequest) {
     const { data: activeTx, error: activeError } = await activeQuery.order('created_at',{ ascending:false }).limit(1);
     if (activeError) throw activeError;
     let existingTxToResume: any = null;
-    let existing = activeTx?.[0];
+    let existing: NonNullable<typeof activeTx>[number] | null = activeTx?.[0] ?? null;
     if (existing && await expireCheckoutReservation(existing)) existing = null;
     if (existing) {
       if (existing.buyer_id !== buyerId) return NextResponse.json({ error:'Item reserved by another buyer' },{ status:409 });
