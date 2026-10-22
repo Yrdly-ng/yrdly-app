@@ -10,8 +10,6 @@ import { NotificationService } from '@/lib/notifications/server-notification-ser
 import { TicketService } from '@/lib/events/ticket-service';
 import { PaylukService } from '@/lib/payments/payluk-service';
 import { handlePaylukWebhookEvent as handleBookingPaymentEvent } from '@/lib/bookings/booking-payments';
-import { PayoutService } from '@/lib/payments/payout-service';
-import { sendPushNotification } from '@/lib/notifications/server-push-notification';
 import { applyDisputeSettlement } from '@/lib/disputes/dispute-settlement';
 
 // ── Signature verification ───────────────────────────────────────────────────
@@ -309,36 +307,7 @@ async function handleEscrowCompleted(data: PaylukEscrowData) {
     console.log(`[PaylukWebhook] escrow.completed: tx ${tx.id} → COMPLETED`);
   }
   if (!transitioned?.length) { await flagPayment('payluk',data.id,tx.id,'invalid_transition'); return; }
-  await tryMarketplacePayout(tx);
-}
 
-async function tryMarketplacePayout(tx: { id: string; seller_id: string; item_type: string | null }) {
-  if (tx.item_type === 'ticket') return;
-  try {
-    await PayoutService.initiateAutoPayout(tx.id);
-  } catch (error) {
-    console.error(`[PaylukWebhook] Automatic payout needs attention for ${tx.id}:`, error);
-    const { data: payout } = await supabaseAdmin.from('payout_requests')
-      .select('id').eq('transaction_id', tx.id).maybeSingle();
-    if (payout) return;
-    const notification = {
-      user_id: tx.seller_id,
-      type: 'payout_failed',
-      title: 'Payout needs attention',
-      message: 'Your escrow was released, but the bank payout needs attention. Check your payout settings or contact support.',
-      related_id: tx.id,
-      related_type: 'escrow_transaction',
-      data: { transactionId: tx.id },
-    };
-    const { error: notificationError } = await supabaseAdmin.from('notifications').insert(notification);
-    if (notificationError) throw notificationError;
-    await sendPushNotification(supabaseAdmin, tx.seller_id, {
-      title: notification.title,
-      body: notification.message,
-      data: notification.data,
-      url: `/transactions/${tx.id}`,
-    }, notification.type);
-  }
 }
 
 async function handleEscrowClaimed(data: PaylukEscrowData) {
@@ -373,7 +342,7 @@ async function handleEscrowClaimed(data: PaylukEscrowData) {
 
   console.log(`[PaylukWebhook] escrow.claimed: tx ${tx.id} → COMPLETED (seller-initiated claim)`);
   if (!transitioned?.length) { await flagPayment('payluk',data.id,tx.id,'invalid_transition'); return; }
-  await tryMarketplacePayout(tx);
+
 
   // Notify the seller that their funds have been released.
   try {

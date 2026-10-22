@@ -85,106 +85,9 @@ export class PayoutService {
     return balance;
   }
 
-  /**
-   * Initiate automatic payout after transaction completion.
-   * Uses the seller's actual Payluk wallet balance as the payout amount,
-   * NOT the DB seller_amount (which may be inflated if Payluk took an escrow fee).
-   */
-  static async initiateAutoPayout(transactionId: string): Promise<void> {
-    try {
-      // Get transaction details
-      const { data: transaction, error: fetchError } = await supabaseAdmin
-        .from('escrow_transactions')
-        .select('seller_id, seller_amount, status, payment_provider')
-        .eq('id', transactionId)
-        .single();
-
-      if (fetchError) {
-        console.error('Error fetching transaction:', fetchError);
-        throw fetchError;
-      }
-
-      if (transaction.status !== 'completed') {
-        throw new Error('Transaction must be completed before payout');
-      }
-
-      const { data: priorPayout, error: priorError } = await supabaseAdmin
-        .from('payout_requests')
-        .select('id, status')
-        .eq('transaction_id', transactionId)
-        .maybeSingle();
-      if (priorError) throw priorError;
-      if (priorPayout) {
-        if (priorPayout.status === 'completed') return;
-        throw new Error(`Automatic payout ${priorPayout.id} is ${priorPayout.status}; review or retry that request`);
-      }
-
-      // Get seller's primary account
-      const { data: sellerAccount, error: accountError } = await supabaseAdmin
-        .from('seller_accounts')
-        .select('*')
-        .eq('user_id', transaction.seller_id)
-        .eq('is_primary', true)
-        .eq('is_active', true)
-        .single();
-
-      if (accountError || !sellerAccount) {
-        throw new Error('No active primary seller account for automatic payout');
-      }
-
-      if (sellerAccount.verification_status !== 'verified') {
-        throw new Error('Seller account is not verified for automatic payout');
-      }
-
-      // For Payluk transactions, use the actual Payluk wallet balance as the
-      // payout amount. The DB seller_amount = item price, but Payluk takes an
-      // escrow release fee, so the wallet has less than seller_amount.
-      let payoutAmount = transaction.seller_amount;
-
-      if (transaction.payment_provider === 'payluk') {
-        try {
-          const sellerPaylukId = await getPaylukCustomerId(transaction.seller_id);
-          if (sellerPaylukId) {
-            const wallet = await PaylukService.getCustomerWallet(sellerPaylukId);
-            const walletBalance = wallet.mainBalance ?? 0;
-            if (walletBalance > 0 && walletBalance < payoutAmount) {
-              console.log(`[PayoutService] Auto-payout: Adjusting amount from ₦${payoutAmount} to ₦${walletBalance} (Payluk wallet balance after escrow fee)`);
-              payoutAmount = walletBalance;
-            }
-          }
-        } catch (walletErr) {
-          console.warn('[PayoutService] Auto-payout: Could not check Payluk wallet, using DB seller_amount:', walletErr);
-        }
-      }
-
-      const recoveryEnabled = process.env.AUTO_PAYOUT_RECOVERY_ENABLED === 'true';
-      let recoveryToken: string | undefined;
-      let payoutId: string;
-      if (recoveryEnabled) {
-        const balance = await this.getSellerLedgerBalance(transaction.seller_id);
-        const { data, error } = await supabaseAdmin.rpc('reserve_automatic_seller_payout', {
-          p_seller_id: transaction.seller_id, p_account_id: sellerAccount.id,
-          p_amount: payoutAmount, p_wallet_limit: balance.availableBalance + balance.pendingPayouts,
-          p_transaction_id: transactionId,
-        });
-        if (error || !data?.id || !data?.token) throw new Error('Automatic payout could not be reserved');
-        payoutId = data.id;
-        recoveryToken = data.token;
-      } else {
-        payoutId = await this.reservePayout(transaction.seller_id, sellerAccount.id, payoutAmount, transactionId);
-      }
-
-      const result = await this.processPayout(payoutId, recoveryToken);
-      if (recoveryToken) {
-        const { AutomaticPayoutRecovery } = await import('./automatic-payout-recovery');
-        await AutomaticPayoutRecovery.recordResult(payoutId, recoveryToken, result);
-      }
-      if (!result.success) throw new Error(result.error || 'Automatic payout failed');
-
-    } catch (error) {
-      console.error('Failed to initiate auto payout:', error);
-      throw new Error('Failed to initiate auto payout');
-    }
+  /** Bank withdrawals require an explicit seller request. */
+  static async initiateAutoPayout(_transactionId: string): Promise<void> {
+    throw new Error('Automatic payouts are disabled. Withdraw funds from your payout balance.');
   }
 
   static async reservePayout(sellerId:string,accountId:string,amount:number,transactionId?:string): Promise<string> {
@@ -213,6 +116,8 @@ export class PayoutService {
     retryable?: boolean;
     transientFailure?: boolean;
   }> {
+    // Old recovery workers must never submit a bank withdrawal.
+    if (recoveryToken) return { success: false, error: 'Automatic payouts are disabled.' };
     try {
       // Get payout request details
       const { data: payoutRequest, error: fetchError } = await supabaseAdmin

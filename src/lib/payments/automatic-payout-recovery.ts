@@ -127,7 +127,6 @@ export class AutomaticPayoutRecovery {
     if (error) throw error;
     if (!data) return { status: "idle" };
     const job = data as RecoveryJob;
-    let attemptStarted = false;
     try {
       const payout = await this.readPayout(job.payout_id);
       if (payout.status === "completed" || payout.status === "cancelled") {
@@ -246,49 +245,10 @@ export class AutomaticPayoutRecovery {
           payoutId: job.payout_id,
         };
       }
-      if (job.attempts >= MAX_ATTEMPTS || job.checks > MAX_CHECKS) {
-        await this.finish(
-          job,
-          "attention",
-          300,
-          "Automatic payout recovery limit reached",
-        );
-        return { status: "attention", payoutId: job.payout_id };
-      }
-      if (payout.status === "failed" || payout.status === "processing") {
-        const balance = await PayoutService.getSellerLedgerBalance(
-          payout.seller_id,
-        );
-        const { data: requeued, error: retryError } = await supabaseAdmin.rpc(
-          "requeue_automatic_payout",
-          {
-            p_payout_id: payout.id,
-            p_token: token,
-            p_reference: payout.transaction_reference,
-            p_status: payout.status,
-            p_wallet_limit: balance.availableBalance + balance.pendingPayouts,
-          },
-        );
-        if (retryError || !requeued) {
-          await this.finish(
-            job,
-            "attention",
-            300,
-            "Payout account, balance, or retry ownership needs review",
-          );
-          return { status: "attention", payoutId: job.payout_id };
-        }
-      } else if (payout.status !== "pending") {
-        await this.finish(job, "attention", 300, "Unexpected payout state");
-        return { status: "attention", payoutId: job.payout_id };
-      }
-      attemptStarted = true;
-      const result = await PayoutService.processPayout(job.payout_id, token);
-      await this.recordResult(job.payout_id, token, result);
-      return {
-        status: result.success ? "done" : "recorded",
-        payoutId: job.payout_id,
-      };
+      // Reconciliation may inspect existing submitted transfers, but never
+      // requeue, reserve, create an intent, or initiate another bank withdrawal.
+      await this.finish(job, "attention", 300, "Automatic payouts disabled; seller must request withdrawal.");
+      return { status: "attention", payoutId: job.payout_id };
     } catch (error) {
       // A crashed job remains durable. A later claim inspects the persisted
       // stage; no exception ever authorizes another transfer by itself.
@@ -297,9 +257,7 @@ export class AutomaticPayoutRecovery {
         job,
         job.checks >= MAX_CHECKS
           ? "attention"
-          : !attemptStarted && job.action === "retry"
-            ? "retry"
-            : "reconcile",
+          : "reconcile",
         delay,
         "Recovery check unavailable",
       );

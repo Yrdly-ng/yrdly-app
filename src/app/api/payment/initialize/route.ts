@@ -9,7 +9,9 @@ import { flagPayment } from '@/lib/payments/payment-reconciliation';
 import { applyEscrowPayment } from '@/lib/payments/escrow-payment';
 import { getPaylukCustomerId } from "@/lib/payments/payluk-onboarding";
 
-export const maxDuration = 30;
+import { expireCheckoutReservation, expireItemCheckoutReservations, reservationHasExpired, RESERVATION_SELECT } from '@/lib/payments/checkout-reservation-expiry';
+
+export const maxDuration = 60;
 
 // Rate limiting constants
 const RATE_LIMIT_MAX = 10;
@@ -218,17 +220,25 @@ export async function POST(request: NextRequest) {
     }
 
 
+    // Restore expired catalog stock even when it was reserved by another buyer.
+    if (itemType === 'catalog_item' && await expireItemCheckoutReservations(itemId, itemType)) {
+      const { data: stock, error } = await supabaseAdmin.from('catalog_items').select('in_stock').eq('id', itemId).single();
+      if (error || !stock) throw error || new Error('Could not refresh stock');
+      itemData.is_sold = !stock.in_stock;
+    }
+
     // Resume the buyer's existing reservation before testing fresh stock.
     // Reserving the last catalog unit intentionally makes in_stock false.
     let activeQuery = supabaseAdmin.from('escrow_transactions')
-      .select('id,buyer_id,status,payluk_tx_ref,payluk_escrow_id,total_amount,creating_escrow_started_at,updated_at')
+      .select(RESERVATION_SELECT)
       .eq('item_id',itemId).eq('item_type',itemType)
       .in('status',['pending','paid','shipped','delivered','disputed','creating_escrow','reconciling']);
     if (itemType === 'catalog_item') activeQuery = activeQuery.eq('buyer_id',buyerId);
     const { data: activeTx, error: activeError } = await activeQuery.order('created_at',{ ascending:false }).limit(1);
     if (activeError) throw activeError;
     let existingTxToResume: any = null;
-    const existing = activeTx?.[0];
+    let existing = activeTx?.[0];
+    if (existing && await expireCheckoutReservation(existing)) existing = null;
     if (existing) {
       if (existing.buyer_id !== buyerId) return NextResponse.json({ error:'Item reserved by another buyer' },{ status:409 });
       if (['paid','shipped','delivered'].includes(existing.status)) return NextResponse.json({ success:true,alreadyPaid:true,transactionId:existing.id,totalAmount:existing.total_amount });
@@ -239,7 +249,7 @@ export async function POST(request: NextRequest) {
           await applyEscrowPayment(existing.id,'payluk',existing.payluk_escrow_id);
           return NextResponse.json({ success:true,alreadyPaid:true,transactionId:existing.id,totalAmount:existing.total_amount });
         }
-        if (status === 'PENDING' && remote.state === 'AWAITING_PAYMENT') {
+        if (status === 'PENDING' && remote.state === 'AWAITING_PAYMENT' && !reservationHasExpired(existing)) {
           const buyerPaylukId = await getPaylukCustomerId(buyerId);
           return NextResponse.json({ success:true,transactionId:existing.id,totalAmount:existing.total_amount,
             paylukPaymentToken:existing.payluk_tx_ref,paylukEscrowId:existing.payluk_escrow_id,buyerPaylukId });
@@ -248,20 +258,8 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error:'Previous checkout requires reconciliation. Contact support.' },{ status:409 });
       }
       if (existing.status === 'pending' && !existing.payluk_escrow_id) {
-        const PENDING_TTL_MS = 10 * 60 * 1000; // 10 minutes
-        const pendingAge = Date.now() - Date.parse(existing.updated_at);
-        if (existing.buyer_id === buyerId && pendingAge < PENDING_TTL_MS) {
-          existingTxToResume = existing;
-        } else {
-          // Reservation has expired (>10 min) or belongs to a different buyer path — abandon it.
-          console.log(`[PaymentInit] Abandoning stale pending reservation ${existing.id} (age: ${Math.round(pendingAge / 1000)}s, buyer match: ${existing.buyer_id === buyerId})`);
-          const { error: abandonErr } = await supabaseAdmin.rpc('abandon_checkout_reservation', { p_transaction_id: existing.id });
-          if (abandonErr) {
-            console.error('[PaymentInit] Failed to abandon stale reservation:', abandonErr);
-            throw abandonErr;
-          }
-          // Fall through: treat item as available for this buyer
-        }
+        if (reservationHasExpired(existing)) return NextResponse.json({ error: 'Checkout expiry is being reconciled. Please try again shortly.' }, { status: 409 });
+        existingTxToResume = existing;
       }
       else {
         const lockAge = Date.now() - Date.parse(existing.creating_escrow_started_at || existing.updated_at);

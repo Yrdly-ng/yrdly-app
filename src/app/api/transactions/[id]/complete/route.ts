@@ -2,7 +2,6 @@ import { getAuthenticatedUser } from '@/lib/supabase/supabase-server';
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
 import { EscrowStatus } from '@/types/escrow';
-import { PayoutService } from '@/lib/payments/payout-service';
 import { PaylukService } from '@/lib/payments/payluk-service';
 import { getPaylukCustomerId } from '@/lib/payments/payluk-onboarding';
 
@@ -103,19 +102,8 @@ export async function POST(
       return NextResponse.json({ error: 'Transaction state changed; refresh and try again' }, { status: 409 });
     }
 
-    // 3. Initiate payout to seller now that buyer has confirmed receipt
-    let payoutSucceeded = false;
-    try {
-      await PayoutService.initiateAutoPayout(transactionId);
-      payoutSucceeded = true;
-    } catch (payoutError) {
-      console.error('Payout initiation failed after buyer confirmation:', payoutError);
-      // Don't throw — transaction is still completed even if payout initiation fails
-    }
-
-
-
-    return NextResponse.json({ success: true, payoutSucceeded });
+    // Escrow release credits the seller balance; bank withdrawal is seller-initiated.
+    return NextResponse.json({ success: true, withdrawalRequired: true });
   } catch (error: any) {
     console.error('Complete transaction error:', error);
     return NextResponse.json(

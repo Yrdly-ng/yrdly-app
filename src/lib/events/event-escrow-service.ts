@@ -67,37 +67,9 @@ export class EventEscrowService {
     failed: number;
     errors: string[];
   }> {
-    const cutoff = new Date(
-      Date.now() - EVENT_CONSTANTS.AUTO_RELEASE_HOURS * 60 * 60 * 1000
-    ).toISOString();
-
-    // Find completed events that ended before the cutoff with no payout yet
-    const { data: events, error } = await adminSupabase
-      .from('events')
-      .select('id, organizer_id, title')
-      .in('status', ['PUBLISHED', 'COMPLETED'])
-      .lt('end_time', cutoff)
-      .is('payout_released_at', null);
-
-    if (error || !events?.length) {
-      return { processed: 0, failed: 0, errors: error ? [error.message] : [] };
-    }
-
-    let processed = 0;
-    let failed = 0;
-    const errors: string[] = [];
-
-    for (const event of events) {
-      try {
-        await this.processEventPayout(event.id, event.organizer_id);
-        processed++;
-      } catch (err) {
-        failed++;
-        errors.push(`Event ${event.id}: ${err instanceof Error ? err.message : 'Unknown error'}`);
-      }
-    }
-
-    return { processed, failed, errors };
+    // Bank withdrawals are seller-initiated. Do not enroll or pay event balances
+    // from cron; event settlement needs its own explicit organizer request.
+    return { processed: 0, failed: 0, errors: [] };
   }
 
   /**

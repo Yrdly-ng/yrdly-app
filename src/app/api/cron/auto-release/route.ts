@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
 import { EscrowStatus } from '@/types/escrow';
 import { MARKETPLACE_CONSTANTS } from '@/lib/shared/constants';
-import { PayoutService } from '@/lib/payments/payout-service';
 import { PaylukService } from '@/lib/payments/payluk-service';
 import { getPaylukCustomerId } from '@/lib/payments/payluk-onboarding';
 import { sendPushNotification } from '@/lib/notifications/server-push-notification';
@@ -90,16 +89,6 @@ async function handler(request: NextRequest) {
         // CAS guard check — if 0 rows updated another process already completed this tx
         if (!updated?.length) continue;
 
-        // ── Initiate Payout ───────────────────────────────
-        let payoutSucceeded = false;
-        try {
-          await PayoutService.initiateAutoPayout(tx.id);
-          payoutSucceeded = true;
-        } catch (payoutError) {
-          console.error(`Auto-release payout initiation error for ${tx.id}:`, payoutError);
-          errors.push(`${tx.id}: payout failed`);
-        }
-
         // ── Notify both parties ───────────────────────────
         const { data: item } = await supabaseAdmin
           .from('posts')
@@ -109,14 +98,12 @@ async function handler(request: NextRequest) {
 
         const itemTitle = item?.title || item?.text || 'an item';
 
-        // Report a bank payout only when the payout service confirms success.
+        // Released funds remain available until the seller requests withdrawal.
         const sellerNotification = {
           user_id: tx.seller_id,
-          type: payoutSucceeded ? 'funds_released' : 'payout_failed',
-          title: payoutSucceeded ? 'Funds Auto-Released! 🎉' : 'Payout needs attention',
-          message: payoutSucceeded
-            ? `₦${(tx.seller_amount || tx.amount).toLocaleString()} for "${itemTitle}" has been sent to your payout account.`
-            : `Your transaction for "${itemTitle}" is complete, but the bank payout needs attention. Check your payout settings or contact support.`,
+          type: 'funds_released',
+          title: 'Funds available to withdraw',
+          message: `₦${(tx.seller_amount || tx.amount).toLocaleString()} for "${itemTitle}" is available in your balance. Open Payouts to withdraw to your bank.`,
           related_id: tx.id,
           related_type: 'escrow_transaction',
           data: { amount: tx.seller_amount || tx.amount, itemTitle, transactionId: tx.id },

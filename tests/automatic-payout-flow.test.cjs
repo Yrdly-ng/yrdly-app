@@ -329,6 +329,7 @@ async function fixture(options = {}) {
       if (id === "next/server")
         return { NextRequest: Request, NextResponse: { json: Response.json } };
       if (id === "server-only") return {};
+      if (id === "@supabase/supabase-js") return { createClient: () => admin };
       if (id.startsWith("@/")) return load(`src/${id.slice(2)}.ts`);
       if (id.startsWith("."))
         return load(path.resolve(path.dirname(filename), `${id}.ts`));
@@ -378,11 +379,13 @@ async function fixture(options = {}) {
   const retryRoute = load(
     "src/app/api/seller/payouts/[payoutId]/retry/route.ts",
   ).POST;
+  const requestRoute = load("src/app/api/seller/payouts/request/route.ts").POST;
   const service = load("src/lib/payments/payout-service.ts").PayoutService;
   return {
     db,
     provider,
     service,
+    eventService: load("src/lib/events/event-escrow-service.ts").EventEscrowService,
     notifications,
     admin,
     recovery: load("src/lib/payments/automatic-payout-recovery.ts")
@@ -423,6 +426,9 @@ async function fixture(options = {}) {
         }),
       );
     },
+    withdraw: (amount = 1176) => requestRoute(new Request("https://yrdly.invalid/withdraw", {
+      method: "POST", headers: { Authorization: "Bearer seller-fixture", "Content-Type": "application/json" }, body: JSON.stringify({ amount }),
+    })),
     retry: (payoutId) =>
       retryRoute(
         new Request("https://yrdly.invalid/retry", {
@@ -441,163 +447,89 @@ async function fixture(options = {}) {
 }
 
 if (require.main === module)
-  test("automatic payout from real completion and webhook handlers, with all network isolated", async (t) => {
+  test("seller-controlled withdrawals with all network isolated", async (t) => {
     const originalFetch = globalThis.fetch;
-    globalThis.fetch = () => {
-      throw new Error("Live network is prohibited in automatic payout tests");
-    };
+    globalThis.fetch = () => { throw new Error("Live network prohibited"); };
     try {
-      await t.test(
-        "buyer completion automatically credits 1165.25 from 1176 proceeds including fee, within 10 calls",
-        async () => {
-          const h = await fixture();
-          try {
-            const result = await h.complete();
-            assert.equal(result.status, 200);
-            assert.equal((await result.json()).payoutSucceeded, true);
-            const [payout] = await h.payouts();
-            assert.equal(payout.status, "completed");
-            assert.equal(payout.amount, 1176);
-            assert.equal(payout.transaction_id, sale);
-            assert.deepEqual(h.provider.credits, [1165.25]);
-            assert.equal(h.provider.verifies, 1);
-            assert.equal(h.provider.calls.length, 9);
-            assert.equal(h.provider.wallet, 0);
-            assert.equal(
-              (await h.service.getSellerLedgerBalance(seller)).availableBalance,
-              0,
-            );
-            assert.equal((await h.webhook()).status, 200);
-            assert.equal(h.provider.verifies, 1);
-          } finally {
-            await h.close();
-          }
-        },
-      );
-      await t.test(
-        "signed provider completion independently starts the automatic bank payout",
-        async () => {
-          const h = await fixture();
-          try {
-            h.provider.wallet = 1176; // Provider released escrow before delivering its webhook.
-            assert.equal((await h.webhook()).status, 200);
-            const [payout] = await h.payouts();
-            assert.equal(payout.status, "completed");
-            assert.equal(payout.amount, 1176);
-            assert.equal(h.provider.verifies, 1);
-            assert.deepEqual(h.provider.credits, [1165.25]);
-            assert.equal(h.provider.calls.length, 7);
-          } finally {
-            await h.close();
-          }
-        },
-      );
-      await t.test(
-        "concurrent signed webhooks and buyer completion create only one bank transfer",
-        async () => {
-          const h = await fixture();
-          try {
-            h.provider.wallet = 1176;
-            const results = await Promise.all([
-              h.webhook(),
-              h.complete(),
-              h.webhook(),
-            ]);
-            assert.ok(results.every((r) => [200, 400].includes(r.status)));
-            const payouts = await h.payouts();
-            assert.equal(payouts.length, 1);
-            assert.equal(payouts[0].status, "completed");
-            assert.equal(h.provider.verifies, 1);
-            assert.deepEqual(h.provider.credits, [1165.25]);
-            assert.equal((await h.webhook(false)).status, 401);
-          } finally {
-            await h.close();
-          }
-        },
-      );
-      await t.test(
-        "unverified seller account never reserves or transfers funds",
-        async () => {
-          const h = await fixture({ invalidAccount: true });
-          try {
-            assert.equal(
-              (await (await h.complete()).json()).payoutSucceeded,
-              false,
-            );
-            assert.deepEqual(await h.payouts(), []);
-            assert.equal(h.provider.verifies, 0);
-            assert.equal(h.provider.wallet, 1176);
-          } finally {
-            await h.close();
-          }
-        },
-      );
-      await t.test(
-        "429 before submission releases reservation; same request can retry after the provider rate-limit window",
-        async () => {
-          const h = await fixture({ mode: "rate-limit" });
-          try {
-            assert.equal(
-              (await (await h.complete()).json()).payoutSucceeded,
-              false,
-            );
-            const [payout] = await h.payouts();
-            assert.equal(payout.status, "failed");
-            assert.equal(payout.execution_stage, "preparing");
-            assert.equal(h.provider.verifies, 0);
-            assert.equal(
-              (await h.service.getSellerLedgerBalance(seller)).availableBalance,
-              1176,
-            );
-            const count = h.provider.calls.length;
-            await h.webhook();
-            assert.equal(
-              h.provider.calls.length,
-              count,
-              "webhook redelivery currently does not automatically retry failed payout",
-            );
-            h.provider.mode = null;
-            h.provider.minuteCalls = 0; // Advance to a fresh provider window.
-            const retry = await h.retry(payout.id);
-            assert.equal(retry.status, 200);
-            assert.equal((await h.payouts()).length, 1);
-            assert.equal((await h.payouts())[0].status, "completed");
-            assert.equal(h.provider.verifies, 1);
-            assert.deepEqual(h.provider.credits, [1165.25]);
-          } finally {
-            await h.close();
-          }
-        },
-      );
-      await t.test(
-        "lost verify response retains reservation and blocks a second automatic transfer",
-        async () => {
-          const h = await fixture({ mode: "verify-timeout" });
-          try {
-            assert.equal(
-              (await (await h.complete()).json()).payoutSucceeded,
-              false,
-            );
-            const [payout] = await h.payouts();
-            assert.equal(payout.status, "processing");
-            assert.equal(payout.execution_stage, "submitted");
-            assert.equal(h.provider.verifies, 1);
-            const ledger = await h.service.getSellerLedgerBalance(seller);
-            assert.equal(ledger.availableBalance, 0);
-            assert.equal(ledger.pendingPayouts, 1176);
-            await h.webhook();
-            await assert.rejects(h.service.initiateAutoPayout(sale));
-            await h.service.processPayout(payout.id);
-            assert.equal(h.provider.verifies, 1);
-            assert.deepEqual(h.provider.credits, [1165.25]);
-          } finally {
-            await h.close();
-          }
-        },
-      );
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
+      await t.test("completion and duplicate signed webhooks release funds without a bank transfer", async () => {
+        const h = await fixture({ recovery: true });
+        try {
+          const response = await h.complete();
+          assert.equal(response.status, 200);
+          assert.equal((await response.json()).withdrawalRequired, true);
+          await h.webhook(); await h.webhook();
+          assert.equal((await h.webhook(false)).status, 401);
+          assert.deepEqual(await h.payouts(), []);
+          assert.equal(h.provider.verifies, 0);
+          assert.equal(h.provider.wallet, 1176);
+          assert.equal((await h.service.getSellerLedgerBalance(seller)).availableBalance, 1176);
+          await assert.rejects(h.service.initiateAutoPayout(sale), /disabled/);
+          assert.equal(h.provider.verifies, 0);
+        } finally { await h.close(); }
+      });
+      await t.test("standalone signed webhook leaves earnings available for manual withdrawal", async () => {
+        const h = await fixture();
+        try {
+          h.provider.wallet = 1176;
+          assert.equal((await h.webhook()).status, 200);
+          assert.deepEqual(await h.payouts(), []);
+          assert.equal(h.provider.calls.length, 0);
+          assert.equal((await h.service.getSellerLedgerBalance(seller)).availableBalance, 1176);
+        } finally { await h.close(); }
+      });
+      await t.test("explicit seller withdrawal transfers once with fees included", async () => {
+        const h = await fixture();
+        try {
+          await h.complete();
+          const response = await h.withdraw();
+          assert.equal(response.status, 200);
+          assert.equal((await response.json()).amountSentToBank, 1165.25);
+          assert.equal((await h.payouts())[0].status, "completed");
+          assert.equal((await h.payouts())[0].transaction_id, null);
+          assert.deepEqual(h.provider.credits, [1165.25]);
+          assert.equal(h.provider.verifies, 1);
+          assert.equal((await h.service.getSellerLedgerBalance(seller)).availableBalance, 0);
+        } finally { await h.close(); }
+      });
+      await t.test("unverified bank blocks explicit withdrawal but preserves earnings", async () => {
+        const h = await fixture({ invalidAccount: true });
+        try {
+          assert.equal((await h.complete()).status, 200);
+          assert.equal((await h.withdraw()).status, 403);
+          assert.deepEqual(await h.payouts(), []);
+          assert.equal(h.provider.verifies, 0);
+        } finally { await h.close(); }
+      });
+      await t.test("rate-limited withdrawal retries only after explicit seller action", async () => {
+        const h = await fixture({ mode: "rate-limit" });
+        try {
+          await h.complete();
+          assert.equal((await h.withdraw()).status, 429);
+          const [payout] = await h.payouts();
+          assert.equal(payout.status, "failed");
+          const calls = h.provider.calls.length;
+          await h.webhook();
+          assert.equal(h.provider.calls.length, calls);
+          h.provider.mode = null; h.provider.minuteCalls = 0;
+          assert.equal((await h.retry(payout.id)).status, 200);
+          assert.equal(h.provider.verifies, 1);
+          assert.equal((await h.payouts()).length, 1);
+        } finally { await h.close(); }
+      });
+      await t.test("uncertain explicit withdrawal remains reserved without another transfer", async () => {
+        const h = await fixture({ mode: "verify-timeout" });
+        try {
+          await h.complete(); await h.withdraw();
+          const [payout] = await h.payouts();
+          assert.equal(payout.status, "processing");
+          assert.equal(payout.execution_stage, "submitted");
+          await h.webhook();
+          await h.service.processPayout(payout.id);
+          assert.equal(h.provider.verifies, 1);
+          assert.equal((await h.service.getSellerLedgerBalance(seller)).availableBalance, 0);
+        } finally { await h.close(); }
+      });
+    } finally { globalThis.fetch = originalFetch; }
   });
 
 module.exports = { fixture, seller, buyer, account, sale };

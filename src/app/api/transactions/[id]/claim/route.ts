@@ -3,7 +3,6 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
 import { EscrowStatus } from '@/types/escrow';
 import { MARKETPLACE_CONSTANTS } from '@/lib/shared/constants';
-import { PayoutService } from '@/lib/payments/payout-service';
 import { PaylukService } from '@/lib/payments/payluk-service';
 import { getPaylukCustomerId } from '@/lib/payments/payluk-onboarding';
 
@@ -92,17 +91,8 @@ export async function POST(
       return NextResponse.json({ error: 'Transaction state changed; refresh and try again' }, { status: 409 });
     }
 
-    // Trigger auto payout 
-    let payoutSucceeded = false;
-    try {
-      await PayoutService.initiateAutoPayout(transactionId);
-      payoutSucceeded = true;
-    } catch (payoutError) {
-      console.error('Payout initiation failed during manual claim:', payoutError);
-      // Even if it fails, the transaction is marked completed. Cron job or manual retry handles failures.
-    }
-
-    return NextResponse.json({ success: true, payoutSucceeded });
+    // Escrow release credits the seller balance; bank withdrawal is seller-initiated.
+    return NextResponse.json({ success: true, withdrawalRequired: true });
   } catch (error: any) {
     console.error('Claim transaction error:', error);
     return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });

@@ -197,32 +197,10 @@ settlement.
 - Not verified: live Payluk settlement, bank delivery and browser interaction. No production database mutation, provider transaction, Git push or deployment was performed for this removal.
 
 
-### Automatic payout recovery
+### Seller-controlled withdrawals
 
-Set `AUTO_PAYOUT_RECOVERY_ENABLED=true` only after applying
-`20261022101737_automatic_payout_recovery.sql`. Newly reserved automatic marketplace
-payouts enroll atomically with their reservation; existing and manual withdrawals
-are never enrolled or backfilled. The initial attempt remains immediate. Safe
-pre-submission HTTP 429/408/5xx and transport failures retry at most three times
-(four total attempts), after at least five minutes with exponential backoff and
-respect for Retry-After. Permanent failures stop for review.
+Sale completion, claim, provider webhooks and automatic delivery release credit the seller balance without starting a bank transfer. Sellers explicitly withdraw through payout settings. Automatic recovery cannot start transfers, even if its old environment flag is enabled. Existing submitted withdrawals remain reserved until a definitive provider outcome is reconciled; missing history never permits a retry. Event maturity bank withdrawals are disabled; legacy held ticket revenue still requires its separate organizer settlement workflow.
 
-The authenticated `/api/cron/recover-payouts` endpoint processes at most one
-eligible row per call. `.github/workflows/payout-recovery.yml` schedules it every
-five minutes; GitHub may delay schedules. Set the same dedicated
-`PAYOUT_RECOVERY_CRON_SECRET` in production and GitHub Actions. A database lease
-serializes scheduled calls, and both starting an attempt and persisting its
-submitted intent require the current unexpired token. These controls do not
-replace Payluk's shared key quota across all application traffic.
+### Ten-minute item reservations
 
-Submitted attempts use read-only payment history reconciliation. Missing,
-duplicate, unknown or pending history never authorizes a new transfer. The quote
-is bound to the submitted reference; a manual retry changing that reference
-stops automatic recovery. After eight unsuccessful checks, or when the provider
-confirms failure, recovery stops and inserts seller/admin in-app attention
-notifications once. Uncertain transfers retain their balance reservation.
-
-Disabling the environment flag prevents new enrollment and scheduled recovery.
-Deployment requires the migration, application release and scheduler in that
-order. Tests execute real handlers/services and migration functions against
-PGlite with a fake provider; they do not move money or prove live bank settlement.
+Unpaid item checkout reservations expire ten minutes after created_at, independent of page refreshes. Checkout checks expiry before rejecting another buyer. Provider-backed reservations require confirmed unpaid status and successful provider escrow deletion before local cancellation and stock restoration. Paid or uncertain provider outcomes remain protected against a duplicate sale. A scheduled sweep handles idle reservations; checkout enforces the boundary on demand. Apply 20261022161340_enforce_checkout_reservation_expiry.sql with the server release.
