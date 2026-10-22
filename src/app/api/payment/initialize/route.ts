@@ -247,7 +247,22 @@ export async function POST(request: NextRequest) {
         await flagPayment('payluk',existing.payluk_escrow_id,existing.id,'retry_requires_review');
         return NextResponse.json({ error:'Previous checkout requires reconciliation. Contact support.' },{ status:409 });
       }
-      if (existing.status === 'pending' && !existing.payluk_escrow_id) existingTxToResume = existing;
+      if (existing.status === 'pending' && !existing.payluk_escrow_id) {
+        const PENDING_TTL_MS = 10 * 60 * 1000; // 10 minutes
+        const pendingAge = Date.now() - Date.parse(existing.updated_at);
+        if (existing.buyer_id === buyerId && pendingAge < PENDING_TTL_MS) {
+          existingTxToResume = existing;
+        } else {
+          // Reservation has expired (>10 min) or belongs to a different buyer path — abandon it.
+          console.log(`[PaymentInit] Abandoning stale pending reservation ${existing.id} (age: ${Math.round(pendingAge / 1000)}s, buyer match: ${existing.buyer_id === buyerId})`);
+          const { error: abandonErr } = await supabaseAdmin.rpc('abandon_checkout_reservation', { p_transaction_id: existing.id });
+          if (abandonErr) {
+            console.error('[PaymentInit] Failed to abandon stale reservation:', abandonErr);
+            throw abandonErr;
+          }
+          // Fall through: treat item as available for this buyer
+        }
+      }
       else {
         const lockAge = Date.now() - Date.parse(existing.creating_escrow_started_at || existing.updated_at);
         if (existing.status === 'creating_escrow' && lockAge >= 60_000) {
