@@ -5,6 +5,7 @@ import { getPaylukCustomerId } from './payluk-onboarding';
 import { NotificationService } from '../notifications/server-notification-service';
 import { payoutAccountError } from './payout-account';
 import { randomUUID } from 'node:crypto';
+import { toPayoutReceipt, payoutAccountSnapshot, type PayoutReceipt } from './payout-receipt';
 
 export interface PayoutRequest {
   id: string;
@@ -162,6 +163,7 @@ export class PayoutService {
           transaction_reference: attemptReference,
           payment_provider:'payluk',
           execution_stage: 'preparing',
+          receipt_snapshot: payoutAccountSnapshot(payoutRequest.seller_account?.account_details),
         })
         .eq('id', payoutRequestId)
         .eq('status', 'pending')
@@ -271,6 +273,7 @@ export class PayoutService {
             .from('payout_requests')
             .update({
               amount: finalPayoutAmount,
+              receipt_snapshot: { ...payoutAccountSnapshot(accountDetails), fee: intentFee ?? null, netAmount: actualNetPayoutAmount ?? null },
               status: 'completed',
               transaction_reference: transactionReference,
               processed_at: new Date().toISOString(),
@@ -308,6 +311,7 @@ export class PayoutService {
             .from('payout_requests')
             .update({
               status: transferPending ? 'processing' : 'failed',
+              receipt_snapshot: { ...payoutAccountSnapshot(accountDetails), fee: intentFee ?? null, netAmount: actualNetPayoutAmount ?? null },
               transaction_reference: transactionReference,
               failure_reason: transferReason || transferErrorMsg,
               processed_at: new Date().toISOString(),
@@ -417,7 +421,7 @@ export class PayoutService {
   /**
    * Get payout history for a seller
    */
-  static async getSellerPayoutHistory(sellerId: string): Promise<PayoutRequest[]> {
+  static async getSellerPayoutHistory(sellerId: string): Promise<PayoutReceipt[]> {
     try {
       const { data, error } = await supabaseAdmin
         .from('payout_requests')
@@ -430,12 +434,7 @@ export class PayoutService {
         throw error;
       }
 
-      return (data || []).map(row => ({
-        id: row.id, sellerId: row.seller_id, accountId: row.account_id,
-        amount: Number(row.amount), status: row.status, requestedAt: new Date(row.requested_at),
-        processedAt: row.processed_at ? new Date(row.processed_at) : undefined,
-        failureReason: row.failure_reason || undefined, transactionReference: row.transaction_reference || undefined,
-      }));
+      return (data || []).map(toPayoutReceipt);
     } catch (error) {
       console.error('Failed to get payout history:', error);
       throw new Error('Failed to get payout history');

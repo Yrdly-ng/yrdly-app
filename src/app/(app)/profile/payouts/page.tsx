@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/use-supabase-auth';
-import type { PayoutRequest } from '@/lib/payments/payout-service';
+import { formatPayoutDate, type PayoutReceipt } from '@/lib/payments/payout-receipt';
+import Link from 'next/link';
 import { authenticatedFetch } from '@/lib/auth/authenticated-fetch';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,12 +28,12 @@ export default function PayoutHistoryPage() {
   const { toast } = useToast();
   const router = useRouter();
   
-  const [payouts, setPayouts] = useState<PayoutRequest[]>([]);
+  const [payouts, setPayouts] = useState<PayoutReceipt[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchPayouts = useCallback(async () => {
     try {
-      const { payouts } = await authenticatedFetch<{ payouts:PayoutRequest[] }>('/api/seller/payouts/history',{},'GET');
+      const { payouts } = await authenticatedFetch<{ payouts:PayoutReceipt[] }>('/api/seller/payouts/history',{},'GET');
       setPayouts(payouts);
     } catch (error) {
       console.error('Error fetching payout history:', error);
@@ -76,15 +77,7 @@ export default function PayoutHistoryPage() {
     );
   };
 
-  const formatDate = (date: Date | string) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
+  const formatDate = formatPayoutDate;
 
   if (loading) {
     return (
@@ -163,7 +156,8 @@ export default function PayoutHistoryPage() {
         ) : (
           <div className="space-y-4">
             {payouts.map((payout) => (
-              <Card key={payout.id} className="overflow-hidden">
+              <Link key={payout.id} href={`/profile/payouts/${encodeURIComponent(payout.id)}`} className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" aria-label={`View ${payout.status} withdrawal receipt for ₦${payout.amount.toLocaleString()}`}>
+              <Card className="overflow-hidden transition-colors hover:border-primary/50">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -209,12 +203,13 @@ export default function PayoutHistoryPage() {
 
                     <div className="text-right">
                       <div className="text-sm text-muted-foreground">
-                        Payout #{payout.id.slice(0, 8)}
+                        View receipt · #{payout.id.slice(0, 8)}
                       </div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
+              </Link>
             ))}
           </div>
         )}

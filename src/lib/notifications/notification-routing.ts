@@ -177,8 +177,14 @@ export function getNotificationDestination(
       return disputeId ? `/disputes/${disputeId}` : "/disputes";
     }
     case "payout_processed":
-    case "payout_failed":
-      return "/profile/payout-settings";
+    case "payout_failed": {
+      const payoutId = firstId(data.payoutId, data.payout_id,
+        data.relatedType === 'escrow_transaction' ? undefined : relatedId);
+      if (payoutId) return `/profile/payouts/${encodeURIComponent(payoutId)}`;
+      const transactionId = firstId(data.transactionId, data.transaction_id,
+        data.relatedType === 'escrow_transaction' ? relatedId : undefined);
+      return transactionId ? `/transactions/${encodeURIComponent(transactionId)}` : '/profile/payouts';
+    }
     case "safety_alert":
     case "alert": {
       const alertId = firstId(
@@ -216,6 +222,14 @@ export function getNotificationTarget(data: Record<string, unknown>): {
 } | null {
   data = normalizeNotificationPayload(data);
   const type = typeof data.type === "string" ? data.type : "";
+  if (['payout_processed', 'payout_failed'].includes(type)) {
+    const id = firstId(data.payoutId, data.payout_id,
+      data.relatedType === 'escrow_transaction' ? undefined : data.relatedId);
+    if (id) return { table: 'payout_requests', id, fallback: '/profile/payouts' };
+    const transactionId = firstId(data.transactionId, data.transaction_id,
+      data.relatedType === 'escrow_transaction' ? data.relatedId : undefined);
+    return transactionId ? { table: 'escrow_transactions', id: transactionId, fallback: '/transactions' } : null;
+  }
   if (
     (type === "payment_successful" &&
       !data.transactionId &&
@@ -367,6 +381,9 @@ export function getNotificationTarget(data: Record<string, unknown>): {
       )
         return null;
       const parts = url.pathname.split("/").filter(Boolean);
+      if (parts[0] === 'profile' && parts[1] === 'payouts') {
+        return parts[2] ? { table: 'payout_requests', id: decodeURIComponent(parts[2]), fallback: '/profile/payouts' } : null;
+      }
       const types: Record<string, string> = {
         messages: "message",
         chat: "message",
@@ -422,6 +439,7 @@ export function getPushNotificationDestination(
     data,
   });
   if (getNotificationTarget({ ...data, url: undefined })) return typed;
+  if (["payout_processed", "payout_failed"].includes(data.type)) return typed;
   if (typeof data.url !== "string") return typed;
   try {
     const url = new URL(data.url, "https://app.yrdly.ng");
@@ -449,8 +467,10 @@ export function getPushNotificationDestination(
       "/communities",
       "/notifications",
       "/profile/payout-settings",
+      "/profile/payouts",
     ];
     if (
+      /^\/profile\/payouts\/[^/]+$/.test(path) ||
       /^\/messages\/marketplace\/[^/]+$/.test(path) ||
       /^\/businesses\/[^/]+(?:\/catalog\/[^/]+)?\/chat$/.test(path) ||
       list.includes(path) ||

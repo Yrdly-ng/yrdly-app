@@ -133,8 +133,8 @@ const cases = [
   ...['payout_processed', 'payout_failed'].map((type) => [
     type,
     {},
-    '/profile/payout-settings',
-    '/settings/payout-settings',
+    '/profile/payouts',
+    '/settings/payouts',
   ]),
   ...['safety_alert', 'alert'].map((type) => [
     type,
