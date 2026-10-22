@@ -186,6 +186,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       account: {
+        bankName: data.account_details?.bank_name || data.account_details?.bankName || '',
         accountName: data.account_details?.account_name || '',
         accountNumber: data.account_details?.account_number || '',
         bankCode: data.account_details?.bank_code || '',

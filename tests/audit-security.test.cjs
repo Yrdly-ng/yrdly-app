@@ -590,7 +590,7 @@ test('payout account API reports immediate availability to existing clients', as
   const { GET } = load('src/app/api/seller/setup-account/route.ts', {
     '@/lib/supabase/supabase-server': { getAuthenticatedUser: async () => ({ data: { user: { id: 'seller' } } }) },
     '@/lib/supabase/supabase-admin': { supabaseAdmin: { from: table => chain({ data: table === 'seller_accounts' ? {
-      verification_status: 'verified', account_updated_at: new Date().toISOString(), account_details: {},
+      verification_status: 'verified', account_updated_at: new Date().toISOString(), account_details: { bank_name: 'Test Bank' },
     } : [] }) } },
     '@/lib/payments/payluk-service': { PaylukService: {} },
   });
@@ -598,6 +598,7 @@ test('payout account API reports immediate availability to existing clients', as
   const { account } = await response.json();
   assert.equal(response.status, 200);
   assert.equal(account.isVerified, true);
+  assert.equal(account.bankName, 'Test Bank');
   assert.equal(account.inCoolingOff, false);
   assert.equal(account.coolingOffEnds, null);
 });
