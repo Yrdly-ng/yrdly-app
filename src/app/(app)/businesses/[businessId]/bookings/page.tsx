@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/use-supabase-auth';
-import { useBusinessBookings } from '@/hooks/use-bookings';
-import { supabase } from '@/lib/supabase/supabase';
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/use-supabase-auth";
+import { useBusinessBookings } from "@/hooks/use-bookings";
+import { supabase } from "@/lib/supabase/supabase";
 
 export default function BusinessBookingsPage() {
   const params = useParams();
@@ -12,8 +12,10 @@ export default function BusinessBookingsPage() {
   const { user, loading: authLoading } = useAuth();
   const businessId = params.businessId as string;
   const [authorized, setAuthorized] = useState<boolean | null>(null);
-  const [businessName, setBusinessName] = useState('');
-  const { bookings, loading, refresh } = useBusinessBookings(authorized ? businessId : undefined);
+  const [businessName, setBusinessName] = useState("");
+  const { bookings, loading, error, refresh } = useBusinessBookings(
+    authorized ? businessId : undefined,
+  );
 
   useEffect(() => {
     let active = true;
@@ -24,62 +26,109 @@ export default function BusinessBookingsPage() {
         return;
       }
       const { data, error } = await supabase
-        .from('businesses')
-        .select('id, name, owner_id')
-        .eq('id', businessId)
+        .from("businesses")
+        .select("id, name, owner_id")
+        .eq("id", businessId)
         .maybeSingle();
       if (!active) return;
       setAuthorized(!error && data?.owner_id === user.id);
-      setBusinessName(data?.name || '');
+      setBusinessName(data?.name || "");
     }
     void checkOwner();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [authLoading, businessId, user?.id]);
 
-  const sortedBookings = [...bookings].sort((a, b) =>
-    new Date(a.appointment_time).getTime() - new Date(b.appointment_time).getTime()
+  const sortedBookings = [...bookings].sort(
+    (a, b) =>
+      new Date(a.appointment_time).getTime() -
+      new Date(b.appointment_time).getTime(),
   );
-  const requests = sortedBookings.filter((booking) => booking.status === 'requested');
-  const otherBookings = sortedBookings.filter((booking) => booking.status !== 'requested');
+  const requests = sortedBookings.filter(
+    (booking) => booking.status === "requested",
+  );
+  const otherBookings = sortedBookings.filter(
+    (booking) => booking.status !== "requested",
+  );
 
   return (
-    <main className="min-h-screen bg-neutral-950 text-neutral-100 p-4 sm:p-6 lg:p-8">
+    <main className="min-h-screen font-yrdly-body bg-background text-foreground p-4 sm:p-6 lg:p-8">
       <div className="max-w-5xl mx-auto">
-        <header className="flex items-center justify-between gap-4 pb-6 border-b border-neutral-800">
+        <header className="flex items-center justify-between gap-4 pb-6 border-b border-border">
           <div>
-            <h1 className="text-2xl font-bold">Booking Requests</h1>
-            <p className="text-sm text-neutral-400 mt-1">{businessName || 'Your business'}</p>
+            <h1 className="font-yrdly-display text-3xl sm:text-4xl font-bold tracking-tight">
+              Your booking desk
+            </h1>
+            <p className="text-sm leading-relaxed text-muted-foreground mt-1">
+              {businessName || "Your business"}
+            </p>
           </div>
           <div className="flex gap-2">
-            <button onClick={refresh} disabled={loading} className="px-3 py-2 rounded-lg bg-neutral-900 border border-neutral-800 text-sm disabled:opacity-50">
+            <button
+              onClick={refresh}
+              disabled={loading}
+              className="px-3 py-2 rounded-lg bg-card border border-border text-sm disabled:opacity-50"
+            >
               Refresh
             </button>
-            <button onClick={() => router.push(`/businesses/${businessId}`)} className="px-3 py-2 rounded-lg bg-neutral-900 border border-neutral-800 text-sm">
+            <button
+              onClick={() => router.push(`/businesses/${businessId}`)}
+              className="px-3 py-2 rounded-lg bg-card border border-border text-sm"
+            >
               Business page
             </button>
           </div>
         </header>
 
         {authLoading || authorized === null ? (
-          <p className="py-20 text-center text-neutral-400">Checking business access...</p>
+          <p className="py-20 text-center text-muted-foreground">
+            Checking business access...
+          </p>
         ) : !authorized ? (
-          <div role="alert" className="mt-8 rounded-xl border border-red-500/20 bg-red-500/10 p-5 text-red-300">
+          <div
+            role="alert"
+            className="mt-8 rounded-xl border border-red-500/20 bg-red-500/10 p-5 text-red-300"
+          >
             You don’t have access to this provider inbox.
           </div>
+        ) : error ? (
+          <div
+            role="alert"
+            className="my-6 rounded-3xl border border-destructive/30 p-5"
+          >
+            {error}
+            <button
+              onClick={() => void refresh()}
+              className="ml-3 font-semibold underline"
+            >
+              Try again
+            </button>
+          </div>
         ) : loading ? (
-          <p className="py-20 text-center text-neutral-400">Loading bookings...</p>
+          <p className="py-20 text-center text-muted-foreground">
+            Loading bookings...
+          </p>
         ) : (
           <div className="space-y-8 mt-6">
             <section>
-              <h2 className="text-lg font-semibold mb-3">New requests ({requests.length})</h2>
+              <h2 className="text-lg font-semibold mb-3">
+                New requests ({requests.length})
+              </h2>
               {requests.length ? (
                 <div className="grid gap-3 md:grid-cols-2">
                   {requests.map((booking) => (
-                    <BookingCard key={booking.id} booking={booking} onOpen={() => router.push(`/bookings/${booking.id}`)} />
+                    <BookingCard
+                      key={booking.id}
+                      booking={booking}
+                      onOpen={() => router.push(`/bookings/${booking.id}`)}
+                    />
                   ))}
                 </div>
               ) : (
-                <p className="rounded-xl border border-dashed border-neutral-800 p-6 text-sm text-neutral-400">No booking requests need a response.</p>
+                <p className="rounded-xl border border-dashed border-border p-6 text-sm leading-relaxed text-muted-foreground">
+                  No booking requests need a response.
+                </p>
               )}
             </section>
             <section>
@@ -87,11 +136,17 @@ export default function BusinessBookingsPage() {
               {otherBookings.length ? (
                 <div className="grid gap-3 md:grid-cols-2">
                   {otherBookings.map((booking) => (
-                    <BookingCard key={booking.id} booking={booking} onOpen={() => router.push(`/bookings/${booking.id}`)} />
+                    <BookingCard
+                      key={booking.id}
+                      booking={booking}
+                      onOpen={() => router.push(`/bookings/${booking.id}`)}
+                    />
                   ))}
                 </div>
               ) : (
-                <p className="rounded-xl border border-dashed border-neutral-800 p-6 text-sm text-neutral-400">Confirmed and past bookings will appear here.</p>
+                <p className="rounded-xl border border-dashed border-border p-6 text-sm leading-relaxed text-muted-foreground">
+                  Confirmed and past bookings will appear here.
+                </p>
               )}
             </section>
           </div>
@@ -101,25 +156,49 @@ export default function BusinessBookingsPage() {
   );
 }
 
-function BookingCard({ booking, onOpen }: { booking: any; onOpen: () => void }) {
+function BookingCard({
+  booking,
+  onOpen,
+}: {
+  booking: any;
+  onOpen: () => void;
+}) {
   return (
-    <button onClick={onOpen} className="w-full text-left rounded-2xl border border-neutral-800 bg-neutral-900 p-5 hover:border-neutral-600 transition">
+    <button
+      onClick={onOpen}
+      className="w-full text-left rounded-3xl border border-border bg-card p-5 hover:border-primary/40 transition"
+    >
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="font-semibold">{booking.service?.name || 'Service appointment'}</p>
-          <p className="text-sm text-neutral-400 mt-1">Customer: {booking.customer?.name || 'Yrdly customer'}</p>
+          <p className="font-semibold">
+            {booking.service?.name || "Service appointment"}
+          </p>
+          <p className="text-sm leading-relaxed text-muted-foreground mt-1">
+            Customer: {booking.customer?.name || "Yrdly customer"}
+          </p>
         </div>
-        <span className="rounded-full border border-neutral-700 bg-neutral-950 px-2.5 py-1 text-xs capitalize text-neutral-300">
-          {String(booking.status).replaceAll('_', ' ')}
+        <span className="rounded-full border border-border bg-background px-2.5 py-1 text-xs capitalize text-muted-foreground">
+          {String(booking.status).replaceAll("_", " ")}
         </span>
       </div>
-      <p className="mt-4 text-sm text-emerald-300">
-        {new Date(booking.appointment_time).toLocaleString('en-NG', {
-          weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
+      <p className="mt-4 text-sm text-primary">
+        {new Date(booking.appointment_time).toLocaleString("en-NG", {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
         })}
       </p>
-      {booking.notes && <p className="mt-3 line-clamp-2 text-sm text-neutral-400">{booking.notes}</p>}
-      <p className="mt-4 text-xs text-neutral-500">Open to respond or view details →</p>
+      {booking.notes && (
+        <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+          {booking.notes}
+        </p>
+      )}
+      <p className="mt-4 text-xs text-muted-foreground">
+        Open to respond or view details →
+      </p>
     </button>
   );
 }

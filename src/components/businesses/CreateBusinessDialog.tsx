@@ -1,21 +1,13 @@
 "use client";
 
-import { captureWebError } from '@/lib/telemetry/sentry';
-import { trackWebEvent } from '@/lib/telemetry/analytics';
+import { captureWebError } from "@/lib/telemetry/sentry";
+import { trackWebEvent } from "@/lib/telemetry/analytics";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -57,19 +49,20 @@ import { cn } from "@/lib/shared/utils";
 
 const inputBase =
   "bg-background/80 border border-border/80 text-foreground placeholder:text-muted-foreground/70 placeholder:italic font-sans text-sm focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary transition-all";
-const labelClass = "font-sans font-semibold text-xs text-foreground/90 flex items-center gap-1.5";
+const labelClass =
+  "font-sans font-semibold text-xs text-foreground/90 flex items-center gap-1.5";
 
 const WEEK_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 const CATEGORIES = [
-  'Food & Drinks',
-  'Retail',
-  'Services',
-  'Tech',
-  'Health',
-  'Fashion',
-  'Beauty',
-  'Entertainment',
-  'Other',
+  "Food & Drinks",
+  "Retail",
+  "Services",
+  "Tech",
+  "Health",
+  "Fashion",
+  "Beauty",
+  "Entertainment",
+  "Other",
 ];
 
 const BUSINESS_MODES: {
@@ -80,24 +73,24 @@ const BUSINESS_MODES: {
   icon: React.ElementType;
 }[] = [
   {
-    value: 'product',
-    label: 'Products',
-    badge: 'Retail & Sales',
-    description: 'Physical items & retail catalog',
+    value: "product",
+    label: "Products",
+    badge: "Retail & Sales",
+    description: "Physical items & retail catalog",
     icon: ShoppingBag,
   },
   {
-    value: 'service',
-    label: 'Services',
-    badge: 'Bookings & Work',
-    description: 'Appointments & service offerings',
+    value: "service",
+    label: "Services",
+    badge: "Bookings & Work",
+    description: "Appointments & service offerings",
     icon: Wrench,
   },
   {
-    value: 'both',
-    label: 'Hybrid / Both',
-    badge: 'Full Suite',
-    description: 'Sell products & take service bookings',
+    value: "both",
+    label: "Hybrid / Both",
+    badge: "Full Suite",
+    description: "Sell products & take service bookings",
     icon: Layers,
   },
 ];
@@ -111,7 +104,11 @@ function formatTime12h(time24: string): string {
   return `${h}:${mStr} ${period}`;
 }
 
-function formatHours(selectedDays: string[], openTime: string, closeTime: string): string {
+function formatHours(
+  selectedDays: string[],
+  openTime: string,
+  closeTime: string,
+): string {
   if (selectedDays.length === 0 || !openTime || !closeTime) return "";
 
   const orderedSelected = WEEK_DAYS.filter((d) => selectedDays.includes(d));
@@ -121,7 +118,8 @@ function formatHours(selectedDays: string[], openTime: string, closeTime: string
   orderedSelected.forEach((day, i) => {
     const dayIndex = WEEK_DAYS.indexOf(day);
     const prevDay = orderedSelected[i - 1];
-    const isConsecutive = prevDay && WEEK_DAYS.indexOf(prevDay) === dayIndex - 1;
+    const isConsecutive =
+      prevDay && WEEK_DAYS.indexOf(prevDay) === dayIndex - 1;
     if (isConsecutive) {
       current.push(day);
     } else {
@@ -138,9 +136,15 @@ function formatHours(selectedDays: string[], openTime: string, closeTime: string
   return `${dayLabel} ${formatTime12h(openTime)}-${formatTime12h(closeTime)}`;
 }
 
-function parseHours(hours?: string): { days: string[]; open: string; close: string } {
+function parseHours(hours?: string): {
+  days: string[];
+  open: string;
+  close: string;
+} {
   if (!hours) return { days: [], open: "", close: "" };
-  const match = hours.match(/^(.*?)\s+(\d{1,2}:\d{2}\s?[AP]M)-(\d{1,2}:\d{2}\s?[AP]M)$/i);
+  const match = hours.match(
+    /^(.*?)\s+(\d{1,2}:\d{2}\s?[AP]M)-(\d{1,2}:\d{2}\s?[AP]M)$/i,
+  );
   if (!match) return { days: [], open: "", close: "" };
 
   const to24h = (t: string) => {
@@ -173,17 +177,19 @@ function parseHours(hours?: string): { days: string[]; open: string; close: stri
   return { days, open: to24h(match[2]), close: to24h(match[3]) };
 }
 
-const BlobImage = memo(({ file, className }: { file: File; className?: string }) => {
-  const [url, setUrl] = useState<string>("");
-  useEffect(() => {
-    const objectUrl = URL.createObjectURL(file);
-    setUrl(objectUrl);
-    return () => URL.revokeObjectURL(objectUrl);
-  }, [file]);
-  if (!url) return null;
-  // eslint-disable-next-line @next/next/no-img-element
-  return <img src={url} alt="" className={className} />;
-});
+const BlobImage = memo(
+  ({ file, className }: { file: File; className?: string }) => {
+    const [url, setUrl] = useState<string>("");
+    useEffect(() => {
+      const objectUrl = URL.createObjectURL(file);
+      setUrl(objectUrl);
+      return () => URL.revokeObjectURL(objectUrl);
+    }, [file]);
+    if (!url) return null;
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={url} alt="" className={className} />;
+  },
+);
 BlobImage.displayName = "BlobImage";
 
 const getFormSchema = (isEditMode: boolean, businessToEdit?: Business) =>
@@ -192,9 +198,11 @@ const getFormSchema = (isEditMode: boolean, businessToEdit?: Business) =>
     mode: z.enum(["product", "service", "both"]),
     category: z.string().min(1, "Category is required.").max(50),
     description: z.string().min(1, "Description is required.").max(1000),
-    location: z.custom<LocationValue>().refine((value) => value && value.address.length > 0, {
-      message: "Location is required.",
-    }),
+    location: z
+      .custom<LocationValue>()
+      .refine((value) => value && value.address.length > 0, {
+        message: "Location is required.",
+      }),
     phone: z
       .string()
       .refine((val) => val === "" || /^\+234\d{7,10}$/.test(val), {
@@ -204,18 +212,25 @@ const getFormSchema = (isEditMode: boolean, businessToEdit?: Business) =>
       .or(z.literal("")),
     email: z
       .string()
-      .refine((val) => val === "" || z.string().email().safeParse(val).success, {
-        message: "Enter a valid business email address.",
-      })
+      .refine(
+        (val) => val === "" || z.string().email().safeParse(val).success,
+        {
+          message: "Enter a valid business email address.",
+        },
+      )
       .optional()
       .or(z.literal("")),
-    website: z.union([z.string().url("Please enter a valid URL."), z.literal("")]).optional(),
+    website: z
+      .union([z.string().url("Please enter a valid URL."), z.literal("")])
+      .optional(),
     hours: z.string().max(100).optional().or(z.literal("")),
     image: z.any().refine((files) => {
       if (isEditMode && businessToEdit?.image_urls?.length) return true;
       return (
         files &&
-        ((typeof FileList !== "undefined" && files instanceof FileList && files.length > 0) ||
+        ((typeof FileList !== "undefined" &&
+          files instanceof FileList &&
+          files.length > 0) ||
           (Array.isArray(files) && files.some((f) => typeof f === "string")))
       );
     }, "At least one photo is required."),
@@ -239,7 +254,7 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
   const { createBusiness } = usePosts();
   const [internalOpen, setInternalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [submitError, setSubmitError] = useState('');
+  const [submitError, setSubmitError] = useState("");
   const [activeStep, setActiveStep] = useState<1 | 2>(1);
   const [removedImageIndexes, setRemovedImageIndexes] = useState<number[]>([]);
   const [hoursDays, setHoursDays] = useState<string[]>([]);
@@ -252,7 +267,7 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
 
   const formSchema = useMemo(
     () => getFormSchema(isEditMode, businessToEdit),
-    [isEditMode, businessToEdit]
+    [isEditMode, businessToEdit],
   );
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -271,11 +286,16 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
     },
   });
 
-  const stableFormReset = useCallback((values: any) => form.reset(values), [form]);
+  const stableFormReset = useCallback(
+    (values: any) => form.reset(values),
+    [form],
+  );
 
   // Keep hidden `hours` field in sync with hours state
   useEffect(() => {
-    form.setValue("hours", formatHours(hoursDays, openTime, closeTime), { shouldValidate: false });
+    form.setValue("hours", formatHours(hoursDays, openTime, closeTime), {
+      shouldValidate: false,
+    });
   }, [hoursDays, openTime, closeTime, form]);
 
   useEffect(() => {
@@ -323,17 +343,19 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
-    setSubmitError('');
+    setSubmitError("");
 
     let filteredImageUrls: string[] = [];
     if (businessToEdit?.image_urls) {
-      filteredImageUrls = businessToEdit.image_urls.filter((_, i) => !removedImageIndexes.includes(i));
+      filteredImageUrls = businessToEdit.image_urls.filter(
+        (_, i) => !removedImageIndexes.includes(i),
+      );
     }
 
     let validImageFiles: FileList | undefined;
     if (values.image && values.image.length > 0) {
       const validFiles = Array.from(values.image).filter(
-        (f) => f && f instanceof File && (f as File).size > 0
+        (f) => f && f instanceof File && (f as File).size > 0,
       );
       if (validFiles.length > 0) {
         const dt = new DataTransfer();
@@ -357,14 +379,23 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
     };
 
     try {
-      const savedBusinessId = await createBusiness(businessData, businessToEdit?.id, validImageFiles);
-      if (!savedBusinessId) throw new Error('The business could not be saved. Please try again.');
-      void trackWebEvent('business_saved');
+      const savedBusinessId = await createBusiness(
+        businessData,
+        businessToEdit?.id,
+        validImageFiles,
+      );
+      if (!savedBusinessId)
+        throw new Error("The business could not be saved. Please try again.");
+      void trackWebEvent("business_saved");
       handleOpenChange(false);
       onCreated?.(savedBusinessId);
     } catch (error) {
-      captureWebError(error, { operation: 'business.save' });
-      setSubmitError(error instanceof Error ? error.message : 'Failed to save business. Please try again.');
+      captureWebError(error, { operation: "business.save" });
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : "Failed to save business. Please try again.",
+      );
     } finally {
       setLoading(false);
     }
@@ -387,11 +418,17 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
         setActiveStep(1);
       }
     },
-    [onOpenChange, externalOpen, form]
+    [onOpenChange, externalOpen, form],
   );
 
   const goToNextStep = async () => {
-    const step1Valid = await form.trigger(["name", "mode", "category", "description", "location"]);
+    const step1Valid = await form.trigger([
+      "name",
+      "mode",
+      "category",
+      "description",
+      "location",
+    ]);
     if (step1Valid) {
       setActiveStep(2);
     }
@@ -402,19 +439,20 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
     ? "Update your business details, operating hours, and media."
     : "List your business to get discovered by nearby customers.";
 
-  const Trigger = React.forwardRef<HTMLButtonElement, React.HTMLAttributes<HTMLButtonElement>>(
-    (props, ref) => (
-      <button
-        ref={ref}
-        {...props}
-        type="button"
-        className="flex items-center gap-2 h-11 px-5 rounded-full font-sans font-semibold text-sm text-foreground bg-primary hover:opacity-90 transition-all active:scale-95 shadow-md"
-      >
-        <Briefcase className="w-4 h-4" />
-        <span>Add Business</span>
-      </button>
-    )
-  );
+  const Trigger = React.forwardRef<
+    HTMLButtonElement,
+    React.HTMLAttributes<HTMLButtonElement>
+  >((props, ref) => (
+    <button
+      ref={ref}
+      {...props}
+      type="button"
+      className="flex items-center gap-2 h-11 px-5 rounded-full font-sans font-semibold text-sm text-foreground bg-primary hover:opacity-90 transition-all active:scale-95 shadow-md"
+    >
+      <Briefcase className="w-4 h-4" />
+      <span>Add Business</span>
+    </button>
+  ));
   Trigger.displayName = "Trigger";
 
   const headerBlock = (
@@ -426,7 +464,7 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-lg font-bold text-foreground font-sans tracking-tight">
+              <h2 className="text-2xl font-bold text-foreground font-yrdly-display tracking-tight">
                 {finalTitle}
               </h2>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-primary/15 text-primary border border-primary/20">
@@ -456,7 +494,7 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
             "flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-semibold font-sans transition-all",
             activeStep === 1
               ? "bg-primary text-primary-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted/40",
           )}
         >
           <span className="w-4 h-4 rounded-full bg-background/20 text-[10px] flex items-center justify-center font-bold">
@@ -471,7 +509,7 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
             "flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-semibold font-sans transition-all",
             activeStep === 2
               ? "bg-primary text-primary-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted/40",
           )}
         >
           <span className="w-4 h-4 rounded-full bg-background/20 text-[10px] flex items-center justify-center font-bold">
@@ -485,16 +523,33 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
 
   const formContent = (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 min-h-0">
+      <form
+        onSubmit={form.handleSubmit(onSubmit)}
+        className="flex flex-col flex-1 min-h-0"
+      >
         <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5 min-h-0">
           {submitError && (
-            <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+            <div
+              role="alert"
+              className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+            >
               {submitError}
             </div>
           )}
           {/* STEP 1: Profile & Type */}
           {activeStep === 1 && (
             <div className="space-y-5 animate-in fade-in-50 duration-200">
+              <div className="space-y-2">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">
+                  01 · Your business
+                </p>
+                <h3 className="font-yrdly-display text-2xl font-bold">
+                  Make a good first impression.
+                </h3>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  Help people understand what you offer and where to find you.
+                </p>
+              </div>
               {/* Business Name */}
               <FormField
                 control={form.control}
@@ -541,7 +596,7 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
                                 "relative flex flex-col items-start p-3.5 rounded-2xl border text-left transition-all group",
                                 selected
                                   ? "bg-primary/10 border-primary ring-1 ring-primary/30 shadow-sm"
-                                  : "bg-background/40 border-border/60 hover:bg-muted/40 hover:border-border"
+                                  : "bg-background/40 border-border/60 hover:bg-muted/40 hover:border-border",
                               )}
                             >
                               <div className="flex items-center justify-between w-full mb-2">
@@ -550,7 +605,7 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
                                     "w-8 h-8 rounded-xl flex items-center justify-center transition-colors",
                                     selected
                                       ? "bg-primary text-primary-foreground"
-                                      : "bg-muted text-muted-foreground group-hover:text-foreground"
+                                      : "bg-muted text-muted-foreground group-hover:text-foreground",
                                   )}
                                 >
                                   <Icon className="w-4 h-4" />
@@ -600,7 +655,7 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
                                 "px-3 py-1.5 rounded-full text-xs font-semibold font-sans transition-all",
                                 active
                                   ? "bg-primary text-primary-foreground shadow-sm"
-                                  : "bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/40"
+                                  : "bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/40",
                               )}
                             >
                               {cat}
@@ -627,7 +682,10 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
                     <FormControl>
                       <Textarea
                         placeholder="Tell your local neighbors what products, services, or specials you offer..."
-                        className={cn(inputBase, "rounded-2xl resize-none min-h-[100px] p-3.5")}
+                        className={cn(
+                          inputBase,
+                          "rounded-2xl resize-none min-h-[100px] p-3.5",
+                        )}
                         {...field}
                       />
                     </FormControl>
@@ -679,7 +737,7 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
                     <FormControl>
                       <label
                         className={cn(
-                          "relative flex flex-col items-center justify-center p-5 rounded-2xl border-2 border-dashed border-border/80 hover:border-primary/60 bg-muted/20 hover:bg-muted/40 cursor-pointer text-center transition-all group"
+                          "relative flex flex-col items-center justify-center p-5 rounded-2xl border-2 border-dashed border-border/80 hover:border-primary/60 bg-muted/20 hover:bg-muted/40 cursor-pointer text-center transition-all group",
                         )}
                       >
                         <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
@@ -696,7 +754,9 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
                           accept="image/*"
                           multiple
                           className="sr-only"
-                          onChange={(e) => onChange(e.target.files ?? undefined)}
+                          onChange={(e) =>
+                            onChange(e.target.files ?? undefined)
+                          }
                           {...rest}
                         />
                       </label>
@@ -705,7 +765,9 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
                     {/* Previews */}
                     {((value && value.length > 0) ||
                       (businessToEdit?.image_urls &&
-                        businessToEdit.image_urls.filter((_, i) => !removedImageIndexes.includes(i)).length > 0)) && (
+                        businessToEdit.image_urls.filter(
+                          (_, i) => !removedImageIndexes.includes(i),
+                        ).length > 0)) && (
                       <div className="grid grid-cols-4 gap-2 pt-2">
                         {businessToEdit?.image_urls?.map((url, index) => {
                           if (removedImageIndexes.includes(index)) return null;
@@ -728,7 +790,12 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
                               <button
                                 type="button"
                                 className="absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center bg-destructive text-destructive-foreground opacity-90 hover:opacity-100 transition-opacity"
-                                onClick={() => setRemovedImageIndexes((prev) => [...prev, index])}
+                                onClick={() =>
+                                  setRemovedImageIndexes((prev) => [
+                                    ...prev,
+                                    index,
+                                  ])
+                                }
                               >
                                 <X className="w-3 h-3" />
                               </button>
@@ -741,7 +808,10 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
                               key={`file-${index}`}
                               className="relative aspect-square rounded-xl overflow-hidden border border-border bg-background group"
                             >
-                              <BlobImage file={file as File} className="w-full h-full object-cover" />
+                              <BlobImage
+                                file={file as File}
+                                className="w-full h-full object-cover"
+                              />
                               <button
                                 type="button"
                                 className="absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center bg-destructive text-destructive-foreground opacity-90 hover:opacity-100 transition-opacity"
@@ -750,7 +820,9 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
                                   Array.from(value).forEach((f, i) => {
                                     if (i !== index) dt.items.add(f as File);
                                   });
-                                  onChange(dt.files.length ? dt.files : undefined);
+                                  onChange(
+                                    dt.files.length ? dt.files : undefined,
+                                  );
                                 }}
                               >
                                 <X className="w-3 h-3" />
@@ -784,12 +856,22 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
                           <div className="flex items-center gap-1.5">
                             <button
                               type="button"
-                              onClick={() => setHoursDays(["Mon", "Tue", "Wed", "Thu", "Fri"])}
+                              onClick={() =>
+                                setHoursDays([
+                                  "Mon",
+                                  "Tue",
+                                  "Wed",
+                                  "Thu",
+                                  "Fri",
+                                ])
+                              }
                               className="text-[11px] text-primary hover:underline font-semibold"
                             >
                               Mon-Fri
                             </button>
-                            <span className="text-muted-foreground/40 text-[10px]">•</span>
+                            <span className="text-muted-foreground/40 text-[10px]">
+                              •
+                            </span>
                             <button
                               type="button"
                               onClick={() => setHoursDays([...WEEK_DAYS])}
@@ -797,7 +879,9 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
                             >
                               All Week
                             </button>
-                            <span className="text-muted-foreground/40 text-[10px]">•</span>
+                            <span className="text-muted-foreground/40 text-[10px]">
+                              •
+                            </span>
                             <button
                               type="button"
                               onClick={() => setHoursDays([])}
@@ -818,14 +902,16 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
                                 type="button"
                                 onClick={() =>
                                   setHoursDays((prev) =>
-                                    active ? prev.filter((d) => d !== day) : [...prev, day]
+                                    active
+                                      ? prev.filter((d) => d !== day)
+                                      : [...prev, day],
                                   )
                                 }
                                 className={cn(
                                   "flex-1 min-w-[40px] h-9 rounded-xl text-xs font-bold font-sans transition-all",
                                   active
                                     ? "bg-primary text-primary-foreground shadow-sm"
-                                    : "bg-muted/40 text-muted-foreground hover:bg-muted border border-border/40"
+                                    : "bg-muted/40 text-muted-foreground hover:bg-muted border border-border/40",
                                 )}
                               >
                                 {day}
@@ -864,7 +950,9 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
                         {hoursDays.length > 0 && openTime && closeTime && (
                           <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20 text-xs font-semibold text-primary flex items-center gap-2">
                             <Clock className="w-3.5 h-3.5 flex-shrink-0" />
-                            <span>{formatHours(hoursDays, openTime, closeTime)}</span>
+                            <span>
+                              {formatHours(hoursDays, openTime, closeTime)}
+                            </span>
                           </div>
                         )}
                       </div>
@@ -877,7 +965,7 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
               {/* Contact Info Group */}
               <div className="space-y-4 pt-1">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground font-sans">
-                  Contact Information
+                  02 · Stay connected
                 </h4>
 
                 {/* Phone */}
@@ -900,7 +988,11 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
                             inputMode="numeric"
                             placeholder="8012345678"
                             className="flex-1 h-full px-3.5 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/70 focus:outline-none"
-                            value={field.value?.startsWith("+234") ? field.value.slice(4) : field.value || ""}
+                            value={
+                              field.value?.startsWith("+234")
+                                ? field.value.slice(4)
+                                : field.value || ""
+                            }
                             onChange={(e) => {
                               const digits = e.target.value.replace(/\D/g, "");
                               field.onChange(digits ? `+234${digits}` : "");
@@ -930,7 +1022,9 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
                           {...field}
                         />
                       </FormControl>
-                      <p className="text-[11px] text-muted-foreground font-sans">Must be a @gmail.com address</p>
+                      <p className="text-[11px] text-muted-foreground font-sans">
+                        Must be a @gmail.com address
+                      </p>
                       <FormMessage className="text-red-400 text-xs" />
                     </FormItem>
                   )}
@@ -1004,8 +1098,8 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
                     ? "Saving Changes..."
                     : "Creating Business..."
                   : isEditMode
-                  ? "Save Changes"
-                  : "Complete Business Profile"}
+                    ? "Save Changes"
+                    : "Complete Business Profile"}
               </Button>
             </>
           )}
@@ -1018,7 +1112,9 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
     return (
       <Sheet open={open} onOpenChange={handleOpenChange}>
         {externalOpen === undefined && (
-          <SheetTrigger asChild>{children ? children : <Trigger />}</SheetTrigger>
+          <SheetTrigger asChild>
+            {children ? children : <Trigger />}
+          </SheetTrigger>
         )}
         <SheetContent
           side="bottom"
@@ -1030,7 +1126,9 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
           {headerBlock}
           <div
             className="flex-1 flex flex-col min-h-0 overflow-y-auto"
-            style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}
+            style={{
+              paddingBottom: "calc(1rem + env(safe-area-inset-bottom))",
+            }}
           >
             {formContent}
           </div>
@@ -1042,17 +1140,21 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       {externalOpen === undefined && (
-        <DialogTrigger asChild>{children ? children : <Trigger />}</DialogTrigger>
+        <DialogTrigger asChild>
+          {children ? children : <Trigger />}
+        </DialogTrigger>
       )}
       <DialogContent
         className={cn(
-          "sm:max-w-[640px] p-0 flex flex-col max-h-[88dvh] border border-border/80 rounded-[28px] bg-card text-foreground gap-0 overflow-hidden shadow-2xl backdrop-blur-xl"
+          "sm:max-w-[640px] p-0 flex flex-col max-h-[88dvh] border border-border/80 rounded-[28px] bg-card text-foreground gap-0 overflow-hidden shadow-2xl backdrop-blur-xl",
         )}
         style={{ zIndex: 110 }}
         hideClose
       >
         {headerBlock}
-        <div className="flex-1 flex flex-col min-h-0 overflow-y-auto">{formContent}</div>
+        <div className="flex-1 flex flex-col min-h-0 overflow-y-auto">
+          {formContent}
+        </div>
       </DialogContent>
     </Dialog>
   );

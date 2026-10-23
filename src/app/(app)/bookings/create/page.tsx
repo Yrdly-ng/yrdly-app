@@ -1,20 +1,20 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/use-supabase-auth';
-import { useAvailableSlots } from '@/hooks/use-bookings';
-import { BookingService } from '@/lib/bookings/booking-service';
-import { NotificationTriggers } from '@/lib/notifications/notification-triggers';
-import { supabase } from '@/lib/supabase/supabase';
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/use-supabase-auth";
+import { useAvailableSlots } from "@/hooks/use-bookings";
+import { BookingService } from "@/lib/bookings/booking-service";
+import { NotificationTriggers } from "@/lib/notifications/notification-triggers";
+import { supabase } from "@/lib/supabase/supabase";
 
 export default function CreateBookingWebPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user } = useAuth();
 
-  const businessId = searchParams.get('businessId') as string;
-  const serviceId = searchParams.get('serviceId') as string;
+  const businessId = searchParams.get("businessId") as string;
+  const serviceId = searchParams.get("serviceId") as string;
 
   const dates = useMemo(() => {
     const list = [];
@@ -24,10 +24,10 @@ export default function CreateBookingWebPage() {
       d.setDate(today.getDate() + i);
       // Keep the calendar date in the visitor's local timezone. toISOString()
       // would turn Lagos midnight into the previous UTC date.
-      const isoDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      const displayDay = d.toLocaleDateString('en-US', { weekday: 'short' });
+      const isoDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const displayDay = d.toLocaleDateString("en-US", { weekday: "short" });
       const displayNum = d.getDate();
-      const displayMonth = d.toLocaleDateString('en-US', { month: 'short' });
+      const displayMonth = d.toLocaleDateString("en-US", { month: "short" });
       list.push({ isoDate, displayDay, displayNum, displayMonth });
     }
     return list;
@@ -35,33 +35,55 @@ export default function CreateBookingWebPage() {
 
   const [selectedDate, setSelectedDate] = useState(dates[0].isoDate);
   const [selectedSlotTime, setSelectedSlotTime] = useState<string | null>(null);
-  const [notes, setNotes] = useState('');
+  const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [errMsg, setErrMsg] = useState('');
+  const [errMsg, setErrMsg] = useState("");
 
   const [service, setService] = useState<any>(null);
   const [business, setBusiness] = useState<any>(null);
   const [loadingDetails, setLoadingDetails] = useState(true);
+  const [detailsError, setDetailsError] = useState("");
+  const [detailsAttempt, setDetailsAttempt] = useState(0);
 
   const [staffList, setStaffList] = useState<any[]>([]);
   const [serviceStaffIds, setServiceStaffIds] = useState<string[] | null>(null);
   const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
-  const { slots, loading: slotsLoading } = useAvailableSlots(businessId, serviceId, selectedDate, selectedStaffId);
+  const {
+    slots,
+    loading: slotsLoading,
+    error: slotsError,
+    refresh: refreshSlots,
+  } = useAvailableSlots(businessId, serviceId, selectedDate, selectedStaffId);
 
   useEffect(() => {
     if (!businessId) return;
-    void (supabase.from('business_staff').select('*').eq('business_id', businessId).eq('is_active', true).order('created_at').then(({ data }: any) => { if (data) setStaffList(data); }) as unknown as Promise<void>);
+    void (supabase
+      .from("business_staff")
+      .select("*")
+      .eq("business_id", businessId)
+      .eq("is_active", true)
+      .order("created_at")
+      .then(({ data }: any) => {
+        if (data) setStaffList(data);
+      }) as unknown as Promise<void>);
   }, [businessId]);
 
   useEffect(() => {
     if (!serviceId) return;
     let active = true;
-    void supabase.from('service_staff_assignments').select('staff_id').eq('service_id', serviceId)
+    void supabase
+      .from("service_staff_assignments")
+      .select("staff_id")
+      .eq("service_id", serviceId)
       .then(({ data, error }: any) => {
         if (!active || error) return;
-        setServiceStaffIds(data?.length ? data.map((row: any) => row.staff_id) : null);
+        setServiceStaffIds(
+          data?.length ? data.map((row: any) => row.staff_id) : null,
+        );
       });
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [serviceId]);
 
   const eligibleStaff = serviceStaffIds
@@ -69,35 +91,71 @@ export default function CreateBookingWebPage() {
     : staffList;
 
   useEffect(() => {
+    let active = true;
+    if (!businessId || !serviceId) {
+      setLoadingDetails(false);
+      setDetailsError(
+        "Choose a service from a business page to request an appointment.",
+      );
+      return;
+    }
     const fetchDetails = async () => {
       try {
         setLoadingDetails(true);
+        setDetailsError("");
         const [serviceRes, bizRes] = await Promise.all([
-          supabase.from('service_offerings').select('*').eq('id', serviceId).single(),
-          supabase.from('businesses').select('*').eq('id', businessId).eq('is_active', true).single(),
+          supabase
+            .from("service_offerings")
+            .select("*")
+            .eq("id", serviceId)
+            .eq("business_id", businessId)
+            .single(),
+          supabase
+            .from("businesses")
+            .select("*")
+            .eq("id", businessId)
+            .eq("is_active", true)
+            .single(),
         ]);
+        if (!active) return;
+        if (serviceRes.error) throw serviceRes.error;
+        if (bizRes.error) throw bizRes.error;
+        if (!serviceRes.data || !bizRes.data)
+          throw new Error("This service is no longer available.");
         if (serviceRes.data) setService(serviceRes.data);
         if (bizRes.data) setBusiness(bizRes.data);
       } catch (err) {
-        console.error('Error fetching details:', err);
+        if (active)
+          setDetailsError("We couldn’t load this service. Please try again.");
       } finally {
-        setLoadingDetails(false);
+        if (active) setLoadingDetails(false);
       }
     };
-    if (businessId && serviceId) fetchDetails();
-  }, [businessId, serviceId]);
+    void fetchDetails();
+    return () => {
+      active = false;
+    };
+  }, [businessId, serviceId, detailsAttempt]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedSlotTime) {
-      return setErrMsg('Please select an available appointment time slot');
+    if (
+      submitting ||
+      loadingDetails ||
+      detailsError ||
+      slotsLoading ||
+      slotsError ||
+      !selectedSlotTime ||
+      !slots.some((slot) => slot.time === selectedSlotTime && slot.available)
+    ) {
+      return setErrMsg("Please select an available appointment time slot");
     }
     if (!user) {
-      return setErrMsg('Please sign in to submit a booking request');
+      return setErrMsg("Please sign in to submit a booking request");
     }
 
     setSubmitting(true);
-    setErrMsg('');
+    setErrMsg("");
     try {
       const newBooking = await BookingService.createBookingRequest({
         customerId: user.id,
@@ -108,7 +166,10 @@ export default function CreateBookingWebPage() {
         staffId: selectedStaffId,
       });
 
-      const userName = (user as any)?.name || (user as any)?.user_metadata?.full_name || 'Customer';
+      const userName =
+        (user as any)?.name ||
+        (user as any)?.user_metadata?.full_name ||
+        "Customer";
       if (business?.owner_id) {
         await NotificationTriggers.onBookingRequested({
           providerOwnerId: business.owner_id,
@@ -119,10 +180,12 @@ export default function CreateBookingWebPage() {
         });
       }
 
-      alert('Booking request submitted! The service provider will review and confirm.');
-      router.push('/bookings');
+      alert(
+        "Booking request submitted! The service provider will review and confirm.",
+      );
+      router.push("/bookings");
     } catch (err: any) {
-      setErrMsg(err.message || 'Failed to submit booking request');
+      setErrMsg(err.message || "Failed to submit booking request");
     } finally {
       setSubmitting(false);
     }
@@ -130,52 +193,94 @@ export default function CreateBookingWebPage() {
 
   if (loadingDetails) {
     return (
-      <div className="min-h-screen bg-neutral-950 text-neutral-100 flex items-center justify-center p-4">
-        <p className="text-neutral-400">Loading service details...</p>
+      <div className="min-h-screen font-yrdly-body bg-background text-foreground flex items-center justify-center p-4">
+        <p className="text-muted-foreground">Loading service details...</p>
       </div>
     );
   }
 
+  if (detailsError || !service || !business)
+    return (
+      <div className="mx-auto max-w-3xl space-y-4 p-6 font-yrdly-body">
+        <h1 className="font-yrdly-display text-3xl font-bold">
+          Request an appointment
+        </h1>
+        <p role="alert" className="text-muted-foreground">
+          {detailsError || "This service is unavailable."}
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setDetailsAttempt((value) => value + 1)}
+            className="rounded-xl bg-primary px-5 py-3 font-semibold text-primary-foreground"
+          >
+            Try again
+          </button>
+          <button
+            onClick={() =>
+              router.push(
+                businessId ? `/businesses/${businessId}` : "/businesses",
+              )
+            }
+            className="rounded-xl border border-border px-5 py-3"
+          >
+            Browse services
+          </button>
+        </div>
+      </div>
+    );
+
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100 p-4 sm:p-6 lg:p-8">
+    <div className="min-h-screen font-yrdly-body bg-background text-foreground p-4 sm:p-6 lg:p-8">
       <div className="max-w-3xl mx-auto">
         {/* Header */}
-        <div className="flex items-center gap-3 pb-6 border-b border-neutral-800">
+        <div className="flex items-center gap-3 pb-6 border-b border-border">
           <button
             onClick={() => router.back()}
-            className="p-2 rounded-lg bg-neutral-900 border border-neutral-800 hover:bg-neutral-800 text-neutral-400 hover:text-neutral-100 transition"
+            className="p-2 rounded-lg bg-card border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition"
           >
             ← Back
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-neutral-100">Request Appointment</h1>
-            <p className="text-sm text-neutral-400">Select an appointment time for your service</p>
+            <h1 className="font-yrdly-display text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
+              Request Appointment
+            </h1>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Select an appointment time for your service
+            </p>
           </div>
         </div>
 
         {errMsg && (
-          <div className="my-4 p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-medium rounded-xl">
+          <div
+            role="alert"
+            className="my-4 p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-medium rounded-xl"
+          >
             {errMsg}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6 mt-6">
           {/* Service Summary Card */}
-          <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5">
-            <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">
+          <div className="bg-card border border-border rounded-3xl p-6">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               {business?.name}
             </span>
-            <h2 className="text-xl font-bold text-neutral-100 mt-1">{service?.name}</h2>
+            <h2 className="font-yrdly-display text-2xl font-bold text-foreground mt-1">
+              {service?.name}
+            </h2>
             {service?.description && (
-              <p className="text-sm text-neutral-400 mt-2">{service.description}</p>
+              <p className="text-sm leading-relaxed text-muted-foreground mt-2">
+                {service.description}
+              </p>
             )}
-            <div className="flex items-center gap-4 mt-4 text-xs font-medium text-neutral-300">
-              <span className="bg-neutral-950 px-3 py-1 rounded-lg border border-neutral-800">
+            <div className="flex items-center gap-4 mt-4 text-xs font-medium text-muted-foreground">
+              <span className="bg-background px-3 py-1 rounded-lg border border-border">
                 ⏱ {service?.duration_minutes} minutes
               </span>
-              {service?.price !== undefined && (
-                <span className="bg-neutral-950 px-3 py-1 rounded-lg border border-neutral-800 text-emerald-400 font-bold">
-                  {service.price_is_from ? 'From ' : ''}₦{service.price.toLocaleString()}
+              {service?.price != null && (
+                <span className="bg-background px-3 py-1 rounded-lg border border-border text-primary font-bold">
+                  {service.price_is_from ? "From " : ""}₦
+                  {service.price.toLocaleString()}
                 </span>
               )}
             </div>
@@ -188,7 +293,8 @@ export default function CreateBookingWebPage() {
               <div>
                 <p className="font-bold">Notice: High Cancellation Rate</p>
                 <p className="text-amber-400/80 mt-0.5">
-                  This service provider has accumulated previous late cancellations or no-shows.
+                  This service provider has accumulated previous late
+                  cancellations or no-shows.
                 </p>
               </div>
             </div>
@@ -196,7 +302,9 @@ export default function CreateBookingWebPage() {
 
           {/* Date Picker */}
           <div>
-            <label className="block text-sm font-bold text-neutral-200 mb-2">1. Select Date</label>
+            <label className="block text-sm font-bold text-foreground mb-2">
+              1. Select Date
+            </label>
             <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
               {dates.map((item) => {
                 const isSelected = item.isoDate === selectedDate;
@@ -210,13 +318,19 @@ export default function CreateBookingWebPage() {
                     }}
                     className={`flex-shrink-0 w-20 py-3 rounded-xl border text-center transition ${
                       isSelected
-                        ? 'bg-emerald-500 border-emerald-500 text-neutral-950 font-bold shadow-lg shadow-emerald-500/10'
-                        : 'bg-neutral-900 border-neutral-800 text-neutral-300 hover:border-neutral-700'
+                        ? "bg-primary border-primary text-primary-foreground font-bold shadow-lg shadow-none"
+                        : "bg-card border-border text-muted-foreground hover:border-border"
                     }`}
                   >
-                    <div className="text-xs uppercase opacity-80">{item.displayDay}</div>
-                    <div className="text-lg font-bold my-0.5">{item.displayNum}</div>
-                    <div className="text-[10px] uppercase opacity-70">{item.displayMonth}</div>
+                    <div className="text-xs uppercase opacity-80">
+                      {item.displayDay}
+                    </div>
+                    <div className="font-yrdly-display text-xl font-bold my-0.5">
+                      {item.displayNum}
+                    </div>
+                    <div className="text-[10px] uppercase opacity-70">
+                      {item.displayMonth}
+                    </div>
                   </button>
                 );
               })}
@@ -227,19 +341,53 @@ export default function CreateBookingWebPage() {
           <div>
             {eligibleStaff.length > 0 && (
               <div className="mb-4">
-                <label className="block text-sm font-bold text-neutral-200 mb-2">Staff (optional)</label>
-                <select value={selectedStaffId || ''} onChange={(e)=>{ setSelectedStaffId(e.target.value || null); setSelectedSlotTime(null); }} className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-3 text-sm text-neutral-100">
+                <label className="block text-sm font-bold text-foreground mb-2">
+                  Staff (optional)
+                </label>
+                <select
+                  value={selectedStaffId || ""}
+                  onChange={(e) => {
+                    setSelectedStaffId(e.target.value || null);
+                    setSelectedSlotTime(null);
+                  }}
+                  className="w-full bg-card border border-border rounded-xl px-3 py-3 text-sm text-foreground"
+                >
                   <option value="">Any available staff</option>
-                  {eligibleStaff.map((s:any)=>(<option key={s.id} value={s.id}>{s.name}{s.role?` — ${s.role}`:''}</option>))}
+                  {eligibleStaff.map((s: any) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                      {s.role ? ` — ${s.role}` : ""}
+                    </option>
+                  ))}
                 </select>
               </div>
             )}
-            <label className="block text-sm font-bold text-neutral-200 mb-2">2. Select Available Slot{selectedStaffId ? ' (selected staff)' : ''}</label>
-            {slotsLoading ? (
-              <div className="py-8 text-center text-neutral-400 text-xs">Checking availability...</div>
+            <label className="block text-sm font-bold text-foreground mb-2">
+              2. Select Available Slot
+              {selectedStaffId ? " (selected staff)" : ""}
+            </label>
+            {slotsError ? (
+              <div
+                role="alert"
+                className="rounded-3xl border border-destructive/30 p-4 text-sm"
+              >
+                {slotsError}
+                <button
+                  type="button"
+                  onClick={() => void refreshSlots()}
+                  className="ml-3 font-semibold underline"
+                >
+                  Try again
+                </button>
+              </div>
+            ) : slotsLoading ? (
+              <div className="py-8 text-center text-muted-foreground text-xs">
+                Checking availability...
+              </div>
             ) : slots.length === 0 ? (
-              <div className="p-6 bg-neutral-900 border border-neutral-800 rounded-xl text-center text-neutral-400 text-sm">
-                No available appointment slots on this date. Please select another date.
+              <div className="p-6 bg-card border border-border rounded-xl text-center text-muted-foreground text-sm">
+                No available appointment slots on this date. Please select
+                another date.
               </div>
             ) : (
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
@@ -253,10 +401,10 @@ export default function CreateBookingWebPage() {
                       onClick={() => setSelectedSlotTime(slot.time)}
                       className={`py-3 px-2 rounded-xl text-xs font-semibold border transition ${
                         !slot.available
-                          ? 'bg-neutral-950/50 border-neutral-900 text-neutral-600 line-through cursor-not-allowed'
+                          ? "bg-muted/50 border-border text-muted-foreground/60 line-through cursor-not-allowed"
                           : isSelected
-                          ? 'bg-emerald-500 border-emerald-500 text-neutral-950 font-bold'
-                          : 'bg-neutral-900 border-neutral-800 text-neutral-200 hover:border-neutral-700'
+                            ? "bg-primary border-primary text-primary-foreground font-bold"
+                            : "bg-card border-border text-foreground hover:border-border"
                       }`}
                     >
                       {slot.formattedTime}
@@ -269,23 +417,33 @@ export default function CreateBookingWebPage() {
 
           {/* Notes */}
           <div>
-            <label className="block text-sm font-bold text-neutral-200 mb-2">3. Notes for Provider (Optional)</label>
+            <label className="block text-sm font-bold text-foreground mb-2">
+              3. Notes for Provider (Optional)
+            </label>
             <textarea
               rows={3}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Add any specific requests or instructions for your service appointment..."
-              className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-3 text-sm text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-emerald-500 resize-none"
+              className="w-full bg-card border border-border rounded-xl p-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary resize-none"
             />
           </div>
 
           {/* Submit */}
           <button
             type="submit"
-            disabled={!selectedSlotTime || submitting}
-            className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-bold text-base rounded-xl transition shadow-xl shadow-emerald-500/10 disabled:opacity-50"
+            disabled={
+              !selectedSlotTime ||
+              submitting ||
+              slotsLoading ||
+              !!slotsError ||
+              !slots.some(
+                (slot) => slot.time === selectedSlotTime && slot.available,
+              )
+            }
+            className="w-full py-4 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-base rounded-xl transition shadow-xl shadow-none disabled:opacity-50"
           >
-            {submitting ? 'Submitting Request...' : 'Submit Booking Request'}
+            {submitting ? "Submitting Request..." : "Submit Booking Request"}
           </button>
         </form>
       </div>

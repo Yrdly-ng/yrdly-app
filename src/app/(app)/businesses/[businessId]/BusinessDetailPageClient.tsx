@@ -2,7 +2,7 @@
 
 import { BusinessDetailScreen } from "@/components/businesses/BusinessDetailScreen";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase/supabase";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import type { Business } from "@/types";
@@ -14,10 +14,13 @@ export default function BusinessDetailPage() {
   const businessId = params.businessId as string;
   const [business, setBusiness] = useState<Business | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const revision = useRef(0);
 
   const fetchBusiness = useCallback(async () => {
     if (!businessId) return;
-    setLoading(true);
+    const request = ++revision.current;
+    setError("");
     try {
       const { data: businessData, error: businessError } = await supabase
         .from("businesses")
@@ -25,6 +28,7 @@ export default function BusinessDetailPage() {
         .eq("id", businessId)
         .maybeSingle();
 
+      if (request !== revision.current) return;
       if (businessError) throw businessError;
       if (!businessData) {
         setBusiness(null);
@@ -69,29 +73,41 @@ export default function BusinessDetailPage() {
         owner_name:
           ownerData?.name || businessData.owner_name || "Unknown Owner",
         owner_avatar: ownerData?.avatar_url || businessData.owner_avatar,
-        cover_image: businessData.image_urls?.[0],
-        logo: businessData.image_urls?.[0],
-        distance: "0.5 km away",
+        cover_image: businessData.cover_image || businessData.image_urls?.[0],
+        logo:
+          businessData.logo ||
+          businessData.logo_url ||
+          businessData.image_urls?.[0],
+        verified_seller:
+          businessData.verified_seller || businessData.is_verified || false,
         catalog: [],
       };
 
-      setBusiness(business);
+      if (request === revision.current) setBusiness(business);
     } catch (error) {
       console.error("Error fetching business:", error);
-      setBusiness(null);
+      if (request === revision.current)
+        setError("We couldn’t load this business. Please try again.");
     } finally {
-      setLoading(false);
+      if (request === revision.current) setLoading(false);
     }
   }, [businessId, user?.id]);
 
   useEffect(() => {
-    fetchBusiness();
+    setBusiness(null);
+    setLoading(true);
+    void fetchBusiness();
+    return () => {
+      revision.current++;
+    };
   }, [fetchBusiness]);
 
   useEffect(() => {
     if (!businessId) return;
     const channel = supabase
-      .channel(`business-detail:${businessId}`)
+      .channel(
+        `business-detail:${businessId}:${Math.random().toString(36).slice(2)}`,
+      )
       .on(
         "postgres_changes",
         {
@@ -136,12 +152,20 @@ export default function BusinessDetailPage() {
     return (
       <div className="p-4 text-center">
         <h2 className="text-xl font-semibold text-foreground mb-2">
-          Business not found
+          {error ? "Couldn’t load this business" : "Business not found"}
         </h2>
         <p className="text-muted-foreground mb-4">
           The business you&apos;re looking for doesn&apos;t exist or has been
           removed.
         </p>
+        {error && (
+          <button
+            onClick={() => void fetchBusiness()}
+            className="mr-3 rounded-xl border border-border px-4 py-2"
+          >
+            Try again
+          </button>
+        )}
         <button
           onClick={() => {
             if (window.history.length > 2) {
@@ -160,6 +184,7 @@ export default function BusinessDetailPage() {
 
   return (
     <BusinessDetailScreen
+      key={business.id}
       business={business}
       onBusinessUpdated={fetchBusiness}
       onBusinessDeleted={() => {

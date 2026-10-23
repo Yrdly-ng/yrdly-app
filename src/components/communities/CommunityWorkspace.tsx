@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   CommunityService,
   Community,
@@ -15,7 +16,24 @@ import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { CommunityComposer } from "./CommunityComposer";
 import { CommunityManager } from "./CommunityManagement";
 import { CommunityMedia } from "./CommunityMedia";
-import { communityButton } from "./CommunityTools";
+import {
+  CommunityAvatar,
+  communityButton,
+  communityPrimaryButton,
+} from "./CommunityTools";
+
+// Keep navigation state in memory only; recheck membership before showing it.
+let feedUser: string | null = null;
+const feedVisits = new Map<
+  string,
+  {
+    posts: CommunityPost[];
+    page: number;
+    more: boolean;
+    top: number;
+    savedAt: number;
+  }
+>();
 
 export function CommunityWorkspace({
   id,
@@ -38,6 +56,8 @@ export function CommunityWorkspace({
   const [offer, setOffer] = useState<any>(null);
   const [area, setArea] = useState<CommunityPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const accessKey = `${user?.id || ""}:${id}:${postId || "feed"}`;
+  const [loadedFor, setLoadedFor] = useState("");
   const [busy, setBusy] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
@@ -50,6 +70,30 @@ export function CommunityWorkspace({
     replyTo?: string;
   } | null>(null);
   const page = useRef(0);
+  const workspace = useRef<HTMLElement>(null);
+  const restored = useRef(false);
+  const scrollHost = () => {
+    let element = workspace.current?.parentElement;
+    while (element) {
+      if (/auto|scroll/.test(window.getComputedStyle(element).overflowY))
+        return element;
+      element = element.parentElement;
+    }
+    return document.scrollingElement;
+  };
+  const rememberFeed = () => {
+    if (!user?.id || postId || !active) return;
+    const key = `${user.id}:${id}`;
+    feedVisits.delete(key);
+    feedVisits.set(key, {
+      posts,
+      page: page.current,
+      more: hasMore,
+      top: scrollHost()?.scrollTop || 0,
+      savedAt: Date.now(),
+    });
+    if (feedVisits.size > 8) feedVisits.delete(feedVisits.keys().next().value!);
+  };
   const revision = useRef(0);
   const inFlight = useRef(false);
   const likes = useRef(new Set<string>());
@@ -75,6 +119,7 @@ export function CommunityWorkspace({
         CommunityService.getMyInvite(id, user.id),
       ]);
       if (started !== revision.current) return;
+      setLoadedFor(`${user.id}:${id}:${postId || "feed"}`);
       setCommunity(comm);
       setMembership(mem);
       setRequest(join);
@@ -91,7 +136,41 @@ export function CommunityWorkspace({
           setComments(replies);
         }
       } else {
-        const feed = await CommunityService.fetchPosts(id);
+        const key = `${user.id}:${id}`;
+        const saved = feedVisits.get(key);
+        const permitted = mem?.status === "active";
+        if (!permitted) {
+          feedVisits.delete(key);
+          setPosts([]);
+          setArea([]);
+          setHasMore(false);
+          page.current = 0;
+          return;
+        }
+        const freshVisit =
+          saved && Date.now() - saved.savedAt < 5 * 60 * 1000
+            ? saved
+            : undefined;
+        if (freshVisit && !restored.current) {
+          setPosts(freshVisit.posts);
+          setHasMore(freshVisit.more);
+          page.current = freshVisit.page;
+          setLoading(false);
+          restored.current = true;
+          requestAnimationFrame(() => {
+            const host = scrollHost();
+            if (host) host.scrollTop = freshVisit.top;
+          });
+        }
+        const currentPage = Math.max(page.current, freshVisit?.page || 0);
+        const batches = await Promise.all(
+          Array.from({ length: currentPage + 1 }, (_, index) =>
+            CommunityService.fetchPosts(id, index),
+          ),
+        );
+        const feed = Array.from(
+          new Map(batches.flat().map((item) => [item.id, item])).values(),
+        );
         const liked = feed.length
           ? await supabase
               .from("community_post_likes")
@@ -111,8 +190,8 @@ export function CommunityWorkspace({
               liked_by_me: likedIds.has(item.id),
             })),
           );
-          setHasMore(feed.length === 20);
-          page.current = 0;
+          setHasMore(batches[batches.length - 1].length === 20);
+          page.current = currentPage;
         }
         if (
           comm?.type === "ward" &&
@@ -131,6 +210,13 @@ export function CommunityWorkspace({
     }
   }, [id, postId, user?.id]);
   useEffect(() => {
+    if (feedUser !== (user?.id || null)) {
+      feedVisits.clear();
+      feedUser = user?.id || null;
+    }
+    setLoadedFor("");
+    restored.current = false;
+    page.current = 0;
     setLoading(true);
     setCommunity(null);
     setMembership(null);
@@ -139,7 +225,7 @@ export function CommunityWorkspace({
     setComments([]);
     void load();
     const channel = supabase.channel(
-      `community-workspace-${id}-${postId || "feed"}`,
+      `community-workspace-${id}-${postId || "feed"}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
     );
     for (const table of [
       "communities",
@@ -303,21 +389,19 @@ export function CommunityWorkspace({
     Date.now() - new Date(request.reviewed_at).getTime() < 7 * 86400000;
   const author = (item: CommunityPost | CommunityComment) => (
     <div className="flex items-center gap-2">
-      <a
+      <Link
         href={`/profile/${item.author_id}`}
         className="flex items-center gap-2"
       >
-        {(item.author?.avatar_url || item.author_image) && (
-          <img
-            src={item.author?.avatar_url || item.author_image || ""}
-            alt=""
-            className="h-9 w-9 rounded-full object-cover"
-          />
-        )}
+        <CommunityAvatar
+          name={item.author?.name || item.author_name}
+          src={item.author?.avatar_url || item.author_image}
+          className="h-10 w-10"
+        />
         <span className="font-semibold">
           {item.author?.name || item.author_name || "Member"}
         </span>
-      </a>
+      </Link>
       {item.author?.phone_verified && <VerifiedBadge size={16} />}
       <time
         className="ml-auto text-xs text-muted-foreground"
@@ -348,23 +432,20 @@ export function CommunityWorkspace({
   );
 
   return (
-    <main className="mx-auto max-w-2xl space-y-5 px-4 py-6 pb-28">
+    <main
+      ref={workspace}
+      className="mx-auto max-w-3xl space-y-5 px-4 py-6 pb-28 font-yrdly-body sm:px-6"
+    >
       <header className="flex flex-wrap items-center gap-3">
-        <a
+        <Link
           href={postId ? `/communities/${id}` : "/communities"}
           className={communityButton}
         >
-          ← Back
-        </a>
-        {community?.avatar_url && (
-          <img
-            src={community.avatar_url}
-            alt=""
-            className="h-11 w-11 rounded-full object-cover"
-          />
-        )}
+          ← {postId ? "Community" : "Communities"}
+        </Link>
+        <CommunityAvatar name={community?.name} src={community?.avatar_url} />
         <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-bold">
+          <h1 className="break-words font-yrdly-display text-xl font-semibold sm:text-2xl">
             {community?.name || "Community"}
           </h1>
           {community && (
@@ -388,7 +469,7 @@ export function CommunityWorkspace({
           {notice}
         </p>
       )}
-      {loading ? (
+      {loading || loadedFor !== accessKey ? (
         <p role="status">Loading community…</p>
       ) : (
         <>
@@ -403,12 +484,27 @@ export function CommunityWorkspace({
                 <img
                   src={community.banner_url}
                   alt="Community banner"
-                  className="h-44 w-full rounded-2xl object-cover"
+                  className="h-44 w-full rounded-3xl object-cover sm:h-56"
                 />
               )}
-              <p className="text-sm text-muted-foreground">
-                {community.description}
-              </p>
+              <section className="space-y-3 rounded-3xl border border-border bg-card p-5 sm:p-6">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  {community.type === "interest"
+                    ? "Shared interest"
+                    : "Your neighbourhood"}{" "}
+                  ·{" "}
+                  {community.privacy === "invite"
+                    ? "Invite only"
+                    : community.privacy === "request"
+                      ? "Join by request"
+                      : "Open community"}
+                </p>
+                {community.description && (
+                  <p className="text-sm leading-relaxed text-muted-foreground">
+                    {community.description}
+                  </p>
+                )}
+              </section>
               {!!community.rules?.length && (
                 <details className="rounded-xl border border-border p-4">
                   <summary className="cursor-pointer font-semibold">
@@ -529,7 +625,23 @@ export function CommunityWorkspace({
                 })}
             </nav>
           )}
-          {active && !postId && button("Write a post", () => setComposer({}))}
+          {active && !postId && (
+            <button
+              className="flex w-full items-center gap-3 rounded-3xl border border-border bg-card p-4 text-left transition-colors hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              onClick={() => setComposer({})}
+            >
+              <CommunityAvatar name={profile?.name} src={profile?.avatar_url} />
+              <span className="flex-1 text-sm text-muted-foreground">
+                Share something with your community…
+              </span>
+              <span className={communityPrimaryButton}>Write a post</span>
+            </button>
+          )}
+          {active && (
+            <h2 className="pt-2 font-yrdly-display text-xl font-semibold">
+              {postId ? "The conversation" : "Community conversation"}
+            </h2>
+          )}
           {postId ? (
             !post ? (
               <section className="space-y-3">
@@ -538,16 +650,18 @@ export function CommunityWorkspace({
                     ? "This post is no longer available."
                     : "Membership is required to view this post."}
                 </p>
-                <a className={communityButton} href={`/communities/${id}`}>
+                <Link className={communityButton} href={`/communities/${id}`}>
                   Go to community
-                </a>
+                </Link>
               </section>
             ) : (
               <>
-                <article className="space-y-4 rounded-2xl border border-border bg-card p-5">
+                <article className="min-w-0 space-y-4 rounded-3xl border border-border bg-card p-5 sm:p-6">
                   {author(post)}
                   {state(post)}
-                  <p className="whitespace-pre-wrap">{post.content}</p>
+                  <p className="whitespace-pre-wrap break-words text-[15px] leading-7">
+                    {post.content}
+                  </p>
                   <CommunityMedia post={post} />
                   <p className="text-sm text-muted-foreground">
                     {post.comment_count} published replies
@@ -565,7 +679,9 @@ export function CommunityWorkspace({
                   >
                     {author(comment)}
                     {state(comment)}
-                    <p className="whitespace-pre-wrap">{comment.content}</p>
+                    <p className="whitespace-pre-wrap break-words text-[15px] leading-7">
+                      {comment.content}
+                    </p>
                     <div className="flex flex-wrap gap-2">
                       {comment.author_id === user?.id &&
                         button("Edit", () =>
@@ -595,7 +711,7 @@ export function CommunityWorkspace({
                 {posts.map((item) => (
                   <article
                     key={item.id}
-                    className="space-y-4 rounded-2xl border border-border bg-card p-5"
+                    className="min-w-0 space-y-4 rounded-3xl border border-border bg-card p-5 sm:p-6"
                   >
                     {author(item)}
                     {state(item)}
@@ -605,7 +721,9 @@ export function CommunityWorkspace({
                         {item.is_announcement ? "Announcement" : ""}
                       </p>
                     )}
-                    <p className="whitespace-pre-wrap">{item.content}</p>
+                    <p className="whitespace-pre-wrap break-words text-[15px] leading-7">
+                      {item.content}
+                    </p>
                     <CommunityMedia post={item} />
                     <div className="flex flex-wrap items-center gap-2">
                       {button(
@@ -613,12 +731,14 @@ export function CommunityWorkspace({
                         () => void like(item),
                         item.moderation_status !== "approved",
                       )}
-                      <a
+                      <Link
+                        onClick={rememberFeed}
                         href={`/communities/${id}/posts/${item.id}`}
                         className={communityButton}
                       >
-                        {item.comment_count} replies
-                      </a>
+                        {item.comment_count}{" "}
+                        {item.comment_count === 1 ? "reply" : "replies"}
+                      </Link>
                       <details className="ml-auto">
                         <summary className="cursor-pointer px-3 py-2 text-sm text-muted-foreground">
                           Options

@@ -6,7 +6,12 @@ import {
   Community,
 } from "@/lib/communities/community-service";
 import { useAuth } from "@/hooks/use-supabase-auth";
-import { communityField, communityButton } from "./CommunityTools";
+import {
+  CommunityAvatar,
+  communityField,
+  communityButton,
+  communityDialog,
+} from "./CommunityTools";
 import { supabase } from "@/lib/supabase/supabase";
 import { useRouter } from "next/navigation";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
@@ -196,6 +201,38 @@ export function CommunityManager({
       {label}
     </button>
   );
+  const sections: Record<string, { title: string; description: string }> = {
+    members: {
+      title: "Members",
+      description:
+        "The people in your community. View profiles and manage their roles.",
+    },
+    requests: {
+      title: "Join requests",
+      description:
+        "Welcome new people. Review requests before they join the conversation.",
+    },
+    invites: {
+      title: "Invitations",
+      description:
+        "Invite mutual friends and keep track of outstanding invitations.",
+    },
+    review: {
+      title: "Post review",
+      description:
+        "Help keep your community welcoming. Review posts and edits awaiting approval.",
+    },
+    reports: {
+      title: "Reports",
+      description:
+        "Review concerns raised by your community and resolve them with care.",
+    },
+    settings: {
+      title: "Community settings",
+      description:
+        "Give your community its identity and set clear expectations for everyone.",
+    },
+  };
   return (
     <Dialog
       open
@@ -203,13 +240,16 @@ export function CommunityManager({
         if (!open) onClose();
       }}
     >
-      <DialogContent className="max-h-[90dvh] max-w-2xl overflow-y-auto">
-        <DialogTitle>
+      <DialogContent className={communityDialog + " max-w-3xl"}>
+        <p className="pr-8 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+          {community.name}
+        </p>
+        <DialogTitle className="pr-8 font-yrdly-display text-2xl sm:text-3xl">
           {leader ? "Manage community" : "Community members"}
         </DialogTitle>
         <nav
           aria-label="Community management"
-          className="flex gap-2 overflow-x-auto"
+          className="flex gap-2 overflow-x-auto pb-2"
         >
           {(leader
             ? [
@@ -225,17 +265,30 @@ export function CommunityManager({
             <button
               key={section}
               className={
-                communityButton + (tab === section ? " bg-primary/10" : "")
+                communityButton +
+                " shrink-0 " +
+                (tab === section
+                  ? " border-primary/40 bg-primary/10 text-primary"
+                  : "")
               }
+              aria-pressed={tab === section}
               onClick={() => {
                 setTab(section);
                 setQuery("");
               }}
             >
-              {section[0].toUpperCase() + section.slice(1)}
+              {sections[section].title}
             </button>
           ))}
         </nav>
+        <div className="space-y-2 py-2">
+          <h2 className="font-yrdly-display text-xl font-semibold">
+            {sections[tab].title}
+          </h2>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            {sections[tab].description}
+          </p>
+        </div>
         {!!error && (
           <div role="alert" className="text-sm text-red-500">
             {error} {button("Try again", () => void load())}
@@ -248,6 +301,11 @@ export function CommunityManager({
               tab === "members"
                 ? "Find community members"
                 : "Find mutual friends"
+            }
+            placeholder={
+              tab === "members"
+                ? "Search members by name"
+                : "Search your mutual friends"
             }
             value={query}
             onChange={(event) => setQuery(event.target.value)}
@@ -327,18 +385,34 @@ export function CommunityManager({
             {rows.map((row) => (
               <section
                 key={row.id}
-                className="space-y-3 rounded-xl border border-border p-4"
+                className="space-y-4 rounded-3xl border border-border bg-card p-5"
               >
                 {tab === "members" && (
                   <>
-                    <h3 className="flex items-center gap-1 font-semibold">
-                      {row.user?.name || "Member"}
-                      {row.user?.phone_verified && <VerifiedBadge size={16} />}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      {row.user_id === community.owner_id ? "owner" : row.role}{" "}
-                      · {row.status}
-                    </p>
+                    <a
+                      href={`/profile/${row.user_id}`}
+                      className="flex min-w-0 items-center gap-4 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    >
+                      <CommunityAvatar
+                        name={row.user?.name}
+                        src={row.user?.avatar_url}
+                        className="h-14 w-14"
+                      />
+                      <div className="min-w-0">
+                        <h3 className="flex items-center gap-1.5 break-words font-yrdly-display text-lg font-semibold">
+                          {row.user?.name || "Member"}
+                          {row.user?.phone_verified && (
+                            <VerifiedBadge size={16} />
+                          )}
+                        </h3>
+                        <p className="mt-1 text-sm capitalize text-muted-foreground">
+                          {row.user_id === community.owner_id
+                            ? "owner"
+                            : row.role}{" "}
+                          · {row.status}
+                        </p>
+                      </div>
+                    </a>
                     {leader &&
                       row.user_id !== user?.id &&
                       row.user_id !== community.owner_id &&
@@ -433,9 +507,15 @@ export function CommunityManager({
                 )}
                 {tab === "requests" && (
                   <>
-                    <h3 className="font-semibold">
-                      {row.user?.name || "Join request"}
-                    </h3>
+                    <div className="flex items-center gap-3">
+                      <CommunityAvatar
+                        name={row.user?.name}
+                        src={row.user?.avatar_url}
+                      />
+                      <h3 className="font-semibold">
+                        {row.user?.name || "Join request"}
+                      </h3>
+                    </div>
                     <p className="text-sm">{row.message}</p>
                     <div className="flex gap-2">
                       {button(
@@ -460,9 +540,15 @@ export function CommunityManager({
                 )}
                 {tab === "invites" && (
                   <>
-                    <h3 className="font-semibold">
-                      {row.recipient?.name || "Invited friend"}
-                    </h3>
+                    <div className="flex items-center gap-3">
+                      <CommunityAvatar
+                        name={row.recipient?.name}
+                        src={row.recipient?.avatar_url}
+                      />
+                      <h3 className="font-semibold">
+                        {row.recipient?.name || "Invited friend"}
+                      </h3>
+                    </div>
                     <p className="text-sm">
                       Expires {new Date(row.expires_at).toLocaleDateString()}
                     </p>
@@ -583,7 +669,15 @@ export function CommunityManager({
                     key={friend.id}
                     className="flex items-center justify-between gap-3"
                   >
-                    <span>{friend.name}</span>
+                    <div className="flex min-w-0 items-center gap-3">
+                      <CommunityAvatar
+                        name={friend.name}
+                        src={friend.avatar_url}
+                      />
+                      <span className="break-words font-semibold">
+                        {friend.name}
+                      </span>
+                    </div>
                     {button(
                       "Invite",
                       () => void run("invite", { userId: friend.id }),

@@ -1,16 +1,33 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/use-supabase-auth';
-import { supabase } from '@/lib/supabase/supabase';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Building2, Star, MapPin, Search, Plus, Store, CheckCircle } from 'lucide-react';
-import Image from 'next/image';
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/use-supabase-auth";
+import { supabase } from "@/lib/supabase/supabase";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Building2,
+  Star,
+  MapPin,
+  Search,
+  Plus,
+  Store,
+  CheckCircle,
+} from "lucide-react";
+import Image from "next/image";
+import { CreateBusinessDialog } from "./CreateBusinessDialog";
+import { getBusinessRating } from "@/lib/businesses/presentation";
 
 export interface Business {
   id: string;
@@ -27,9 +44,11 @@ export interface Business {
   created_at: string;
 }
 
-export function BusinessHub({ searchQuery = '' }: { searchQuery?: string }) {
+export function BusinessHub({ searchQuery = "" }: { searchQuery?: string }) {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const [createOpen, setCreateOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,20 +58,23 @@ export function BusinessHub({ searchQuery = '' }: { searchQuery?: string }) {
   const latestFetch = useRef(0);
   const fetchBusinesses = useCallback(async () => {
     const request = ++latestFetch.current;
-    setLoading(true);
+    setErrorMessage("");
     try {
       let q = supabase
-        .from('businesses')
-        .select('*')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
+        .from("businesses")
+        .select("*")
+        .eq("is_active", true)
+        .eq("moderation_status", "approved")
+        .order("created_at", { ascending: false });
 
       const { data, error } = await q;
       if (error) throw error;
-      if (request === latestFetch.current) setBusinesses((data as Business[]) || []);
+      if (request === latestFetch.current)
+        setBusinesses((data as Business[]) || []);
     } catch (e) {
-      console.error('Error fetching businesses:', e);
-      if (request === latestFetch.current) setBusinesses([]);
+      console.error("Error fetching businesses:", e);
+      if (request === latestFetch.current)
+        setErrorMessage("Could not load businesses. Please try again.");
     } finally {
       if (request === latestFetch.current) setLoading(false);
     }
@@ -63,14 +85,27 @@ export function BusinessHub({ searchQuery = '' }: { searchQuery?: string }) {
   }, [fetchBusinesses]);
 
   useEffect(() => {
-    const channel = supabase.channel('business-hub-updates').on('postgres_changes',
-      { event: '*', schema: 'public', table: 'businesses' }, () => { void fetchBusinesses(); }).subscribe();
-    window.addEventListener('focus', fetchBusinesses);
-    return () => { void supabase.removeChannel(channel); window.removeEventListener('focus', fetchBusinesses); };
+    const channel = supabase
+      .channel(
+        `business-hub-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "businesses" },
+        () => {
+          void fetchBusinesses();
+        },
+      )
+      .subscribe();
+    window.addEventListener("focus", fetchBusinesses);
+    return () => {
+      void supabase.removeChannel(channel);
+      window.removeEventListener("focus", fetchBusinesses);
+    };
   }, [fetchBusinesses]);
 
   const categories = Array.from(
-    new Set(businesses.map((b) => b.category).filter(Boolean))
+    new Set(businesses.map((b) => b.category).filter(Boolean)),
   );
 
   const filteredBusinesses = businesses.filter((b) => {
@@ -86,7 +121,31 @@ export function BusinessHub({ searchQuery = '' }: { searchQuery?: string }) {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 font-yrdly-body">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-widest text-primary">
+          Your local guide
+        </p>
+        <h2 className="mt-2 font-yrdly-display text-3xl font-bold">
+          Good businesses. Close to home.
+        </h2>
+      </div>
+      <CreateBusinessDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onCreated={() => void fetchBusinesses()}
+      />
+      {errorMessage && (
+        <div
+          role="alert"
+          className="rounded-2xl border border-destructive/30 p-4 text-sm"
+        >
+          {errorMessage}{" "}
+          <Button variant="outline" onClick={() => void fetchBusinesses()}>
+            Try again
+          </Button>
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -98,7 +157,14 @@ export function BusinessHub({ searchQuery = '' }: { searchQuery?: string }) {
           />
         </div>
 
-        <Button onClick={() => router.push('/businesses/create')} className="shrink-0">
+        <Button
+          onClick={() =>
+            profile?.phone_verified
+              ? setCreateOpen(true)
+              : router.push("/verify-phone")
+          }
+          className="shrink-0"
+        >
           <Plus className="h-4 w-4 mr-2" />
           Register Business
         </Button>
@@ -107,7 +173,7 @@ export function BusinessHub({ searchQuery = '' }: { searchQuery?: string }) {
       {categories.length > 0 && (
         <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
           <Button
-            variant={activeCategory === null ? 'default' : 'outline'}
+            variant={activeCategory === null ? "default" : "outline"}
             size="sm"
             onClick={() => setActiveCategory(null)}
             className="rounded-full shrink-0"
@@ -117,9 +183,11 @@ export function BusinessHub({ searchQuery = '' }: { searchQuery?: string }) {
           {categories.map((cat) => (
             <Button
               key={cat}
-              variant={activeCategory === cat ? 'default' : 'outline'}
+              variant={activeCategory === cat ? "default" : "outline"}
               size="sm"
-              onClick={() => setActiveCategory(activeCategory === cat ? null : cat)}
+              onClick={() =>
+                setActiveCategory(activeCategory === cat ? null : cat)
+              }
               className="rounded-full shrink-0"
             >
               {cat}
@@ -184,13 +252,17 @@ export function BusinessHub({ searchQuery = '' }: { searchQuery?: string }) {
 
                 <CardHeader className="p-4 space-y-1">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg font-bold line-clamp-1">{biz.name}</CardTitle>
+                    <CardTitle className="text-lg font-bold line-clamp-1">
+                      {biz.name}
+                    </CardTitle>
                     {biz.rating ? (
                       <div className="flex items-center space-x-1 text-yellow-500 text-sm font-semibold">
                         <Star className="h-4 w-4 fill-yellow-500" />
                         <span>{biz.rating.toFixed(1)}</span>
                         {biz.review_count ? (
-                          <span className="text-muted-foreground text-xs">({biz.review_count})</span>
+                          <span className="text-muted-foreground text-xs">
+                            ({biz.review_count})
+                          </span>
                         ) : null}
                       </div>
                     ) : null}
@@ -201,7 +273,9 @@ export function BusinessHub({ searchQuery = '' }: { searchQuery?: string }) {
                 </CardHeader>
 
                 <CardContent className="p-4 pt-0 text-sm text-muted-foreground flex-1">
-                  <p className="line-clamp-2 mb-2">{biz.description || 'Local business serving the community.'}</p>
+                  <p className="line-clamp-2 mb-2">
+                    {biz.description || "Local business serving the community."}
+                  </p>
                   {biz.address && (
                     <div className="flex items-center gap-1 text-xs text-muted-foreground mt-auto">
                       <MapPin className="h-3.5 w-3.5 shrink-0" />

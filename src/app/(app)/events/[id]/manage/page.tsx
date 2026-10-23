@@ -1,5 +1,7 @@
 "use client";
 
+import { EventPageIntro } from "@/components/events/EventPageIntro";
+
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
@@ -138,12 +140,15 @@ export default function ManageEventPage() {
   // Compute KPI Metrics
   const metrics = useMemo(() => {
     const paidTickets = tickets.filter(
-      (ticket) => ticket.status === "PAID" || ticket.status === "USED"
+      (ticket) => ticket.status === "PAID" || ticket.status === "USED",
     );
     return {
       sold: paidTickets.length,
       checkedIn: tickets.filter((ticket) => ticket.status === "USED").length,
-      revenue: paidTickets.reduce((sum, ticket) => sum + Number(ticket.amount_paid || 0), 0),
+      revenue: paidTickets.reduce(
+        (sum, ticket) => sum + Number(ticket.amount_paid || 0),
+        0,
+      ),
     };
   }, [tickets]);
 
@@ -163,7 +168,9 @@ export default function ManageEventPage() {
     return (
       <div className="min-h-[80vh] flex flex-col items-center justify-center p-6 text-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary mb-2" />
-        <p className="text-sm text-muted-foreground">Loading organizer event dashboard...</p>
+        <p className="text-sm text-muted-foreground">
+          Loading organizer event dashboard...
+        </p>
       </div>
     );
   }
@@ -174,9 +181,12 @@ export default function ManageEventPage() {
         <div className="w-16 h-16 rounded-full bg-destructive/10 border border-destructive/20 flex items-center justify-center mb-4">
           <Lock className="w-8 h-8 text-destructive" />
         </div>
-        <h1 className="text-2xl font-bold font-sans text-foreground mb-2">Organizer Access Only</h1>
+        <h1 className="text-2xl font-bold font-sans text-foreground mb-2">
+          Organizer Access Only
+        </h1>
         <p className="text-sm text-muted-foreground mb-6">
-          Only the event organizer can view ticket buyers, revenue metrics, and check-ins.
+          Only the event organizer can view ticket buyers, revenue metrics, and
+          check-ins.
         </p>
         <Button
           onClick={() => router.back()}
@@ -188,16 +198,22 @@ export default function ManageEventPage() {
     );
   }
 
-  const startDateFormatted = new Date(event.start_time).toLocaleDateString("en-NG", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-  const startTimeFormatted = new Date(event.start_time).toLocaleTimeString("en-NG", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const startDateFormatted = new Date(event.start_time).toLocaleDateString(
+    "en-NG",
+    {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    },
+  );
+  const startTimeFormatted = new Date(event.start_time).toLocaleTimeString(
+    "en-NG",
+    {
+      hour: "2-digit",
+      minute: "2-digit",
+    },
+  );
 
   return (
     <div className="min-h-screen bg-background pb-12">
@@ -205,7 +221,8 @@ export default function ManageEventPage() {
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button aria-label="Back"
+            <Button
+              aria-label="Back"
               variant="ghost"
               size="icon"
               onClick={() => router.back()}
@@ -229,7 +246,9 @@ export default function ManageEventPage() {
               disabled={refreshing}
               className="rounded-full font-bold text-xs gap-1.5"
             >
-              <RefreshCw className={cn("w-3.5 h-3.5", refreshing && "animate-spin")} />
+              <RefreshCw
+                className={cn("w-3.5 h-3.5", refreshing && "animate-spin")}
+              />
               Refresh
             </Button>
             <Button
@@ -245,12 +264,22 @@ export default function ManageEventPage() {
 
       {/* Main Container */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-6 space-y-6">
+        <EventPageIntro
+          eyebrow="THE HOST DESK"
+          title="Every detail, in one place."
+          description="Track attendance, review your event and welcome guests. Your event’s current status is shown below."
+        />
         {/* Event Summary Banner */}
         <div className="p-5 rounded-3xl border border-border bg-card flex flex-col sm:flex-row gap-5 items-start sm:items-center justify-between">
           <div className="flex items-center gap-4">
             {event.cover_image_url ? (
               <div className="relative w-16 h-16 rounded-2xl overflow-hidden bg-secondary shrink-0 border border-border">
-                <Image src={event.cover_image_url} alt={event.title} fill className="object-cover" />
+                <Image
+                  src={event.cover_image_url}
+                  alt={event.title}
+                  fill
+                  className="object-cover"
+                />
               </div>
             ) : (
               <div className="w-16 h-16 rounded-2xl bg-secondary flex items-center justify-center shrink-0 border border-border">
@@ -267,13 +296,19 @@ export default function ManageEventPage() {
                   Status: {event.status}
                 </span>
               </div>
-              <h2 className="text-xl font-bold font-sans text-foreground mt-0.5">{event.title}</h2>
+              <h2 className="text-xl font-bold font-sans text-foreground mt-0.5">
+                {event.title}
+              </h2>
               <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground mt-1">
                 <span className="flex items-center gap-1">
-                  <Calendar className="w-3.5 h-3.5 text-primary" /> {startDateFormatted} at {startTimeFormatted}
+                  <Calendar className="w-3.5 h-3.5 text-primary" />{" "}
+                  {startDateFormatted} at {startTimeFormatted}
                 </span>
                 <span className="flex items-center gap-1">
-                  <MapPin className="w-3.5 h-3.5 text-primary" /> {event.location_online ? "Online Event" : event.location_address || "Venue"}
+                  <MapPin className="w-3.5 h-3.5 text-primary" />{" "}
+                  {event.location_online
+                    ? "Online Event"
+                    : event.location_address || "Venue"}
                 </span>
               </div>
             </div>
@@ -302,8 +337,12 @@ export default function ManageEventPage() {
           <Card className="rounded-3xl border-border">
             <CardContent className="p-5 flex items-center justify-between">
               <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Tickets Sold</p>
-                <h3 className="text-3xl font-extrabold font-sans text-foreground mt-1">{metrics.sold}</h3>
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Tickets Sold
+                </p>
+                <h3 className="text-3xl font-extrabold font-sans text-foreground mt-1">
+                  {metrics.sold}
+                </h3>
               </div>
               <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
                 <TicketIcon className="w-6 h-6 text-primary" />
@@ -315,7 +354,9 @@ export default function ManageEventPage() {
           <Card className="rounded-3xl border-border">
             <CardContent className="p-5 flex items-center justify-between">
               <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Gross Revenue</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Gross Revenue
+                </p>
                 <h3 className="text-3xl font-extrabold font-sans text-foreground mt-1">
                   ₦{metrics.revenue.toLocaleString()}
                 </h3>
@@ -330,8 +371,12 @@ export default function ManageEventPage() {
           <Card className="rounded-3xl border-border">
             <CardContent className="p-5 flex items-center justify-between">
               <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Checked In</p>
-                <h3 className="text-3xl font-extrabold font-sans text-foreground mt-1">{metrics.checkedIn}</h3>
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Checked In
+                </p>
+                <h3 className="text-3xl font-extrabold font-sans text-foreground mt-1">
+                  {metrics.checkedIn}
+                </h3>
               </div>
               <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
                 <Users className="w-6 h-6 text-blue-500" />
@@ -344,8 +389,12 @@ export default function ManageEventPage() {
         <div className="p-6 rounded-3xl border border-border bg-card space-y-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
-              <h3 className="text-lg font-bold font-sans text-foreground">Attendee Roster</h3>
-              <p className="text-xs text-muted-foreground">View and search ticket buyers and check-in statuses.</p>
+              <h3 className="text-lg font-bold font-sans text-foreground">
+                Attendee Roster
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                View and search ticket buyers and check-in statuses.
+              </p>
             </div>
 
             <div className="relative w-full sm:w-64">
@@ -362,7 +411,9 @@ export default function ManageEventPage() {
           {filteredTickets.length === 0 ? (
             <div className="py-12 text-center text-muted-foreground space-y-2">
               <TicketIcon className="w-10 h-10 mx-auto opacity-30" />
-              <p className="text-sm font-medium">No tickets found matching search query.</p>
+              <p className="text-sm font-medium">
+                No tickets found matching search query.
+              </p>
             </div>
           ) : (
             <div className="divide-y divide-border border-t border-border pt-2">
@@ -371,7 +422,10 @@ export default function ManageEventPage() {
                 const isPaid = t.status === "PAID" || t.status === "USED";
 
                 return (
-                  <div key={t.id} className="py-3 flex items-center justify-between gap-4 text-xs">
+                  <div
+                    key={t.id}
+                    className="py-3 flex items-center justify-between gap-4 text-xs"
+                  >
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-foreground truncate">
@@ -382,7 +436,12 @@ export default function ManageEventPage() {
                         </span>
                       </div>
                       <p className="text-[11px] text-muted-foreground mt-0.5">
-                        Booked {new Date(t.created_at).toLocaleDateString("en-NG", { month: "short", day: "numeric" })} • ₦{Number(t.amount_paid || 0).toLocaleString()}
+                        Booked{" "}
+                        {new Date(t.created_at).toLocaleDateString("en-NG", {
+                          month: "short",
+                          day: "numeric",
+                        })}{" "}
+                        • ₦{Number(t.amount_paid || 0).toLocaleString()}
                       </p>
                     </div>
 
@@ -418,12 +477,16 @@ export default function ManageEventPage() {
               <h3 className="text-lg font-bold font-sans">Cancel Event</h3>
             </div>
             <p className="text-xs text-muted-foreground">
-              Are you sure you want to cancel <strong className="text-foreground">{event?.title}</strong>?
-              This will notify attendees, stop ticket purchases, and mark existing tickets as cancelled.
+              Are you sure you want to cancel{" "}
+              <strong className="text-foreground">{event?.title}</strong>? This
+              will notify attendees, stop ticket purchases, and mark existing
+              tickets as cancelled.
             </p>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground">Reason for Cancellation (Optional)</label>
+              <label className="text-xs font-semibold text-muted-foreground">
+                Reason for Cancellation (Optional)
+              </label>
               <Input
                 placeholder="e.g. Unexpected weather, scheduling conflict..."
                 value={cancelReason}
@@ -449,7 +512,11 @@ export default function ManageEventPage() {
                 disabled={cancelling}
                 className="rounded-full text-xs gap-1.5 font-bold"
               >
-                {cancelling ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Yes, Cancel Event"}
+                {cancelling ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  "Yes, Cancel Event"
+                )}
               </Button>
             </div>
           </div>

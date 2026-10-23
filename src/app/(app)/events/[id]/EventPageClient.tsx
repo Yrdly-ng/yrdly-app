@@ -81,16 +81,35 @@ export default function EventDetailPage() {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [hasTicket, setHasTicket] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
     if (!id) return;
-    getEventById(id).then((e) => {
-      setEvent(e);
-      setLoading(false);
-    });
-  }, [id]);
+    let current = true;
+    setLoading(true);
+    setLoadError(false);
+    void getEventById(id)
+      .then((record) => {
+        if (current) setEvent(record);
+      })
+      .catch(() => {
+        if (current) {
+          setEvent(null);
+          setLoadError(true);
+        }
+      })
+      .finally(() => {
+        if (current) setLoading(false);
+      });
+    return () => {
+      current = false;
+    };
+  }, [id, reload]);
 
   useEffect(() => {
+    let current = true;
+    setHasTicket(false);
     if (user && id) {
       supabase
         .from("tickets")
@@ -100,10 +119,13 @@ export default function EventDetailPage() {
         .eq("status", "PAID")
         .maybeSingle()
         .then(({ data }) => {
-          if (data) setHasTicket(true);
+          if (current && data) setHasTicket(true);
         });
     }
-  }, [user, id]);
+    return () => {
+      current = false;
+    };
+  }, [user?.id, id]);
 
   // Pre-fill form with auth user data
   useEffect(() => {
@@ -263,7 +285,14 @@ export default function EventDetailPage() {
     return (
       <div className="min-h-[100dvh] bg-background flex flex-col items-center justify-center gap-4 text-foreground p-6">
         <AlertCircle className="w-12 h-12 text-red-400" />
-        <p className="font-sans text-lg">Event not found</p>
+        <p className="font-yrdly-display text-2xl font-bold">
+          {loadError ? "Couldn’t load this event" : "Event not found"}
+        </p>
+        {loadError && (
+          <Button onClick={() => setReload((value) => value + 1)}>
+            Try again
+          </Button>
+        )}
         <Button
           onClick={() => router.push("/events")}
           variant="outline"
@@ -326,7 +355,8 @@ export default function EventDetailPage() {
                       (p) => (p - 1 + eventImages.length) % eventImages.length,
                     )
                   }
-                  className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center z-10"
+                  aria-label="Previous event photo"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center z-10"
                 >
                   <ChevronLeft className="w-4 h-4 text-foreground" />
                 </button>
@@ -334,7 +364,8 @@ export default function EventDetailPage() {
                   onClick={() =>
                     setActiveImageIndex((p) => (p + 1) % eventImages.length)
                   }
-                  className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center z-10"
+                  aria-label="Next event photo"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center z-10"
                 >
                   <ChevronRight className="w-4 h-4 text-foreground" />
                 </button>
@@ -392,6 +423,7 @@ export default function EventDetailPage() {
             )}
             <button
               onClick={handleShare}
+              aria-label="Share event"
               className="w-11 h-11 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center"
             >
               <Share2 className="w-4 h-4 text-foreground" />
@@ -426,7 +458,7 @@ export default function EventDetailPage() {
             <Badge className="bg-primary/20 text-[#4CAF50] border-primary/30 text-xs font-sans mb-3">
               {event.category}
             </Badge>
-            <h1 className="font-sans font-extrabold text-2xl sm:text-3xl text-foreground leading-tight">
+            <h1 className="font-yrdly-display font-bold text-3xl sm:text-5xl text-foreground leading-tight">
               {event.title}
             </h1>
           </div>
@@ -465,7 +497,9 @@ export default function EventDetailPage() {
               </div>
             )}
 
-            {!event.location_online && <GetDirectionsLink target={{ type: "event", id: event.id }} />}
+            {!event.location_online && (
+              <GetDirectionsLink target={{ type: "event", id: event.id }} />
+            )}
 
             {event.location_online && event.online_link && (
               <div className="flex items-center gap-3 text-muted-foreground">
@@ -522,7 +556,7 @@ export default function EventDetailPage() {
           {/* Description */}
           {event.description && (
             <div>
-              <h2 className="font-sans font-bold text-base text-foreground mb-2">
+              <h2 className="font-yrdly-display font-bold text-xl text-foreground mb-3">
                 About this Event
               </h2>
               <p className="font-sans text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap break-words">
@@ -533,8 +567,8 @@ export default function EventDetailPage() {
         </div>
         {/* Ticket Tiers */}
         {!isCancelled && tiers.length > 0 && (
-          <aside className="min-w-0 rounded-3xl bg-muted/40 p-4 sm:p-6 self-start lg:sticky lg:top-6">
-            <h2 className="font-sans font-bold text-base text-foreground mb-3">
+          <aside className="min-w-0 rounded-3xl border border-border bg-card p-5 sm:p-6 self-start lg:sticky lg:top-6">
+            <h2 className="font-yrdly-display font-bold text-2xl text-foreground mb-3">
               Tickets
             </h2>
             <div className="space-y-3">

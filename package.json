@@ -22,7 +22,8 @@
     "test:telemetry": "node --test tests/web-telemetry.test.cjs",
     "test:maps": "node --test tests/map-model.test.cjs tests/map-location.test.cjs tests/map-query.test.cjs tests/map-presentation.test.cjs",
     "test:directions": "node --test tests/directions-*.test.cjs",
-    "test:explore": "node --test tests/nearby-screen.test.cjs tests/explore-community-flow.test.cjs"
+    "test:explore": "node --test tests/nearby-screen.test.cjs tests/explore-community-flow.test.cjs",
+    "test:parity": "node --test tests/nearby-screen.test.cjs tests/explore-community-flow.test.cjs tests/community-parity.test.cjs tests/business-parity.test.cjs tests/event-directory.test.cjs tests/event-presentation.test.cjs tests/marketplace-card.test.cjs"
   },
   "dependencies": {
     "@googlemaps/markerclusterer": "^2.6.2",

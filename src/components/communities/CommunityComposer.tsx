@@ -7,7 +7,13 @@ import {
   CommunityComment,
 } from "@/lib/communities/community-service";
 import { useAuth } from "@/hooks/use-supabase-auth";
-import { communityField, communityButton } from "./CommunityTools";
+import {
+  CommunityAvatar,
+  communityField,
+  communityButton,
+  communityDialog,
+  communityPrimaryButton,
+} from "./CommunityTools";
 export function CommunityComposer({
   communityId,
   post,
@@ -25,7 +31,7 @@ export function CommunityComposer({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [text, setText] = useState(comment?.content || post?.content || "");
   const [files, setFiles] = useState<File[]>([]);
   const [images, setImages] = useState(post?.image_urls || []);
@@ -153,8 +159,11 @@ export function CommunityComposer({
         if (!open && !busy) onClose();
       }}
     >
-      <DialogContent className="max-h-[90dvh] overflow-y-auto">
-        <DialogTitle>
+      <DialogContent className={communityDialog + " max-w-xl"}>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+          The conversation starts with you
+        </p>
+        <DialogTitle className="pr-6 font-yrdly-display text-2xl">
           {post || comment
             ? "Edit content"
             : reply
@@ -165,7 +174,18 @@ export function CommunityComposer({
           Safe content publishes after moderation. Pending submissions remain
           visible to you. Videos may require a moderator’s review.
         </p>
-        <form onSubmit={submit} className="space-y-4">
+        <form onSubmit={submit} className="space-y-5">
+          <div className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3">
+            <CommunityAvatar name={profile?.name} src={profile?.avatar_url} />
+            <div>
+              <p className="font-semibold">{profile?.name || "You"}</p>
+              <p className="text-xs text-muted-foreground">
+                {reply
+                  ? "Replying to the conversation"
+                  : "Sharing with your community"}
+              </p>
+            </div>
+          </div>
           <label className="block text-sm">
             Message
             <textarea
@@ -173,10 +193,19 @@ export function CommunityComposer({
               className={communityField + " mt-2 min-h-36"}
               value={text}
               onChange={(event) => setText(event.target.value)}
+              placeholder={
+                reply ? "Add your reply…" : "What would you like to share?"
+              }
               maxLength={reply ? 500 : 1000}
               disabled={busy}
             />
           </label>
+          <p
+            className="text-right text-xs text-muted-foreground"
+            aria-live="off"
+          >
+            {text.length} / {reply ? 500 : 1000}
+          </p>
           {!reply && (
             <label className="block text-sm">
               Photos or videos
@@ -189,7 +218,7 @@ export function CommunityComposer({
                   selectFiles(Array.from(event.target.files || []));
                   event.target.value = "";
                 }}
-                className="mt-2 block w-full text-sm"
+                className="mt-2 block w-full rounded-2xl border border-dashed border-border p-4 text-sm file:mr-3 file:rounded-xl file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:font-semibold file:text-primary"
               />
             </label>
           )}
@@ -273,6 +302,11 @@ export function CommunityComposer({
                       )
                     }
                   />
+                  <CommunityAvatar
+                    name={member.user?.name}
+                    src={member.user?.avatar_url}
+                    className="h-8 w-8"
+                  />
                   {member.user?.name || "Member"}
                 </label>
               ))}
@@ -291,9 +325,15 @@ export function CommunityComposer({
                 !images.length &&
                 !videos.length)
             }
-            className="w-full rounded-xl bg-primary px-4 py-3 font-semibold text-primary-foreground disabled:opacity-50"
+            className={communityPrimaryButton + " w-full"}
           >
-            {busy ? "Submitting…" : "Submit"}
+            {busy
+              ? "Submitting…"
+              : post || comment
+                ? "Save changes"
+                : reply
+                  ? "Send reply"
+                  : "Share post"}
           </button>
         </form>
       </DialogContent>

@@ -1,6 +1,8 @@
 "use client";
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { ArrowUpRight, Plus, Search, Users, RefreshCw } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
   CommunityService,
@@ -8,7 +10,13 @@ import {
 } from "@/lib/communities/community-service";
 import { supabase } from "@/lib/supabase/supabase";
 import { useAuth } from "@/hooks/use-supabase-auth";
-import { communityButton, communityField } from "./CommunityTools";
+import {
+  CommunityAvatar,
+  communityButton,
+  communityField,
+  communityPrimaryButton,
+  communityDialog,
+} from "./CommunityTools";
 
 export function CommunityDirectory({
   embedded = false,
@@ -192,24 +200,28 @@ export function CommunityDirectory({
       aria-label={embedded ? "Community directory" : undefined}
       className={
         embedded
-          ? "w-full min-w-0 space-y-5 pb-6"
-          : "mx-auto max-w-2xl space-y-5 px-4 py-6 pb-28"
+          ? "w-full min-w-0 space-y-6 pb-8 font-yrdly-body"
+          : "mx-auto max-w-5xl space-y-6 px-4 py-8 pb-28 font-yrdly-body sm:px-6"
       }
     >
       <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <Heading
-            className={embedded ? "text-lg font-bold" : "text-2xl font-bold"}
-          >
+        <div className="min-w-0 flex-1">
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Your people, your place
+          </p>
+          <Heading className="font-yrdly-display text-3xl font-bold tracking-tight sm:text-4xl">
             Communities
           </Heading>
           <p className="mt-1 text-sm text-muted-foreground">
-            Find your neighbourhood and interest groups.
+            Find your circle. Keep up with your neighbourhood.
           </p>
         </div>
         {profile?.phone_verified ? (
-          <button className={communityButton} onClick={() => setCreating(true)}>
-            Create
+          <button
+            className={communityPrimaryButton}
+            onClick={() => setCreating(true)}
+          >
+            <Plus className="h-4 w-4" aria-hidden="true" /> Create
           </button>
         ) : (
           <a className={communityButton} href="/verify-phone">
@@ -218,7 +230,10 @@ export function CommunityDirectory({
         )}
       </header>
       {CommunityService.isStaffProfile(profile) && (
-        <a href="/community-review" className={communityButton}>
+        <a
+          href="/community-review"
+          className="inline-flex min-h-11 items-center text-sm font-semibold text-primary underline-offset-4 hover:underline"
+        >
           Review community submissions
         </a>
       )}
@@ -307,46 +322,76 @@ export function CommunityDirectory({
           </div>
         </details>
       )}
-      <input
-        className={communityField}
-        aria-label="Search communities"
-        value={query}
-        onChange={(event) => setQuery(event.target.value)}
-      />
-      <nav aria-label="Community directory" className="flex flex-wrap gap-2">
-        <button
-          className={
-            communityButton +
-            " min-h-11" +
-            (tab === "mine" ? " bg-primary/10" : "")
-          }
-          aria-pressed={tab === "mine"}
-          onClick={() => setTab("mine")}
-        >
-          My Communities
-        </button>
-        <button
-          className={
-            communityButton +
-            " min-h-11" +
-            (tab === "discover" ? " bg-primary/10" : "")
-          }
-          aria-pressed={tab === "discover"}
-          onClick={() => setTab("discover")}
-        >
-          Discover
-        </button>
-        <button
-          className={communityButton + " min-h-11 sm:ml-auto"}
-          onClick={() => void load()}
-        >
-          Refresh
-        </button>
-      </nav>
+      <div className="space-y-3">
+        <div className="relative">
+          <Search
+            aria-hidden="true"
+            className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground"
+          />
+          <input
+            className={communityField + " pl-12"}
+            aria-label="Search communities"
+            placeholder={
+              tab === "mine" ? "Search your communities" : "Find a community"
+            }
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <nav
+            aria-label="Community directory"
+            className="flex min-w-0 flex-1 rounded-2xl border border-border bg-muted/50 p-1 sm:max-w-md"
+          >
+            {(
+              [
+                ["mine", "My communities"],
+                ["discover", "Explore"],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                className={
+                  "min-h-11 flex-1 rounded-xl px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary " +
+                  (tab === value
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground")
+                }
+                aria-pressed={tab === value}
+                onClick={() => setTab(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
+          <button
+            className={communityButton}
+            onClick={() => void load()}
+            aria-label="Refresh communities"
+          >
+            <RefreshCw aria-hidden="true" className="h-4 w-4" />
+            <span className="hidden sm:inline">Refresh</span>
+          </button>
+        </div>
+      </div>
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="font-yrdly-display text-xl font-semibold">
+          {query
+            ? "Search results"
+            : tab === "mine"
+              ? "Your communities"
+              : "Find your people"}
+        </h2>
+        {!loading && (
+          <span className="text-xs text-muted-foreground">
+            {list.length} shown
+          </span>
+        )}
+      </div>
       {loading ? (
         <p role="status">Loading communities…</p>
       ) : !list.length ? (
-        <div className="space-y-4 py-8 text-center">
+        <div className="space-y-4 rounded-3xl border border-dashed border-border px-6 py-12 text-center">
           <p className="text-muted-foreground">
             {query
               ? "No matching communities."
@@ -364,45 +409,68 @@ export function CommunityDirectory({
           )}
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {list.map((item) => (
-            <a
+            <Link
               key={item.id}
               href={`/communities/${item.id}`}
-              className="flex items-center gap-4 rounded-2xl border border-border bg-card p-4 hover:border-primary/50"
+              className="group flex min-w-0 flex-col overflow-hidden rounded-3xl border border-border bg-card transition-colors hover:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
-              {item.avatar_url ? (
+              {item.banner_url && (
                 <img
-                  src={item.avatar_url}
+                  src={item.banner_url}
+                  onError={(event) => {
+                    event.currentTarget.style.display = "none";
+                  }}
                   alt=""
-                  className="h-12 w-12 shrink-0 rounded-full object-cover"
+                  loading="lazy"
+                  className="h-32 w-full object-cover"
                 />
-              ) : (
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xl text-primary">
-                  ♧
-                </div>
               )}
-              <div className="min-w-0 flex-1">
-                <h2 className="truncate font-semibold">
-                  {item.name}
-                  {item.privacy === "invite" ? " · Invite only" : ""}
-                </h2>
-                <p className="text-xs text-muted-foreground">
-                  {item.member_count} members ·{" "}
-                  {item.type === "ward"
-                    ? "Ward"
-                    : item.type === "lga"
-                      ? "LGA"
-                      : "Group"}
-                </p>
+              <div className="flex flex-1 flex-col gap-4 p-5 sm:p-6">
+                <div className="flex items-center gap-4">
+                  <CommunityAvatar
+                    name={item.name}
+                    src={item.avatar_url}
+                    className="h-16 w-16"
+                  />
+                  <div className="min-w-0">
+                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                      {item.type === "ward"
+                        ? "Your neighbourhood"
+                        : item.type === "lga"
+                          ? "Your local area"
+                          : "Shared interest"}
+                    </p>
+                    <h3 className="break-words font-yrdly-display text-xl font-semibold leading-tight">
+                      {item.name}
+                    </h3>
+                  </div>
+                </div>
                 {item.description && (
-                  <p className="mt-1 truncate text-sm text-muted-foreground">
+                  <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground">
                     {item.description}
                   </p>
                 )}
+                <div className="mt-auto flex items-center justify-between gap-3 border-t border-border pt-4 text-xs">
+                  <span className="flex items-center gap-2 text-muted-foreground">
+                    <Users aria-hidden="true" className="h-4 w-4" />
+                    {item.member_count}{" "}
+                    {item.member_count === 1 ? "member" : "members"}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 font-semibold text-primary">
+                    {mine.some((joined) => joined.id === item.id)
+                      ? "Joined"
+                      : item.privacy === "invite"
+                        ? "Invite only"
+                        : item.privacy === "request"
+                          ? "Request to join"
+                          : "Explore"}
+                    <ArrowUpRight aria-hidden="true" className="h-3.5 w-3.5" />
+                  </span>
+                </div>
               </div>
-              <span aria-hidden>→</span>
-            </a>
+            </Link>
           ))}
         </div>
       )}
@@ -422,8 +490,10 @@ export function CommunityDirectory({
             if (!open && !busy) setCreating(false);
           }}
         >
-          <DialogContent className="max-h-[90dvh] overflow-y-auto">
-            <DialogTitle>Create a community</DialogTitle>
+          <DialogContent className={communityDialog}>
+            <DialogTitle className="font-yrdly-display text-2xl">
+              Create a community
+            </DialogTitle>
             <p className="text-sm text-muted-foreground">
               A YRDLY moderator reviews submissions before they go live.
             </p>

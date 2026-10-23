@@ -1,5 +1,7 @@
 "use client";
 
+import { EventPageIntro } from "@/components/events/EventPageIntro";
+
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -7,9 +9,12 @@ import { useAuth } from "@/hooks/use-supabase-auth";
 import { useCategories } from "@/hooks/use-categories";
 import { supabase } from "@/lib/supabase/supabase";
 import { ModerationService } from "@/lib/moderation/moderation-service";
-import { LocationInput, StructuredLocation } from "@/components/location/LocationInput";
+import {
+  LocationInput,
+  StructuredLocation,
+} from "@/components/location/LocationInput";
 import { useToast } from "@/hooks/use-toast";
-import { useVideoEditor } from '@/hooks/use-video-editor';
+import { useVideoEditor } from "@/hooks/use-video-editor";
 import {
   ArrowLeft,
   ImageIcon,
@@ -35,9 +40,19 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/shared/utils";
 import { MIN_PAID_PRICE } from "@/lib/shared/constants";
-import { isPaidPrice, MINIMUM_PRICE_MESSAGE } from "@/lib/marketplace/price-policy";
+import {
+  isPaidPrice,
+  MINIMUM_PRICE_MESSAGE,
+} from "@/lib/marketplace/price-policy";
 
-const STEPS = ["Basic Info", "Date & Time", "Location", "Tickets", "Media", "Review"];
+const STEPS = [
+  "Basic Info",
+  "Date & Time",
+  "Location",
+  "Tickets",
+  "Media",
+  "Review",
+];
 
 export interface TicketTierInput {
   id: string;
@@ -69,13 +84,22 @@ export default function CreateEventPage() {
   const [locationOnline, setLocationOnline] = useState(false);
   const [onlineLink, setOnlineLink] = useState("");
   const [locationAddress, setLocationAddress] = useState("");
-  const [selectedLocation, setSelectedLocation] = useState<StructuredLocation | null>(null);
+  const [selectedLocation, setSelectedLocation] =
+    useState<StructuredLocation | null>(null);
 
   // Step 4: Tickets & Payout Gate
   const [ticketTiers, setTicketTiers] = useState<TicketTierInput[]>([
-    { id: "1", name: "General Admission", price: 0, capacity: 100, isFree: true },
+    {
+      id: "1",
+      name: "General Admission",
+      price: 0,
+      capacity: 100,
+      isFree: true,
+    },
   ]);
-  const [hasSellerAccount, setHasSellerAccount] = useState<boolean | null>(null);
+  const [hasSellerAccount, setHasSellerAccount] = useState<boolean | null>(
+    null,
+  );
   const [checkingSeller, setCheckingSeller] = useState(false);
 
   // Step 5: Media (Photos & Videos)
@@ -93,13 +117,17 @@ export default function CreateEventPage() {
   const [submitting, setSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [submitted, setSubmitted] = useState(false);
-  const [moderationStatus, setModerationStatus] = useState<"approved" | "pending">("approved");
+  const [moderationStatus, setModerationStatus] = useState<
+    "approved" | "pending"
+  >("approved");
 
   // Check seller payout account status
   const checkSellerAccount = async () => {
     setCheckingSeller(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       const token = session?.access_token;
       const res = await fetch("/api/seller/setup-account", {
         headers: { Authorization: `Bearer ${token}` },
@@ -131,7 +159,11 @@ export default function CreateEventPage() {
 
   const removeTicketTier = (id: string) => {
     if (ticketTiers.length === 1) {
-      toast({ variant: "destructive", title: "Tier Required", description: "Event must have at least one ticket tier." });
+      toast({
+        variant: "destructive",
+        title: "Tier Required",
+        description: "Event must have at least one ticket tier.",
+      });
       return;
     }
     setTicketTiers((prev) => prev.filter((t) => t.id !== id));
@@ -139,7 +171,7 @@ export default function CreateEventPage() {
 
   const updateTicketTier = (id: string, updates: Partial<TicketTierInput>) => {
     setTicketTiers((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, ...updates } : t))
+      prev.map((t) => (t.id === id ? { ...t, ...updates } : t)),
     );
   };
 
@@ -149,7 +181,11 @@ export default function CreateEventPage() {
     const selected = Array.from(e.target.files);
     const available = 10 - imageFiles.length;
     if (available <= 0) {
-      toast({ variant: "destructive", title: "Limit Reached", description: "Maximum 10 photos allowed." });
+      toast({
+        variant: "destructive",
+        title: "Limit Reached",
+        description: "Maximum 10 photos allowed.",
+      });
       return;
     }
     setImageFiles((prev) => [...prev, ...selected.slice(0, available)]);
@@ -167,7 +203,7 @@ export default function CreateEventPage() {
     if (!e.target.files) return;
     const selected = Array.from(e.target.files);
     const available = 3 - videoFiles.length;
-    e.target.value = '';
+    e.target.value = "";
     if (available <= 0) {
       toast({
         variant: "destructive",
@@ -177,25 +213,46 @@ export default function CreateEventPage() {
       return;
     }
 
-    pickingVideo.current = true; setPickingVideos(true);
+    pickingVideo.current = true;
+    setPickingVideos(true);
     try {
       for (const file of selected.slice(0, available)) {
         try {
           const edited = await editVideo(file, 40 * 1024 * 1024);
-          if (edited) setVideoFiles(previous => [...previous, edited].slice(0, 3));
+          if (edited)
+            setVideoFiles((previous) => [...previous, edited].slice(0, 3));
         } catch (error) {
-          toast({ variant: 'destructive', title: 'Video unavailable', description: error instanceof Error ? error.message : 'Please choose another video.' });
+          toast({
+            variant: "destructive",
+            title: "Video unavailable",
+            description:
+              error instanceof Error
+                ? error.message
+                : "Please choose another video.",
+          });
         }
       }
-    } finally { pickingVideo.current = false; setPickingVideos(false); }
+    } finally {
+      pickingVideo.current = false;
+      setPickingVideos(false);
+    }
   };
 
   const editAttachedVideo = async (file: File) => {
     if (submitting || pickingVideo.current || isEditingVideo) return;
     try {
       const edited = await editVideo(file, 40 * 1024 * 1024);
-      if (edited) setVideoFiles(previous => previous.map(current => current === file ? edited : current));
-    } catch { toast({ variant: 'destructive', title: 'Video unavailable', description: 'Please try again.' }); }
+      if (edited)
+        setVideoFiles((previous) =>
+          previous.map((current) => (current === file ? edited : current)),
+        );
+    } catch {
+      toast({
+        variant: "destructive",
+        title: "Video unavailable",
+        description: "Please try again.",
+      });
+    }
   };
 
   const removeVideo = (index: number) => {
@@ -214,8 +271,12 @@ export default function CreateEventPage() {
   const hasPaidTiers = ticketTiers.some((t) => !t.isFree && t.price > 0);
 
   const validateTicketPrices = () => {
-    if (ticketTiers.some(tier => !tier.isFree && !isPaidPrice(tier.price))) {
-      toast({ variant: "destructive", title: "Valid Ticket Price Required", description: MINIMUM_PRICE_MESSAGE });
+    if (ticketTiers.some((tier) => !tier.isFree && !isPaidPrice(tier.price))) {
+      toast({
+        variant: "destructive",
+        title: "Valid Ticket Price Required",
+        description: MINIMUM_PRICE_MESSAGE,
+      });
       return false;
     }
     return true;
@@ -225,7 +286,11 @@ export default function CreateEventPage() {
   const handleSubmit = async () => {
     if (submitting || pickingVideo.current || isEditingVideo) return;
     if (!user) {
-      toast({ variant: "destructive", title: "Authentication Required", description: "Please sign in to create events." });
+      toast({
+        variant: "destructive",
+        title: "Authentication Required",
+        description: "Please sign in to create events.",
+      });
       return;
     }
 
@@ -235,7 +300,8 @@ export default function CreateEventPage() {
       toast({
         variant: "destructive",
         title: "Payout Account Required",
-        description: "Please link a bank account before creating paid ticket events.",
+        description:
+          "Please link a bank account before creating paid ticket events.",
       });
       return;
     }
@@ -254,34 +320,55 @@ export default function CreateEventPage() {
 
       for (let i = 0; i < reorderedFiles.length; i++) {
         const file = reorderedFiles[i];
-        const safeName = file.name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9._-]/g, '');
+        const safeName = file.name
+          .replace(/\s+/g, "_")
+          .replace(/[^a-zA-Z0-9._-]/g, "");
         const path = `${user.id}/events/${Date.now()}_${i}_${safeName}`;
 
         const { error: uploadErr } = await supabase.storage
           .from("post-images")
-          .upload(path, file, { contentType: file.type || "image/jpeg", cacheControl: "604800", upsert: false });
+          .upload(path, file, {
+            contentType: file.type || "image/jpeg",
+            cacheControl: "604800",
+            upsert: false,
+          });
 
         if (uploadErr) throw uploadErr;
 
-        const { data: pubData } = supabase.storage.from("post-images").getPublicUrl(path);
+        const { data: pubData } = supabase.storage
+          .from("post-images")
+          .getPublicUrl(path);
         if (pubData?.publicUrl) uploadedImageUrls.push(pubData.publicUrl);
-        setUploadProgress(10 + Math.round(((i + 1) / (reorderedFiles.length + videoFiles.length || 1)) * 35));
+        setUploadProgress(
+          10 +
+            Math.round(
+              ((i + 1) / (reorderedFiles.length + videoFiles.length || 1)) * 35,
+            ),
+        );
       }
 
       // 2. Upload Videos to 'post-videos' bucket
       const uploadedVideoUrls: string[] = [];
       for (let i = 0; i < videoFiles.length; i++) {
         const file = videoFiles[i];
-        const safeName = file.name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9._-]/g, '');
+        const safeName = file.name
+          .replace(/\s+/g, "_")
+          .replace(/[^a-zA-Z0-9._-]/g, "");
         const path = `${user.id}/events/${Date.now()}_${i}_${safeName}`;
 
         const { error: uploadErr } = await supabase.storage
           .from("post-videos")
-          .upload(path, file, { contentType: file.type || "video/mp4", cacheControl: "604800", upsert: false });
+          .upload(path, file, {
+            contentType: file.type || "video/mp4",
+            cacheControl: "604800",
+            upsert: false,
+          });
 
         if (uploadErr) throw uploadErr;
 
-        const { data: pubData } = supabase.storage.from("post-videos").getPublicUrl(path);
+        const { data: pubData } = supabase.storage
+          .from("post-videos")
+          .getPublicUrl(path);
         if (pubData?.publicUrl) uploadedVideoUrls.push(pubData.publicUrl);
         setUploadProgress(45 + Math.round(((i + 1) / videoFiles.length) * 25));
       }
@@ -289,7 +376,9 @@ export default function CreateEventPage() {
       setUploadProgress(70);
 
       // 3. Client-side Moderation Check
-      const textToModerate = [title.trim(), description.trim()].filter(Boolean).join(" ");
+      const textToModerate = [title.trim(), description.trim()]
+        .filter(Boolean)
+        .join(" ");
       let modStatus: "approved" | "pending" = "approved";
       let modReason = "";
 
@@ -334,7 +423,9 @@ export default function CreateEventPage() {
       };
 
       // 4. POST to /api/events/create API
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       const res = await fetch("/api/events/create", {
         method: "POST",
         headers: {
@@ -346,7 +437,9 @@ export default function CreateEventPage() {
 
       const resData = await res.json();
       if (!res.ok || resData.error) {
-        throw new Error(resData.error || resData.message || "Failed to create event");
+        throw new Error(
+          resData.error || resData.message || "Failed to create event",
+        );
       }
 
       // 5. Insert into moderation_queue if flagged
@@ -373,7 +466,8 @@ export default function CreateEventPage() {
       toast({
         variant: "destructive",
         title: "Creation Error",
-        description: err?.message || "Failed to create event. Please try again.",
+        description:
+          err?.message || "Failed to create event. Please try again.",
       });
     }
   };
@@ -386,9 +480,12 @@ export default function CreateEventPage() {
           <div className="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mb-4">
             <Clock className="w-8 h-8 text-amber-500" />
           </div>
-          <h1 className="text-2xl font-bold font-sans text-foreground mb-2">Sent for Moderation</h1>
+          <h1 className="text-2xl font-bold font-sans text-foreground mb-2">
+            Sent for Moderation
+          </h1>
           <p className="text-sm text-muted-foreground mb-6">
-            Your event details were flagged and sent for admin review. It will be published once approved.
+            Your event details were flagged and sent for admin review. It will
+            be published once approved.
           </p>
           <Button
             onClick={() => router.push("/events")}
@@ -405,9 +502,12 @@ export default function CreateEventPage() {
         <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mb-4">
           <CheckCircle2 className="w-8 h-8 text-emerald-500" />
         </div>
-        <h1 className="text-2xl font-bold font-sans text-foreground mb-2">Event Published!</h1>
+        <h1 className="text-2xl font-bold font-sans text-foreground mb-2">
+          Event Published!
+        </h1>
         <p className="text-sm text-muted-foreground mb-6">
-          Your event is live and available for ticket bookings in your community.
+          Your event is live and available for ticket bookings in your
+          community.
         </p>
         <Button
           onClick={() => router.push("/events")}
@@ -426,7 +526,8 @@ export default function CreateEventPage() {
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button aria-label="Back"
+            <Button
+              aria-label="Back"
               variant="ghost"
               size="icon"
               onClick={() => {
@@ -437,7 +538,9 @@ export default function CreateEventPage() {
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
-            <h1 className="text-lg font-bold font-sans text-foreground">Create Event</h1>
+            <h1 className="text-lg font-bold font-yrdly-display text-foreground">
+              Create Event
+            </h1>
           </div>
           <span className="text-xs font-semibold px-3 py-1 rounded-full bg-secondary text-secondary-foreground">
             Step {step + 1} of {STEPS.length}: {STEPS[step]}
@@ -447,9 +550,19 @@ export default function CreateEventPage() {
 
       {/* Main Content Area */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-6">
+        <EventPageIntro
+          eyebrow="MAKE SOMETHING HAPPEN"
+          title="Bring your people together."
+          description="Start with the essentials, then add tickets and a cover. You can review everything before publishing."
+        />
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
           {/* Form Wizard Column */}
-          <div className={cn("space-y-6", step === 5 ? "md:col-span-6" : "md:col-span-7")}>
+          <div
+            className={cn(
+              "space-y-6",
+              step === 5 ? "md:col-span-6" : "md:col-span-7",
+            )}
+          >
             {/* Step Indicators */}
             <div className="flex items-center justify-between gap-1 border-b border-border pb-4 overflow-x-auto scrollbar-none">
               {STEPS.map((sName, idx) => (
@@ -461,8 +574,8 @@ export default function CreateEventPage() {
                     step === idx
                       ? "bg-primary text-foreground border-primary"
                       : idx < step
-                      ? "bg-secondary text-secondary-foreground border-transparent hover:border-border"
-                      : "bg-muted/30 text-muted-foreground border-transparent"
+                        ? "bg-secondary text-secondary-foreground border-transparent hover:border-border"
+                        : "bg-muted/30 text-muted-foreground border-transparent",
                   )}
                 >
                   {idx + 1}. {sName}
@@ -474,12 +587,18 @@ export default function CreateEventPage() {
             {step === 0 && (
               <div className="space-y-5">
                 <div>
-                  <h2 className="text-xl font-bold font-sans text-foreground">Basic Info</h2>
-                  <p className="text-sm text-muted-foreground">Title, category, and event description.</p>
+                  <h2 className="text-xl font-bold font-sans text-foreground">
+                    Basic Info
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Title, category, and event description.
+                  </p>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Title *</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Title *
+                  </label>
                   <Input
                     placeholder="e.g. Lekki Neighborhood BBQ & Music Fest"
                     value={title}
@@ -490,10 +609,13 @@ export default function CreateEventPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Category *</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Category *
+                  </label>
                   {categoriesLoading ? (
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading categories...
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading
+                      categories...
                     </div>
                   ) : (
                     <div className="flex flex-wrap gap-2">
@@ -506,7 +628,7 @@ export default function CreateEventPage() {
                             "px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all",
                             category === cat.name
                               ? "bg-primary text-foreground border-primary"
-                              : "bg-secondary/50 text-secondary-foreground border-border hover:bg-secondary"
+                              : "bg-secondary/50 text-secondary-foreground border-border hover:bg-secondary",
                           )}
                         >
                           {cat.name}
@@ -517,7 +639,9 @@ export default function CreateEventPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Description</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Description
+                  </label>
                   <Textarea
                     placeholder="Describe what attendees can expect, rules, schedule..."
                     value={description}
@@ -531,11 +655,19 @@ export default function CreateEventPage() {
                 <Button
                   onClick={() => {
                     if (!title.trim()) {
-                      toast({ variant: "destructive", title: "Title Required", description: "Please enter an event title." });
+                      toast({
+                        variant: "destructive",
+                        title: "Title Required",
+                        description: "Please enter an event title.",
+                      });
                       return;
                     }
                     if (!category) {
-                      toast({ variant: "destructive", title: "Category Required", description: "Please select an event category." });
+                      toast({
+                        variant: "destructive",
+                        title: "Category Required",
+                        description: "Please select an event category.",
+                      });
                       return;
                     }
                     setStep(1);
@@ -552,12 +684,18 @@ export default function CreateEventPage() {
             {step === 1 && (
               <div className="space-y-5">
                 <div>
-                  <h2 className="text-xl font-bold font-sans text-foreground">Date & Time</h2>
-                  <p className="text-sm text-muted-foreground">Set when your event starts and finishes.</p>
+                  <h2 className="text-xl font-bold font-sans text-foreground">
+                    Date & Time
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Set when your event starts and finishes.
+                  </p>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Event Date *</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Event Date *
+                  </label>
                   <Input
                     type="date"
                     value={eventDate}
@@ -568,7 +706,9 @@ export default function CreateEventPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Start Time *</label>
+                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Start Time *
+                    </label>
                     <Input
                       type="time"
                       value={startTimeStr}
@@ -578,7 +718,9 @@ export default function CreateEventPage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">End Time *</label>
+                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      End Time *
+                    </label>
                     <Input
                       type="time"
                       value={endTimeStr}
@@ -589,13 +731,21 @@ export default function CreateEventPage() {
                 </div>
 
                 <div className="flex gap-3 pt-2">
-                  <Button variant="outline" onClick={() => setStep(0)} className="flex-1 rounded-full py-6 font-bold">
+                  <Button
+                    variant="outline"
+                    onClick={() => setStep(0)}
+                    className="flex-1 rounded-full py-6 font-bold"
+                  >
                     <ChevronLeft className="w-5 h-5 mr-1" /> Back
                   </Button>
                   <Button
                     onClick={() => {
                       if (!eventDate) {
-                        toast({ variant: "destructive", title: "Date Required", description: "Please select an event date." });
+                        toast({
+                          variant: "destructive",
+                          title: "Date Required",
+                          description: "Please select an event date.",
+                        });
                         return;
                       }
                       setStep(2);
@@ -613,8 +763,12 @@ export default function CreateEventPage() {
             {step === 2 && (
               <div className="space-y-5">
                 <div>
-                  <h2 className="text-xl font-bold font-sans text-foreground">Location</h2>
-                  <p className="text-sm text-muted-foreground">Choose physical venue or online streaming link.</p>
+                  <h2 className="text-xl font-bold font-sans text-foreground">
+                    Location
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Choose physical venue or online streaming link.
+                  </p>
                 </div>
 
                 <div className="flex rounded-full bg-secondary p-1 border border-border">
@@ -623,7 +777,9 @@ export default function CreateEventPage() {
                     onClick={() => setLocationOnline(false)}
                     className={cn(
                       "flex-1 py-2.5 rounded-full text-sm font-bold font-sans transition-all",
-                      !locationOnline ? "bg-primary text-foreground shadow" : "text-muted-foreground"
+                      !locationOnline
+                        ? "bg-primary text-foreground shadow"
+                        : "text-muted-foreground",
                     )}
                   >
                     Venue Location
@@ -633,7 +789,9 @@ export default function CreateEventPage() {
                     onClick={() => setLocationOnline(true)}
                     className={cn(
                       "flex-1 py-2.5 rounded-full text-sm font-bold font-sans transition-all",
-                      locationOnline ? "bg-primary text-foreground shadow" : "text-muted-foreground"
+                      locationOnline
+                        ? "bg-primary text-foreground shadow"
+                        : "text-muted-foreground",
                     )}
                   >
                     Online Event
@@ -642,7 +800,9 @@ export default function CreateEventPage() {
 
                 {locationOnline ? (
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Online Stream / Meeting Link *</label>
+                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Online Stream / Meeting Link *
+                    </label>
                     <Input
                       placeholder="https://zoom.us/j/... or Youtube Live link"
                       value={onlineLink}
@@ -652,7 +812,9 @@ export default function CreateEventPage() {
                   </div>
                 ) : (
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Venue Address / Search</label>
+                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Venue Address / Search
+                    </label>
                     <LocationInput
                       value={locationAddress}
                       onChange={setLocationAddress}
@@ -664,24 +826,40 @@ export default function CreateEventPage() {
                     />
                     {selectedLocation && (
                       <p className="text-xs text-emerald-500 font-medium flex items-center gap-1 mt-1">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> Resolved: {selectedLocation.ward ? `${selectedLocation.ward}, ` : ""}{selectedLocation.lga}, {selectedLocation.state}
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Resolved:{" "}
+                        {selectedLocation.ward
+                          ? `${selectedLocation.ward}, `
+                          : ""}
+                        {selectedLocation.lga}, {selectedLocation.state}
                       </p>
                     )}
                   </div>
                 )}
 
                 <div className="flex gap-3 pt-2">
-                  <Button variant="outline" onClick={() => setStep(1)} className="flex-1 rounded-full py-6 font-bold">
+                  <Button
+                    variant="outline"
+                    onClick={() => setStep(1)}
+                    className="flex-1 rounded-full py-6 font-bold"
+                  >
                     <ChevronLeft className="w-5 h-5 mr-1" /> Back
                   </Button>
                   <Button
                     onClick={() => {
                       if (locationOnline && !onlineLink.trim()) {
-                        toast({ variant: "destructive", title: "Link Required", description: "Please enter an online stream link." });
+                        toast({
+                          variant: "destructive",
+                          title: "Link Required",
+                          description: "Please enter an online stream link.",
+                        });
                         return;
                       }
                       if (!locationOnline && !locationAddress.trim()) {
-                        toast({ variant: "destructive", title: "Address Required", description: "Please enter a venue address." });
+                        toast({
+                          variant: "destructive",
+                          title: "Address Required",
+                          description: "Please enter a venue address.",
+                        });
                         return;
                       }
                       setStep(3);
@@ -699,8 +877,12 @@ export default function CreateEventPage() {
             {step === 3 && (
               <div className="space-y-5">
                 <div>
-                  <h2 className="text-xl font-bold font-sans text-foreground">Tickets & Pricing</h2>
-                  <p className="text-sm text-muted-foreground">Create free or paid ticket tiers for attendees.</p>
+                  <h2 className="text-xl font-bold font-sans text-foreground">
+                    Tickets & Pricing
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Create free or paid ticket tiers for attendees.
+                  </p>
                 </div>
 
                 {/* Payout Account Warning Banner if paid tiers present */}
@@ -711,7 +893,8 @@ export default function CreateEventPage() {
                       Bank Payout Account Required
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      To sell paid tickets, you must link your Nigerian bank account for automated ticket revenue payouts.
+                      To sell paid tickets, you must link your Nigerian bank
+                      account for automated ticket revenue payouts.
                     </p>
                     <Button
                       type="button"
@@ -719,7 +902,8 @@ export default function CreateEventPage() {
                       onClick={() => router.push("/profile/payout-settings")}
                       className="rounded-full bg-amber-500 text-black hover:bg-amber-600 font-bold text-xs"
                     >
-                      Link Payout Account <ExternalLink className="w-3.5 h-3.5 ml-1" />
+                      Link Payout Account{" "}
+                      <ExternalLink className="w-3.5 h-3.5 ml-1" />
                     </Button>
                   </div>
                 )}
@@ -727,7 +911,10 @@ export default function CreateEventPage() {
                 {/* Ticket Tiers List */}
                 <div className="space-y-4">
                   {ticketTiers.map((tier, idx) => (
-                    <div key={tier.id} className="p-4 rounded-2xl border border-border bg-card space-y-3 relative">
+                    <div
+                      key={tier.id}
+                      className="p-4 rounded-2xl border border-border bg-card space-y-3 relative"
+                    >
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                           Tier #{idx + 1}
@@ -745,23 +932,33 @@ export default function CreateEventPage() {
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="space-y-1">
-                          <label className="text-[11px] font-semibold text-muted-foreground">Tier Name</label>
+                          <label className="text-[11px] font-semibold text-muted-foreground">
+                            Tier Name
+                          </label>
                           <Input
                             value={tier.name}
-                            onChange={(e) => updateTicketTier(tier.id, { name: e.target.value })}
+                            onChange={(e) =>
+                              updateTicketTier(tier.id, {
+                                name: e.target.value,
+                              })
+                            }
                             placeholder="e.g. Early Bird"
                             className="rounded-xl"
                           />
                         </div>
 
                         <div className="space-y-1">
-                          <label className="text-[11px] font-semibold text-muted-foreground">Capacity / Limit</label>
+                          <label className="text-[11px] font-semibold text-muted-foreground">
+                            Capacity / Limit
+                          </label>
                           <Input
                             type="number"
                             value={tier.capacity ?? ""}
                             onChange={(e) =>
                               updateTicketTier(tier.id, {
-                                capacity: e.target.value ? parseInt(e.target.value, 10) : null,
+                                capacity: e.target.value
+                                  ? parseInt(e.target.value, 10)
+                                  : null,
                               })
                             }
                             placeholder="Unlimited"
@@ -778,7 +975,9 @@ export default function CreateEventPage() {
                             onChange={(e) =>
                               updateTicketTier(tier.id, {
                                 isFree: e.target.checked,
-                                price: e.target.checked ? 0 : tier.price || MIN_PAID_PRICE,
+                                price: e.target.checked
+                                  ? 0
+                                  : tier.price || MIN_PAID_PRICE,
                               })
                             }
                             className="rounded text-primary focus:ring-primary"
@@ -788,12 +987,16 @@ export default function CreateEventPage() {
 
                         {!tier.isFree && (
                           <div className="flex items-center gap-1">
-                            <span className="text-xs font-bold text-muted-foreground">₦</span>
+                            <span className="text-xs font-bold text-muted-foreground">
+                              ₦
+                            </span>
                             <Input
                               type="number"
                               value={tier.price}
                               onChange={(e) =>
-                                updateTicketTier(tier.id, { price: parseFloat(e.target.value) || 0 })
+                                updateTicketTier(tier.id, {
+                                  price: parseFloat(e.target.value) || 0,
+                                })
                               }
                               placeholder={String(MIN_PAID_PRICE)}
                               min={MIN_PAID_PRICE}
@@ -808,7 +1011,13 @@ export default function CreateEventPage() {
                     </div>
                   ))}
 
-                  <p id="paid-ticket-price-help" className="text-xs text-muted-foreground">Free tickets are available. Paid tickets start at ₦{MIN_PAID_PRICE.toLocaleString("en-NG")}.</p>
+                  <p
+                    id="paid-ticket-price-help"
+                    className="text-xs text-muted-foreground"
+                  >
+                    Free tickets are available. Paid tickets start at ₦
+                    {MIN_PAID_PRICE.toLocaleString("en-NG")}.
+                  </p>
                   <Button
                     type="button"
                     variant="outline"
@@ -820,7 +1029,11 @@ export default function CreateEventPage() {
                 </div>
 
                 <div className="flex gap-3 pt-2">
-                  <Button variant="outline" onClick={() => setStep(2)} className="flex-1 rounded-full py-6 font-bold">
+                  <Button
+                    variant="outline"
+                    onClick={() => setStep(2)}
+                    className="flex-1 rounded-full py-6 font-bold"
+                  >
                     <ChevronLeft className="w-5 h-5 mr-1" /> Back
                   </Button>
                   <Button
@@ -830,7 +1043,8 @@ export default function CreateEventPage() {
                         toast({
                           variant: "destructive",
                           title: "Payout Account Required",
-                          description: "Please link a bank account before continuing with paid tickets.",
+                          description:
+                            "Please link a bank account before continuing with paid tickets.",
                         });
                         return;
                       }
@@ -849,9 +1063,12 @@ export default function CreateEventPage() {
             {step === 4 && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-xl font-bold font-sans text-foreground">Add Cover, Photos & Videos</h2>
+                  <h2 className="text-xl font-bold font-sans text-foreground">
+                    Add Cover, Photos & Videos
+                  </h2>
                   <p className="text-sm text-muted-foreground">
-                    Upload up to 10 photos and 3 videos (40MB max each). The cover image will be displayed on event cards.
+                    Upload up to 10 photos and 3 videos (40MB max each). The
+                    cover image will be displayed on event cards.
                   </p>
                 </div>
 
@@ -867,10 +1084,17 @@ export default function CreateEventPage() {
                         onClick={() => setCoverIndex(idx)}
                         className={cn(
                           "relative aspect-square rounded-2xl overflow-hidden border-2 cursor-pointer transition-all bg-secondary",
-                          coverIndex === idx ? "border-primary ring-2 ring-primary/30" : "border-border"
+                          coverIndex === idx
+                            ? "border-primary ring-2 ring-primary/30"
+                            : "border-border",
                         )}
                       >
-                        <Image src={URL.createObjectURL(file)} alt={`Photo ${idx + 1}`} fill className="object-cover" />
+                        <Image
+                          src={URL.createObjectURL(file)}
+                          alt={`Photo ${idx + 1}`}
+                          fill
+                          className="object-cover"
+                        />
                         {coverIndex === idx && (
                           <div className="absolute top-2 left-2 bg-primary text-foreground text-[10px] font-bold px-2 py-0.5 rounded-full shadow">
                             Cover
@@ -897,7 +1121,9 @@ export default function CreateEventPage() {
                         className="aspect-square rounded-2xl border-2 border-dashed border-border hover:border-primary/50 flex flex-col items-center justify-center p-3 text-center transition-colors bg-secondary/30 hover:bg-secondary"
                       >
                         <ImageIcon className="w-6 h-6 text-muted-foreground mb-1" />
-                        <span className="text-xs font-semibold text-muted-foreground">+ Add Photo</span>
+                        <span className="text-xs font-semibold text-muted-foreground">
+                          + Add Photo
+                        </span>
                       </button>
                     )}
                   </div>
@@ -917,12 +1143,24 @@ export default function CreateEventPage() {
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
                             <Video className="w-5 h-5 text-primary shrink-0" />
-                            <span className="text-xs font-medium text-foreground truncate">{file.name}</span>
+                            <span className="text-xs font-medium text-foreground truncate">
+                              {file.name}
+                            </span>
                             <span className="text-[10px] text-muted-foreground shrink-0">
                               ({(file.size / (1024 * 1024)).toFixed(1)}MB)
                             </span>
                           </div>
-                          <Button type="button" variant="ghost" size="sm" disabled={submitting || pickingVideos || isEditingVideo} onClick={() => void editAttachedVideo(file)}>Edit video</Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            disabled={
+                              submitting || pickingVideos || isEditingVideo
+                            }
+                            onClick={() => void editAttachedVideo(file)}
+                          >
+                            Edit video
+                          </Button>
                           <button
                             type="button"
                             onClick={() => removeVideo(i)}
@@ -966,7 +1204,11 @@ export default function CreateEventPage() {
                 />
 
                 <div className="flex gap-3 pt-2">
-                  <Button variant="outline" onClick={() => setStep(3)} className="flex-1 rounded-full py-6 font-bold">
+                  <Button
+                    variant="outline"
+                    onClick={() => setStep(3)}
+                    className="flex-1 rounded-full py-6 font-bold"
+                  >
                     <ChevronLeft className="w-5 h-5 mr-1" /> Back
                   </Button>
                   <Button
@@ -984,20 +1226,28 @@ export default function CreateEventPage() {
             {step === 5 && (
               <div className="space-y-5">
                 <div>
-                  <h2 className="text-xl font-bold font-sans text-foreground">Review & Publish</h2>
-                  <p className="text-sm text-muted-foreground">Review your event card details before publishing.</p>
+                  <h2 className="text-xl font-bold font-sans text-foreground">
+                    Review & Publish
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Review your event card details before publishing.
+                  </p>
                 </div>
 
                 {/* Audience Visibility */}
                 <div className="p-4 rounded-2xl bg-secondary/50 border border-border space-y-3">
-                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Audience Visibility</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Audience Visibility
+                  </label>
                   <div className="flex gap-3">
                     <button
                       type="button"
                       onClick={() => setVisibility("PUBLIC")}
                       className={cn(
                         "flex-1 p-3 rounded-xl border flex items-center gap-2 text-xs font-bold transition-all",
-                        visibility === "PUBLIC" ? "bg-primary text-foreground border-primary" : "bg-background border-border text-muted-foreground"
+                        visibility === "PUBLIC"
+                          ? "bg-primary text-foreground border-primary"
+                          : "bg-background border-border text-muted-foreground",
                       )}
                     >
                       <Globe className="w-4 h-4 text-primary" />
@@ -1008,7 +1258,9 @@ export default function CreateEventPage() {
                       onClick={() => setVisibility("PRIVATE")}
                       className={cn(
                         "flex-1 p-3 rounded-xl border flex items-center gap-2 text-xs font-bold transition-all",
-                        visibility === "PRIVATE" ? "bg-primary text-foreground border-primary" : "bg-background border-border text-muted-foreground"
+                        visibility === "PRIVATE"
+                          ? "bg-primary text-foreground border-primary"
+                          : "bg-background border-border text-muted-foreground",
                       )}
                     >
                       <Users className="w-4 h-4 text-amber-500" />
@@ -1024,13 +1276,21 @@ export default function CreateEventPage() {
                       <span>{uploadProgress}%</span>
                     </div>
                     <div className="w-full bg-secondary h-2 rounded-full overflow-hidden">
-                      <div className="bg-primary h-2 transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
+                      <div
+                        className="bg-primary h-2 transition-all duration-300"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
                     </div>
                   </div>
                 )}
 
                 <div className="flex gap-3 pt-2">
-                  <Button variant="outline" disabled={submitting} onClick={() => setStep(4)} className="flex-1 rounded-full py-6 font-bold">
+                  <Button
+                    variant="outline"
+                    disabled={submitting}
+                    onClick={() => setStep(4)}
+                    className="flex-1 rounded-full py-6 font-bold"
+                  >
                     <ChevronLeft className="w-5 h-5 mr-1" /> Edit Details
                   </Button>
                   <Button
@@ -1040,7 +1300,8 @@ export default function CreateEventPage() {
                   >
                     {submitting ? (
                       <span className="flex items-center gap-2">
-                        <Loader2 className="w-4 h-4 animate-spin" /> Publishing...
+                        <Loader2 className="w-4 h-4 animate-spin" />{" "}
+                        Publishing...
                       </span>
                     ) : (
                       "Publish Event"
@@ -1055,7 +1316,9 @@ export default function CreateEventPage() {
           <div className="hidden md:block md:col-span-5">
             <div className="sticky top-20 p-5 rounded-3xl border border-border bg-card shadow-sm space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Event Preview</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Event Preview
+                </span>
                 <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
                   {category || "Social"}
                 </span>
@@ -1063,7 +1326,14 @@ export default function CreateEventPage() {
 
               <div className="relative aspect-video rounded-2xl overflow-hidden bg-secondary border border-border">
                 {imageFiles.length > 0 ? (
-                  <Image src={URL.createObjectURL(imageFiles[coverIndex] || imageFiles[0])} alt="Cover" fill className="object-cover" />
+                  <Image
+                    src={URL.createObjectURL(
+                      imageFiles[coverIndex] || imageFiles[0],
+                    )}
+                    alt="Cover"
+                    fill
+                    className="object-cover"
+                  />
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground p-4 text-center">
                     <Calendar className="w-10 h-10 mb-2 opacity-40" />
@@ -1073,25 +1343,43 @@ export default function CreateEventPage() {
               </div>
 
               <div className="space-y-2">
-                <h3 className="font-bold text-lg text-foreground line-clamp-1 font-sans">{title || "Event Title"}</h3>
-                
+                <h3 className="font-bold text-lg text-foreground line-clamp-1 font-sans">
+                  {title || "Event Title"}
+                </h3>
+
                 {eventDate && (
                   <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
                     <Calendar className="w-3.5 h-3.5" />
-                    <span>{new Date(eventDate).toLocaleDateString("en-NG", { weekday: "short", month: "short", day: "numeric" })} • {startTimeStr}</span>
+                    <span>
+                      {new Date(eventDate).toLocaleDateString("en-NG", {
+                        weekday: "short",
+                        month: "short",
+                        day: "numeric",
+                      })}{" "}
+                      • {startTimeStr}
+                    </span>
                   </div>
                 )}
 
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
                   <MapPin className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                  <span className="truncate">{locationOnline ? `Online Stream: ${onlineLink || "Link"}` : locationAddress || "Venue Address"}</span>
+                  <span className="truncate">
+                    {locationOnline
+                      ? `Online Stream: ${onlineLink || "Link"}`
+                      : locationAddress || "Venue Address"}
+                  </span>
                 </div>
 
                 <div className="pt-2 border-t border-border flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Tickets:</span>
+                  <span className="text-xs text-muted-foreground">
+                    Tickets:
+                  </span>
                   <div className="flex gap-1.5">
                     {ticketTiers.map((t) => (
-                      <span key={t.id} className="text-xs font-bold px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">
+                      <span
+                        key={t.id}
+                        className="text-xs font-bold px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground"
+                      >
                         {t.isFree ? "FREE" : `₦${t.price}`}
                       </span>
                     ))}

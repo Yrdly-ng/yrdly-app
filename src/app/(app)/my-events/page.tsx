@@ -1,172 +1,216 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, Plus, Calendar, MapPin, Users, QrCode, Settings } from "lucide-react";
+import { ArrowLeft, CalendarDays, Plus, QrCode, Settings } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { getOrganizerEvents } from "@/lib/events/event-service";
+import { getEventDateInfo } from "@/lib/events/event-presentation";
 import { useAuth } from "@/hooks/use-supabase-auth";
+import type { Event } from "@/types/events";
 
-const FONT = "var(--font-work-sans)";
-const RALEWAY = "var(--font-jersey25)";
-
+type Filter = "Upcoming" | "Drafts" | "Past" | "Cancelled";
 export default function MyEventsPage() {
   const router = useRouter();
   const { user } = useAuth();
-
-  const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming");
-  const [events, setEvents] = useState<any[]>([]);
+  const [filter, setFilter] = useState<Filter>("Upcoming");
+  const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const fetchMyEvents = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-
-    try {
-      const data = await getOrganizerEvents(user.id);
-      setEvents(data || []);
-    } catch (err) {
-      console.error("Error fetching my events:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
-
+  const [error, setError] = useState(false);
+  const [reload, setReload] = useState(0);
   useEffect(() => {
-    fetchMyEvents();
-  }, [fetchMyEvents]);
-
-  const now = new Date();
-  const filteredEvents = events.filter((evt) => {
-    const evtDate = new Date(evt.start_time || evt.created_at);
-    return activeTab === "upcoming" ? evtDate >= now : evtDate < now;
+    let current = true;
+    if (!user) {
+      setEvents([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError(false);
+    void getOrganizerEvents(user.id)
+      .then((data) => {
+        if (current) setEvents(data || []);
+      })
+      .catch(() => {
+        if (current) setError(true);
+      })
+      .finally(() => {
+        if (current) setLoading(false);
+      });
+    return () => {
+      current = false;
+    };
+  }, [user?.id, reload]);
+  const now = Date.now();
+  const visible = events.filter((event) => {
+    if (filter === "Cancelled") return event.status === "CANCELLED";
+    if (filter === "Drafts")
+      return ["DRAFT", "PENDING_REVIEW", "REJECTED"].includes(event.status);
+    if (event.status === "COMPLETED") return filter === "Past";
+    if (event.status !== "PUBLISHED") return false;
+    return filter === "Upcoming"
+      ? new Date(event.end_time || event.start_time).getTime() >= now
+      : new Date(event.end_time || event.start_time).getTime() < now;
   });
-
   return (
-    <div className="min-h-screen bg-background text-foreground pb-20">
-      <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b border-border/40 px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => router.back()}
-            className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-card transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5 text-foreground" />
-          </button>
-          <h1 className="text-xl font-bold text-foreground" style={{ fontFamily: RALEWAY }}>
-            My Organized Events
+    <main className="mx-auto max-w-5xl space-y-7 px-4 py-6 pb-28 font-yrdly-body sm:px-6 lg:py-10">
+      <button
+        type="button"
+        aria-label="Back"
+        onClick={() => router.back()}
+        className="flex h-11 w-11 items-center justify-center rounded-full border border-border"
+      >
+        <ArrowLeft className="h-5 w-5" />
+      </button>
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div className="space-y-3">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">
+            BRING PEOPLE TOGETHER
+          </p>
+          <h1 className="font-yrdly-display text-4xl font-bold">
+            Your events.
           </h1>
+          <p className="text-muted-foreground">
+            From the first idea to the final guest. Manage it all here.
+          </p>
         </div>
-
-        <button
-          onClick={() => router.push("/events/create")}
-          className="px-3.5 py-2 rounded-full bg-primary text-primary-foreground font-bold text-xs flex items-center gap-1.5 shadow"
-          style={{ fontFamily: FONT }}
+        <Link
+          href="/events/create"
+          className="inline-flex min-h-12 items-center gap-2 rounded-2xl bg-primary px-5 text-sm font-bold text-primary-foreground"
         >
-          <Plus className="w-4 h-4" /> Create Event
-        </button>
+          <Plus className="h-4 w-4" />
+          Create event
+        </Link>
       </header>
-
-      <main className="max-w-3xl mx-auto px-4 py-6 space-y-6">
-        {/* Tabs */}
-        <div className="flex bg-card p-1 rounded-xl border border-border/40">
-          <button
-            onClick={() => setActiveTab("upcoming")}
-            className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all ${
-              activeTab === "upcoming"
-                ? "bg-primary text-primary-foreground shadow-md"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-            style={{ fontFamily: FONT }}
+      {!user ? (
+        <p className="rounded-2xl border border-border bg-card p-6">
+          Sign in to manage your events.
+        </p>
+      ) : (
+        <>
+          <div
+            role="group"
+            aria-label="Event status"
+            className="flex gap-2 overflow-x-auto pb-1"
           >
-            Upcoming Events
-          </button>
-          <button
-            onClick={() => setActiveTab("past")}
-            className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all ${
-              activeTab === "past"
-                ? "bg-primary text-primary-foreground shadow-md"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-            style={{ fontFamily: FONT }}
-          >
-            Past Events
-          </button>
-        </div>
-
-        {/* Content */}
-        {loading ? (
-          <div className="py-12 flex justify-center">
-            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+            {(["Upcoming", "Drafts", "Past", "Cancelled"] as const).map(
+              (tab) => (
+                <button
+                  type="button"
+                  key={tab}
+                  onClick={() => setFilter(tab)}
+                  aria-pressed={tab === filter}
+                  className={`min-h-11 shrink-0 rounded-full border px-5 text-sm font-semibold ${tab === filter ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground"}`}
+                >
+                  {tab}
+                </button>
+              ),
+            )}
           </div>
-        ) : filteredEvents.length === 0 ? (
-          <div className="py-12 text-center bg-card rounded-2xl border border-border/40 text-muted-foreground space-y-2">
-            <Calendar className="w-10 h-10 text-muted-foreground mx-auto opacity-50" />
-            <p className="font-semibold text-sm" style={{ fontFamily: FONT }}>
-              No {activeTab} events organized
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {filteredEvents.map((evt) => (
-              <div
-                key={evt.id}
-                className="rounded-2xl bg-card border border-border/40 p-4 space-y-4 shadow-sm"
+          {error && (
+            <div
+              role="alert"
+              className="rounded-2xl border border-border bg-card p-5"
+            >
+              Couldn’t load your events.
+              <button
+                type="button"
+                onClick={() => setReload((value) => value + 1)}
+                className="ml-3 min-h-11 font-bold text-primary"
               >
-                <div className="flex gap-4">
-                  <div className="relative w-24 h-24 rounded-xl bg-muted overflow-hidden shrink-0">
-                    {evt.cover_image_url || evt.image_urls?.[0] || evt.cover_image || evt.image_url ? (
-                      <Image src={evt.cover_image_url || evt.image_urls?.[0] || evt.cover_image || evt.image_url!} alt={evt.title || "Event"} fill className="object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
-                        No Image
+                Try again
+              </button>
+            </div>
+          )}
+          {loading ? (
+            <p
+              role="status"
+              className="py-10 text-center text-muted-foreground"
+            >
+              Loading your events…
+            </p>
+          ) : visible.length ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {visible.map((event) => {
+                const date = getEventDateInfo(event.start_time);
+                return (
+                  <article
+                    key={event.id}
+                    className="overflow-hidden rounded-[26px] border border-border bg-card"
+                  >
+                    <Link href={`/events/${event.id}`} className="block">
+                      <div className="relative aspect-[16/9] bg-muted">
+                        {event.cover_image_url ? (
+                          <Image
+                            src={event.cover_image_url}
+                            alt=""
+                            fill
+                            sizes="(max-width: 640px) 100vw, 50vw"
+                            className="object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full items-center justify-center">
+                            <CalendarDays className="h-10 w-10 text-primary/50" />
+                          </div>
+                        )}
+                        <span className="absolute left-4 top-4 rounded-full bg-background/95 px-3 py-1 text-xs font-semibold">
+                          {event.status.replace(/_/g, " ")}
+                        </span>
                       </div>
-                    )}
-                  </div>
-
-                  <div className="flex-1 min-w-0 space-y-1">
-                    <h3 className="font-bold text-lg text-foreground truncate" style={{ fontFamily: RALEWAY }}>
-                      {evt.title}
-                    </h3>
-                    <p className="text-xs text-muted-foreground flex items-center gap-1" style={{ fontFamily: FONT }}>
-                      <Calendar className="w-3.5 h-3.5 text-primary shrink-0" />
-                      {new Date(evt.start_time || evt.created_at).toLocaleDateString(undefined, {
-                        dateStyle: "medium",
-                      })}
-                    </p>
-                    {evt.location && (
-                      <p className="text-xs text-muted-foreground flex items-center gap-1 truncate" style={{ fontFamily: FONT }}>
-                        <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
-                        {evt.location}
-                      </p>
-                    )}
-                    <p className="text-xs text-muted-foreground flex items-center gap-1" style={{ fontFamily: FONT }}>
-                      <Users className="w-3.5 h-3.5 text-primary shrink-0" />
-                      {evt.attendees_count || 0} attending
-                    </p>
-                  </div>
-                </div>
-
-                <div className="pt-3 border-t border-border/40 flex items-center justify-end gap-3">
-                  <button
-                    onClick={() => router.push(`/events/${evt.id}/scan`)}
-                    className="px-3.5 py-2 rounded-xl border border-border/60 bg-background text-foreground text-xs font-bold hover:bg-muted transition-colors flex items-center gap-1.5"
-                    style={{ fontFamily: FONT }}
-                  >
-                    <QrCode className="w-4 h-4 text-primary" /> Scan Tickets
-                  </button>
-                  <button
-                    onClick={() => router.push(`/events/${evt.id}/manage`)}
-                    className="px-3.5 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:opacity-90 transition-all flex items-center gap-1.5"
-                    style={{ fontFamily: FONT }}
-                  >
-                    <Settings className="w-4 h-4" /> Manage Event
-                  </button>
-                </div>
+                      <div className="space-y-2 p-5">
+                        <h2 className="font-yrdly-display text-2xl font-bold">
+                          {event.title}
+                        </h2>
+                        <p className="text-sm text-muted-foreground">
+                          {date
+                            ? `${date.full} · ${date.time}`
+                            : "Date to be announced"}
+                        </p>
+                        {event.location_address && (
+                          <p className="truncate text-sm text-muted-foreground">
+                            {event.location_address}
+                          </p>
+                        )}
+                      </div>
+                    </Link>
+                    <div className="flex flex-wrap gap-2 border-t border-border p-4">
+                      <Link
+                        href={`/events/${event.id}/manage`}
+                        className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground"
+                      >
+                        <Settings className="h-4 w-4" />
+                        Manage event
+                      </Link>
+                      {event.status === "PUBLISHED" && (
+                        <Link
+                          href={`/events/${event.id}/scan`}
+                          className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-4 text-sm font-semibold"
+                        >
+                          <QrCode className="h-4 w-4" />
+                          Scan tickets
+                        </Link>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          ) : (
+            !error && (
+              <div className="rounded-[26px] border border-dashed border-border px-6 py-16 text-center">
+                <CalendarDays className="mx-auto mb-4 h-10 w-10 text-primary" />
+                <h2 className="font-yrdly-display text-2xl font-bold">
+                  No {filter.toLowerCase()} events yet.
+                </h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Your events will appear here as their status changes.
+                </p>
               </div>
-            ))}
-          </div>
-        )}
-      </main>
-    </div>
+            )
+          )}
+        </>
+      )}
+    </main>
   );
 }

@@ -1,79 +1,93 @@
-'use me';
-'use client';
+"use me";
+"use client";
 
-import React, { useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { useServiceOfferings } from '@/hooks/use-bookings';
-import { BookingService } from '@/lib/bookings/booking-service';
-import { MIN_PAID_PRICE } from '@/lib/shared/constants';
-import { servicePriceError } from '@/lib/marketplace/price-policy';
+import React, { useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useServiceOfferings } from "@/hooks/use-bookings";
+import { BookingService } from "@/lib/bookings/booking-service";
+import { MIN_PAID_PRICE } from "@/lib/shared/constants";
+import { servicePriceError } from "@/lib/marketplace/price-policy";
 
 export default function ManageServicesWebPage() {
   const params = useParams();
   const router = useRouter();
   const businessId = params.businessId as string;
 
-  const { offerings, loading, refresh } = useServiceOfferings(businessId);
+  const {
+    offerings,
+    loading,
+    error: loadError,
+    refresh,
+  } = useServiceOfferings(businessId);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [durationMinutes, setDurationMinutes] = useState('60');
-  const [price, setPrice] = useState('');
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [durationMinutes, setDurationMinutes] = useState("60");
+  const [price, setPrice] = useState("");
   const [priceIsFrom, setPriceIsFrom] = useState(false);
   const [depositRequired, setDepositRequired] = useState(false);
-  const [depositAmount, setDepositAmount] = useState('');
-  const [depositPercent, setDepositPercent] = useState('');
+  const [depositAmount, setDepositAmount] = useState("");
+  const [depositPercent, setDepositPercent] = useState("");
   const [requiresFullPayment, setRequiresFullPayment] = useState(false);
   const [escrowEnabled, setEscrowEnabled] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
+  const [errorMsg, setErrorMsg] = useState("");
 
   const openAddModal = () => {
     setEditingId(null);
-    setName('');
-    setDescription('');
-    setDurationMinutes('60');
-    setPrice('');
+    setName("");
+    setDescription("");
+    setDurationMinutes("60");
+    setPrice("");
     setPriceIsFrom(false);
     setDepositRequired(false);
-    setDepositAmount('');
-    setDepositPercent('');
+    setDepositAmount("");
+    setDepositPercent("");
     setRequiresFullPayment(false);
     setEscrowEnabled(false);
-    setErrorMsg('');
+    setErrorMsg("");
     setModalVisible(true);
   };
 
   const openEditModal = (offering: any) => {
     setEditingId(offering.id);
     setName(offering.name);
-    setDescription(offering.description || '');
+    setDescription(offering.description || "");
     setDurationMinutes(String(offering.duration_minutes));
-    setPrice(offering.price ? String(offering.price) : '');
+    setPrice(offering.price ? String(offering.price) : "");
     setPriceIsFrom(offering.price_is_from || false);
     setDepositRequired(offering.deposit_required || false);
-    setDepositAmount(offering.deposit_amount ? String(offering.deposit_amount) : '');
-    setDepositPercent(offering.deposit_percent ? String(offering.deposit_percent) : '');
+    setDepositAmount(
+      offering.deposit_amount ? String(offering.deposit_amount) : "",
+    );
+    setDepositPercent(
+      offering.deposit_percent ? String(offering.deposit_percent) : "",
+    );
     setRequiresFullPayment(offering.requires_full_payment || false);
     setEscrowEnabled(offering.escrow_enabled || false);
-    setErrorMsg('');
+    setErrorMsg("");
     setModalVisible(true);
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return setErrorMsg('Service name is required');
-    const duration = parseInt(durationMinutes, 10);
-    if (isNaN(duration) || duration <= 0) return setErrorMsg('Valid duration in minutes is required');
+    if (!name.trim()) return setErrorMsg("Service name is required");
+    const duration = Number(durationMinutes);
+    if (!Number.isSafeInteger(duration) || duration <= 0)
+      return setErrorMsg("Valid duration in minutes is required");
 
     setSaving(true);
-    setErrorMsg('');
+    setErrorMsg("");
     try {
       const parsedPrice = price.trim() ? parseFloat(price) : undefined;
-      const parsedDepAmt = depositAmount.trim() ? parseFloat(depositAmount) : undefined;
-      const parsedDepPct = depositPercent.trim() ? Number(depositPercent) : undefined;
+      const parsedDepAmt = depositAmount.trim()
+        ? parseFloat(depositAmount)
+        : undefined;
+      const parsedDepPct = depositPercent.trim()
+        ? Number(depositPercent)
+        : undefined;
 
       const payload = {
         name: name.trim(),
@@ -103,56 +117,78 @@ export default function ManageServicesWebPage() {
       setModalVisible(false);
       refresh();
     } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to save service offering');
+      setErrorMsg(err.message || "Failed to save service offering");
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (offeringId: string) => {
-    if (!confirm('Are you sure you want to remove this service?')) return;
+    if (!confirm("Are you sure you want to remove this service?")) return;
     try {
       await BookingService.deleteServiceOffering(offeringId);
       refresh();
     } catch (err: any) {
-      alert(err.message || 'Failed to delete service');
+      alert(err.message || "Failed to delete service");
     }
   };
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100 p-4 sm:p-6 lg:p-8">
+    <div className="min-h-screen font-yrdly-body bg-background text-foreground p-4 sm:p-6 lg:p-8">
       <div className="max-w-5xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between pb-6 border-b border-neutral-800">
+        <div className="flex flex-wrap items-center justify-between gap-4 pb-7 border-b border-border">
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.back()}
-              className="p-2 rounded-lg bg-neutral-900 border border-neutral-800 hover:bg-neutral-800 text-neutral-400 hover:text-neutral-100 transition"
+              className="p-2 rounded-lg bg-card border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition"
             >
               ← Back
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-neutral-100">Manage Services</h1>
-              <p className="text-sm text-neutral-400">Add, edit, or configure service offerings for your business</p>
+              <h1 className="font-yrdly-display text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
+                Your service menu
+              </h1>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Clear names, prices and durations make it easier for customers
+                to book.
+              </p>
             </div>
           </div>
           <button
             onClick={openAddModal}
-            className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-semibold rounded-xl text-sm transition shadow-lg shadow-emerald-500/10"
+            className="px-4 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl text-sm transition shadow-lg shadow-none"
           >
-            + Add New Service
+            + Add a service
           </button>
         </div>
 
         {/* Content */}
-        {loading ? (
-          <div className="py-20 text-center text-neutral-400">Loading service offerings...</div>
+        {loadError ? (
+          <div
+            role="alert"
+            className="my-6 rounded-3xl border border-destructive/30 p-5"
+          >
+            {loadError}
+            <button
+              onClick={() => void refresh()}
+              className="ml-3 font-semibold underline"
+            >
+              Try again
+            </button>
+          </div>
+        ) : loading ? (
+          <div className="py-20 text-center text-muted-foreground">
+            Loading service offerings...
+          </div>
         ) : offerings.length === 0 ? (
-          <div className="py-20 text-center border border-dashed border-neutral-800 rounded-2xl my-8 bg-neutral-900/40">
-            <p className="text-neutral-400 text-lg mb-4">No service offerings added yet</p>
+          <div className="py-20 text-center border border-dashed border-border rounded-3xl my-8 bg-card">
+            <p className="text-muted-foreground text-lg mb-4">
+              No service offerings added yet
+            </p>
             <button
               onClick={openAddModal}
-              className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-semibold rounded-xl text-sm transition"
+              className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl text-sm transition"
             >
               + Create Your First Service
             </button>
@@ -162,14 +198,16 @@ export default function ManageServicesWebPage() {
             {offerings.map((item) => (
               <div
                 key={item.id}
-                className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 hover:border-neutral-700 transition"
+                className="bg-card border border-border rounded-3xl p-6 hover:border-border transition"
               >
                 <div className="flex items-start justify-between">
-                  <h3 className="text-lg font-bold text-neutral-100">{item.name}</h3>
+                  <h3 className="font-yrdly-display text-xl font-bold text-foreground">
+                    {item.name}
+                  </h3>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => openEditModal(item)}
-                      className="px-2.5 py-1 text-xs bg-neutral-800 hover:bg-neutral-700 text-neutral-200 rounded-lg transition"
+                      className="px-2.5 py-1 text-xs bg-muted hover:bg-accent text-foreground rounded-lg transition"
                     >
                       Edit
                     </button>
@@ -183,16 +221,19 @@ export default function ManageServicesWebPage() {
                 </div>
 
                 {item.description && (
-                  <p className="text-sm text-neutral-400 mt-2 line-clamp-2">{item.description}</p>
+                  <p className="text-sm leading-relaxed text-muted-foreground mt-2 line-clamp-2">
+                    {item.description}
+                  </p>
                 )}
 
-                <div className="flex items-center gap-3 mt-4 pt-3 border-t border-neutral-800/60 text-xs text-neutral-400">
-                  <span className="bg-neutral-950 px-2.5 py-1 rounded-md border border-neutral-800">
+                <div className="flex items-center gap-3 mt-4 pt-3 border-t border-border text-xs text-muted-foreground">
+                  <span className="bg-background px-2.5 py-1 rounded-md border border-border">
                     ⏱ {item.duration_minutes} mins
                   </span>
                   {item.price !== undefined && item.price !== null && (
-                    <span className="bg-neutral-950 px-2.5 py-1 rounded-md border border-neutral-800 text-emerald-400 font-semibold">
-                      {item.price_is_from ? 'From ' : ''}₦{item.price.toLocaleString()}
+                    <span className="bg-background px-2.5 py-1 rounded-md border border-border text-primary font-semibold">
+                      {item.price_is_from ? "From " : ""}₦
+                      {item.price.toLocaleString()}
                     </span>
                   )}
                 </div>
@@ -206,10 +247,16 @@ export default function ManageServicesWebPage() {
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
             <form
               onSubmit={handleSave}
-              className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 max-w-md w-full shadow-2xl"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="service-editor-title"
+              className="bg-card border border-border rounded-3xl p-6 max-w-lg w-full max-h-[85dvh] overflow-y-auto shadow-2xl"
             >
-              <h2 className="text-xl font-bold text-neutral-100 mb-4">
-                {editingId ? 'Edit Service Offering' : 'Add Service Offering'}
+              <h2
+                id="service-editor-title"
+                className="font-yrdly-display text-2xl font-bold text-foreground mb-4"
+              >
+                {editingId ? "Edit service" : "Add a service"}
               </h2>
 
               {errorMsg && (
@@ -220,42 +267,53 @@ export default function ManageServicesWebPage() {
 
               <div className="space-y-4 text-sm">
                 <div>
-                  <label className="block text-neutral-300 font-medium mb-1">Service Name *</label>
+                  <label className="block text-muted-foreground font-medium mb-1">
+                    Service Name *
+                  </label>
                   <input
                     type="text"
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="e.g. Haircut & Beard Trim"
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded-xl p-3 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-background border border-border rounded-xl p-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-neutral-300 font-medium mb-1">Description</label>
+                  <label className="block text-muted-foreground font-medium mb-1">
+                    Description
+                  </label>
                   <textarea
                     rows={3}
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Details about what's included..."
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded-xl p-3 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-emerald-500 resize-none"
+                    className="w-full bg-background border border-border rounded-xl p-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary resize-none"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-neutral-300 font-medium mb-1">Duration (mins) *</label>
+                    <label className="block text-muted-foreground font-medium mb-1">
+                      Duration (mins) *
+                    </label>
                     <input
                       type="number"
                       required
                       min={1}
                       value={durationMinutes}
                       onChange={(e) => setDurationMinutes(e.target.value)}
-                      className="w-full bg-neutral-950 border border-neutral-800 rounded-xl p-3 text-neutral-100 focus:outline-none focus:border-emerald-500"
+                      className="w-full bg-background border border-border rounded-xl p-3 text-foreground focus:outline-none focus:border-primary"
                     />
                   </div>
                   <div>
-                    <label htmlFor="service-price" className="block text-neutral-300 font-medium mb-1">Price (₦)</label>
+                    <label
+                      htmlFor="service-price"
+                      className="block text-muted-foreground font-medium mb-1"
+                    >
+                      Price (₦)
+                    </label>
                     <input
                       type="number"
                       min={0}
@@ -265,40 +323,55 @@ export default function ManageServicesWebPage() {
                       value={price}
                       onChange={(e) => setPrice(e.target.value)}
                       placeholder="e.g. 5000"
-                      className="w-full bg-neutral-950 border border-neutral-800 rounded-xl p-3 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-emerald-500"
+                      className="w-full bg-background border border-border rounded-xl p-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary"
                     />
                   </div>
                 </div>
 
-                <p id="service-price-help" className="text-xs text-neutral-400">Paid services and online deposits start at ₦{MIN_PAID_PRICE.toLocaleString("en-NG")}. Leave the price blank for quotes, or enter 0 for a free service.</p>
+                <p
+                  id="service-price-help"
+                  className="text-xs text-muted-foreground"
+                >
+                  Paid services and online deposits start at ₦
+                  {MIN_PAID_PRICE.toLocaleString("en-NG")}. Leave the price
+                  blank for quotes, or enter 0 for a free service.
+                </p>
                 <label className="flex items-center gap-2 cursor-pointer pt-1">
                   <input
                     type="checkbox"
                     checked={priceIsFrom}
                     onChange={(e) => setPriceIsFrom(e.target.checked)}
-                    className="w-4 h-4 rounded accent-emerald-500 bg-neutral-950 border-neutral-800"
+                    className="w-4 h-4 rounded accent-emerald-500 bg-background border-border"
                   />
-                  <span className="text-neutral-300 text-xs">Price is a &quot;Starting from&quot; estimate</span>
+                  <span className="text-muted-foreground text-xs">
+                    Price is a &quot;Starting from&quot; estimate
+                  </span>
                 </label>
 
                 {/* Deposit & Escrow Settings */}
-                <div className="pt-3 border-t border-neutral-800/80 space-y-3">
-                  <h4 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Payment & Deposit Settings</h4>
+                <div className="pt-3 border-t border-border/80 space-y-3">
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Payment & Deposit Settings
+                  </h4>
 
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={depositRequired}
                       onChange={(e) => setDepositRequired(e.target.checked)}
-                      className="w-4 h-4 rounded accent-emerald-500 bg-neutral-950 border-neutral-800"
+                      className="w-4 h-4 rounded accent-emerald-500 bg-background border-border"
                     />
-                    <span className="text-neutral-300 text-xs font-medium">Require Deposit to Book</span>
+                    <span className="text-muted-foreground text-xs font-medium">
+                      Require Deposit to Book
+                    </span>
                   </label>
 
                   {depositRequired && (
                     <div className="grid grid-cols-2 gap-3 pl-6 pt-1">
                       <div>
-                        <label className="block text-neutral-400 text-xs mb-1">Deposit Amt (₦)</label>
+                        <label className="block text-muted-foreground text-xs mb-1">
+                          Deposit Amt (₦)
+                        </label>
                         <input
                           type="number"
                           min={0}
@@ -307,11 +380,13 @@ export default function ManageServicesWebPage() {
                           placeholder={String(MIN_PAID_PRICE)}
                           step="0.01"
                           aria-label="Deposit amount"
-                          className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-xs text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-emerald-500"
+                          className="w-full bg-background border border-border rounded-lg p-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary"
                         />
                       </div>
                       <div>
-                        <label className="block text-neutral-400 text-xs mb-1">Deposit (%)</label>
+                        <label className="block text-muted-foreground text-xs mb-1">
+                          Deposit (%)
+                        </label>
                         <input
                           type="number"
                           min={0}
@@ -321,7 +396,7 @@ export default function ManageServicesWebPage() {
                           value={depositPercent}
                           onChange={(e) => setDepositPercent(e.target.value)}
                           placeholder="e.g. 20"
-                          className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-xs text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-emerald-500"
+                          className="w-full bg-background border border-border rounded-lg p-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary"
                         />
                       </div>
                     </div>
@@ -332,10 +407,14 @@ export default function ManageServicesWebPage() {
                       <input
                         type="checkbox"
                         checked={requiresFullPayment}
-                        onChange={(e) => setRequiresFullPayment(e.target.checked)}
-                        className="w-4 h-4 rounded accent-emerald-500 bg-neutral-950 border-neutral-800"
+                        onChange={(e) =>
+                          setRequiresFullPayment(e.target.checked)
+                        }
+                        className="w-4 h-4 rounded accent-emerald-500 bg-background border-border"
                       />
-                      <span className="text-neutral-300 text-xs">Full Payment Upfront</span>
+                      <span className="text-muted-foreground text-xs">
+                        Full Payment Upfront
+                      </span>
                     </label>
 
                     <label className="flex items-center gap-2 cursor-pointer">
@@ -343,29 +422,31 @@ export default function ManageServicesWebPage() {
                         type="checkbox"
                         checked={escrowEnabled}
                         onChange={(e) => setEscrowEnabled(e.target.checked)}
-                        className="w-4 h-4 rounded accent-emerald-500 bg-neutral-950 border-neutral-800"
+                        className="w-4 h-4 rounded accent-emerald-500 bg-background border-border"
                       />
-                      <span className="text-neutral-300 text-xs font-semibold text-emerald-400">Escrow Protected</span>
+                      <span className="text-muted-foreground text-xs font-semibold text-primary">
+                        Escrow Protected
+                      </span>
                     </label>
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-neutral-800">
+              <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-border">
                 <button
                   type="button"
                   onClick={() => setModalVisible(false)}
                   disabled={saving}
-                  className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-sm font-semibold rounded-xl transition"
+                  className="px-4 py-2 bg-muted hover:bg-accent text-muted-foreground text-sm font-semibold rounded-xl transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 text-sm font-semibold rounded-xl transition disabled:opacity-50"
+                  className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold rounded-xl transition disabled:opacity-50"
                 >
-                  {saving ? 'Saving...' : 'Save Service'}
+                  {saving ? "Saving..." : "Save Service"}
                 </button>
               </div>
             </form>

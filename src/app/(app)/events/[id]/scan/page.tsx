@@ -1,5 +1,7 @@
 "use client";
 
+import { EventPageIntro } from "@/components/events/EventPageIntro";
+
 import React, { useState, useEffect, useRef, use, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -17,7 +19,13 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { authenticatedFetch } from "@/lib/auth/authenticated-fetch";
 import { supabase } from "@/lib/supabase/supabase";
 
@@ -30,14 +38,14 @@ interface PageProps {
 
 // Clean raw QR code output (JSON or direct code)
 const extractCode = (raw: string): string => {
-    const clean = raw.trim();
-    try {
-      const parsed = JSON.parse(clean);
-      if (parsed.ticket_code) return parsed.ticket_code;
-      if (parsed.ticket_id || parsed.id) return parsed.ticket_id || parsed.id;
-    } catch {}
-    return clean;
-  };
+  const clean = raw.trim();
+  try {
+    const parsed = JSON.parse(clean);
+    if (parsed.ticket_code) return parsed.ticket_code;
+    if (parsed.ticket_id || parsed.id) return parsed.ticket_id || parsed.id;
+  } catch {}
+  return clean;
+};
 
 export default function EventScanTicketPage({ params }: PageProps) {
   const { id: eventId } = use(params);
@@ -75,32 +83,42 @@ export default function EventScanTicketPage({ params }: PageProps) {
       });
   }, [eventId]);
 
-  const processScan = useCallback(async (rawCode: string) => {
-    const code = extractCode(rawCode);
-    if (!code || scanningRef.current) return;
-    scanningRef.current = true;
+  const processScan = useCallback(
+    async (rawCode: string) => {
+      const code = extractCode(rawCode);
+      if (!code || scanningRef.current) return;
+      scanningRef.current = true;
 
-    setLoading(true);
-    setResult(null);
+      setLoading(true);
+      setResult(null);
 
-    try {
-      const data = await authenticatedFetch('/api/events/checkin', { ticket_code:code,event_id:eventId });
-      setResult({ ...data,success:data.valid === true });
-    } catch (err: any) {
-      setResult({ success: false, reason: err.message || "Network error" });
-    } finally {
-      scanningRef.current = false;
-      setLoading(false);
-    }
-  }, [eventId]);
+      try {
+        const data = await authenticatedFetch("/api/events/checkin", {
+          ticket_code: code,
+          event_id: eventId,
+        });
+        setResult({ ...data, success: data.valid === true });
+      } catch (err: any) {
+        setResult({ success: false, reason: err.message || "Network error" });
+      } finally {
+        scanningRef.current = false;
+        setLoading(false);
+      }
+    },
+    [eventId],
+  );
 
   const stopCameraScanner = useCallback(async () => {
     cameraGeneration.current++;
     const scanner = scannerRef.current;
     scannerRef.current = null;
     if (scanner) {
-      try { await scanner.stop(); } catch {}
-      try { scanner.clear(); } catch {}
+      try {
+        await scanner.stop();
+      } catch {}
+      try {
+        scanner.clear();
+      } catch {}
     }
     setCameraActive(false);
   }, []);
@@ -115,17 +133,29 @@ export default function EventScanTicketPage({ params }: PageProps) {
       if (generation !== cameraGeneration.current) return;
       const scanner = new Html5Qrcode("reader");
       scannerRef.current = scanner;
-      await scanner.start({ facingMode: "environment" },
+      await scanner.start(
+        { facingMode: "environment" },
         { fps: 10, qrbox: { width: 250, height: 250 } },
-        (text: string) => { void stopCameraScanner(); void processScan(text); }, () => {});
+        (text: string) => {
+          void stopCameraScanner();
+          void processScan(text);
+        },
+        () => {},
+      );
       if (generation !== cameraGeneration.current) {
-        try { await scanner.stop(); scanner.clear(); } catch {}
+        try {
+          await scanner.stop();
+          scanner.clear();
+        } catch {}
         return;
       }
       setCameraActive(true);
     } catch (error: any) {
       if (generation === cameraGeneration.current) {
-        setCameraError(error.message || "Could not access camera. Please check camera permissions.");
+        setCameraError(
+          error.message ||
+            "Could not access camera. Please check camera permissions.",
+        );
         setCameraActive(false);
       }
     }
@@ -134,7 +164,9 @@ export default function EventScanTicketPage({ params }: PageProps) {
   useEffect(() => {
     if (mode === "camera") void startCameraScanner();
     else void stopCameraScanner();
-    return () => { void stopCameraScanner(); };
+    return () => {
+      void stopCameraScanner();
+    };
   }, [mode, startCameraScanner, stopCameraScanner]);
 
   // Handle File Upload QR scan
@@ -172,23 +204,42 @@ export default function EventScanTicketPage({ params }: PageProps) {
   };
 
   return (
-    <div className="max-w-xl mx-auto px-4 py-6 space-y-6" style={{ fontFamily: FONT }}>
+    <div
+      className="max-w-xl mx-auto px-4 py-6 space-y-6"
+      style={{ fontFamily: FONT }}
+    >
       {/* Hidden container for file decoding */}
       <div id="file-reader" className="hidden" />
 
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Button aria-label="Back" variant="ghost" size="icon" className="rounded-full" onClick={() => router.back()}>
+        <Button
+          aria-label="Back"
+          variant="ghost"
+          size="icon"
+          className="rounded-full"
+          onClick={() => router.back()}
+        >
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div>
-          <h1 className="font-bold text-xl text-foreground" style={{ fontFamily: RALEWAY }}>
+          <h1
+            className="font-bold text-xl text-foreground"
+            style={{ fontFamily: RALEWAY }}
+          >
             Scan & Check-In Tickets
           </h1>
-          <p className="text-xs text-muted-foreground">{eventTitle || "Event Ticket Verification"}</p>
+          <p className="text-xs text-muted-foreground">
+            {eventTitle || "Event Ticket Verification"}
+          </p>
         </div>
       </div>
 
+      <EventPageIntro
+        eyebrow="A WARM WELCOME"
+        title="You’re on the guest list."
+        description="Scan a guest’s QR code, upload an image or enter their ticket code. Each ticket is verified for this event."
+      />
       {/* Mode Switcher Tabs */}
       <div className="grid grid-cols-3 p-1.5 rounded-2xl bg-muted/60 border border-border/40 text-xs font-bold">
         <button
@@ -230,15 +281,15 @@ export default function EventScanTicketPage({ params }: PageProps) {
             {mode === "camera"
               ? "Scan Ticket QR Code"
               : mode === "upload"
-              ? "Upload Ticket Image"
-              : "Enter Ticket Code or ID"}
+                ? "Upload Ticket Image"
+                : "Enter Ticket Code or ID"}
           </CardTitle>
           <CardDescription className="text-xs">
             {mode === "camera"
               ? "Point your device camera at the attendee's ticket QR code."
               : mode === "upload"
-              ? "Select or upload an image containing a ticket QR code."
-              : "Type the attendee ticket code (e.g. TC-89X12A) or ticket UUID."}
+                ? "Select or upload an image containing a ticket QR code."
+                : "Type the attendee ticket code (e.g. TC-89X12A) or ticket UUID."}
           </CardDescription>
         </CardHeader>
 
@@ -257,7 +308,9 @@ export default function EventScanTicketPage({ params }: PageProps) {
                 {cameraError && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 space-y-3 bg-card text-foreground">
                     <CameraOff className="w-10 h-10 text-destructive" />
-                    <p className="text-xs font-semibold text-destructive">{cameraError}</p>
+                    <p className="text-xs font-semibold text-destructive">
+                      {cameraError}
+                    </p>
                     <Button
                       size="sm"
                       variant="outline"
@@ -279,8 +332,12 @@ export default function EventScanTicketPage({ params }: PageProps) {
               className="border-2 border-dashed border-border hover:border-primary/50 rounded-2xl p-8 text-center cursor-pointer transition-colors bg-muted/20 hover:bg-muted/40 flex flex-col items-center space-y-2"
             >
               <Upload className="w-8 h-8 text-primary" />
-              <p className="text-xs font-bold text-foreground">Click to upload QR code image</p>
-              <p className="text-[11px] text-muted-foreground">PNG, JPG, WEBP formats supported</p>
+              <p className="text-xs font-bold text-foreground">
+                Click to upload QR code image
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                PNG, JPG, WEBP formats supported
+              </p>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -303,8 +360,16 @@ export default function EventScanTicketPage({ params }: PageProps) {
                 disabled={loading}
                 autoFocus
               />
-              <Button type="submit" disabled={loading || !ticketInput.trim()} className="rounded-xl px-5">
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Verify"}
+              <Button
+                type="submit"
+                disabled={loading || !ticketInput.trim()}
+                className="rounded-xl px-5"
+              >
+                {loading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  "Verify"
+                )}
               </Button>
             </form>
           )}
@@ -320,12 +385,18 @@ export default function EventScanTicketPage({ params }: PageProps) {
                   </div>
                   <div className="text-sm space-y-1 pl-8">
                     <p>
-                      <span className="font-medium text-muted-foreground">Attendee:</span>{" "}
-                      <span className="font-bold text-foreground">{result.attendee_name || "Guest"}</span>
+                      <span className="font-medium text-muted-foreground">
+                        Attendee:
+                      </span>{" "}
+                      <span className="font-bold text-foreground">
+                        {result.attendee_name || "Guest"}
+                      </span>
                     </p>
                     {result.ticket_code && (
                       <p>
-                        <span className="font-medium text-muted-foreground">Ticket Code:</span>{" "}
+                        <span className="font-medium text-muted-foreground">
+                          Ticket Code:
+                        </span>{" "}
                         <span className="font-mono">{result.ticket_code}</span>
                       </p>
                     )}
@@ -342,23 +413,25 @@ export default function EventScanTicketPage({ params }: PageProps) {
                     {result.reason === "ALREADY_USED"
                       ? "Ticket Already Used!"
                       : result.reason === "UNAUTHORIZED"
-                      ? "Unauthorized Scanner"
-                      : result.reason === "WRONG_EVENT"
-                      ? "Ticket Belongs to Another Event"
-                      : "Invalid Ticket"}
+                        ? "Unauthorized Scanner"
+                        : result.reason === "WRONG_EVENT"
+                          ? "Ticket Belongs to Another Event"
+                          : "Invalid Ticket"}
                   </div>
                   <p className="text-xs text-muted-foreground pl-8">
                     {result.reason === "ALREADY_USED"
                       ? `This ticket was already checked in ${
-                          result.scanned_at ? new Date(result.scanned_at).toLocaleString() : ""
+                          result.scanned_at
+                            ? new Date(result.scanned_at).toLocaleString()
+                            : ""
                         }.`
                       : result.reason === "UNAUTHORIZED"
-                      ? "You do not have permission to check in attendees for this event."
-                      : result.reason === "WRONG_EVENT"
-                      ? "This ticket was issued for a different event."
-                      : typeof result.reason === "string"
-                      ? result.reason
-                      : "No ticket was found matching this code or ID."}
+                        ? "You do not have permission to check in attendees for this event."
+                        : result.reason === "WRONG_EVENT"
+                          ? "This ticket was issued for a different event."
+                          : typeof result.reason === "string"
+                            ? result.reason
+                            : "No ticket was found matching this code or ID."}
                   </p>
                 </div>
               )}
