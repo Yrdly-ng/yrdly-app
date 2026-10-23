@@ -2,7 +2,7 @@
 
 import { authenticatedFetch } from "@/lib/auth/authenticated-fetch";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -67,6 +67,7 @@ export default function EventDetailPage() {
 
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
+  const purchaseInFlight = useRef(false);
   const [purchase, setPurchase] = useState<PurchaseState>({
     step: "idle",
     tier: null,
@@ -147,43 +148,25 @@ export default function EventDetailPage() {
   };
 
   const handlePurchase = async () => {
-    if (!purchase.tier) return;
-
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session?.access_token) {
-      setPurchase((s) => ({ ...s, errorMsg: "You must be logged in." }));
-      return;
-    }
-
+    if (!purchase.tier || purchaseInFlight.current) return;
     if (!form.name.trim() || !form.email.trim()) {
       setPurchase((s) => ({ ...s, errorMsg: "Name and email are required." }));
       return;
     }
+    purchaseInFlight.current = true;
     setPurchase((s) => ({ ...s, step: "loading", errorMsg: "" }));
 
     try {
-      const res = await fetch("/api/events/tickets/purchase", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          event_id: id,
-          tier_id: purchase.tier.id,
-          attendee_name: form.name.trim(),
-          attendee_email: form.email.trim(),
-          attendee_phone: form.phone.trim() || undefined,
-          quantity: Math.min(5, Math.max(1, form.quantity || 1)),
-        }),
+      const data = await authenticatedFetch("/api/events/tickets/purchase", {
+        event_id: id,
+        tier_id: purchase.tier.id,
+        attendee_name: form.name.trim(),
+        attendee_email: form.email.trim(),
+        attendee_phone: form.phone.trim() || undefined,
+        quantity: Math.min(5, Math.max(1, form.quantity || 1)),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        const errorMsg =
-          data.message || data.error || data.details || "Purchase failed";
-        throw new Error(errorMsg);
+      if (data?.success !== true) {
+        throw new Error("Could not confirm checkout. Check My Tickets before trying again.");
       }
 
       if (data.free || data.alreadyPaid) {
@@ -200,16 +183,32 @@ export default function EventDetailPage() {
           await import("payluk-escrow-inline-checkout");
         initEscrowCheckout({ publicKey });
         let confirmed = false;
-        const confirm = async () => {
-          await authenticatedFetch("/api/events/tickets/verify", {
-            tx_ref: data.tx_ref,
-          });
-          confirmed = true;
-          setPurchase((s) => ({ ...s, step: "success" }));
-          router.push(
-            `/my-tickets?success=1&tx_ref=${encodeURIComponent(data.tx_ref)}`,
-          );
+        let successReported = false;
+        let closing: Promise<void> | null = null;
+        let verification: Promise<void> | null = null;
+        const confirm = () => {
+          if (confirmed) return Promise.resolve();
+          // The provider may send success and close together. Both must await
+          // the same server verification, rather than racing cancellation.
+          verification ??= (async () => {
+            const result = await authenticatedFetch("/api/events/tickets/verify", {
+              tx_ref: data.tx_ref,
+            });
+            if (result?.success !== true || !result.ticket?.id) {
+              throw new Error("Ticket confirmation is still processing.");
+            }
+            confirmed = true;
+            setPurchase((s) => ({ ...s, step: "success" }));
+            router.push(
+              `/my-tickets?success=1&tx_ref=${encodeURIComponent(data.tx_ref)}`,
+            );
+          })().finally(() => { verification = null; });
+          return verification;
         };
+        const showPending = () => setPurchase((s) => ({
+          ...s, step: "form",
+          errorMsg: "Payment is being verified. Check My Tickets before trying again.",
+        }));
         await pay({
           paymentToken: data.paylukPaymentToken,
           reference: data.tx_ref,
@@ -217,49 +216,51 @@ export default function EventDetailPage() {
           brand: "Yrdly",
           customerId: data.buyerPaylukId,
           callback: async () => {
-            try {
-              await confirm();
-            } catch {
-              setPurchase((s) => ({
-                ...s,
-                step: "form",
-                errorMsg:
-                  "Payment is being verified. Check My Tickets before trying again.",
-              }));
-            }
+            successReported = true;
+            try { await confirm(); }
+            catch { showPending(); }
           },
-          onClose: async () => {
-            if (confirmed) return;
-            try {
-              await confirm();
-              return;
-            } catch {
-              /* Cancellation checks provider state again. */
-            }
-            try {
-              await authenticatedFetch("/api/events/tickets/cancel-checkout", {
-                transactionId: data.transactionId,
-              });
-              setPurchase((s) => ({
-                ...s,
-                step: "form",
-                errorMsg: "Unpaid checkout cancelled.",
-              }));
-            } catch {
-              setPurchase((s) => ({
-                ...s,
-                step: "form",
-                errorMsg:
-                  "Checkout is processing. Check My Tickets before paying again.",
-              }));
-            }
+          onClose: () => {
+            if (confirmed) return Promise.resolve();
+            closing ??= (async () => {
+              try {
+                await confirm();
+                return;
+              } catch (error) {
+                // Only a definitive unpaid answer permits cancellation. A
+                // provider success, network error or outage leaves it held.
+                if (successReported ||
+                    (error as { code?: string }).code !== "payment_pending") {
+                  showPending();
+                  return;
+                }
+              }
+              try {
+                await authenticatedFetch("/api/events/tickets/cancel-checkout", {
+                  transactionId: data.transactionId,
+                });
+                setPurchase((s) => ({
+                  ...s, step: "form", errorMsg: "Unpaid checkout cancelled.",
+                }));
+              } catch {
+                showPending();
+              }
+            })();
+            return closing;
           },
         });
       } else {
         throw new Error("Could not open payment checkout. Please retry.");
       }
-    } catch (err: any) {
-      setPurchase((s) => ({ ...s, step: "form", errorMsg: err.message }));
+    } catch (err) {
+      setPurchase((s) => ({
+        ...s, step: "form",
+        errorMsg: err instanceof Error && !(err instanceof SyntaxError)
+          ? err.message
+          : "Could not open checkout. Check My Tickets before trying again.",
+      }));
+    } finally {
+      purchaseInFlight.current = false;
     }
   };
 

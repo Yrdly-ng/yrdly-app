@@ -32,14 +32,21 @@ export class TicketService {
     }
 
     // ── Idempotency check ────────────────────────────────────────────────────
-    const { data: existing } = await supabaseAdmin
-      .from('tickets')
-      .select('id, event_id, ticket_code, qr_data')
-      .or(`payment_tx_ref.eq.${txRef},payment_tx_ref.eq.${tx.id}`);
-
-    if (existing && existing.length > 0) {
+    const findIssuedTickets = async () => {
+      const { data: existing, error } = await supabaseAdmin
+        .from('tickets')
+        .select('id, event_id, ticket_code, qr_data')
+        .eq('payment_tx_ref', txRef);
+      if (error) throw error;
+      if (!existing?.length) return null;
+      if (existing.length !== quantity) {
+        await flagPayment('payluk', tx.payluk_tx_ref || txRef, tx.id, 'ticket_quantity_mismatch');
+        throw new Error('payment_requires_review');
+      }
       return { ...existing[0], event_id, quantity };
-    }
+    };
+    const existing = await findIssuedTickets();
+    if (existing) return existing;
 
     // ── Fetch tier & event ───────────────────────────────────────────────────
     const { data: tier } = await supabaseAdmin
@@ -56,10 +63,6 @@ export class TicketService {
 
     if (!tier || !event) {
       throw new Error('event_not_found');
-    }
-
-    if (tier.capacity !== null && (tier.sold || 0) + quantity > tier.capacity) {
-      throw new Error('sold_out_payluk_refund_required');
     }
 
     // ── Generate ticket codes & QR ────────────────────────────────────────────
@@ -93,13 +96,12 @@ export class TicketService {
       .insert(ticketsToInsert)
       .select('id, ticket_code, qr_data');
 
-    if (ticketError?.code === '23505') {
-      const { data: duplicateTickets, error: duplicateLookupError } = await supabaseAdmin
-        .from('tickets')
-        .select('id, event_id, ticket_code, qr_data')
-        .or(`payment_tx_ref.eq.${txRef},payment_tx_ref.eq.${tx.id}`);
-      if (duplicateLookupError) throw duplicateLookupError;
-      if (duplicateTickets?.length) return { ...duplicateTickets[0], event_id, quantity };
+    // Capacity and buyer limits are enforced atomically by the BEFORE INSERT
+    // trigger. A concurrent callback can finish after our first lookup, causing
+    // that trigger to reject a replay before the unique index is checked.
+    if (ticketError) {
+      const issued = await findIssuedTickets();
+      if (issued) return issued;
     }
     if (ticketError?.message?.includes('ticket_tier_sold_out')) {
       throw new Error('sold_out_payluk_refund_required');
