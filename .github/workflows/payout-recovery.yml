@@ -20,5 +20,6 @@ jobs:
         run: |
           test -n "$PAYOUT_RECOVERY_CRON_SECRET"
           curl --fail --silent --show-error --max-time 65 \
+            --connect-to app.yrdly.ng:443:cname.vercel-dns-0.com:443 \
             --header "Authorization: Bearer $PAYOUT_RECOVERY_CRON_SECRET" \
             https://app.yrdly.ng/api/cron/expire-checkout-reservations
