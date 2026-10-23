@@ -147,6 +147,12 @@ export function EventsScreen({ className }: { className?: string }) {
           <CalendarDays className="h-4 w-4 text-primary" />
           Hosting
         </Link>
+        <Link
+          href="/events/team"
+          className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold hover:border-primary"
+        >
+          Assigned events
+        </Link>
       </nav>
       {paymentError && (
         <div

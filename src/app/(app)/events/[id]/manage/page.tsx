@@ -252,6 +252,12 @@ export default function ManageEventPage() {
               Refresh
             </Button>
             <Button
+              variant="outline"
+              onClick={() => router.push(`/events/${id}/team`)}
+            >
+              Event team
+            </Button>
+            <Button
               onClick={() => router.push(`/events/${id}/scan`)}
               className="rounded-full bg-primary text-foreground font-bold text-xs gap-1.5 hover:bg-primary/90"
             >

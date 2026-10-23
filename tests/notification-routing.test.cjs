@@ -354,3 +354,10 @@ test('every generated destination and unavailable-target fallback has a real app
     if (target) assert.ok(exists(target.fallback), `${type} fallback: ${target.fallback}`);
   }
 });
+
+
+test('event team invitations and access updates open assigned duties, never a guest ticket', () => {
+  for (const type of ['event_team', 'event_team_invite', 'event_team_updated']) {
+    assert.equal(route({ type, relatedId: 'event-id', data: { event_id: 'event-id' } }), '/events/team');
+  }
+});

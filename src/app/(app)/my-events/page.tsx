@@ -83,6 +83,12 @@ export default function MyEventsPage() {
           Create event
         </Link>
       </header>
+      <Link
+        href="/events/team"
+        className="inline-flex min-h-11 items-center rounded-xl border border-border px-4 text-sm font-semibold"
+      >
+        Assigned events →
+      </Link>
       {!user ? (
         <p className="rounded-2xl border border-border bg-card p-6">
           Sign in to manage your events.
