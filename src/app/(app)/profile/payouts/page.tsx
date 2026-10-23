@@ -22,6 +22,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
 import { AppHeader } from '@/components/layout/AppHeader';
+import { BankLogo } from '@/components/BankLogo';
 
 export default function PayoutHistoryPage() {
   const { user, loading:authLoading } = useAuth();
@@ -161,9 +162,7 @@ export default function PayoutHistoryPage() {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                        <DollarSign className="h-6 w-6 text-primary" />
-                      </div>
+                      <BankLogo code={payout.bankCode || ''} name={payout.bankName || 'Bank'} size={48} />
                       
                       <div>
                         <div className="flex items-center gap-2 mb-1">
@@ -185,6 +184,14 @@ export default function PayoutHistoryPage() {
                               <span>Processed {formatDate(payout.processedAt)}</span>
                             </div>
                           )}
+                        </div>
+
+                        <div className="mt-1 text-sm text-muted-foreground">
+                          <span className="font-medium text-foreground">
+                            {payout.bankName || 'Bank details unavailable'}
+                            {payout.accountNumber ? ` · ${payout.accountNumber}` : ''}
+                          </span>
+                          {payout.accountName ? <span> · {payout.accountName}</span> : null}
                         </div>
 
                         {payout.transactionReference && (

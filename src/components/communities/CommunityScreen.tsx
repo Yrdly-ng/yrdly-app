@@ -23,6 +23,7 @@ import {
   type PublicPerson,
   type DiscoverFilter,
 } from "@/lib/people/nearby";
+import { resolveNearbyLocation } from "@/lib/people/nearby-location";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
 
@@ -137,8 +138,10 @@ export function CommunityScreen({
   const [revision, setRevision] = useState(0);
   const fetchData = useCallback(() => setRevision((value) => value + 1), []);
   const userId = currentUser?.id;
-  const state = activeFilter?.state;
-  const lga = activeFilter?.lga;
+  const nearbyLocation = useMemo(
+    () => resolveNearbyLocation(activeFilter, profile),
+    [activeFilter, profile],
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -232,7 +235,7 @@ export function CommunityScreen({
       loadNearbyPeople(supabase, {
         userId,
         filter: discoverFilter,
-        location: state || lga ? { state, lga } : null,
+        location: nearbyLocation,
         signal,
       }),
     )
@@ -249,7 +252,7 @@ export function CommunityScreen({
       disposed = true;
       controller.abort();
     };
-  }, [userId, authLoading, discoverFilter, state, lga, revision]);
+  }, [userId, authLoading, discoverFilter, nearbyLocation, revision]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -597,7 +600,9 @@ export function CommunityScreen({
                 <p className="text-xs text-[var(--yrdly-label)] max-w-xs font-yrdly-body">
                   {searchQuery
                     ? "No neighbors matching your query."
-                    : "No discoverable users found in this category right now."}
+                    : !nearbyLocation
+                      ? "Add your state and LGA to your profile to see people nearby."
+                      : "No discoverable users in your LGA right now."}
                 </p>
               </GlassCard>
             ) : (

@@ -46,9 +46,9 @@ export default function PayoutReceiptPage() {
     ['Status', completed ? 'Successful' : payout.status === 'failed' ? 'Failed' : payout.status === 'cancelled' ? 'Cancelled' : payout.status === 'pending' ? 'Pending' : 'Processing'],
     ['Requested', formatPayoutDate(payout.requestedAt)],
     ...(payout.processedAt ? [[completed ? 'Completed' : 'Last updated', formatPayoutDate(payout.processedAt)]] : []),
-    ['Bank', payout.bankName || 'Not recorded'],
-    ...(payout.accountNumber ? [['Account number', payout.accountNumber]] : []),
-    ...(payout.accountName ? [['Account name', payout.accountName]] : []),
+    ['Bank', payout.bankName || 'Unavailable for this withdrawal'],
+    ['Account number', payout.accountNumber || 'Unavailable for this withdrawal'],
+    ['Account holder', payout.accountName || 'Unavailable for this withdrawal'],
     ['Withdrawal amount', money(payout.amount)],
     ...(payout.fee !== null ? [['Quoted transfer fee', money(payout.fee)]] : []),
     ...(payout.netAmount !== null ? [[completed ? 'Sent to bank' : 'Intended bank amount', money(payout.netAmount)]] : []),
@@ -75,7 +75,8 @@ export default function PayoutReceiptPage() {
                 {failed && payout.failureReason ? <p className="mb-6 rounded-lg bg-destructive/10 p-3 text-sm text-destructive break-words">{payout.failureReason}</p> : null}
                 {payout.bankName ? <div className="mb-5 flex items-center gap-3"><BankLogo code={payout.bankCode || ''} name={payout.bankName} size={40} /><span className="text-sm font-medium">{payout.bankName}</span></div> : null}
                 <dl className="space-y-4">{fields.map(([label, value]) => <div key={label} className="flex flex-col gap-1 text-sm sm:flex-row sm:justify-between sm:gap-6"><dt className="shrink-0 text-muted-foreground">{label}</dt><dd className="min-w-0 break-words font-medium sm:text-right">{value}</dd></div>)}</dl>
-                {!payout.bankName && !payout.accountNumber ? <p className="mt-6 border-t pt-4 text-xs text-muted-foreground">The bank destination was not recorded for this older withdrawal.</p> : null}
+                {payout.destinationSource === 'linked_account_unchanged' ? <p className="mt-6 border-t pt-4 text-xs text-muted-foreground">The original receipt did not save the destination. These details match the linked bank account, unchanged since this withdrawal was requested.</p> : null}
+                {payout.destinationSource === 'unavailable' ? <p className="mt-6 border-t pt-4 text-xs text-muted-foreground">The original bank destination could not be verified for this withdrawal.</p> : null}
               </CardContent>
             </Card>
             <div className="mt-5 flex flex-wrap gap-3 print:hidden">

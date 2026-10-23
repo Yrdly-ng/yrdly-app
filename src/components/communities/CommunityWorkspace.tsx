@@ -436,25 +436,27 @@ export function CommunityWorkspace({
       ref={workspace}
       className="mx-auto max-w-3xl space-y-5 px-4 py-6 pb-28 font-yrdly-body sm:px-6"
     >
-      <header className="flex flex-wrap items-center gap-3">
+      <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:flex">
         <Link
           href={postId ? `/communities/${id}` : "/communities"}
-          className={communityButton}
+          className={`${communityButton} order-1 w-fit`}
         >
           ← {postId ? "Community" : "Communities"}
         </Link>
-        <CommunityAvatar name={community?.name} src={community?.avatar_url} />
-        <div className="min-w-0 flex-1">
-          <h1 className="break-words font-yrdly-display text-xl font-semibold sm:text-2xl">
-            {community?.name || "Community"}
-          </h1>
-          {community && (
-            <p className="text-sm text-muted-foreground">
-              {community.member_count} members
-            </p>
-          )}
+        <div className="order-3 col-span-2 flex min-w-0 items-center gap-3 sm:order-none sm:flex-1">
+          <CommunityAvatar name={community?.name} src={community?.avatar_url} />
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate font-yrdly-display text-xl font-semibold sm:text-2xl">
+              {community?.name || "Community"}
+            </h1>
+            {community && (
+              <p className="text-sm text-muted-foreground">
+                {community.member_count} members
+              </p>
+            )}
+          </div>
         </div>
-        {button("Refresh", () => void load())}
+        <div className="order-2 sm:order-none">{button("Refresh", () => void load())}</div>
       </header>
       {!!error && (
         <div

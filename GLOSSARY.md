@@ -1,6 +1,6 @@
 # YRDLY
 
-The language of YRDLY events and their admission teams.
+The language used across YRDLY product domains.
 
 ## Language
 
@@ -20,3 +20,9 @@ An account-bound offer of an event role that expires after seven days unless acc
 
 **Check-in history**:
 The record of successful ticket admissions, including the time and the person who admitted each guest.
+
+### Business directory
+
+**Business type**:
+A business classification of products, services, or both; it determines which customer offerings belong on its profile.
+_Avoid_: Business mode

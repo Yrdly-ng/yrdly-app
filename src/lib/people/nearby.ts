@@ -60,15 +60,14 @@ export async function loadNearbyPeople(
   },
 ): Promise<PublicPerson[]> {
   const { userId, filter, location, signal } = options;
+  if (!location?.state || !location.lga) return [];
   let query = client
     .from("public_profiles")
     .select("id, name, avatar_url, home_state, home_lga, discoverable")
     .neq("id", userId)
     .or("discoverable.is.null,discoverable.eq.true")
     .order("created_at", { ascending: false });
-  if (location?.state) query = query.eq("home_state", location.state);
-  if (filter === "neighbors" && location?.lga)
-    query = query.eq("home_lga", location.lga);
+  query = query.eq("home_state", location.state).eq("home_lga", location.lga);
   const { data, error } = await query.limit(100).abortSignal(signal);
   if (error || !Array.isArray(data))
     throw new Error("Unable to load nearby people");
@@ -97,8 +96,7 @@ export async function loadNearbyPeople(
       .select("user_id")
       .eq("category", "For Sale")
       .eq("is_sold", false);
-    if (location?.state) posts = posts.eq("state", location.state);
-    if (location?.lga) posts = posts.eq("lga", location.lga);
+    posts = posts.eq("state", location.state).eq("lga", location.lga);
     const result = await posts.limit(100).abortSignal(signal);
     if (result.error || !Array.isArray(result.data))
       throw new Error("Unable to load sellers");

@@ -4,6 +4,7 @@ import { CatalogItemScreen } from "@/components/catalog/CatalogItemScreen";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/supabase";
+import { getBusinessLogo } from "@/lib/businesses/presentation";
 import type { Business, CatalogItem } from "@/types";
 
 export default function CatalogItemPage() {
@@ -44,7 +45,7 @@ export default function CatalogItemPage() {
       setBusiness({
         ...data,
         cover_image: data.cover_image || data.image_urls?.[0],
-        logo: data.logo || data.logo_url || data.image_urls?.[0],
+        logo: getBusinessLogo(data) ?? undefined,
         verified_seller: data.verified_seller || data.is_verified || false,
         catalog: [],
       });

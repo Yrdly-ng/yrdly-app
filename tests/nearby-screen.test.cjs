@@ -228,8 +228,13 @@ test("All Nigeria honors the selected global scope and Neighbors uses canonical 
   });
   try {
     assert.ok(
-      !calls[0].some((call) => call[0] === "eq" || call[0] === "contains"),
-      "All Nigeria must not silently restore profile location",
+      calls[0].some(
+        (call) => call[0] === "eq" && call[1] === "home_state" && call[2] === "Lagos",
+      ) &&
+        calls[0].some(
+          (call) => call[0] === "eq" && call[1] === "home_lga" && call[2] === "Ikeja",
+        ),
+      "Nearby remains scoped to the signed-in user's LGA when the global filter is All Nigeria",
     );
     view.state.location = { state: "Lagos", lga: "Ikeja" };
     await view.rerender();
@@ -263,7 +268,10 @@ test("changing location aborts stale results and only shows people from the curr
   let oldSignal;
   const view = await mount((table, query) => {
     if (table !== "public_profiles") return { data: [], error: null };
-    if (!query.some((call) => call[1] === "home_state")) {
+    const stateFilter = query.find(
+      (call) => call[0] === "eq" && call[1] === "home_state",
+    );
+    if (stateFilter?.[2] === "Lagos") {
       oldSignal = query.find((call) => call[0] === "abortSignal")[1];
       return new Promise((resolve) => {
         finishOld = resolve;
@@ -272,7 +280,7 @@ test("changing location aborts stale results and only shows people from the curr
     return { data: [{ id: "new", name: "Current Neighbor" }], error: null };
   });
   try {
-    view.state.location = { state: "Oyo" };
+    view.state.location = { state: "Oyo", lga: "Ibadan North" };
     await view.rerender();
     assert.equal(oldSignal.aborted, true);
     await act(async () =>

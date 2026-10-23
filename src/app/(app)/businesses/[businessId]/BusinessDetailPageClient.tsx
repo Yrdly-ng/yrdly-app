@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase/supabase";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import type { Business } from "@/types";
+import { getBusinessLogo } from "@/lib/businesses/presentation";
 
 export default function BusinessDetailPage() {
   const params = useParams();
@@ -74,10 +75,7 @@ export default function BusinessDetailPage() {
           ownerData?.name || businessData.owner_name || "Unknown Owner",
         owner_avatar: ownerData?.avatar_url || businessData.owner_avatar,
         cover_image: businessData.cover_image || businessData.image_urls?.[0],
-        logo:
-          businessData.logo ||
-          businessData.logo_url ||
-          businessData.image_urls?.[0],
+        logo: getBusinessLogo(businessData) ?? undefined,
         verified_seller:
           businessData.verified_seller || businessData.is_verified || false,
         catalog: [],

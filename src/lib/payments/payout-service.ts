@@ -431,7 +431,7 @@ export class PayoutService {
     try {
       const { data, error } = await supabaseAdmin
         .from('payout_requests')
-        .select('*')
+        .select('*, seller_account:seller_accounts(account_details,created_at,updated_at,account_updated_at)')
         .eq('seller_id', sellerId)
         .order('requested_at', { ascending: false });
 

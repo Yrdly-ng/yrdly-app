@@ -14,7 +14,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   }
   try {
     const { data, error: queryError } = await supabaseAdmin.from('payout_requests')
-      .select('*').eq('id', payoutId).eq('seller_id', user.id).maybeSingle();
+      .select('*, seller_account:seller_accounts(account_details,created_at,updated_at,account_updated_at)')
+      .eq('id', payoutId).eq('seller_id', user.id).maybeSingle();
     if (queryError) throw queryError;
     if (!data) return NextResponse.json({ error: 'Withdrawal not found' }, { status: 404 });
     return NextResponse.json({ payout: toPayoutReceipt(data) }, { headers: { 'Cache-Control': 'private, no-store' } });

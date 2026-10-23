@@ -53,7 +53,12 @@ import { WriteBusinessReviewDialog } from "@/components/reviews/WriteBusinessRev
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { useServiceOfferings } from "@/hooks/use-bookings";
-import { getBusinessModeLabel } from "@/lib/businesses/presentation";
+import {
+  getBusinessModeLabel,
+  getBusinessCatalogItems,
+  getCatalogItemImage,
+  shouldShowBusinessCatalog,
+} from "@/lib/businesses/presentation";
 import { GetDirectionsLink } from "@/components/location/GetDirectionsLink";
 
 interface BusinessDetailScreenProps {
@@ -109,8 +114,10 @@ export function BusinessDetailScreen({
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("tab") === "reviews") {
       setActiveTab("reviews");
+    } else if (business.mode === "service" || business.mode === "both") {
+      setActiveTab("services");
     }
-  }, []);
+  }, [business.mode, catalogItems.length, catalogError]);
 
   useEffect(() => {
     const fetchCatalogItems = async () => {
@@ -366,17 +373,16 @@ export function BusinessDetailScreen({
     }
   };
 
-  const filteredCatalogItems = isOwner
-    ? showOutOfStock
-      ? catalogItems
-      : catalogItems.filter(
-          (item) =>
-            item.in_stock && (item.quantity === undefined || item.quantity > 0),
-        )
-    : catalogItems.filter(
-        (item) =>
-          item.in_stock && (item.quantity === undefined || item.quantity > 0),
-      );
+  const filteredCatalogItems = getBusinessCatalogItems(
+    catalogItems,
+    isOwner,
+    showOutOfStock,
+  );
+  const showCatalogTab = shouldShowBusinessCatalog(
+    business.mode,
+    catalogItems.length,
+    Boolean(catalogError),
+  );
 
   return (
     <div className="mx-auto flex min-h-full max-w-6xl flex-col bg-background font-yrdly-body text-foreground pb-16 sm:px-6 sm:py-6">
@@ -589,9 +595,7 @@ export function BusinessDetailScreen({
         className="flex-1 flex flex-col"
       >
         <TabsList className="h-auto w-full justify-start gap-2 overflow-x-auto rounded-2xl border border-border bg-card p-2">
-          {(business.mode === "product" ||
-            business.mode === "both" ||
-            !business.mode) && (
+          {showCatalogTab && (
             <TabsTrigger
               value="catalog"
               className="min-h-11 rounded-xl px-5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
@@ -622,9 +626,7 @@ export function BusinessDetailScreen({
         </TabsList>
 
         <div className="flex-1">
-          {(business.mode === "product" ||
-            business.mode === "both" ||
-            !business.mode) && (
+          {showCatalogTab && (
             <TabsContent value="catalog" className="p-4 mt-0">
               {/* Owner Controls */}
               {isOwner && (
@@ -691,7 +693,7 @@ export function BusinessDetailScreen({
                         onClick={() => !isOwner && onViewCatalogItem(item)}
                       >
                         <Image
-                          src={item.images[0] || "/placeholder.svg"}
+                          src={getCatalogItemImage(item.images)}
                           alt={item.title}
                           width={200}
                           height={200}

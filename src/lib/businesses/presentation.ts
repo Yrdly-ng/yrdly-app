@@ -6,6 +6,39 @@ export function getBusinessModeLabel(mode?: string | null): string {
   return "Local business";
 }
 
+/** Product catalog visibility follows the saved business type, never item presence. */
+export function shouldShowBusinessCatalog(
+  mode: string | null | undefined,
+  _catalogCount: number,
+  _catalogError = false,
+): boolean {
+  return mode === "product" || mode === "both";
+}
+
+/** Match the mobile storefront: customers can see sold-out items and their
+ * availability badge. Owners can hide sold-out items until they turn the
+ * existing control on. Quantity is not used as a second stock flag. */
+export function getBusinessCatalogItems<T extends { in_stock: boolean }>(
+  items: T[],
+  isOwner: boolean,
+  showOutOfStock: boolean,
+): T[] {
+  if (!isOwner || showOutOfStock) return items;
+  return items.filter((item) => item.in_stock);
+}
+
+/** A cover is not a business logo; use the explicit logo fields only. */
+export function getBusinessLogo(business: {
+  logo?: string | null;
+  logo_url?: string | null;
+}): string | null {
+  return business.logo_url?.trim() || business.logo?.trim() || null;
+}
+
+export function getCatalogItemImage(images?: readonly string[] | null): string {
+  return images?.find((image) => typeof image === "string" && image.trim()) || "/placeholder.svg";
+}
+
 export function getBusinessLocation(
   location: unknown,
   lga?: string | null,
