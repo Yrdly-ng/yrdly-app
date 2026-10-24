@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/supabase";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import type { Business } from "@/types";
+import { getBusinessLogo } from "@/lib/businesses/presentation";
 
 export default function BusinessChatPage() {
   const params = useParams();
@@ -50,8 +51,8 @@ export default function BusinessChatPage() {
             website: data.website,
             owner_name: data.owner_name || "Unknown Owner",
             owner_avatar: data.owner_avatar,
-            cover_image: data.image_urls?.[0],
-            logo: data.image_urls?.[0],
+            cover_image: data.cover_image || data.image_urls?.[0],
+            logo: getBusinessLogo(data) ?? undefined,
             distance: "0.5 km away",
             catalog: []
           };

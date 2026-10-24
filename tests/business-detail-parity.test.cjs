@@ -15,10 +15,21 @@ new Function(
 
 const {
   getBusinessCatalogItems,
+  isCatalogItemAvailable,
   getBusinessLogo,
   getCatalogItemImage,
   shouldShowBusinessCatalog,
 } = moduleObject.exports;
+
+test("catalog availability agrees with checkout inventory precedence", () => {
+  for (const [item, expected] of [
+    [{ in_stock: true, quantity: null }, true],
+    [{ in_stock: true, quantity: 0, inventory_count: 5 }, false],
+    [{ in_stock: true, quantity: null, inventory_count: 0 }, false],
+    [{ in_stock: true, quantity: 2 }, true],
+    [{ in_stock: false, quantity: 2 }, false],
+  ]) assert.equal(isCatalogItemAvailable(item), expected);
+});
 
 test("business type controls whether its product catalog is shown", () => {
   assert.equal(shouldShowBusinessCatalog("service", 0), false);
@@ -38,7 +49,7 @@ test("database guards prevent service-only businesses from gaining product items
   assert.match(migration, /CREATE TRIGGER prevent_service_type_with_catalog/);
 });
 
-test("catalog visibility follows stock status, not nullable quantity", () => {
+test("catalog visibility keeps sold-out items discoverable and owner filtering uses availability", () => {
   const rows = [
     { id: "in-stock-no-count", in_stock: true, quantity: null },
     { id: "in-stock-zero-count", in_stock: true, quantity: 0 },
@@ -51,7 +62,7 @@ test("catalog visibility follows stock status, not nullable quantity", () => {
   );
   assert.deepEqual(
     getBusinessCatalogItems(rows, true, false).map((item) => item.id),
-    ["in-stock-no-count", "in-stock-zero-count"],
+    ["in-stock-no-count"],
   );
   assert.deepEqual(getBusinessCatalogItems(rows, true, true), rows);
 });

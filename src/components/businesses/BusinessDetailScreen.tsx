@@ -55,6 +55,8 @@ import { useRouter } from "next/navigation";
 import { useServiceOfferings } from "@/hooks/use-bookings";
 import {
   getBusinessModeLabel,
+  getBusinessLogo,
+  isCatalogItemAvailable,
   getBusinessCatalogItems,
   getCatalogItemImage,
   shouldShowBusinessCatalog,
@@ -297,6 +299,11 @@ export function BusinessDetailScreen({
   };
 
   const handleToggleStock = async (itemId: string, currentStock: boolean) => {
+    const item = catalogItems.find((entry) => entry.id === itemId);
+    if (!currentStock && item && (item.quantity ?? item.inventory_count ?? 1) <= 0) {
+      toast({ title: "Restock item", description: "Enter the available quantity to put this item back in stock." });
+      return;
+    }
     try {
       await CatalogService.toggleStockStatus(
         itemId,
@@ -446,7 +453,7 @@ export function BusinessDetailScreen({
         <div className="absolute -bottom-12 left-4">
           <div className="w-24 h-24 rounded-2xl bg-background border-4 border-background yrdly-shadow-lg overflow-hidden">
             <Image
-              src={business.logo || business.owner_avatar || "/placeholder.svg"}
+              src={getBusinessLogo(business) || "/placeholder.svg"}
               alt={business.name}
               width={96}
               height={96}
@@ -699,7 +706,7 @@ export function BusinessDetailScreen({
                           height={200}
                           className="w-full h-full object-cover"
                         />
-                        {!item.in_stock && (
+                        {!isCatalogItemAvailable(item) && (
                           <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                             <Badge variant="secondary">Out of Stock</Badge>
                           </div>
@@ -763,9 +770,9 @@ export function BusinessDetailScreen({
                               In Stock
                             </span>
                             <Switch
-                              checked={item.in_stock}
+                              checked={isCatalogItemAvailable(item)}
                               onCheckedChange={() =>
-                                handleToggleStock(item.id, item.in_stock)
+                                handleToggleStock(item.id, isCatalogItemAvailable(item))
                               }
                               className="scale-75"
                             />

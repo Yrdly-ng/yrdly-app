@@ -33,6 +33,7 @@ export interface Business {
   owner_avatar?: string;
   cover_image?: string;
   logo?: string;
+  logo_url?: string | null;
   distance?: string;
   catalog?: CatalogItem[];
   mode?: BusinessMode;
@@ -51,6 +52,7 @@ export interface CatalogItem {
   category: string;
   in_stock: boolean;
   quantity?: number;
+  inventory_count?: number | null;
   created_at?: string;
   updated_at?: string;
 }

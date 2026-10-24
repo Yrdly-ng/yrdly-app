@@ -86,9 +86,16 @@ export default function CreateBookingWebPage() {
     };
   }, [serviceId]);
 
-  const eligibleStaff = serviceStaffIds
+  const eligibleStaff = useMemo(() => serviceStaffIds
     ? staffList.filter((staff) => serviceStaffIds.includes(staff.id))
-    : staffList;
+    : staffList, [serviceStaffIds, staffList]);
+
+  useEffect(() => {
+    if (serviceStaffIds?.length && !serviceStaffIds.includes(selectedStaffId || "")) {
+      setSelectedStaffId(eligibleStaff[0]?.id || null);
+      setSelectedSlotTime(null);
+    }
+  }, [serviceStaffIds, eligibleStaff, selectedStaffId]);
 
   useEffect(() => {
     let active = true;
@@ -352,7 +359,7 @@ export default function CreateBookingWebPage() {
                   }}
                   className="w-full bg-card border border-border rounded-xl px-3 py-3 text-sm text-foreground"
                 >
-                  <option value="">Any available staff</option>
+                  {!serviceStaffIds?.length && <option value="">No specific staff</option>}
                   {eligibleStaff.map((s: any) => (
                     <option key={s.id} value={s.id}>
                       {s.name}

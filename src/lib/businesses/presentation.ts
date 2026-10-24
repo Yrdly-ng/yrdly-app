@@ -15,16 +15,23 @@ export function shouldShowBusinessCatalog(
   return mode === "product" || mode === "both";
 }
 
-/** Match the mobile storefront: customers can see sold-out items and their
- * availability badge. Owners can hide sold-out items until they turn the
- * existing control on. Quantity is not used as a second stock flag. */
-export function getBusinessCatalogItems<T extends { in_stock: boolean }>(
+/** Match checkout's inventory precedence, including older items without counts. */
+export function isCatalogItemAvailable(item: {
+  in_stock: boolean;
+  quantity?: number | null;
+  inventory_count?: number | null;
+}): boolean {
+  return item.in_stock && (item.quantity ?? item.inventory_count ?? 1) > 0;
+}
+
+/** Customers can see sold-out items; owners can filter them out. */
+export function getBusinessCatalogItems<T extends { in_stock: boolean; quantity?: number | null; inventory_count?: number | null }>(
   items: T[],
   isOwner: boolean,
   showOutOfStock: boolean,
 ): T[] {
   if (!isOwner || showOutOfStock) return items;
-  return items.filter((item) => item.in_stock);
+  return items.filter(isCatalogItemAvailable);
 }
 
 /** A cover is not a business logo; use the explicit logo fields only. */

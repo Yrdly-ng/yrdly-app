@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase/supabase";
 import { NotificationService } from "@/lib/notifications/notification-service";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import type { Business, CatalogItem } from "@/types";
+import { getBusinessLogo } from "@/lib/businesses/presentation";
 
 export default function ItemChatPage() {
   const params = useParams();
@@ -67,8 +68,8 @@ export default function ItemChatPage() {
             website: businessData.website,
             owner_name: businessData.owner_name || "Unknown Owner",
             owner_avatar: businessData.owner_avatar,
-            cover_image: businessData.image_urls?.[0],
-            logo: businessData.image_urls?.[0],
+            cover_image: businessData.cover_image || businessData.image_urls?.[0],
+            logo: getBusinessLogo(businessData) ?? undefined,
             distance: "0.5 km away",
             catalog: []
           };

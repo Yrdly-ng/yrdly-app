@@ -10,6 +10,9 @@ assert.equal(projectRef, 'jxgpvvehajxegeeozlnl');
 await mkdir('.qa-artifacts', { recursive: true });
 const seed = await readOutput(), admin = createAdminClient(env);
 const businessId = randomUUID(), serviceId = randomUUID(), bookingId = randomUUID();
+const appointment = new Date();
+appointment.setUTCDate(appointment.getUTCDate() + 1);
+appointment.setUTCHours(8, 0, 0, 0); // 09:00 Africa/Lagos, on an actual half-hour slot.
 const results = [];
 const ok = r => { if (r.error) throw new Error(`QA database operation failed (${r.error.code}): ${r.error.message}`); return r.data; };
 const check = async (name, run) => { await run(); results.push({ name, passed: true }); console.log(`PASS ${name}`); };
@@ -18,9 +21,10 @@ let tx;
 try {
   const owner = ok(await admin.auth.admin.getUserById(seed.users.organizer)).user;
   assert.equal(owner.user_metadata.qa_prefix, QA_PREFIX);
-  ok(await admin.from('businesses').insert({ id: businessId, owner_id: seed.users.organizer, name: `${QA_PREFIX} Booking Ledger`, category: 'Other', location: { state: 'Lagos' }, is_active: true, moderation_status: 'approved' }));
+  ok(await admin.from('businesses').insert({ id: businessId, owner_id: seed.users.organizer, name: `${QA_PREFIX} Booking Ledger`, category: 'Other', location: { state: 'Lagos' }, mode: 'service', is_active: true, moderation_status: 'approved' }));
   ok(await admin.from('service_offerings').insert({ id: serviceId, business_id: businessId, name: `${QA_PREFIX} fractional service`, price: 1234.56, duration_minutes: 60, is_active: true, requires_full_payment: true, deposit_required: true, deposit_amount: 1000 }));
-  ok(await admin.from('bookings').insert({ id: bookingId, customer_id: seed.users.buyer, business_id: businessId, service_id: serviceId, appointment_time: new Date(Date.now()+86400000).toISOString(), end_time: new Date(Date.now()+90000000).toISOString(), status: 'requested' }));
+  ok(await admin.from('provider_availability').insert({ business_id: businessId, staff_id: null, day_of_week: appointment.getUTCDay(), is_available: true, start_time: '09:00', end_time: '17:00' }));
+  ok(await admin.from('bookings').insert({ id: bookingId, customer_id: seed.users.buyer, business_id: businessId, service_id: serviceId, appointment_time: appointment.toISOString(), end_time: new Date(appointment.getTime()+3600000).toISOString(), status: 'requested' }));
   await check('booking checkout rejects a different buyer and a deposit downgrade', async () => {
     assert.equal((await reserve(seed.users.seller)).error?.message, 'booking_not_found');
     assert.equal((await reserve(seed.users.buyer, 'deposit')).error?.message, 'booking_payment_type_mismatch');
@@ -75,6 +79,7 @@ try {
   ok(await admin.from('escrow_transactions').delete().eq('item_type','booking').eq('item_id', bookingId));
   ok(await admin.from('bookings').delete().eq('id', bookingId));
   ok(await admin.from('service_offerings').delete().eq('id', serviceId));
+  ok(await admin.from('provider_availability').delete().eq('business_id', businessId));
   ok(await admin.from('businesses').delete().eq('id', businessId));
   await writeFile('.qa-artifacts/booking-checkout-regression.json', JSON.stringify({ projectRef, checkedAt: new Date().toISOString(), results }, null, 2), { mode: 0o600 });
 }

@@ -91,7 +91,7 @@ const getFormSchema = (existingImageCount: number) =>
     quantity: z.preprocess(
       (val) =>
         val === "" || val === null || val === undefined ? 1 : Number(val),
-      z.number().min(0, "Stock quantity cannot be negative."),
+      z.number().int("Enter a whole number of items.").min(0, "Stock quantity cannot be negative."),
     ),
     image: z
       .any()
@@ -516,7 +516,7 @@ const CreateCatalogItemDialogComponent = ({
             price: itemToEdit.price,
             category: itemToEdit.category || "General",
             in_stock: itemToEdit.in_stock ?? true,
-            quantity: itemToEdit.quantity ?? 5,
+            quantity: itemToEdit.quantity ?? itemToEdit.inventory_count ?? (itemToEdit.in_stock ? 1 : 0),
             image: itemToEdit.images || [],
           });
         } else if (!isEditMode) {

@@ -24,6 +24,8 @@ import Link from "next/link";
 import {
   getBusinessRating,
   getBusinessLocation,
+  getBusinessLogo,
+  isCatalogItemAvailable,
 } from "@/lib/businesses/presentation";
 import { BuyButton } from "@/components/escrow/BuyButton";
 
@@ -43,8 +45,7 @@ export function CatalogItemScreen({
   const { user } = useAuth();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const images = item.images || [];
-  const available =
-    item.in_stock && (item.quantity == null || item.quantity > 0);
+  const available = isCatalogItemAvailable(item);
   const rating = getBusinessRating(business.rating, business.review_count);
 
   const handleCall = () => {
@@ -196,7 +197,7 @@ export function CatalogItemScreen({
             <Avatar className="w-12 h-12">
               <AvatarImage
                 src={
-                  business.logo || business.owner_avatar || "/placeholder.svg"
+                  getBusinessLogo(business) || "/placeholder.svg"
                 }
               />
               <AvatarFallback>{business.name[0]}</AvatarFallback>

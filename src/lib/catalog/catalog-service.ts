@@ -52,6 +52,7 @@ export class CatalogService {
               images: imageUrls,
               in_stock: (itemData.quantity !== undefined ? itemData.quantity > 0 : true) && (itemData.in_stock ?? true),
               quantity: itemData.quantity ?? 1,
+              inventory_count: itemData.quantity ?? 1,
             })
             .select('id')
             .single();
@@ -114,6 +115,10 @@ export class CatalogService {
 
           // Update catalog item
           const updateData: any = { ...itemData };
+          if (itemData.quantity !== undefined) {
+            updateData.inventory_count = itemData.quantity;
+            if (itemData.quantity === 0) updateData.in_stock = false;
+          }
           if (newImageFiles || existingImages) {
             updateData.images = allImages;
           }
@@ -272,7 +277,7 @@ export class CatalogService {
 
       if (error) {
         console.error('Error uploading image:', error);
-        continue;
+        throw new Error('Could not upload item photo. Please try again.');
       }
 
       const { data: { publicUrl } } = supabase.storage

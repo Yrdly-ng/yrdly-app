@@ -28,6 +28,22 @@ export async function POST(request: NextRequest) {
     staff_id: body.staffId || null, appointment_time: body.appointmentTime, end_time: endTime,
     notes: body.notes || null, status: 'requested', payment_status: 'unpaid',
   }).select('*,service:service_offerings(*),business:businesses(*)').single();
-  if (insertError) return NextResponse.json({ error: 'Could not create booking' }, { status: 500 });
+  if (insertError) {
+    if (insertError.code === '23P01') return NextResponse.json({ error: 'This appointment is no longer available. Please choose another time.' }, { status: 409 });
+    const errors: Record<string, string> = {
+      booking_outside_hours: 'Choose an appointment during the available working hours.',
+      booking_duration_invalid: 'This appointment time is invalid. Please choose another slot.',
+      booking_staff_unavailable: 'This staff member is unavailable.',
+      booking_staff_unassigned: 'This staff member does not offer the selected service.',
+      booking_staff_required: 'Choose a staff member for this service.',
+      booking_service_unavailable: 'This service is unavailable.',
+      booking_business_unavailable: 'This business is unavailable for bookings.',
+      booking_self_not_allowed: 'You cannot book your own business.',
+    };
+    const message = Object.entries(errors).find(([key]) => insertError.message?.includes(key))?.[1];
+    if (message) return NextResponse.json({ error: message }, { status: 400 });
+    console.error('[Bookings] Could not create booking', { code: insertError.code });
+    return NextResponse.json({ error: 'Could not create booking' }, { status: 500 });
+  }
   return NextResponse.json({ data });
 }

@@ -177,23 +177,28 @@ export class BookingService {
     dateString: string, // YYYY-MM-DD
     staffId?: string | null
   ): Promise<TimeSlot[]> {
-    const targetDate = new Date(dateString + 'T00:00:00');
-    const dayOfWeek = targetDate.getDay();
+    // Business schedules are Nigerian local time, independent of the visitor's device.
+    const targetDate = new Date(dateString + 'T00:00:00+01:00');
+    const dayOfWeek = new Date(dateString + 'T12:00:00Z').getUTCDay();
 
     // 1. Fetch service info
     const { data: service, error: serviceError } = await supabase
       .from('service_offerings')
       .select('duration_minutes')
+      .eq('business_id', businessId)
+      .eq('is_active', true)
       .eq('id', serviceId)
       .single();
 
-    if (serviceError || !service) return [];
+    if (serviceError) throw serviceError;
+    if (!service || !Number.isInteger(service.duration_minutes) || service.duration_minutes <= 0) return [];
     const durationMs = service.duration_minutes * 60 * 1000;
 
     // 2. Check for blackout or custom hours on date
     let excQ: any = supabase.from('availability_exceptions').select('*').eq('business_id', businessId).eq('date', dateString);
-    if (staffId) excQ = excQ.eq('staff_id', staffId);
-    const { data: exception } = await excQ.maybeSingle();
+    excQ = staffId ? excQ.eq('staff_id', staffId) : excQ.is('staff_id', null);
+    const { data: exception, error: exceptionError } = await excQ.maybeSingle();
+    if (exceptionError) throw exceptionError;
 
     if (exception && exception.is_blackout) {
       return []; // Fully blackout
@@ -208,8 +213,9 @@ export class BookingService {
       endTimeStr = exception.custom_end_time;
     } else {
       let wq: any = supabase.from('provider_availability').select('*').eq('business_id', businessId).eq('day_of_week', dayOfWeek);
-      if (staffId) wq = wq.eq('staff_id', staffId);
-      const { data: weekly } = await wq.maybeSingle();
+      wq = staffId ? wq.eq('staff_id', staffId) : wq.is('staff_id', null);
+      const { data: weekly, error: weeklyError } = await wq.maybeSingle();
+      if (weeklyError) throw weeklyError;
 
       if (!weekly || !weekly.is_available) {
         return []; // Closed on this day
@@ -218,13 +224,16 @@ export class BookingService {
       endTimeStr = weekly.end_time;
     }
 
-    // 4. Fetch existing non-cancelled bookings for date
-    const dayStartISO = new Date(`${dateString}T00:00:00`).toISOString();
-    const dayEndISO = new Date(`${dateString}T23:59:59`).toISOString();
-
-    let bookingsQ: any = supabase.from('bookings').select('appointment_time, end_time').eq('business_id', businessId).not('status', 'in', '("cancelled","late_cancelled")').gte('appointment_time', dayStartISO).lte('appointment_time', dayEndISO);
-    if (staffId) bookingsQ = bookingsQ.eq('staff_id', staffId);
-    const { data: existingBookings } = await bookingsQ;
+    // A booking without named staff reserves business-wide capacity. Named staff
+    // can work in parallel, but must also respect those business-wide reservations.
+    const dayStartISO = targetDate.toISOString();
+    const dayEndISO = new Date(targetDate.getTime() + 86400000).toISOString();
+    let bookingsQ: any = supabase.from('bookings').select('appointment_time, end_time')
+      .eq('business_id', businessId).in('status', ['requested', 'confirmed'])
+      .lt('appointment_time', dayEndISO).gt('end_time', dayStartISO);
+    if (staffId) bookingsQ = bookingsQ.or(`staff_id.is.null,staff_id.eq.${staffId}`);
+    const { data: existingBookings, error: bookingsError } = await bookingsQ;
+    if (bookingsError) throw bookingsError;
 
     const bookedIntervals = (existingBookings || []).map((b: any) => ({
       start: new Date(b.appointment_time).getTime(),
@@ -233,14 +242,8 @@ export class BookingService {
 
     // 5. Generate time slots (30-min steps)
     const slots: TimeSlot[] = [];
-    const [startH, startM] = startTimeStr.split(':').map(Number);
-    const [endH, endM] = endTimeStr.split(':').map(Number);
-
-    const periodStart = new Date(targetDate);
-    periodStart.setHours(startH, startM, 0, 0);
-
-    const periodEnd = new Date(targetDate);
-    periodEnd.setHours(endH, endM, 0, 0);
+    const periodStart = new Date(`${dateString}T${startTimeStr}+01:00`);
+    const periodEnd = new Date(`${dateString}T${endTimeStr}+01:00`);
 
     const stepMs = 30 * 60 * 1000;
     const nowMs = Date.now();
@@ -261,6 +264,7 @@ export class BookingService {
         hour: '2-digit',
         minute: '2-digit',
         hour12: true,
+        timeZone: 'Africa/Lagos',
       });
 
       slots.push({
