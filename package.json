@@ -25,7 +25,7 @@
     "test:explore": "node --test tests/nearby-screen.test.cjs tests/explore-community-flow.test.cjs",
     "test:event-team": "node --test tests/event-team-database.test.cjs tests/event-team-backend.test.cjs tests/event-team-ui.test.cjs tests/notification-routing.test.cjs",
     "test:business": "node --test tests/business-parity.test.cjs tests/business-detail-parity.test.cjs tests/business-chat-logo.test.cjs tests/catalog-save.test.cjs tests/public-profile-security.test.cjs tests/booking-schedule.test.cjs tests/booking-schedule-database.test.cjs",
-    "test:parity": "node --test tests/nearby-screen.test.cjs tests/nearby-location.test.cjs tests/explore-community-flow.test.cjs tests/community-parity.test.cjs tests/business-parity.test.cjs tests/business-detail-parity.test.cjs tests/event-directory.test.cjs tests/event-presentation.test.cjs tests/marketplace-card.test.cjs"
+    "test:parity": "node --test tests/nearby-screen.test.cjs tests/nearby-location.test.cjs tests/explore-community-flow.test.cjs tests/community-parity.test.cjs tests/business-parity.test.cjs tests/business-detail-parity.test.cjs tests/event-directory.test.cjs tests/event-attendees.test.cjs tests/event-presentation.test.cjs tests/marketplace-card.test.cjs"
   },
   "dependencies": {
     "@googlemaps/markerclusterer": "^2.6.2",

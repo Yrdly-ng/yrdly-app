@@ -44,7 +44,7 @@ export async function getPublishedEvents(opts?: {
     try {
       const { data: ticketsData } = await supabase
         .from('tickets')
-        .select('event_id, buyer:public_profiles(id, name, avatar_url)')
+        .select('event_id, buyer:public_profiles!tickets_buyer_id_fkey(id, name, avatar_url)')
         .in('event_id', eventIds)
         .eq('status', 'PAID')
         .limit(100);
@@ -87,7 +87,7 @@ export async function getEventAttendees(eventId: string, limit: number = 5) {
   try {
     const { data } = await supabase
       .from('tickets')
-      .select('buyer:public_profiles(id, name, avatar_url)')
+      .select('buyer:public_profiles!tickets_buyer_id_fkey(id, name, avatar_url)')
       .eq('event_id', eventId)
       .eq('status', 'PAID')
       .limit(limit * 3);
