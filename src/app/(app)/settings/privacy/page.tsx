@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-supabase-auth';
+import { supabase } from '@/lib/supabase/supabase';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,9 +17,13 @@ export default function PrivacySettingsPage() {
   const { toast } = useToast();
   const [updating, setUpdating] = useState(false);
 
-  const handleToggle = async (key: 'share_location' | 'discoverable', value: boolean) => {
+  const handleToggle = async (key: 'share_location' | 'discoverable' | 'nearby_enabled', value: boolean) => {
     setUpdating(true);
     try {
+      if (key === 'nearby_enabled' && !value) {
+        const { error } = await supabase.rpc('clear_nearby_presence');
+        if (error) throw error;
+      }
       await updateProfile({ [key]: value });
       toast({
         title: "Settings Updated",
@@ -96,6 +101,28 @@ export default function PrivacySettingsPage() {
               id="discoverable"
               checked={profile?.discoverable ?? true}
               onCheckedChange={(checked) => handleToggle('discoverable', checked)}
+              disabled={updating}
+            />
+          </div>
+
+          <div className="border-t pt-6 flex items-center justify-between space-x-4">
+            <div className="flex items-start space-x-3">
+              <div className="p-2 rounded-lg bg-muted">
+                <MapPin className="h-5 w-5 text-foreground" />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="nearby-enabled" className="font-medium text-base leading-none">
+                  Show me in Nearby
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Share a temporary location while using Nearby. Your exact coordinates are private and expire after 30 minutes.
+                </p>
+              </div>
+            </div>
+            <Switch
+              id="nearby-enabled"
+              checked={profile?.nearby_enabled ?? false}
+              onCheckedChange={(checked) => handleToggle('nearby_enabled', checked)}
               disabled={updating}
             />
           </div>

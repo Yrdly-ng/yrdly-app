@@ -361,3 +361,10 @@ test('event team invitations and access updates open assigned duties, never a gu
     assert.equal(route({ type, relatedId: 'event-id', data: { event_id: 'event-id' } }), '/events/team');
   }
 });
+
+test('organizer ticket-sale notifications open event management on web and mobile', () => {
+  assert.equal(
+    route({ type: 'ticket_purchase', data: { audience: 'organizer', eventId: 'event-id' } }),
+    '/events/event-id/manage'
+  );
+});

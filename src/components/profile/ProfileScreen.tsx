@@ -23,6 +23,7 @@ import { CreateBusinessDialog } from "../businesses/CreateBusinessDialog";
 import { BusinessCreatorOnboarding } from "../businesses/BusinessCreatorOnboarding";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { ProfilePostGridItem } from "@/components/profile/ProfilePostGridItem";
+import { supportsPostEngagement } from "@/lib/posts/post-engagement";
 import { RightRail } from "@/components/layout/RightRail";
 import { useFriendshipGlobal } from "@/hooks/use-friendship-global";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -646,7 +647,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
                     <div className="flex items-center justify-between mt-3 text-xs text-[var(--yrdly-label)] font-yrdly-body">
                       <span className="text-[0.65rem] font-bold uppercase tracking-wider font-yrdly-display">{post.category || "General"}</span>
                       <div className="flex items-center gap-3">
-                        <span className="flex items-center gap-1"><Heart className="w-3.5 h-3.5" />{post.liked_by?.length || 0}</span>
+                        {supportsPostEngagement(post.category) && <span className="flex items-center gap-1"><Heart className="w-3.5 h-3.5" />{post.liked_by?.length || 0}</span>}
                       </div>
                     </div>
                   </GlassCard>

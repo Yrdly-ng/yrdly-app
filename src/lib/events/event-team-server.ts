@@ -62,6 +62,13 @@ export async function eventTeamRpc(
 ) {
   const { data, error } = await client.rpc(name, args);
   if (error) {
+    console.error('[Event team] RPC failed', {
+      function: name,
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
     const statuses: Record<string, number> = {
       P0002: 404,
       "42501": 403,
@@ -81,6 +88,7 @@ export async function eventTeamRpc(
     );
   }
   if (!data || typeof data !== "object" || Array.isArray(data)) {
+    console.error('[Event team] RPC returned an invalid payload', { function: name });
     return NextResponse.json(
       { error: "Event access is temporarily unavailable. Please try again." },
       { status: 503 },

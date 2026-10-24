@@ -23,6 +23,7 @@ export interface AuthUser {
   interests?: string[];
   shareLocation?: boolean;
   share_location?: boolean;
+  nearby_enabled?: boolean;
   discoverable?: boolean;
   notification_settings?: {
     friendRequests: boolean;
@@ -348,6 +349,7 @@ export class AuthService {
         "interests",
         "notification_settings",
         "share_location",
+        "nearby_enabled",
         "current_location",
         "location_updated_at",
         "location",

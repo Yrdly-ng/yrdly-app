@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useLocation } from "@/contexts/LocationContext";
+import { supportsPostEngagement } from "@/lib/posts/post-engagement";
 import { supabase } from "@/lib/supabase/supabase";
 import { Skeleton } from "../ui/skeleton";
 import {
@@ -599,6 +600,7 @@ function EngagementRow({
   onShare,
   isBookmarked,
   onBookmark,
+  allowSocial = true,
 }: {
   likes: number;
   commentCount: number;
@@ -608,6 +610,7 @@ function EngagementRow({
   onShare: () => void;
   isBookmarked: boolean;
   onBookmark: () => void;
+  allowSocial?: boolean;
 }) {
   const [animating, setAnimating] = useState(false);
 
@@ -621,7 +624,7 @@ function EngagementRow({
     <div className="flex items-center justify-between pt-yrdly-sm border-t border-[var(--yrdly-glass-border)]">
       <div className="flex items-center gap-1">
         {/* Likes */}
-        <button
+        {allowSocial && <button
           onClick={handleLike}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-full motion-snappy hover:bg-[var(--yrdly-glass-bg)] hover:scale-[0.97] active:scale-[0.95]"
         >
@@ -636,9 +639,9 @@ function EngagementRow({
           <span className="text-[0.75rem] font-medium text-[var(--yrdly-label)] font-yrdly-body">
             {fmt(likes)}
           </span>
-        </button>
+        </button>}
         {/* Comments */}
-        <button
+        {allowSocial && <button
           onClick={onComment}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-full motion-snappy hover:bg-[var(--yrdly-glass-bg)] hover:scale-[0.97] active:scale-[0.95]"
         >
@@ -646,7 +649,7 @@ function EngagementRow({
           <span className="text-[0.75rem] font-medium text-[var(--yrdly-label)] font-yrdly-body">
             {fmt(commentCount)}
           </span>
-        </button>
+        </button>}
         {/* Share */}
         <button
           onClick={onShare}
@@ -741,6 +744,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
   >(null);
   const [reportDetails, setReportDetails] = useState("");
   const router = useRouter();
+  const allowSocial = supportsPostEngagement(post.category);
   const { activeFilter } = useLocation();
 
   const showUserLocationOnPost = !activeFilter?.lga;
@@ -910,6 +914,12 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
   /* ── realtime post updates & comment count sync ── */
   useEffect(() => {
     if (!post.id) return;
+    if (!allowSocial) {
+      setLikes(0);
+      setCommentCount(0);
+      setIsLiked(false);
+      return;
+    }
     setLikes(post.liked_by?.length || 0);
     setCommentCount(post.comment_count || 0);
     if (currentUser && post.liked_by)
@@ -957,7 +967,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
     return () => {
       supabase.removeChannel(ch);
     };
-  }, [post.id, post.liked_by, post.comment_count, currentUser]);
+  }, [allowSocial, post.id, post.liked_by, post.comment_count, currentUser]);
 
   useEffect(() => {
     const bookmark = (event: Event) => {
@@ -1015,7 +1025,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
   };
 
   const handleLike = async () => {
-    if (!currentUser || !post.id) return;
+    if (!allowSocial || !currentUser || !post.id) return;
     const previousIsLiked = isLiked;
     const previousLikes = likes;
 
@@ -1816,6 +1826,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
             onShare={handleShare}
             isBookmarked={isBookmarked}
             onBookmark={handleBookmarkToggle}
+            allowSocial={allowSocial}
           />
         </div>
       </>
@@ -1832,7 +1843,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
       </GlassCard>
 
       {/* Comments — Mobile Drawer / Desktop Modal */}
-      <Drawer
+      {allowSocial && <Drawer
         open={isCommentsOpen}
         onOpenChange={setIsCommentsOpen}
         repositionInputs={false}
@@ -1929,7 +1940,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
             </div>
           </div>
         </DrawerContent>
-      </Drawer>
+      </Drawer>}
     </>
   );
 }

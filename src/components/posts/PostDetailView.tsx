@@ -42,6 +42,7 @@ import { CommentSection } from "@/components/CommentSection";
 import { timeAgo } from "@/lib/shared/utils";
 import type { Post, User } from "@/types/index";
 import { cn } from "@/lib/shared/utils";
+import { supportsPostEngagement } from "@/lib/posts/post-engagement";
 
 function formatCount(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -61,6 +62,7 @@ export function PostDetailView({
   const router = useRouter();
   const { user: currentUser, profile: userDetails } = useAuth();
   const { toast } = useToast();
+  const allowSocial = supportsPostEngagement(post.category);
   const [author, setAuthor] = useState<User | null>(null);
   const [loadingAuthor, setLoadingAuthor] = useState(true);
   const [likes, setLikes] = useState(post.liked_by?.length || 0);
@@ -173,7 +175,7 @@ export function PostDetailView({
   };
 
   const handleLike = useCallback(async () => {
-    if (!currentUser || !post.id || likePendingRef.current) return;
+    if (!allowSocial || !currentUser || !post.id || likePendingRef.current) return;
     likePendingRef.current = true;
     setIsLikePending(true);
 
@@ -213,7 +215,7 @@ export function PostDetailView({
       likePendingRef.current = false;
       setIsLikePending(false);
     }
-  }, [currentUser, isLiked, post.id, toast]);
+  }, [allowSocial, currentUser, isLiked, post.id, toast]);
 
   useEffect(() => {
     if (!currentUser) {
@@ -407,6 +409,7 @@ export function PostDetailView({
           {/* Engagement row */}
           <div className="flex items-center justify-between px-4 py-3 border-t border-border">
             <div className="flex items-center gap-4">
+              {allowSocial && <>
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={handleLike}
@@ -431,6 +434,7 @@ export function PostDetailView({
                   {formatCount(commentCount)}
                 </span>
               </div>
+              </>}
               <button
                 onClick={() => void toggleSaved()}
                 disabled={!currentUser}
@@ -538,14 +542,14 @@ export function PostDetailView({
 
         {/* Right column — comment input + CommentSection (desktop side column) */}
         <div className="lg:col-span-5 xl:col-span-5 flex flex-col border-t lg:border-t-0 border-border">
-          <CommentSection
+          {allowSocial ? <CommentSection
             postId={post.id}
             post={post}
             author={author}
             onCommentCountChange={handleCommentCountChange}
             variant="inline"
             hidePostPreview
-          />
+          /> : <p className="p-6 text-sm text-muted-foreground">Comments are unavailable for events and marketplace listings.</p>}
         </div>
       </div>
 

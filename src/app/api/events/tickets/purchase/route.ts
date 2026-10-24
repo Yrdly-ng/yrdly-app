@@ -7,6 +7,7 @@ import { ResendEmailService } from '@/lib/email/resend-service';
 import QRCode from 'qrcode';
 import { createTicketCheckout, TicketCheckoutError } from '@/lib/events/ticket-checkout';
 import { sendPushNotification } from '@/lib/notifications/server-push-notification';
+import { TicketService } from '@/lib/events/ticket-service';
 
 /**
  * POST /api/events/tickets/purchase
@@ -249,6 +250,19 @@ export async function POST(request: NextRequest) {
         }
       } catch (notificationError) {
         console.error('[Tickets] Could not send free-ticket confirmation notification:', notificationError);
+      }
+
+      try {
+        await TicketService.notifyOrganizerOfTicketSale({
+          eventId: event_id,
+          ticketId: insertedTickets[0].id,
+          tierId: tier_id,
+          buyerId: user.id,
+          buyerName: attendee_name,
+          quantity,
+        });
+      } catch (notificationError) {
+        console.error('[Tickets] Could not create free-ticket sale notification:', notificationError);
       }
 
       return NextResponse.json({ success: true, free: true, ticket_id: insertedTickets[0].id, quantity });

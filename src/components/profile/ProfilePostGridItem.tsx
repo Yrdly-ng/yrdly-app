@@ -4,6 +4,7 @@ import React from "react";
 import Image from "next/image";
 import { Heart, MessageCircle, PlayCircle, Layers } from "lucide-react";
 import type { Post } from "@/types/index";
+import { supportsPostEngagement } from "@/lib/posts/post-engagement";
 
 interface ProfilePostGridItemProps {
   post: Post;
@@ -19,8 +20,9 @@ export function ProfilePostGridItem({ post, onPress }: ProfilePostGridItemProps)
   const videoUrl = post.video_url || ((post as any).video_urls?.[0] as string | undefined);
   const imageUrl = imageUrls[0] || post.video_thumbnail_url || null;
   const isVideo = Boolean(videoUrl);
-  const likesCount = post.liked_by?.length || 0;
-  const commentCount = post.comment_count || 0;
+  const showEngagement = supportsPostEngagement(post.category);
+  const likesCount = showEngagement ? post.liked_by?.length || 0 : 0;
+  const commentCount = showEngagement ? post.comment_count || 0 : 0;
 
   return (
     <div
@@ -76,7 +78,7 @@ export function ProfilePostGridItem({ post, onPress }: ProfilePostGridItemProps)
       )}
 
       {/* Hover Stats Overlay */}
-      <div className="absolute inset-0 flex items-center justify-center gap-6 bg-black/50 backdrop-blur-[2px] opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+      {showEngagement && <div className="absolute inset-0 flex items-center justify-center gap-6 bg-black/50 backdrop-blur-[2px] opacity-0 transition-opacity duration-200 group-hover:opacity-100">
         <div className="flex items-center gap-1.5 text-white font-bold text-sm">
           <Heart className="h-4 w-4 fill-white" />
           <span>{likesCount}</span>
@@ -85,7 +87,7 @@ export function ProfilePostGridItem({ post, onPress }: ProfilePostGridItemProps)
           <MessageCircle className="h-4 w-4 fill-white" />
           <span>{commentCount}</span>
         </div>
-      </div>
+      </div>}
     </div>
   );
 }

@@ -17,7 +17,6 @@ import {
   Lock,
   Loader2,
   CheckCircle2,
-  DollarSign,
   Users,
   Clock,
   RefreshCw,
@@ -368,7 +367,9 @@ export default function ManageEventPage() {
                 </h3>
               </div>
               <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-                <DollarSign className="w-6 h-6 text-emerald-500" />
+                <span aria-label="Naira" className="text-2xl font-bold leading-none text-emerald-500">
+                  ₦
+                </span>
               </div>
             </CardContent>
           </Card>

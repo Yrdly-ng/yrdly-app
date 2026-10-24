@@ -17,6 +17,7 @@ interface DiscoverUserCardProps {
     };
     home_state?: string | null;
     home_lga?: string | null;
+    distance_band?: string;
   };
   context: "neighbor" | "mutual" | "seller";
   mutualCount?: number;
@@ -37,7 +38,9 @@ export function DiscoverUserCard({
 
   if (context === "neighbor") {
     badgeIcon = MapPin;
-    if (user?.home_lga && user?.home_state) {
+    if (user?.distance_band) {
+      badgeText = user.distance_band;
+    } else if (user?.home_lga && user?.home_state) {
       badgeText = `${user.home_lga}, ${user.home_state}`;
     } else if (user?.home_state) {
       badgeText = `${user.home_state} State`;

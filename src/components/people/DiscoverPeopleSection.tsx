@@ -19,7 +19,7 @@ const FILTER_TABS: { key: CommunityFilterTab; label: string }[] = [
 export function DiscoverPeopleSection() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<CommunityFilterTab>('all');
-  const { discoverUsers, loading } = useCommunityConnections(activeTab);
+  const { discoverUsers, loading, findNearbyPeople, locationBusy, locationError } = useCommunityConnections(activeTab);
 
   if (loading) {
     return (
@@ -73,8 +73,11 @@ export function DiscoverPeopleSection() {
 
       <CardContent>
         {discoverUsers.length === 0 ? (
-          <div className="py-8 text-center text-xs text-muted-foreground">
-            No suggested connections found for this filter.
+          <div className="space-y-3 py-8 text-center text-xs text-muted-foreground">
+            <p>{locationError || 'Share your location while using Nearby to find opted-in people around you.'}</p>
+            <Button onClick={() => void findNearbyPeople()} disabled={locationBusy} size="sm" className="rounded-full">
+              {locationBusy ? 'Getting location…' : 'Find people nearby'}
+            </Button>
           </div>
         ) : (
           <div className="flex items-center gap-4 overflow-x-auto pb-2 scrollbar-hide">

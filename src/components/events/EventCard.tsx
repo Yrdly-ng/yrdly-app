@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { ArrowUpRight, CalendarDays, Heart, MapPin } from "lucide-react";
+import { ArrowUpRight, Bookmark, CalendarDays, MapPin } from "lucide-react";
 import type { Post } from "@/types/index";
 import { formatPrice } from "@/lib/shared/utils";
 import { useAuth } from "@/hooks/use-supabase-auth";
@@ -146,7 +146,7 @@ export function EventCard({ event, onPress, compact = false }: EventCardProps) {
         aria-pressed={saved}
         className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background/95 text-foreground shadow-sm focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50"
       >
-        <Heart
+          <Bookmark
           className={`h-5 w-5 ${saved ? "fill-primary text-primary" : ""}`}
         />
       </button>

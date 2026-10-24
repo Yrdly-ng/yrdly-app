@@ -26,3 +26,7 @@ The record of successful ticket admissions, including the time and the person wh
 **Business type**:
 A business classification of products, services, or both; it determines which customer offerings belong on its profile.
 _Avoid_: Business mode
+
+**Nearby presence**:
+A user's temporary participation in location-based people discovery, based on a coarse distance from other opted-in users.
+_Avoid_: Live location sharing

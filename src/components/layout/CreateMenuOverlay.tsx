@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -44,15 +44,52 @@ export function CreateMenuOverlay({
 }: CreateMenuOverlayProps) {
   const router = useRouter();
   const { profile } = useAuth();
+  const panelRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!open) return;
+    returnFocusRef.current = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+    requestAnimationFrame(() => closeButtonRef.current?.focus());
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = prev;
+      returnFocusRef.current?.focus();
     };
   }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+      if (event.key !== "Tab" || !panelRef.current) return;
+      const focusable = Array.from(
+        panelRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+        ),
+      );
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open, onClose]);
 
   const options: CreateOption[] = [
     {
@@ -140,12 +177,16 @@ export function CreateMenuOverlay({
           />
 
           <motion.div
+            ref={panelRef}
             key="panel"
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 380 }}
-            className="fixed bottom-0 left-0 right-0 z-[121] mx-auto w-full sm:max-w-[520px] rounded-t-[24px] px-5 pt-3 pb-8"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="create-menu-title"
+            className="fixed bottom-0 left-0 right-0 z-[121] mx-auto max-h-[min(90dvh,640px)] w-full overflow-y-auto overscroll-contain sm:max-w-[520px] rounded-t-[24px] px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+2rem)]"
             style={{
               background: "var(--c-card)",
               borderTop: "0.5px solid var(--c-border)",
@@ -159,15 +200,17 @@ export function CreateMenuOverlay({
 
             <div className="flex items-center justify-between mb-4">
               <h2
+                id="create-menu-title"
                 className="text-lg font-bold text-foreground"
                 style={{ fontFamily: FONT }}
               >
                 Create
               </h2>
               <button
+                ref={closeButtonRef}
                 onClick={onClose}
                 aria-label="Close"
-                className="flex items-center justify-center w-8 h-8 rounded-full text-[var(--c-text-muted)] hover:bg-[var(--c-card2)] transition-colors"
+                className="flex h-11 w-11 items-center justify-center rounded-full text-[var(--c-text-muted)] hover:bg-[var(--c-card2)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <X size={18} weight="bold" />
               </button>

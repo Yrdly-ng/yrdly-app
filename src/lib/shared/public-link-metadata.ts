@@ -79,7 +79,7 @@ export const publicLinkMetadata = cache(
         )
         .eq("id", id)
         .eq("status", "PUBLISHED")
-        .eq("visibility", "public")
+        .in("visibility", ["PUBLIC", "public"])
         .eq("moderation_status", "approved")
         .eq("is_archived", false)
         .maybeSingle();

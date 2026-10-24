@@ -99,10 +99,16 @@ export function getNotificationDestination(
       return eventId ? `/events/${eventId}` : "/events";
     }
     case "ticket":
-    case "ticket_purchase":
     case "ticket_confirmed":
     case "event_rsvp":
       return "/my-tickets";
+    case "ticket_purchase": {
+      if (data.audience === "organizer") {
+        const eventId = firstId(data.eventId, data.event_id, relatedId);
+        return eventId ? `/events/${eventId}/manage` : "/events";
+      }
+      return "/my-tickets";
+    }
     case "catalog_item_inquiry":
     case "catalog_item_out_of_stock": {
       if (

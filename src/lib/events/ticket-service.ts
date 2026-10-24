@@ -5,10 +5,69 @@ import QRCode from 'qrcode';
 import { EVENT_CONSTANTS } from '@/lib/shared/constants';
 import { PaylukService } from '@/lib/payments/payluk-service';
 import { sendPushNotification } from '@/lib/notifications/server-push-notification';
+import { NotificationService } from '@/lib/notifications/server-notification-service';
 import { paymentReferenceFilter, paylukAmountsMatch } from '../payments/payment-state';
 import { flagPayment } from '../payments/payment-reconciliation';
 
 export class TicketService {
+  /** Create one organiser-facing in-app notice per purchase, independently of email delivery. */
+  static async notifyOrganizerOfTicketSale(params: {
+    eventId: string;
+    ticketId: string;
+    tierId: string;
+    buyerId: string;
+    buyerName?: string | null;
+    quantity: number;
+  }) {
+    const [{ data: event, error: eventError }, { data: tier, error: tierError }] =
+      await Promise.all([
+        supabaseAdmin
+          .from('events')
+          .select('id, title, organizer_id')
+          .eq('id', params.eventId)
+          .maybeSingle(),
+        supabaseAdmin
+          .from('ticket_tiers')
+          .select('name')
+          .eq('id', params.tierId)
+          .maybeSingle(),
+      ]);
+    if (eventError) throw eventError;
+    if (tierError) throw tierError;
+    if (!event?.organizer_id || event.organizer_id === params.buyerId) return;
+
+    const { data: existing, error: existingError } = await supabaseAdmin
+      .from('notifications')
+      .select('id')
+      .eq('user_id', event.organizer_id)
+      .eq('type', 'ticket_purchase')
+      .eq('related_id', params.ticketId)
+      .limit(1)
+      .maybeSingle();
+    if (existingError) throw existingError;
+    if (existing) return;
+
+    const buyerName = params.buyerName?.trim() || 'A buyer';
+    const tierName = tier?.name || 'event';
+    await NotificationService.createNotification({
+      userId: event.organizer_id,
+      senderId: params.buyerId,
+      type: 'ticket_purchase',
+      title: '🎟️ Tickets sold',
+      message: `${buyerName} bought ${params.quantity} ${tierName} ticket${params.quantity === 1 ? '' : 's'} for "${event.title}".`,
+      relatedId: params.ticketId,
+      relatedType: 'ticket',
+      data: {
+        audience: 'organizer',
+        eventId: params.eventId,
+        eventTitle: event.title,
+        ticketId: params.ticketId,
+        tierName,
+        quantity: params.quantity,
+      },
+    });
+  }
+
   /**
    * Processes a ticket purchase from a confirmed escrow_transaction (e.g. via Payluk Webhook or manual verification)
    */
@@ -46,7 +105,21 @@ export class TicketService {
       return { ...existing[0], event_id, quantity };
     };
     const existing = await findIssuedTickets();
-    if (existing) return existing;
+    if (existing) {
+      try {
+        await TicketService.notifyOrganizerOfTicketSale({
+          eventId: event_id,
+          ticketId: existing.id,
+          tierId: tier_id,
+          buyerId: buyer_id,
+          buyerName: attendee_name,
+          quantity,
+        });
+      } catch (error) {
+        console.error('[TicketService] Organizer in-app sale notification failed:', error);
+      }
+      return existing;
+    }
 
     // ── Fetch tier & event ───────────────────────────────────────────────────
     const { data: tier } = await supabaseAdmin
@@ -107,6 +180,20 @@ export class TicketService {
       throw new Error('sold_out_payluk_refund_required');
     }
     if (ticketError) throw ticketError;
+
+    try {
+      await TicketService.notifyOrganizerOfTicketSale({
+        eventId: event_id,
+        ticketId: insertedTickets[0].id,
+        tierId: tier_id,
+        buyerId: buyer_id,
+        buyerName: attendee_name,
+        quantity,
+      });
+    } catch (error) {
+      // A notification outage must never undo a successful ticket issuance.
+      console.error('[TicketService] Organizer in-app sale notification failed:', error);
+    }
 
     try {
       const { data: eData } = await supabaseAdmin.from('events').select('attendee_count').eq('id', event_id).single();

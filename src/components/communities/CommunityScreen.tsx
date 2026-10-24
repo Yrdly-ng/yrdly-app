@@ -5,6 +5,7 @@ import {
   useEffect,
   useCallback,
   useMemo,
+  useRef,
   type ReactNode,
 } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -23,7 +24,6 @@ import {
   type PublicPerson,
   type DiscoverFilter,
 } from "@/lib/people/nearby";
-import { resolveNearbyLocation } from "@/lib/people/nearby-location";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
 
@@ -105,7 +105,7 @@ export function CommunityScreen({
   onModeChange?: (mode: PeopleMode) => void;
   communitiesContent?: ReactNode;
 }) {
-  const { user: currentUser, profile, loading: authLoading } = useAuth();
+  const { user: currentUser, profile, loading: authLoading, updateProfile } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const { activeFilter } = useLocation();
@@ -137,11 +137,88 @@ export function CommunityScreen({
   const [circleError, setCircleError] = useState(false);
   const [revision, setRevision] = useState(0);
   const fetchData = useCallback(() => setRevision((value) => value + 1), []);
+  const [nearbyCoordinates, setNearbyCoordinates] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [locationBusy, setLocationBusy] = useState(false);
+  const [radiusMeters, setRadiusMeters] = useState(10000);
+  const locationRequestInProgress = useRef(false);
   const userId = currentUser?.id;
-  const nearbyLocation = useMemo(
-    () => resolveNearbyLocation(activeFilter, profile),
-    [activeFilter, profile],
-  );
+  const updateNearbyLocation = useCallback(async () => {
+    if (locationRequestInProgress.current) return;
+    locationRequestInProgress.current = true;
+    setLocationBusy(true);
+    setLocationError(null);
+    if (!navigator.geolocation) {
+      setLocationError("Location is unavailable in this browser.");
+      setLocationBusy(false);
+      locationRequestInProgress.current = false;
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      async ({ coords }) => {
+        try {
+          const { error } = await supabase.rpc("upsert_nearby_presence", {
+            p_latitude: coords.latitude,
+            p_longitude: coords.longitude,
+          });
+          if (error) throw error;
+          setNearbyCoordinates({
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+          });
+        } catch {
+          setLocationError("Could not enable Nearby. Please try again.");
+        } finally {
+          setLocationBusy(false);
+          locationRequestInProgress.current = false;
+        }
+      },
+      () => {
+        setLocationError("Allow location access in your browser to find people nearby.");
+        setLocationBusy(false);
+        locationRequestInProgress.current = false;
+      },
+      { enableHighAccuracy: false, maximumAge: 60_000, timeout: 12_000 },
+    );
+  }, []);
+
+  const enableNearby = useCallback(async () => {
+    if (!profile?.nearby_enabled) {
+      try {
+        if (!userId) return;
+        await updateProfile({ nearby_enabled: true });
+        await updateNearbyLocation();
+      } catch {
+        setLocationError("Could not enable Nearby. Please try again.");
+      }
+    } else {
+      await updateNearbyLocation();
+    }
+  }, [profile?.nearby_enabled, updateNearbyLocation, updateProfile, userId]);
+
+  useEffect(() => {
+    if (activeMode === "nearby" && profile?.nearby_enabled && !nearbyCoordinates) {
+      void updateNearbyLocation();
+    }
+  }, [activeMode, profile?.nearby_enabled, nearbyCoordinates, updateNearbyLocation]);
+
+  useEffect(() => {
+    if (activeMode !== "nearby" || !nearbyCoordinates) return;
+    void supabase.rpc("upsert_nearby_presence", {
+      p_latitude: nearbyCoordinates.latitude,
+      p_longitude: nearbyCoordinates.longitude,
+    });
+    const timer = window.setInterval(() => {
+      void supabase.rpc("upsert_nearby_presence", {
+        p_latitude: nearbyCoordinates.latitude,
+        p_longitude: nearbyCoordinates.longitude,
+      });
+    }, 10 * 60 * 1000);
+    return () => window.clearInterval(timer);
+  }, [activeMode, nearbyCoordinates]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -230,12 +307,16 @@ export function CommunityScreen({
       setLoading(!!authLoading);
       return;
     }
+    if (activeMode !== "nearby" || !profile?.nearby_enabled || !nearbyCoordinates) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     void boundedPeopleRequest(controller, (signal) =>
       loadNearbyPeople(supabase, {
-        userId,
+        coordinates: nearbyCoordinates,
+        radiusMeters,
         filter: discoverFilter,
-        location: nearbyLocation,
         signal,
       }),
     )
@@ -252,7 +333,7 @@ export function CommunityScreen({
       disposed = true;
       controller.abort();
     };
-  }, [userId, authLoading, discoverFilter, nearbyLocation, revision]);
+  }, [userId, authLoading, discoverFilter, nearbyCoordinates, radiusMeters, activeMode, profile?.nearby_enabled, revision]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -382,28 +463,43 @@ export function CommunityScreen({
 
         {/* ── Sub-Filters Chips (When Nearby active) ── */}
         {activeMode === "nearby" && (
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
-            {[
-              { key: "all", label: "All" },
-              { key: "neighbors", label: "Neighbors" },
-              { key: "mutuals", label: "Mutuals" },
-              { key: "sellers", label: "Sellers" },
-            ].map((f) => {
-              const active = discoverFilter === f.key;
-              return (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+              {[
+                { key: "all", label: "All" },
+                { key: "neighbors", label: "Neighbors" },
+                { key: "mutuals", label: "Mutuals" },
+                { key: "sellers", label: "Sellers" },
+              ].map((f) => {
+                const active = discoverFilter === f.key;
+                return (
+                  <button
+                    key={f.key}
+                    onClick={() => setDiscoverFilter(f.key as DiscoverFilter)}
+                    className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap font-yrdly-display transition-all ${
+                      active
+                        ? "border border-[var(--primary)] text-[var(--primary)] bg-[var(--primary)]/10"
+                        : "bg-[var(--yrdly-glass-bg)] text-[var(--yrdly-text-primary)] border border-[var(--yrdly-glass-border)] hover:border-primary/40"
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>Within</span>
+              {[5000, 10000, 25000].map((radius) => (
                 <button
-                  key={f.key}
-                  onClick={() => setDiscoverFilter(f.key as DiscoverFilter)}
-                  className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap font-yrdly-display transition-all ${
-                    active
-                      ? "border border-[var(--primary)] text-[var(--primary)] bg-[var(--primary)]/10"
-                      : "bg-[var(--yrdly-glass-bg)] text-[var(--yrdly-text-primary)] border border-[var(--yrdly-glass-border)] hover:border-primary/40"
-                  }`}
+                  key={radius}
+                  onClick={() => setRadiusMeters(radius)}
+                  aria-pressed={radiusMeters === radius}
+                  className={`rounded-full px-3 py-1 border ${radiusMeters === radius ? "border-primary text-primary" : "border-[var(--yrdly-glass-border)]"}`}
                 >
-                  {f.label}
+                  {radius / 1000} km
                 </button>
-              );
-            })}
+              ))}
+            </div>
           </div>
         )}
 
@@ -429,6 +525,23 @@ export function CommunityScreen({
                 </div>
               </GlassCard>
             ))}
+          </div>
+        ) : activeMode === "nearby" && !profile?.nearby_enabled ? (
+          <GlassCard className="space-y-3 rounded-2xl p-5 text-center">
+            <MapPin className="mx-auto h-7 w-7 text-primary" />
+            <p className="font-semibold">Find people near you</p>
+            <p className="text-sm text-muted-foreground">Share your current location while using Nearby. It expires after 30 minutes, and other members never see your exact coordinates.</p>
+            <Button onClick={() => void enableNearby()} disabled={locationBusy} className="min-h-11 rounded-full">
+              {locationBusy ? "Getting location…" : "Enable Nearby"}
+            </Button>
+            {locationError && <p role="alert" className="text-sm text-destructive">{locationError}</p>}
+          </GlassCard>
+        ) : activeMode === "nearby" && !nearbyCoordinates ? (
+          <div className="space-y-3 py-8 text-center">
+            <p className="text-sm text-muted-foreground">{locationError || "Allow location access to find opted-in people within your chosen radius."}</p>
+            <Button onClick={() => void enableNearby()} disabled={locationBusy} className="min-h-11 rounded-full">
+              {locationBusy ? "Getting location…" : "Try location access again"}
+            </Button>
           </div>
         ) : (activeMode === "circle" ? circleError : error) ? (
           <div role="alert" className="space-y-3 py-8 text-center">
@@ -600,9 +713,9 @@ export function CommunityScreen({
                 <p className="text-xs text-[var(--yrdly-label)] max-w-xs font-yrdly-body">
                   {searchQuery
                     ? "No neighbors matching your query."
-                    : !nearbyLocation
-                      ? "Add your state and LGA to your profile to see people nearby."
-                      : "No discoverable users in your LGA right now."}
+                    : !profile?.nearby_enabled || !nearbyCoordinates
+                      ? "Enable Nearby and allow location access to find people within your chosen radius."
+                      : "No opted-in people within this radius right now."}
                 </p>
               </GlassCard>
             ) : (
