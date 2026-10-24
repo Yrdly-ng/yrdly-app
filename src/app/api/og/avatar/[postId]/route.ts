@@ -19,7 +19,7 @@ export async function GET(
 
   const { data: post } = await supabaseAdmin
     .from('posts')
-    .select('author_image, user:users!posts_user_id_fkey(avatar_url)')
+    .select('author_image, user:public_profiles!posts_user_id_fkey(avatar_url)')
     .eq('id', postId).eq('moderation_status','approved').eq('visibility','public')
     .maybeSingle();
 

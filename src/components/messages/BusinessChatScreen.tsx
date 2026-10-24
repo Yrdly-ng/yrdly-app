@@ -89,7 +89,7 @@ export function BusinessChatScreen({
           .select(
             `
             *,
-            users!business_messages_sender_id_fkey(
+            users:public_profiles!business_messages_sender_id_fkey(
               name,
               avatar_url
             )
