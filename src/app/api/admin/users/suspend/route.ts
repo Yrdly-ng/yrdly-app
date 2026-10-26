@@ -18,60 +18,57 @@ export async function POST(request: NextRequest) {
 
     const { data: adminProfile } = await supabaseAdmin
       .from('users')
-      .select('is_admin')
+      .select('is_admin,role')
       .eq('id', user.id)
       .maybeSingle();
 
-    if (!adminProfile || !adminProfile.is_admin) {
+    if (!adminProfile || (!adminProfile.is_admin && adminProfile.role !== 'admin')) {
       return NextResponse.json({ error: 'Forbidden: Admin privileges required' }, { status: 403 });
     }
 
     // 2. Parse Request Body
-    const { targetUserId, action, reason } = await request.json();
+    let body: Record<string, unknown>;
+    try {
+      const parsed = await request.json();
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        return NextResponse.json({ error: 'A valid request body is required.' }, { status: 400 });
+      }
+      body = parsed as Record<string, unknown>;
+    } catch {
+      return NextResponse.json({ error: 'A valid JSON request body is required.' }, { status: 400 });
+    }
+    const targetUserId = typeof body.targetUserId === 'string' ? body.targetUserId : '';
+    const action = typeof body.action === 'string' ? body.action : '';
+    const reason = typeof body.reason === 'string' ? body.reason.trim().slice(0, 500) : '';
+    const reportId = typeof body.reportId === 'string' ? body.reportId : null;
 
-    if (!targetUserId || !['suspend', 'ban', 'unsuspend'].includes(action)) {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetUserId) || !['suspend', 'ban', 'unsuspend'].includes(action)) {
       return NextResponse.json(
-        { error: 'Missing required fields: targetUserId, action ("suspend" | "ban" | "unsuspend")' },
+        { error: 'A valid target account and action (suspend, ban, or unsuspend) are required.' },
         { status: 400 }
       );
     }
-
-    // 3. Perform Suspension / Ban Action
-    let updatePayload: Record<string, any> = {};
-
-    if (action === 'suspend') {
-      updatePayload = {
-        is_suspended: true,
-        status: 'suspended',
-        suspension_reason: reason || 'Suspended by admin',
-        suspended_at: new Date().toISOString(),
-      };
-    } else if (action === 'ban') {
-      updatePayload = {
-        is_suspended: true,
-        is_banned: true,
-        status: 'banned',
-        suspension_reason: reason || 'Banned by admin',
-        suspended_at: new Date().toISOString(),
-      };
-    } else if (action === 'unsuspend') {
-      updatePayload = {
-        is_suspended: false,
-        is_banned: false,
-        status: 'active',
-        suspension_reason: null,
-        suspended_at: null,
-      };
+    if (targetUserId === user.id) {
+      return NextResponse.json({ error: 'Admins cannot suspend or ban their own account.' }, { status: 400 });
+    }
+    if (reportId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(reportId)) {
+      return NextResponse.json({ error: 'Report reference is invalid.' }, { status: 400 });
     }
 
-    const { error: updateError } = await supabaseAdmin
-      .from('users')
-      .update(updatePayload)
-      .eq('id', targetUserId);
+    // The transaction updates access and writes the immutable moderator audit row together.
+    const { data: actionLogId, error: updateError } = await supabaseAdmin.rpc('admin_set_account_moderation', {
+      p_actor_user_id: user.id,
+      p_target_user_id: targetUserId,
+      p_action: action,
+      p_reason: reason || `Account action ${action} by admin ${user.id}`,
+      p_report_id: reportId,
+    });
 
     if (updateError) {
-      console.error('[AdminUserSuspend] Database update error:', updateError);
-      return NextResponse.json({ error: 'Failed to update user status' }, { status: 500 });
+      console.error('[AdminUserSuspend] Database action error:', updateError);
+      if (updateError.code === 'P0002') return NextResponse.json({ error: 'Target account was not found.' }, { status: 404 });
+      if (updateError.code === '42501') return NextResponse.json({ error: 'Admin privileges required.' }, { status: 403 });
+      return NextResponse.json({ error: 'Failed to update user status.' }, { status: 500 });
     }
 
     // The shared authentication helper enforces suspension on every server operation.
@@ -79,9 +76,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `User ${targetUserId} has been ${action}ed successfully.`,
+      message: `Account ${action === 'unsuspend' ? 'restored' : action === 'ban' ? 'banned' : 'suspended'} successfully.`,
       targetUserId,
       action,
+      actionLogId,
     });
   } catch (err: any) {
     console.error('[AdminUserSuspend] Error:', err);
