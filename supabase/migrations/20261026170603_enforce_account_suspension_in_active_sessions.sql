@@ -13,10 +13,11 @@ AS $function$
    SELECT 1
    FROM private.active_account_sessions a
    JOIN auth.sessions s ON s.id = a.session_id AND s.user_id = a.user_id
-   JOIN public.users u ON u.id = a.user_id
+   LEFT JOIN public.users u ON u.id = a.user_id
    WHERE a.user_id = auth.uid()
      AND a.session_id::text = auth.jwt()->>'session_id'
      AND (s.not_after IS NULL OR s.not_after > now())
+     -- New sign-ins create their profile through authenticated RLS after session activation.
      AND NOT coalesce(u.is_suspended, false)
      AND NOT coalesce(u.is_banned, false)
      AND coalesce(u.status, '') NOT IN ('suspended', 'banned')

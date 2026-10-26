@@ -50,7 +50,7 @@ BEGIN
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Report not found' USING ERRCODE = 'P0002';
   END IF;
-  IF v_status <> 'open' OR v_category <> 'Child safety' OR v_post_id IS NULL THEN
+  IF v_status IS DISTINCT FROM 'open' OR v_category IS DISTINCT FROM 'Child safety' OR v_post_id IS NULL THEN
     RAISE EXCEPTION 'An open child-safety post report is required' USING ERRCODE = '22023';
   END IF;
 
