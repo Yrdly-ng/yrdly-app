@@ -29,22 +29,13 @@ import {
   MINIMUM_PRICE_MESSAGE,
 } from "@/lib/marketplace/price-policy";
 import { MARKETPLACE_CONSTANTS } from "@/lib/shared/constants";
+import {
+  getCatalogCategories,
+  MAX_CATALOG_IMAGES,
+} from "@/lib/businesses/catalog-categories";
 
 /* ─── design tokens (shared with CreateItemDialog) ─────────────────── */
 const BG_DARK = "var(--c-bg)";
-
-const CATALOG_CATEGORIES = [
-  "Electronics",
-  "Fashion & Apparel",
-  "Food & Beverages",
-  "Beauty & Health",
-  "Home & Garden",
-  "Sports & Fitness",
-  "Books & Media",
-  "Toys & Games",
-  "Automotive",
-  "General",
-];
 
 const BlobImage = memo(
   ({
@@ -91,29 +82,26 @@ const getFormSchema = (existingImageCount: number) =>
     quantity: z.preprocess(
       (val) =>
         val === "" || val === null || val === undefined ? 1 : Number(val),
-      z.number().int("Enter a whole number of items.").min(0, "Stock quantity cannot be negative."),
+      z
+        .number()
+        .int("Enter a whole number of items.")
+        .min(0, "Stock quantity cannot be negative."),
     ),
     image: z
       .any()
       .refine(
-        (files) =>
-          files &&
-          (files.length > 0 ||
-            (Array.isArray(files) && files.some((f) => typeof f === "string"))),
+        (files) => existingImageCount + (files?.length || 0) > 0,
         "At least one image is required.",
       )
       .refine((files) => {
-        const newCount =
-          files && typeof files.length === "number" && !Array.isArray(files)
-            ? files.length
-            : 0;
-        return existingImageCount + newCount <= 4;
+        return existingImageCount + (files?.length || 0) <= MAX_CATALOG_IMAGES;
       }, "You can add up to 4 images per item."),
   });
 
 type CreateCatalogItemDialogProps = {
   children?: React.ReactNode;
   businessId: string;
+  businessCategory: string;
   itemToEdit?: CatalogItem;
   onOpenChange?: (open: boolean) => void;
   onSuccess?: () => void;
@@ -130,6 +118,8 @@ interface FormBodyProps {
   setRemovedImageIndexes: React.Dispatch<React.SetStateAction<number[]>>;
   remainingExistingImages: number;
   onClose: () => void;
+  categories: string[];
+  businessCategory: string;
 }
 
 function FormBody({
@@ -142,6 +132,8 @@ function FormBody({
   setRemovedImageIndexes,
   remainingExistingImages,
   onClose,
+  categories,
+  businessCategory,
 }: FormBodyProps) {
   return (
     <div className="max-w-2xl mx-auto p-4 sm:p-6 text-foreground pb-6 font-yrdly-body">
@@ -252,13 +244,16 @@ function FormBody({
                         {...field}
                         className="flex h-12 w-full rounded-xl border border-border bg-background px-4 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       >
-                        {CATALOG_CATEGORIES.map((category) => (
+                        {categories.map((category) => (
                           <option key={category} value={category}>
                             {category}
                           </option>
                         ))}
                       </select>
                     </FormControl>
+                    <p className="text-xs text-muted-foreground">
+                      Categories for {businessCategory || "your business"}
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -310,25 +305,29 @@ function FormBody({
 
             <FormItem>
               <FormLabel className="text-muted-foreground">
-                Images (Max 4 — shown as a slideshow)
+                Photos (up to 4 — select several at once)
               </FormLabel>
               <label className="flex items-center gap-3 w-full bg-background border border-border h-12 rounded-xl px-4 cursor-pointer hover:bg-accent transition">
                 <ImageIcon className="w-5 h-5 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">
-                  {form.watch("image") && form.watch("image").length > 0
-                    ? `${form.watch("image").length} image(s) selected`
-                    : "Choose images..."}
+                  {`${remainingExistingImages + (form.watch("image")?.length || 0)} / ${MAX_CATALOG_IMAGES} photos · Choose photos`}
                 </span>
                 <input
                   type="file"
                   accept="image/*"
                   multiple
+                  disabled={
+                    loading ||
+                    remainingExistingImages +
+                      (form.watch("image")?.length || 0) >=
+                      MAX_CATALOG_IMAGES
+                  }
                   className="hidden"
                   onChange={(e) => {
                     const files = e.target.files;
                     if (!files || files.length === 0) return;
                     const remainingSlots = Math.max(
-                      4 - Math.max(remainingExistingImages, 0),
+                      MAX_CATALOG_IMAGES - Math.max(remainingExistingImages, 0),
                       0,
                     );
 
@@ -345,16 +344,25 @@ function FormBody({
                       ...alreadyPicked,
                       ...Array.from(files),
                     ].slice(0, remainingSlots);
-                    const dt = new DataTransfer();
-                    combined.forEach((f) => dt.items.add(f));
-                    form.setValue("image", dt.files, { shouldValidate: true });
+                    form.setValue("image", combined, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                    });
 
                     // Reset the input so picking the same file again still fires onChange
                     e.target.value = "";
                   }}
                 />
               </label>
-              <FormMessage />
+              <p className="text-xs text-muted-foreground">
+                The first photo is your cover. Remove a photo to make room for
+                another.
+              </p>
+              {form.formState.errors.image?.message && (
+                <p role="alert" className="text-sm text-destructive">
+                  {String(form.formState.errors.image.message)}
+                </p>
+              )}
             </FormItem>
 
             {/* Newly selected image previews */}
@@ -388,13 +396,12 @@ function FormBody({
                                 currentValue as FileList,
                               ).filter((f) => f instanceof File) as File[];
                               remaining.splice(i, 1);
-                              const dt = new DataTransfer();
-                              remaining.forEach((f) => dt.items.add(f));
-                              form.setValue("image", dt.files, {
+                              form.setValue("image", remaining, {
                                 shouldValidate: true,
                               });
                             }}
-                            className="absolute top-0.5 right-0.5 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                            aria-label={`Remove new photo ${i + 1}`}
+                            className="absolute top-0.5 right-0.5 w-7 h-7 bg-black/70 rounded-full flex items-center justify-center"
                           >
                             <X size={12} className="text-white" />
                           </button>
@@ -431,7 +438,8 @@ function FormBody({
                             onClick={() =>
                               setRemovedImageIndexes((p) => [...p, index])
                             }
-                            className="absolute top-0.5 right-0.5 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                            aria-label={`Remove existing photo ${index + 1}`}
+                            className="absolute top-0.5 right-0.5 w-7 h-7 bg-red-500 rounded-full flex items-center justify-center"
                           >
                             <X className="w-3 h-3 text-foreground" />
                           </button>
@@ -470,6 +478,7 @@ function FormBody({
 const CreateCatalogItemDialogComponent = ({
   children,
   businessId,
+  businessCategory,
   itemToEdit,
   onOpenChange,
   onSuccess,
@@ -480,6 +489,10 @@ const CreateCatalogItemDialogComponent = ({
   const isMobile = useIsMobile();
   const isEditMode = !!itemToEdit;
   const { toast } = useToast();
+  const categories = getCatalogCategories(
+    businessCategory,
+    itemToEdit?.category,
+  );
 
   const remainingExistingImages =
     (itemToEdit?.images?.length || 0) - removedImageIndexes.length;
@@ -494,7 +507,7 @@ const CreateCatalogItemDialogComponent = ({
       title: "",
       description: "",
       price: "" as any,
-      category: "General",
+      category: getCatalogCategories(businessCategory)[0],
       in_stock: true,
       quantity: 5,
       image: undefined,
@@ -514,17 +527,21 @@ const CreateCatalogItemDialogComponent = ({
             title: itemToEdit.title,
             description: itemToEdit.description,
             price: itemToEdit.price,
-            category: itemToEdit.category || "General",
+            category:
+              itemToEdit.category || getCatalogCategories(businessCategory)[0],
             in_stock: itemToEdit.in_stock ?? true,
-            quantity: itemToEdit.quantity ?? itemToEdit.inventory_count ?? (itemToEdit.in_stock ? 1 : 0),
-            image: itemToEdit.images || [],
+            quantity:
+              itemToEdit.quantity ??
+              itemToEdit.inventory_count ??
+              (itemToEdit.in_stock ? 1 : 0),
+            image: [],
           });
         } else if (!isEditMode) {
           stableFormReset({
             title: "",
             description: "",
             price: "",
-            category: "General",
+            category: getCatalogCategories(businessCategory)[0],
             in_stock: true,
             quantity: 5,
             image: undefined,
@@ -533,7 +550,7 @@ const CreateCatalogItemDialogComponent = ({
       }, 0);
       return () => clearTimeout(timer);
     }
-  }, [open, isEditMode, itemToEdit, stableFormReset]);
+  }, [open, isEditMode, itemToEdit, stableFormReset, businessCategory]);
 
   const handleOpenChange = useCallback(
     (newOpen: boolean) => {
@@ -557,16 +574,14 @@ const CreateCatalogItemDialogComponent = ({
         );
       }
 
-      let validImageFiles: FileList | undefined;
+      let validImageFiles: File[] | undefined;
       if (values.image && values.image.length > 0) {
         const validFiles = Array.from(values.image).filter(
           (f) =>
             f && f instanceof File && (f as File).name && (f as File).size > 0,
         );
         if (validFiles.length > 0) {
-          const dt = new DataTransfer();
-          validFiles.forEach((f) => dt.items.add(f as File));
-          validImageFiles = dt.files;
+          validImageFiles = validFiles as File[];
         }
       }
 
@@ -623,6 +638,8 @@ const CreateCatalogItemDialogComponent = ({
   }
 
   const formBodyProps: FormBodyProps = {
+    categories,
+    businessCategory,
     form,
     onSubmit,
     loading,

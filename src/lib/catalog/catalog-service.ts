@@ -16,7 +16,7 @@ export class CatalogService {
       in_stock?: boolean;
       quantity?: number;
     },
-    imageFiles?: FileList
+    imageFiles?: FileList | File[]
   ): Promise<string> {
     return await (async () => {
         try {
@@ -85,7 +85,7 @@ export class CatalogService {
       in_stock: boolean;
       quantity: number;
     }>,
-    newImageFiles?: FileList,
+    newImageFiles?: FileList | File[],
     existingImages?: string[]
   ): Promise<void> {
     return await (async () => {
@@ -260,7 +260,7 @@ export class CatalogService {
   /**
    * Upload images to Supabase storage
    */
-  private static async uploadImages(businessId: string, imageFiles: FileList): Promise<string[]> {
+  private static async uploadImages(businessId: string, imageFiles: FileList | File[]): Promise<string[]> {
     const imageUrls: string[] = [];
 
     for (let i = 0; i < imageFiles.length; i++) {

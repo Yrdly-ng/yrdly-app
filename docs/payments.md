@@ -66,6 +66,30 @@ delivery.
 
 ## Minimum paid prices and bank withdrawals
 
+### Service booking acceptance and staged-payment rollout
+
+New paid service bookings require the business to accept the appointment and
+final price before checkout. Acceptance snapshots the agreed price; an indicative
+"from" price requires an accepted quote. Existing paid bookings and unfinished
+legacy checkouts keep their original payment terms and recovery path.
+
+The approved new arrangement is full funding followed by two equal releases:
+50% explicitly approved by the customer upfront and 50% after customer-confirmed
+completion. **This staged checkout is disabled pending Payluk confirmation of a
+supported YRDLY 3% commission setup.** No new staged reservation or provider
+charge is created. Acceptance does not mean that payment was received. Free and
+pay-later services continue without a staged payment requirement.
+
+Payluk milestone escrow requires buyer-paid provider fees and does not support
+the standard escrow per-payment additional fee used by the current integration.
+Do not enable a global dashboard commission or silently fall back to full-release
+standard escrow. The provider question draft is in
+`output/qa/payluk-service-milestones-email.md`.
+
+The scheduling, acceptance-price and new-checkout-acceptance migrations must ship
+with the matching web and mobile changes. These migrations do not release funds,
+refund payments or initiate bank withdrawals.
+
 Paid listings, catalog items, service prices, booking deposits/estimates and
 paid ticket tiers start at NGN 1,200. Free giveaways, free tickets and free or
 quote-only services remain available. Forms and APIs check money precision and

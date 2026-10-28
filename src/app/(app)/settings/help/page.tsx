@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { ChevronLeft, ChevronDown, ChevronUp, Mail } from 'lucide-react';
-import { isCrispEnabled, openCrispChat } from '@/components/CrispChat';
+import React, { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ChevronLeft, ChevronDown, ChevronUp, Mail } from "lucide-react";
+import { isCrispEnabled, openCrispChat } from "@/components/CrispChat";
 
 interface FAQItem {
   q: string;
@@ -12,19 +12,19 @@ interface FAQItem {
 
 const FAQS: FAQItem[] = [
   {
-    q: 'How does marketplace escrow work?',
-    a: 'When you buy an item, your payment is held securely in escrow by YRDLY. Once you meet the seller and verify the item is in the described condition, you release the funds to the seller. This protects both parties from fraud.',
+    q: "How does marketplace escrow work?",
+    a: "When you buy an item, your payment is held securely in escrow by YRDLY. Once you meet the seller and verify the item is in the described condition, you release the funds to the seller. This protects both parties from fraud.",
   },
   {
-    q: 'How do I list an item for sale?',
+    q: "How do I list an item for sale?",
     a: 'Tap the "+" icon in the bottom menu or go to the Marketplace tab, then tap "List Item". Enter the details, upload photos, set a price, and publish it to your neighbourhood.',
   },
   {
-    q: 'Can I change my home neighbourhood?',
-    a: 'Yes. Go to Settings > Location, and select a new State and LGA. Note that updating your location will change the posts and listings visible to you to match your new neighbourhood.',
+    q: "Can I change my home neighbourhood?",
+    a: "Yes. Go to Settings > Location, and select a new State and LGA. Note that updating your location will change the posts and listings visible to you to match your new neighbourhood.",
   },
   {
-    q: 'What should I do if I get scammed?',
+    q: "What should I do if I get scammed?",
     a: 'If you suspect a scam, do not release escrow funds. Go to the transaction details page and tap "File Dispute". Our admin team will investigate and mediate the dispute.',
   },
 ];
@@ -38,7 +38,9 @@ function FAQRow({ faq }: { faq: FAQItem }) {
         onClick={() => setExpanded(!expanded)}
         className="w-full flex items-center justify-between p-4 text-left font-medium hover:bg-muted/40 transition-colors"
       >
-        <span className="text-sm font-semibold text-foreground pr-4">{faq.q}</span>
+        <span className="text-sm font-semibold text-foreground pr-4">
+          {faq.q}
+        </span>
         {expanded ? (
           <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" />
         ) : (
@@ -56,9 +58,24 @@ function FAQRow({ faq }: { faq: FAQItem }) {
 
 export default function HelpCenterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const candidateId = searchParams.get("booking_id");
+  const bookingId =
+    candidateId &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      candidateId,
+    )
+      ? candidateId
+      : null;
+  const supportSubject = bookingId
+    ? `YRDLY booking support: ${bookingId}`
+    : "YRDLY Web Support Request";
+  const supportBody = bookingId
+    ? `Booking ID: ${bookingId}\nBooking link: https://app.yrdly.ng/bookings/${bookingId}\n\nPlease describe your cancellation, refund or booking issue:\n`
+    : "";
 
   const handleContactSupport = () => {
-    window.location.href = 'mailto:support@yrdly.ng?subject=YRDLY Web Support Request';
+    window.location.href = `mailto:support@yrdly.ng?subject=${encodeURIComponent(supportSubject)}&body=${encodeURIComponent(supportBody)}`;
   };
 
   return (
@@ -76,8 +93,26 @@ export default function HelpCenterPage() {
       </header>
 
       <div className="max-w-2xl mx-auto px-4 pt-6 space-y-6">
+        {bookingId && (
+          <section className="rounded-2xl border border-border bg-card p-5 space-y-3">
+            <h2 className="font-semibold">Help with your booking</h2>
+            <p className="text-sm text-muted-foreground">
+              Reference: <span className="break-all">{bookingId}</span>. Include
+              this reference when chatting with support; the email option
+              includes it automatically.
+            </p>
+            <button
+              onClick={() => router.push(`/bookings/${bookingId}`)}
+              className="rounded-xl border border-border px-4 py-3 text-sm"
+            >
+              Back to booking details
+            </button>
+          </section>
+        )}
         <div>
-          <h2 className="font-bold text-xl text-foreground mb-4">Frequently Asked Questions</h2>
+          <h2 className="font-bold text-xl text-foreground mb-4">
+            Frequently Asked Questions
+          </h2>
           <div className="bg-card rounded-2xl border border-border/60 shadow-sm overflow-hidden">
             {FAQS.map((faq) => (
               <FAQRow key={faq.q} faq={faq} />
@@ -90,9 +125,12 @@ export default function HelpCenterPage() {
           <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
             <Mail className="w-6 h-6 text-primary" />
           </div>
-          <h3 className="font-bold text-base text-foreground mb-1">Still need help?</h3>
+          <h3 className="font-bold text-base text-foreground mb-1">
+            Still need help?
+          </h3>
           <p className="text-xs sm:text-sm text-muted-foreground mb-4 max-w-sm">
-            Our support team is available to assist you with any questions or account issues.
+            Our support team is available to assist you with any questions or
+            account issues.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             {isCrispEnabled && (

@@ -11,6 +11,8 @@ import { NotificationTriggers } from "@/lib/notifications/notification-triggers"
 import { supabase } from "@/lib/supabase/supabase";
 import { Booking } from "@/types";
 import { authenticatedFetch } from "@/lib/auth/authenticated-fetch";
+import { BookingReschedulePanel } from "@/components/bookings/BookingReschedulePanel";
+import { WriteBusinessReviewDialog } from "@/components/reviews/WriteBusinessReviewDialog";
 
 interface BookingCheckout {
   transactionId: string;
@@ -105,6 +107,16 @@ export default function BookingDetailWebPage() {
   const nowMs = Date.now();
   const hoursUntil = (apptTime.getTime() - nowMs) / (1000 * 60 * 60);
   const isPast = apptTime.getTime() < nowMs;
+  const hasEnded = new Date(booking.end_time).getTime() <= nowMs;
+  const needsPaymentSupport = [
+    "deposit_pending",
+    "deposit_paid",
+    "fully_paid",
+    "escrow_held",
+    "escrow_released",
+    "refunded",
+  ].includes(booking.payment_status || "");
+  const supportHref = `/settings/help?booking_id=${encodeURIComponent(booking.id)}&reason=booking-cancellation`;
 
   const userName =
     (user as any)?.name || (user as any)?.user_metadata?.full_name || "User";
@@ -122,7 +134,9 @@ export default function BookingDetailWebPage() {
           serviceName: booking.service?.name || "Service",
           appointmentTime: booking.appointment_time,
           bookingId: booking.id,
-        });
+        }).catch((error) =>
+          console.error("[Booking] Confirmation notification failed", error),
+        );
       }
       setMsg({
         text: "Booking request confirmed successfully",
@@ -441,6 +455,22 @@ export default function BookingDetailWebPage() {
             </h1>
             <p className="text-xs text-muted-foreground">ID: {booking.id}</p>
           </div>
+
+          {isCustomer &&
+            booking.status === "requested" &&
+            ["unpaid", "failed"].includes(
+              booking.payment_status || "unpaid",
+            ) && (
+              <div className="rounded-2xl border border-border bg-card p-5 space-y-2">
+                <h3 className="font-semibold">
+                  Waiting for the business to accept
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  No payment is needed yet. The business must accept your
+                  appointment and final price before you can pay.
+                </p>
+              </div>
+            )}
         </div>
 
         {msg && (
@@ -530,10 +560,15 @@ export default function BookingDetailWebPage() {
                 <span className="bg-background px-2.5 py-1 rounded-md border border-border">
                   ⏱ {booking.service?.duration_minutes} mins
                 </span>
-                {booking.service?.price !== undefined && (
+                {booking.service?.price != null && (
                   <span className="bg-background px-2.5 py-1 rounded-md border border-border text-primary font-bold">
                     {booking.service.price_is_from ? "From " : ""}₦
                     {booking.service.price.toLocaleString()}
+                  </span>
+                )}
+                {booking.service?.price == null && (
+                  <span className="text-muted-foreground">
+                    Price on request
                   </span>
                 )}
               </div>
@@ -570,6 +605,76 @@ export default function BookingDetailWebPage() {
           </div>
 
           {/* Action Buttons */}
+          <div className="flex flex-wrap gap-3 text-sm">
+            <button
+              onClick={() =>
+                router.push(
+                  isProvider
+                    ? `/businesses/${booking.business_id}/bookings`
+                    : "/bookings",
+                )
+              }
+              className="rounded-xl border border-border px-4 py-3"
+            >
+              {isProvider ? "All business bookings" : "My Bookings"}
+            </button>
+            <button
+              onClick={() => router.push(`/businesses/${booking.business_id}`)}
+              className="rounded-xl border border-border px-4 py-3"
+            >
+              Business page
+            </button>
+          </div>
+          <BookingReschedulePanel
+            booking={booking}
+            userId={user?.id}
+            onChanged={fetchBooking}
+          />
+          {booking.agreed_price != null && (
+            <section className="rounded-2xl border border-border bg-card p-5 space-y-2">
+              <h3 className="font-semibold">Agreed service price</h3>
+              <p className="text-xl font-bold">
+                ₦
+                {Number(booking.agreed_price).toLocaleString("en-NG", {
+                  minimumFractionDigits: 2,
+                })}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                This is the final price accepted for your booking.
+              </p>
+            </section>
+          )}
+          {isCustomer &&
+            booking.status === "confirmed" &&
+            booking.payment_flow === "staged_50_50" && (
+              <section className="rounded-2xl border border-border bg-card p-5 space-y-2">
+                <h3 className="font-semibold">Staged payment setup pending</h3>
+                <p className="text-sm text-muted-foreground">
+                  Your appointment is accepted. Online payment for the new 50%
+                  upfront / 50% completion arrangement is not available yet. No
+                  payment has been started.
+                </p>
+              </section>
+            )}
+          {needsPaymentSupport &&
+            ["requested", "confirmed"].includes(booking.status) && (
+              <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
+                <h3 className="font-semibold">
+                  Need to cancel or request a refund?
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {booking.payment_status === "deposit_pending"
+                    ? "An unpaid or processing checkout must be resolved before cancellation. Reopen payment to check or cancel it, or contact support with this booking."
+                    : "Your booking has a payment. Contact support to review cancellation and any refund before the appointment is changed."}
+                </p>
+                <button
+                  onClick={() => router.push(supportHref)}
+                  className="rounded-xl border border-border px-4 py-3 text-sm font-semibold"
+                >
+                  Get booking support
+                </button>
+              </div>
+            )}
           {checkoutReview && (
             <div
               className="rounded-3xl border border-border bg-card p-5 space-y-3"
@@ -630,7 +735,10 @@ export default function BookingDetailWebPage() {
           <div className="pt-4 flex flex-wrap gap-3">
             {isCustomer &&
               !checkoutReview &&
-              ["requested", "confirmed"].includes(booking.status) &&
+              booking.payment_flow !== "staged_50_50" &&
+              (booking.status === "confirmed" ||
+                (booking.status === "requested" &&
+                  booking.payment_status === "deposit_pending")) &&
               (!!booking.quote_id || !!booking.service?.price) &&
               (!!booking.quote_id ||
                 booking.service?.deposit_required ||
@@ -666,13 +774,15 @@ export default function BookingDetailWebPage() {
               )}
             {isProvider && booking.status === "requested" && (
               <>
-                <button
-                  onClick={handleDecline}
-                  disabled={actionLoading}
-                  className="flex-1 py-3 px-4 bg-card border border-border hover:bg-muted text-muted-foreground font-semibold rounded-xl text-sm transition"
-                >
-                  Decline Request
-                </button>
+                {!needsPaymentSupport && (
+                  <button
+                    onClick={handleDecline}
+                    disabled={actionLoading}
+                    className="flex-1 py-3 px-4 bg-card border border-border hover:bg-muted text-muted-foreground font-semibold rounded-xl text-sm transition"
+                  >
+                    Decline Request
+                  </button>
+                )}
                 <button
                   onClick={handleConfirm}
                   disabled={actionLoading}
@@ -684,6 +794,7 @@ export default function BookingDetailWebPage() {
             )}
 
             {(isCustomer || isProvider) &&
+              !needsPaymentSupport &&
               ["requested", "confirmed"].includes(booking.status) && (
                 <button
                   onClick={handleCancel}
@@ -703,13 +814,15 @@ export default function BookingDetailWebPage() {
                 >
                   Record Customer No-Show
                 </button>
-                <button
-                  onClick={handleComplete}
-                  disabled={actionLoading}
-                  className="flex-1 py-3 px-5 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl text-sm transition shadow-lg shadow-none"
-                >
-                  Mark Complete
-                </button>
+                {hasEnded && (
+                  <button
+                    onClick={handleComplete}
+                    disabled={actionLoading}
+                    className="flex-1 py-3 px-5 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl text-sm transition shadow-lg shadow-none"
+                  >
+                    Mark Complete
+                  </button>
+                )}
               </>
             )}
 
@@ -737,16 +850,11 @@ export default function BookingDetailWebPage() {
                     {booking.business?.name}.
                   </p>
                 </div>
-                <button
-                  onClick={() =>
-                    router.push(
-                      `/businesses/${booking.business_id}?review_booking_id=${booking.id}`,
-                    )
-                  }
-                  className="py-2.5 px-4 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl text-xs transition"
-                >
-                  Write Review
-                </button>
+                <WriteBusinessReviewDialog
+                  businessId={booking.business_id}
+                  businessName={booking.business?.name || "this business"}
+                  bookingId={booking.id}
+                />
               </div>
             </div>
           )}

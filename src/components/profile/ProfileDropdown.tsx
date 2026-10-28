@@ -1,7 +1,14 @@
 "use client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { User, Settings, Bookmark, UserPlus, LogOut } from "lucide-react";
+import {
+  User,
+  Settings,
+  Bookmark,
+  UserPlus,
+  LogOut,
+  CalendarDays,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { AuthService } from "@/lib/auth/auth-service";
@@ -19,7 +26,10 @@ export function ProfileDropdown({ onClose }: ProfileDropdownProps) {
   const router = useRouter();
   const { user, profile } = useAuth();
 
-  const isVerified = !!(profile as any)?.is_verified || !!(profile as any)?.phone_verified || !!(profile as any)?.verified_seller;
+  const isVerified =
+    !!(profile as any)?.is_verified ||
+    !!(profile as any)?.phone_verified ||
+    !!(profile as any)?.verified_seller;
   const isSeller = !!(profile as any)?.verified_seller;
 
   const displayName = profile?.name || user?.user_metadata?.name || "User";
@@ -41,6 +51,11 @@ export function ProfileDropdown({ onClose }: ProfileDropdownProps) {
   };
 
   const menuItems = [
+    {
+      label: "My Bookings",
+      icon: CalendarDays,
+      onClick: () => navigate("/bookings"),
+    },
     {
       label: "Profile",
       icon: User,
@@ -84,7 +99,12 @@ export function ProfileDropdown({ onClose }: ProfileDropdownProps) {
           <Avatar className="w-10 h-10 flex-shrink-0">
             <AvatarImage src={avatarUrl} alt={displayName} />
             <AvatarFallback
-              style={{ background: GREEN, color: "#fff", fontFamily: FONT, fontWeight: 700 }}
+              style={{
+                background: GREEN,
+                color: "#fff",
+                fontFamily: FONT,
+                fontWeight: 700,
+              }}
             >
               {displayName.charAt(0).toUpperCase()}
             </AvatarFallback>
@@ -103,7 +123,11 @@ export function ProfileDropdown({ onClose }: ProfileDropdownProps) {
             </div>
             <p
               className="truncate text-[0.75rem] leading-[16px]"
-              style={{ fontFamily: FONT, fontWeight: 300, color: "var(--c-text-muted)" }}
+              style={{
+                fontFamily: FONT,
+                fontWeight: 300,
+                color: "var(--c-text-muted)",
+              }}
             >
               {email}
             </p>
@@ -141,7 +165,12 @@ export function ProfileDropdown({ onClose }: ProfileDropdownProps) {
           ))}
 
           {/* divider */}
-          <div style={{ borderTop: "0.5px solid var(--c-border)", margin: "2px 0" }} />
+          <div
+            style={{
+              borderTop: "0.5px solid var(--c-border)",
+              margin: "2px 0",
+            }}
+          />
 
           {/* Logout */}
           <button

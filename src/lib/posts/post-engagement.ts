@@ -3,6 +3,8 @@ const NON_ENGAGEMENT_CATEGORIES = new Set([
   "for sale",
   "selling",
   "giveaway",
+  "business",
+  "marketplace",
 ]);
 
 export function supportsPostEngagement(category?: string | null): boolean {

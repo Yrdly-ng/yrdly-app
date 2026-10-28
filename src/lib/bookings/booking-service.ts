@@ -18,7 +18,43 @@ export interface TimeSlot {
   available: boolean;
 }
 
+export interface BookingRescheduleRequest {
+  id: string;
+  booking_id: string;
+  requested_by: string;
+  appointment_time: string;
+  end_time: string;
+  original_appointment_time: string;
+  original_end_time: string;
+  status: 'pending' | 'accepted' | 'rejected' | 'withdrawn';
+  created_at: string;
+  responded_at: string | null;
+}
+
 export class BookingService {
+  static async getRescheduleRequest(bookingId: string): Promise<BookingRescheduleRequest | null> {
+    const { data, error } = await supabase.from('booking_reschedule_requests').select('*')
+      .eq('booking_id', bookingId).eq('status', 'pending').maybeSingle();
+    if (error) throw error;
+    return data;
+  }
+
+  static async requestReschedule(bookingId: string, appointmentTime: string): Promise<BookingRescheduleRequest> {
+    const { data, error } = await supabase.rpc('request_booking_reschedule', {
+      p_booking_id: bookingId, p_appointment_time: appointmentTime,
+    });
+    if (error) throw error;
+    return data;
+  }
+
+  static async respondToReschedule(requestId: string, action: 'accept' | 'reject' | 'withdraw'): Promise<BookingRescheduleRequest> {
+    const { data, error } = await supabase.rpc('respond_booking_reschedule', {
+      p_request_id: requestId, p_action: action,
+    });
+    if (error) throw error;
+    return data;
+  }
+
   /**
    * Fetch active service offerings for a business
    */
@@ -158,11 +194,15 @@ export class BookingService {
   static async setAvailabilityException(
     exception: Omit<AvailabilityException, 'id' | 'created_at'>
   ): Promise<AvailabilityException> {
-    const { data, error } = await supabase
-      .from('availability_exceptions')
-      .upsert(exception, { onConflict: 'business_id,date' })
-      .select('*')
-      .single();
+    const { data, error } = await supabase.rpc('set_booking_availability_exception', {
+      p_business_id: exception.business_id,
+      p_date: exception.date,
+      p_is_blackout: exception.is_blackout,
+      p_staff_id: exception.staff_id || null,
+      p_custom_start_time: exception.custom_start_time || null,
+      p_custom_end_time: exception.custom_end_time || null,
+      p_reason: exception.reason || null,
+    });
 
     if (error) throw error;
     return data;
@@ -175,10 +215,10 @@ export class BookingService {
     businessId: string,
     serviceId: string,
     dateString: string, // YYYY-MM-DD
-    staffId?: string | null
+    staffId?: string | null,
+    excludeBookingId?: string
   ): Promise<TimeSlot[]> {
     // Business schedules are Nigerian local time, independent of the visitor's device.
-    const targetDate = new Date(dateString + 'T00:00:00+01:00');
     const dayOfWeek = new Date(dateString + 'T12:00:00Z').getUTCDay();
 
     // 1. Fetch service info
@@ -224,15 +264,12 @@ export class BookingService {
       endTimeStr = weekly.end_time;
     }
 
-    // A booking without named staff reserves business-wide capacity. Named staff
-    // can work in parallel, but must also respect those business-wide reservations.
-    const dayStartISO = targetDate.toISOString();
-    const dayEndISO = new Date(targetDate.getTime() + 86400000).toISOString();
-    let bookingsQ: any = supabase.from('bookings').select('appointment_time, end_time')
-      .eq('business_id', businessId).in('status', ['requested', 'confirmed'])
-      .lt('appointment_time', dayEndISO).gt('end_time', dayStartISO);
-    if (staffId) bookingsQ = bookingsQ.or(`staff_id.is.null,staff_id.eq.${staffId}`);
-    const { data: existingBookings, error: bookingsError } = await bookingsQ;
+    const { data: existingBookings, error: bookingsError } = await supabase.rpc('booking_busy_intervals', {
+      p_business_id: businessId,
+      p_date: dateString,
+      p_staff_id: staffId || null,
+      p_exclude_booking_id: excludeBookingId || null,
+    });
     if (bookingsError) throw bookingsError;
 
     const bookedIntervals = (existingBookings || []).map((b: any) => ({
@@ -299,22 +336,7 @@ export class BookingService {
    * Confirm booking request (Provider action)
    */
   static async confirmBooking(bookingId: string): Promise<Booking> {
-    // Payment guard: if service requires deposit/escrow/full payment, booking must be paid
-    const { data: existing } = await supabase.from('bookings').select('id, service_id, payment_status').eq('id', bookingId).single();
-    if (existing) {
-      const { data: svc } = await supabase.from('service_offerings').select('deposit_required, requires_full_payment, escrow_enabled').eq('id', existing.service_id).single();
-      const needsPayment = !!(svc && (svc.deposit_required || svc.requires_full_payment || svc.escrow_enabled));
-      if (needsPayment) {
-        const paid = ['deposit_paid','fully_paid','escrow_held','escrow_released'].includes((existing as any).payment_status);
-        if (!paid) throw new Error('Payment required before confirmation.');
-      }
-    }
-    const { data, error } = await supabase
-      .from('bookings')
-      .update({ status: 'confirmed', updated_at: new Date().toISOString() })
-      .eq('id', bookingId)
-      .select('*, service:service_offerings(*), business:businesses(*), customer:public_profiles!bookings_customer_id_fkey(*)')
-      .single();
+    const { data, error } = await supabase.rpc('accept_service_booking', { p_booking_id: bookingId });
     if (error) throw error;
     return data;
   }

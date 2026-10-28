@@ -59,12 +59,22 @@ export async function POST(req: NextRequest) {
   }
   if (!resolvedBookingId) return NextResponse.json({ error: 'bookingId required' }, { status: 400 });
   const { data: booking } = await supabaseAdmin.from('bookings')
-    .select('id, customer_id, service_id, business_id, appointment_time, payment_status, status, quote_id')
+    .select('id, customer_id, service_id, business_id, appointment_time, payment_status, status, quote_id, agreed_price, payment_flow')
     .eq('id', resolvedBookingId).single();
   if (!booking) return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
   if (booking.customer_id !== user.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   if (!['requested', 'confirmed'].includes(booking.status) || new Date(booking.appointment_time).getTime() <= Date.now()) {
     return NextResponse.json({ error: 'This booking is no longer payable' }, { status: 409 });
+  }
+  // Existing unpaid checkouts may be recovered under their original contract.
+  // A new checkout must wait for explicit provider acceptance.
+  if (booking.status !== 'confirmed' && booking.payment_status !== 'deposit_pending') {
+    return NextResponse.json({ error: 'Wait for the business to accept your appointment and final price before paying.' }, { status: 409 });
+  }
+  if (booking.payment_flow === 'staged_50_50') {
+    // Milestone escrow cannot use the per-payment additional fee of legacy
+    // standard escrows. Do not silently collect a full-release legacy payment.
+    return NextResponse.json({ error: 'Staged service checkout is not available yet. No payment has been started.' }, { status: 503 });
   }
   if (['deposit_paid', 'fully_paid', 'escrow_held', 'escrow_released'].includes(booking.payment_status)) {
     return NextResponse.json({ error: 'This booking has already been paid' }, { status: 409 });

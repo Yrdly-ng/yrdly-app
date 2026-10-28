@@ -20,6 +20,7 @@ import { useAuth } from "@/hooks/use-supabase-auth";
 interface WriteBusinessReviewDialogProps {
   businessId: string;
   businessName: string;
+  bookingId?: string;
   onSuccess?: () => void;
   children?: React.ReactNode;
 }
@@ -27,6 +28,7 @@ interface WriteBusinessReviewDialogProps {
 export function WriteBusinessReviewDialog({
   businessId,
   businessName,
+  bookingId,
   onSuccess,
   children,
 }: WriteBusinessReviewDialogProps) {
@@ -70,12 +72,20 @@ export function WriteBusinessReviewDialog({
 
     setLoading(true);
     try {
-      await ReviewService.submitGeneralReview(
-        businessId,
-        user.id,
-        rating,
-        comment.trim() || undefined
-      );
+      if (bookingId)
+        await ReviewService.submitBookingReview(
+          bookingId,
+          user.id,
+          rating,
+          comment.trim() || undefined,
+        );
+      else
+        await ReviewService.submitGeneralReview(
+          businessId,
+          user.id,
+          rating,
+          comment.trim() || undefined,
+        );
 
       toast({
         title: "Review Submitted",
@@ -87,7 +97,8 @@ export function WriteBusinessReviewDialog({
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error?.message || "Failed to submit review. Please try again.",
+        description:
+          error?.message || "Failed to submit review. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -148,7 +159,9 @@ export function WriteBusinessReviewDialog({
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Your Review (Optional)</label>
+            <label className="text-sm font-medium">
+              Your Review (Optional)
+            </label>
             <Textarea
               placeholder="Tell us about your experience..."
               value={comment}
@@ -164,7 +177,11 @@ export function WriteBusinessReviewDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={loading}>
+          <Button
+            variant="outline"
+            onClick={() => handleOpenChange(false)}
+            disabled={loading}
+          >
             Cancel
           </Button>
           <Button onClick={handleSubmit} disabled={loading || rating === 0}>

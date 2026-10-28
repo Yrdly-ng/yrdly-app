@@ -86,12 +86,19 @@ export default function CreateBookingWebPage() {
     };
   }, [serviceId]);
 
-  const eligibleStaff = useMemo(() => serviceStaffIds
-    ? staffList.filter((staff) => serviceStaffIds.includes(staff.id))
-    : staffList, [serviceStaffIds, staffList]);
+  const eligibleStaff = useMemo(
+    () =>
+      serviceStaffIds
+        ? staffList.filter((staff) => serviceStaffIds.includes(staff.id))
+        : staffList,
+    [serviceStaffIds, staffList],
+  );
 
   useEffect(() => {
-    if (serviceStaffIds?.length && !serviceStaffIds.includes(selectedStaffId || "")) {
+    if (
+      serviceStaffIds?.length &&
+      !serviceStaffIds.includes(selectedStaffId || "")
+    ) {
       setSelectedStaffId(eligibleStaff[0]?.id || null);
       setSelectedSlotTime(null);
     }
@@ -177,20 +184,33 @@ export default function CreateBookingWebPage() {
         (user as any)?.name ||
         (user as any)?.user_metadata?.full_name ||
         "Customer";
-      if (business?.owner_id) {
-        await NotificationTriggers.onBookingRequested({
-          providerOwnerId: business.owner_id,
-          customerName: userName,
-          serviceName: service.name,
-          appointmentTime: selectedSlotTime,
-          bookingId: newBooking.id,
-        });
+      try {
+        if (business?.owner_id) {
+          await NotificationTriggers.onBookingRequested({
+            providerOwnerId: business.owner_id,
+            customerName: userName,
+            serviceName: service.name,
+            appointmentTime: selectedSlotTime,
+            bookingId: newBooking.id,
+          });
+        }
+      } catch (notificationError) {
+        console.error(
+          "Booking saved; notification delivery needs retry",
+          notificationError,
+        );
       }
 
+      const paymentRequired =
+        service.deposit_required ||
+        service.requires_full_payment ||
+        service.escrow_enabled;
       alert(
-        "Booking request submitted! The service provider will review and confirm.",
+        paymentRequired
+          ? "Booking requested. Wait for the business to accept your appointment and final price before paying. You can return through My Bookings."
+          : "Booking requested. The provider will review and confirm. Find the details anytime in My Bookings.",
       );
-      router.push("/bookings");
+      router.push(`/bookings/${newBooking.id}`);
     } catch (err: any) {
       setErrMsg(err.message || "Failed to submit booking request");
     } finally {
@@ -359,7 +379,9 @@ export default function CreateBookingWebPage() {
                   }}
                   className="w-full bg-card border border-border rounded-xl px-3 py-3 text-sm text-foreground"
                 >
-                  {!serviceStaffIds?.length && <option value="">No specific staff</option>}
+                  {!serviceStaffIds?.length && (
+                    <option value="">No specific staff</option>
+                  )}
                   {eligibleStaff.map((s: any) => (
                     <option key={s.id} value={s.id}>
                       {s.name}

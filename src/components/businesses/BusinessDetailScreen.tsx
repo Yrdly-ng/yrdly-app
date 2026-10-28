@@ -300,8 +300,16 @@ export function BusinessDetailScreen({
 
   const handleToggleStock = async (itemId: string, currentStock: boolean) => {
     const item = catalogItems.find((entry) => entry.id === itemId);
-    if (!currentStock && item && (item.quantity ?? item.inventory_count ?? 1) <= 0) {
-      toast({ title: "Restock item", description: "Enter the available quantity to put this item back in stock." });
+    if (
+      !currentStock &&
+      item &&
+      (item.quantity ?? item.inventory_count ?? 1) <= 0
+    ) {
+      toast({
+        title: "Restock item",
+        description:
+          "Enter the available quantity to put this item back in stock.",
+      });
       return;
     }
     try {
@@ -639,6 +647,7 @@ export function BusinessDetailScreen({
               {isOwner && (
                 <div className="mb-4 space-y-3">
                   <CreateCatalogItemDialog
+                    businessCategory={business.category}
                     businessId={business.id}
                     onSuccess={refreshCatalog}
                   >
@@ -741,6 +750,7 @@ export function BusinessDetailScreen({
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <CreateCatalogItemDialog
+                                  businessCategory={business.category}
                                   businessId={business.id}
                                   itemToEdit={item}
                                   onSuccess={refreshCatalog}
@@ -772,7 +782,10 @@ export function BusinessDetailScreen({
                             <Switch
                               checked={isCatalogItemAvailable(item)}
                               onCheckedChange={() =>
-                                handleToggleStock(item.id, isCatalogItemAvailable(item))
+                                handleToggleStock(
+                                  item.id,
+                                  isCatalogItemAvailable(item),
+                                )
                               }
                               className="scale-75"
                             />
@@ -792,6 +805,7 @@ export function BusinessDetailScreen({
                   </p>
                   {isOwner && (
                     <CreateCatalogItemDialog
+                      businessCategory={business.category}
                       businessId={business.id}
                       onSuccess={refreshCatalog}
                     >

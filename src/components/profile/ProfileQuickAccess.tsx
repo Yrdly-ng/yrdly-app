@@ -1,41 +1,50 @@
-'use me';
-'use client';
+"use me";
+"use client";
 
-import React from 'react';
-import Link from 'next/link';
-import { Ticket, Calendar, Store, Tag } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import React from "react";
+import Link from "next/link";
+import { Ticket, Calendar, Store, Tag } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface ProfileQuickAccessProps {
   onOpenStore?: () => void;
   hasBusiness?: boolean;
 }
 
-export function ProfileQuickAccess({ onOpenStore, hasBusiness }: ProfileQuickAccessProps) {
+export function ProfileQuickAccess({
+  onOpenStore,
+  hasBusiness,
+}: ProfileQuickAccessProps) {
   const items = [
     {
-      label: 'Tickets',
-      icon: Ticket,
-      href: '/my-tickets',
-      color: 'text-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/20',
-    },
-    {
-      label: 'Events',
+      label: "My Bookings",
       icon: Calendar,
-      href: '/my-events',
-      color: 'text-blue-500 bg-blue-500/10 hover:bg-blue-500/20',
+      href: "/bookings",
+      color: "text-primary bg-primary/10 hover:bg-primary/20",
     },
     {
-      label: hasBusiness ? 'Business' : 'Create Business',
+      label: "Tickets",
+      icon: Ticket,
+      href: "/my-tickets",
+      color: "text-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/20",
+    },
+    {
+      label: "Events",
+      icon: Calendar,
+      href: "/my-events",
+      color: "text-blue-500 bg-blue-500/10 hover:bg-blue-500/20",
+    },
+    {
+      label: hasBusiness ? "Business" : "Create Business",
       icon: Store,
       onClick: onOpenStore,
-      color: 'text-purple-500 bg-purple-500/10 hover:bg-purple-500/20',
+      color: "text-purple-500 bg-purple-500/10 hover:bg-purple-500/20",
     },
     {
-      label: 'Listings',
+      label: "Listings",
       icon: Tag,
-      href: '/my-listings',
-      color: 'text-amber-500 bg-amber-500/10 hover:bg-amber-500/20',
+      href: "/my-listings",
+      color: "text-amber-500 bg-amber-500/10 hover:bg-amber-500/20",
     },
   ];
 
@@ -44,7 +53,7 @@ export function ProfileQuickAccess({ onOpenStore, hasBusiness }: ProfileQuickAcc
       <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
         Quick Access
       </h3>
-      <div className="grid grid-cols-4 gap-2 sm:gap-4">
+      <div className="grid grid-cols-3 gap-3 sm:grid-cols-5 sm:gap-4">
         {items.map((item, idx) => {
           const Icon = item.icon;
           const content = (

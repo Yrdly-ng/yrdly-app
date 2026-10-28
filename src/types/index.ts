@@ -333,6 +333,10 @@ export interface StrikeAppeal {
 }
 
 export interface Booking {
+  agreed_price?: number | null;
+  accepted_at?: string | null;
+  accepted_by?: string | null;
+  payment_flow?: 'legacy' | 'staged_50_50';
   id: string;
   customer_id: string;
   business_id: string;
