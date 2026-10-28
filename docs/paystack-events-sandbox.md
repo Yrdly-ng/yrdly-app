@@ -24,7 +24,7 @@ PAYSTACK_EVENT_OPERATIONS_APPROVED=false
 
 For a local Supabase instance, use `PAYSTACK_LOCAL_SANDBOX=true` with a localhost/127.0.0.1 Supabase URL. Secrets stay on the server. Use the matching Supabase credentials for the approved project. The explicit main-project test flag is required on production deployments. For a restricted future test, disable PAYSTACK_TEST_ALLOW_ALL_USERS and supply comma-separated auth UUIDs in PAYSTACK_TEST_USER_IDS.
 
-In the Paystack dashboard's **test** configuration, set the webhook URL to `https://app.yrdly.ng/api/webhooks/paystack`. The handler verifies the raw request signature, stores a durable receipt, then verifies provider resources before issuing tickets or updating finances. Configure the cron endpoint `/api/cron/reconcile-paystack-events` with its bearer `CRON_SECRET`. `vercel.json` schedules a ten-minute recovery pass. Preview deployments may require an external scheduler or an authorised manual invocation because Vercel cron execution depends on deployment type and account scheduling support.
+In the Paystack dashboard's **test** configuration, set the webhook URL to `https://app.yrdly.ng/api/webhooks/paystack`. The handler verifies the raw request signature, stores a durable receipt, then verifies provider resources before issuing tickets or updating finances. Configure the cron endpoint `/api/cron/reconcile-paystack-events` with its bearer `CRON_SECRET`. `vercel.json` schedules daily recovery at 07:00 UTC to fit the current Vercel Hobby plan. Webhooks and explicit payment checks remain immediate; faster background recovery requires an external scheduler or a Vercel plan that supports it.
 
 ## Sandbox walkthrough
 
