@@ -24,7 +24,8 @@ export interface PaystackTransfer {
 }
 
 export class PaystackRequestError extends Error {
-  constructor(message: string, public readonly status: number, public readonly uncertain = false) {
+  constructor(message: string, public readonly status: number, public readonly uncertain = false,
+    public readonly rejection?: 'invalid_attendee_email') {
     super(message);
   }
 }
@@ -95,6 +96,12 @@ async function request<T>(path: string, method = 'GET', body?: object): Promise<
   try { envelope = await response.json(); }
   catch { throw new PaystackRequestError('Paystack returned an unreadable response. Reconciliation is required.', 502, method !== 'GET'); }
   if (!response.ok || envelope.status !== true || envelope.data == null) {
+    // Only this confirmed initialization validation failure proves no checkout
+    // was created. A duplicate reference or other 4xx may refer to an existing one.
+    if (path === '/transaction/initialize' && method === 'POST' && response.status === 400 &&
+        envelope.status === false && envelope.data == null && envelope.message === '"email" must be a valid email') {
+      throw new PaystackRequestError('Use a valid attendee email address', 400, false, 'invalid_attendee_email');
+    }
     // The caller keeps reservations for uncertain mutations; no automatic retry.
     throw new PaystackRequestError(response.status === 429 ? 'Paystack is busy. Please retry later.' : 'Paystack could not confirm this request.',
       response.status === 429 ? 429 : 502, method !== 'GET' && (response.status >= 500 || response.ok));

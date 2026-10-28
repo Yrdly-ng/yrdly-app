@@ -3,7 +3,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import QRCode from 'qrcode';
 import { after } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
-import { PaystackService, getPaystackEventMode, paystackKeyMode, paystackSandboxUserAllowed } from '@/lib/payments/paystack-service';
+import { PaystackService, PaystackRequestError, getPaystackEventMode, paystackKeyMode, paystackSandboxUserAllowed } from '@/lib/payments/paystack-service';
 import { paymentReferenceFilter } from '@/lib/payments/payment-state';
 import { flagPayment } from '@/lib/payments/payment-reconciliation';
 import { TicketCheckoutError, type TicketCheckoutInput } from './ticket-checkout';
@@ -74,7 +74,13 @@ export async function createPaystackTicketCheckout(input: TicketCheckoutInput, c
     }).eq('transaction_id', tx.id).eq('state', 'initializing').select('transaction_id').maybeSingle();
     if (saveError || !saved) throw new Error('Checkout changed while payment was being prepared');
     return response(checkout.toString());
-  } catch {
+  } catch (failure) {
+    if (failure instanceof PaystackRequestError && !failure.uncertain && failure.rejection === 'invalid_attendee_email') {
+      // This RPC locks the order and releases its seats atomically; a paid or
+      // concurrently fulfilled order cannot be closed or made retryable here.
+      const { error: closeError } = await supabaseAdmin.rpc('close_paystack_ticket_checkout', { p_transaction_id: tx.id });
+      if (!closeError) throw new TicketCheckoutError('Use a valid attendee email address', 400);
+    }
     // Never initialize a new reference after an uncertain provider response.
     await flagPayment('paystack', tx.payment_reference, tx.id, 'ticket_initialization_requires_reconciliation');
     throw new TicketCheckoutError('Payment setup is being checked. No replacement payment was started.', 502);
