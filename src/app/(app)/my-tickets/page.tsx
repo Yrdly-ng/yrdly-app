@@ -253,6 +253,7 @@ export default function MyTicketsPage() {
             const isExpired =
               ticket.expires_at && new Date(ticket.expires_at) < new Date();
             let ss = statusStyle[ticket.status] || statusStyle.CANCELLED;
+            if (ticket.is_test_payment) ss = { label: "Sandbox · no real payment", cls: "bg-amber-500/20 text-amber-400 border-amber-500/30" };
             if (ticket.status === "PAID" && ticket.refund_status) {
               ss = ["failed", "needs-attention"].includes(ticket.refund_status)
                 ? {

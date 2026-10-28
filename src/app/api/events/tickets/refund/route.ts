@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from "@/lib/supabase/supabase-server";
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
 import { sendPushNotification } from '@/lib/notifications/server-push-notification';
+import { EventFinanceError, requestTicketRefund } from '@/lib/events/paystack-event-finance';
 
 /**
  * POST /api/events/tickets/refund
@@ -21,7 +22,7 @@ export async function POST(request: NextRequest) {
     const { data: ticket } = await supabaseAdmin
       .from('tickets')
       .select(`
-        id, status, refund_status, payment_provider_ref, payment_tx_ref, amount_paid, buyer_id,
+        id, status, refund_status, payment_provider, payment_provider_ref, payment_tx_ref, amount_paid, buyer_id,
         attendee_name, attendee_email,
         event:events!tickets_event_id_fkey(id, title, organizer_id, payout_released_at)
       `)
@@ -33,6 +34,11 @@ export async function POST(request: NextRequest) {
     const event = ticket.event as any;
     if (event.organizer_id !== user.id) {
       return NextResponse.json({ error: 'Only the event organizer can issue refunds' }, { status: 403 });
+    }
+
+    if (ticket.payment_provider === 'paystack') {
+      const refund = await requestTicketRefund(ticket_id, user.id);
+      return NextResponse.json({ success: true, refund, message: refund.status === 'processed' ? 'Refund confirmed.' : 'Refund requested. Its status will update after Paystack confirms it.' });
     }
 
     const { data: payout, error: payoutError } = await supabaseAdmin
@@ -91,6 +97,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, message: 'Free ticket cancelled successfully' });
   } catch (error) {
+    if (error instanceof EventFinanceError) return NextResponse.json({ error: error.message }, { status: error.status });
     console.error('Ticket refund error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }

@@ -40,7 +40,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     // Paid escrow refunds require support resolution before cancellation.
     // Never mark tickets refunded or notify buyers of money that was not returned.
     if ((paidTickets || []).some(ticket => (ticket.amount_paid == null || Number(ticket.amount_paid) !== 0))) {
-      return NextResponse.json({ error: 'This event has paid tickets. Contact support to resolve Payluk escrow refunds before cancellation.' }, { status: 409 });
+      return NextResponse.json({ error: 'Refund all paid tickets before cancelling this event. Contact support for payments that require review.' }, { status: 409 });
     }
 
     const errors: string[] = [];

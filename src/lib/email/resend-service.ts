@@ -195,7 +195,8 @@ export class ResendEmailService {
     dateStr:       string,
     timeStr:       string,
     locationStr:   string,
-    orderId:       string
+    orderId:       string,
+    idempotencyKey?: string
   ) {
     if (!this.isConfigured()) {
       throw new Error('RESEND_NOT_CONFIGURED');
@@ -211,7 +212,7 @@ export class ResendEmailService {
       to:      [email],
       subject,
       html,
-    });
+    }, idempotencyKey ? { idempotencyKey } : undefined);
 
     if (error) {
       console.error('Error sending ticket confirmation email via Resend:', error);
@@ -234,7 +235,8 @@ export class ResendEmailService {
     eventId?:       string,
     totalSold?:     number,
     grossRevenue?:  number,
-    netPayout?:     number
+    netPayout?:     number,
+    idempotencyKey?: string
   ) {
     if (!this.isConfigured()) {
       throw new Error('RESEND_NOT_CONFIGURED');
@@ -250,7 +252,7 @@ export class ResendEmailService {
       to:      [organizerEmail],
       subject,
       html,
-    });
+    }, idempotencyKey ? { idempotencyKey } : undefined);
 
     if (error) {
       console.error('Error sending organizer ticket sale notification via Resend:', error);

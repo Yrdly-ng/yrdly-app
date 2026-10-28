@@ -14,7 +14,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const { data: ticket, error } = await supabaseAdmin
     .from('tickets')
     .select(`
-      id, buyer_id, status, refund_status, attendee_name, attendee_email, amount_paid, created_at, scanned_at,
+      id, buyer_id, status, refund_status, is_test_payment, attendee_name, attendee_email, amount_paid, created_at, scanned_at,
       event:events(id, organizer_id, title, cover_image_url, start_time, end_time, location_address, location_online, online_link, status, lga, state),
       tier:ticket_tiers(id, name, price, description)
     `)

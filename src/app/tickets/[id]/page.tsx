@@ -7,6 +7,7 @@ import { ArrowLeft, MapPin, Calendar, Clock, Download } from 'lucide-react';
 import Image from 'next/image';
 
 interface Ticket {
+  is_test_payment?: boolean;
   id: string;
   status: string;
   attendee_name: string;
@@ -116,6 +117,7 @@ export default function TicketPage() {
             Back
           </Link>
           <h1 className="text-3xl sm:text-4xl font-bold text-slate-900">Your Ticket</h1>
+          {ticket.is_test_payment && <p className="mt-2 font-semibold text-amber-700">Sandbox test ticket · No real payment</p>}
         </div>
       </div>
 

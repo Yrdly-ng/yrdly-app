@@ -67,6 +67,7 @@ export interface TicketTier {
 }
 
 export interface Ticket {
+  is_test_payment?: boolean;
   id: string;
   buyer_id: string;
   event_id: string;

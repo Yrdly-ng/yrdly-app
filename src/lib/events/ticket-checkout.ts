@@ -2,6 +2,8 @@ import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
 import { PaylukService } from '@/lib/payments/payluk-service';
 import { getPaylukCustomerId } from '@/lib/payments/payluk-onboarding';
 import { TicketService } from '@/lib/events/ticket-service';
+import { getPaystackEventMode } from '@/lib/payments/paystack-service';
+import { createPaystackTicketCheckout, cancelPaystackTicketCheckout, verifyPaystackTicketCheckout } from '@/lib/events/paystack-ticket-service';
 import { flagPayment } from '@/lib/payments/payment-reconciliation';
 import { paylukAmountsMatch, paylukEscrowPrincipal } from '../payments/payment-state';
 
@@ -9,7 +11,7 @@ export class TicketCheckoutError extends Error {
   constructor(message: string, public status = 409) { super(message); }
 }
 
-interface TicketCheckoutInput {
+export interface TicketCheckoutInput {
   event_id: string;
   tier_id: string;
   buyer_id: string;
@@ -25,6 +27,8 @@ export async function cancelTicketCheckout(transactionId: string, expectedBuyerI
     .eq('id', transactionId).eq('item_type', 'ticket').maybeSingle();
   if (error) throw error;
   if (!tx || (expectedBuyerId && tx.buyer_id !== expectedBuyerId)) throw new TicketCheckoutError('Checkout not found', 404);
+  if (tx.payment_provider === 'paystack') return cancelPaystackTicketCheckout(tx.id, expectedBuyerId);
+  if (tx.payment_provider !== 'payluk') throw new TicketCheckoutError('Unsupported checkout provider.');
   if (tx.status === 'cancelled') return;
   if (tx.status !== 'pending') throw new TicketCheckoutError('Payment is processing or needs review; the reservation is still held.');
   if (!tx.payluk_escrow_id && !tx.payluk_tx_ref) {
@@ -81,7 +85,33 @@ async function expireOneCheckout(tierId: string) {
   }
 }
 
-export async function createTicketCheckout(input: TicketCheckoutInput, purpose: string, endTime: string) {
+export async function verifyTicketCheckout(reference: string, expectedBuyerId?: string) {
+  if (!/^[A-Za-z0-9._=-]{1,100}$/.test(reference)) throw new TicketCheckoutError('Invalid payment reference.', 400);
+  let query = supabaseAdmin.from('escrow_transactions').select('id, payment_provider, buyer_id')
+    .eq('item_type', 'ticket');
+  query = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(reference)
+    ? query.or(`id.eq.${reference},payment_reference.eq.${reference}`)
+    : query.eq('payment_reference', reference);
+  const { data: transaction, error } = await query.maybeSingle();
+  if (error) throw error;
+  if (!transaction || (expectedBuyerId && transaction.buyer_id !== expectedBuyerId)) {
+    throw new TicketCheckoutError('Checkout not found.', 404);
+  }
+  if (transaction.payment_provider === 'paystack') return verifyPaystackTicketCheckout(transaction.id, expectedBuyerId);
+  if (transaction.payment_provider !== 'payluk') throw new TicketCheckoutError('Unsupported checkout provider.');
+  return TicketService.verifyAndProcessTicket(transaction.id, expectedBuyerId);
+}
+
+export async function createTicketCheckout(input: TicketCheckoutInput, purpose: string, endTime: string, hostedCheckoutSupported = false) {
+  const paystackMode = getPaystackEventMode();
+  if (process.env.PAYSTACK_EVENT_CHECKOUT_ENABLED === 'true' && !paystackMode) {
+    throw new TicketCheckoutError('Ticket payments are temporarily unavailable while payment configuration is checked.', 503);
+  }
+  if (paystackMode) {
+    if (!hostedCheckoutSupported) throw new TicketCheckoutError('Update the app to purchase tickets securely.', 426);
+    const origin = new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://app.yrdly.ng').origin;
+    return createPaystackTicketCheckout(input, `${origin}/events/${input.event_id}?paystack_return=1`);
+  }
   await expireOneCheckout(input.tier_id);
   const { data: reservation, error } = await supabaseAdmin.rpc('reserve_ticket_checkout', { p_payload: input });
   if (error || !reservation?.transaction) throw new TicketCheckoutError(error?.message || 'Could not reserve tickets.');

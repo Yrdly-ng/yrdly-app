@@ -4,6 +4,10 @@
   "framework": "nextjs",
   "crons": [
     {
+      "path": "/api/cron/reconcile-paystack-events",
+      "schedule": "*/10 * * * *"
+    },
+    {
       "path": "/api/cron/auto-release",
       "schedule": "0 0 * * *"
     },

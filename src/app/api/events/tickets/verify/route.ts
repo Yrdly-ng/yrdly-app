@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TicketService } from '@/lib/events/ticket-service';
+import { verifyTicketCheckout, TicketCheckoutError } from '@/lib/events/ticket-checkout';
 import { getAuthenticatedUser } from '@/lib/supabase/supabase-server';
 
 export async function POST(request: NextRequest) {
@@ -8,15 +8,15 @@ export async function POST(request: NextRequest) {
     if (error || !user) return NextResponse.json({ error: 'Invalid session' }, { status: error?.status === 403 ? 403 : error?.status === 503 ? 503 : 401 });
     const { tx_ref } = await request.json();
 
-    if (!tx_ref) {
+    if (typeof tx_ref !== 'string' || !/^[A-Za-z0-9._=-]{1,100}$/.test(tx_ref)) {
       return NextResponse.json({ error: 'Missing tx_ref' }, { status: 400 });
     }
 
-    const ticket = await TicketService.verifyAndProcessTicket(tx_ref, user.id);
+    const ticket = await verifyTicketCheckout(tx_ref, user.id);
     return NextResponse.json({ success: true, ticket: { id: ticket.id, event_id: ticket.event_id } });
   } catch (error: any) {
     console.error('Ticket verify POST error:', error);
-    return NextResponse.json({ error: error.message || 'Verification failed' }, { status: error.message === 'ticket_buyer_mismatch' ? 403 : 400 });
+    return NextResponse.json({ error: error.message || 'Verification failed' }, { status: error instanceof TicketCheckoutError ? error.status : error.message === 'ticket_buyer_mismatch' ? 403 : 400 });
   }
 }
 
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    await TicketService.verifyAndProcessTicket(txRef);
+    await verifyTicketCheckout(txRef);
     return NextResponse.redirect(`${appUrl}/my-tickets?success=1`);
   } catch (error: any) {
     console.error('Ticket verify error:', error);

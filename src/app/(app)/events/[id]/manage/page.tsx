@@ -1,8 +1,9 @@
 "use client";
 
+import { EventPaystackEarnings } from "@/components/events/EventPaystackEarnings";
 import { EventPageIntro } from "@/components/events/EventPageIntro";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
 import { useAuth } from "@/hooks/use-supabase-auth";
@@ -26,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/shared/utils";
+import { authenticatedFetch } from "@/lib/auth/authenticated-fetch";
 
 interface EventData {
   id: string;
@@ -50,7 +52,9 @@ interface TicketData {
   user_name?: string;
   attendee_name?: string;
   amount_paid?: number;
-  status: "PAID" | "USED" | "CANCELLED" | "PENDING";
+  status: "PAID" | "USED" | "CANCELLED" | "PENDING" | "REFUNDED";
+  payment_provider?: string | null;
+  refund_status?: string | null;
   created_at: string;
   scanned_at?: string;
   tier?: {
@@ -75,6 +79,10 @@ export default function ManageEventPage() {
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [cancelling, setCancelling] = useState(false);
+  const [refundingId, setRefundingId] = useState<string | null>(null);
+  const refundInFlight = useRef(false);
+  const [refundMessage, setRefundMessage] = useState("");
+  const [earningsRevision, setEarningsRevision] = useState(0);
 
   const handleCancelEvent = async () => {
     if (!id) return;
@@ -135,6 +143,27 @@ export default function ManageEventPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const handleRefund = async (ticket: TicketData) => {
+    if (refundInFlight.current || ticket.status !== "PAID" || ticket.payment_provider !== "paystack" || ticket.refund_status) return;
+    if (!window.confirm(`Request a refund of ₦${Number(ticket.amount_paid || 0).toLocaleString("en-NG")} for ${ticket.attendee_name || "this attendee"}? The ticket will be blocked from entry while the refund is processed.`)) return;
+    refundInFlight.current = true;
+    setRefundingId(ticket.id);
+    setRefundMessage("");
+    try {
+      const result = await authenticatedFetch<{ refund?: { status: string }; message?: string }>("/api/events/tickets/refund", { ticket_id: ticket.id });
+      const status = result.refund?.status;
+      setTickets(current => current.map(row => row.id === ticket.id ? { ...row, refund_status: status || "pending", ...(status === "processed" ? { status: "REFUNDED" as const } : {}) } : row));
+      setRefundMessage(status === "processed" ? "Refund confirmed." : ["failed", "review", "needs-attention"].includes(status || "") ? "This refund needs support review. The ticket remains blocked from entry." : "Refund requested. Refresh the roster to check confirmation.");
+    } catch (error) {
+      setRefundMessage(error instanceof Error ? error.message : "The refund could not be confirmed. Refresh its status before trying again.");
+    } finally {
+      await fetchData();
+      setEarningsRevision(value => value + 1);
+      refundInFlight.current = false;
+      setRefundingId(null);
+    }
+  };
 
   // Compute KPI Metrics
   const metrics = useMemo(() => {
@@ -392,6 +421,8 @@ export default function ManageEventPage() {
           </Card>
         </div>
 
+        <EventPaystackEarnings key={earningsRevision} eventId={id} />
+
         {/* Ticket Buyer Roster */}
         <div className="p-6 rounded-3xl border border-border bg-card space-y-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -424,6 +455,7 @@ export default function ManageEventPage() {
             </div>
           ) : (
             <div className="divide-y divide-border border-t border-border pt-2">
+              {refundMessage && <p role="status" className="py-3 text-sm text-muted-foreground">{refundMessage}</p>}
               {filteredTickets.map((t) => {
                 const isCheckedIn = t.status === "USED";
                 const isPaid = t.status === "PAID" || t.status === "USED";
@@ -452,8 +484,12 @@ export default function ManageEventPage() {
                       </p>
                     </div>
 
-                    <div className="shrink-0 flex items-center gap-2">
-                      {isCheckedIn ? (
+                    <div className="shrink-0 flex flex-col items-end gap-2">
+                      {t.refund_status ? (
+                        <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-muted text-muted-foreground">
+                          {t.refund_status === "processed" ? "Refunded" : ["failed", "review", "needs-attention"].includes(t.refund_status) ? "Refund needs review" : "Refund pending"}
+                        </span>
+                      ) : isCheckedIn ? (
                         <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
                           <CheckCircle2 className="w-3.5 h-3.5" /> Checked In
                         </span>
@@ -465,6 +501,11 @@ export default function ManageEventPage() {
                         <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-muted text-muted-foreground">
                           {t.status}
                         </span>
+                      )}
+                      {t.payment_provider === "paystack" && t.status === "PAID" && !t.refund_status && (
+                        <Button size="sm" variant="outline" disabled={refundingId !== null} onClick={() => void handleRefund(t)}>
+                          {refundingId === t.id ? "Requesting…" : "Refund ticket"}
+                        </Button>
                       )}
                     </div>
                   </div>

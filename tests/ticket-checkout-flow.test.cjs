@@ -89,14 +89,20 @@ function harness({ providerFailure, identityFailure, reserveError } = {}) {
   function load(file) {
     if (cache[file]) return cache[file];
     const module = { exports: {} };
+    cache[file] = module.exports;
     const output = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText;
     new Function('require', 'module', 'exports', output)((name) => {
+      if (name === 'server-only') return {};
+      if (name === 'next/server') return { after: () => {} };
+      if (name.includes('paystack-service')) return { getPaystackEventMode: () => null };
+      if (name.includes('paystack-ticket-service')) return {};
       if (name.includes('supabase-admin')) return { supabaseAdmin: db };
       if (name.includes('payluk-service')) return { PaylukService: payluk };
       if (name.includes('payluk-onboarding')) return { getPaylukCustomerId: async (user) => { if (identityFailure) throw new Error(identityFailure); return `provider-${user}`; } };
       if (name.includes('payment-reconciliation')) return { flagPayment: async (...args) => calls.push({ name: 'flagPayment', args }) };
       if (name.includes('resend-service')) return { ResendEmailService: { isConfigured: () => false } };
       if (name.includes('server-push-notification')) return { sendPushNotification: async () => {} };
+      if (name.includes('server-notification-service')) return { NotificationService: { createNotification: async () => ({}) } };
       if (name.includes('constants')) return { EVENT_CONSTANTS: { TICKET_CODE_PREFIX: 'YRD' } };
       if (name === 'qrcode') return { toDataURL: async () => 'data:qr' };
       if (name === 'node:crypto') return crypto;
@@ -226,6 +232,7 @@ function purchaseRoute({ price = 2000, errorTable, eventEnd = '2099-01-02T12:00:
     '@/lib/email/resend-service': { ResendEmailService: { isConfigured: () => false } },
     '@/lib/notifications/server-push-notification': { sendPushNotification: async () => {} },
     '@/lib/events/ticket-checkout': { TicketCheckoutError, createTicketCheckout: async () => { calls.push({ name: 'createTicketCheckout' }); return { success: true, paylukPaymentToken: 'PY_TOKEN' }; } },
+    '@/lib/events/ticket-service': { TicketService: { notifyOrganizerOfTicketSale: async () => {} } },
     qrcode: {},
   };
   const output = ts.transpileModule(fs.readFileSync('src/app/api/events/tickets/purchase/route.ts', 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText;

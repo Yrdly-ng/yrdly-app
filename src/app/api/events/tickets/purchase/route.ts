@@ -11,8 +11,7 @@ import { TicketService } from '@/lib/events/ticket-service';
 
 /**
  * POST /api/events/tickets/purchase
- * Initialises a Payluk Escrow payment for a ticket.
- * Returns paylukPaymentToken & payment_link.
+ * Initialises the configured payment provider after reserving a paid ticket order.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -46,23 +45,26 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Validate event & tier ────────────────────────────────────────────────
-    const { data: event } = await supabaseAdmin
+    const { data: event, error: eventError } = await supabaseAdmin
       .from('events')
       .select('id, title, status, organizer_id, end_time')
       .eq('id', event_id)
       .single();
 
+    if (eventError && eventError.code !== 'PGRST116') return NextResponse.json({ error: 'Event lookup is temporarily unavailable.' }, { status: 503 });
     if (!event) return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     if (event.status !== 'PUBLISHED') return NextResponse.json({ error: 'Event is not available' }, { status: 400 });
+    if (!event.end_time || !Number.isFinite(Date.parse(event.end_time)) || Date.parse(event.end_time) <= Date.now()) return NextResponse.json({ error: 'This event has ended.' }, { status: 400 });
     if (event.organizer_id === user.id) return NextResponse.json({ error: 'Organizers cannot purchase their own tickets' }, { status: 400 });
 
-    const { data: tier } = await supabaseAdmin
+    const { data: tier, error: tierError } = await supabaseAdmin
       .from('ticket_tiers')
       .select('id, name, price, capacity, sold, is_visible, sale_ends_at')
       .eq('id', tier_id)
       .eq('event_id', event_id)
       .single();
 
+    if (tierError && tierError.code !== 'PGRST116') return NextResponse.json({ error: 'Ticket lookup is temporarily unavailable.' }, { status: 503 });
     if (!tier) return NextResponse.json({ error: 'Ticket tier not found' }, { status: 404 });
     const tierPrice = Number(tier.price);
     if (!isMoneyAmount(tierPrice) || (tierPrice > 0 && !isPaidPrice(tierPrice))) {
@@ -78,13 +80,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `You can only purchase a maximum of ${MAX_TICKETS_PER_TIER} tickets per tier.` }, { status: 400 });
     }
 
-    const { data: existingUserTickets } = await supabaseAdmin
+    const { data: existingUserTickets, error: ownedError } = await supabaseAdmin
       .from('tickets')
       .select('id')
       .eq('buyer_id', user.id)
       .eq('tier_id', tier_id)
       .in('status', ['PAID', 'USED']);
 
+    if (ownedError) return NextResponse.json({ error: 'Your ticket balance could not be checked. Please retry.' }, { status: 503 });
     const userOwnedCount = existingUserTickets?.length || 0;
     if (userOwnedCount + quantity > MAX_TICKETS_PER_TIER) {
       const remainingAllowed = Math.max(0, MAX_TICKETS_PER_TIER - userOwnedCount);
@@ -94,12 +97,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'MAX_TICKET_LIMIT_EXCEEDED', message }, { status: 400 });
     }
 
-    if (tier.price === 0 && tier.capacity !== null && (tier.sold + quantity) > tier.capacity) {
+    if (tierPrice === 0 && tier.capacity !== null && (tier.sold + quantity) > tier.capacity) {
       return NextResponse.json({ error: 'SOLD_OUT', message: `Not enough tickets left. Only ${Math.max(0, tier.capacity - tier.sold)} available.` }, { status: 409 });
     }
 
     // ── Free ticket — create directly, no payment needed ────────────────────
-    if (tier.price === 0) {
+    if (tierPrice === 0) {
       const ticketsToInsert = [];
       
       for (let i = 0; i < quantity; i++) {
@@ -276,7 +279,7 @@ export async function POST(request: NextRequest) {
     const result = await createTicketCheckout({
       event_id, tier_id, buyer_id: user.id, quantity,
       attendee_name: attendee_name.trim(), attendee_email: attendee_email.trim(), attendee_phone: attendee_phone || null,
-    }, `${quantity}x ${tier.name} — ${event.title}`, event.end_time);
+    }, `${quantity}x ${tier.name} — ${event.title}`, event.end_time, body.payment_client === 'hosted-v1');
     return NextResponse.json(result);
   } catch (error) {
     if (error instanceof TicketCheckoutError) return NextResponse.json({ error: error.message }, { status: error.status });

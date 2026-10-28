@@ -21,6 +21,17 @@ An account-bound offer of an event role that expires after seven days unless acc
 **Check-in history**:
 The record of successful ticket admissions, including the time and the person who admitted each guest.
 
+### Event payments
+
+**Organiser earnings**:
+The organiser's ticket proceeds after YRDLY commission and payment processing fees, subject to refunds and disputes.
+
+**Eligible proceeds**:
+Settled organiser earnings available to request for withdrawal after the event hold and financial checks.
+
+**Event hold**:
+The period ending no earlier than 24 hours after an event finishes, during which its organiser earnings cannot be withdrawn.
+
 ### Business directory
 
 **Business type**:

@@ -2,7 +2,7 @@
 
 import { authenticatedFetch } from "@/lib/auth/authenticated-fetch";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -84,6 +84,48 @@ export default function EventDetailPage() {
   const [hasTicket, setHasTicket] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [reload, setReload] = useState(0);
+  const [pendingPaystack, setPendingPaystack] = useState<{ reference: string; authorizationUrl?: string } | null>(null);
+  const [paymentChecking, setPaymentChecking] = useState(false);
+  const [paymentMessage, setPaymentMessage] = useState("");
+  const verifyingPaystack = useRef(false);
+  const pendingKey = `yrdly:event-checkout:${user?.id || "guest"}:${id}`;
+
+  const checkPaystackPayment = useCallback(async (reference: string) => {
+    if (verifyingPaystack.current) return;
+    verifyingPaystack.current = true;
+    setPaymentChecking(true);
+    try {
+      const result = await authenticatedFetch("/api/events/tickets/verify", { tx_ref: reference });
+      if (!result?.success || !result.ticket?.id) throw new Error("Your payment has not been confirmed yet.");
+      try { sessionStorage.removeItem(pendingKey); } catch { /* Storage may be disabled. */ }
+      setPendingPaystack(null);
+      setHasTicket(true);
+      router.push("/my-tickets?success=1");
+    } catch (error) {
+      setPaymentMessage(error instanceof Error ? error.message : "Payment confirmation is still pending. Check again before paying.");
+    } finally {
+      verifyingPaystack.current = false;
+      setPaymentChecking(false);
+    }
+  }, [pendingKey, router]);
+
+  useEffect(() => {
+    if (!user?.id || !id) return;
+    const params = new URL(window.location.href).searchParams;
+    const reference = params.get("paystack_return") === "1" ? params.get("reference") || params.get("trxref") : null;
+    if (reference && /^[A-Za-z0-9.=_-]{1,100}$/.test(reference)) {
+      setPendingPaystack({ reference });
+      try { sessionStorage.setItem(pendingKey, JSON.stringify({ reference })); } catch { /* Recovery is also server backed. */ }
+      void checkPaystackPayment(reference);
+      return;
+    }
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(pendingKey) || "null");
+      if (typeof saved?.reference === "string" && /^[A-Za-z0-9.=_-]{1,100}$/.test(saved.reference)) {
+        setPendingPaystack(saved);
+      }
+    } catch { /* A stale local record must not block the event. */ }
+  }, [user?.id, id, pendingKey, checkPaystackPayment]);
 
   useEffect(() => {
     if (!id) return;
@@ -126,7 +168,7 @@ export default function EventDetailPage() {
     return () => {
       current = false;
     };
-  }, [user?.id, id]);
+  }, [user, id]);
 
   // Pre-fill form with auth user data
   useEffect(() => {
@@ -159,6 +201,7 @@ export default function EventDetailPage() {
     try {
       const data = await authenticatedFetch("/api/events/tickets/purchase", {
         event_id: id,
+        payment_client: "hosted-v1",
         tier_id: purchase.tier.id,
         attendee_name: form.name.trim(),
         attendee_email: form.email.trim(),
@@ -173,6 +216,17 @@ export default function EventDetailPage() {
         // Free ticket — go straight to my-tickets
         setPurchase((s) => ({ ...s, step: "success" }));
         setTimeout(() => router.push("/my-tickets?success=1"), 1500);
+      } else if (data.provider === "paystack") {
+        const url = new URL(data.authorizationUrl);
+        if (url.protocol !== "https:" || url.hostname !== "checkout.paystack.com" || url.username || url.password || url.port) {
+          throw new Error("The payment link could not be validated. Please contact support.");
+        }
+        const pending = { reference: data.tx_ref as string, authorizationUrl: url.href };
+        setPendingPaystack(pending);
+        try { sessionStorage.setItem(pendingKey, JSON.stringify(pending)); } catch { /* The return URL carries the reference. */ }
+        if (data.sandbox && !window.confirm("Paystack sandbox test: no real money will be charged. Continue to test checkout?")) return;
+        window.location.assign(url.href);
+        // Checkout itself displays Paystack's test-mode banner for sandbox sessions.
       } else if (data.paylukPaymentToken) {
         const publicKey = process.env.NEXT_PUBLIC_PAYLUK_PUBLIC_KEY;
         if (!publicKey)
@@ -450,6 +504,22 @@ export default function EventDetailPage() {
           onClose={() => setLightboxOpen(false)}
           initialIndex={activeImageIndex}
         />
+      )}
+
+      {pendingPaystack && (
+        <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-6" aria-label="Pending ticket payment">
+          <div className="rounded-2xl border border-border bg-muted/40 p-5 space-y-3">
+            <h2 className="font-semibold">Check your ticket payment</h2>
+            <p className="text-sm text-muted-foreground">If you paid, check its status before starting another payment.</p>
+            {paymentMessage && <p className="text-sm" role="status">{paymentMessage}</p>}
+            <div className="flex flex-wrap gap-3">
+              <Button disabled={paymentChecking} onClick={() => void checkPaystackPayment(pendingPaystack.reference)}>
+                {paymentChecking ? "Checking payment…" : "Check payment"}
+              </Button>
+              <Link href="/my-tickets" className="text-sm underline self-center">My tickets</Link>
+            </div>
+          </div>
+        </section>
       )}
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-8 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)] gap-8 lg:gap-12">
@@ -773,6 +843,11 @@ export default function EventDetailPage() {
                     </div>
                   </div>
 
+                  {(purchase.tier?.price || 0) > 0 && (
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Refund requests are reviewed by the event organiser with Yrdly support under the event’s cancellation and refund policy. The payment provider does not decide refunds.
+                    </p>
+                  )}
                   {purchase.errorMsg && (
                     <p className="font-sans text-xs text-red-400 flex items-center gap-1">
                       <AlertCircle className="w-3 h-3" /> {purchase.errorMsg}
