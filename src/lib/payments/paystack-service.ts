@@ -38,6 +38,8 @@ export function getPaystackEventMode(): 'test' | 'live' | null {
     try {
       const hostname = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL || '').hostname;
       if (projectRef && hostname === `${projectRef}.supabase.co`) return 'test';
+      // This custom domain is activated for this exact Supabase project.
+      if (projectRef === 'yoiyqxtpmxnrrbqqidcs' && hostname === 'api.yrdly.ng') return 'test';
       if (process.env.PAYSTACK_LOCAL_SANDBOX === 'true' && ['localhost', '127.0.0.1'].includes(hostname)) return 'test';
     } catch { return null; }
     return null;

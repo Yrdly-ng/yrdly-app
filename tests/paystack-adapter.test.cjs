@@ -26,6 +26,13 @@ test('live checkout stays disabled without every operations gate',()=>{
   env.PAYSTACK_EVENT_OPERATIONS_APPROVED='true';
   assert.equal(adapter(env).getPaystackEventMode(),'live');
 });
+
+test('the activated YRDLY Supabase custom domain matches only its known project',()=>{
+  const env={PAYSTACK_SECRET_KEY:'sk_test_fixture',PAYSTACK_EVENT_CHECKOUT_ENABLED:'true',VERCEL_ENV:'production',PAYSTACK_TEST_ON_MAIN:'true',NEXT_PUBLIC_SUPABASE_URL:'https://api.yrdly.ng',PAYSTACK_SANDBOX_PROJECT_REF:'yoiyqxtpmxnrrbqqidcs'};
+  assert.equal(adapter(env).getPaystackEventMode(),'test');
+  env.PAYSTACK_SANDBOX_PROJECT_REF='another-project';
+  assert.equal(adapter(env).getPaystackEventMode(),null);
+});
 test('signature binds exact raw bytes and malformed signatures fail safely',()=>{
   const key='sk_test_fixture',raw='{"event":"charge.success","data":{}}';
   const api=adapter({PAYSTACK_SECRET_KEY:key});
