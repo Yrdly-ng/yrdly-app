@@ -27,7 +27,9 @@ test("event team database enforces account, event, invitation, role and admissio
       GRANT SELECT ON public.events TO authenticated;
       CREATE TABLE public.ticket_tiers(id uuid PRIMARY KEY,name text);
       CREATE TABLE public.tickets(id uuid PRIMARY KEY,buyer_id uuid,event_id uuid,tier_id uuid,ticket_code text,status text,refund_status text,expires_at timestamptz,attendee_name text,attendee_email text,scanned_at timestamptz,scanned_by uuid,updated_at timestamptz,amount_paid numeric);
-      CREATE TABLE public.notification_fixture(user_id uuid,type text,data jsonb);
+      CREATE TABLE public.notifications(user_id uuid,type text,data jsonb,
+        CONSTRAINT notifications_type_check CHECK (type IN ('event_invite','message')));
+      CREATE VIEW public.notification_fixture AS SELECT * FROM public.notifications;
       CREATE FUNCTION public.create_notification(uuid,text,text,text,uuid,uuid,text,jsonb) RETURNS uuid LANGUAGE plpgsql AS $$ BEGIN INSERT INTO public.notification_fixture VALUES ($1,$2,$8); RETURN gen_random_uuid(); END $$;
       INSERT INTO public.events VALUES ('${event}','${owner}','Main event',now()+interval '1 day','PUBLISHED'),('${other}','${owner}','Other event',now()+interval '1 day','PUBLISHED');
       INSERT INTO public.ticket_tiers VALUES ('${id(200)}','General');
@@ -131,6 +133,19 @@ test("event team database enforces account, event, invitation, role and admissio
       );
       return `TICKET-${n}`;
     }
+    await t.test('email invitations fail atomically with the legacy notification constraint', async () => {
+      await assert.rejects(
+        mutate(owner, 'invite', 'manager', null, 'manager@example.test'),
+        error => error.code === '23514' && error.message.includes('notifications_type_check'),
+      );
+      assert.equal((await db.query('SELECT count(*)::int AS n FROM public.event_team_members')).rows[0].n, 0);
+    });
+    await db.exec(fs.readFileSync('supabase/migrations/20261028101434_allow_event_team_invite_notifications.sql', 'utf8'));
+    await t.test('notification extension preserves existing types and still rejects unknown types', async () => {
+      await db.query("INSERT INTO public.notifications(type) VALUES ('message')");
+      await db.query("DELETE FROM public.notifications WHERE type='message'");
+      await assert.rejects(db.query("INSERT INTO public.notifications(type) VALUES ('unknown_type')"), error => error.code === '23514');
+    });
     await t.test(
       "legacy admissions retain their scanner and history after the migration",
       async () => {
