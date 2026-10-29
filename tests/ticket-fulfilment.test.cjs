@@ -39,7 +39,7 @@ function fixture(options = {}) {
   const admin = { from(table) {
     let operation = 'select', payload;
     const query = {};
-    for (const method of ['select', 'eq', 'or', 'in', 'single', 'maybeSingle']) query[method] = () => query;
+    for (const method of ['select', 'eq', 'or', 'in', 'limit', 'single', 'maybeSingle']) query[method] = () => query;
     query.insert = value => { operation = 'insert'; payload = value; return query; };
     query.update = value => { operation = 'update'; payload = value; return query; };
     query.then = (resolve, reject) => Promise.resolve().then(() => {
@@ -69,6 +69,7 @@ function fixture(options = {}) {
     'supabase-admin': { supabaseAdmin: admin },
     'resend-service': { ResendEmailService: { isConfigured: () => false } },
     qrcode: {}, 'server-push-notification': { sendPushNotification: async () => {} },
+    'server-notification-service': { NotificationService: { createNotification: async () => 'notification-id' } },
     'payluk-service': { PaylukService: { verifyEscrow: async () => { providerReads++; return options.provider || { status: 'ONGOING', amount: 4000 }; } } },
     'payment-reconciliation': { flagPayment: async () => { flags++; } },
   });

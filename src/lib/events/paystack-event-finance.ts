@@ -135,8 +135,30 @@ export async function reconcilePaystackFinancialWebhook(event: string, data: Rec
   if (paystackKeyMode() === 'test' && getPaystackEventMode() !== 'test') throw new Error('Sandbox database configuration is not confirmed.');
   if (event.startsWith('transfer.') && typeof data.reference === 'string') {
     await reconcileEventWithdrawal(data.reference);
-  } else if (event.startsWith('refund.') && data.id != null) {
-    await reconcileTicketRefund(String(data.id));
+  } else if (event.startsWith('refund.')) {
+    if (data.id != null) {
+      await reconcileTicketRefund(String(data.id));
+      return;
+    }
+    // Paystack also sends refund events identified by transaction_reference.
+    // Resolve only our stored refund ID, then fetch its authoritative state;
+    // webhook status/amount alone must never mark a ticket refunded.
+    const reference = data.transaction_reference;
+    const amount = typeof data.amount === 'string' && /^\d+$/.test(data.amount) ? Number(data.amount) : data.amount;
+    if (typeof reference !== 'string' || !/^[A-Za-z0-9._=-]{1,100}$/.test(reference) ||
+        data.currency !== 'NGN' || data.domain !== paystackKeyMode() ||
+        typeof amount !== 'number' || !Number.isSafeInteger(amount) || amount <= 0) {
+      throw new Error('Refund webhook identity mismatch.');
+    }
+    const order = await supabaseAdmin.from('escrow_transactions').select('id').eq('payment_reference', reference)
+      .eq('payment_provider', 'paystack').eq('item_type', 'ticket').maybeSingle();
+    check(order.error);
+    if (!order.data) return;
+    const refunds = await supabaseAdmin.from('paystack_ticket_refunds').select('provider_refund_id')
+      .eq('transaction_id', order.data.id).eq('amount_kobo', amount).not('provider_refund_id', 'is', null).limit(2);
+    check(refunds.error);
+    if (refunds.data?.length !== 1) throw new Error('Refund webhook requires reference reconciliation.');
+    await reconcileTicketRefund(refunds.data[0].provider_refund_id!);
   } else if (event.startsWith('charge.dispute.')) {
     const transaction = data.transaction as { reference?: string } | undefined;
     if (!transaction?.reference) throw new Error('Dispute transaction reference missing.');
