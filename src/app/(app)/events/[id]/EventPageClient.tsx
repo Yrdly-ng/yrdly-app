@@ -203,13 +203,13 @@ export default function EventDetailPage() {
     setContactingOrganizer(true);
     try {
       const { data: conversations, error: lookupError } = await supabase.from('conversations')
-        .select('id, participant_ids').eq('type', 'event').eq('item_id', event.id)
+        .select('id, participant_ids').eq('type', 'event').eq('context->>event_id', event.id)
         .contains('participant_ids', [user.id, event.organizer_id]);
       if (lookupError) throw lookupError;
       let conversationId = conversations?.find((conversation) => conversation.participant_ids?.length === 2)?.id;
       if (!conversationId) {
         const { data, error } = await supabase.from('conversations').insert({
-          type: 'event', participant_ids: [user.id, event.organizer_id], item_id: event.id,
+          type: 'event', participant_ids: [user.id, event.organizer_id], context: { event_id: event.id },
           item_title: event.title, item_image: event.cover_image_url,
         }).select('id').single();
         if (error || !data?.id) throw error || new Error('Conversation unavailable');

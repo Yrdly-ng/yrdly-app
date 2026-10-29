@@ -1,6 +1,7 @@
+import { flowEvent } from "../telemetry/flow-events";
 import { supabase } from "../supabase/supabase";
 
-export async function authenticatedFetch<T = any>(
+async function performAuthenticatedFetch<T = any>(
   path: string,
   body: unknown,
   method = "POST",
@@ -46,4 +47,21 @@ export async function authenticatedFetch<T = any>(
       { status: response.status, code: result?.error },
     );
   return result;
+}
+
+function recordFlow(path: string, phase: 'started' | 'succeeded' | 'failed', result?: unknown) {
+  const event = flowEvent(path, phase, result);
+  if (event && typeof window !== 'undefined') void import('../telemetry/analytics').then(module => module.trackWebEvent(event)).catch(() => {});
+}
+
+export async function authenticatedFetch<T = any>(path: string, body: unknown, method = 'POST'): Promise<T> {
+  if (method.toUpperCase() === 'POST') recordFlow(path, 'started');
+  try {
+    const result = await performAuthenticatedFetch<T>(path, body, method);
+    if (method.toUpperCase() === 'POST') recordFlow(path, 'succeeded', result);
+    return result;
+  } catch (error) {
+    if (method.toUpperCase() === 'POST') recordFlow(path, 'failed');
+    throw error;
+  }
 }

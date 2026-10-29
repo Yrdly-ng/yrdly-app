@@ -1,6 +1,8 @@
+import { captureWebAnalyticsError } from "./analytics";
 import * as Sentry from "@sentry/nextjs";
 import {
   errorOperations,
+  isInjectedBrowserError,
   isErrorCode,
   isTelemetryUserId,
   sanitizeSentryEvent,
@@ -55,7 +57,7 @@ export function initializeWebSentry(runtime: Runtime): void {
       replaysOnErrorSampleRate: 0,
       maxBreadcrumbs: 0,
       beforeBreadcrumb: () => null,
-      beforeSend: (event) => sanitizeSentryEvent(event, runtime === "browser"),
+      beforeSend: (event) => runtime === "browser" && isInjectedBrowserError(event) ? null : sanitizeSentryEvent(event, runtime === "browser"),
       beforeSendTransaction: () => null,
       integrations: (defaults) =>
         defaults.filter(
@@ -92,6 +94,7 @@ export function captureWebError(
   error: unknown,
   context?: { operation?: string; code?: string },
 ): void {
+  if (typeof window !== "undefined") void captureWebAnalyticsError(error);
   try {
     const client = Sentry.getClient();
     if (!client || client.getOptions().enabled === false) return;

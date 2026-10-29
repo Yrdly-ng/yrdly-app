@@ -1,10 +1,11 @@
+import { captureWebError } from '@/lib/telemetry/sentry';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/supabase/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
 import { NotificationService } from '@/lib/notifications/server-notification-service';
 
 /** Client notifications are derived from a persisted action, never financial claims. */
-export async function POST(request: NextRequest) {
+async function performNotificationAction(request: NextRequest) {
   const { data: { user }, error } = await getAuthenticatedUser(request);
   if (error || !user) return NextResponse.json({ error: 'Unauthorized' }, { status:error?.status === 403 ? 403 : error?.status === 503 ? 503 : 401 });
   const body = await request.json().catch(() => null);
@@ -108,4 +109,13 @@ export async function POST(request: NextRequest) {
   const id = await NotificationService.createNotification({ userId: body.userId, type: body.type, senderId: user.id,
     relatedId: body.relatedId, relatedType, title, message: `${actor?.name || 'A user'} ${action}`, data: {} });
   return NextResponse.json({ id });
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    return await performNotificationAction(request);
+  } catch (error) {
+    captureWebError(error, { operation: 'notification.actor' });
+    return NextResponse.json({ error: 'Notification delivery is temporarily unavailable. Please refresh before retrying.' }, { status: 503 });
+  }
 }

@@ -1,5 +1,8 @@
 // Only registered page templates leave the browser. IDs, usernames and query strings do not.
 export const pageRoutes = [
+  "/events/team",
+  "/events/[id]/team",
+  "/profile/payouts/[payoutId]",
   "/profile/payouts/add",
   "/admin/appeals",
   "/admin/create-alert",

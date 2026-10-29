@@ -1,3 +1,4 @@
+import { diagnosticMessage } from './diagnostics';
 import type { PostHog } from "posthog-js";
 import { isTelemetryUserId } from "./sentry-privacy";
 import { productEvents, sanitizeAnalyticsEvent } from "./analytics-privacy";
@@ -8,6 +9,7 @@ let initializing: Promise<void> | undefined;
 let desiredUser: string | null = null;
 let appliedUser: string | null = null;
 let lastPath: string | null = null;
+let desiredReplay = false;
 
 function enabled(): boolean {
   return (
@@ -68,9 +70,17 @@ export async function initializeWebAnalytics(): Promise<void> {
         capture_heatmaps: false,
         capture_performance: false,
         disable_session_recording: true,
+        session_recording: {
+          maskAllInputs: true, maskTextSelector: '*', maskAllElementAttributes: true,
+          blockSelector: 'img,video,audio,canvas,iframe,svg,object,embed,[data-private]',
+          recordHeaders: false, recordBody: false, captureJsonLd: false,
+          inlineStylesheet: false, collectFonts: false, slimDOMOptions: "all",
+          maskCapturedNetworkRequestFn: () => null,
+        },
+        enable_recording_console_log: false,
         disable_surveys: true,
-        disable_external_dependency_loading: true,
-        advanced_disable_flags: true,
+        disable_external_dependency_loading: false,
+        advanced_disable_flags: false,
         advanced_disable_feature_flags: true,
         advanced_disable_toolbar_metrics: true,
         persistence: "memory",
@@ -79,6 +89,7 @@ export async function initializeWebAnalytics(): Promise<void> {
         before_send: (event) => sanitizeAnalyticsEvent(event, key),
       });
       client = posthog;
+      if (desiredReplay) client.startSessionRecording();
       // Identify receives no email, name, phone, location, or profile properties.
       applyIdentity();
     })().catch(() => {
@@ -90,9 +101,15 @@ export async function initializeWebAnalytics(): Promise<void> {
 
 export async function trackWebPage(pathname: string): Promise<void> {
   const template = pageTemplate(pathname);
-  if (!template || !enabled()) return;
   try {
+    desiredReplay = enabled() && !!template && [
+      '/businesses', '/businesses/[businessId]', '/businesses/[businessId]/catalog/[itemId]',
+      '/events', '/events/[id]', '/marketplace', '/marketplace/[itemId]', '/explore',
+    ].includes(template);
+    if (client && !desiredReplay) client.stopSessionRecording();
+    if (!template || !enabled()) return;
     await initializeWebAnalytics();
+    if (client && desiredReplay) client.startSessionRecording();
     if (!client || lastPath === pathname) return;
     client.capture("$pageview", {
       $pathname: template,
@@ -105,7 +122,7 @@ export async function trackWebPage(pathname: string): Promise<void> {
 }
 
 export async function trackWebEvent(
-  event: "message_sent" | "business_saved",
+  event: string,
 ): Promise<void> {
   if (!enabled() || !productEvents.has(event)) return;
   try {
@@ -114,4 +131,11 @@ export async function trackWebEvent(
   } catch {
     /* Analytics cannot interrupt the action being measured. */
   }
+}
+
+export async function captureWebAnalyticsError(error: unknown): Promise<void> {
+  try {
+    await initializeWebAnalytics();
+    client?.captureException(new Error(diagnosticMessage(error)));
+  } catch { /* Analytics never interrupts error recovery. */ }
 }

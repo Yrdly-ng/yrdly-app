@@ -1,3 +1,4 @@
+import { diagnosticMessage } from './diagnostics';
 import type { ErrorEvent, StackFrame } from "@sentry/nextjs";
 
 const errorTypes = new Set([
@@ -18,6 +19,7 @@ export const errorOperations = new Set([
   "app.error_boundary",
   "app.logger",
   "app.request",
+  "notification.actor",
 ]);
 
 export function isTelemetryUserId(value: unknown): value is string {
@@ -116,7 +118,7 @@ export function sanitizeSentryEvent(
             type: errorTypes.has(exception.type || "")
               ? exception.type
               : "Error",
-            value: "Error details omitted for privacy",
+            value: diagnosticMessage({ message: exception.value }) === 'Application operation failed' ? 'Error details omitted for privacy' : diagnosticMessage({ message: exception.value }),
             stacktrace: exception.stacktrace
               ? { frames: exception.stacktrace.frames?.map(cleanFrame) }
               : undefined,
@@ -134,4 +136,13 @@ export function sanitizeSentryEvent(
   };
   if (!safe.exception) safe.message = "Application error";
   return safe;
+}
+
+/** Ignore only wholly injected extension stacks; mixed application stacks remain visible. */
+export function isInjectedBrowserError(event: ErrorEvent): boolean {
+  const frames = event.exception?.values?.flatMap(value => value.stacktrace?.frames || []) || [];
+  return frames.length > 0 && frames.every(frame => {
+    const filename = frame.filename || frame.abs_path || '';
+    return /^(?:chrome|moz|safari-web)-extension:\/\//.test(filename) || /^app:\/\/\/scripts\/inpage\.js$/.test(filename);
+  });
 }

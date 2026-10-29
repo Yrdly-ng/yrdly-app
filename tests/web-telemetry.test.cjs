@@ -18,7 +18,11 @@ function runtime({ config = env, browser = true, fail = false } = {}) {
     calls.push([name, ...args]);
     if (fail) throw new Error("offline");
   };
+  const replayTransitions = [];
   const ph = {
+    startSessionRecording: () => replayTransitions.push("start"),
+    stopSessionRecording: () => replayTransitions.push("stop"),
+    captureException: (...args) => call("ph.exception", ...args),
     init(key, options) {
       call("ph.init", key);
       analyticsOptions = options;
@@ -67,6 +71,7 @@ function runtime({ config = env, browser = true, fail = false } = {}) {
   return {
     load: (name) => load(path.resolve("src/lib/telemetry", name + ".ts")),
     calls,
+    replayTransitions,
     get analyticsOptions() {
       return analyticsOptions;
     },
@@ -121,7 +126,7 @@ test("once-only initialization, deduplicated page views, and reset before switch
   assert.equal(r.analyticsOptions.persistence, "memory");
   assert.equal(r.analyticsOptions.autocapture, false);
   assert.equal(r.analyticsOptions.disable_session_recording, true);
-  assert.equal(r.analyticsOptions.advanced_disable_flags, true);
+  assert.equal(r.analyticsOptions.advanced_disable_flags, false);
   assert.equal(r.analyticsOptions.ip, false);
 });
 
@@ -305,4 +310,35 @@ test("SDK failures cannot break actions or error handling", async () => {
   await a.trackWebPage("/home");
   a.setWebAnalyticsUser(A);
   await a.trackWebEvent("business_saved");
+});
+
+test("PostHog records masked public routes and stops on payment, chat and account pages", async () => {
+ const r=runtime();const analytics=r.load('analytics');await analytics.trackWebPage('/events');
+ assert.ok(r.replayTransitions.includes('start'));
+ const recording=r.analyticsOptions.session_recording;
+ assert.equal(recording.maskAllInputs,true);assert.equal(recording.maskTextSelector,'*');assert.equal(recording.maskAllElementAttributes,true);
+ assert.equal(recording.recordBody,false);assert.equal(recording.recordHeaders,false);assert.equal(recording.maskCapturedNetworkRequestFn({url:'private'}),null);
+ await analytics.trackWebPage('/messages/private-id');assert.equal(r.replayTransitions.at(-1),'stop');
+ await analytics.trackWebPage('/payment/success');assert.equal(r.replayTransitions.at(-1),'stop');
+ for (const path of ['/businesses/private-id/chat', '/businesses/private-id/bookings', '/unregistered-private']) {
+  await analytics.trackWebPage('/events');assert.equal(r.replayTransitions.at(-1),'start');
+  await analytics.trackWebPage(path);assert.equal(r.replayTransitions.at(-1),'stop');
+ }
+});
+test("PostHog safe exceptions and masked snapshots survive the privacy filter without other properties",async()=>{
+ const r=runtime();await r.load('analytics').initializeWebAnalytics();const filter=r.analyticsOptions.before_send;
+ const error=filter({event:'$exception',properties:{$exception_list:[{type:'Error',value:'private user account',stacktrace:{frames:[{vars:{secret:'private'}}]}}],email:'private'}});
+ assert.ok(error);assert.doesNotMatch(JSON.stringify(error),/private|secret/);assert.equal(error.properties.$exception_list[0].value,'Application operation failed');
+ const snapshot=filter({event:'$snapshot',properties:{$snapshot_data:[{type:3,data:{x:1}}],$session_id:'session',email:'private'}});
+ assert.deepEqual(snapshot.properties.$snapshot_data,[{type:3,data:{x:1}}]);assert.doesNotMatch(JSON.stringify(snapshot),/private/);
+ const metadata=filter({event:'$snapshot',properties:{$snapshot_data:[{type:4,data:{href:'https://app.yrdly.ng/private?secret=private',width:390,height:800}},{type:5,data:{secret:'private'}},{type:6,data:{secret:'private'}}]}});
+ assert.equal(metadata.properties.$snapshot_data.length,1);assert.equal(metadata.properties.$snapshot_data[0].data.href,'https://app.yrdly.ng/');assert.doesNotMatch(JSON.stringify(metadata),/private/);
+});
+
+test("injected-only browser errors are filtered while mixed application stacks stay visible",()=>{
+ const r=runtime();r.load('sentry').initializeWebSentry('browser');
+ const event={exception:{values:[{type:'Error',value:'private',stacktrace:{frames:[{filename:'app:///scripts/inpage.js'}]}}]}};
+ assert.equal(r.sentryOptions.beforeSend(event),null);
+ event.exception.values[0].stacktrace.frames.push({filename:'app:///_next/static/chunks/app.js',in_app:true});
+ assert.ok(r.sentryOptions.beforeSend(event));
 });

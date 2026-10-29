@@ -33,14 +33,14 @@ test('organiser contact uses an existing two-person event conversation',async()=
   const app=fixture({existing:[{id:'old',participant_ids:['buyer','organiser']}]});
   await app.run();
   assert.deepEqual(app.routes,['/messages/old']);
-  assert.ok(app.queries.some(([kind,key,value])=>kind==='eq'&&key==='item_id'&&value==='event'));
+  assert.ok(app.queries.some(([kind,key,value])=>kind==='eq'&&key==='context->>event_id'&&value==='event'));
   assert.ok(app.queries.some(([kind,key,value])=>kind==='contains'&&key==='participant_ids'&&value.join() === 'buyer,organiser'));
   assert.equal(app.queries.filter(([kind])=>kind==='insert').length,0);
 });
 test('contact creates an event-scoped conversation without sending a message',async()=>{
   const app=fixture();await app.run();
   const insert=app.queries.find(([kind])=>kind==='insert')[1];
-  assert.equal(insert.type,'event');assert.equal(insert.item_id,'event');
+  assert.equal(insert.type,'event');assert.deepEqual(insert.context,{event_id:'event'});assert.equal(insert.item_id,undefined);
   assert.deepEqual(insert.participant_ids,['buyer','organiser']);
   assert.deepEqual(app.routes,['/messages/created']);
 });
