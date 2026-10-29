@@ -342,6 +342,7 @@ function payoutHarness({ verifyStatus = 'success', walletBalance = 2500, earning
   };
   const {PaylukService} = load('src/lib/payments/payluk-service.ts',{'./payluk-onboarding':{},fetch:async (url,options)=>{
     calls.push(new URL(url).pathname);
+    if (url.endsWith('/bank-list')) return Response.json({status:200,data:[{name:'QA Bank',code:'001'}]});
     if (url.endsWith('/wallet')) return Response.json({status:200,data:{mainBalance:walletBalance}});
     if (url.endsWith('/create-intent')) {
       if (intentError) return Response.json({status:429,message:'Too many request'},{status:429});
@@ -366,10 +367,10 @@ function payoutHarness({ verifyStatus = 'success', walletBalance = 2500, earning
     }},
     './server-notification-service':{NotificationService:{createPayoutProcessedNotification:async()=>{},createPayoutFailedNotification:async()=>{}}},
   });
-  return {PayoutService,admin,calls,updates,account,get payout(){return payout;}};
+  return {PayoutService,PaylukService,admin,calls,updates,account,get payout(){return payout;}};
 }
 
-test('one hosted withdrawal uses five provider calls and reserves before execution',async()=>{
+test('one hosted withdrawal uses six provider calls and reserves before execution',async()=>{
   const h=payoutHarness();
   const {POST}=load('src/app/api/seller/payouts/request/route.ts',{
     '@/lib/supabase-server':{getAuthenticatedUser:async()=>({data:{user:{id:'seller'}}})},
@@ -377,10 +378,40 @@ test('one hosted withdrawal uses five provider calls and reserves before executi
   });
   const response=await POST(new Request('https://qa.invalid/api/seller/payouts/request',{method:'POST',body:JSON.stringify({amount:1200})}));
   assert.equal(response.status,200);assert.equal(h.payout.status,'completed');
-  assert.equal(h.calls.length,5);assert.equal(h.calls.filter(x=>x.endsWith('/wallet')).length,1);
+  assert.equal(h.calls.length,6);assert.equal(h.calls.filter(x=>x.endsWith('/bank-list')).length,1);assert.equal(h.calls.filter(x=>x.endsWith('/wallet')).length,1);
   assert.equal(h.calls.filter(x=>x.endsWith('/verify')).length,1);
   assert.equal(h.payout.amount,1200);const body=await response.json();
   assert.equal(body.amountSentToBank,1189.25);assert.equal(body.fee,10.75);assert.equal(body.totalDebited,1200);
+});
+
+test('mobile preview and confirmed withdrawal fit ten provider requests', async () => {
+  const h = payoutHarness();
+  const mocks = {
+    '@/lib/supabase-server': { getAuthenticatedUser: async () => ({ data: { user: { id: 'seller' } } }) },
+    '@/lib/supabase-admin': { supabaseAdmin: h.admin },
+    '@/lib/payout-service': { PayoutService: h.PayoutService },
+    '@/lib/payluk-service': { PaylukService: h.PaylukService },
+    '@/lib/payluk-onboarding': { getPaylukCustomerId: async () => {
+      h.calls.push('/v1/customer/get/validated');
+      return 'customer';
+    } },
+  };
+  const preview = load('src/app/api/seller/payouts/preview/route.ts', mocks);
+  const request = load('src/app/api/seller/payouts/request/route.ts', mocks);
+  const response = await preview.POST(new Request('https://qa.invalid/api/seller/payouts/preview', {
+    method: 'POST', body: JSON.stringify({ amount: 1200 }),
+  }));
+  assert.equal(response.status, 200);
+  assert.equal(h.calls.length, 4);
+  assert.equal(h.calls.some(endpoint => endpoint.endsWith('/verify')), false);
+  const confirmation = await request.POST(new Request('https://qa.invalid/api/seller/payouts/request', {
+    method: 'POST', body: JSON.stringify({ amount: 1200 }),
+  }));
+  assert.equal(confirmation.status, 200);
+  assert.equal(h.payout.status, 'completed');
+  assert.equal(h.calls.length, 10, 'Do not exceed the provider limit with an ordinary preview and confirmation');
+  assert.equal(h.calls.filter(endpoint => endpoint.endsWith('/bank-list')).length, 1);
+  assert.equal(h.calls.filter(endpoint => endpoint.endsWith('/verify')).length, 1);
 });
 
 for(const status of ['pending','timeout']) test(`payout ${status} retains its submitted marker and reserved balance`,async()=>{
@@ -394,6 +425,7 @@ for(const status of ['pending','timeout']) test(`payout ${status} retains its su
 test('withdrawal execution retains other reservations and rejects insufficient provider funds before staging',async()=>{
   const h=payoutHarness();const id=await h.PayoutService.reservePayout('seller','bank',1200);
   const {PaylukService}=load('src/lib/payments/payluk-service.ts',{'./payluk-onboarding':{},fetch:async url=>{
+    if (url.endsWith('/bank-list')) return Response.json({status:200,data:[{name:'QA Bank',code:'001'}]});
     assert.ok(url.endsWith('/wallet'),'No intent may be staged with insufficient wallet funds');
     return Response.json({status:200,data:{mainBalance:1199}});
   }});
@@ -612,6 +644,7 @@ for (const [status, expected] of [['pending','pending'],['failed','failed'],['su
     const { PaylukService } = load('src/lib/payments/payluk-service.ts', {
       './payluk-onboarding': {},
       fetch: async (url, options) => {
+        if (url.endsWith('/bank-list')) return Response.json({status:200,data:[{name:'QA Bank',code:'044'}]});
         if (url.endsWith('/v1/wallet')) return Response.json({ status: 200, data: { mainBalance: 10000 } });
         if (url.endsWith('/v1/payment/create-intent')) {
           const intent = JSON.parse(options.body);
@@ -635,6 +668,7 @@ for (const [status, expected] of [['pending','pending'],['failed','failed'],['su
 
 test('network loss after transfer execution keeps the result pending', async () => {
   const { PaylukService } = load('src/lib/payments/payluk-service.ts', { './payluk-onboarding': {}, fetch: async (url, options) => {
+    if (url.endsWith('/bank-list')) return Response.json({status:200,data:[{name:'QA Bank',code:'044'}]});
     if (url.endsWith('/v1/wallet')) return Response.json({ status: 200, data: { mainBalance: 10000 } });
     if (url.endsWith('/v1/payment/create-intent')) {
       const intent = JSON.parse(options.body);
@@ -648,7 +682,7 @@ test('network loss after transfer execution keeps the result pending', async () 
   assert.equal(result.reference, 'stable-operation-net');
 });
 
-for (const bankCode of ['999992', '044', 'provider-bank-code']) {
+for (const bankCode of ['100004', '044', 'provider-bank-code']) {
   test(`bank-list code ${bankCode} survives account resolution, preview and withdrawal`, async () => {
     let intents = 0, executions = 0;
     const { PaylukService } = load('src/lib/payments/payluk-service.ts', {
@@ -681,6 +715,61 @@ for (const bankCode of ['999992', '044', 'provider-bank-code']) {
     assert.equal(intents, 4);
     assert.equal(executions, 1);
   });
+}
+
+for (const mode of ['withdrawToBank']) {
+  for (const scenario of ['rate-limit', 'malformed']) {
+    test(`${mode} fails closed when the current bank list is ${scenario}`, async () => {
+      const calls = [];
+      const { PaylukService } = load('src/lib/payments/payluk-service.ts', {
+        './payluk-onboarding': {}, fetch: async url => {
+          calls.push(new URL(url).pathname);
+          assert.ok(url.endsWith('/bank-list'));
+          return scenario === 'rate-limit'
+            ? Response.json({ status: 429, message: 'Too many request' }, { status: 429, headers: { 'Retry-After': '47' } })
+            : Response.json({ status: 200, data: {} });
+        },
+      });
+      const result = await PaylukService[mode]({ sellerPaylukCustomerId: 'customer', amount: 2900,
+        bankCode: '100004', accountNumber: '0000000000', reference: 'bank-list-failure',
+        onIntentReady: async () => { throw new Error('Must not submit'); },
+      });
+      assert.equal(result.success, false);
+      assert.deepEqual(calls, ['/v1/payment/bank-list']);
+      if (scenario === 'rate-limit') assert.equal(result.retryAfterSeconds, 47);
+      else assert.match(result.error, /bank list could not be verified/);
+      if (mode === 'withdrawToBank') assert.equal(result.outcome, 'failed');
+    });
+  }
+  for (const scenario of ['stale-code', 'inactive', 'deleted']) {
+    test(`${mode} rejects ${scenario} before staging a withdrawal`, async () => {
+      const calls = [];
+      const bankCode = scenario === 'stale-code' ? '999992' : '100004';
+      const { PaylukService } = load('src/lib/payments/payluk-service.ts', {
+        './payluk-onboarding': {},
+        fetch: async (url, options) => {
+          calls.push(new URL(url).pathname);
+          if (url.endsWith('/v1/payment/bank-list')) return Response.json({ status: 200, data: [
+            { name: 'OPAY', code: '100004', active: scenario !== 'inactive', is_deleted: scenario === 'deleted' },
+          ] });
+          if (url.endsWith('/v1/wallet')) return Response.json({ status: 200, data: { mainBalance: 2940 } });
+          const input = JSON.parse(options.body);
+          if (url.endsWith('/v1/payment/create-intent')) return Response.json({ status: 200, data: { amount: input.amount, fee: 10.75, reference: input.reference } });
+          return Response.json({ status: false, message: 'Unknown Bank Code' }, { status: 400 });
+        },
+      });
+      let submitted = false;
+      const result = await PaylukService[mode]({ sellerPaylukCustomerId: 'customer', amount: 2900,
+        bankCode, bankName: 'OPay Digital Services Limited (OPay)', accountNumber: '0000000000', reference: 'stale-bank',
+        onIntentReady: async () => { submitted = true; },
+      });
+      assert.equal(result.success, false);
+      assert.match(result.error, /relink.*bank account/i);
+      assert.deepEqual(calls, ['/v1/payment/bank-list']);
+      assert.equal(submitted, false);
+      if (mode === 'withdrawToBank') assert.equal(result.outcome, 'failed');
+    });
+  }
 }
 
 test('suspension lookup errors fail closed', async () => {
@@ -1662,6 +1751,7 @@ for (const mode of ['previewWithdrawal','withdrawToBank']) {
       let savedReference;
       const { PaylukService }=load('src/lib/payments/payluk-service.ts',{
         './payluk-onboarding':{},fetch:async(url,options)=>{
+          if(url.endsWith('/bank-list'))return Response.json({status:200,data:[{name:'QA Bank',code:'044'}]});
           if(url.endsWith('/v1/wallet'))return Response.json({status:200,data:{mainBalance:walletBalance}});
           const input=JSON.parse(options.body);
           if(url.endsWith('/v1/payment/create-intent')){
@@ -1694,6 +1784,7 @@ for (const mode of ['previewWithdrawal','withdrawToBank']) {
       const walletBalance=['fee-tier-adjustment','unstable-fee'].includes(scenario)?2000:budget;
       const {PaylukService}=load('src/lib/payments/payluk-service.ts',{
         './payluk-onboarding':{},fetch:async(url,options)=>{
+          if(url.endsWith('/bank-list'))return Response.json({status:200,data:[{name:'QA Bank',code:'044'}]});
           if(url.endsWith('/v1/wallet'))return Response.json({status:200,data:{mainBalance:walletBalance}});
           const input=JSON.parse(options.body);
           if(url.endsWith('/v1/payment/create-intent')){
@@ -1734,6 +1825,7 @@ for (const mode of ['previewWithdrawal','withdrawToBank']) {
       const created=[],executed=[];
       const { PaylukService } = load('src/lib/payments/payluk-service.ts', {
         './payluk-onboarding':{}, fetch:async(url,options)=>{
+          if(url.endsWith('/bank-list'))return Response.json({status:200,data:[{name:'QA Bank',code:'044'}]});
           if(url.endsWith('/v1/wallet'))return Response.json({status:200,data:{mainBalance:5000}});
           if(url.endsWith('/v1/payment/create-intent')){
             const input=JSON.parse(options.body);created.push(input.amount);
@@ -1890,7 +1982,8 @@ test('unexpected service error after intent persistence preserves uncertain exec
 });
 for (const mode of ['previewWithdrawal','withdrawToBank']) test(`${mode} stops on a wallet rate limit and exposes provider retry delay`,async()=>{
   let calls=0;
-  const {PaylukService}=load('src/lib/payments/payluk-service.ts',{'./payluk-onboarding':{},fetch:async()=>{
+  const {PaylukService}=load('src/lib/payments/payluk-service.ts',{'./payluk-onboarding':{},fetch:async url=>{
+    if(url.endsWith('/bank-list'))return Response.json({status:200,data:[{name:'QA Bank',code:'001'}]});
     calls++;return new Response('Too many request',{status:429,headers:{'Retry-After':'47'}});
   }});
   const result=await PaylukService[mode]({sellerPaylukCustomerId:'customer',amount:1200,reference:'attempt',bankCode:'001',accountNumber:'0000000000',onIntentReady:async()=>{throw Error('Must not execute');}});
@@ -1921,6 +2014,7 @@ for (const [headers,delay] of [[{'Retry-After':'23'},23],[{'RateLimit':'limit=10
 test('verification rate limit never automatically executes again or releases reserved funds',async()=>{
   let verifies=0;
   const {PaylukService}=load('src/lib/payments/payluk-service.ts',{'./payluk-onboarding':{},fetch:async(url,options)=>{
+    if(url.endsWith('/bank-list'))return Response.json({status:200,data:[{name:'QA Bank',code:'001'}]});
     if(url.endsWith('/wallet'))return Response.json({status:200,data:{mainBalance:2000}});
     const input=JSON.parse(options.body);
     if(url.endsWith('/create-intent'))return Response.json({status:200,data:{amount:input.amount,fee:10.75,reference:input.reference}});
