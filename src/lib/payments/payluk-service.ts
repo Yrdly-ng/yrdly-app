@@ -228,6 +228,8 @@ export interface PaylukVirtualAccount {
 export interface PaylukBank {
   name: string;
   code: string;
+  active?: boolean;
+  is_deleted?: boolean;
 }
 
 export interface PaylukResolvedAccount {
@@ -793,6 +795,18 @@ export class PaylukService {
     return response.data;
   }
 
+  private static async withdrawalBankError(bankCode: string): Promise<string | null> {
+    // Settlement providers can change their codes. Validate each execution
+    // against a fresh list; never translate a saved code or reuse a prior session's list.
+    const banks = await this.getBankList();
+    if (!Array.isArray(banks)) throw new Error('The bank list could not be verified. Please try again.');
+    const bank = banks.find(candidate => candidate?.code === bankCode);
+    if (!bank || bank.active === false || bank.is_deleted === true) {
+      return 'Your saved bank is no longer available for withdrawals. Please relink your bank account in Payout Settings using the current bank list.';
+    }
+    return null;
+  }
+
   /**
    * POST /v1/payment/verify-account
    * Resolves an account name by account number + bank code.
@@ -1036,6 +1050,9 @@ export class PaylukService {
         return { outcome:'failed',success:false,reference:params.reference,error:'Enter a valid withdrawal amount with at most two decimal places.' };
       }
       if (params.amount < PAYLUK_WITHDRAWAL_MINIMUM) return { ...withdrawalMinimumError(),outcome:'failed',reference:params.reference };
+
+      const bankError = await this.withdrawalBankError(params.bankCode);
+      if (bankError) return { outcome: 'failed', success: false, reference: params.reference, error: bankError };
 
       // 1. Fetch seller's Payluk wallet to check mainBalance (ignoring escrowBalance for withdrawals)
       const wallet = await this.getCustomerWallet(params.sellerPaylukCustomerId);

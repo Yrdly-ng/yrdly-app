@@ -121,6 +121,10 @@ Bank codes come from Payluk's current bank list and pass unchanged through
 account verification, preview and withdrawal. Hardcoded code translation caused
 a verified sandbox linking failure and has been removed. Historical bank
 accounts with unsupported codes require re-verification using the current list.
+Execution fetches the current bank list before its wallet lookup or intent
+creation. Missing, inactive or deleted saved codes stop with a relink message
+before a transfer can be submitted; a list failure also stops preparation.
+Codes are never automatically translated to another bank or provider code.
 The manual `qa-scripts/payluk-bank-withdrawal.mjs` separates preparation,
 single-attempt execution and read-only inspection. It requires the isolated QA
 project and sandbox keys, retains payout references and refuses an uncertain
@@ -131,11 +135,13 @@ even though it is absent from the general bank list. The optional `provider-test
 mode uses this separately verified fixture; the controlled beneficiary is kept
 separately. This is a QA fixture exception, not a production bank-code fallback.
 
-A normal seller withdrawal uses five provider requests: identity validation,
-one execution wallet check, two fee intents and verification. Reservation and
+A normal seller withdrawal uses six provider requests: identity validation,
+one current bank-list check, one execution wallet check, two fee intents and verification. Reservation and
 retry preflight use the earned-funds ledger under the seller lock; execution
 still checks the live provider wallet before staging. Preview similarly uses
-one identity lookup and one wallet check. Payluk's key-wide 10/minute limit still applies across
+one identity lookup and one wallet check before fee intents. The bank-list check
+is execution-only so a normal preview and confirmation use ten total provider
+calls. Payluk's key-wide 10/minute limit still applies across
 concurrent customers and applications; this is not a load-capacity guarantee.
 The request no longer repeats balance lookups in each layer. Provider 429
 responses stop the operation and return `retryAfterSeconds` plus `Retry-After`
