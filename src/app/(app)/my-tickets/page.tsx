@@ -6,7 +6,7 @@ import { EventPageIntro } from "@/components/events/EventPageIntro";
 
 import { authenticatedFetch } from "@/lib/auth/authenticated-fetch";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -57,7 +57,7 @@ export default function MyTicketsPage() {
   const refreshEpoch = useRef(0);
   const selectedInfo = selected ? getEventTicketPresentation(selected) : null;
 
-  const refreshTickets = async () => {
+  const refreshTickets = useCallback(async () => {
     if (!userId || refreshing) return;
     const epoch = ++refreshEpoch.current;
     setRefreshing(true);
@@ -76,7 +76,19 @@ export default function MyTicketsPage() {
     } finally {
       if (epoch === refreshEpoch.current) setRefreshing(false);
     }
-  };
+  }, [userId, refreshing]);
+
+  useEffect(() => {
+    const refresh = () => { if (!document.hidden) void refreshTickets(); };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    const timer = window.setInterval(refresh, 30000);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+      window.clearInterval(timer);
+    };
+  }, [refreshTickets]);
 
   const justPurchased = searchParams.get("success") === "1";
   const txRefParam = searchParams.get("tx_ref");

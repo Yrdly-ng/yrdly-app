@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
                 startDate.toLocaleDateString('en-NG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
                 startDate.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' }),
                 fullEvent.location_address || fullEvent.state || 'See event details',
-                `FREE-${ticket.ticket_code}`
+                ticket.ticket_code
               );
             }
 

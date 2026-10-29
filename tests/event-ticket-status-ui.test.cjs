@@ -4,6 +4,9 @@ const fs = require('node:fs');
 const ts = require('typescript');
 
 function mount(options) {
+  const listeners = {};
+  global.document = { hidden: false, addEventListener() {}, removeEventListener() {} };
+  global.window = { addEventListener(name,fn) { listeners[name]=fn; }, removeEventListener() {}, setInterval: () => 1, clearInterval() {} };
   const state = [], effects = [], cleanups = [];
   let cursor = 0, first = true, tree;
   const jsx = (type, props) => ({ type, props: props || {} });
@@ -13,7 +16,7 @@ function mount(options) {
     return [state[index], (value) => { state[index] = typeof value === 'function' ? value(state[index]) : value; }];
   };
   const mocks = {
-    react: { useState: hook, useRef: (value) => hook({ current: value })[0], useEffect: (fn) => { if (first) effects.push(fn); } },
+    react: { useCallback: fn => fn, useState: hook, useRef: (value) => hook({ current: value })[0], useEffect: (fn) => { if (first) effects.push(fn); } },
     'react/jsx-runtime': { jsx, jsxs: jsx },
     'next/navigation': { useRouter: () => ({ back() {} }), useSearchParams: () => ({ get: () => null }) },
     'next/image': { __esModule: true, default: 'Image' },
@@ -48,6 +51,7 @@ function mount(options) {
       effects.splice(0).forEach((fn) => cleanups.push(fn()));
       await new Promise(setImmediate); render();
     },
+    async focus() { listeners.focus(); await new Promise(setImmediate); render(); },
     get tree() { return tree; },
   };
 }
@@ -138,4 +142,11 @@ test('an old-account refresh cannot repopulate tickets after switching accounts'
   finishOld([ticket]); await new Promise(setImmediate); app.render();
   assert.equal(all(app.tree, (node) => node.type === 'button' && node.props.className?.includes('text-left')).length, 0);
   assert.equal(all(app.tree, (node) => node.type === 'TicketEntryCode').length, 0);
+});
+
+test('browser focus refreshes ticket status changed in mobile',async()=>{
+ const options={tickets:[ticket]};const app=mount(options);await app.ready();
+ options.tickets=[{...ticket,refund_status:'processing'}];await app.focus();
+ assert.match(text(app.tree),/Refund pending/);
+ assert.equal(all(app.tree,node=>node.type==='TicketEntryCode').length,0);
 });

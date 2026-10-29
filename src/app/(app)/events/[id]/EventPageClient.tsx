@@ -84,6 +84,7 @@ export default function EventDetailPage() {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [hasTicket, setHasTicket] = useState(false);
+  const [ownedTicketCounts, setOwnedTicketCounts] = useState<Record<string, number>>({});
   const [contactingOrganizer, setContactingOrganizer] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [reload, setReload] = useState(0);
@@ -155,24 +156,34 @@ export default function EventDetailPage() {
 
   useEffect(() => {
     let current = true;
+    let request = 0;
     setHasTicket(false);
-    if (user && id) {
-      supabase
-        .from("tickets")
-        .select("id")
-        .eq("buyer_id", user.id)
-        .eq("event_id", id)
-        .eq("status", "PAID")
-        .limit(1)
-        .maybeSingle()
-        .then(({ data }) => {
-          if (current && data) setHasTicket(true);
+    setOwnedTicketCounts({});
+    const refreshOwnership = () => {
+      if (!user || !id || document.hidden) return;
+      const version = ++request;
+      void supabase.from("tickets").select("tier_id")
+        .eq("buyer_id", user.id).eq("event_id", id)
+        .in("status", ["PAID", "USED"])
+        .then(({ data, error }) => {
+          if (!current || version !== request || error) return;
+          const counts: Record<string, number> = {};
+          for (const ticket of data || []) counts[ticket.tier_id] = (counts[ticket.tier_id] || 0) + 1;
+          setOwnedTicketCounts(counts);
+          setHasTicket((data || []).length > 0);
         });
-    }
+    };
+    refreshOwnership();
+    window.addEventListener("focus", refreshOwnership);
+    document.addEventListener("visibilitychange", refreshOwnership);
+    const interval = window.setInterval(refreshOwnership, 30000);
     return () => {
       current = false;
+      window.removeEventListener("focus", refreshOwnership);
+      document.removeEventListener("visibilitychange", refreshOwnership);
+      window.clearInterval(interval);
     };
-  }, [user, id]);
+  }, [user?.id, id]);
 
   // Pre-fill form with auth user data
   useEffect(() => {
@@ -216,6 +227,7 @@ export default function EventDetailPage() {
       return;
     }
     if (!event || !getTicketSaleAvailability(event, tier).available || user.id === event.organizer_id) return;
+    if ((ownedTicketCounts[tier.id] || 0) >= 5) return;
     setForm((previous) => ({ ...previous, quantity: 1 }));
     setPurchase({ step: "form", tier, errorMsg: "" });
   };
@@ -692,6 +704,8 @@ export default function EventDetailPage() {
                 .map((tier) => {
                   const availability = getTicketSaleAvailability(event, tier);
                   const soldOut = !availability.available;
+                  const ownedCount = ownedTicketCounts[tier.id] || 0;
+                  const reachedLimit = ownedCount >= 5;
                   const remaining =
                     tier.capacity !== null
                       ? Math.max(0, tier.capacity - tier.sold)
@@ -710,6 +724,7 @@ export default function EventDetailPage() {
                         <p className="font-sans font-bold text-sm text-foreground">
                           {tier.name}
                         </p>
+                        {ownedCount > 0 && <p className="mt-1 text-xs font-semibold text-primary">{ownedCount} ticket{ownedCount === 1 ? '' : 's'} owned</p>}
                         {tier.description && (
                           <p className="font-sans text-xs text-muted-foreground mt-0.5 break-words">
                             {tier.description}
@@ -732,24 +747,24 @@ export default function EventDetailPage() {
                         </span>
                         <Button
                           size="sm"
-                          disabled={soldOut || isOrganizer}
+                          disabled={soldOut || isOrganizer || reachedLimit}
                           onClick={() => handleSelectTier(tier)}
                           className="rounded-full font-sans text-xs text-foreground px-4"
                           style={{
                             background: soldOut
                               ? "#374151"
-                              : hasTicket
-                                ? "hsl(var(--primary))"
-                                : "hsl(var(--primary))",
+                              : "hsl(var(--primary))",
                           }}
                         >
                           {soldOut
                             ? availability.label
                             : isOrganizer
                               ? "Yours"
-                              : hasTicket
-                                ? "Get more"
-                                : "Get tickets"}
+                              : reachedLimit
+                                ? "Limit reached"
+                                : ownedCount > 0
+                                  ? "Get more"
+                                  : "Get tickets"}
                         </Button>
                       </div>
                     </div>
@@ -876,7 +891,7 @@ export default function EventDetailPage() {
                           onClick={() =>
                             setForm((f) => ({
                               ...f,
-                              quantity: Math.max(1, Math.min(purchase.tier ? getTicketSaleAvailability(event, purchase.tier).maxQuantity : 1, (f.quantity || 1) + 1)),
+                              quantity: Math.max(1, Math.min(purchase.tier ? Math.min(getTicketSaleAvailability(event, purchase.tier).maxQuantity, 5 - (ownedTicketCounts[purchase.tier.id] || 0)) : 1, (f.quantity || 1) + 1)),
                             }))
                           }
                           className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center font-bold text-foreground hover:bg-muted/80 transition"

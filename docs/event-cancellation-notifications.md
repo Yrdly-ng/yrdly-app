@@ -1,6 +1,6 @@
 # Event cancellation notifications
 
-Status: implemented locally; deployment and migration application require the owner's approval. No new mobile build is needed for this server change.
+Status: owner approved release; the targeted migration was applied and recorded on the linked YRDLY backend after a rollback-only preflight. Server release is being prepared. No new mobile build is needed for this server change.
 
 ## Behavior
 

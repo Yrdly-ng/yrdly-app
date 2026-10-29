@@ -343,7 +343,7 @@ export const emailTemplates = {
     eventName: string,
     tierName: string,
     ticketId: string, // URL-safe version of ticket UUID
-    qrUrl: string, // Full URL to a viewable QR code
+    qrUrl: string, // CID reference to the PNG attached to this email
     dateStr: string,
     timeStr: string,
     locationStr: string,
@@ -411,8 +411,9 @@ export const emailTemplates = {
             <div class="ticket-card">
               <h2 style="margin: 0 0 24px 0; font-size: 20px; color: ${BRAND_DARK};">${eventName}</h2>
               
-              <img src="${qrUrl}" alt="Ticket QR Code" class="qr-code" />
-              <div style="font-family: monospace; font-size: 12px; color: #9CA3AF; margin-bottom: 24px;">ID: ${ticketId.split('-')[0].toUpperCase()}...</div>
+              <img src="${qrUrl}" alt="Ticket QR Code" width="250" height="250" class="qr-code" style="display:block;width:250px;max-width:100%;height:auto;margin:0 auto 24px;background:#ffffff;" />
+              <div style="font-family: monospace; font-size: 14px; color: #374151; margin-bottom: 12px;">Ticket code: ${orderId}</div>
+              <p style="font-size:13px;color:#4B5563;">If the image is hidden, open My tickets below. The door team can also enter your ticket code.</p>
               
               <div class="ticket-meta">
                 <div class="meta-row">
@@ -439,7 +440,7 @@ export const emailTemplates = {
             </div>
             
             <div class="button-container">
-              <a href="${process.env.NEXT_PUBLIC_APP_URL}/tickets/${ticketId}" class="button">View Ticket Online</a>
+              <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://app.yrdly.ng'}/my-tickets" class="button">View My Tickets</a>
             </div>
             
             <p class="message" style="text-align: center; font-style: italic; color: #6B7280; font-size: 14px;">

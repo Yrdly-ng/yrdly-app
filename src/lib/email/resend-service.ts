@@ -224,9 +224,16 @@ export class ResendEmailService {
       throw new Error('RESEND_NOT_CONFIGURED');
     }
 
+    // Email clients commonly strip data: image URLs. Carry the generated PNG in
+    // the message and reference its Content-ID instead of an external QR host.
+    const png = /^data:image\/png;base64,([A-Za-z0-9+/]+={0,2})$/.exec(qrUrl);
+    if (!png || !Buffer.from(png[1], 'base64').subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) {
+      throw new Error('Invalid ticket QR image');
+    }
+    const contentId = 'yrdly-ticket-qr';
     const { subject, html } = emailTemplates.ticketConfirmation(
       attendeeName, email, eventName, tierName,
-      ticketId, qrUrl, dateStr, timeStr, locationStr, orderId
+      ticketId, `cid:${contentId}`, dateStr, timeStr, locationStr, orderId
     );
 
     const { error } = await resend.emails.send({
@@ -234,6 +241,8 @@ export class ResendEmailService {
       to:      [email],
       subject,
       html,
+      text: `Hello ${attendeeName},\n\nYour ticket for ${eventName}\n${tierName}\n${dateStr} at ${timeStr}\n${locationStr}\n\nTicket code: ${orderId}\nYour QR image is included in this email. If images are hidden, open My tickets: ${process.env.NEXT_PUBLIC_APP_URL || 'https://app.yrdly.ng'}/my-tickets\n\nA refund or cancellation can invalidate this ticket. Check its current status in YRDLY.`,
+      attachments: [{ filename: 'yrdly-ticket-qr.png', content: png[1], contentType: 'image/png', contentId }],
     }, idempotencyKey ? { idempotencyKey } : undefined);
 
     if (error) {
