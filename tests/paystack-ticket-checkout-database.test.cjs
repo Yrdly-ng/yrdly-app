@@ -22,6 +22,16 @@ async function fixture() {
       settlement_mode text,payment_provider_ref text,amount_paid numeric,expires_at timestamptz,refund_status text,updated_at timestamptz);
     CREATE UNIQUE INDEX ticket_ordinal ON tickets(payment_tx_ref,purchase_ticket_index);
     CREATE TABLE notifications(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid,type text,title text,message text,sender_id uuid,related_id uuid,related_type text,data jsonb);
+    -- Match the deployed legacy allowlist: a rejected notification must roll
+    -- back ticket issuance too, so omitting this constraint hides that failure.
+    ALTER TABLE notifications ADD CONSTRAINT notifications_type_check CHECK (type = ANY (ARRAY[
+      'friend_request','friend_request_accepted','friend_request_declined','message','message_reaction',
+      'post_like','post_comment','post_share','event_invite','event_reminder','event_cancelled','event_updated',
+      'marketplace_item_sold','marketplace_item_interest','marketplace_message','community_update',
+      'system_announcement','welcome','profile_view','mention','payment_successful','item_shipped',
+      'delivery_confirmed','funds_released','dispute_opened','dispute_resolved','payout_processed','payout_failed',
+      'catalog_item_inquiry','business_review_received','catalog_item_out_of_stock','new_follower','event_team_invite'
+    ]));
     CREATE TABLE payment_reconciliation_flags(provider text,reference text,transaction_id uuid,reason text,UNIQUE(provider,reference,reason));
     INSERT INTO users VALUES('${owner}'),('${buyer}'),('${other}');
     INSERT INTO events(id,organizer_id,title,status,end_time) VALUES('${event}','${owner}','Sandbox event','PUBLISHED',now()+interval '2 days');
@@ -31,6 +41,7 @@ async function fixture() {
   await db.exec('CREATE TRIGGER ticket_sold BEFORE INSERT OR UPDATE OR DELETE ON tickets FOR EACH ROW EXECUTE FUNCTION adjust_ticket_tier_sold()');
   await db.exec(readFileSync('supabase/migrations/20261028174041_paystack_ticket_checkout.sql', 'utf8'));
   await db.exec(readFileSync('supabase/migrations/20261028174051_paystack_event_financial_ledger.sql', 'utf8'));
+  await db.exec(readFileSync('supabase/migrations/20261029081527_allow_ticket_purchase_notifications.sql', 'utf8'));
   let remoteId = 100;
   const payload = (qty = 2, who = buyer) => ({ event_id: event, tier_id: tier, buyer_id: who, quantity: qty, attendee_name: 'Buyer', attendee_email: 'buyer@example.test', attendee_phone: null });
   const reserve = async (qty = 2, who = buyer) => (await db.query('SELECT reserve_paystack_ticket_checkout($1::jsonb,$2) AS result', [JSON.stringify(payload(qty, who)), 'test'])).rows[0].result.transaction;
@@ -145,5 +156,16 @@ test('financial checkout tables and RPCs are unavailable to browser roles', asyn
       await assert.rejects(db.query('SELECT close_paystack_ticket_checkout($1)', [id(500)]), /permission denied/);
       await db.exec('RESET ROLE');
     }
+  } finally { await db.close(); }
+});
+
+test('ticket notification migration preserves existing types and rejects unknown types', async () => {
+  const { db } = await fixture();
+  try {
+    for (const type of ['event_team_invite', 'message', 'payment_successful', 'ticket_purchase']) {
+      await db.query('INSERT INTO notifications(type) VALUES($1)', [type]);
+    }
+    await assert.rejects(db.query("INSERT INTO notifications(type) VALUES('not_a_notification_type')"), /notifications_type_check/);
+    assert.equal((await db.query("SELECT convalidated FROM pg_constraint WHERE conname='notifications_type_check'")).rows[0].convalidated, true);
   } finally { await db.close(); }
 });
