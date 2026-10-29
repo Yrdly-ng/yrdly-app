@@ -13,6 +13,28 @@ const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'noreply@yrdly.ng';
 const REPLY_TO  = 'support@yrdly.ng';
 
 export class ResendEmailService {
+  static async sendEventCancellationEmail(
+    email: string, attendeeName: string, eventName: string,
+    startTime: string | null, location: string | null, idempotencyKey: string
+  ) {
+    if (!this.isConfigured()) throw new Error('RESEND_NOT_CONFIGURED');
+    const escape = (value: string) => value.replace(/[&<>"']/g, character => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    })[character]!);
+    const title = eventName.replace(/[\r\n]/g, ' ');
+    const date = startTime && Number.isFinite(Date.parse(startTime))
+      ? new Date(startTime).toLocaleString('en-NG', { timeZone: 'Africa/Lagos', dateStyle: 'full', timeStyle: 'short' }) : 'See your ticket for the original date';
+    const url = `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.yrdly.ng'}/my-tickets`;
+    const message = 'The organiser has cancelled this event. Your ticket is no longer valid for entry. If you paid for a ticket, check its refund status in YRDLY. A cancellation notice does not confirm that your bank has credited a refund.';
+    const { error } = await resend.emails.send({
+      from: `Yrdly Events <${FROM_EMAIL}>`, to: [email], replyTo: REPLY_TO,
+      subject: `Event cancelled: ${title}`,
+      text: `Hello ${attendeeName || 'there'},\n\n${title}\n${date}\n${location || ''}\n\n${message}\n\nView your tickets: ${url}`,
+      html: `<!doctype html><html lang="en"><body style="margin:0;background:#f6f8f5;font-family:Arial,sans-serif;color:#18221a"><main style="max-width:560px;margin:32px auto;padding:32px;background:#fff;border-radius:20px"><p style="color:#388e3c;font-size:26px;font-weight:800">YRDLY</p><h1>Event cancelled</h1><p>Hello ${escape(attendeeName || 'there')},</p><h2>${escape(title)}</h2><p>${escape(date)}${location ? `<br>${escape(location)}` : ''}</p><p>${message}</p><p><a style="display:inline-block;background:#82db7e;color:#122015;padding:14px 22px;border-radius:12px;text-decoration:none;font-weight:bold" href="${escape(url)}">View your tickets</a></p><p>Need help? Contact support@yrdly.ng.</p></main></body></html>`,
+    }, { idempotencyKey });
+    if (error) throw new Error('Cancellation email delivery failed');
+  }
+
   /**
    * Check if Resend is properly configured
    */

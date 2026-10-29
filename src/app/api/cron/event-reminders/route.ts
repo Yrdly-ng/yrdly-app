@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
 import { sendPushNotification } from '@/lib/notifications/server-push-notification';
+import { deliverEventCancellationNotifications } from '@/lib/events/event-cancellation-notifications';
+
+export const maxDuration = 300;
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
@@ -14,6 +17,8 @@ export async function GET(request: Request) {
   const windowEnd = new Date(now.getTime() + 25 * 60 * 60 * 1000);
 
   try {
+    // Runs even when there are no upcoming events to remind attendees about.
+    const cancellationDeliveries = await deliverEventCancellationNotifications();
     const { data: events, error: eventError } = await supabaseAdmin
       .from('events')
       .select('id, title, start_time')
@@ -21,7 +26,7 @@ export async function GET(request: Request) {
       .gte('start_time', now.toISOString())
       .lte('start_time', windowEnd.toISOString());
     if (eventError) throw eventError;
-    if (!events?.length) return NextResponse.json({ success: true, remindersSent: 0 });
+    if (!events?.length) return NextResponse.json({ success: true, remindersSent: 0, cancellationDeliveries });
 
     const eventIds = events.map((event) => event.id);
     const [{ data: tickets, error: ticketError }, { data: existing, error: existingError }] = await Promise.all([
@@ -80,7 +85,7 @@ export async function GET(request: Request) {
       remindersSent++;
     }
 
-    return NextResponse.json({ success: failures.length === 0, remindersSent, failures: failures.length });
+    return NextResponse.json({ success: failures.length === 0, remindersSent, failures: failures.length, cancellationDeliveries });
   } catch (error) {
     console.error('[CRON] Event reminder processing failed:', error);
     return NextResponse.json({ error: 'Event reminder processing failed' }, { status: 500 });
