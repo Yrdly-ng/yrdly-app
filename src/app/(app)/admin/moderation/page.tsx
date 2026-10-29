@@ -220,11 +220,11 @@ export default function AdminModerationPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-4 w-full max-w-xl mb-6">
-          <TabsTrigger value="auto_flags">Automated Flags</TabsTrigger>
-          <TabsTrigger value="user_reports">User Reports</TabsTrigger>
-          <TabsTrigger value="comment_reports">Comment Reports</TabsTrigger>
-          <TabsTrigger value="post_reports">Post Reports</TabsTrigger>
+        <TabsList aria-label="Report categories" className="mb-6 grid h-auto w-full max-w-xl grid-cols-2 gap-1 sm:grid-cols-4">
+          <TabsTrigger className="min-h-11 min-w-0 whitespace-normal px-2 text-center leading-snug" value="auto_flags">Automated Flags</TabsTrigger>
+          <TabsTrigger className="min-h-11 min-w-0 whitespace-normal px-2 text-center leading-snug" value="user_reports">User Reports</TabsTrigger>
+          <TabsTrigger className="min-h-11 min-w-0 whitespace-normal px-2 text-center leading-snug" value="comment_reports">Comment Reports</TabsTrigger>
+          <TabsTrigger className="min-h-11 min-w-0 whitespace-normal px-2 text-center leading-snug" value="post_reports">Post Reports</TabsTrigger>
         </TabsList>
 
         {/* ── TAB 1: AUTOMATED FLAGS ─────────────────────────────────── */}
