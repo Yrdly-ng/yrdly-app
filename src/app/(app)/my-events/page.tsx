@@ -10,7 +10,7 @@ import { getEventDateInfo } from "@/lib/events/event-presentation";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import type { Event } from "@/types/events";
 
-type Filter = "Upcoming" | "Drafts" | "Past" | "Cancelled";
+type Filter = "Upcoming" | "Drafts" | "Past" | "Cancelled" | "Archived";
 export default function MyEventsPage() {
   const router = useRouter();
   const { user } = useAuth();
@@ -44,6 +44,8 @@ export default function MyEventsPage() {
   }, [user?.id, reload]);
   const now = Date.now();
   const visible = events.filter((event) => {
+    if (filter === "Archived") return event.is_archived;
+    if (event.is_archived) return false;
     if (filter === "Cancelled") return event.status === "CANCELLED";
     if (filter === "Drafts")
       return ["DRAFT", "PENDING_REVIEW", "REJECTED"].includes(event.status);
@@ -100,19 +102,19 @@ export default function MyEventsPage() {
             aria-label="Event status"
             className="flex gap-2 overflow-x-auto pb-1"
           >
-            {(["Upcoming", "Drafts", "Past", "Cancelled"] as const).map(
-              (tab) => (
-                <button
-                  type="button"
-                  key={tab}
-                  onClick={() => setFilter(tab)}
-                  aria-pressed={tab === filter}
-                  className={`min-h-11 shrink-0 rounded-full border px-5 text-sm font-semibold ${tab === filter ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground"}`}
-                >
-                  {tab}
-                </button>
-              ),
-            )}
+            {(
+              ["Upcoming", "Drafts", "Past", "Cancelled", "Archived"] as const
+            ).map((tab) => (
+              <button
+                type="button"
+                key={tab}
+                onClick={() => setFilter(tab)}
+                aria-pressed={tab === filter}
+                className={`min-h-11 shrink-0 rounded-full border px-5 text-sm font-semibold ${tab === filter ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground"}`}
+              >
+                {tab}
+              </button>
+            ))}
           </div>
           {error && (
             <div
@@ -188,15 +190,18 @@ export default function MyEventsPage() {
                         <Settings className="h-4 w-4" />
                         Manage event
                       </Link>
-                      {event.status === "PUBLISHED" && (
-                        <Link
-                          href={`/events/${event.id}/scan`}
-                          className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-4 text-sm font-semibold"
-                        >
-                          <QrCode className="h-4 w-4" />
-                          Scan tickets
-                        </Link>
-                      )}
+                      {event.status === "PUBLISHED" &&
+                        !event.is_archived &&
+                        Number.isFinite(Date.parse(event.end_time || "")) &&
+                        Date.parse(event.end_time || "") > now && (
+                          <Link
+                            href={`/events/${event.id}/scan`}
+                            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-4 text-sm font-semibold"
+                          >
+                            <QrCode className="h-4 w-4" />
+                            Scan tickets
+                          </Link>
+                        )}
                     </div>
                   </article>
                 );

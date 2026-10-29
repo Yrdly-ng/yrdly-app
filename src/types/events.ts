@@ -36,6 +36,7 @@ export interface Event {
   published_at: string | null;
   scheduled_publish_at: string | null;
   attendee_count: number;
+  is_archived?: boolean;
   created_at: string;
   updated_at: string;
   // Joined fields
@@ -78,7 +79,7 @@ export interface Ticket {
   ticket_code: string;
   qr_data: string | null;
   status: TicketStatus;
-  refund_status?: 'initiating' | 'pending' | 'processing' | 'needs-attention' | 'failed' | 'processed' | null;
+  refund_status?: 'initiating' | 'pending' | 'processing' | 'needs-attention' | 'review' | 'failed' | 'processed' | null;
   payment_tx_ref: string | null;
   payment_provider_ref: string | null;
   amount_paid: number;
@@ -88,7 +89,7 @@ export interface Ticket {
   created_at: string;
   updated_at: string;
   // Joined fields
-  event?: Pick<Event, 'id' | 'title' | 'cover_image_url' | 'start_time' | 'location_address' | 'state'>;
+  event?: Pick<Event, 'id' | 'title' | 'cover_image_url' | 'start_time' | 'location_address' | 'state'> & Partial<Pick<Event, 'status' | 'end_time'>>;
   tier?: Pick<TicketTier, 'id' | 'name' | 'price'>;
 }
 

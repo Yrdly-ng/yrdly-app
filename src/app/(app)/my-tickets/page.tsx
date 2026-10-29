@@ -1,10 +1,12 @@
 "use client";
 
+import { TicketEntryCode } from "@/components/events/TicketEntryCode";
+
 import { EventPageIntro } from "@/components/events/EventPageIntro";
 
 import { authenticatedFetch } from "@/lib/auth/authenticated-fetch";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -23,6 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { getMyTickets } from "@/lib/events/event-service";
+import { getEventTicketPresentation } from "@/lib/events/event-ticket-presentation";
 import type { Ticket as TicketType } from "@/types/events";
 
 function formatDate(iso: string) {
@@ -34,43 +37,57 @@ function formatDate(iso: string) {
   });
 }
 
-const statusStyle: Record<string, { label: string; cls: string }> = {
-  PAID: {
-    label: "Active",
-    cls: "bg-green-500/20 text-green-400 border-green-500/30",
-  },
-  USED: {
-    label: "Used",
-    cls: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-  },
-  REFUNDED: {
-    label: "Refunded",
-    cls: "bg-red-500/20 text-red-400 border-red-500/30",
-  },
-  CANCELLED: {
-    label: "Cancelled",
-    cls: "bg-gray-500/20 text-gray-400 border-gray-500/30",
-  },
+const statusStyle: Record<string, string> = {
+  success: "bg-green-500/20 text-green-400 border-green-500/30",
+  warning: "bg-amber-500/20 text-amber-400 border-amber-500/30",
+  muted: "bg-muted text-muted-foreground border-border",
 };
 
 export default function MyTicketsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
+  const userId = user?.id;
   const [tickets, setTickets] = useState<TicketType[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<TicketType | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [reload, setReload] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const refreshEpoch = useRef(0);
+  const selectedInfo = selected ? getEventTicketPresentation(selected) : null;
+
+  const refreshTickets = async () => {
+    if (!userId || refreshing) return;
+    const epoch = ++refreshEpoch.current;
+    setRefreshing(true);
+    try {
+      const records = await getMyTickets(userId);
+      if (epoch !== refreshEpoch.current) return;
+      setTickets(records);
+      setSelected((current) =>
+        current
+          ? records.find((ticket) => ticket.id === current.id) || null
+          : null,
+      );
+      setLoadError(false);
+    } catch {
+      if (epoch === refreshEpoch.current) setLoadError(true);
+    } finally {
+      if (epoch === refreshEpoch.current) setRefreshing(false);
+    }
+  };
 
   const justPurchased = searchParams.get("success") === "1";
   const txRefParam = searchParams.get("tx_ref");
 
   useEffect(() => {
+    refreshEpoch.current += 1;
+    setRefreshing(false);
     let current = true;
     setSelected(null);
     setTickets([]);
-    if (!user) {
+    if (!userId) {
       setLoading(false);
       return;
     }
@@ -87,7 +104,7 @@ export default function MyTicketsPage() {
         }
       }
       try {
-        const records = await getMyTickets(user.id);
+        const records = await getMyTickets(userId);
         if (current) setTickets(records);
       } catch {
         if (current) setLoadError(true);
@@ -97,9 +114,10 @@ export default function MyTicketsPage() {
     };
     void loadTickets();
     return () => {
+      refreshEpoch.current += 1;
       current = false;
     };
-  }, [user?.id, txRefParam, reload]);
+  }, [userId, txRefParam, reload]);
 
   if (loading) {
     return (
@@ -154,6 +172,14 @@ export default function MyTicketsPage() {
             {tickets.length} ticket{tickets.length !== 1 ? "s" : ""}
           </p>
         </div>
+        <button
+          type="button"
+          disabled={refreshing}
+          onClick={() => void refreshTickets()}
+          className="ml-auto min-h-11 text-sm font-semibold text-primary disabled:opacity-50"
+        >
+          {refreshing ? "Refreshing…" : "Refresh"}
+        </button>
       </div>
 
       {/* Success banner */}
@@ -165,7 +191,7 @@ export default function MyTicketsPage() {
               Ticket Confirmed!
             </p>
             <p className="font-sans text-xs text-muted-foreground">
-              Check your email for your QR code.
+              Open your ticket below to see its entry code.
             </p>
           </div>
         </div>
@@ -250,33 +276,8 @@ export default function MyTicketsPage() {
           tickets.map((ticket) => {
             const event = ticket.event as any;
             const tier = ticket.tier as any;
-            const isExpired =
-              ticket.expires_at && new Date(ticket.expires_at) < new Date();
-            let ss = statusStyle[ticket.status] || statusStyle.CANCELLED;
-            if (ticket.is_test_payment) ss = { label: "Sandbox · no real payment", cls: "bg-amber-500/20 text-amber-400 border-amber-500/30" };
-            if (ticket.status === "PAID" && ticket.refund_status) {
-              ss = ["failed", "needs-attention"].includes(ticket.refund_status)
-                ? {
-                    label: "Refund needs support",
-                    cls: "bg-red-500/20 text-red-400 border-red-500/30",
-                  }
-                : {
-                    label: "Refund pending",
-                    cls: "bg-amber-500/20 text-amber-400 border-amber-500/30",
-                  };
-            }
-            if (
-              isExpired &&
-              !ticket.refund_status &&
-              ticket.status !== "USED" &&
-              ticket.status !== "CANCELLED" &&
-              ticket.status !== "REFUNDED"
-            ) {
-              ss = {
-                label: "Expired",
-                cls: "bg-orange-500/20 text-orange-400 border-orange-500/30",
-              };
-            }
+            const info = getEventTicketPresentation(ticket);
+            const ss = { label: info.label, cls: statusStyle[info.tone] };
             return (
               <button
                 key={ticket.id}
@@ -319,6 +320,11 @@ export default function MyTicketsPage() {
                       <Badge className={`text-xs font-sans border ${ss.cls}`}>
                         {ss.label}
                       </Badge>
+                      {ticket.is_test_payment && (
+                        <Badge className="text-xs border border-amber-500/30 bg-amber-500/20 text-amber-400">
+                          Sandbox · no real payment
+                        </Badge>
+                      )}
                       {tier && (
                         <span className="font-sans text-xs text-muted-foreground">
                           {tier.name}
@@ -344,33 +350,32 @@ export default function MyTicketsPage() {
           onClick={() => setSelected(null)}
         >
           <div
-            className="w-full max-w-md rounded-t-3xl bg-card border border-border p-6 pb-10 space-y-5"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="ticket-detail-title"
+            className="w-full max-w-md max-h-[90dvh] overflow-y-auto rounded-t-3xl bg-card border border-border p-6 pb-[max(2.5rem,env(safe-area-inset-bottom))] space-y-5"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
-              <h3 className="font-sans font-bold text-base text-foreground">
+              <h3
+                id="ticket-detail-title"
+                className="font-sans font-bold text-base text-foreground"
+              >
                 {(selected.event as any)?.title || "Ticket"}
               </h3>
               <button
+                aria-label="Close ticket details"
                 onClick={() => setSelected(null)}
-                className="text-muted-foreground hover:text-foreground text-xl leading-none"
+                className="min-h-11 min-w-11 text-muted-foreground hover:text-foreground text-xl leading-none"
               >
                 ✕
               </button>
             </div>
 
             {/* QR Code */}
-            {selected.qr_data && !selected.refund_status ? (
+            {selectedInfo?.isValid && !loadError ? (
               <div className="flex flex-col items-center gap-3 py-4">
-                {/* We show a generated QR using an img tag with a QR service fallback */}
-                <Image
-                  src={`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(selected.qr_data)}&size=220x220&bgcolor=1E2126&color=FFFFFF`}
-                  alt="Ticket QR Code"
-                  width={220}
-                  height={220}
-                  className="rounded-xl"
-                  unoptimized
-                />
+                <TicketEntryCode token={selected.qr_data || selected.id} />
                 <p className="font-mono text-xs text-muted-foreground">
                   {selected.ticket_code}
                 </p>
@@ -379,10 +384,36 @@ export default function MyTicketsPage() {
               <div className="flex flex-col items-center gap-2 py-8">
                 <AlertCircle className="w-10 h-10 text-muted-foreground" />
                 <p className="font-sans text-xs text-muted-foreground">
-                  QR code not available
+                  {loadError
+                    ? "Could not update this ticket. Refresh before entry."
+                    : selectedInfo?.message}
                 </p>
               </div>
             )}
+
+            {selected.is_test_payment && (
+              <p className="text-sm text-amber-500">
+                Sandbox · no real payment
+              </p>
+            )}
+            <button
+              type="button"
+              disabled={refreshing}
+              onClick={() => void refreshTickets()}
+              className="min-h-11 font-semibold text-primary disabled:opacity-50"
+            >
+              {refreshing ? "Refreshing…" : "Refresh ticket status"}
+            </button>
+            <p className="text-sm text-muted-foreground">
+              For ticket questions or a refund request, contact the organiser
+              from the event page.
+            </p>
+            <Link
+              href={`/events/${selected.event_id}`}
+              className="flex min-h-11 items-center justify-center rounded-full bg-primary px-4 py-3 text-sm font-bold text-primary-foreground"
+            >
+              View event and contact organiser
+            </Link>
 
             {/* Ticket details */}
             <div className="space-y-2 border-t border-border pt-4">
@@ -401,21 +432,7 @@ export default function MyTicketsPage() {
                 },
                 {
                   label: "Status",
-                  value:
-                    selected.refund_status && selected.status === "PAID"
-                      ? ["failed", "needs-attention"].includes(
-                          selected.refund_status,
-                        )
-                        ? "Refund needs support"
-                        : "Refund pending"
-                      : selected.expires_at &&
-                          new Date(selected.expires_at) < new Date() &&
-                          selected.status !== "USED" &&
-                          selected.status !== "CANCELLED" &&
-                          selected.status !== "REFUNDED"
-                        ? "Expired"
-                        : statusStyle[selected.status]?.label ||
-                          selected.status,
+                  value: selectedInfo?.label || "Unavailable",
                 },
               ].map(({ label, value }) => (
                 <div key={label} className="flex items-center justify-between">

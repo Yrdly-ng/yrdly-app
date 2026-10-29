@@ -21,6 +21,7 @@ import {
   CheckCircle2,
   AlertCircle,
   BadgeCheck,
+  MessageCircle,
 } from "lucide-react";
 import { ImageSwiper } from "@/components/media/ImageSwiper";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ import { useAuth } from "@/hooks/use-supabase-auth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase/supabase";
 import { getEventById } from "@/lib/events/event-service";
+import { getTicketSaleAvailability } from "@/lib/events/event-availability";
 import { AttendeeAvatars } from "@/components/events/AttendeeAvatars";
 import { GetDirectionsLink } from "@/components/location/GetDirectionsLink";
 import type { Event, TicketTier } from "@/types/events";
@@ -82,6 +84,7 @@ export default function EventDetailPage() {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [hasTicket, setHasTicket] = useState(false);
+  const [contactingOrganizer, setContactingOrganizer] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [reload, setReload] = useState(0);
   const [pendingPaystack, setPendingPaystack] = useState<{ reference: string; authorizationUrl?: string } | null>(null);
@@ -160,6 +163,7 @@ export default function EventDetailPage() {
         .eq("buyer_id", user.id)
         .eq("event_id", id)
         .eq("status", "PAID")
+        .limit(1)
         .maybeSingle()
         .then(({ data }) => {
           if (current && data) setHasTicket(true);
@@ -181,16 +185,47 @@ export default function EventDetailPage() {
     }
   }, [user]);
 
+  const handleContactOrganizer = async () => {
+    if (!event || contactingOrganizer) return;
+    if (!user) { router.push('/login'); return; }
+    if (user.id === event.organizer_id) return;
+    setContactingOrganizer(true);
+    try {
+      const { data: conversations, error: lookupError } = await supabase.from('conversations')
+        .select('id, participant_ids').eq('type', 'event').eq('item_id', event.id)
+        .contains('participant_ids', [user.id, event.organizer_id]);
+      if (lookupError) throw lookupError;
+      let conversationId = conversations?.find((conversation) => conversation.participant_ids?.length === 2)?.id;
+      if (!conversationId) {
+        const { data, error } = await supabase.from('conversations').insert({
+          type: 'event', participant_ids: [user.id, event.organizer_id], item_id: event.id,
+          item_title: event.title, item_image: event.cover_image_url,
+        }).select('id').single();
+        if (error || !data?.id) throw error || new Error('Conversation unavailable');
+        conversationId = data.id;
+      }
+      router.push(`/messages/${conversationId}`);
+    } catch {
+      toast({ variant: 'destructive', title: 'Could not contact organiser', description: 'Please try again. No message has been sent.' });
+    } finally { setContactingOrganizer(false); }
+  };
+
   const handleSelectTier = (tier: TicketTier) => {
     if (!user) {
       router.push("/login");
       return;
     }
+    if (!event || !getTicketSaleAvailability(event, tier).available || user.id === event.organizer_id) return;
+    setForm((previous) => ({ ...previous, quantity: 1 }));
     setPurchase({ step: "form", tier, errorMsg: "" });
   };
 
   const handlePurchase = async () => {
     if (!purchase.tier || purchaseInFlight.current) return;
+    if (!event || !getTicketSaleAvailability(event, purchase.tier).available) {
+      setPurchase((state) => ({ ...state, errorMsg: 'These tickets are no longer available. Refresh the event for current availability.' }));
+      return;
+    }
     if (!form.name.trim() || !form.email.trim()) {
       setPurchase((s) => ({ ...s, errorMsg: "Name and email are required." }));
       return;
@@ -601,7 +636,7 @@ export default function EventDetailPage() {
           <Separator className="bg-background/10" />
 
           {/* Organizer */}
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <Avatar className="w-10 h-10 border border-border">
               <AvatarImage src={(event.organizer as any)?.avatar_url} />
               <AvatarFallback className="bg-primary text-primary-foreground text-sm">
@@ -621,6 +656,14 @@ export default function EventDetailPage() {
               </p>
             </div>
           </div>
+
+          <div className="flex flex-wrap gap-3">
+            <Link href={`/profile/${event.organizer_id}`} className="text-sm font-semibold underline">View organiser</Link>
+            {!isOrganizer && <Button variant="outline" size="sm" disabled={contactingOrganizer} onClick={() => void handleContactOrganizer()}>
+              <MessageCircle className="mr-2 h-4 w-4" />{contactingOrganizer ? 'Opening conversation…' : 'Contact organiser'}
+            </Button>}
+          </div>
+          <p className="text-xs text-muted-foreground">For ticket questions or refund requests, contact the organiser. You can track a submitted refund in My tickets.</p>
 
           <Separator className="bg-background/10" />
 
@@ -642,12 +685,13 @@ export default function EventDetailPage() {
             <h2 className="font-yrdly-display font-bold text-2xl text-foreground mb-3">
               Tickets
             </h2>
+            {hasTicket && <Link href="/my-tickets" className="mb-4 inline-flex text-sm font-semibold text-primary underline">View my tickets</Link>}
             <div className="space-y-3">
               {tiers
                 .filter((t) => t.is_visible)
                 .map((tier) => {
-                  const soldOut =
-                    tier.capacity !== null && tier.sold >= tier.capacity;
+                  const availability = getTicketSaleAvailability(event, tier);
+                  const soldOut = !availability.available;
                   const remaining =
                     tier.capacity !== null
                       ? Math.max(0, tier.capacity - tier.sold)
@@ -688,7 +732,7 @@ export default function EventDetailPage() {
                         </span>
                         <Button
                           size="sm"
-                          disabled={soldOut || isOrganizer || hasTicket}
+                          disabled={soldOut || isOrganizer}
                           onClick={() => handleSelectTier(tier)}
                           className="rounded-full font-sans text-xs text-foreground px-4"
                           style={{
@@ -700,12 +744,12 @@ export default function EventDetailPage() {
                           }}
                         >
                           {soldOut
-                            ? "Sold Out"
+                            ? availability.label
                             : isOrganizer
                               ? "Yours"
                               : hasTicket
-                                ? "Purchased"
-                                : "Get"}
+                                ? "Get more"
+                                : "Get tickets"}
                         </Button>
                       </div>
                     </div>
@@ -832,7 +876,7 @@ export default function EventDetailPage() {
                           onClick={() =>
                             setForm((f) => ({
                               ...f,
-                              quantity: Math.min(5, (f.quantity || 1) + 1),
+                              quantity: Math.max(1, Math.min(purchase.tier ? getTicketSaleAvailability(event, purchase.tier).maxQuantity : 1, (f.quantity || 1) + 1)),
                             }))
                           }
                           className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center font-bold text-foreground hover:bg-muted/80 transition"
@@ -848,6 +892,11 @@ export default function EventDetailPage() {
                       Refund requests are reviewed by the event organiser with Yrdly support under the event’s cancellation and refund policy. The payment provider does not decide refunds.
                     </p>
                   )}
+                  {purchase.tier && !getTicketSaleAvailability(event, purchase.tier).available && (
+                    <p role="status" className="text-sm text-muted-foreground">
+                      {getTicketSaleAvailability(event, purchase.tier).label}. Close this form and refresh the event for current availability.
+                    </p>
+                  )}
                   {purchase.errorMsg && (
                     <p className="font-sans text-xs text-red-400 flex items-center gap-1">
                       <AlertCircle className="w-3 h-3" /> {purchase.errorMsg}
@@ -857,7 +906,7 @@ export default function EventDetailPage() {
                   <Button
                     className="w-full rounded-full h-12 font-sans font-medium text-foreground text-sm"
                     style={{ background: "hsl(var(--primary))" }}
-                    disabled={purchase.step === "loading"}
+                    disabled={purchase.step === "loading" || !purchase.tier || !getTicketSaleAvailability(event, purchase.tier).available}
                     onClick={handlePurchase}
                   >
                     {purchase.step === "loading" ? (

@@ -29,10 +29,12 @@ import { ConversationScreen } from "@/components/messages/ConversationScreen";
 import { getUserActivityStatus } from "@/lib/activity/online-status";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 
+import { getConversationType } from "@/lib/messages/conversation-context";
+
 const GREEN = "#82DB7E";
 
-type ConvType = "friend" | "marketplace" | "briefcase";
-type FilterTab = "all" | "friends" | "marketplace" | "business";
+type ConvType = "friend" | "marketplace" | "briefcase" | "event";
+type FilterTab = "all" | "friends" | "marketplace" | "business" | "events";
 
 interface Conversation {
   id: string;
@@ -209,6 +211,7 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
     { key: "all", label: "All" },
     { key: "friends", label: "Friends" },
     { key: "marketplace", label: "Marketplace" },
+    { key: "events", label: "Events" },
     { key: "business", label: "Business" },
   ];
 
@@ -281,18 +284,7 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
           );
           const otherUser = usersMap.get(otherId);
 
-          let convType: ConvType = "friend";
-          if (
-            c.type === "marketplace" ||
-            (c.item_id && c.type !== "briefcase" && c.type !== "business")
-          )
-            convType = "marketplace";
-          else if (
-            c.type === "briefcase" ||
-            c.type === "business" ||
-            c.business_id
-          )
-            convType = "briefcase";
+          const convType = getConversationType(c);
 
           const isBiz = convType === "briefcase" || !!c.business_id;
           const participantName = isBiz
@@ -387,6 +379,7 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
 
   const filteredConversations = useMemo(() => {
     return conversations.filter((c) => {
+      if (activeFilter === "events" && c.type !== "event") return false;
       if (activeFilter === "friends" && c.type !== "friend") return false;
       if (activeFilter === "marketplace" && c.type !== "marketplace")
         return false;

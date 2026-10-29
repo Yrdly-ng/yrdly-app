@@ -5,7 +5,7 @@ const test = require('node:test');
 const ts = require('typescript');
 
 // Execute the real event drawer's handler, with network/provider boundaries stubbed.
-function harness({ response, verify, sessionError } = {}) {
+function harness({ response, verify, sessionError, event: eventOverride, tier: tierOverride } = {}) {
   const source = fs.readFileSync('src/app/(app)/events/[id]/EventPageClient.tsx', 'utf8');
   const ast = ts.createSourceFile('page.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
   let handler;
@@ -15,7 +15,7 @@ function harness({ response, verify, sessionError } = {}) {
   }
   find(ast);
   assert.ok(handler);
-  const initial = { step: 'form', tier: { id: 'tier', price: 2000 }, errorMsg: '' };
+  const initial = { step: 'form', tier: { id: 'tier', price: 2000, ...tierOverride }, errorMsg: '' };
   let state = initial;
   let widget;
   const calls = [];
@@ -48,6 +48,8 @@ function harness({ response, verify, sessionError } = {}) {
     purchase: initial,
     purchaseInFlight: { current: false },
     form: { name: 'Guest', email: 'guest@example.test', phone: '', quantity: 1 },
+    event: { status: 'PUBLISHED', end_time: '2099-01-01T00:00:00Z', ...eventOverride },
+    getTicketSaleAvailability: load('src/lib/events/event-availability.ts').getTicketSaleAvailability,
     id: 'event', supabase, fetch, authenticatedFetch,
     setPurchase: (update) => { state = typeof update === 'function' ? update(state) : update; },
     router: { push: (route) => routes.push(route) },
@@ -133,4 +135,13 @@ test('free tickets skip the provider and route to My Tickets', async () => {
   assert.equal(h.widget(), undefined);
   assert.equal(h.state().step, 'success');
   assert.deepEqual(h.routes, ['/my-tickets?success=1']);
+});
+
+test('web submit rechecks cancelled events and expired tier sales without starting checkout', async () => {
+  for(const options of [{event:{status:'CANCELLED'}},{event:{status:'COMPLETED'}},{tier:{sale_ends_at:'2000-01-01T00:00:00Z'}},{tier:{capacity:0}}]) {
+    const app = harness(options);
+    await app.run();
+    assert.equal(app.calls.length,0);
+    assert.match(app.state().errorMsg,/no longer available/);
+  }
 });

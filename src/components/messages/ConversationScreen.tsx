@@ -61,6 +61,8 @@ const GiphyPicker = dynamic(
   { ssr: false },
 );
 
+import { getConversationContextHref } from "@/lib/messages/conversation-context";
+
 interface ConversationRow {
   id: string;
   participant_ids: string[];
@@ -70,7 +72,8 @@ interface ConversationRow {
   created_at: string;
   updated_at: string;
   context?: any;
-  type?: "friend" | "marketplace" | "briefcase";
+  type?: "friend" | "marketplace" | "briefcase" | "business" | "event";
+  business_id?: string;
   item_id?: string;
   item_title?: string;
   item_image?: string;
@@ -1035,9 +1038,8 @@ export function ConversationScreen({
         <div className="px-4 pt-3">
           <GlassCard
             onClick={() => {
-              if (conversation.item_id) {
-                router.push(`/marketplace/${conversation.item_id}`);
-              }
+              const destination = getConversationContextHref(conversation);
+              if (destination) router.push(destination);
             }}
             className="flex items-center gap-3 p-3 rounded-2xl cursor-pointer hover:scale-[1.01] transition-all"
           >
