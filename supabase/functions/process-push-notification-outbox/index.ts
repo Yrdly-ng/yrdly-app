@@ -73,6 +73,25 @@ const headers = { "Content-Type": "application/json" };
 const backoffSeconds = (attempt: number) =>
   Math.min(60 * 2 ** Math.max(0, attempt - 1), 3600);
 
+function expoDeliveryError(result: {
+  message?: string;
+  details?: { error?: string; fcm?: { response?: string } };
+}): string {
+  let firebaseCode: string | undefined;
+  try {
+    const response = JSON.parse(result.details?.fcm?.response ?? '{}');
+    firebaseCode = response.error?.details?.find(
+      (detail: { errorCode?: string }) => typeof detail.errorCode === 'string',
+    )?.errorCode;
+  } catch {
+    // A provider response is untrusted and may not be JSON.
+  }
+  if (firebaseCode === 'SENDER_ID_MISMATCH' || result.details?.error === 'MismatchSenderId') {
+    return 'FCM SENDER_ID_MISMATCH: the Firebase sender in this Android app does not match the Expo FCM credentials.';
+  }
+  return result.message ?? result.details?.error ?? 'Expo could not deliver the notification';
+}
+
 function validServiceKey(req: Request): string | null {
   const legacyKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   let namedKeys: unknown;
@@ -186,10 +205,7 @@ serve(async (req) => {
           last_error: null,
         });
       } else {
-        const message =
-          receipt.message ??
-          receipt.details?.error ??
-          "Expo could not deliver the notification";
+        const message = expoDeliveryError(receipt);
         if (receipt.details?.error === "DeviceNotRegistered") {
           await admin
             .from("user_push_tokens")
@@ -325,10 +341,7 @@ serve(async (req) => {
           });
           submitted += 1;
         } else {
-          const message =
-            ticket?.message ??
-            ticket?.details?.error ??
-            "Expo rejected the notification";
+          const message = expoDeliveryError(ticket ?? {});
           if (ticket?.details?.error === "DeviceNotRegistered") {
             await admin
               .from("user_push_tokens")
