@@ -1,0 +1,740 @@
+{
+  "project_id": 590527,
+  "status": "published",
+  "dashboards": [
+    {
+      "id": 2280569,
+      "url": "https://us.posthog.com/project/590527/dashboard/2280569"
+    },
+    {
+      "id": 2277126,
+      "url": "https://us.posthog.com/project/590527/dashboard/2277126"
+    },
+    {
+      "id": 2280570,
+      "url": "https://us.posthog.com/project/590527/dashboard/2280570"
+    }
+  ],
+  "insights": [
+    {
+      "key": "active",
+      "id": 13473928,
+      "short_id": "qW9NZrnD",
+      "name": "Active users across all platforms",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "filterTestAccounts": false,
+          "properties": [
+            {
+              "key": "app_environment",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "production"
+              ]
+            }
+          ],
+          "series": [
+            {
+              "kind": "GroupNode",
+              "operator": "OR",
+              "math": "dau",
+              "custom_name": "All platforms",
+              "nodes": [
+                {
+                  "kind": "EventsNode",
+                  "event": "$screen",
+                  "math": "dau"
+                },
+                {
+                  "kind": "EventsNode",
+                  "event": "$pageview",
+                  "math": "dau"
+                }
+              ]
+            }
+          ],
+          "trendsFilter": {
+            "display": "ActionsBarValue"
+          }
+        }
+      }
+    },
+    {
+      "key": "platform",
+      "id": 13473929,
+      "short_id": "ywHYl3Tt",
+      "name": "Active users by platform",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "filterTestAccounts": false,
+          "properties": [
+            {
+              "key": "app_environment",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "production"
+              ]
+            }
+          ],
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "$screen",
+              "math": "dau",
+              "custom_name": "Android (APK)",
+              "properties": [
+                {
+                  "key": "$os",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "Android"
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "EventsNode",
+              "event": "$screen",
+              "math": "dau",
+              "custom_name": "iOS (IPA)",
+              "properties": [
+                {
+                  "key": "$os",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "iOS"
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "EventsNode",
+              "event": "$pageview",
+              "math": "dau",
+              "custom_name": "Web"
+            }
+          ],
+          "trendsFilter": {
+            "display": "ActionsBarValue"
+          }
+        }
+      }
+    },
+    {
+      "key": "dau",
+      "id": 13473930,
+      "short_id": "PvEIWsij",
+      "name": "Daily active users by platform",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "filterTestAccounts": false,
+          "properties": [
+            {
+              "key": "app_environment",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "production"
+              ]
+            }
+          ],
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "$screen",
+              "math": "dau",
+              "custom_name": "Android (APK)",
+              "properties": [
+                {
+                  "key": "$os",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "Android"
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "EventsNode",
+              "event": "$screen",
+              "math": "dau",
+              "custom_name": "iOS (IPA)",
+              "properties": [
+                {
+                  "key": "$os",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "iOS"
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "EventsNode",
+              "event": "$pageview",
+              "math": "dau",
+              "custom_name": "Web"
+            }
+          ],
+          "trendsFilter": {
+            "display": "ActionsLineGraph"
+          }
+        }
+      }
+    },
+    {
+      "key": "wau",
+      "id": 13473931,
+      "short_id": "ELuDkrQu",
+      "name": "Weekly active users by platform",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "week",
+          "filterTestAccounts": false,
+          "properties": [
+            {
+              "key": "app_environment",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "production"
+              ]
+            }
+          ],
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "$screen",
+              "math": "dau",
+              "custom_name": "Android (APK)",
+              "properties": [
+                {
+                  "key": "$os",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "Android"
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "EventsNode",
+              "event": "$screen",
+              "math": "dau",
+              "custom_name": "iOS (IPA)",
+              "properties": [
+                {
+                  "key": "$os",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "iOS"
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "EventsNode",
+              "event": "$pageview",
+              "math": "dau",
+              "custom_name": "Web"
+            }
+          ],
+          "trendsFilter": {
+            "display": "ActionsLineGraph"
+          }
+        }
+      }
+    },
+    {
+      "key": "states",
+      "id": 13473932,
+      "short_id": "y4RxldMe",
+      "name": "Active users by selected home state",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "filterTestAccounts": false,
+          "properties": [
+            {
+              "key": "app_environment",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "production"
+              ]
+            }
+          ],
+          "series": [
+            {
+              "kind": "GroupNode",
+              "operator": "OR",
+              "math": "dau",
+              "custom_name": "All platforms",
+              "nodes": [
+                {
+                  "kind": "EventsNode",
+                  "event": "$screen",
+                  "math": "dau"
+                },
+                {
+                  "kind": "EventsNode",
+                  "event": "$pageview",
+                  "math": "dau"
+                }
+              ]
+            }
+          ],
+          "trendsFilter": {
+            "display": "ActionsBarValue"
+          },
+          "breakdownFilter": {
+            "breakdown_limit": 15,
+            "breakdowns": [
+              {
+                "property": "home_state",
+                "type": "event"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "key": "webpages",
+      "id": 13473941,
+      "short_id": "hFOCHR5K",
+      "name": "Most visited web pages",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "filterTestAccounts": false,
+          "properties": [
+            {
+              "key": "app_environment",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "production"
+              ]
+            }
+          ],
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "$pageview",
+              "math": "total"
+            }
+          ],
+          "trendsFilter": {
+            "display": "ActionsBarValue"
+          },
+          "breakdownFilter": {
+            "breakdown_limit": 15,
+            "breakdowns": [
+              {
+                "property": "$pathname",
+                "type": "event"
+              }
+            ],
+            "breakdown_path_cleaning": true
+          }
+        }
+      }
+    },
+    {
+      "key": "models",
+      "id": 13473942,
+      "short_id": "wys9nt3V",
+      "name": "Mobile users by device model",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "filterTestAccounts": false,
+          "properties": [
+            {
+              "key": "app_environment",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "production"
+              ]
+            }
+          ],
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "$screen",
+              "math": "dau"
+            }
+          ],
+          "trendsFilter": {
+            "display": "ActionsBarValue"
+          },
+          "breakdownFilter": {
+            "breakdown_limit": 15,
+            "breakdowns": [
+              {
+                "property": "device_model",
+                "type": "event"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "key": "builds",
+      "id": 13473944,
+      "short_id": "HxRqhGn0",
+      "name": "Mobile users by app build",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "filterTestAccounts": false,
+          "properties": [
+            {
+              "key": "app_environment",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "production"
+              ]
+            }
+          ],
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "$screen",
+              "math": "dau"
+            }
+          ],
+          "trendsFilter": {
+            "display": "ActionsBarValue"
+          },
+          "breakdownFilter": {
+            "breakdown_limit": 15,
+            "breakdowns": [
+              {
+                "property": "$app_build",
+                "type": "event"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "key": "osversions",
+      "id": 13473945,
+      "short_id": "drdTWPHy",
+      "name": "Mobile users by OS version",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "filterTestAccounts": false,
+          "properties": [
+            {
+              "key": "app_environment",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "production"
+              ]
+            }
+          ],
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "$screen",
+              "math": "dau"
+            }
+          ],
+          "trendsFilter": {
+            "display": "ActionsBarValue"
+          },
+          "breakdownFilter": {
+            "breakdown_limit": 15,
+            "breakdowns": [
+              {
+                "property": "$os",
+                "type": "event"
+              },
+              {
+                "property": "$os_version",
+                "type": "event"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "key": "webdau",
+      "id": 13473946,
+      "short_id": "2UMYadRQ",
+      "name": "Daily active web users",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "filterTestAccounts": false,
+          "properties": [
+            {
+              "key": "app_environment",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "production"
+              ]
+            }
+          ],
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "$pageview",
+              "math": "dau"
+            }
+          ],
+          "trendsFilter": {
+            "display": "ActionsLineGraph"
+          }
+        }
+      }
+    },
+    {
+      "key": "webviews",
+      "id": 13473947,
+      "short_id": "O39ZnMdO",
+      "name": "Web page views",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "filterTestAccounts": false,
+          "properties": [
+            {
+              "key": "app_environment",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "production"
+              ]
+            }
+          ],
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "$pageview",
+              "math": "total"
+            }
+          ],
+          "trendsFilter": {
+            "display": "ActionsLineGraph"
+          }
+        }
+      }
+    },
+    {
+      "key": "browsers",
+      "id": 13473948,
+      "short_id": "r122mdj1",
+      "name": "Web users by browser",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "filterTestAccounts": false,
+          "properties": [
+            {
+              "key": "app_environment",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "production"
+              ]
+            }
+          ],
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "$pageview",
+              "math": "dau"
+            }
+          ],
+          "trendsFilter": {
+            "display": "ActionsBarValue"
+          },
+          "breakdownFilter": {
+            "breakdown_limit": 15,
+            "breakdowns": [
+              {
+                "property": "$browser",
+                "type": "event"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "key": "webdevices",
+      "id": 13473949,
+      "short_id": "mX7vyOhf",
+      "name": "Web users by device type",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "filterTestAccounts": false,
+          "properties": [
+            {
+              "key": "app_environment",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "production"
+              ]
+            }
+          ],
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "$pageview",
+              "math": "dau"
+            }
+          ],
+          "trendsFilter": {
+            "display": "ActionsBarValue"
+          },
+          "breakdownFilter": {
+            "breakdown_limit": 15,
+            "breakdowns": [
+              {
+                "property": "$device_type",
+                "type": "event"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "key": "webstates",
+      "id": 13473950,
+      "short_id": "09SPZixW",
+      "name": "Web users by selected home state",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "filterTestAccounts": false,
+          "properties": [
+            {
+              "key": "app_environment",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "production"
+              ]
+            }
+          ],
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "$pageview",
+              "math": "dau"
+            }
+          ],
+          "trendsFilter": {
+            "display": "ActionsBarValue"
+          },
+          "breakdownFilter": {
+            "breakdown_limit": 15,
+            "breakdowns": [
+              {
+                "property": "home_state",
+                "type": "event"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

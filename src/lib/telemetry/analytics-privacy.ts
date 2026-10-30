@@ -1,6 +1,7 @@
 import { diagnosticMessage } from './diagnostics';
 import type { CaptureResult } from "posthog-js";
 import { pageRoutes } from "./routes";
+import { deviceLabel, homeState } from "./metadata";
 
 export const productEvents = new Set(["message_sent", "business_saved", "ticket_checkout_started", "ticket_checkout_opened", "ticket_checkout_failed", "ticket_verification_failed", "ticket_issued", "ticket_refund_requested", "ticket_refund_failed", "event_withdrawal_requested", "event_withdrawal_failed", "booking_checkout_started", "booking_payment_confirmed", "booking_checkout_failed"]);
 const allowedEvents = new Set(["$pageview", "$identify", ...productEvents]);
@@ -65,6 +66,21 @@ export function sanitizeAnalyticsEvent(
     properties.$process_person_profile = source.$process_person_profile;
   if (typeof source.$is_identified === "boolean")
     properties.$is_identified = source.$is_identified;
+  for (const key of ['$browser', '$os']) {
+    const value = deviceLabel(source[key]);
+    if (value) properties[key] = value;
+  }
+  for (const key of ['$browser_version', '$os_version']) {
+    const value = source[key];
+    if (typeof value === 'number' && Number.isFinite(value) && value >= 0)
+      properties[key] = value;
+    else if (typeof value === 'string' && /^[0-9][0-9._-]{0,39}$/.test(value))
+      properties[key] = value;
+  }
+  if (['Desktop', 'Mobile', 'Tablet'].includes(source.$device_type))
+    properties.$device_type = source.$device_type;
+  const state = homeState(source.home_state);
+  if (state && source.$is_identified === true) properties.home_state = state;
   if (event.event === "$pageview") {
     if (!routes.has(source.$pathname)) return null;
     properties.$pathname = source.$pathname;

@@ -3,13 +3,16 @@ import type { PostHog } from "posthog-js";
 import { isTelemetryUserId } from "./sentry-privacy";
 import { productEvents, sanitizeAnalyticsEvent } from "./analytics-privacy";
 import { pageTemplate } from "./routes";
+import { homeState } from "./metadata";
 
 let client: PostHog | undefined;
 let initializing: Promise<void> | undefined;
 let desiredUser: string | null = null;
+let desiredHomeState: string | null = null;
 let appliedUser: string | null = null;
 let lastPath: string | null = null;
 let desiredReplay = false;
+let identityUnsafe = false;
 
 function enabled(): boolean {
   return (
@@ -33,13 +36,21 @@ function environment(): string {
 
 function applyIdentity(): void {
   if (!client || appliedUser === desiredUser) return;
-  if (appliedUser) client.reset(true);
-  if (desiredUser) client.identify(desiredUser);
-  appliedUser = desiredUser;
+  try {
+    if (appliedUser) client.reset(true);
+    if (desiredUser) client.identify(desiredUser);
+    appliedUser = desiredUser;
+    lastPath = null;
+  } catch {
+    // Do not attribute the next account's activity or state to a stale identity.
+    client = undefined;
+    identityUnsafe = true;
+  }
 }
 
-export function setWebAnalyticsUser(id: string | null): void {
+export function setWebAnalyticsUser(id: string | null, selectedHomeState: unknown = null): void {
   desiredUser = isTelemetryUserId(id) ? id : null;
+  desiredHomeState = desiredUser ? homeState(selectedHomeState) : null;
   try {
     applyIdentity();
   } catch {
@@ -51,7 +62,7 @@ export async function initializeWebAnalytics(): Promise<void> {
   const key =
     process.env.NEXT_PUBLIC_POSTHOG_KEY ||
     process.env.NEXT_PUBLIC_POSTHOG_API_KEY;
-  if (!enabled() || !key || client) return;
+  if (!enabled() || !key || client || identityUnsafe) return;
   if (!initializing) {
     initializing = (async () => {
       const { default: posthog } = await import("posthog-js");
@@ -114,6 +125,7 @@ export async function trackWebPage(pathname: string): Promise<void> {
     client.capture("$pageview", {
       $pathname: template,
       app_environment: environment(),
+      home_state: desiredHomeState,
     });
     lastPath = pathname;
   } catch {
@@ -127,7 +139,7 @@ export async function trackWebEvent(
   if (!enabled() || !productEvents.has(event)) return;
   try {
     await initializeWebAnalytics();
-    client?.capture(event, { app_environment: environment() });
+    client?.capture(event, { app_environment: environment(), home_state: desiredHomeState });
   } catch {
     /* Analytics cannot interrupt the action being measured. */
   }

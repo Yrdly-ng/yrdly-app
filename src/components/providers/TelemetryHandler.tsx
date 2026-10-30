@@ -12,13 +12,14 @@ import { setWebUser } from "@/lib/telemetry/sentry";
 
 export function TelemetryHandler() {
   const pathname = usePathname();
-  const { user, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
   const id = user?.id ?? null;
+  const selectedHomeState = profile?.id === id ? profile?.home_state : null;
 
   useEffect(() => {
     // Clear any old identity immediately while an account transition resolves.
     setWebUser(loading ? null : id);
-    setWebAnalyticsUser(loading ? null : id);
+    setWebAnalyticsUser(loading ? null : id, loading ? null : selectedHomeState);
     if (loading) return;
     let cancelled = false;
     void initializeWebAnalytics().then(() => {
@@ -27,7 +28,7 @@ export function TelemetryHandler() {
     return () => {
       cancelled = true;
     };
-  }, [id, loading, pathname]);
+  }, [id, loading, pathname, selectedHomeState]);
 
   return null;
 }

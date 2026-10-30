@@ -10,7 +10,7 @@ const env = {
   NEXT_PUBLIC_POSTHOG_KEY: "phc_fixture",
   NEXT_PUBLIC_SENTRY_DSN: "https://public@example.invalid/1",
 };
-function runtime({ config = env, browser = true, fail = false } = {}) {
+function runtime({ config = env, browser = true, fail = false, failReset = false } = {}) {
   const calls = [];
   let analyticsOptions;
   let sentryOptions;
@@ -28,7 +28,10 @@ function runtime({ config = env, browser = true, fail = false } = {}) {
       analyticsOptions = options;
     },
     identify: (id) => call("identify", id),
-    reset: (flag) => call("reset", flag),
+    reset: (flag) => {
+      call("reset", flag);
+      if (failReset) throw new Error('reset unavailable');
+    },
     capture: (...args) => call("capture", ...args),
   };
   const sentry = {
@@ -47,6 +50,7 @@ function runtime({ config = env, browser = true, fail = false } = {}) {
     if (cache.has(file)) return cache.get(file).exports;
     const module = { exports: {} };
     cache.set(file, module);
+    if (file.endsWith(".json")) return require(file);
     const compiled = ts.transpileModule(readFileSync(file, "utf8"), {
       compilerOptions: {
         module: ts.ModuleKind.CommonJS,
@@ -58,8 +62,8 @@ function runtime({ config = env, browser = true, fail = false } = {}) {
       (id) => {
         if (id === "posthog-js") return { __esModule: true, default: ph };
         if (id === "@sentry/nextjs") return sentry;
-        assert.ok(id.startsWith("./"));
-        return load(path.resolve(path.dirname(file), id + ".ts"));
+        assert.ok(id.startsWith("."));
+        return load(path.resolve(path.dirname(file), id.endsWith(".json") ? id : id + ".ts"));
       },
       module,
       module.exports,
@@ -341,4 +345,62 @@ test("injected-only browser errors are filtered while mixed application stacks s
  assert.equal(r.sentryOptions.beforeSend(event),null);
  event.exception.values[0].stacktrace.frames.push({filename:'app:///_next/static/chunks/app.js',in_app:true});
  assert.ok(r.sentryOptions.beforeSend(event));
+});
+
+
+test("analytics keeps safe device fields and only the current account's selected state", async () => {
+  const r = runtime();
+  const a = r.load('analytics');
+  a.setWebAnalyticsUser(A, 'Lagos');
+  await a.trackWebPage('/home');
+  let payload = r.calls.filter(([name]) => name === 'capture').at(-1)[2];
+  assert.equal(payload.home_state, 'Lagos');
+  const safe = r.analyticsOptions.before_send({ event: '$pageview', properties: {
+    ...payload, $pathname: '/home', $is_identified: true,
+    $browser: 'Mobile Safari', $browser_version: 18.1, $os: 'iOS', $device_type: 'Mobile',
+    address: 'private', latitude: 6.1, longitude: 3.1,
+  }});
+  assert.equal(safe.properties.home_state, 'Lagos');
+  assert.equal(safe.properties.$browser, 'Mobile Safari');
+  assert.equal(safe.properties.$device_type, 'Mobile');
+  assert.equal(safe.properties.latitude, undefined);
+  assert.equal(safe.properties.address, undefined);
+  a.setWebAnalyticsUser(B);
+  await a.trackWebEvent('business_saved');
+  payload = r.calls.filter(([name]) => name === 'capture').at(-1)[2];
+  assert.equal(payload.home_state, null);
+  a.setWebAnalyticsUser(B, 'private address');
+  await a.trackWebEvent('business_saved');
+  assert.equal(r.calls.filter(([name]) => name === 'capture').at(-1)[2].home_state, null);
+  a.setWebAnalyticsUser(null, 'Ogun');
+  await a.trackWebEvent('business_saved');
+  assert.equal(r.calls.filter(([name]) => name === 'capture').at(-1)[2].home_state, null);
+  assert.equal(r.load('metadata').homeState('fct'), 'Federal Capital Territory');
+  assert.equal(r.load('metadata').homeState('Nassarawa'), 'Nasarawa');
+});
+
+test('failed identity reset cannot attribute another account state or activity to the old user', async () => {
+  const r = runtime({ failReset: true });
+  const a = r.load('analytics');
+  a.setWebAnalyticsUser(A, 'Lagos');
+  await a.trackWebPage('/home');
+  a.setWebAnalyticsUser(B, 'Ogun');
+  await a.trackWebEvent('business_saved');
+  await a.trackWebPage('/explore');
+  assert.equal(r.calls.filter(([name]) => name === 'capture').length, 1);
+  assert.deepEqual(r.calls.filter(([name]) => name === 'identify'), [['identify', A]]);
+});
+
+test('async initialization uses the latest account state and counts same-route account switches', async () => {
+  const r = runtime();
+  const a = r.load('analytics');
+  a.setWebAnalyticsUser(A, 'Lagos');
+  const pending = a.initializeWebAnalytics();
+  a.setWebAnalyticsUser(B, 'Ogun');
+  await pending;
+  await a.trackWebPage('/home');
+  a.setWebAnalyticsUser(A, 'Lagos');
+  await a.trackWebPage('/home');
+  const states = r.calls.filter(([name]) => name === 'capture').map(([, , properties]) => properties.home_state);
+  assert.deepEqual(states, ['Ogun', 'Lagos']);
 });

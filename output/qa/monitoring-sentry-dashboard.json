@@ -1,0 +1,281 @@
+{
+  "title": "YRDLY Web and Mobile Health",
+  "environment": [],
+  "projects": [],
+  "period": "14d",
+  "utc": true,
+  "is_favorited": true,
+  "widgets": [
+    {
+      "title": "Errors",
+      "displayType": "big_number",
+      "widgetType": "error",
+      "interval": "1d",
+      "queries": [
+        {
+          "name": "Errors",
+          "fields": [
+            "count()"
+          ],
+          "columns": [],
+          "aggregates": [
+            "count()"
+          ],
+          "conditions": "project:[yrdly-app,yrdly-mobile] event.type:error",
+          "orderby": "-count()"
+        }
+      ],
+      "layout": {
+        "x": 0,
+        "y": 0,
+        "w": 2,
+        "h": 3,
+        "minH": 2
+      }
+    },
+    {
+      "title": "Affected identified users",
+      "displayType": "big_number",
+      "widgetType": "error",
+      "interval": "1d",
+      "queries": [
+        {
+          "name": "Affected identified users",
+          "fields": [
+            "count_unique(user.id)"
+          ],
+          "columns": [],
+          "aggregates": [
+            "count_unique(user.id)"
+          ],
+          "conditions": "project:[yrdly-app,yrdly-mobile] event.type:error",
+          "orderby": "-count_unique(user.id)"
+        }
+      ],
+      "layout": {
+        "x": 2,
+        "y": 0,
+        "w": 2,
+        "h": 3,
+        "minH": 2
+      }
+    },
+    {
+      "title": "Errors by project",
+      "displayType": "line",
+      "widgetType": "error",
+      "interval": "1d",
+      "queries": [
+        {
+          "name": "Errors by project",
+          "fields": [
+            "project",
+            "count()"
+          ],
+          "columns": [
+            "project"
+          ],
+          "aggregates": [
+            "count()"
+          ],
+          "conditions": "project:[yrdly-app,yrdly-mobile] event.type:error",
+          "orderby": "-count()"
+        }
+      ],
+      "layout": {
+        "x": 4,
+        "y": 0,
+        "w": 2,
+        "h": 3,
+        "minH": 2
+      }
+    },
+    {
+      "title": "Most frequent issues",
+      "displayType": "table",
+      "widgetType": "error",
+      "interval": "1d",
+      "queries": [
+        {
+          "name": "Most frequent issues",
+          "fields": [
+            "project",
+            "issue",
+            "count()",
+            "count_unique(user.id)"
+          ],
+          "columns": [
+            "project",
+            "issue"
+          ],
+          "aggregates": [
+            "count()",
+            "count_unique(user.id)"
+          ],
+          "conditions": "project:[yrdly-app,yrdly-mobile] event.type:error",
+          "orderby": "-count()"
+        }
+      ],
+      "layout": {
+        "x": 0,
+        "y": 3,
+        "w": 2,
+        "h": 3,
+        "minH": 2
+      }
+    },
+    {
+      "title": "Errors by release",
+      "displayType": "table",
+      "widgetType": "error",
+      "interval": "1d",
+      "queries": [
+        {
+          "name": "Errors by release",
+          "fields": [
+            "project",
+            "release",
+            "count()"
+          ],
+          "columns": [
+            "project",
+            "release"
+          ],
+          "aggregates": [
+            "count()"
+          ],
+          "conditions": "project:[yrdly-app,yrdly-mobile] event.type:error",
+          "orderby": "-count()"
+        }
+      ],
+      "layout": {
+        "x": 2,
+        "y": 3,
+        "w": 2,
+        "h": 3,
+        "minH": 2
+      }
+    },
+    {
+      "title": "Mobile errors by OS (includes unknown)",
+      "displayType": "table",
+      "widgetType": "error",
+      "interval": "1d",
+      "queries": [
+        {
+          "name": "Mobile errors by OS (includes unknown)",
+          "fields": [
+            "os.name",
+            "count()"
+          ],
+          "columns": [
+            "os.name"
+          ],
+          "aggregates": [
+            "count()"
+          ],
+          "conditions": "project:yrdly-mobile event.type:error",
+          "orderby": "-count()"
+        }
+      ],
+      "layout": {
+        "x": 4,
+        "y": 3,
+        "w": 2,
+        "h": 3,
+        "minH": 2
+      }
+    },
+    {
+      "title": "Unhandled mobile errors",
+      "displayType": "line",
+      "widgetType": "error",
+      "interval": "1d",
+      "queries": [
+        {
+          "name": "Unhandled mobile errors",
+          "fields": [
+            "count()"
+          ],
+          "columns": [],
+          "aggregates": [
+            "count()"
+          ],
+          "conditions": "project:yrdly-mobile event.type:error error.handled:false",
+          "orderby": "-count()"
+        }
+      ],
+      "layout": {
+        "x": 0,
+        "y": 6,
+        "w": 2,
+        "h": 3,
+        "minH": 2
+      }
+    },
+    {
+      "title": "Errors by screen",
+      "displayType": "table",
+      "widgetType": "error",
+      "interval": "1d",
+      "queries": [
+        {
+          "name": "Errors by screen",
+          "fields": [
+            "project",
+            "screen",
+            "count()"
+          ],
+          "columns": [
+            "project",
+            "screen"
+          ],
+          "aggregates": [
+            "count()"
+          ],
+          "conditions": "project:[yrdly-app,yrdly-mobile] event.type:error",
+          "orderby": "-count()"
+        }
+      ],
+      "layout": {
+        "x": 2,
+        "y": 6,
+        "w": 2,
+        "h": 3,
+        "minH": 2
+      }
+    },
+    {
+      "title": "Affected users by project",
+      "displayType": "table",
+      "widgetType": "error",
+      "interval": "1d",
+      "queries": [
+        {
+          "name": "Affected users by project",
+          "fields": [
+            "project",
+            "count()",
+            "count_unique(user.id)"
+          ],
+          "columns": [
+            "project"
+          ],
+          "aggregates": [
+            "count()",
+            "count_unique(user.id)"
+          ],
+          "conditions": "project:[yrdly-app,yrdly-mobile] event.type:error",
+          "orderby": "-count()"
+        }
+      ],
+      "layout": {
+        "x": 4,
+        "y": 6,
+        "w": 2,
+        "h": 3,
+        "minH": 2
+      }
+    }
+  ]
+}
