@@ -11,6 +11,7 @@ import { TicketService } from '@/lib/events/ticket-service';
 import { PaylukService } from '@/lib/payments/payluk-service';
 import { handlePaylukWebhookEvent as handleBookingPaymentEvent } from '@/lib/bookings/booking-payments';
 import { applyDisputeSettlement } from '@/lib/disputes/dispute-settlement';
+import { recordCampaignRefund } from '@/lib/campaigns/order-evidence';
 
 // ── Signature verification ───────────────────────────────────────────────────
 //
@@ -438,6 +439,7 @@ async function handleEscrowRefunded(data: PaylukEscrowData) {
     await flagPayment('payluk', data.id, tx.id, 'refund_amount_mismatch');
     throw new Error('Refund principal does not match the stored purchase');
   }
+  if (tx.item_type === 'catalog_item') await recordCampaignRefund(tx.id);
   const { data: applied, error: refundError } = await supabaseAdmin.rpc('apply_escrow_refund', {
     // The ledger records the gross purchase allocation, before retained fees.
     p_transaction_id: tx.id, p_provider_reference: data.id, p_refund_amount: Number(tx.amount),

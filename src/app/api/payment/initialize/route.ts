@@ -10,6 +10,7 @@ import { applyEscrowPayment } from '@/lib/payments/escrow-payment';
 import { getPaylukCustomerId } from "@/lib/payments/payluk-onboarding";
 
 import { expireCheckoutReservation, expireItemCheckoutReservations, reservationHasExpired, RESERVATION_SELECT } from '@/lib/payments/checkout-reservation-expiry';
+import { captureCampaignOrder } from '@/lib/campaigns/order-evidence';
 
 export const maxDuration = 60;
 
@@ -350,6 +351,8 @@ export async function POST(request: NextRequest) {
 
       transactionId = txData;
     }
+
+    if (itemType === 'catalog_item') await captureCampaignOrder(transactionId);
 
     // ── STEP 2: Atomic CAS Claim for Escrow Creation (Strict PENDING -> CREATING_ESCROW) ──
     // Only ONE request atomically transitions PENDING -> creating_escrow.

@@ -29,6 +29,7 @@ import {
 import Image from "next/image";
 import { supabase } from "@/lib/supabase/supabase";
 import { clientFeedState } from "@/lib/activity/client-feed-state";
+import { CampaignBanner } from "@/components/campaigns/CampaignBanner";
 
 const GREEN = "#82DB7E";
 
@@ -427,6 +428,7 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
   return (
     <div className="w-full max-w-[680px] lg:max-w-none mx-auto grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_360px] gap-6 pb-24">
       <div className="w-full max-w-none space-y-4 font-yrdly-body">
+        <CampaignBanner />
         {/* ── Active Safety Alert Banners (Horizontal Swipe Carousel) ── */}
         {activeAlerts.length > 0 && (
           <div className="flex overflow-x-auto snap-x snap-mandatory gap-3 pb-2 scrollbar-none">

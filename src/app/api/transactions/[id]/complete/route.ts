@@ -1,3 +1,4 @@
+import { beginCampaignReceipt, finishCampaignReceipt } from '@/lib/campaigns/order-evidence';
 import { getAuthenticatedUser } from '@/lib/supabase/supabase-server';
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
@@ -48,6 +49,12 @@ export async function POST(
       return NextResponse.json({ error: 'Only the buyer can complete this transaction' }, { status: 403 });
     }
 
+    if (transaction.status === EscrowStatus.COMPLETED && transaction.payment_provider === 'payluk') {
+      const escrow = transaction.payluk_tx_ref ? await PaylukService.verifyEscrow(transaction.payluk_tx_ref) : null;
+      if (escrow && transaction.payluk_escrow_id) await finishCampaignReceipt(transactionId, user.id, transaction.payluk_escrow_id, escrow, Number(transaction.amount));
+      return NextResponse.json({ success: true, alreadyCompleted: true });
+    }
+
     // Allow completion from PAID, SHIPPED, or DELIVERED — seller may have skipped the ship step
     const confirmableStatuses = [EscrowStatus.PAID, EscrowStatus.SHIPPED, EscrowStatus.DELIVERED];
     if (!confirmableStatuses.includes(transaction.status as EscrowStatus)) {
@@ -63,7 +70,9 @@ export async function POST(
       }
       try {
         const buyerPaylukId = await getPaylukCustomerId(user.id);
-        await PaylukService.confirmDelivery(buyerPaylukId, transaction.payluk_escrow_id);
+        await beginCampaignReceipt(transactionId, user.id);
+        const released = await PaylukService.confirmDelivery(buyerPaylukId, transaction.payluk_escrow_id);
+        await finishCampaignReceipt(transactionId, user.id, transaction.payluk_escrow_id, released, Number(transaction.amount));
       } catch (paylukErr: any) {
         const msg: string = paylukErr?.message ?? '';
         const escrow = transaction.payluk_tx_ref ? await PaylukService.verifyEscrow(transaction.payluk_tx_ref).catch(() => null) : null;
@@ -71,6 +80,13 @@ export async function POST(
         if (!providerStatuses.some(value => ['completed', 'claimed'].includes(value))) {
           console.error('[complete] PaylukService.confirmDelivery failed:', msg);
           return NextResponse.json({ error: msg || 'Failed to release Payluk escrow' }, { status: 502 });
+        }
+        try {
+          if (escrow && transaction.payluk_escrow_id) {
+            await finishCampaignReceipt(transactionId, user.id, transaction.payluk_escrow_id, escrow, Number(transaction.amount));
+          }
+        } catch {
+          return NextResponse.json({ error: 'Payment released; campaign evidence requires reconciliation.' }, { status: 503 });
         }
         console.warn('[complete] Payluk escrow already closed — proceeding to DB update.');
       }

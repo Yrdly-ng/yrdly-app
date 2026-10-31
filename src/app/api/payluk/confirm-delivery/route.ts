@@ -1,3 +1,4 @@
+import { beginCampaignReceipt, finishCampaignReceipt } from '@/lib/campaigns/order-evidence';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/supabase/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
   // 1. Load the transaction — all values come from the DB, not from the client.
   const { data: tx, error: fetchError } = await supabaseAdmin
     .from('escrow_transactions')
-    .select('id, buyer_id, seller_id, status, payluk_escrow_id, payluk_tx_ref, payment_provider')
+    .select('id, buyer_id, seller_id, status, payluk_escrow_id, payluk_tx_ref, payment_provider, amount')
     .eq('id', transactionId)
     .maybeSingle();
 
@@ -59,6 +60,10 @@ export async function POST(request: NextRequest) {
 
   // 4. Idempotency — if already completed, return success without calling Payluk again.
   if (tx.status === EscrowStatus.COMPLETED) {
+    try {
+      const escrow = tx.payluk_tx_ref ? await PaylukService.verifyEscrow(tx.payluk_tx_ref) : null;
+      if (escrow) await finishCampaignReceipt(transactionId, user.id, tx.payluk_escrow_id, escrow, Number(tx.amount));
+    } catch { return NextResponse.json({ error: 'Campaign completion evidence requires reconciliation.' }, { status: 503 }); }
     return NextResponse.json({ success: true, alreadyCompleted: true });
   }
 
@@ -84,7 +89,9 @@ export async function POST(request: NextRequest) {
 
   // 7. Call Payluk — this releases funds to the seller on Payluk's side.
   try {
-    await PaylukService.confirmDelivery(buyerPaylukId, tx.payluk_escrow_id);
+    await beginCampaignReceipt(transactionId, user.id);
+    const released = await PaylukService.confirmDelivery(buyerPaylukId, tx.payluk_escrow_id);
+    await finishCampaignReceipt(transactionId, user.id, tx.payluk_escrow_id, released, Number(tx.amount));
   } catch (e: any) {
     const msg: string = e?.message ?? '';
     console.error('[confirm-delivery] PaylukService.confirmDelivery failed:', msg);
@@ -94,6 +101,8 @@ export async function POST(request: NextRequest) {
     if (!providerStatuses.some(value => ['completed', 'claimed'].includes(value))) {
       return NextResponse.json({ error: msg || 'Failed to confirm delivery with Payluk' }, { status: 502 });
     }
+    try { if (escrow) await finishCampaignReceipt(transactionId, user.id, tx.payluk_escrow_id, escrow, Number(tx.amount)); }
+    catch { return NextResponse.json({ error: 'Payment released; campaign evidence requires reconciliation.' }, { status: 503 }); }
 
   }
 
