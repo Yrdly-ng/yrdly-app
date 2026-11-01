@@ -4,32 +4,32 @@ export const campaignRules = [
     "Paid product orders from the Businessplace directory only. Personal marketplace listings, services, event tickets, free items and off-platform payments do not qualify.",
   ],
   [
-    "Join before you sell",
-    "Existing and new businesses can apply. Enrollment requires approval, with one participating business per owner. The Google Form collects interest; it does not enroll your business.",
+    "Every eligible business is in",
+    "When you create an eligible product business in Businessplace, it joins the campaign automatically. Existing eligible product businesses are included too.",
   ],
   [
     "One completed order. One sale.",
-    "Quantity and naira value do not change the count. The buyer must confirm receipt and the payment provider must confirm release. Payment alone, marking a product sold and timed automatic claims do not count.",
+    "Once a customer confirms they received the product and the payment is complete, the order adds one sale. Buying more items at once does not add extra points. A payment by itself or marking an item sold is not enough.",
   ],
   [
     "The November window",
-    "Orders must be created after approval and both created and completed between 1 November 2026 at 00:00 and the end of 30 November, Nigeria time (Africa/Lagos). Earlier orders do not count.",
+    "An order must be placed and completed between 1 and 30 November 2026, Nigeria time. Earlier or later orders do not count.",
   ],
   [
     "Refunds and disputes",
-    "Pending refunds, disputes and uncertain payment outcomes are held out of the count. Any confirmed refund, including a partial refund, or reversal removes that order. A resolved case counts only if it meets every rule.",
+    "An order being refunded or disputed will not count while it is being sorted out. A refunded or reversed order will not count.",
   ],
   [
     "Fair competition",
-    "Self-purchases are excluded. Related-account and suspicious purchases are reviewed with evidence; genuine repeat customers are allowed. Adjustments require a recorded reason.",
+    "You cannot count an order you placed with your own business. We may check sales that look unusual. Real repeat customers are welcome.",
   ],
   [
     "First place and ties",
-    "The highest completed-sale count wins ₦500,000. Equal counts share rank; verified businesses tied for first place split the ₦500,000 equally, reconciled in kobo so the total remains exactly ₦500,000. Revenue is never a tie-breaker.",
+    "The business with the most completed sales wins ₦500,000. Businesses tied for first place share the prize equally. The amount you sell never changes your rank.",
   ],
   [
     "Results under review",
-    "There is a seven-day review after closing before winners are announced. Unresolved cases can delay final results. Leaderboard positions are provisional until verification is complete.",
+    "After November ends, we will check the final sales for up to seven days before announcing the winner. The live leaderboard can change while we finish those checks.",
   ],
 ] as const;
 

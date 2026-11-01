@@ -91,6 +91,20 @@ test("wrong provider identities, amounts, automatic claims and open states canno
   assert.equal(r.calls[0].name, "finish_campaign_receipt");
   assert.equal(r.calls[0].args.p_buyer_id, "buyer");
 });
+test("Payluk Unix-second completion timestamps are sent as ISO timestamps", async () => {
+  const r = load();
+  await r.finishCampaignReceipt(
+    "tx",
+    "buyer",
+    "escrow-1",
+    { ...remote, completedAt: "1793553020" },
+    3000,
+  );
+  assert.equal(
+    r.calls[0].args.p_provider_completed_at,
+    "2026-11-01T17:10:20.000Z",
+  );
+});
 test("capture is server-configured, never sends scores and fails before provider operations on uncertain persistence", async () => {
   const r = load();
   await r.captureCampaignOrder("tx");

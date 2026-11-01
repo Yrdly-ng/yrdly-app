@@ -104,14 +104,14 @@ function fixture(overrides = {}) {
       entries: [entry],
       participantCount: 80,
     },
-    participation: { businessId: "owned", status: "approved" },
-    ownEntry: {
+    businesses: [{ id: "owned", name: "My business", logoUrl: null }],
+    ownEntries: [{
       ...entry,
       rank: 75,
       businessId: "owned",
       name: "My business",
       completedSales: 2,
-    },
+    }],
     ...overrides,
   };
 }
@@ -148,7 +148,7 @@ test("own business appears once when it is already in the leading results", () =
   };
   const html = dashboard(
     fixture({
-      ownEntry: own,
+      ownEntries: [own],
       snapshot: { ...fixture().snapshot, entries: [own, entry] },
     }),
   );
@@ -169,7 +169,7 @@ test("equal server ranks remain tied instead of being renumbered by row position
   };
   const html = dashboard(
     fixture({
-      ownEntry: null,
+      ownEntries: [],
       snapshot: { ...fixture().snapshot, entries: [first, second, third] },
     }),
   );
@@ -219,11 +219,11 @@ test("empty participants and approved zero-sale businesses are distinct states",
   const base = fixture();
   const empty = dashboard(
     fixture({
-      ownEntry: null,
+      ownEntries: [],
       snapshot: { ...base.snapshot, participantCount: 0, entries: [] },
     }),
   );
-  assert.match(empty, /No businesses have been approved/);
+  assert.match(empty, /Businessplace product businesses will appear here automatically/);
   const zero = dashboard(
     fixture({
       ownEntry: null,
@@ -235,7 +235,7 @@ test("empty participants and approved zero-sale businesses are distinct states",
     }),
   );
   assert.match(zero, /No qualifying completed sales/);
-  assert.doesNotMatch(zero, /No businesses have been approved/);
+  assert.doesNotMatch(zero, /Businessplace product businesses will appear here automatically/);
 });
 
 test("a changed auth identity cannot use another account session for participation", async () => {
@@ -247,24 +247,11 @@ test("a changed auth identity cannot use another account session for participati
   assert.equal(app.requests.length, 0);
 });
 
-test("enrollment sends business and consent without a score and propagates provider-safe API failures", async () => {
-  const app = runtime({
-    fetchResult: { error: "Enrollment is closed." },
-    status: 409,
-  });
-  await assert.rejects(
-    () =>
-      app.campaignRequest(
-        "/api/campaigns/small-businesses/participation",
-        "owner",
-        undefined,
-        { businessId: "owned", acceptRules: true },
-      ),
-    /Enrollment is closed/,
-  );
-  assert.deepEqual(JSON.parse(app.requests[0].options.body), {
-    businessId: "owned",
-    acceptRules: true,
-  });
-  assert.equal(app.requests[0].options.cache, "no-store");
+test("campaign rules explain automatic entry without applications or technical jargon", () => {
+  const screen = readFileSync("src/components/campaigns/CampaignScreen.tsx", "utf8");
+  const rules = readFileSync("src/components/campaigns/CampaignRules.tsx", "utf8");
+  assert.match(screen, /included automatically/);
+  assert.doesNotMatch(screen, /Apply to participate|application awaiting approval|One business per owner/);
+  assert.match(rules, /joins the campaign automatically/);
+  assert.doesNotMatch(rules, /provider|kobo|approval|enrollment/i);
 });

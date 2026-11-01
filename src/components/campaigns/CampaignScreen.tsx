@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   ArrowLeft,
   ArrowUpRight,
-  Check,
   RefreshCw,
   Share2,
   Store,
@@ -27,11 +26,11 @@ const dateTime = (value: string) =>
 const statusCopy = {
   upcoming: [
     "Coming 1 November",
-    "Get approved before your first campaign order.",
+    "Create your Businessplace product business and it will be included automatically.",
   ],
   active: [
     "The campaign is on",
-    "Join. Sell. Climb. Win. Every qualifying order counts once.",
+    "Eligible Businessplace businesses are already in. Every completed product sale adds one.",
   ],
   review: [
     "Sales window closed",
@@ -103,7 +102,7 @@ function BusinessResult({
           {entry.name}
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Approved participant{own ? " · Your business" : ""}
+          Businessplace{own ? " · Your business" : ""}
         </p>
       </div>
       <div className="shrink-0 text-right">
@@ -232,10 +231,10 @@ export function CampaignDashboard({
               className="text-xs leading-6 text-muted-foreground"
               role="status"
             >
-              {data.snapshot.provisional
+          {data.snapshot.provisional
                 ? "Provisional standings"
                 : "Reviewed final standings"}{" "}
-              · {data.snapshot.participantCount} approved{" "}
+              · {data.snapshot.participantCount} participating{" "}
               {data.snapshot.participantCount === 1 ? "business" : "businesses"}{" "}
               · Calculated{" "}
               <time dateTime={data.snapshot.updatedAt}>
@@ -243,15 +242,16 @@ export function CampaignDashboard({
               </time>{" "}
               Nigeria time
             </p>
-            {data.ownEntry &&
-              !data.snapshot.entries.some(
-                (entry) => entry.businessId === data.ownEntry?.businessId,
-              ) && (
+            {data.ownEntries.some(
+              (ownEntry) => !data.snapshot.entries.some((entry) => entry.businessId === ownEntry.businessId),
+            ) && (
               <div className="space-y-2">
                 <h3 className="text-sm font-semibold">
-                  Your position, wherever you rank
+                  Your businesses, wherever they rank
                 </h3>
-                <BusinessResult entry={data.ownEntry} own />
+                {data.ownEntries.filter((ownEntry) => !data.snapshot.entries.some((entry) => entry.businessId === ownEntry.businessId)).map((entry) => (
+                  <BusinessResult key={entry.businessId} entry={entry} own />
+                ))}
               </div>
             )}
             {data.snapshot.entries.length === 0 ? (
@@ -268,8 +268,8 @@ export function CampaignDashboard({
                 </h3>
                 <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
                   {data.snapshot.participantCount === 0
-                    ? "No businesses have been approved yet. When they are, their completed-sale counts will appear here."
-                    : "Refresh shortly to see the approved businesses. No score has been inferred from missing data."}
+                    ? "Businessplace product businesses will appear here automatically."
+                    : "Refresh shortly to see the latest business and sale counts."}
                 </p>
               </div>
             ) : (
@@ -281,7 +281,7 @@ export function CampaignDashboard({
                   <li key={entry.businessId}>
                     <BusinessResult
                       entry={entry}
-                      own={entry.businessId === data.participation?.businessId}
+                      own={data.ownEntries.some((ownEntry) => ownEntry.businessId === entry.businessId)}
                     />
                   </li>
                 ))}
@@ -319,10 +319,6 @@ export function CampaignScreen() {
   } | null>(null);
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(true);
-  const [businessId, setBusinessId] = useState("");
-  const [accepted, setAccepted] = useState(false);
-  const [enrolling, setEnrolling] = useState(false);
-  const [enrollError, setEnrollError] = useState("");
   const [shareMessage, setShareMessage] = useState("");
   const data = result && result.userId === userId ? result.data : null;
 
@@ -370,10 +366,6 @@ export function CampaignScreen() {
     identity.current = userId;
     setResult(null);
     setError("");
-    setEnrollError("");
-    setBusinessId("");
-    setAccepted(false);
-    setEnrolling(false);
     const controller = new AbortController();
     const requests = sequence;
     void refresh(controller.signal);
@@ -393,27 +385,6 @@ export function CampaignScreen() {
     };
   }, [refresh, userId]);
 
-  const enroll = async () => {
-    if (!userId || !businessId || !accepted || enrolling) return;
-    setEnrolling(true);
-    setEnrollError("");
-    try {
-      await campaignRequest(`${endpoint}/participation`, userId, undefined, {
-        businessId,
-        acceptRules: true,
-      });
-      if (identity.current === userId) await refresh();
-    } catch (cause) {
-      if (identity.current === userId)
-        setEnrollError(
-          cause instanceof Error
-            ? cause.message
-            : "Could not submit your enrollment.",
-        );
-    } finally {
-      if (identity.current === userId) setEnrolling(false);
-    }
-  };
   const share = async () => {
     const url = "https://yrdly.ng/campaigns/small-businesses";
     try {
@@ -432,7 +403,6 @@ export function CampaignScreen() {
         setShareMessage(`Share this campaign: ${url}`);
     }
   };
-  const participation = data?.participation;
   const closed =
     data?.campaign.status === "review" || data?.campaign.status === "finalized";
   return (
@@ -481,10 +451,10 @@ export function CampaignScreen() {
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <a
-                href="#participate"
+                href="#how-to-climb"
                 className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#103b24] px-6 font-semibold text-white"
               >
-                Join the campaign <ArrowUpRight size={18} aria-hidden="true" />
+                Create your business <ArrowUpRight size={18} aria-hidden="true" />
               </a>
               <a
                 href="#leaderboard"
@@ -515,9 +485,9 @@ export function CampaignScreen() {
           JOIN. SELL. CLIMB. WIN.
         </p>
       </section>
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div id="how-to-climb" className="grid gap-3 sm:grid-cols-3">
         {[
-          ["01", "Join", "Choose your business and get approved."],
+          ["01", "Create", "Add your products to Businessplace. Your eligible business joins automatically."],
           [
             "02",
             "Sell",
@@ -546,136 +516,31 @@ export function CampaignScreen() {
           refreshing={refreshing}
           onRefresh={() => void refresh()}
         >
-          {participation ? (
+          {data && data.businesses.length > 0 ? (
             <div className="mt-5 space-y-3">
-              <p className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold">
-                {participation.status === "approved" ? (
-                  <Check size={16} aria-hidden="true" />
-                ) : (
-                  <Store size={16} aria-hidden="true" />
-                )}
-                {
-                  {
-                    pending: "Application awaiting approval",
-                    approved: "Your business is approved",
-                    rejected: "Application not approved",
-                    suspended: "Participation under review",
-                    disqualified: "Business disqualified",
-                  }[participation.status]
-                }
+              <p className="text-sm leading-6 text-muted-foreground">
+                Your eligible Businessplace businesses are included automatically. Every completed product sale adds one to the count.
               </p>
-              <Link
-                href={`/businesses/${encodeURIComponent(participation.businessId)}`}
-                className="block min-h-11 py-2 text-sm font-semibold text-primary underline underline-offset-4"
-              >
-                View your business
-              </Link>
-              {participation.approvedAt && (
-                <p className="text-xs text-muted-foreground">
-                  Approved {dateTime(participation.approvedAt)} Nigeria time.
-                  Earlier orders do not qualify.
-                </p>
-              )}
-              {participation.reason && (
-                <p className="rounded-xl bg-muted p-3 text-sm">
-                  Review note: {participation.reason}
-                </p>
-              )}
+              {data.businesses.map((business) => (
+                <Link key={business.id} href={`/businesses/${encodeURIComponent(business.id)}`} className="flex min-h-12 items-center gap-3 rounded-xl border border-border p-3 text-sm font-semibold hover:bg-muted/50">
+                  <Avatar className="h-9 w-9 shrink-0"><AvatarImage src={business.logoUrl || undefined} alt="" /><AvatarFallback>{business.name.slice(0, 1).toUpperCase()}</AvatarFallback></Avatar>
+                  <span className="min-w-0 flex-1 truncate">{business.name}</span>
+                  <span className="text-primary">View business</span>
+                </Link>
+              ))}
             </div>
           ) : data && !closed ? (
-            <div className="mt-5 space-y-4">
+            <div className="mt-5 space-y-3">
               <p className="text-sm leading-6 text-muted-foreground">
-                One business per owner. Both new and existing businesses can
-                apply. Enrollment becomes eligible after approval.
+                Create a product business in Businessplace and it will be included automatically.
               </p>
-              {data.businesses.length > 0 ? (
-                <>
-                  <label
-                    htmlFor="campaign-business"
-                    className="block text-sm font-semibold"
-                  >
-                    Your business
-                  </label>
-                  <select
-                    id="campaign-business"
-                    value={businessId}
-                    onChange={(event) => setBusinessId(event.target.value)}
-                    disabled={enrolling}
-                    className="min-h-12 w-full rounded-xl border border-border bg-background px-3 text-base"
-                  >
-                    <option value="">Choose a business</option>
-                    {data.businesses.map((business) => (
-                      <option key={business.id} value={business.id}>
-                        {business.name}
-                      </option>
-                    ))}
-                  </select>
-                  <label className="flex min-h-11 items-start gap-3 py-2 text-sm leading-6">
-                    <input
-                      type="checkbox"
-                      checked={accepted}
-                      disabled={enrolling}
-                      onChange={(event) => setAccepted(event.target.checked)}
-                      className="mt-1 h-5 w-5 shrink-0 accent-green-700"
-                    />
-                    <span>
-                      I accept the{" "}
-                      <a
-                        href="#rules"
-                        className="font-semibold underline underline-offset-4"
-                      >
-                        campaign rules
-                      </a>{" "}
-                      and agree to my business name, logo, profile link, rank
-                      and completed-sale count appearing publicly.
-                    </span>
-                  </label>
-                  <button
-                    type="button"
-                    disabled={!businessId || !accepted || enrolling}
-                    onClick={() => void enroll()}
-                    className="inline-flex min-h-12 items-center justify-center rounded-xl bg-primary px-5 font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {enrolling
-                      ? "Submitting application…"
-                      : "Apply to participate"}
-                  </button>
-                </>
-              ) : (
-                <Link
-                  href="/businesses?create=1"
-                  className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-primary px-5 font-semibold text-primary-foreground"
-                >
-                  <Store size={18} aria-hidden="true" /> Create your business
-                </Link>
-              )}
-              <p className="text-xs leading-6 text-muted-foreground">
-                Want to hear more first?{" "}
-                <a
-                  href="https://forms.gle/UnREfHXZK4CGLn3KA"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="font-semibold underline underline-offset-4"
-                >
-                  Register your interest
-                </a>
-                . The interest form does not enroll your business.
-              </p>
+              <Link href="/businesses?create=1" className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-primary px-5 font-semibold text-primary-foreground">
+                <Store size={18} aria-hidden="true" /> Create your business
+              </Link>
             </div>
-          ) : data && closed ? (
-            <p className="mt-5 text-sm text-muted-foreground">
-              Enrollment is closed. You can still explore businesses and review
-              the standings.
-            </p>
           ) : (
             <p className="mt-4 text-sm text-muted-foreground">
-              Load campaign information to check your eligibility and
-              participation.
-            </p>
-          )}
-          {enrollError && (
-            <p role="alert" className="mt-4 text-sm text-destructive">
-              {enrollError}
+              The November sales period is over. You can still view the standings and your business profiles.
             </p>
           )}
         </CampaignDashboard>

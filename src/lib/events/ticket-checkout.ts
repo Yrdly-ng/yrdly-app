@@ -104,6 +104,13 @@ export async function verifyTicketCheckout(reference: string, expectedBuyerId?: 
 
 export async function createTicketCheckout(input: TicketCheckoutInput, purpose: string, endTime: string, hostedCheckoutSupported = false) {
   const paystackMode = getPaystackEventMode();
+  const stagingPaylukEnabled = process.env.PAYLUK_EVENT_CHECKOUT_ENABLED === 'true' &&
+    process.env.PAYLUK_EVENT_NATIVE_COMMISSION_CONFIRMED === 'true' &&
+    process.env.PAYLUK_SECRET_KEY?.startsWith('sk_test_') === true &&
+    process.env.PAYLUK_BASE_URL === 'https://staging.api.payluk.ng';
+  if (!paystackMode && !stagingPaylukEnabled) {
+    throw new TicketCheckoutError('Paid ticket sales are not available yet.', 503);
+  }
   if (process.env.PAYSTACK_EVENT_CHECKOUT_ENABLED === 'true' && !paystackMode) {
     throw new TicketCheckoutError('Ticket payments are temporarily unavailable while payment configuration is checked.', 503);
   }

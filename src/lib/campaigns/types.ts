@@ -40,9 +40,8 @@ export interface CampaignParticipation {
 }
 
 export interface CampaignMeResponse extends CampaignResponse {
-  participation: CampaignParticipation | null;
   businesses: { id: string; name: string; logoUrl: string | null }[];
-  ownEntry: CampaignEntry | null;
+  ownEntries: CampaignEntry[];
   snapshotId: string;
   updatedAt: string;
 }

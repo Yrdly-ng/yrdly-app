@@ -7,7 +7,7 @@ async function setup() {
   const db = new PGlite();
   await db.exec(`CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;
  CREATE TABLE users(id uuid PRIMARY KEY,is_admin boolean DEFAULT false);
- CREATE TABLE businesses(id uuid PRIMARY KEY,owner_id uuid,name text,logo_url text,logo text,image_urls text[] DEFAULT '{}',is_active boolean DEFAULT true,moderation_status text DEFAULT 'approved',mode text DEFAULT 'product');
+ CREATE TABLE businesses(id uuid PRIMARY KEY,owner_id uuid,name text,logo_url text,logo text,image_urls text[] DEFAULT '{}',is_active boolean DEFAULT true,moderation_status text DEFAULT 'approved',mode text DEFAULT 'product',created_at timestamptz DEFAULT clock_timestamp());
  CREATE TABLE catalog_items(id uuid PRIMARY KEY,business_id uuid,price numeric);
  CREATE TABLE escrow_transactions(id uuid PRIMARY KEY,item_id text,item_type text,buyer_id uuid,seller_id uuid,amount numeric,status text DEFAULT 'pending',payment_provider text DEFAULT 'payluk',payluk_escrow_id text,payluk_tx_ref text,created_at timestamptz DEFAULT clock_timestamp(),updated_at timestamptz DEFAULT clock_timestamp(),completed_at timestamptz,metadata jsonb DEFAULT '{}',delivery_details jsonb DEFAULT '{}');
  CREATE TABLE disputes(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),transaction_id uuid,refund_amount numeric DEFAULT 0,status text DEFAULT 'open');
@@ -25,6 +25,15 @@ async function setup() {
     .replaceAll("statement_timestamp()", "private.test_now()")
     .replace(/\bnow\(\)/g, "private.test_now()");
   await db.exec(migration);
+  let automaticEntry = readFileSync(
+    "supabase/migrations/20261101180745_automatic_small_business_campaign_entry.sql",
+    "utf8",
+  );
+  automaticEntry = automaticEntry
+    .replaceAll("clock_timestamp()", "private.test_now()")
+    .replaceAll("statement_timestamp()", "private.test_now()")
+    .replace(/\bnow\(\)/g, "private.test_now()");
+  await db.exec(automaticEntry);
   await db.query(
     "INSERT INTO users VALUES($1,true),($2,false),($3,false),($4,false)",
     [id(1), id(2), id(3), id(4)],
@@ -45,16 +54,8 @@ async function setup() {
         args,
       )
     ).rows[0].value;
-  await rpc("enroll_sales_campaign", [id(2), id(20), "2026-11-v1"]);
   const part = (await db.query("SELECT id FROM campaign_participations"))
     .rows[0].id;
-  await rpc("admin_sales_campaign", [
-    id(1),
-    "approve",
-    part,
-    "Verified business ownership",
-    null,
-  ]);
   await db.exec("UPDATE private.test_clock SET value='2026-11-04T12:00:00Z'");
   async function order(n = 40, env = "live", extra = {}) {
     await db.query(
@@ -102,7 +103,7 @@ test("catalog completed sale counts once; retries, top/own snapshot and public p
     const pub = await t.read();
     const mine = await t.read(id(2));
     assert.equal(pub.snapshot.entries[0].completedSales, 1);
-    assert.equal(mine.ownEntry.completedSales, 1);
+    assert.equal(mine.ownEntries[0].completedSales, 1);
     assert.equal(pub.snapshot.id, mine.snapshot.id);
     assert.equal(
       (await t.db.query("SELECT * FROM campaign_sale_evidence")).rows.length,
@@ -213,59 +214,29 @@ test("disputes suspend eligibility; dismissed valid payment restores; partial re
     await t.db.close();
   }
 });
-test("ownership changes, manual holds and disqualification affect counts with reasoned audit", async () => {
+test("eligible businesses enter automatically and ownership follows the directory", async () => {
   const t = await setup();
   try {
     await t.order();
     await t.complete();
-    await t.rpc("admin_sales_campaign", [
-      id(1),
-      "hold",
-      id(40),
-      "Related accounts require review",
-      null,
-    ]);
-    assert.equal((await t.read()).snapshot.entries[0].completedSales, 0);
-    await t.rpc("admin_sales_campaign", [
-      id(1),
-      "clear",
-      id(40),
-      "Evidence establishes genuine purchase",
-      null,
-    ]);
-    assert.equal((await t.read()).snapshot.entries[0].completedSales, 1);
+    await t.db.query("INSERT INTO businesses(id,owner_id,name) VALUES($1,$2,$3)", [id(21), id(2), "Second business"]);
+    assert.equal((await t.read()).snapshot.participantCount, 2);
+    assert.equal((await t.read(id(2))).ownEntries.length, 2);
     await t.db.query("UPDATE businesses SET owner_id=$1 WHERE id=$2", [
       id(4),
       id(20),
     ]);
-    assert.equal((await t.read()).snapshot.entries.length, 0);
+    assert.equal((await t.read()).snapshot.entries.length, 2);
     await t.db.query("UPDATE businesses SET owner_id=$1 WHERE id=$2", [
       id(2),
       id(20),
     ]);
-    await t.rpc("admin_sales_campaign", [
-      id(1),
-      "disqualify",
-      t.part,
-      "Verified competition rule violation",
-      null,
-    ]);
-    assert.equal((await t.read()).snapshot.entries.length, 0);
-    await assert.rejects(
-      t.rpc("admin_sales_campaign", [
-        id(2),
-        "approve",
-        t.part,
-        "Unauthorized action reason",
-        null,
-      ]),
-      /Admin access/,
-    );
+    assert.equal((await t.read()).snapshot.entries.length, 2);
   } finally {
     await t.db.close();
   }
 });
-test("order creation must be inside period and after approval, completion excludes December midnight", async () => {
+test("order creation and completion must be inside the campaign window", async () => {
   const t = await setup();
   try {
     assert.equal(
@@ -274,7 +245,7 @@ test("order creation must be inside period and after approval, completion exclud
     );
     assert.equal(
       await t.order(41, "live", { createdAt: "2026-11-02T12:00:00Z" }),
-      false,
+      true,
     );
     await t.order(42);
     await t.db.exec(
@@ -307,10 +278,6 @@ test("order creation must be inside period and after approval, completion exclud
       "live",
     ]);
     assert.equal((await t.read()).snapshot.entries[0].completedSales, 1);
-    await assert.rejects(
-      t.rpc("enroll_sales_campaign", [id(4), id(20), "2026-11-v1"]),
-      /ended/,
-    );
   } finally {
     await t.db.close();
   }
@@ -386,7 +353,6 @@ test("equal first-place ranks split exactly 50 million kobo with deterministic r
         "INSERT INTO businesses(id,owner_id,name) VALUES($1,$2,$3)",
         [id(n + 1), id(n), `Shop ${n}`],
       );
-      await t.rpc("enroll_sales_campaign", [id(n), id(n + 1), "2026-11-v1"]);
       const part = (
         await t.db.query(
           "SELECT id FROM campaign_participations WHERE owner_id=$1",
@@ -509,21 +475,16 @@ test("equal first-place ranks split exactly 50 million kobo with deterministic r
   }
 });
 
-test("one business per owner and source audit privacy remain enforced", async () => {
+test("multiple businesses owned by one person enter automatically and source data stays private", async () => {
   const t = await setup();
   try {
     await t.db.query(
       "INSERT INTO businesses(id,owner_id,name) VALUES($1,$2,$3)",
       [id(21), id(2), "Second business"],
     );
-    await assert.rejects(
-      t.rpc("enroll_sales_campaign", [id(2), id(21), "2026-11-v1"]),
-      /one business per owner/,
-    );
-    await assert.rejects(
-      t.rpc("enroll_sales_campaign", [id(4), id(20), "2026-11-v1"]),
-      /you own/,
-    );
+    const automatic = await t.read(id(2));
+    assert.equal(automatic.businesses.length, 2);
+    assert.equal(automatic.snapshot.participantCount, 2);
     await t.order();
     await t.complete();
     await t.db.query(
@@ -536,7 +497,7 @@ test("one business per owner and source audit privacy remain enforced", async ()
     assert.equal((await t.read()).snapshot.entries[0].completedSales, 0);
     await t.db.exec("SET ROLE service_role");
     const roleRead = await t.read(id(2));
-    assert.equal(roleRead.ownEntry.completedSales, 0);
+    assert.equal(roleRead.ownEntries.length, 2);
     await t.db.exec("RESET ROLE; SET ROLE authenticated");
     for (const table of [
       "campaign_audit",
@@ -584,4 +545,15 @@ test("one provider escrow release cannot score under two local order identities"
   } finally {
     await t.db.close();
   }
+});
+
+test("automatic entry does not require business creators to access private campaign tables", async () => {
+ const t=await setup(); try {
+ await t.db.exec("GRANT INSERT ON public.businesses TO authenticated");
+ await t.db.exec("BEGIN; SET LOCAL ROLE authenticated; INSERT INTO public.businesses(id,owner_id,name) VALUES('00000000-0000-4000-8000-000000000099','00000000-0000-4000-8000-000000000002','New business'); COMMIT;");
+ const rows=await t.db.query("SELECT status FROM public.campaign_participations WHERE business_id='00000000-0000-4000-8000-000000000099'");
+ assert.equal(rows.rows[0].status,'approved');
+ const rights=await t.db.query("SELECT has_table_privilege('authenticated','public.campaign_participations','INSERT') AS write,has_function_privilege('authenticated','private.sync_small_business_campaign_business()','EXECUTE') AS invoke");
+ assert.equal(rights.rows[0].write,false);assert.equal(rights.rows[0].invoke,false);
+ } finally {await t.db.close();}
 });

@@ -7,11 +7,12 @@ function harness({
   user = { id: "00000000-0000-4000-8000-000000000002" },
   admin = false,
   dbError = null,
+  ownEntries,
 } = {}) {
   const calls = [];
   const cache = new Map();
   const db = {
-    from() {
+    from(table) {
       return {
         select() {
           return this;
@@ -19,7 +20,7 @@ function harness({
         eq() {
           return this;
         },
-        maybeSingle: async () => ({ data: { is_admin: admin } }),
+        maybeSingle: async () => ({ data: table === "campaign_participations" ? { id: "participant", business_id: ownEntries?.[0]?.businessId, status: "approved", approved_at: "2026-10-31T23:00:00Z", reason: null } : { is_admin: admin } }),
       };
     },
     rpc: async (name, args) => {
@@ -29,6 +30,7 @@ function harness({
           name === "read_sales_campaign"
             ? {
                 participation: { businessId: args.p_actor },
+                ...(ownEntries === undefined ? {} : { ownEntries }),
                 snapshot: { id: "one" },
               }
             : { saved: true },
@@ -82,18 +84,9 @@ function harness({
     });
   return { route, calls, request };
 }
-test("anonymous participation reads and mutations fail before private database access", async () => {
+test("anonymous own-rank reads fail before private database access", async () => {
   const h = harness({ user: null });
-  for (const [route, method, body] of [
-    ["campaigns/small-businesses/me", "GET"],
-    [
-      "campaigns/small-businesses/participation",
-      "POST",
-      { businessId: "00000000-0000-4000-8000-000000000020", acceptRules: true },
-    ],
-  ]) {
-    assert.equal((await h.route(route)[method](h.request(body))).status, 401);
-  }
+  assert.equal((await h.route("campaigns/small-businesses/me").GET(h.request())).status, 401);
   assert.equal(h.calls.length, 0);
 });
 test("public reads cannot select an actor, while own-rank reads use authenticated identity", async () => {
@@ -104,35 +97,12 @@ test("public reads cannot select an actor, while own-rank reads use authenticate
   assert.equal(h.calls[1].args.p_actor, "00000000-0000-4000-8000-000000000002");
   assert.equal(h.calls[1].args.p_admin, false);
 });
-test("enrollment rejects score injection, missing consent and unapproved rules version", async () => {
+test("enrollment endpoint is retired because businesses enter automatically", async () => {
   const h = harness();
-  const body = {
-    businessId: "00000000-0000-4000-8000-000000000020",
-    acceptRules: true,
-  };
-  for (const patch of [
-    { score: 999 },
-    { acceptRules: false },
-    { rulesVersion: "changed" },
-  ])
-    assert.equal(
-      (
-        await h
-          .route("campaigns/small-businesses/participation")
-          .POST(h.request({ ...body, ...patch }))
-      ).status,
-      400,
-    );
+  const response = await h.route("campaigns/small-businesses/participation").POST(h.request({ businessId: "fake", score: 999 }));
+  assert.equal(response.status, 410);
+  assert.match((await response.json()).error, /included automatically/);
   assert.equal(h.calls.length, 0);
-  assert.equal(
-    (
-      await h
-        .route("campaigns/small-businesses/participation")
-        .POST(h.request(body))
-    ).status,
-    200,
-  );
-  assert.equal(h.calls[0].args.p_actor, "00000000-0000-4000-8000-000000000002");
 });
 test("private admin evidence requires stored administrator role", async () => {
   const h = harness();
@@ -159,4 +129,13 @@ test("unavailable database gives retryable error instead of invented zero leader
     JSON.stringify(body),
     /private transaction|entries|completedSales/,
   );
+});
+
+test("installed mobile clients retain their singular business result from the same standings", async () => {
+ const owned={ businessId:"business",rank:12,completedSales:3,name:"My business" };
+ const h=harness({ownEntries:[owned]});
+ const response=await h.route("campaigns/small-businesses/me").GET(h.request());
+ const result=await response.json();
+ assert.equal(response.status,200);assert.deepEqual(result.ownEntry,owned);
+ assert.deepEqual(result.ownEntries,[owned]);assert.equal(result.participation.status,"approved");assert.equal(result.participation.id,"participant");
 });

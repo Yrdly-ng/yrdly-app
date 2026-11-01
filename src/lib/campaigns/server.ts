@@ -68,9 +68,23 @@ export async function campaignRpc<T>(
 }
 
 export async function readCampaign(actor: string | null = null, admin = false) {
-  return campaignRpc<
+  const result = await campaignRpc<
     CampaignResponse | CampaignMeResponse | CampaignAdminResponse
   >("read_sales_campaign", { p_actor: actor, p_admin: admin });
+  // Installed mobile versions still read the original singular fields.
+  if (actor && "ownEntries" in result) {
+    const ownEntry = result.ownEntries[0] || null;
+    let participation = null;
+    if (ownEntry) {
+      const { data, error } = await supabaseAdmin.from("campaign_participations")
+        .select("id,business_id,status,approved_at,reason")
+        .eq("business_id", ownEntry.businessId).eq("owner_id", actor).maybeSingle();
+      if (error || !data) throw new CampaignError("Campaign information is temporarily unavailable.", 503);
+      participation = { id: data.id, businessId: data.business_id, status: data.status, approvedAt: data.approved_at, reason: data.reason };
+    }
+    return { ...result, ownEntry, participation };
+  }
+  return result;
 }
 
 export function campaignFailure(error: unknown) {

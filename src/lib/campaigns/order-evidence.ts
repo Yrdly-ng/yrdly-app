@@ -68,6 +68,18 @@ export function beginCampaignReceipt(transactionId: string, buyerId: string) {
   });
 }
 
+function providerTimestamp(value: string | null): string | null | undefined {
+  if (value === null) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const numeric = /^\d{9,13}$/.test(trimmed) ? Number(trimmed) : null;
+  const milliseconds = numeric === null ? Date.parse(trimmed) :
+    trimmed.length <= 10 ? numeric * 1000 : numeric;
+  if (!Number.isFinite(milliseconds)) return undefined;
+  const date = new Date(milliseconds);
+  return Number.isNaN(date.valueOf()) ? undefined : date.toISOString();
+}
+
 /** Only pass an authenticated provider response, never a request/webhook body. */
 export async function finishCampaignReceipt(
   transactionId: string,
@@ -76,10 +88,12 @@ export async function finishCampaignReceipt(
   escrow: PaylukEscrow,
   amount?: number,
 ) {
+  const completedAt = providerTimestamp(escrow.completedAt);
   if (
     escrow.id !== expectedEscrowId ||
     escrow.status !== "COMPLETED" ||
     escrow.state !== "CLOSED" ||
+    completedAt === undefined ||
     (amount !== undefined &&
       Math.round(escrow.amount * 100) !== Math.round(amount * 100))
   )
@@ -91,7 +105,7 @@ export async function finishCampaignReceipt(
     p_buyer_id: buyerId,
     p_provider_escrow_id: escrow.id,
     p_provider_status: escrow.status,
-    p_provider_completed_at: escrow.completedAt || null,
+    p_provider_completed_at: completedAt,
     p_environment: environment,
   });
 }
