@@ -34,7 +34,7 @@ const navItems = [
     href: "/explore",
     label: "Explore",
     icon: Compass,
-    matchPaths: ["/explore", "/marketplace", "/events", "/businesses", "/communities"],
+    matchPaths: ["/explore", "/marketplace", "/events", "/businesses", "/communities", "/campaigns"],
   },
   { href: "/map", label: "Map", icon: MapPin },
   { href: "/messages", label: "Messages", icon: ChatCircle },
@@ -70,6 +70,7 @@ export function MainLayout({ children }: MainLayoutProps) {
   const isPostsPage = pathname.startsWith("/posts");
   const isProfilePage = pathname.startsWith("/profile");
   const isWidePage =
+    pathname.startsWith("/campaigns") ||
     isHomePage ||
     isEdgeToEdgePage ||
     isBusinessOrEventsPage ||

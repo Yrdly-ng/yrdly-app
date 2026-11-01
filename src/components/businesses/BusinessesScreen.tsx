@@ -27,6 +27,7 @@ import {
   getBusinessRating,
 } from "@/lib/businesses/presentation";
 import type { Business } from "@/types";
+import { CampaignBanner } from "@/components/campaigns/CampaignBanner";
 
 export function BusinessesScreen({
   backTarget = "/businesses",
@@ -45,6 +46,7 @@ export function BusinessesScreen({
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const revision = useRef(0);
+  const handledCreate = useRef(false);
   const state = activeFilter?.state;
   const lga = activeFilter?.lga;
   const ward = activeFilter?.ward;
@@ -134,8 +136,16 @@ export function BusinessesScreen({
     setOnboardingOpen(true);
   };
 
+  useEffect(() => {
+    if (searchParams.get("create") !== "1" || !profile || handledCreate.current) return;
+    handledCreate.current = true;
+    if (!profile.phone_verified) router.push("/verify-phone");
+    else setOnboardingOpen(true);
+  }, [profile, router, searchParams]);
+
   return (
     <section className="mx-auto max-w-6xl space-y-7 px-4 py-6 pb-24 font-yrdly-body text-foreground sm:px-6 sm:py-8">
+      <CampaignBanner />
       <header className="space-y-6">
         {backTarget === "/businesses" && (
           <button
