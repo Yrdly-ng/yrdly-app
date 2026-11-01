@@ -2,7 +2,8 @@ const {test}=require('node:test');const assert=require('node:assert/strict');con
 const filename='src/components/businesses/CreateBusinessDialog.tsx';const source=fs.readFileSync(filename,'utf8');const ast=ts.createSourceFile(filename,source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
 const schemaSource=ast.statements.find(n=>ts.isVariableStatement(n)&&n.declarationList.declarations.some(d=>d.name.getText()==='getFormSchema')).getText();
 const normalizeSource=ast.statements.find(n=>ts.isFunctionDeclaration(n)&&n.name.text==='normalizeBusinessEditLocation').getText();
-const moduleObject={exports:{}};new Function('z','module',ts.transpileModule(normalizeSource+'\n'+schemaSource+'\nmodule.exports={getFormSchema,normalizeBusinessEditLocation};',{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText)(z,moduleObject);
+const photosSource=ast.statements.find(n=>ts.isFunctionDeclaration(n)&&n.name.text==='getExistingBusinessPhotos').getText();
+const moduleObject={exports:{}};new Function('z','module',ts.transpileModule(photosSource+'\n'+normalizeSource+'\n'+schemaSource+'\nmodule.exports={getFormSchema,normalizeBusinessEditLocation};',{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText)(z,moduleObject);
 const valid={name:'QA bakery',mode:'product',category:'Food',description:'Fresh bread',location:{address:'Lagos'},image:['https://example.test/cover.jpg']};
 test('business edit validation returns a field error for legacy addresses instead of crashing',()=>{
  const schema=moduleObject.exports.getFormSchema(true,{image_urls:valid.image});
@@ -34,4 +35,9 @@ test('Continue to Media cancels the click default before asynchronous validation
  const pending=loaded.exports({preventDefault:()=>prevented=true});
  assert.equal(prevented,true,'Continue must not become a submit click when the media step replaces its button');
  await pending;assert.equal(step,2);
+});
+
+test('a separate saved cover is preserved when editing a profile image',()=>{
+ const existing={cover_image:'https://example.test/banner.jpg',image_urls:[],logo_url:'https://example.test/logo.jpg'};
+ assert.equal(moduleObject.exports.getFormSchema(true,existing).safeParse({...valid,image:undefined}).success,true);
 });
