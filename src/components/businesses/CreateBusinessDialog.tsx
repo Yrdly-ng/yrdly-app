@@ -192,6 +192,15 @@ const BlobImage = memo(
 );
 BlobImage.displayName = "BlobImage";
 
+function normalizeBusinessEditLocation(location: unknown): LocationValue {
+  if (typeof location === "string") return { address: location };
+  if (location && typeof location === "object" && !Array.isArray(location)) {
+    const value = location as Record<string, unknown>;
+    return { ...value, address: typeof value.address === "string" ? value.address : "" };
+  }
+  return { address: "" };
+}
+
 const getFormSchema = (isEditMode: boolean, businessToEdit?: Business) =>
   z.object({
     name: z.string().min(1, "Business name can't be empty.").max(100),
@@ -200,7 +209,7 @@ const getFormSchema = (isEditMode: boolean, businessToEdit?: Business) =>
     description: z.string().min(1, "Description is required.").max(1000),
     location: z
       .custom<LocationValue>()
-      .refine((value) => value && value.address.length > 0, {
+      .refine((value) => typeof value?.address === "string" && value.address.trim().length > 0, {
         message: "Location is required.",
       }),
     phone: z
@@ -307,12 +316,13 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
             mode: (businessToEdit.mode as BusinessMode) || "both",
             category: businessToEdit.category,
             description: businessToEdit.description,
-            location: businessToEdit.location,
+            location: normalizeBusinessEditLocation(businessToEdit.location),
             phone: businessToEdit.phone || "",
             email: businessToEdit.email || "",
             website: businessToEdit.website || "",
             hours: businessToEdit.hours || "",
-            image: businessToEdit.image_urls || [],
+            // Saved URLs render separately; this field contains new upload files only.
+            image: undefined,
           });
           const parsed = parseHours(businessToEdit.hours);
           setHoursDays(parsed.days);
@@ -421,7 +431,8 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
     [onOpenChange, externalOpen, form],
   );
 
-  const goToNextStep = async () => {
+  const goToNextStep = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
     const step1Valid = await form.trigger([
       "name",
       "mode",

@@ -309,6 +309,7 @@ test("business discovery shows approved real storefronts and retains cards after
         React.createElement("button", props, children),
     },
     "@/components/ui/skeleton": { Skeleton: () => null },
+    "@/components/campaigns/CampaignBanner": { CampaignBanner: () => null },
     "./CreateBusinessDialog": { CreateBusinessDialog: () => null },
     "./BusinessCreatorOnboarding": { BusinessCreatorOnboarding: () => null },
     "@/contexts/LocationContext": {
