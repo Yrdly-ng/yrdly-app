@@ -313,7 +313,7 @@ async function createPaylukWithdrawalIntent(params: {
   return intent;
 }
 
-/** Stage at most three intents; only the caller may execute the final one. */
+/** Stage at most five intents; only the caller may execute the final one. */
 async function stageBudgetedWithdrawal(params: Parameters<typeof createPaylukWithdrawalIntent>[0]): Promise<
   { intent: PaylukWithdrawalIntent; minimumError?: never } |
   { intent?: never; minimumError: ReturnType<typeof withdrawalMinimumError> & { reference: string } }
@@ -326,26 +326,37 @@ async function stageBudgetedWithdrawal(params: Parameters<typeof createPaylukWit
     reference: `${params.reference}-quote`,
   });
   let intent = minimumIntent;
-  let netAmount = withdrawalNet(params.amount, intent.fee);
-  if (netAmount < PAYLUK_WITHDRAWAL_MINIMUM) {
-    return { minimumError: { ...withdrawalMinimumError(intent.fee), reference: intent.reference } };
-  }
-  if (netAmount === intent.amount) return { intent };
-
-  intent = await createPaylukWithdrawalIntent({ ...params, amount: netAmount, reference: `${params.reference}-net` });
-  if (intent.amount + intent.fee > params.amount) {
-    // A returned fee can change with the amount. Adjust once, then the caller
-    // checks the final debit. An opaque provider rejection stops staging;
-    // neither fee guesses nor transfer retries are safe substitutes for a quote.
-    netAmount = withdrawalNet(params.amount, intent.fee);
+  let rejectedAmount: number | undefined;
+  // Five intents + identity, bank list, wallet and verify = nine requests.
+  // A rejected larger quote may conceal a higher fee tier. Probe between the
+  // last successful quote and the rejection; never guess the fee or verify a probe.
+  for (let attempt = 2; attempt <= 5; attempt++) {
+    const netAmount = withdrawalNet(params.amount, intent.fee);
     if (netAmount < PAYLUK_WITHDRAWAL_MINIMUM) {
       return { minimumError: { ...withdrawalMinimumError(intent.fee), reference: intent.reference } };
     }
-    intent = netAmount === minimumIntent.amount
-      ? minimumIntent
-      : await createPaylukWithdrawalIntent({ ...params, amount: netAmount, reference: `${params.reference}-net-adjusted` });
+    if (netAmount === intent.amount) return { intent };
+    if (netAmount === minimumIntent.amount && minimumIntent.amount + minimumIntent.fee <= params.amount) {
+      return { intent: minimumIntent };
+    }
+
+    const amount = rejectedAmount !== undefined && netAmount >= rejectedAmount
+      ? Math.floor((Math.round(intent.amount * 100) + Math.round(rejectedAmount * 100)) / 2) / 100
+      : netAmount;
+    if (amount < PAYLUK_WITHDRAWAL_MINIMUM || amount === intent.amount) break;
+    try {
+      intent = await createPaylukWithdrawalIntent({
+        ...params, amount,
+        reference: `${params.reference}-${attempt === 2 ? 'net' : `quote-${attempt}`}`,
+      });
+      if (amount === netAmount && intent.amount + intent.fee <= params.amount) return { intent };
+    } catch (error) {
+      if (!(error instanceof PaylukRequestError) || error.httpStatus !== 400 ||
+          error.providerMessage.trim().toLowerCase() !== 'insufficient balance') throw error;
+      rejectedAmount = amount;
+    }
   }
-  return { intent };
+  throw new Error('Payluk could not confirm a transfer fee within your available balance. Refresh your balance and try a smaller withdrawal.');
 }
 
 // ── Service ─────────────────────────────────────────────────────────────────

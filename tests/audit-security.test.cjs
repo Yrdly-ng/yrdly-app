@@ -1853,17 +1853,21 @@ for (const mode of ['previewWithdrawal','withdrawToBank']) {
       });
       const result=await PaylukService[mode]({sellerPaylukCustomerId:'qa',amount:budget,yrdlyAvailableBalance:budget,
         bankCode:'044',accountNumber:'0000000000',reference:'qa-bounded',onIntentReady:async()=>{}});
-      const success=['minimum-exact','fee-tier-adjustment'].includes(scenario);
+      const success=['minimum-exact','fee-tier-adjustment','fee-tier-rejected'].includes(scenario);
       assert.equal(result.success,success);
       assert.equal(executed.length,success&&mode==='withdrawToBank'?1:0);
       assert.equal(created[0],1000);
-      assert.ok(created.length<=3,'Fee staging is bounded to protect the provider request budget');
+      assert.ok(created.length<=5,'Fee staging is bounded to protect the provider request budget');
       if(scenario==='minimum-exact'){
         assert.deepEqual(created,[1000],'Reuse the exact minimum intent instead of staging it twice');
         assert.equal(result.intentAmount,1000);assert.equal(result.totalPaylukDebit,1010.75);
       }
       if(scenario==='fee-tier-adjustment'){
         assert.deepEqual(created,[1000,1165.25,1126]);assert.equal(result.intentAmount,1126);
+        assert.equal(result.totalPaylukDebit,1176);
+      }
+      if(scenario==='fee-tier-rejected'){
+        assert.deepEqual(created,[1000,1165.25,1082.62,1126]);assert.equal(result.intentFee,50);
         assert.equal(result.totalPaylukDebit,1176);
       }
     });

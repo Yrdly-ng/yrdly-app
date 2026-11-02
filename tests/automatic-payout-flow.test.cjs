@@ -207,7 +207,7 @@ async function fixture(options = {}) {
     throw new Error(message);
   };
   const fakeFetch = async (url, init = {}) => {
-    if (new URL(url).origin !== "https://payluk.invalid")
+    if (new URL(url).origin !== "https://staging.api.payluk.ng")
       return forbidden(`Live network prohibited: ${url}`);
     const endpoint = new URL(url).pathname;
     provider.calls.push(endpoint);
@@ -222,11 +222,13 @@ async function fixture(options = {}) {
         phone: id === "seller-customer" ? "08000000001" : "08000000002",
       });
     }
+    if (endpoint.startsWith("/v1/escrow/verify/")) return response({ id:"test-escrow",amount:1200,fee:24,whoPays:"seller",additionalFee:0,status:"COMPLETED",state:"CLOSED" });
     if (endpoint === "/v1/escrow/confirm-payment/test-escrow") {
       assert.equal(init.headers["customer-id"], "buyer-customer");
       provider.wallet = 1176;
       return response({ status: "COMPLETED", state: "CLOSED" });
     }
+    if (endpoint === "/v1/payment/bank-list") return response([{ code: "TEST", name: "Fixture bank" }]);
     assert.equal(init.headers["customer-id"], "seller-customer");
     if (endpoint === "/v1/wallet")
       return response({ mainBalance: provider.wallet, escrowBalance: 0 });
@@ -314,6 +316,8 @@ async function fixture(options = {}) {
     "server-push-notification": { sendPushNotification: async () => {} },
     "booking-payments": { handlePaylukWebhookEvent: async () => {} },
     "escrow-payment": {},
+    "staged-booking-config": { stagedBookingOperationsEnabled: () => false },
+    "order-evidence": { beginCampaignReceipt: async () => {}, finishCampaignReceipt: async () => {} },
     "ticket-service": {},
     "dispute-settlement": {},
     "payment-reconciliation": { flagPayment: async () => {} },
@@ -352,7 +356,7 @@ async function fixture(options = {}) {
         process: {
           env: {
             PAYLUK_SECRET_KEY: secret,
-            PAYLUK_BASE_URL: "https://payluk.invalid",
+            PAYLUK_BASE_URL: "https://staging.api.payluk.ng",
             AUTO_PAYOUT_RECOVERY_ENABLED: options.recovery ? "true" : "false",
             PAYOUT_RECOVERY_CRON_SECRET: "fixture-cron-secret",
           },
