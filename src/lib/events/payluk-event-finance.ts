@@ -236,7 +236,22 @@ export async function advanceNextPaylukEventWithdrawal() {
 export async function requestPaylukTicketRefund(ticketId:string,owner:string,reason:string) {
   if (!paylukEventFinanceEnabled()) throw new EventFinanceError('Event refunds are not enabled for this deployment.',503);
   if(typeof reason!=='string'||reason.trim().length<5||reason.length>2000) throw new EventFinanceError('Provide a refund reason.',400);
+  const ticket=await supabaseAdmin.from('tickets').select('event_id,payment_tx_ref').eq('id',ticketId).single();
+  if(ticket.error||!ticket.data) throw new EventFinanceError('Ticket not found.',404);
+  const event=await supabaseAdmin.from('events').select('organizer_id').eq('id',ticket.data.event_id).single();
+  if(event.error||event.data?.organizer_id!==owner) throw new EventFinanceError('Only the event organiser can request this refund.',403);
+  const order=await supabaseAdmin.from('escrow_transactions').select('payluk_tx_ref,payluk_escrow_id,amount,commission,metadata,item_type,payment_provider').eq('id',ticket.data.payment_tx_ref).single();
+  if(order.error||!order.data?.payluk_tx_ref||order.data.item_type!=='ticket'||order.data.payment_provider!=='payluk'||
+    order.data.metadata?.payluk_fee_mode!=='native_commission_v1'||order.data.metadata?.payluk_environment!==paylukEventEnvironment()) throw new EventFinanceError('Ticket payment requires review.');
+  const escrow=await PaylukService.verifyEscrow(order.data.payluk_tx_ref);
+  if(escrow.id!==order.data.payluk_escrow_id||escrow.environment!==paylukEventEnvironment()||!paylukAmountsMatch(order.data,escrow)) throw new EventFinanceError('Ticket payment could not be verified.');
+  // Payluk confirms that release to the main wallet is irreversible for refunds,
+  // even when no bank withdrawal has happened yet. Never promise a refund then.
+  if(escrow.state!=='OPENED'||!['ONGOING','DISPUTED','INVESTIGATING'].includes(escrow.status)) throw new EventFinanceError('Payluk cannot refund this ticket after its funds have left escrow.');
+  // The RPC locks the event and rejects payout allocations, closing the race
+  // between this provider read and a concurrent withdrawal reservation.
   const result=await supabaseAdmin.rpc('request_payluk_event_refund',{p_ticket_id:ticketId,p_owner:owner,p_reason:reason.trim(),p_domain:paylukEventEnvironment()});
+  if(result.error?.message?.includes('event_payout_already_reserved')) throw new EventFinanceError('The payout is already being processed. A refund cannot be started while those funds are reserved.');
   if(result.error) throw new EventFinanceError('This refund needs support review because the ticket or payout status changed.');
   return {...result.data,status:'review',requiresSupport:true};
 }

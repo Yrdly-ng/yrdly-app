@@ -1,0 +1,36 @@
+{
+  "environment": "test",
+  "bookingId": "4c555b4a-be4c-46e0-8854-d55b9279c60b",
+  "transactionId": "a77c375c-9079-4900-91c7-6f84171a9f6a",
+  "paymentToken": "PY_WtOnlI0U5805",
+  "disputeId": "368a48b1-0817-49eb-9a66-7fbc7bf07c09",
+  "buyerDebit": 3150,
+  "retainedFee": 150,
+  "firstReleaseCredit": 1500,
+  "buyerRefund": 500,
+  "sellerTotalCredit": 2500,
+  "providerStatus": "SPLIT",
+  "providerState": "CLOSED",
+  "providerSplit": {
+    "sellerAmount": 1000,
+    "buyerAmount": 500,
+    "pool": 1500,
+    "resolvedAt": "1793653690"
+  },
+  "operationStatus": "succeeded",
+  "planPool": 1500,
+  "planSellerFromHeld": 1000,
+  "priorReleased": 1500,
+  "qaSellerEarnedTotal": 7000,
+  "duplicateHttp": 200,
+  "duplicateIdempotent": true,
+  "finalApprovalHttp": 409,
+  "commissions": [
+    {
+      "amount": 90,
+      "reference": "CM_AdIRuRwfCP6H1793653690493",
+      "status": "success"
+    }
+  ],
+  "passed": true
+}

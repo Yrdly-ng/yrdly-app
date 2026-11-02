@@ -904,7 +904,7 @@ export default function EventDetailPage() {
 
                   {(purchase.tier?.price || 0) > 0 && (
                     <p className="text-xs text-muted-foreground leading-relaxed">
-                      Refund requests are reviewed by the organiser with Yrdly support. Retained payment fees are deducted, even if the event is cancelled, so a refund may be less than your ticket price. Yrdly does not cover these fees.
+                      Refund requests are reviewed by the organiser with Yrdly support. Retained payment fees are deducted, even if the event is cancelled, so a refund may be less than your ticket price. Yrdly does not cover these fees. Request any refund before the organiser payout starts. Payluk cannot refund funds after they are released to the organiser.
                     </p>
                   )}
                   {purchase.tier && !getTicketSaleAvailability(event, purchase.tier).available && (

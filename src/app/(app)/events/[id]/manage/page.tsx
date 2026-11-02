@@ -177,7 +177,7 @@ export default function ManageEventPage() {
     if (
       !window.confirm(
         ticket.payment_provider === "payluk"
-          ? `Request a refund review for ${ticket.attendee_name || "this attendee"}'s ₦${Number(ticket.amount_paid || 0).toLocaleString("en-NG")} ticket? Retained payment fees will be deducted, even for a cancelled event. Yrdly does not cover these fees. Entry will be blocked during review.`
+          ? `Request a refund review for ${ticket.attendee_name || "this attendee"}'s ₦${Number(ticket.amount_paid || 0).toLocaleString("en-NG")} ticket? Retained payment fees will be deducted, even for a cancelled event. Yrdly does not cover these fees. Entry will be blocked during review. Refunds cannot be started once payout processing begins, and Payluk cannot refund released funds.`
           : `Request a refund of ₦${Number(ticket.amount_paid || 0).toLocaleString("en-NG")} for ${ticket.attendee_name || "this attendee"}? The ticket will be blocked from entry while the refund is processed.`,
       )
     )

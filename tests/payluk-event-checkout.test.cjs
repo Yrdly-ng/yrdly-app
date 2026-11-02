@@ -63,3 +63,22 @@ test('live event mode requires matching database, key, host and explicit approva
  const config=load(file,env);assert.throws(()=>config.assertPaylukEventEnvironment({item_type:'ticket',metadata:{payluk_environment:'test',payluk_fee_mode:'native_commission_v1'}},{environment:'live'}));
  assert.doesNotThrow(()=>config.assertPaylukEventEnvironment({item_type:'ticket',metadata:{payluk_environment:'live',payluk_fee_mode:'native_commission_v1'}},{environment:'live'}));
 });
+
+function refundFixture({status='ONGOING',state='OPENED',environment='test',owner='owner',rpcError=null,providerFailure=false}={}){
+ const module={exports:{}};let mutations=0,reads=0;
+ const rows={tickets:{event_id:'event',payment_tx_ref:'order'},events:{organizer_id:owner},escrow_transactions:{item_type:'ticket',payment_provider:'payluk',payluk_tx_ref:'PY_ticket',payluk_escrow_id:'escrow',amount:1200,commission:36,metadata:{payluk_fee_mode:'native_commission_v1',payluk_environment:'test'}}};
+ const db={from(table){const q={select(){return q},eq(){return q},single:async()=>({data:rows[table]})};return q},rpc:async()=>{mutations++;return{data:{id:'request'},error:rpcError}}};
+ const mocks={'server-only':{},'@/lib/supabase/supabase-admin':{supabaseAdmin:db},'@/lib/payments/payluk-service':{PaylukService:{verifyEscrow:async()=>{reads++;if(providerFailure)throw Error('Provider unavailable');return{id:'escrow',environment,state,status,amount:1200,fee:60,whoPays:'seller',additionalFee:0}}}},'@/lib/payments/payluk-onboarding':{},'@/lib/payments/payment-state':{paylukAmountsMatch:()=>true},'./payluk-event-finance-config':{paylukEventFinanceEnabled:()=>true,paylukEventEnvironment:()=>'test'},'./event-finance-error':{EventFinanceError:class extends Error{constructor(m,status=409){super(m);this.status=status}}}};
+ const code=ts.transpileModule(fs.readFileSync('src/lib/events/payluk-event-finance.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText;
+ new Function('require','module','exports',code)(n=>mocks[n]||require(n),module,module.exports);
+ return{request:()=>module.exports.requestPaylukTicketRefund('ticket','owner','Refund test reason'),mutations:()=>mutations,reads:()=>reads};
+}
+test('ticket refunds reject closed provider funds before creating a request or changing entry',async()=>{
+ for(const status of ['COMPLETED','CLAIMED','REFUNDED','SPLIT']){const f=refundFixture({status,state:'CLOSED'});await assert.rejects(f.request(),/cannot refund.*left escrow/i);assert.equal(f.mutations(),0);}
+ for(const scenario of [{environment:'live'},{providerFailure:true}]){const f=refundFixture(scenario);await assert.rejects(f.request());assert.equal(f.mutations(),0);}
+ const wrong=refundFixture({owner:'someone else'});await assert.rejects(wrong.request(),/Only the event organiser/);assert.equal(wrong.reads(),0);assert.equal(wrong.mutations(),0);
+});
+test('held ticket refunds remain available and concurrent payout reservations are explicit conflicts',async()=>{
+ for(const status of ['ONGOING','DISPUTED','INVESTIGATING']){const f=refundFixture({status});assert.equal((await f.request()).status,'review');assert.equal(f.mutations(),1);}
+ const reserved=refundFixture({rpcError:{message:'event_payout_already_reserved'}});await assert.rejects(reserved.request(),/already being processed/);
+});
