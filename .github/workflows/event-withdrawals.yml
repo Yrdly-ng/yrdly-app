@@ -1,0 +1,27 @@
+name: Advance event withdrawals
+
+on:
+  schedule:
+    - cron: '4-59/5 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+concurrency:
+  group: event-withdrawal-worker
+  cancel-in-progress: false
+
+jobs:
+  advance:
+    if: vars.EVENT_PAYOUT_SCHEDULER_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Advance one reserved event withdrawal
+        env:
+          EVENT_PAYOUT_CRON_SECRET: ${{ secrets.EVENT_PAYOUT_CRON_SECRET }}
+        run: |
+          test -n "$EVENT_PAYOUT_CRON_SECRET"
+          curl --fail --silent --show-error --max-time 65 \
+            --connect-to app.yrdly.ng:443:cname.vercel-dns-0.com:443 \
+            --header "Authorization: Bearer $EVENT_PAYOUT_CRON_SECRET" \
+            https://app.yrdly.ng/api/cron/advance-event-withdrawals

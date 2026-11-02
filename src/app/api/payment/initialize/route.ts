@@ -10,7 +10,8 @@ import { applyEscrowPayment } from '@/lib/payments/escrow-payment';
 import { getPaylukCustomerId } from "@/lib/payments/payluk-onboarding";
 
 import { expireCheckoutReservation, expireItemCheckoutReservations, reservationHasExpired, RESERVATION_SELECT } from '@/lib/payments/checkout-reservation-expiry';
-import { captureCampaignOrder } from '@/lib/campaigns/order-evidence';
+
+import { captureCampaignOrder } from "@/lib/campaigns/order-evidence";
 
 export const maxDuration = 60;
 
@@ -299,11 +300,16 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    // Yrdly's 3% commission is collected from the buyer as an additional fee.
-    // Payluk's own escrow fee is charged to the seller via whoPays: 'seller' below,
-    // while the escrow principal remains the seller's item price.
+    // New orders use Payluk's configured native merchant commission. Existing
+    // reservations keep their recorded additional-fee contract when resumed.
     const commission = Math.round(authorizedPrice * MARKETPLACE_CONSTANTS.COMMISSION_RATE * 100) / 100;
-    const totalAmount = Math.round((authorizedPrice + commission) * 100) / 100;
+    const reservationMode = existingTxToResume?.metadata?.payluk_fee_mode;
+    // Pre-cutover unfinished rows have no explicit mode; preserve their former
+    // buyer-paid fee contract instead of changing terms during a retry.
+    const feeMode = existingTxToResume ? (reservationMode || 'buyer_commission_v1') : 'native_commission_v1';
+    const totalAmount = feeMode === 'buyer_commission_v1'
+      ? Math.round((authorizedPrice + commission) * 100) / 100
+      : authorizedPrice;
 
     // ── STEP 1: DB Reservation FIRST (Before external Payluk call) ──
     // Inserting into escrow_transactions first enforces single-buyer reservation at the DB layer
@@ -328,6 +334,7 @@ export async function POST(request: NextRequest) {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         item_type: itemType,
+        metadata: { payluk_fee_mode: 'native_commission_v1' },
       };
 
       const { data: txData, error: txError } = await supabaseAdmin.rpc('create_checkout_reservation', { p_payload: txPayload });
@@ -352,6 +359,7 @@ export async function POST(request: NextRequest) {
       transactionId = txData;
     }
 
+    // Persist campaign attribution before any provider resource or token exists.
     if (itemType === 'catalog_item') await captureCampaignOrder(transactionId);
 
     // ── STEP 2: Atomic CAS Claim for Escrow Creation (Strict PENDING -> CREATING_ESCROW) ──
@@ -403,15 +411,27 @@ export async function POST(request: NextRequest) {
         paylukPaymentToken = paylukEscrow.paymentToken;
         paylukEscrowId = paylukEscrow.id;
         const providerFee = paylukEscrow.fee;
+        // Persist provider identity before validating its economics. If the
+        // merchant fee setting is absent or inconsistent, reconciliation must
+        // still be able to find the already-created escrow.
+        const { data: persisted, error: persistError } = await supabaseAdmin.from('escrow_transactions')
+          .update({ payment_provider:'payluk',payluk_tx_ref:paylukPaymentToken,payluk_escrow_id:paylukEscrowId })
+          .eq('id',transactionId).eq('status','creating_escrow').select('id').maybeSingle();
+        if (persistError || !persisted) throw new Error('Could not persist payment provider reference');
         if (!Number.isFinite(providerFee) || providerFee < 0 || providerFee > authorizedPrice) {
           throw new Error('Invalid Payluk escrow fee. Checkout requires reconciliation.');
         }
+        if (feeMode === 'native_commission_v1' && (providerFee < commission || Number(paylukEscrow.additionalFee ?? 0) !== 0)) {
+          throw new Error('Payluk native commission configuration needs reconciliation.');
+        }
         const sellerAmount = Math.round((authorizedPrice - providerFee) * 100) / 100;
-        const { data: persisted, error: persistError } = await supabaseAdmin.from('escrow_transactions')
-          .update({ payment_provider:'payluk',payluk_tx_ref:paylukPaymentToken,payluk_escrow_id:paylukEscrowId,seller_amount:sellerAmount })
+        const { data: proceedsSaved, error: proceedsError } = await supabaseAdmin.from('escrow_transactions')
+          .update({ seller_amount:sellerAmount })
           .eq('id',transactionId).eq('status','creating_escrow').select('id').maybeSingle();
-        if (persistError || !persisted) throw new Error('Could not persist payment setup');
-        if (commission > 0) await PaylukService.addAdditionalFee(paylukPaymentToken,commission,setupDeadline);
+        if (proceedsError || !proceedsSaved) throw new Error('Could not persist payment proceeds');
+        if (feeMode === 'buyer_commission_v1' && commission > 0) {
+          await PaylukService.addAdditionalFee(paylukPaymentToken,commission,setupDeadline);
+        }
       } catch (paylukError: any) {
         const verificationResponse = phoneVerificationResponse(paylukError, authenticatedBuyerId);
         const identityResponse = paymentIdentityResponse(paylukError, authenticatedBuyerId);

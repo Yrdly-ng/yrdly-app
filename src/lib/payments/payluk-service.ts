@@ -24,6 +24,13 @@ if (typeof window === 'undefined' && !PAYLUK_SECRET_KEY) {
   console.warn('[Yrdly] Missing PAYLUK_SECRET_KEY — Payluk features will not work.');
 }
 
+/** Escrow payloads omit mode; provenance comes from the authenticated transport. */
+function verifiedPaylukEnvironment(): 'test' | 'live' {
+  if (PAYLUK_SECRET_KEY?.startsWith('sk_test_') && PAYLUK_BASE_URL === 'https://staging.api.payluk.ng') return 'test';
+  if (PAYLUK_SECRET_KEY?.startsWith('sk_live_') && PAYLUK_BASE_URL === 'https://api.payluk.ng') return 'live';
+  throw new Error('Payluk verification environment is inconsistent.');
+}
+
 // ── Standard Payluk envelope ────────────────────────────────────────────────
 // Every response: { status: number, message: string, data: T }
 
@@ -187,6 +194,8 @@ export interface PaylukMilestone {
 }
 
 export interface PaylukEscrow {
+  /** Verified transport domain when read through verifyEscrow; raw callbacks may omit it. */
+  environment?: 'test' | 'live';
   id: string;
   amount: number;
   purpose: string;
@@ -647,13 +656,17 @@ export class PaylukService {
   static async verifyEscrow(
     paymentToken: string
   ): Promise<PaylukEscrow> {
-    const response = await paylukRequest<PaylukEscrow>(
+    // Escrow payloads omit environment. Bind evidence to the authenticated transport,
+    // never to a client hint, and reject a contradictory provider declaration.
+    const environment = verifiedPaylukEnvironment();
+    const response = await paylukRequest<PaylukEscrow & { environment?: unknown }>(
       `/v1/escrow/verify/${encodeURIComponent(paymentToken)}`,
-      {
-        method: 'GET',
-      }
+      { method: 'GET', redirect: 'error' },
     );
-    return response.data;
+    if (response.data.environment != null && response.data.environment !== environment) {
+      throw new Error('Payluk escrow environment contradicts the verified transport.');
+    }
+    return { ...response.data, environment };
   }
 
   /** Alias for backward compatibility */
@@ -662,6 +675,42 @@ export class PaylukService {
     paymentToken: string
   ): Promise<PaylukEscrow> {
     return this.verifyEscrow(paymentToken);
+  }
+
+  /** Buyer-paid, fully funded service escrow; commission uses merchant settings. */
+  static async createMilestoneEscrow(customerId: string, params: {
+    amount: number; purpose: string; maxDelivery: number;
+    deliveryTimeline: 'minutes' | 'hours' | 'days';
+    milestones: { title: string; amount: number }[];
+  }, signal?: AbortSignal): Promise<PaylukEscrow> {
+    const cents = (amount: number) => Number.isFinite(amount) && Number.isSafeInteger(Math.round(amount * 100)) &&
+      Math.abs(amount * 100 - Math.round(amount * 100)) < 0.000001;
+    if (!cents(params.amount) || params.amount < 1000 || params.milestones.length !== 2 ||
+        params.milestones.some(m => !m.title.trim() || !cents(m.amount) || m.amount < 1) ||
+        params.milestones.reduce((n,m) => n + Math.round(m.amount * 100), 0) !== Math.round(params.amount * 100) ||
+        !Number.isInteger(params.maxDelivery) || params.maxDelivery < 1 || params.maxDelivery > 365) {
+      throw new Error('Invalid service milestone amounts or delivery window');
+    }
+    const environment = verifiedPaylukEnvironment();
+    const response = await paylukRequest<PaylukEscrow>('/v1/escrow/milestone/create', {
+      method: 'POST', customerId, signal, redirect: 'error',
+      body: JSON.stringify({ ...params, whoPays: 'buyer', totalQuantity: 1 }),
+    });
+    if (response.data.environment != null && response.data.environment !== environment) throw new Error('Payluk escrow environment contradicts the verified transport.');
+    return { ...response.data, environment };
+  }
+
+  static async getMilestones(paymentToken: string, signal?: AbortSignal): Promise<PaylukMilestone[]> {
+    const response = await paylukRequest<PaylukMilestone[]>(`/v1/escrow/milestone/${encodeURIComponent(paymentToken)}`, { method: 'GET', signal });
+    if (!Array.isArray(response.data)) throw new Error('Invalid provider milestone response');
+    return response.data;
+  }
+
+  /** Caller must authorize explicit buyer consent and reconcile with getMilestones. */
+  static async confirmMilestone(customerId: string, escrowId: string, milestoneId: string, signal?: AbortSignal): Promise<void> {
+    await paylukRequest<unknown>(`/v1/escrow/milestone/confirm/${encodeURIComponent(escrowId)}/${encodeURIComponent(milestoneId)}`, {
+      method: 'POST', customerId, signal,
+    });
   }
 
   /**
@@ -817,7 +866,7 @@ export class PaylukService {
     customerIdOrUserId: string,
     accountNumber: string,
     bankCode: string
-  ): Promise<{ valid: boolean; accountName?: string; accountNumber?: string }> {
+  ): Promise<{ valid: boolean; accountName?: string; accountNumber?: string; errorCode?: 'STAGING_REAL_BANK_LOOKUP_LIMIT' }> {
     try {
       let customerId = customerIdOrUserId;
       if (customerIdOrUserId && (customerIdOrUserId.includes('-') || customerIdOrUserId.length > 24)) {
@@ -849,7 +898,9 @@ export class PaylukService {
       return { valid: false };
     } catch (error: any) {
       console.error('[PaylukService] resolveAccount error:', error);
-
+      if (error instanceof PaylukRequestError && /test mode daily limit of \d+ live bank resolves exceeded/i.test(error.providerMessage)) {
+        return { valid: false, errorCode: 'STAGING_REAL_BANK_LOOKUP_LIMIT' };
+      }
       return { valid: false };
     }
   }

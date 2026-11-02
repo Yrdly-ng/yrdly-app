@@ -32,13 +32,21 @@ export async function POST(
 
     const { data: transaction, error: fetchError } = await supabaseAdmin
       .from('escrow_transactions')
-      .select('status, seller_id, shipped_at, payment_provider, payluk_tx_ref')
+      .select('metadata, item_type, status, seller_id, shipped_at, payment_provider, payluk_tx_ref')
       .eq('id', transactionId)
       .single();
 
     if (fetchError || !transaction) {
       return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
     }
+
+  if (transaction.metadata?.booking_payment_flow === 'staged_50_50') {
+    return NextResponse.json({ error: 'Use the booking milestone approval to release service funds.' }, { status: 409 });
+  }
+
+  if (transaction.item_type === 'ticket') {
+    return NextResponse.json({ error: 'Ticket funds are released through event earnings after the event hold.' }, { status: 409 });
+  }
 
     if (transaction.seller_id !== user.id) {
       return NextResponse.json({ error: 'Only the seller can claim funds' }, { status: 403 });

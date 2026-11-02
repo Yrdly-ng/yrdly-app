@@ -3,7 +3,7 @@ export type WithdrawalOutcome = 'success' | 'pending' | 'failed';
 interface PaylukAmountRecord {
   amount: number | string;
   commission?: number | string | null;
-  metadata?: { payluk_fee_mode?: string } | null;
+  metadata?: { payluk_fee_mode?: string; payluk_environment?: unknown; event_id?: unknown } | null;
 }
 
 /** Ticket prices include organizer-paid commission; legacy principals stay unchanged. */
@@ -17,9 +17,19 @@ export function paylukEscrowPrincipal(transaction: PaylukAmountRecord): number {
   return Math.round((amount - commission) * 100) / 100;
 }
 
-export function paylukAmountsMatch(transaction: PaylukAmountRecord, escrow: { amount: number; additionalFee?: number; whoPays?: string }): boolean {
+export function paylukAmountsMatch(transaction: PaylukAmountRecord, escrow: { amount: number; additionalFee?: number; whoPays?: string; environment?: unknown }): boolean {
+  if (transaction.metadata?.event_id && transaction.metadata.payluk_fee_mode === 'native_commission_v1') {
+    const environment = transaction.metadata.payluk_environment;
+    if (!['test', 'live'].includes(String(environment)) || escrow.environment !== environment) return false;
+  }
   const expected = paylukEscrowPrincipal(transaction);
   if (!Number.isFinite(expected) || !Number.isFinite(escrow.amount) || Math.round(escrow.amount * 100) !== Math.round(expected * 100)) return false;
+  if (transaction.metadata?.payluk_fee_mode === 'milestone_native_commission_v1') {
+    return escrow.whoPays === 'buyer' && Number(escrow.additionalFee ?? 0) === 0;
+  }
+  if (transaction.metadata?.payluk_fee_mode === 'native_commission_v1') {
+    return escrow.whoPays === 'seller' && Number(escrow.additionalFee ?? 0) === 0;
+  }
   return !['seller_commission_v1','buyer_commission_v1'].includes(transaction.metadata?.payluk_fee_mode || '') ||
     (escrow.whoPays === 'seller' && Number.isFinite(escrow.additionalFee) &&
       Math.round(Number(escrow.additionalFee) * 100) === Math.round(Number(transaction.commission) * 100));

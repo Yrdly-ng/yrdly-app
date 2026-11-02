@@ -5,7 +5,7 @@ import { applyEscrowPayment } from './escrow-payment';
 import { flagPayment } from './payment-reconciliation';
 
 export const CHECKOUT_RESERVATION_TTL_MS = 10 * 60 * 1000;
-export const RESERVATION_SELECT = 'id,buyer_id,seller_id,item_type,status,payluk_tx_ref,payluk_escrow_id,total_amount,creating_escrow_started_at,created_at,updated_at';
+export const RESERVATION_SELECT = 'id,buyer_id,seller_id,item_type,status,payluk_tx_ref,payluk_escrow_id,total_amount,metadata,creating_escrow_started_at,created_at,updated_at';
 
 type Reservation = {
   id: string;

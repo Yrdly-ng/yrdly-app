@@ -36,13 +36,21 @@ export async function POST(
     // 1. Get the transaction using admin client to bypass RLS for this specific secure flow
     const { data: transaction, error: fetchError } = await supabaseAdmin
       .from('escrow_transactions')
-      .select('status, amount, seller_amount, seller_id, buyer_id, payment_provider, payluk_escrow_id, payluk_tx_ref')
+      .select('metadata, item_type, status, amount, seller_amount, seller_id, buyer_id, payment_provider, payluk_escrow_id, payluk_tx_ref')
       .eq('id', transactionId)
       .single();
 
     if (fetchError || !transaction) {
       return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
     }
+
+  if (transaction.metadata?.booking_payment_flow === 'staged_50_50') {
+    return NextResponse.json({ error: 'Use the booking milestone approval to release service funds.' }, { status: 409 });
+  }
+
+  if (transaction.item_type === 'ticket') {
+    return NextResponse.json({ error: 'Ticket funds are released through event earnings after the event hold.' }, { status: 409 });
+  }
 
     // Only the buyer can complete the transaction
     if (transaction.buyer_id !== user.id) {
@@ -81,13 +89,7 @@ export async function POST(
           console.error('[complete] PaylukService.confirmDelivery failed:', msg);
           return NextResponse.json({ error: msg || 'Failed to release Payluk escrow' }, { status: 502 });
         }
-        try {
-          if (escrow && transaction.payluk_escrow_id) {
-            await finishCampaignReceipt(transactionId, user.id, transaction.payluk_escrow_id, escrow, Number(transaction.amount));
-          }
-        } catch {
-          return NextResponse.json({ error: 'Payment released; campaign evidence requires reconciliation.' }, { status: 503 });
-        }
+        if (escrow) await finishCampaignReceipt(transactionId, user.id, transaction.payluk_escrow_id, escrow, Number(transaction.amount));
         console.warn('[complete] Payluk escrow already closed — proceeding to DB update.');
       }
 

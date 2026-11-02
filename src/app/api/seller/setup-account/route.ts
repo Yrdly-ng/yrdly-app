@@ -87,7 +87,16 @@ export async function POST(request: NextRequest) {
         );
       }
     } else {
-      console.warn('[AccountSetup] Payluk account resolution failed for:', { accountNumber, bankCode });
+      if (resolveResult.errorCode === 'STAGING_REAL_BANK_LOOKUP_LIMIT') {
+        return NextResponse.json(
+          {
+            code: resolveResult.errorCode,
+            error: "Payluk Staging has reached its daily limit for real-bank lookups. Stop retrying today. Payluk recommends test bank code 001, but a matching test account is not in the current bank list; otherwise retry after the limit resets.",
+          },
+          { status: 429 }
+        );
+      }
+      console.warn('[AccountSetup] Payluk account resolution failed.', { bankCode });
       return NextResponse.json(
         { error: 'Could not verify account details. Please check your account number and bank, then try again.' },
         { status: 422 }

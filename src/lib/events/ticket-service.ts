@@ -4,6 +4,7 @@ import { ResendEmailService } from '@/lib/email/resend-service';
 import QRCode from 'qrcode';
 import { EVENT_CONSTANTS } from '@/lib/shared/constants';
 import { PaylukService } from '@/lib/payments/payluk-service';
+import { assertPaylukEventEnvironment } from './payluk-event-finance-config';
 import { sendPushNotification } from '@/lib/notifications/server-push-notification';
 import { NotificationService } from '@/lib/notifications/server-notification-service';
 import { paymentReferenceFilter, paylukAmountsMatch } from '../payments/payment-state';
@@ -73,6 +74,25 @@ export class TicketService {
    */
   static async processTicketPaymentFromTransaction(tx: any) {
     if (tx.payment_provider !== 'payluk') throw new Error('payment_requires_review');
+    assertPaylukEventEnvironment(tx);
+    if (tx.metadata?.payluk_fee_mode === 'native_commission_v1') {
+      const fee = Number(tx.metadata.payluk_fee);
+      const net = Math.round((Number(tx.amount) - fee) * 100);
+      if (!Number.isFinite(fee) || fee < Number(tx.commission) || fee > Number(tx.amount) ||
+          Math.round(Number(tx.seller_amount) * 100) !== net) {
+        if (!tx.payluk_tx_ref || !tx.payluk_escrow_id) throw new Error('payment_requires_review');
+        const verified = await PaylukService.verifyEscrow(tx.payluk_tx_ref);
+        assertPaylukEventEnvironment(tx, verified);
+        if (verified.id !== tx.payluk_escrow_id || !['ONGOING','COMPLETED','CLAIMED'].includes(verified.status) ||
+            !paylukAmountsMatch(tx, verified)) throw new Error('payment_requires_review');
+        const evidence = await supabaseAdmin.rpc('record_payluk_event_fee_evidence', {
+          p_transaction: tx.id, p_escrow: verified.id, p_environment: verified.environment,
+          p_principal: verified.amount, p_fee: verified.fee,
+        });
+        if (evidence.error || !evidence.data) throw new Error('payment_requires_review');
+        tx = evidence.data;
+      }
+    }
     const txRef = tx.id || tx.payluk_tx_ref;
     const metadata = tx.metadata || {};
     const event_id = tx.event_id || metadata.event_id;
@@ -310,6 +330,7 @@ export class TicketService {
       if (expectedBuyerId && paylukTx.buyer_id !== expectedBuyerId) throw new Error('ticket_buyer_mismatch');
       if (paylukTx.payment_provider !== 'payluk') throw new Error('payment_requires_review');
       if (paylukTx.item_type !== 'ticket') throw new Error('invalid_metadata');
+      assertPaylukEventEnvironment(paylukTx);
       if (['cancelled', 'disputed'].includes(paylukTx.status)) throw new Error('payment_requires_review');
       if (['paid', 'shipped', 'delivered', 'completed'].includes(paylukTx.status)) {
         return TicketService.processTicketPaymentFromTransaction(paylukTx);
@@ -317,6 +338,7 @@ export class TicketService {
       const token = paylukTx.payluk_tx_ref;
       if (!token) throw new Error('payment_pending');
       const escrow = await PaylukService.verifyEscrow(token);
+      assertPaylukEventEnvironment(paylukTx, escrow as unknown as { environment?: unknown });
       if (!['ONGOING', 'COMPLETED', 'CLAIMED'].includes((escrow.status || '').toUpperCase())) throw new Error('payment_pending');
       if (!paylukAmountsMatch(paylukTx, escrow)) {
         await flagPayment('payluk', token, paylukTx.id, 'amount_mismatch');

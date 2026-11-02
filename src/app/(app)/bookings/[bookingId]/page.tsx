@@ -1,5 +1,7 @@
 "use client";
 
+import { BookingMilestones } from '@/components/bookings/BookingMilestones';
+
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-supabase-auth";
@@ -21,6 +23,8 @@ interface BookingCheckout {
   buyerPaylukId: string;
   amount: number;
   commission: number;
+  paymentFee?: number;
+  staged?: boolean;
   totalAmount: number;
   alreadyPaid?: boolean;
 }
@@ -644,18 +648,9 @@ export default function BookingDetailWebPage() {
               </p>
             </section>
           )}
-          {isCustomer &&
-            booking.status === "confirmed" &&
-            booking.payment_flow === "staged_50_50" && (
-              <section className="rounded-2xl border border-border bg-card p-5 space-y-2">
-                <h3 className="font-semibold">Staged payment setup pending</h3>
-                <p className="text-sm text-muted-foreground">
-                  Your appointment is accepted. Online payment for the new 50%
-                  upfront / 50% completion arrangement is not available yet. No
-                  payment has been started.
-                </p>
-              </section>
-            )}
+          {booking.payment_flow === "staged_50_50" && (
+            <BookingMilestones bookingId={booking.id} onChanged={fetchBooking} onPay={() => void handleCheckout()} />
+          )}
           {needsPaymentSupport &&
             ["requested", "confirmed"].includes(booking.status) && (
               <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
@@ -692,10 +687,10 @@ export default function BookingDetailWebPage() {
                   </dd>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <dt>Yrdly fee (3%)</dt>
+                  <dt>{checkoutReview.staged ? "Payment fee (includes YRDLY commission)" : "Yrdly fee (3%)"}</dt>
                   <dd>
                     ₦
-                    {checkoutReview.commission.toLocaleString("en-NG", {
+                    {(checkoutReview.paymentFee ?? checkoutReview.commission).toLocaleString("en-NG", {
                       minimumFractionDigits: 2,
                     })}
                   </dd>
@@ -711,8 +706,7 @@ export default function BookingDetailWebPage() {
                 </div>
               </dl>
               <p className="text-xs text-muted-foreground">
-                Payluk holds your payment securely. Confirm service receipt here
-                to release it to the provider.
+                Payluk holds your payment securely. For staged services, approve the first half before work begins and the final half after completion.
               </p>
               <button
                 onClick={openCheckout}

@@ -4,8 +4,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/supabase/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
 import { EVENT_CONSTANTS } from '@/lib/shared/constants';
+import { allowStagingPaidEventWithoutPayoutAccount } from '@/lib/events/payluk-event-checkout';
 
 export const dynamic = 'force-dynamic';
+
+export async function GET(request: NextRequest) {
+  const { data: { user }, error: authError } = await getAuthenticatedUser(request);
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Invalid session' }, { status: authError?.status === 403 ? 403 : authError?.status === 503 ? 503 : 401 });
+  }
+  return NextResponse.json({ allowPaidEventsWithoutPayoutAccount: allowStagingPaidEventWithoutPayoutAccount() });
+}
 
 /**
  * POST /api/events/create
@@ -73,7 +82,7 @@ export async function POST(request: NextRequest) {
         .eq('is_primary', true)
         .eq('verification_status', 'verified')
         .maybeSingle();
-      if (!sellerAccount) {
+      if (!sellerAccount && !allowStagingPaidEventWithoutPayoutAccount()) {
         return NextResponse.json(
           { error: 'PAYOUT_ACCOUNT_REQUIRED', message: 'Link a bank account in Settings → Payout Settings before creating paid events.' },
           { status: 400 }

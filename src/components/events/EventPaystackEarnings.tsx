@@ -8,6 +8,10 @@ import { Input } from "@/components/ui/input";
 type Bank = { code: string; name: string };
 type Earnings = {
   enabled?: boolean;
+  provider?: 'payluk' | 'paystack';
+  withdrawalsEnabled?: boolean;
+  disabledReason?: string;
+  payoutAccount?: { accountName: string; bankName: string; lastFour: string } | null;
   domain: "test" | "live";
   totals: { grossKobo: number; commissionKobo: number; providerFeeKobo: number; heldKobo: number; availableKobo: number; withdrawnKobo: number };
   withdrawals: Array<{ id: string; status: string; amount_kobo?: number; amountKobo?: number; created_at?: string }>;
@@ -15,6 +19,17 @@ type Earnings = {
 const money = (kobo: number) => `₦${(kobo / 100).toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export function EventPaystackEarnings({ eventId }: { eventId: string }) {
+  const [provider, setProvider] = useState<'payluk' | 'paystack'>('payluk');
+  return <div className="space-y-3">
+    <div className="flex flex-wrap gap-2" aria-label="Ticket payment history">
+      <Button variant={provider === 'payluk' ? 'default' : 'outline'} aria-pressed={provider === 'payluk'} onClick={() => setProvider('payluk')}>Payluk earnings</Button>
+      <Button variant={provider === 'paystack' ? 'default' : 'outline'} aria-pressed={provider === 'paystack'} onClick={() => setProvider('paystack')}>Previous Paystack orders</Button>
+    </div>
+    <EventEarningsPanel key={`${eventId}:${provider}`} eventId={eventId} provider={provider} />
+  </div>;
+}
+
+function EventEarningsPanel({ eventId, provider }: { eventId: string; provider: 'payluk' | 'paystack' }) {
   const [earnings, setEarnings] = useState<Earnings | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -24,14 +39,26 @@ export function EventPaystackEarnings({ eventId }: { eventId: string }) {
   const [resolved, setResolved] = useState<{ name: string; bankCode: string; accountNumber: string } | null>(null);
   const [message, setMessage] = useState("");
   const submitting = useRef(false);
+  const mounted = useRef(false);
+  const loadSequence = useRef(0);
+  const currentQuote = useRef<Earnings | null>(null);
+  const canWithdraw = !!earnings && !error &&
+    (earnings.provider === 'payluk'
+      ? ['test', 'live'].includes(earnings.domain) && earnings.withdrawalsEnabled === true && !!earnings.payoutAccount
+      : earnings.domain === 'test' && earnings.withdrawalsEnabled !== false);
   const load = useCallback(async () => {
+    const sequence = ++loadSequence.current;
+    currentQuote.current = null;
     try {
-      const data = await authenticatedFetch<Earnings>(`/api/events/${eventId}/earnings?refresh=true`, undefined, "GET");
+      const data = await authenticatedFetch<Earnings>(`/api/events/${eventId}/earnings?refresh=true&provider=${provider}`, undefined, "GET");
+      if (!mounted.current || sequence !== loadSequence.current) return;
+      if (data.provider !== provider) throw new Error("Unexpected ticket payment provider.");
+      currentQuote.current = data;
       setEarnings(data);
       setError("");
-    } catch { setError("Ticket earnings could not be loaded. Please refresh before withdrawing."); }
-  }, [eventId]);
-  useEffect(() => { void load(); }, [load]);
+    } catch { if (mounted.current && sequence === loadSequence.current) setError("Ticket earnings could not be loaded. Please refresh before withdrawing."); }
+  }, [eventId, provider]);
+  useEffect(() => { mounted.current = true; void load(); return () => { mounted.current = false; }; }, [load]);
 
   const loadBanks = async () => {
     setBusy(true);
@@ -54,16 +81,16 @@ export function EventPaystackEarnings({ eventId }: { eventId: string }) {
     finally { setBusy(false); }
   };
   const withdraw = async () => {
-    if (!earnings || !resolved || submitting.current || earnings.domain !== "test") return;
+    if (!mounted.current || !earnings || currentQuote.current !== earnings || !canWithdraw || submitting.current || (earnings.provider !== 'payluk' && !resolved)) return;
     submitting.current = true;
     setBusy(true);
     setError("");
     try {
       await authenticatedFetch(`/api/events/${eventId}/earnings/withdraw`, {
-        bankCode: resolved.bankCode, accountNumber: resolved.accountNumber,
+        ...(earnings.provider === 'payluk' ? { provider: 'payluk' } : { provider: 'paystack', bankCode: resolved!.bankCode, accountNumber: resolved!.accountNumber }),
         expectedAmountKobo: earnings.totals.availableKobo, confirm: true,
       });
-      setMessage("Sandbox transfer requested. No real money is sent. Check the transfer status below.");
+      setMessage(earnings.domain === "test" ? "Sandbox transfer requested. No real money is sent. Check the transfer status below." : "Withdrawal requested. Check the transfer status below.");
       setResolved(null);
       await load();
     } catch (failure) {
@@ -72,14 +99,14 @@ export function EventPaystackEarnings({ eventId }: { eventId: string }) {
     } finally { submitting.current = false; setBusy(false); }
   };
 
-  if (earnings?.enabled === false) return null;
-  if (!earnings) return error ? <div className="rounded-2xl border border-border p-5"><p role="status">{error}</p><Button variant="outline" onClick={() => void load()}>Refresh earnings</Button></div> : null;
+  if (earnings?.enabled === false) return <p role="status" className="text-sm text-muted-foreground">No {provider === "payluk" ? "Payluk" : "previous Paystack"} ticket earnings are available.</p>;
+  if (!earnings) return error ? <div className="rounded-2xl border border-border p-5"><p role="status">{error}</p><Button variant="outline" onClick={() => void load()}>Refresh earnings</Button></div> : <p role="status" className="text-sm text-muted-foreground">Loading ticket earnings…</p>;
   const { totals } = earnings;
   if (earnings.domain !== "test" && totals.grossKobo === 0) return null;
   return (
-    <section className="rounded-3xl border border-border bg-card p-5 sm:p-6 space-y-5" aria-label="Paystack ticket earnings">
+    <section className="rounded-3xl border border-border bg-card p-5 sm:p-6 space-y-5" aria-label="Ticket earnings">
       <div className="flex items-start justify-between gap-3">
-        <div><h2 className="text-xl font-bold">Ticket earnings</h2><p className="text-sm text-muted-foreground">{earnings.domain === "test" ? "Paystack sandbox · no real money" : "Paystack ticket collections"}</p></div>
+        <div><h2 className="text-xl font-bold">Ticket earnings</h2><p className="text-sm text-muted-foreground">{`${earnings.provider === "payluk" ? "Payluk" : "Paystack"}${earnings.domain === "test" ? " sandbox · no real money" : " ticket collections"}`}</p></div>
         <Button variant="outline" disabled={busy} onClick={() => void load()}>Refresh</Button>
       </div>
       <dl className="grid grid-cols-2 sm:grid-cols-3 gap-4">
@@ -88,7 +115,18 @@ export function EventPaystackEarnings({ eventId }: { eventId: string }) {
         ))}
       </dl>
       <p className="text-sm text-muted-foreground">Proceeds become available no earlier than 24 hours after your event ends, after payment settlement and refund or dispute checks. Withdrawals require your request.</p>
-      {earnings.domain === "test" && totals.availableKobo > 0 && (
+      {earnings.disabledReason && <p role="status" className="text-sm text-muted-foreground">{earnings.disabledReason}</p>}
+      {earnings.provider === 'payluk' && canWithdraw && totals.availableKobo > 0 && earnings.payoutAccount && (
+        <div className="rounded-xl bg-muted p-4 space-y-3">
+          <h3 className="font-semibold">Verified payout account</h3>
+          <p>{earnings.payoutAccount.accountName}</p>
+          <p className="text-sm">{earnings.payoutAccount.bankName} · ending {earnings.payoutAccount.lastFour}</p>
+          <p>{earnings.domain === "test" ? "Sandbox transfer" : "Withdrawal amount"}: {money(totals.availableKobo)}</p>
+          <p className="text-sm text-muted-foreground">{earnings.domain === "test" ? "No real money will be sent. " : ""}Transfer fees may reduce the amount credited.</p>
+          <Button disabled={busy} onClick={() => void withdraw()}>{busy ? "Requesting…" : earnings.domain === "test" ? "Confirm sandbox withdrawal" : "Confirm withdrawal"}</Button>
+        </div>
+      )}
+      {earnings.provider !== 'payluk' && canWithdraw && totals.availableKobo > 0 && (
         <div className="space-y-3 border-t border-border pt-4">
           <h3 className="font-semibold">Try a sandbox withdrawal</h3>
           {!banks.length ? <Button disabled={busy} onClick={() => void loadBanks()}>Choose withdrawal bank</Button> : (

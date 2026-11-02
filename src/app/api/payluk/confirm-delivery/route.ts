@@ -37,12 +37,20 @@ export async function POST(request: NextRequest) {
   // 1. Load the transaction — all values come from the DB, not from the client.
   const { data: tx, error: fetchError } = await supabaseAdmin
     .from('escrow_transactions')
-    .select('id, buyer_id, seller_id, status, payluk_escrow_id, payluk_tx_ref, payment_provider, amount')
+    .select('metadata, item_type, id, buyer_id, seller_id, status, payluk_escrow_id, payluk_tx_ref, payment_provider, amount')
     .eq('id', transactionId)
     .maybeSingle();
 
   if (fetchError || !tx) {
     return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
+  }
+
+  if (tx.metadata?.booking_payment_flow === 'staged_50_50') {
+    return NextResponse.json({ error: 'Use the booking milestone approval to release service funds.' }, { status: 409 });
+  }
+
+  if (tx.item_type === 'ticket') {
+    return NextResponse.json({ error: 'Ticket funds are released through event earnings after the event hold.' }, { status: 409 });
   }
 
   // 2. Ownership check — only the buyer can confirm delivery.
@@ -60,6 +68,7 @@ export async function POST(request: NextRequest) {
 
   // 4. Idempotency — if already completed, return success without calling Payluk again.
   if (tx.status === EscrowStatus.COMPLETED) {
+    // Recovery can finish an already-recorded buyer action; it cannot invent receipt evidence.
     try {
       const escrow = tx.payluk_tx_ref ? await PaylukService.verifyEscrow(tx.payluk_tx_ref) : null;
       if (escrow) await finishCampaignReceipt(transactionId, user.id, tx.payluk_escrow_id, escrow, Number(tx.amount));
@@ -87,9 +96,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to resolve Payluk customer' }, { status: 500 });
   }
 
+  try { await beginCampaignReceipt(transactionId, user.id); }
+  catch { return NextResponse.json({ error: 'Could not record receipt confirmation. Please retry.' }, { status: 503 }); }
+
   // 7. Call Payluk — this releases funds to the seller on Payluk's side.
   try {
-    await beginCampaignReceipt(transactionId, user.id);
     const released = await PaylukService.confirmDelivery(buyerPaylukId, tx.payluk_escrow_id);
     await finishCampaignReceipt(transactionId, user.id, tx.payluk_escrow_id, released, Number(tx.amount));
   } catch (e: any) {
@@ -101,9 +112,9 @@ export async function POST(request: NextRequest) {
     if (!providerStatuses.some(value => ['completed', 'claimed'].includes(value))) {
       return NextResponse.json({ error: msg || 'Failed to confirm delivery with Payluk' }, { status: 502 });
     }
+
     try { if (escrow) await finishCampaignReceipt(transactionId, user.id, tx.payluk_escrow_id, escrow, Number(tx.amount)); }
     catch { return NextResponse.json({ error: 'Payment released; campaign evidence requires reconciliation.' }, { status: 503 }); }
-
   }
 
   // 8. Update local DB — must not silently fail after Payluk has already released funds.

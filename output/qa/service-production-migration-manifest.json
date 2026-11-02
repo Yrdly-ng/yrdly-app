@@ -1,0 +1,22 @@
+{
+  "project": "yoiyqxtpmxnrrbqqidcs",
+  "scope": "Four service-only migrations; no event or marketplace native-commission migration",
+  "files": [
+    {
+      "file": "20261101202334_staged_booking_milestones.sql",
+      "sha256": "847ec3b52b145934c7e00563c3b55bdab93b80da04d28dffa62609ca543d917e"
+    },
+    {
+      "file": "20261101210650_allow_staged_booking_acceptance_before_funding.sql",
+      "sha256": "56f34d259ef7faf088f756a95c799dadafffba774d969a8ba6d46e3b15939937"
+    },
+    {
+      "file": "20261102085014_bind_staged_booking_provider_environment.sql",
+      "sha256": "d360e8026af09ad8b342a1f397a1a3aaf71b7ec10e430a147af863159ac7790e"
+    },
+    {
+      "file": "20261102150059_separate_staged_milestone_submission.sql",
+      "sha256": "227c2fdb58d6876e48018aa6a781a27fc4f625781c9569111213f8da3086e00f"
+    }
+  ]
+}

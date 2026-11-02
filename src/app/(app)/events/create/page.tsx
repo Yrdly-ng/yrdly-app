@@ -100,7 +100,7 @@ export default function CreateEventPage() {
   const [hasSellerAccount, setHasSellerAccount] = useState<boolean | null>(
     null,
   );
-  const [checkingSeller, setCheckingSeller] = useState(false);
+  const [allowPaidWithoutPayoutForQa, setAllowPaidWithoutPayoutForQa] = useState(false);
 
   // Step 5: Media (Photos & Videos)
   const [imageFiles, setImageFiles] = useState<File[]>([]);
@@ -123,21 +123,22 @@ export default function CreateEventPage() {
 
   // Check seller payout account status
   const checkSellerAccount = async () => {
-    setCheckingSeller(true);
     try {
       const {
         data: { session },
       } = await supabase.auth.getSession();
       const token = session?.access_token;
-      const res = await fetch("/api/seller/setup-account", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
+      const headers = { Authorization: `Bearer ${token}` };
+      const [res, policyRes] = await Promise.all([
+        fetch("/api/seller/setup-account", { headers }),
+        fetch("/api/events/create", { headers }),
+      ]);
+      const [data, policy] = await Promise.all([res.json(), policyRes.json()]);
       setHasSellerAccount(data?.account?.isVerified === true);
+      setAllowPaidWithoutPayoutForQa(policy?.allowPaidEventsWithoutPayoutAccount === true);
     } catch {
       setHasSellerAccount(false);
-    } finally {
-      setCheckingSeller(false);
+      setAllowPaidWithoutPayoutForQa(false);
     }
   };
 
@@ -296,7 +297,7 @@ export default function CreateEventPage() {
 
     if (!validateTicketPrices()) return;
 
-    if (hasPaidTiers && !hasSellerAccount) {
+    if (hasPaidTiers && !hasSellerAccount && !allowPaidWithoutPayoutForQa) {
       toast({
         variant: "destructive",
         title: "Payout Account Required",
@@ -886,7 +887,7 @@ export default function CreateEventPage() {
                 </div>
 
                 {/* Payout Account Warning Banner if paid tiers present */}
-                {hasPaidTiers && hasSellerAccount === false && (
+                {hasPaidTiers && hasSellerAccount === false && !allowPaidWithoutPayoutForQa && (
                   <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 space-y-2">
                     <div className="flex items-center gap-2 font-bold text-sm">
                       <ShieldAlert className="w-5 h-5 text-amber-500 shrink-0" />
@@ -905,6 +906,11 @@ export default function CreateEventPage() {
                       Link Payout Account{" "}
                       <ExternalLink className="w-3.5 h-3.5 ml-1" />
                     </Button>
+                  </div>
+                )}
+                {hasPaidTiers && hasSellerAccount === false && allowPaidWithoutPayoutForQa && (
+                  <div role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-900 dark:text-amber-200">
+                    QA Staging checkout test only. Organizer withdrawals remain disabled until a payout account is verified.
                   </div>
                 )}
 
@@ -1039,7 +1045,7 @@ export default function CreateEventPage() {
                   <Button
                     onClick={() => {
                       if (!validateTicketPrices()) return;
-                      if (hasPaidTiers && !hasSellerAccount) {
+                      if (hasPaidTiers && !hasSellerAccount && !allowPaidWithoutPayoutForQa) {
                         toast({
                           variant: "destructive",
                           title: "Payout Account Required",

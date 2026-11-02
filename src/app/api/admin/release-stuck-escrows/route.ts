@@ -31,7 +31,8 @@ export async function POST(request: NextRequest) {
   //           status=COMPLETED (buyer confirmed in app) but escrow not yet released.
   const { data: txns, error: fetchError } = await supabaseAdmin
     .from('escrow_transactions')
-    .select('id, buyer_id, seller_id, payluk_escrow_id, payluk_tx_ref, status, completed_at')
+    .select('metadata, id, buyer_id, seller_id, payluk_escrow_id, payluk_tx_ref, status, completed_at')
+    .or('item_type.is.null,item_type.neq.ticket')
     .eq('payment_provider', 'payluk')
     .in('status', ['completed', 'delivered'])
     .not('payluk_escrow_id', 'is', null);
@@ -49,6 +50,7 @@ export async function POST(request: NextRequest) {
   }[] = [];
 
   for (const tx of txns ?? []) {
+      if (tx.metadata?.booking_payment_flow === 'staged_50_50') continue;
     const entry: (typeof results)[number] = {
       transactionId: tx.id,
       paylukEscrowId: tx.payluk_escrow_id,
