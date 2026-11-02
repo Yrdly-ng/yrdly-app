@@ -1,0 +1,79 @@
+{
+  "environment": "test",
+  "results": [
+    {
+      "width": 390,
+      "path": "/events/d1083e8a-544e-47e2-b585-5777a56afef7/manage",
+      "hasEarnings": true,
+      "hasHold": true,
+      "hasRefund": true,
+      "hasManageHeader": true,
+      "manageControlsFit": true,
+      "overflow": false,
+      "viewport": 390,
+      "documentWidth": 390,
+      "bodyWidth": 390,
+      "bodyOverflow": "hidden",
+      "outside": [
+        {
+          "tag": "DIV",
+          "classes": "ambient-blob absolute top-[30%] right-[-10%] h-[380px] w-[380px] rounded-full transition-transform duration-700 ease-out",
+          "right": 429,
+          "width": 380
+        },
+        {
+          "tag": "DIV",
+          "classes": "ambient-blob absolute bottom-[-12%] left-[20%] h-[460px] w-[460px] rounded-full transition-transform duration-700 ease-out",
+          "right": 538,
+          "width": 460
+        }
+      ],
+      "headings": [
+        "Manage: YRDLY QA Event Settlement 2026-11-02T14:54",
+        "Every detail, in one place.",
+        "YRDLY QA Event Settlement 2026-11-02T14:54",
+        "Ticket earnings"
+      ]
+    },
+    {
+      "width": 1440,
+      "path": "/events/d1083e8a-544e-47e2-b585-5777a56afef7/manage",
+      "hasEarnings": true,
+      "hasHold": true,
+      "hasRefund": true,
+      "hasManageHeader": true,
+      "manageControlsFit": true,
+      "overflow": false,
+      "viewport": 1440,
+      "documentWidth": 1440,
+      "bodyWidth": 1440,
+      "bodyOverflow": "hidden",
+      "outside": [
+        {
+          "tag": "DIV",
+          "classes": "ambient-blob absolute top-[30%] right-[-10%] h-[380px] w-[380px] rounded-full transition-transform duration-700 ease-out",
+          "right": 1584,
+          "width": 380
+        }
+      ],
+      "headings": [
+        "Manage: YRDLY QA Event Settlement 2026-11-02T14:54",
+        "Every detail, in one place.",
+        "YRDLY QA Event Settlement 2026-11-02T14:54",
+        "Ticket earnings"
+      ]
+    }
+  ],
+  "responses": [
+    {
+      "path": "/api/events/d1083e8a-544e-47e2-b585-5777a56afef7/earnings",
+      "status": 200
+    },
+    {
+      "path": "/api/events/d1083e8a-544e-47e2-b585-5777a56afef7/earnings",
+      "status": 200
+    }
+  ],
+  "errors": [],
+  "financialActionSubmitted": false
+}

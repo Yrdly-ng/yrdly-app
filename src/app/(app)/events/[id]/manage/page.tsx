@@ -329,23 +329,23 @@ export default function ManageEventPage() {
     <div className="min-h-screen bg-background pb-12">
       {/* Top Header */}
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 sm:py-0 sm:h-14 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3">
+          <div className="flex min-w-0 items-center gap-3 sm:flex-1">
             <Button
               aria-label="Back"
               variant="ghost"
               size="icon"
               onClick={() => router.back()}
-              className="rounded-full hover:bg-secondary"
+              className="shrink-0 rounded-full hover:bg-secondary"
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
-            <h1 className="text-lg font-bold font-sans text-foreground truncate">
+            <h1 className="min-w-0 flex-1 text-lg font-bold font-sans text-foreground truncate">
               Manage: {event.title}
             </h1>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
             <Button
               variant="outline"
               size="sm"
