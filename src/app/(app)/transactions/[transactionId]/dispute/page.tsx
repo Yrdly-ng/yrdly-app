@@ -80,7 +80,7 @@ export default function DisputePage() {
         title: opened.providerSubmissionStatus === 'needs_reconciliation' ? "Dispute filed; payment provider sync needs review" : "Dispute submitted",
         description: opened.providerSubmissionStatus === 'needs_reconciliation'
           ? "Your dispute is saved locally. Support will reconcile the Payluk submission before settlement."
-          : "Our team will review it within 24–48 hours.",
+          : "Our team will review your evidence. You can follow updates in My disputes.",
         variant: opened.providerSubmissionStatus === 'needs_reconciliation' ? 'destructive' : 'default',
       });
       router.push(`/transactions/${transactionId}`);
@@ -215,7 +215,7 @@ export default function DisputePage() {
               <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={1.5} />
               <path d="M12 7v5l3 3" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
             </svg>
-            <p className="font-raleway text-[0.6875rem] text-[#bfcab9] text-center" style={{ fontFamily: "Raleway, sans-serif" }}>Our team reviews disputes within 24-48 hours</p>
+            <p className="font-raleway text-[0.6875rem] text-[#bfcab9] text-center" style={{ fontFamily: "Raleway, sans-serif" }}>Follow your case and submit evidence in My disputes</p>
           </div>
         </footer>
       </main>

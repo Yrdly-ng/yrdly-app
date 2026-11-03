@@ -1,5 +1,6 @@
 'use client';
 
+import { Button } from "@/components/ui/button";
 import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronDown, ChevronUp, Image as ImageIcon, X, Loader2, Check } from 'lucide-react';
@@ -144,9 +145,11 @@ export default function ReportIssuePage() {
 
       <div className="max-w-2xl mx-auto px-4 pt-6">
         <p className="text-xs sm:text-sm text-muted-foreground mb-6 leading-relaxed">
-          If you run into technical bugs, have marketplace disputes, or wish to report inappropriate
+          If you run into technical bugs or wish to report inappropriate
           content or behaviour, let us know below.
         </p>
+        <Button variant="outline" className="mb-4" onClick={() => router.push('/transactions')}>Get help with an order or payment</Button>
+        <p className="mb-4 text-sm">Open a dispute from the affected transaction. Sending this general report does not pause a payment or request a refund.</p>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Category Dropdown */}

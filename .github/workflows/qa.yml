@@ -44,6 +44,7 @@ jobs:
       - run: npm install --global pnpm@11.2.2
       - run: pnpm install --frozen-lockfile
       - run: pnpm test:maps && pnpm test:telemetry && pnpm test:directions && pnpm test:explore
+      - run: pnpm test:reports
       - run: pnpm test:business
       - run: pnpm test:payments
       - run: node qa-scripts/write-ci-env.mjs

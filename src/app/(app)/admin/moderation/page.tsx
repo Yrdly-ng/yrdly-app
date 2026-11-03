@@ -1,524 +1,487 @@
 "use client";
-
-import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '@/hooks/use-supabase-auth';
+import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { PrivateMediaImage } from "@/components/media/PrivateMedia";
+import { supabase } from "@/lib/supabase/supabase";
+import {
+  ReportAction,
+  ReportCase,
+  ReportKind,
+} from "@/lib/moderation/report-case";
 import {
   ModerationAdminService,
   ModerationQueueItem,
-  UserReportItem,
-  CommentReportItem,
-  PostReportItem,
-} from '@/lib/moderation/moderation-admin';
-import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertTriangle, Clock, CheckCircle, XCircle, ImageIcon, MessageSquare, ShieldAlert } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
-import { useRouter } from 'next/navigation';
-import Image from 'next/image';
-import { PrivateMediaImage } from '@/components/media/PrivateMedia';
+} from "@/lib/moderation/moderation-admin";
 
-export default function AdminModerationPage() {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const router = useRouter();
-
-  const [activeTab, setActiveTab] = useState<string>('auto_flags');
-  const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
-  
-  // State for Automated Flags
-  const [autoQueue, setAutoQueue] = useState<ModerationQueueItem[]>([]);
-  const [autoStatusFilter, setAutoStatusFilter] = useState<string>('pending');
-  const [autoPage, setAutoPage] = useState(1);
-  const [autoTotalCount, setAutoTotalCount] = useState(0);
-
-  // State for User General Reports
-  const [userReports, setUserReports] = useState<UserReportItem[]>([]);
-  const [userReportStatusFilter, setUserReportStatusFilter] = useState<string>('open');
-  const [userReportPage, setUserReportPage] = useState(1);
-  const [userReportTotalCount, setUserReportTotalCount] = useState(0);
-
-  // State for Comment Reports
-  const [commentReports, setCommentReports] = useState<CommentReportItem[]>([]);
-  const [commentReportPage, setCommentReportPage] = useState(1);
-  const [commentReportTotalCount, setCommentReportTotalCount] = useState(0);
-
-  // State for Post Reports
-  const [postReports, setPostReports] = useState<PostReportItem[]>([]);
-  const [postReportStatusFilter, setPostReportStatusFilter] = useState<string>('open');
-  const [postReportPage, setPostReportPage] = useState(1);
-  const [postReportTotalCount, setPostReportTotalCount] = useState(0);
-
-  const limit = 20;
-
-  // Fetch Automated Flags Queue
-  const fetchAutoQueue = useCallback(async () => {
+async function request<T>(url: string, body?: unknown): Promise<T> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const response = await fetch(url, {
+    method: body ? "POST" : "GET",
+    headers: {
+      "Content-Type": "application/json",
+      ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
+    },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || "Request failed.");
+  return result;
+}
+const labels: Record<ReportAction, string> = {
+  resolve: "Mark resolved",
+  dismiss: "Dismiss report",
+  reopen: "Reopen report",
+  hide: "Hide content",
+  restore: "Restore content",
+  suspend: "Suspend account",
+  ban: "Ban account",
+  unsuspend: "Restore account access",
+};
+export default function ModerationPage() {
+  const [kind, setKind] = useState<ReportKind | "auto">("general"),
+    [status, setStatus] = useState("open"),
+    [child, setChild] = useState(false),
+    [page, setPage] = useState(1);
+  const [cases, setCases] = useState<ReportCase[]>([]),
+    [flags, setFlags] = useState<ModerationQueueItem[]>([]),
+    [count, setCount] = useState(0),
+    [selected, setSelected] = useState<ReportCase | null>(null),
+    [reason, setReason] = useState(""),
+    [action, setAction] = useState<ReportAction>("resolve");
+  const [loading, setLoading] = useState(true),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState(""),
+    [message, setMessage] = useState(""),
+    [showMedia, setShowMedia] = useState(false),
+    [flagMedia, setFlagMedia] = useState<string | null>(null);
+  const listRequest = useRef(0),
+    detailRequest = useRef(0);
+  const load = useCallback(async () => {
+    const requestId = ++listRequest.current;
+    setLoading(true);
+    setError("");
     try {
-      setLoading(true);
-      const { data, count } = await ModerationAdminService.getQueue(autoStatusFilter, autoPage, limit);
-      setAutoQueue(data);
-      setAutoTotalCount(count);
-    } catch (error) {
-      console.error('Error fetching automated queue:', error);
-      toast({ title: "Error", description: "Failed to load automated moderation queue.", variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
-  }, [autoStatusFilter, autoPage, toast]);
-
-  // Fetch User General Reports
-  const fetchUserReports = useCallback(async () => {
-    try {
-      setLoading(true);
-      const { data, count } = await ModerationAdminService.getUserReports(userReportStatusFilter, userReportPage, limit);
-      setUserReports(data);
-      setUserReportTotalCount(count);
-    } catch (error) {
-      console.error('Error fetching user reports:', error);
-      toast({ title: "Error", description: "Failed to load user reports.", variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
-  }, [userReportStatusFilter, userReportPage, toast]);
-
-  // Fetch Comment Reports
-  const fetchCommentReports = useCallback(async () => {
-    try {
-      setLoading(true);
-      const { data, count } = await ModerationAdminService.getCommentReports(commentReportPage, limit);
-      setCommentReports(data);
-      setCommentReportTotalCount(count);
-    } catch (error) {
-      console.error('Error fetching comment reports:', error);
-      toast({ title: "Error", description: "Failed to load comment reports.", variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
-  }, [commentReportPage, toast]);
-
-  const fetchPostReports = useCallback(async () => {
-    try {
-      setLoading(true);
-      const { data, count } = await ModerationAdminService.getPostReports(postReportStatusFilter, postReportPage, limit);
-      setPostReports(data);
-      setPostReportTotalCount(count);
-    } catch (error) {
-      console.error('Error fetching post reports:', error);
-      toast({ title: 'Error', description: 'Failed to load post reports.', variant: 'destructive' });
-    } finally {
-      setLoading(false);
-    }
-  }, [postReportStatusFilter, postReportPage, toast]);
-
-  useEffect(() => {
-    if (!user) {
-      router.push('/login');
-      return;
-    }
-
-    if (activeTab === 'auto_flags') fetchAutoQueue();
-    else if (activeTab === 'user_reports') fetchUserReports();
-    else if (activeTab === 'comment_reports') fetchCommentReports();
-    else if (activeTab === 'post_reports') fetchPostReports();
-  }, [user, activeTab, fetchAutoQueue, fetchUserReports, fetchCommentReports, fetchPostReports, router]);
-
-  // Actions for Automated Queue
-  const handleAutoAction = async (queueId: string, action: 'approve' | 'reject') => {
-    try {
-      setActionLoading(queueId);
-      await ModerationAdminService.moderateContent(queueId, action);
-      toast({ title: "Success", description: `Content ${action}d successfully.` });
-      fetchAutoQueue();
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message || `Failed to ${action} content.`, variant: "destructive" });
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  // Actions for User Reports
-  const handleUserReportAction = async (reportId: string, status: 'resolved' | 'dismissed') => {
-    try {
-      setActionLoading(reportId);
-      await ModerationAdminService.updateUserReportStatus(reportId, status);
-      toast({ title: "Updated", description: `Report marked as ${status}.` });
-      fetchUserReports();
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message || "Failed to update report.", variant: "destructive" });
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  // Actions for Comment Reports
-  const handleCommentReportAction = async (report: CommentReportItem, action: 'delete' | 'dismiss') => {
-    try {
-      setActionLoading(report.id);
-      if (action === 'delete') {
-        await ModerationAdminService.deleteReportedComment(report.comment_id, report.id);
-        toast({ title: "Comment Deleted", description: "Comment removed and report resolved." });
+      if (kind === "auto") {
+        const result = await ModerationAdminService.getQueue("pending", page);
+        if (requestId !== listRequest.current) return;
+        setFlags(result.data);
+        setCount(result.count);
       } else {
-        await ModerationAdminService.dismissCommentReport(report.id);
-        toast({ title: "Dismissed", description: "Comment report dismissed." });
+        const result = await request<{ data: ReportCase[]; count: number }>(
+          `/api/admin/reports?kind=${kind}&status=${status}&page=${page}${child && kind === "general" ? "&category=Child%20safety" : ""}`,
+        );
+        if (requestId !== listRequest.current) return;
+        setCases(result.data);
+        setCount(result.count);
       }
-      fetchCommentReports();
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message || "Failed to process comment report.", variant: "destructive" });
+    } catch (e) {
+      if (requestId === listRequest.current)
+        setError(e instanceof Error ? e.message : "Could not load reports.");
     } finally {
-      setActionLoading(null);
+      if (requestId === listRequest.current) setLoading(false);
     }
-  };
-
-  const handlePostReportAction = async (reportId: string, status: 'resolved' | 'dismissed') => {
-    try {
-      setActionLoading(reportId);
-      await ModerationAdminService.updatePostReportStatus(reportId, status);
-      toast({ title: 'Updated', description: `Post report marked as ${status}.` });
-      fetchPostReports();
-    } catch (error: any) {
-      toast({ title: 'Error', description: error.message || 'Failed to update post report.', variant: 'destructive' });
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      'pending': { color: 'bg-yellow-500 text-black', text: 'Pending', icon: Clock },
-      'open': { color: 'bg-yellow-500 text-black', text: 'Open', icon: AlertTriangle },
-      'approved': { color: 'bg-green-600 text-white', text: 'Approved', icon: CheckCircle },
-      'resolved': { color: 'bg-green-600 text-white', text: 'Resolved', icon: CheckCircle },
-      'rejected': { color: 'bg-red-600 text-white', text: 'Rejected', icon: XCircle },
-      'dismissed': { color: 'bg-gray-600 text-white', text: 'Dismissed', icon: XCircle },
+  }, [kind, status, page, child]);
+  useEffect(() => {
+    void load();
+    return () => {
+      listRequest.current++;
+      detailRequest.current++;
     };
-
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
-    const Icon = config.icon;
-
-    return (
-      <Badge className={`${config.color} flex items-center gap-1 font-medium px-2.5 py-0.5 rounded-full text-xs`}>
-        <Icon className="h-3 w-3" />
-        {config.text}
-      </Badge>
-    );
+  }, [load]);
+  const open = async (report: ReportCase) => {
+    const requestId = ++detailRequest.current;
+    setBusy(true);
+    setError("");
+    try {
+      const detail = await request<ReportCase>(
+        `/api/admin/reports/${report.kind}/${report.id}`,
+      );
+      if (requestId !== detailRequest.current) return;
+      setSelected(detail);
+      setReason("");
+      setShowMedia(false);
+      setAction(report.status === "open" ? "resolve" : "reopen");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not open report.");
+    } finally {
+      setBusy(false);
+    }
   };
-
+  const apply = async () => {
+    if (!selected || reason.trim().length < 5 || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      await request(`/api/admin/reports/${selected.kind}/${selected.id}`, {
+        action,
+        reason,
+        expectedStatus: selected.status,
+      });
+      setSelected(
+        await request<ReportCase>(
+          `/api/admin/reports/${selected.kind}/${selected.id}`,
+        ),
+      );
+      setReason("");
+      setMessage(`${labels[action]}: action recorded.`);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Action failed.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const moderate = async (id: string, decision: "approve" | "reject") => {
+    if (
+      !window.confirm(
+        `${decision === "approve" ? "Publish" : "Keep hidden"} this content?`,
+      )
+    )
+      return;
+    setBusy(true);
+    try {
+      await ModerationAdminService.moderateContent(id, decision);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Action failed.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const field = "w-full rounded-lg border border-current/20 bg-transparent p-3";
+  const button =
+    "rounded-lg border border-current/20 px-4 py-3 disabled:opacity-40";
   return (
-    <div className="p-4 sm:p-6 text-[var(--yrdly-text-primary)] font-yrdly-body space-y-6 max-w-6xl mx-auto">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold font-yrdly-display tracking-tight flex items-center gap-2">
-          <ShieldAlert className="h-7 w-7 text-primary" /> Moderation Center
-        </h1>
-        <p className="text-[var(--yrdly-label)] text-sm">
-          Review automated flags, user reports, and reported posts and comments across Yrdly.
-        </p>
-        <Button className="mt-3" variant="outline" onClick={() => router.push("/community-review")}>Review community submissions</Button>
+    <main className="mx-auto max-w-5xl space-y-5 p-4 text-[var(--yrdly-text-primary)] sm:p-6">
+      <h1 className="text-3xl font-bold">Reports &amp; Safety</h1>
+      <p>
+        Review what happened, take action, and keep a record of your decision.
+      </p>
+      <nav className="flex flex-wrap gap-3">
+        <Link className={button} href="/admin/disputes">
+          Payment disputes
+        </Link>
+        <Link className={button} href="/community-review">
+          Community reviews
+        </Link>
+      </nav>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <label>
+          Report type
+          <select
+            className={field}
+            value={kind}
+            onChange={(e) => {
+              setKind(e.target.value as typeof kind);
+              setPage(1);
+              setSelected(null);
+            }}
+          >
+            <option value="general">General &amp; safety reports</option>
+            <option value="post">Reported posts</option>
+            <option value="comment">Reported comments</option>
+            <option value="auto">Flagged content</option>
+          </select>
+        </label>
+        {kind !== "auto" && (
+          <label>
+            Status
+            <select
+              className={field}
+              value={status}
+              onChange={(e) => {
+                setStatus(e.target.value);
+                setPage(1);
+              }}
+            >
+              <option value="open">Needs review</option>
+              <option value="resolved">Resolved</option>
+              <option value="dismissed">Dismissed</option>
+              <option value="all">All reports</option>
+            </select>
+          </label>
+        )}
+        {kind === "general" && (
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={child}
+              onChange={(e) => {
+                setChild(e.target.checked);
+                setPage(1);
+              }}
+            />
+            Child safety only
+          </label>
+        )}
       </div>
-
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList aria-label="Report categories" className="mb-6 grid h-auto w-full max-w-xl grid-cols-2 gap-1 sm:grid-cols-4">
-          <TabsTrigger className="min-h-11 min-w-0 whitespace-normal px-2 text-center leading-snug" value="auto_flags">Automated Flags</TabsTrigger>
-          <TabsTrigger className="min-h-11 min-w-0 whitespace-normal px-2 text-center leading-snug" value="user_reports">User Reports</TabsTrigger>
-          <TabsTrigger className="min-h-11 min-w-0 whitespace-normal px-2 text-center leading-snug" value="comment_reports">Comment Reports</TabsTrigger>
-          <TabsTrigger className="min-h-11 min-w-0 whitespace-normal px-2 text-center leading-snug" value="post_reports">Post Reports</TabsTrigger>
-        </TabsList>
-
-        {/* ── TAB 1: AUTOMATED FLAGS ─────────────────────────────────── */}
-        <TabsContent value="auto_flags" className="space-y-4">
-          <Card>
-            <CardContent className="p-4 flex justify-between items-center">
-              <span className="text-sm font-medium">Filter Status</span>
-              <Select value={autoStatusFilter} onValueChange={setAutoStatusFilter}>
-                <SelectTrigger className="w-44">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
-                </SelectContent>
-              </Select>
-            </CardContent>
-          </Card>
-
-          {loading ? (
-            <div className="space-y-3">
-              {[...Array(3)].map((_, i) => (
-                <Skeleton key={i} className="h-32 w-full rounded-xl" />
-              ))}
+      {error && (
+        <div role="alert" className="rounded-lg border border-red-500 p-4">
+          {error}{" "}
+          <button className={button} onClick={() => void load()}>
+            Retry
+          </button>
+        </div>
+      )}
+      {message && <p role="status">{message}</p>}
+      {selected && (
+        <section
+          aria-label="Report details"
+          className="space-y-4 rounded-2xl border border-current/20 p-5"
+        >
+          <div className="flex items-start justify-between gap-4">
+            <h2 className="text-xl font-bold">{selected.subject}</h2>
+            <button className={button} onClick={() => setSelected(null)}>
+              Close details
+            </button>
+          </div>
+          <p>
+            {selected.category} ·{" "}
+            {selected.status === "open" ? "Needs review" : selected.status} ·{" "}
+            {new Date(selected.createdAt).toLocaleString()}
+          </p>
+          <p>
+            <strong>Reported by:</strong>{" "}
+            {selected.reporter?.name || "Account unavailable"}
+          </p>
+          <p>
+            <strong>Reported account:</strong>{" "}
+            {selected.reportedAccount?.name || "No linked account"}
+            {selected.reportedAccount?.isBanned
+              ? " · Banned"
+              : selected.reportedAccount?.isSuspended
+                ? " · Suspended"
+                : ""}
+          </p>
+          <div>
+            <h3 className="font-bold">Reporter’s explanation</h3>
+            <p className="whitespace-pre-wrap break-words">
+              {selected.description || "No explanation supplied."}
+            </p>
+          </div>
+          <div>
+            <h3 className="font-bold">
+              Reported content {selected.content?.hidden ? "· Hidden" : ""}
+            </h3>
+            {selected.sensitive && (
+              <p className="text-sm">
+                Sensitive media is not displayed in this review. Do not download
+                or share suspected illegal material.
+              </p>
+            )}
+            <p className="whitespace-pre-wrap break-words">
+              {selected.content?.text ||
+                "Content is unavailable or was not linked to this report."}
+            </p>
+          </div>
+          {!selected.sensitive && selected.media.length > 0 && (
+            <div>
+              <button
+                className={button}
+                onClick={() => setShowMedia((v) => !v)}
+              >
+                {showMedia
+                  ? "Hide attachments"
+                  : `View attachments (${selected.media.length})`}
+              </button>
+              {showMedia && (
+                <div className="flex flex-wrap gap-3">
+                  {selected.media.map((src, i) => (
+                    <PrivateMediaImage
+                      key={src}
+                      src={src}
+                      alt={`Report attachment ${i + 1}`}
+                      width={240}
+                      height={180}
+                      className="max-w-full rounded-lg object-contain"
+                    />
+                  ))}
+                </div>
+              )}
             </div>
-          ) : autoQueue.length === 0 ? (
-            <Card className="text-center p-8">
-              <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-2" />
-              <h3 className="font-semibold text-base">No automated flags</h3>
-              <p className="text-sm text-muted-foreground">All AI/automated flags reviewed.</p>
-            </Card>
+          )}
+          <details>
+            <summary>Reference details</summary>
+            <p className="break-all">Report: {selected.id}</p>
+            {selected.content && (
+              <p className="break-all">Content: {selected.content.id}</p>
+            )}
+          </details>
+          <h3 className="font-bold">Action history</h3>
+          {selected.history.length ? (
+            selected.history.map((h) => (
+              <div key={h.id} className="border-l-2 pl-3">
+                <p>
+                  {h.action} · {h.actorName} ·{" "}
+                  {new Date(h.createdAt).toLocaleString()}
+                </p>
+                <p className="break-words">{h.reason}</p>
+              </div>
+            ))
           ) : (
-            <div className="space-y-4">
-              {autoQueue.map((item) => (
-                <Card key={item.id} className="overflow-hidden border border-border">
-                  <CardContent className="p-5 flex flex-col sm:flex-row items-start gap-4">
-                    {item.image_urls && item.image_urls.length > 0 && (
-                      <div className="w-24 h-24 relative rounded-lg overflow-hidden border flex-shrink-0 bg-muted">
-                        <Image src={item.image_urls[0]} alt="Media" fill className="object-cover" />
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <div>
-                          <span className="text-xs uppercase font-bold text-muted-foreground tracking-wider">{item.table_name}</span>
-                          <h3 className="font-semibold text-base">Flagged Reason: <span className="text-foreground">{item.reason}</span></h3>
-                        </div>
-                        {getStatusBadge(item.status)}
-                      </div>
-                      {item.text_content && (
-                        <div className="p-3 bg-muted/60 rounded-md text-sm my-2 whitespace-pre-wrap">
-                          {item.text_content}
-                        </div>
-                      )}
-                      <p className="text-xs text-muted-foreground mt-2">
-                        User: {item.user_id} • Date: {new Date(item.created_at).toLocaleString()}
-                      </p>
-                    </div>
-
-                    {item.status === 'pending' && (
-                      <div className="flex sm:flex-col gap-2 w-full sm:w-auto">
-                        <Button
-                          size="sm"
-                          onClick={() => handleAutoAction(item.id, 'approve')}
-                          disabled={actionLoading === item.id}
-                          className="bg-green-600 hover:bg-green-700 text-white flex-1"
-                        >
-                          Approve
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleAutoAction(item.id, 'reject')}
-                          disabled={actionLoading === item.id}
-                          className="flex-1"
-                        >
-                          Reject
-                        </Button>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+            <p>No recorded actions yet.</p>
           )}
-        </TabsContent>
-
-        <TabsContent value="post_reports" className="space-y-4">
-          <Card>
-            <CardContent className="p-4 flex justify-between items-center">
-              <span className="text-sm font-medium">Filter Status</span>
-              <Select value={postReportStatusFilter} onValueChange={(value) => { setPostReportStatusFilter(value); setPostReportPage(1); }}>
-                <SelectTrigger className="w-44"><SelectValue placeholder="Status" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="open">Open</SelectItem>
-                  <SelectItem value="resolved">Resolved</SelectItem>
-                  <SelectItem value="dismissed">Dismissed</SelectItem>
-                </SelectContent>
-              </Select>
-            </CardContent>
-          </Card>
-
-          {loading ? (
-            <div className="space-y-3">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-28 w-full rounded-xl" />)}</div>
-          ) : postReports.length === 0 ? (
-            <Card className="text-center p-8">
-              <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-2" />
-              <h3 className="font-semibold text-base">No post reports</h3>
-              <p className="text-sm text-muted-foreground">No reports matching this status.</p>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {postReports.map((report) => (
-                <Card key={report.id} className="overflow-hidden border border-border">
-                  <CardContent className="p-5 flex flex-col sm:flex-row items-start gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <h3 className="font-semibold">Reported Post</h3>
-                        {getStatusBadge(report.status)}
-                      </div>
-                      <p className="text-sm mt-2">Reason: {report.reason}</p>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Post ID: {report.post_id} • Reporter ID: {report.reporter_id} • Reported: {new Date(report.created_at).toLocaleString()}
-                      </p>
+          <label className="block">
+            Choose an action
+            <select
+              className={field}
+              value={action}
+              onChange={(e) => setAction(e.target.value as ReportAction)}
+            >
+              {(Object.keys(labels) as ReportAction[])
+                .filter((a) =>
+                  a === "reopen"
+                    ? selected.status !== "open"
+                    : ["resolve", "dismiss"].includes(a)
+                      ? selected.status === "open"
+                      : ["hide", "restore"].includes(a)
+                        ? !!selected.content
+                        : !!selected.reportedAccount,
+                )
+                .map((a) => (
+                  <option key={a} value={a}>
+                    {labels[a]}
+                  </option>
+                ))}
+            </select>
+          </label>
+          <p className="text-sm">
+            Hiding content or restricting an account does not close this report.
+            Resolve it when the review is complete. Restoring content makes it
+            visible again.
+          </p>
+          <label className="block">
+            Reason for your decision
+            <textarea
+              className={field}
+              maxLength={500}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Explain what you reviewed and why you are taking this action."
+            />
+          </label>
+          <button
+            className={button}
+            disabled={busy || reason.trim().length < 5}
+            onClick={() => {
+              if (
+                window.confirm(
+                  `${labels[action]} for ${selected.reportedAccount?.name || selected.subject}?\n\nReason: ${reason.trim()}\n\nThis decision and your reason will be recorded.`,
+                )
+              )
+                void apply();
+            }}
+          >
+            {busy ? "Saving…" : "Confirm action"}
+          </button>
+        </section>
+      )}
+      {loading ? (
+        <p role="status">Loading reports…</p>
+      ) : kind === "auto" ? (
+        <div className="space-y-3">
+          {!flags.length && <p>No content waiting for review.</p>}
+          {flags.map((f) => (
+            <article key={f.id} className="space-y-3 rounded-xl border p-4">
+              <h2 className="font-bold">Content awaiting review</h2>
+              <p>{f.reason}</p>
+              <p className="whitespace-pre-wrap">
+                {f.text_content || "No text supplied."}
+              </p>
+              {f.image_urls?.length ? (
+                <div>
+                  <button
+                    className={button}
+                    onClick={() =>
+                      setFlagMedia(flagMedia === f.id ? null : f.id)
+                    }
+                  >
+                    View flagged images ({f.image_urls.length})
+                  </button>
+                  {flagMedia === f.id && (
+                    <div className="flex flex-wrap gap-2">
+                      {f.image_urls.map((src, i) => (
+                        <PrivateMediaImage
+                          key={src}
+                          src={src}
+                          alt={`Flagged attachment ${i + 1}`}
+                          width={200}
+                          height={160}
+                          className="max-w-full object-contain"
+                        />
+                      ))}
                     </div>
-                    {report.status === 'open' && (
-                      <div className="flex sm:flex-col gap-2 w-full sm:w-auto">
-                        <Button size="sm" onClick={() => handlePostReportAction(report.id, 'resolved')} disabled={actionLoading === report.id} className="bg-green-600 hover:bg-green-700 text-white flex-1">Resolve</Button>
-                        <Button size="sm" variant="outline" onClick={() => handlePostReportAction(report.id, 'dismissed')} disabled={actionLoading === report.id} className="flex-1">Dismiss</Button>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-          {postReportTotalCount > 20 && (
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" disabled={postReportPage <= 1} onClick={() => setPostReportPage((page) => page - 1)}>Previous</Button>
-              <Button variant="outline" size="sm" disabled={postReportPage * 20 >= postReportTotalCount} onClick={() => setPostReportPage((page) => page + 1)}>Next</Button>
-            </div>
-          )}
-        </TabsContent>
-
-        {/* ── TAB 2: USER GENERAL REPORTS ───────────────────────────── */}
-        <TabsContent value="user_reports" className="space-y-4">
-          <Card>
-            <CardContent className="p-4 flex justify-between items-center">
-              <span className="text-sm font-medium">Filter Status</span>
-              <Select value={userReportStatusFilter} onValueChange={setUserReportStatusFilter}>
-                <SelectTrigger className="w-44">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="open">Open</SelectItem>
-                  <SelectItem value="resolved">Resolved</SelectItem>
-                  <SelectItem value="dismissed">Dismissed</SelectItem>
-                </SelectContent>
-              </Select>
-            </CardContent>
-          </Card>
-
-          {loading ? (
-            <div className="space-y-3">
-              {[...Array(3)].map((_, i) => (
-                <Skeleton key={i} className="h-32 w-full rounded-xl" />
-              ))}
-            </div>
-          ) : userReports.length === 0 ? (
-            <Card className="text-center p-8">
-              <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-2" />
-              <h3 className="font-semibold text-base">No user reports</h3>
-              <p className="text-sm text-muted-foreground">No reports matching filter.</p>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {userReports.map((report) => (
-                <Card key={report.id} className="overflow-hidden border border-border">
-                  <CardContent className="p-5 flex flex-col sm:flex-row items-start gap-4">
-                    {report.image_url && (
-                      <div className="w-24 h-24 relative rounded-lg overflow-hidden border flex-shrink-0 bg-muted">
-                        <PrivateMediaImage src={report.image_url} alt="Attached image" fill className="object-cover" />
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2 mb-1">
-                        <div>
-                          <Badge variant="outline" className="mb-1">{report.category || "General"}</Badge>
-                          <h3 className="font-bold text-base">{report.subject}</h3>
-                        </div>
-                        {getStatusBadge(report.status)}
-                      </div>
-                      <div className="p-3 bg-muted/60 rounded-md text-sm my-2 whitespace-pre-wrap">
-                        {report.description}
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Reporter ID: {report.user_id || "Anonymous"} • Reported: {new Date(report.created_at).toLocaleString()}
-                      </p>
-                    </div>
-
-                    {report.status === 'open' && (
-                      <div className="flex sm:flex-col gap-2 w-full sm:w-auto">
-                        <Button
-                          size="sm"
-                          onClick={() => handleUserReportAction(report.id, 'resolved')}
-                          disabled={actionLoading === report.id}
-                          className="bg-green-600 hover:bg-green-700 text-white flex-1"
-                        >
-                          Resolve
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleUserReportAction(report.id, 'dismissed')}
-                          disabled={actionLoading === report.id}
-                          className="flex-1"
-                        >
-                          Dismiss
-                        </Button>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
-        {/* ── TAB 3: COMMENT REPORTS ───────────────────────────────── */}
-        <TabsContent value="comment_reports" className="space-y-4">
-          {loading ? (
-            <div className="space-y-3">
-              {[...Array(3)].map((_, i) => (
-                <Skeleton key={i} className="h-32 w-full rounded-xl" />
-              ))}
-            </div>
-          ) : commentReports.length === 0 ? (
-            <Card className="text-center p-8">
-              <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-2" />
-              <h3 className="font-semibold text-base">No reported comments</h3>
-              <p className="text-sm text-muted-foreground">Community comment queue is clean.</p>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {commentReports.map((report) => (
-                <Card key={report.id} className="overflow-hidden border border-border">
-                  <CardContent className="p-5 flex flex-col sm:flex-row items-start gap-4">
-                    <div className="w-10 h-10 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center flex-shrink-0">
-                      <MessageSquare className="h-5 w-5" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2 mb-1">
-                        <div>
-                          <h3 className="font-semibold text-base">Reported Comment</h3>
-                          <p className="text-sm text-muted-foreground">Reason: <span className="text-foreground font-medium">{report.reason}</span></p>
-                        </div>
-                        {getStatusBadge(report.status || 'open')}
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Comment ID: {report.comment_id} • Post ID: {report.post_id || 'N/A'} • Reported: {new Date(report.created_at).toLocaleString()}
-                      </p>
-                    </div>
-
-                    <div className="flex sm:flex-col gap-2 w-full sm:w-auto">
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => handleCommentReportAction(report, 'delete')}
-                        disabled={actionLoading === report.id}
-                        className="flex-1"
-                      >
-                        Delete Comment
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleCommentReportAction(report, 'dismiss')}
-                        disabled={actionLoading === report.id}
-                        className="flex-1"
-                      >
-                        Dismiss
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
-    </div>
+                  )}
+                </div>
+              ) : null}
+              <div className="flex gap-2">
+                <button
+                  className={button}
+                  disabled={busy}
+                  onClick={() => void moderate(f.id, "approve")}
+                >
+                  Approve content
+                </button>
+                <button
+                  className={button}
+                  disabled={busy}
+                  onClick={() => void moderate(f.id, "reject")}
+                >
+                  Keep hidden
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {!cases.length && <p>No reports match these filters.</p>}
+          {cases.map((r) => (
+            <article
+              key={r.id}
+              className="space-y-2 rounded-xl border border-current/20 p-4"
+            >
+              <h2 className="font-bold">{r.subject}</h2>
+              <p>
+                {r.category} · {r.status === "open" ? "Needs review" : r.status}
+              </p>
+              <p>
+                {r.reportedAccount?.name || "No linked account"} ·{" "}
+                {new Date(r.createdAt).toLocaleString()}
+              </p>
+              <p className="line-clamp-3 break-words">{r.description}</p>
+              <button
+                className={button}
+                disabled={busy}
+                onClick={() => void open(r)}
+              >
+                Review report
+              </button>
+            </article>
+          ))}
+        </div>
+      )}
+      <div className="flex items-center justify-between">
+        <button
+          className={button}
+          disabled={loading || page === 1}
+          onClick={() => setPage((p) => p - 1)}
+        >
+          Previous
+        </button>
+        <span>
+          Page {page} · {count} reports
+        </span>
+        <button
+          className={button}
+          disabled={loading || page * 20 >= count}
+          onClick={() => setPage((p) => p + 1)}
+        >
+          Next
+        </button>
+      </div>
+    </main>
   );
 }
