@@ -259,6 +259,7 @@ async function fixture(options = {}) {
     }
     if (endpoint === "/v1/payment/verify") {
       provider.verifies++;
+      if (provider.mode === "verify-rate-limit") return response(null,429,"Too many requests");
       const intent = provider.intents.get(JSON.parse(init.body).reference);
       assert.ok(intent, "only a staged reference can execute");
       assert.ok(intent.amount + intent.fee <= provider.wallet);
@@ -520,7 +521,16 @@ if (require.main === module)
           assert.equal((await h.payouts()).length, 1);
         } finally { await h.close(); }
       });
-      await t.test("uncertain explicit withdrawal remains reserved without another transfer", async () => {
+      await t.test("explicit verify rate limit releases the local reservation without a bank transfer", async()=>{
+      const h=await fixture({mode:"verify-rate-limit"});try{
+        h.provider.wallet=1176;await h.db.exec("UPDATE escrow_transactions SET status='completed'");
+        const response=await h.withdraw();assert.equal(response.status,429);
+        const rows=(await h.db.query("SELECT status,execution_stage FROM payout_requests")).rows;
+        assert.equal(rows.length,1);assert.equal(rows[0].status,'failed');assert.equal(rows[0].execution_stage,'preparing');
+        assert.equal(h.provider.verifies,1);assert.equal(h.provider.credits.length,0);assert.equal(h.provider.wallet,1176);
+      }finally{await h.close();}
+    });
+    await t.test("uncertain explicit withdrawal remains reserved without another transfer", async () => {
         const h = await fixture({ mode: "verify-timeout" });
         try {
           await h.complete(); await h.withdraw();

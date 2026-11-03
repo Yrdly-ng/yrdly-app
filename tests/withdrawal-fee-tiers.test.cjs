@@ -27,14 +27,14 @@ function fixture(failure, lowFee = 10.75, highFee = 107.50) {
         const body = options.body ? JSON.parse(options.body) : undefined;
         calls.push({ endpoint, body });
         const response = (data, status = 200, message = 'OK') => Response.json(
-          { status, message, data }, { status, headers: { 'Retry-After': '37' } },
+          { status, message, data }, { status, headers: { 'Retry-After': '37', ...(failure === 'exhausted-quota' ? { 'RateLimit': 'limit=10, remaining=0, reset=37' } : {}) } },
         );
         if (endpoint.endsWith('/bank-list')) return response([{ code: 'fixture-bank' }]);
         if (endpoint === '/v1/wallet') return response({ mainBalance: 7125, escrowBalance: 0 });
         assert.equal(options.headers['customer-id'], 'fixture-seller');
         if (endpoint.endsWith('/create-intent')) {
           const attempt = calls.filter(call => call.endpoint.endsWith('/create-intent')).length;
-          if (attempt === 3 && failure && failure !== 'wallet-race') {
+          if (attempt === 3 && failure && !['wallet-race','exhausted-quota'].includes(failure)) {
             if (failure === 'network') throw new TypeError('fetch failed');
             return response({}, failure, failure === 400 ? 'Invalid account' : 'Unavailable');
           }
@@ -101,4 +101,8 @@ for (const mode of ['previewWithdrawal', 'withdrawToBank']) {
 
 for(const mode of ['previewWithdrawal','withdrawToBank']) test(`${mode} uses the actual provider fee from the older merchant fee schedule`,async()=>{
  const h=fixture(undefined,10.01,100.10);const result=await h.run(mode);assert.equal(result.success,true);assert.equal(result.intentFee,100.10);assert.equal(result.intentAmount,7024.90);assert.equal(result.totalPaylukDebit,7125);assert.equal(h.calls.filter(c=>c.endpoint.endsWith('/verify')).length,mode==='withdrawToBank'?1:0);
+});
+
+test('known exhausted provider quota stops before persisting or verifying a withdrawal',async()=>{
+ const h=fixture('exhausted-quota');const result=await h.run('withdrawToBank');assert.equal(result.success,false);assert.equal(result.outcome,'failed');assert.equal(result.retryAfterSeconds,37);assert.equal(result.submissionRejected,false);assert.equal(h.calls.filter(c=>c.endpoint.endsWith('/verify')).length,0);
 });

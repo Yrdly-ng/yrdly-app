@@ -258,6 +258,13 @@ export class PayoutService {
               },
             });
 
+            if (paylukResult.submissionRejected === true) {
+              const reset = await supabaseAdmin.from('payout_requests').update({ execution_stage: 'preparing' })
+                .eq('id', payoutRequestId).eq('status', 'processing').eq('execution_stage', 'submitted')
+                .eq('transaction_reference', persistedReference).select('id').maybeSingle();
+              if (reset.error || !reset.data) throw new Error('Rejected withdrawal needs reconciliation.');
+              submissionMayHaveStarted = false;
+            }
             transferSuccess = paylukResult.outcome === 'success';
             transferPending = paylukResult.outcome === 'pending';
             retryAfterSeconds = paylukResult.retryAfterSeconds;

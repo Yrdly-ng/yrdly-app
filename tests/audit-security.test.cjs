@@ -2066,7 +2066,7 @@ for (const [headers,delay] of [[{'Retry-After':'23'},23],[{'RateLimit':'limit=10
     assert.equal(calls,1,'Do not busy retry a shared provider key');
   });
 }
-test('verification rate limit never automatically executes again or releases reserved funds',async()=>{
+test('explicit verification rate limit is retryable without automatic execution',async()=>{
   let verifies=0;
   const {PaylukService}=load('src/lib/payments/payluk-service.ts',{'./payluk-onboarding':{},fetch:async(url,options)=>{
     if(url.endsWith('/bank-list'))return Response.json({status:200,data:[{name:'QA Bank',code:'001'}]});
@@ -2076,8 +2076,20 @@ test('verification rate limit never automatically executes again or releases res
     verifies++;return Response.json({status:429,message:'Too many request'},{status:429,headers:{'Retry-After':'47'}});
   }});
   const result=await PaylukService.withdrawToBank({sellerPaylukCustomerId:'customer',amount:1200,reference:'attempt',bankCode:'001',accountNumber:'0000000000',onIntentReady:async()=>{}});
-  assert.equal(verifies,1);assert.equal(result.outcome,'pending');assert.equal(result.retryAfterSeconds,undefined);
-  assert.match(result.error,/reconcile/);
+  assert.equal(verifies,1);assert.equal(result.outcome,'failed');assert.equal(result.retryAfterSeconds,47);
+  assert.equal(result.submissionRejected,true);assert.match(result.error,/Wait 47 seconds/);
+});
+
+test('non-JSON verification429 remains uncertain and reserved',async()=>{
+  const {PaylukService}=load('src/lib/payments/payluk-service.ts',{'./payluk-onboarding':{},fetch:async(url,options)=>{
+    if(url.endsWith('/bank-list'))return Response.json({status:200,data:[{name:'QA Bank',code:'001'}]});
+    if(url.endsWith('/wallet'))return Response.json({status:200,data:{mainBalance:2000}});
+    const input=JSON.parse(options.body);
+    if(url.endsWith('/create-intent'))return Response.json({status:200,data:{amount:input.amount,fee:10.75,reference:input.reference}});
+    return new Response('Too many requests',{status:429});
+  }});
+  const r=await PaylukService.withdrawToBank({sellerPaylukCustomerId:'customer',amount:1200,reference:'attempt',bankCode:'001',accountNumber:'0000000000',onIntentReady:async()=>{}});
+  assert.equal(r.outcome,'pending');assert.equal(r.submissionRejected,false);assert.equal(r.retryAfterSeconds,undefined);
 });
 
 for (const route of ['payluk/confirm-delivery','payluk/claim-funds','transactions/[id]/complete','transactions/[id]/claim']) {

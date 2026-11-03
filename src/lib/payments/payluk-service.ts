@@ -49,6 +49,8 @@ export class PaylukRequestError extends Error {
   }
 }
 
+let exhaustedQuotaUntil = 0;
+
 async function paylukRequest<T>(
   endpoint: string,
   options: RequestInit & { customerId?: string } = {}
@@ -74,6 +76,12 @@ async function paylukRequest<T>(
     headers,
     signal: fetchOptions.signal || AbortSignal.timeout(10_000),
   });
+
+  const remaining = res.headers.get('ratelimit-remaining') ||
+    res.headers.get('ratelimit')?.match(/(?:^|[;,])\s*(?:remaining|r)=(\d+)/i)?.[1];
+  if (remaining != null && remaining !== '' && Number(remaining) === 0) {
+    exhaustedQuotaUntil = Date.now() + paylukRateLimitDelay(res.headers) * 1000;
+  } else if (remaining != null && Number(remaining) > 0) exhaustedQuotaUntil = 0;
 
   let data: PaylukEnvelope<T>;
   let rawBody: string | undefined;
@@ -1103,6 +1111,7 @@ export class PaylukService {
     paylukStatus?: string;
     retryAfterSeconds?: number;
     transientFailure?: boolean;
+    submissionRejected?: boolean;
   }> {
     let executionStarted = false;
     let activeReference = params.reference;
@@ -1170,6 +1179,11 @@ export class PaylukService {
       const activeIntentRef = intent.reference;
 
       activeReference = activeIntentRef;
+      // Stop before the durable submission boundary if the last provider response
+      // says this key has no requests left. Do not consume verify on a known429.
+      if (exhaustedQuotaUntil > Date.now()) throw new PaylukRequestError(
+        'Payluk request quota is exhausted',429,429,'Too many requests',
+        Math.max(1,Math.ceil((exhaustedQuotaUntil-Date.now())/1000)));
       await params.onIntentReady(activeIntentRef, { amount: activeIntentAmount, fee: activeIntentFee });
       executionStarted = true;
 
@@ -1193,14 +1207,21 @@ export class PaylukService {
       };
     } catch (err: any) {
       console.error('[PaylukService] withdrawToBank error:', err);
+      // Only an explicit provider rejection proves verification did not execute.
+      // Timeouts, non-JSON failures and lost responses remain reserved.
+      const rejected = executionStarted && err instanceof PaylukRequestError &&
+        err.httpStatus === 429 && err.providerStatus === 429 &&
+        err.message.startsWith('[Payluk] POST /v1/payment/verify — HTTP 429') &&
+        /too many requests?/i.test(err.providerMessage);
+      const uncertain = executionStarted && !rejected;
+      const delay = paylukRetryAfterSeconds(err);
       return {
-        outcome: executionStarted ? 'pending' : 'failed',
-        success: false,
-        reference: activeReference,
-        error: executionStarted ? 'Transfer outcome is uncertain; reconcile this payout before retrying.' : paylukRetryAfterSeconds(err) ? payoutRateLimitMessage(paylukRetryAfterSeconds(err)!) : err.message || 'Withdrawal request failed',
-        ...(executionStarted ? { reason: `Transfer submitted; provider result unavailable (${err instanceof PaylukRequestError ? `HTTP ${err.httpStatus}` : ['TimeoutError', 'AbortError'].includes(err?.name) ? 'request timed out' : 'response could not be confirmed'}). Do not retry until reconciled.` } : {}),
-        retryAfterSeconds: executionStarted ? undefined : paylukRetryAfterSeconds(err),
-        transientFailure: !executionStarted && isTransientPaylukFailure(err),
+        outcome: uncertain ? 'pending' : 'failed', success: false, reference: activeReference,
+        submissionRejected: rejected,
+        error: uncertain ? 'Transfer outcome is uncertain; reconcile this payout before retrying.' : delay ? payoutRateLimitMessage(delay) : err.message || 'Withdrawal request failed',
+        ...(uncertain ? { reason: `Transfer submitted; provider result unavailable (${err instanceof PaylukRequestError ? `HTTP ${err.httpStatus}` : ['TimeoutError', 'AbortError'].includes(err?.name) ? 'request timed out' : 'response could not be confirmed'}). Do not retry until reconciled.` } : {}),
+        retryAfterSeconds: uncertain ? undefined : delay,
+        transientFailure: !uncertain && isTransientPaylukFailure(err),
       };
     }
   }
