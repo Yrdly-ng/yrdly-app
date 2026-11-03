@@ -133,3 +133,22 @@ test('verified service reviews require the same completed customer booking and i
  await db.query('INSERT INTO business_reviews(business_id,user_id) VALUES($1,$2)',[business,stranger]);
  }finally{await db.close();}
 });
+
+test('real legacy payment trigger permits staged acceptance only after the targeted correction',async()=>{
+ const {db,actor}=await fixture();try{
+  await db.exec('CREATE TABLE booking_milestone_releases(booking_id uuid,position integer,status text)');
+  const source=readFileSync('supabase/migrations/20261003030000_launch_security_hardening.sql','utf8');
+  const start=source.indexOf('CREATE OR REPLACE FUNCTION public.guard_booking_payment_and_status()');
+  await db.exec(source.slice(start,source.indexOf('$$;',start)+3));
+  await db.exec('CREATE TRIGGER tr_guard_booking_payment_and_status BEFORE UPDATE ON bookings FOR EACH ROW EXECUTE FUNCTION public.guard_booking_payment_and_status()');
+  await actor(owner);
+  await assert.rejects(db.query('SELECT accept_service_booking($1)',[booking]),/Payment is required/);
+  await db.exec('RESET ROLE');
+  await db.exec(readFileSync('supabase/migrations/20261101210650_allow_staged_booking_acceptance_before_funding.sql','utf8'));
+  await actor(customer);await assert.rejects(db.query('SELECT accept_service_booking($1)',[booking]),/Only the business owner/);
+  await actor(owner);const accepted=(await db.query('SELECT (accept_service_booking($1)).*',[booking])).rows[0];
+  assert.equal(accepted.status,'confirmed');assert.equal(accepted.payment_flow,'staged_50_50');assert.equal(Number(accepted.agreed_price),3000);
+  await assert.rejects(db.query("UPDATE bookings SET status='completed' WHERE id=$1",[booking]),/Fund the service|appointment has ended/);
+  await assert.rejects(db.query("UPDATE bookings SET payment_status='escrow_held' WHERE id=$1",[booking]),/payment state cannot/);
+ }finally{await db.close();}
+});

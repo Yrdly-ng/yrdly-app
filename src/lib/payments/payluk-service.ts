@@ -24,6 +24,13 @@ if (typeof window === 'undefined' && !PAYLUK_SECRET_KEY) {
   console.warn('[Yrdly] Missing PAYLUK_SECRET_KEY — Payluk features will not work.');
 }
 
+/** Escrow payloads omit mode; provenance comes from the authenticated transport. */
+function verifiedPaylukEnvironment(): 'test' | 'live' {
+  if (PAYLUK_SECRET_KEY?.startsWith('sk_test_') && PAYLUK_BASE_URL === 'https://staging.api.payluk.ng') return 'test';
+  if (PAYLUK_SECRET_KEY?.startsWith('sk_live_') && PAYLUK_BASE_URL === 'https://api.payluk.ng') return 'live';
+  throw new Error('Payluk verification environment is inconsistent.');
+}
+
 // ── Standard Payluk envelope ────────────────────────────────────────────────
 // Every response: { status: number, message: string, data: T }
 
@@ -41,6 +48,8 @@ export class PaylukRequestError extends Error {
     this.name = 'PaylukRequestError';
   }
 }
+
+let exhaustedQuotaUntil = 0;
 
 async function paylukRequest<T>(
   endpoint: string,
@@ -67,6 +76,12 @@ async function paylukRequest<T>(
     headers,
     signal: fetchOptions.signal || AbortSignal.timeout(10_000),
   });
+
+  const remaining = res.headers.get('ratelimit-remaining') ||
+    res.headers.get('ratelimit')?.match(/(?:^|[;,])\s*(?:remaining|r)=(\d+)/i)?.[1];
+  if (remaining != null && remaining !== '' && Number(remaining) === 0) {
+    exhaustedQuotaUntil = Date.now() + paylukRateLimitDelay(res.headers) * 1000;
+  } else if (remaining != null && Number(remaining) > 0) exhaustedQuotaUntil = 0;
 
   let data: PaylukEnvelope<T>;
   let rawBody: string | undefined;
@@ -187,6 +202,8 @@ export interface PaylukMilestone {
 }
 
 export interface PaylukEscrow {
+  /** Verified transport domain when read through verifyEscrow; raw callbacks may omit it. */
+  environment?: 'test' | 'live';
   id: string;
   amount: number;
   purpose: string;
@@ -304,7 +321,7 @@ async function createPaylukWithdrawalIntent(params: {
   return intent;
 }
 
-/** Stage at most three intents; only the caller may execute the final one. */
+/** Stage at most five intents; only the caller may execute the final one. */
 async function stageBudgetedWithdrawal(params: Parameters<typeof createPaylukWithdrawalIntent>[0]): Promise<
   { intent: PaylukWithdrawalIntent; minimumError?: never } |
   { intent?: never; minimumError: ReturnType<typeof withdrawalMinimumError> & { reference: string } }
@@ -317,26 +334,37 @@ async function stageBudgetedWithdrawal(params: Parameters<typeof createPaylukWit
     reference: `${params.reference}-quote`,
   });
   let intent = minimumIntent;
-  let netAmount = withdrawalNet(params.amount, intent.fee);
-  if (netAmount < PAYLUK_WITHDRAWAL_MINIMUM) {
-    return { minimumError: { ...withdrawalMinimumError(intent.fee), reference: intent.reference } };
-  }
-  if (netAmount === intent.amount) return { intent };
-
-  intent = await createPaylukWithdrawalIntent({ ...params, amount: netAmount, reference: `${params.reference}-net` });
-  if (intent.amount + intent.fee > params.amount) {
-    // A returned fee can change with the amount. Adjust once, then the caller
-    // checks the final debit. An opaque provider rejection stops staging;
-    // neither fee guesses nor transfer retries are safe substitutes for a quote.
-    netAmount = withdrawalNet(params.amount, intent.fee);
+  let rejectedAmount: number | undefined;
+  // Five intents + identity, bank list, wallet and verify = nine requests.
+  // A rejected larger quote may conceal a higher fee tier. Probe between the
+  // last successful quote and the rejection; never guess the fee or verify a probe.
+  for (let attempt = 2; attempt <= 5; attempt++) {
+    const netAmount = withdrawalNet(params.amount, intent.fee);
     if (netAmount < PAYLUK_WITHDRAWAL_MINIMUM) {
       return { minimumError: { ...withdrawalMinimumError(intent.fee), reference: intent.reference } };
     }
-    intent = netAmount === minimumIntent.amount
-      ? minimumIntent
-      : await createPaylukWithdrawalIntent({ ...params, amount: netAmount, reference: `${params.reference}-net-adjusted` });
+    if (netAmount === intent.amount) return { intent };
+    if (netAmount === minimumIntent.amount && minimumIntent.amount + minimumIntent.fee <= params.amount) {
+      return { intent: minimumIntent };
+    }
+
+    const amount = rejectedAmount !== undefined && netAmount >= rejectedAmount
+      ? Math.floor((Math.round(intent.amount * 100) + Math.round(rejectedAmount * 100)) / 2) / 100
+      : netAmount;
+    if (amount < PAYLUK_WITHDRAWAL_MINIMUM || amount === intent.amount) break;
+    try {
+      intent = await createPaylukWithdrawalIntent({
+        ...params, amount,
+        reference: `${params.reference}-${attempt === 2 ? 'net' : `quote-${attempt}`}`,
+      });
+      if (amount === netAmount && intent.amount + intent.fee <= params.amount) return { intent };
+    } catch (error) {
+      if (!(error instanceof PaylukRequestError) || error.httpStatus !== 400 ||
+          error.providerMessage.trim().toLowerCase() !== 'insufficient balance') throw error;
+      rejectedAmount = amount;
+    }
   }
-  return { intent };
+  throw new Error('Payluk could not confirm a transfer fee within your available balance. Refresh your balance and try a smaller withdrawal.');
 }
 
 // ── Service ─────────────────────────────────────────────────────────────────
@@ -647,13 +675,17 @@ export class PaylukService {
   static async verifyEscrow(
     paymentToken: string
   ): Promise<PaylukEscrow> {
-    const response = await paylukRequest<PaylukEscrow>(
+    // Escrow payloads omit environment. Bind evidence to the authenticated transport,
+    // never to a client hint, and reject a contradictory provider declaration.
+    const environment = verifiedPaylukEnvironment();
+    const response = await paylukRequest<PaylukEscrow & { environment?: unknown }>(
       `/v1/escrow/verify/${encodeURIComponent(paymentToken)}`,
-      {
-        method: 'GET',
-      }
+      { method: 'GET', redirect: 'error' },
     );
-    return response.data;
+    if (response.data.environment != null && response.data.environment !== environment) {
+      throw new Error('Payluk escrow environment contradicts the verified transport.');
+    }
+    return { ...response.data, environment };
   }
 
   /** Alias for backward compatibility */
@@ -662,6 +694,42 @@ export class PaylukService {
     paymentToken: string
   ): Promise<PaylukEscrow> {
     return this.verifyEscrow(paymentToken);
+  }
+
+  /** Buyer-paid, fully funded service escrow; commission uses merchant settings. */
+  static async createMilestoneEscrow(customerId: string, params: {
+    amount: number; purpose: string; maxDelivery: number;
+    deliveryTimeline: 'minutes' | 'hours' | 'days';
+    milestones: { title: string; amount: number }[];
+  }, signal?: AbortSignal): Promise<PaylukEscrow> {
+    const cents = (amount: number) => Number.isFinite(amount) && Number.isSafeInteger(Math.round(amount * 100)) &&
+      Math.abs(amount * 100 - Math.round(amount * 100)) < 0.000001;
+    if (!cents(params.amount) || params.amount < 1000 || params.milestones.length !== 2 ||
+        params.milestones.some(m => !m.title.trim() || !cents(m.amount) || m.amount < 1) ||
+        params.milestones.reduce((n,m) => n + Math.round(m.amount * 100), 0) !== Math.round(params.amount * 100) ||
+        !Number.isInteger(params.maxDelivery) || params.maxDelivery < 1 || params.maxDelivery > 365) {
+      throw new Error('Invalid service milestone amounts or delivery window');
+    }
+    const environment = verifiedPaylukEnvironment();
+    const response = await paylukRequest<PaylukEscrow>('/v1/escrow/milestone/create', {
+      method: 'POST', customerId, signal, redirect: 'error',
+      body: JSON.stringify({ ...params, whoPays: 'buyer', totalQuantity: 1 }),
+    });
+    if (response.data.environment != null && response.data.environment !== environment) throw new Error('Payluk escrow environment contradicts the verified transport.');
+    return { ...response.data, environment };
+  }
+
+  static async getMilestones(paymentToken: string, signal?: AbortSignal): Promise<PaylukMilestone[]> {
+    const response = await paylukRequest<PaylukMilestone[]>(`/v1/escrow/milestone/${encodeURIComponent(paymentToken)}`, { method: 'GET', signal });
+    if (!Array.isArray(response.data)) throw new Error('Invalid provider milestone response');
+    return response.data;
+  }
+
+  /** Caller must authorize explicit buyer consent and reconcile with getMilestones. */
+  static async confirmMilestone(customerId: string, escrowId: string, milestoneId: string, signal?: AbortSignal): Promise<void> {
+    await paylukRequest<unknown>(`/v1/escrow/milestone/confirm/${encodeURIComponent(escrowId)}/${encodeURIComponent(milestoneId)}`, {
+      method: 'POST', customerId, signal,
+    });
   }
 
   /**
@@ -817,7 +885,7 @@ export class PaylukService {
     customerIdOrUserId: string,
     accountNumber: string,
     bankCode: string
-  ): Promise<{ valid: boolean; accountName?: string; accountNumber?: string }> {
+  ): Promise<{ valid: boolean; accountName?: string; accountNumber?: string; errorCode?: 'STAGING_REAL_BANK_LOOKUP_LIMIT' }> {
     try {
       let customerId = customerIdOrUserId;
       if (customerIdOrUserId && (customerIdOrUserId.includes('-') || customerIdOrUserId.length > 24)) {
@@ -849,7 +917,9 @@ export class PaylukService {
       return { valid: false };
     } catch (error: any) {
       console.error('[PaylukService] resolveAccount error:', error);
-
+      if (error instanceof PaylukRequestError && /test mode daily limit of \d+ live bank resolves exceeded/i.test(error.providerMessage)) {
+        return { valid: false, errorCode: 'STAGING_REAL_BANK_LOOKUP_LIMIT' };
+      }
       return { valid: false };
     }
   }
@@ -1041,6 +1111,7 @@ export class PaylukService {
     paylukStatus?: string;
     retryAfterSeconds?: number;
     transientFailure?: boolean;
+    submissionRejected?: boolean;
   }> {
     let executionStarted = false;
     let activeReference = params.reference;
@@ -1108,6 +1179,11 @@ export class PaylukService {
       const activeIntentRef = intent.reference;
 
       activeReference = activeIntentRef;
+      // Stop before the durable submission boundary if the last provider response
+      // says this key has no requests left. Do not consume verify on a known429.
+      if (exhaustedQuotaUntil > Date.now()) throw new PaylukRequestError(
+        'Payluk request quota is exhausted',429,429,'Too many requests',
+        Math.max(1,Math.ceil((exhaustedQuotaUntil-Date.now())/1000)));
       await params.onIntentReady(activeIntentRef, { amount: activeIntentAmount, fee: activeIntentFee });
       executionStarted = true;
 
@@ -1131,14 +1207,21 @@ export class PaylukService {
       };
     } catch (err: any) {
       console.error('[PaylukService] withdrawToBank error:', err);
+      // Only an explicit provider rejection proves verification did not execute.
+      // Timeouts, non-JSON failures and lost responses remain reserved.
+      const rejected = executionStarted && err instanceof PaylukRequestError &&
+        err.httpStatus === 429 && err.providerStatus === 429 &&
+        err.message.startsWith('[Payluk] POST /v1/payment/verify — HTTP 429') &&
+        /too many requests?/i.test(err.providerMessage);
+      const uncertain = executionStarted && !rejected;
+      const delay = paylukRetryAfterSeconds(err);
       return {
-        outcome: executionStarted ? 'pending' : 'failed',
-        success: false,
-        reference: activeReference,
-        error: executionStarted ? 'Transfer outcome is uncertain; reconcile this payout before retrying.' : paylukRetryAfterSeconds(err) ? payoutRateLimitMessage(paylukRetryAfterSeconds(err)!) : err.message || 'Withdrawal request failed',
-        ...(executionStarted ? { reason: `Transfer submitted; provider result unavailable (${err instanceof PaylukRequestError ? `HTTP ${err.httpStatus}` : ['TimeoutError', 'AbortError'].includes(err?.name) ? 'request timed out' : 'response could not be confirmed'}). Do not retry until reconciled.` } : {}),
-        retryAfterSeconds: executionStarted ? undefined : paylukRetryAfterSeconds(err),
-        transientFailure: !executionStarted && isTransientPaylukFailure(err),
+        outcome: uncertain ? 'pending' : 'failed', success: false, reference: activeReference,
+        submissionRejected: rejected,
+        error: uncertain ? 'Transfer outcome is uncertain; reconcile this payout before retrying.' : delay ? payoutRateLimitMessage(delay) : err.message || 'Withdrawal request failed',
+        ...(uncertain ? { reason: `Transfer submitted; provider result unavailable (${err instanceof PaylukRequestError ? `HTTP ${err.httpStatus}` : ['TimeoutError', 'AbortError'].includes(err?.name) ? 'request timed out' : 'response could not be confirmed'}). Do not retry until reconciled.` } : {}),
+        retryAfterSeconds: uncertain ? undefined : delay,
+        transientFailure: !uncertain && isTransientPaylukFailure(err),
       };
     }
   }

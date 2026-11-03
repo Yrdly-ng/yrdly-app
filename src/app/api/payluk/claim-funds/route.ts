@@ -35,12 +35,20 @@ export async function POST(request: NextRequest) {
   // 1. Load the transaction — payluk_tx_ref is the paymentToken (PY_...) claimFunds requires.
   const { data: tx, error: fetchError } = await supabaseAdmin
     .from('escrow_transactions')
-    .select('id, buyer_id, seller_id, status, payluk_tx_ref, payment_provider')
+    .select('metadata, item_type, id, buyer_id, seller_id, status, payluk_tx_ref, payment_provider')
     .eq('id', transactionId)
     .maybeSingle();
 
   if (fetchError || !tx) {
     return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
+  }
+
+  if (tx.metadata?.booking_payment_flow === 'staged_50_50') {
+    return NextResponse.json({ error: 'Use the booking milestone approval to release service funds.' }, { status: 409 });
+  }
+
+  if (tx.item_type === 'ticket') {
+    return NextResponse.json({ error: 'Ticket funds are released through event earnings after the event hold.' }, { status: 409 });
   }
 
   // 2. Ownership check — only the seller can claim.

@@ -207,7 +207,7 @@ async function fixture(options = {}) {
     throw new Error(message);
   };
   const fakeFetch = async (url, init = {}) => {
-    if (new URL(url).origin !== "https://payluk.invalid")
+    if (new URL(url).origin !== "https://staging.api.payluk.ng")
       return forbidden(`Live network prohibited: ${url}`);
     const endpoint = new URL(url).pathname;
     provider.calls.push(endpoint);
@@ -222,11 +222,13 @@ async function fixture(options = {}) {
         phone: id === "seller-customer" ? "08000000001" : "08000000002",
       });
     }
+    if (endpoint.startsWith("/v1/escrow/verify/")) return response({ id:"test-escrow",amount:1200,fee:24,whoPays:"seller",additionalFee:0,status:"COMPLETED",state:"CLOSED" });
     if (endpoint === "/v1/escrow/confirm-payment/test-escrow") {
       assert.equal(init.headers["customer-id"], "buyer-customer");
       provider.wallet = 1176;
       return response({ status: "COMPLETED", state: "CLOSED" });
     }
+    if (endpoint === "/v1/payment/bank-list") return response([{ code: "TEST", name: "Fixture bank" }]);
     assert.equal(init.headers["customer-id"], "seller-customer");
     if (endpoint === "/v1/wallet")
       return response({ mainBalance: provider.wallet, escrowBalance: 0 });
@@ -257,6 +259,7 @@ async function fixture(options = {}) {
     }
     if (endpoint === "/v1/payment/verify") {
       provider.verifies++;
+      if (provider.mode === "verify-rate-limit") return response(null,429,"Too many requests");
       const intent = provider.intents.get(JSON.parse(init.body).reference);
       assert.ok(intent, "only a staged reference can execute");
       assert.ok(intent.amount + intent.fee <= provider.wallet);
@@ -314,6 +317,8 @@ async function fixture(options = {}) {
     "server-push-notification": { sendPushNotification: async () => {} },
     "booking-payments": { handlePaylukWebhookEvent: async () => {} },
     "escrow-payment": {},
+    "staged-booking-config": { stagedBookingOperationsEnabled: () => false },
+    "order-evidence": { beginCampaignReceipt: async () => {}, finishCampaignReceipt: async () => {} },
     "ticket-service": {},
     "dispute-settlement": {},
     "payment-reconciliation": { flagPayment: async () => {} },
@@ -352,7 +357,7 @@ async function fixture(options = {}) {
         process: {
           env: {
             PAYLUK_SECRET_KEY: secret,
-            PAYLUK_BASE_URL: "https://payluk.invalid",
+            PAYLUK_BASE_URL: "https://staging.api.payluk.ng",
             AUTO_PAYOUT_RECOVERY_ENABLED: options.recovery ? "true" : "false",
             PAYOUT_RECOVERY_CRON_SECRET: "fixture-cron-secret",
           },
@@ -516,7 +521,16 @@ if (require.main === module)
           assert.equal((await h.payouts()).length, 1);
         } finally { await h.close(); }
       });
-      await t.test("uncertain explicit withdrawal remains reserved without another transfer", async () => {
+      await t.test("explicit verify rate limit releases the local reservation without a bank transfer", async()=>{
+      const h=await fixture({mode:"verify-rate-limit"});try{
+        h.provider.wallet=1176;await h.db.exec("UPDATE escrow_transactions SET status='completed'");
+        const response=await h.withdraw();assert.equal(response.status,429);
+        const rows=(await h.db.query("SELECT status,execution_stage FROM payout_requests")).rows;
+        assert.equal(rows.length,1);assert.equal(rows[0].status,'failed');assert.equal(rows[0].execution_stage,'preparing');
+        assert.equal(h.provider.verifies,1);assert.equal(h.provider.credits.length,0);assert.equal(h.provider.wallet,1176);
+      }finally{await h.close();}
+    });
+    await t.test("uncertain explicit withdrawal remains reserved without another transfer", async () => {
         const h = await fixture({ mode: "verify-timeout" });
         try {
           await h.complete(); await h.withdraw();

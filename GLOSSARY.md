@@ -41,3 +41,14 @@ _Avoid_: Business mode
 **Nearby presence**:
 A user's temporary participation in location-based people discovery, based on a coarse distance from other opted-in users.
 _Avoid_: Live location sharing
+
+### Businessplace campaign
+
+**Campaign sale**:
+A qualifying completed Businessplace product order attributed to an eligible business. It counts once regardless of quantity or naira value, subject to the campaign's fulfillment, date, refund and eligibility rules.
+
+**Campaign participant**:
+A Businessplace product business included automatically in the campaign, with eligibility governed by that campaign's rules.
+
+**Provisional campaign results**:
+Rankings still subject to payment, refund, ownership and suspicious-activity review before final results are approved.

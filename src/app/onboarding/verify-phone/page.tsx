@@ -1,6 +1,7 @@
 "use client";
 
 import { safeRelativePath } from '@/lib/auth/auth-navigation';
+import { normalizeNigerianPhoneInput, toNigerianE164 } from '@/lib/auth/phone-input';
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -27,7 +28,11 @@ export default function VerifyPhonePage() {
     setError("");
 
     try {
-      const fullPhone = `+234${phone}`;
+      const fullPhone = toNigerianE164(phone);
+      if (!fullPhone) {
+        setError("Enter a valid Nigerian mobile number.");
+        return;
+      }
       const { pinId, error: otpError } = await sendPhoneOtp(fullPhone);
 
       if (otpError) {
@@ -156,8 +161,10 @@ export default function VerifyPhonePage() {
                   type="text"
                   placeholder="801 234 5678"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                  maxLength={10}
+                  onChange={(e) => setPhone(normalizeNigerianPhoneInput(e.target.value))}
+                  maxLength={20}
+                  inputMode="numeric"
+                  aria-label="Nigerian mobile number"
                   className="w-full h-[50px] px-4 rounded-xl bg-[#121214] border border-white/20 focus:border-white/50 focus:bg-[#18181b] outline-none text-sm text-white placeholder:text-zinc-500 font-yrdly-body transition-all"
                 />
               </div>

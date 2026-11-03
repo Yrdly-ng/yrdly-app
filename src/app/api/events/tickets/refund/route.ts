@@ -4,6 +4,8 @@ import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
 import { sendPushNotification } from '@/lib/notifications/server-push-notification';
 import { EventFinanceError, requestTicketRefund } from '@/lib/events/paystack-event-finance';
 
+import { requestPaylukTicketRefund } from '@/lib/events/payluk-event-finance';
+
 /**
  * POST /api/events/tickets/refund
  * Allows the event organizer to refund a specific ticket.
@@ -15,7 +17,7 @@ export async function POST(request: NextRequest) {
     const { data: { user }, error: authError } = await getAuthenticatedUser(request);
     if (authError || !user) return NextResponse.json({ error: 'Invalid session' }, { status: authError?.status === 403 ? 403 : authError?.status === 503 ? 503 : 401 });
 
-    const { ticket_id } = await request.json();
+    const { ticket_id, reason } = await request.json();
     if (!ticket_id) return NextResponse.json({ error: 'ticket_id is required' }, { status: 400 });
 
     // ── Fetch ticket & verify organizer ──────────────────────────────────────
@@ -39,6 +41,11 @@ export async function POST(request: NextRequest) {
     if (ticket.payment_provider === 'paystack') {
       const refund = await requestTicketRefund(ticket_id, user.id);
       return NextResponse.json({ success: true, refund, message: refund.status === 'processed' ? 'Refund confirmed.' : 'Refund requested. Its status will update after Paystack confirms it.' });
+    }
+
+    if (ticket.payment_provider === 'payluk' && Number(ticket.amount_paid) > 0) {
+      const refund = await requestPaylukTicketRefund(ticket_id, user.id, reason);
+      return NextResponse.json({ success: true, refund, message: 'Refund requested for support review. Payment has not yet been returned. Retained payment fees will be deducted; Yrdly does not cover them.' });
     }
 
     const { data: payout, error: payoutError } = await supabaseAdmin

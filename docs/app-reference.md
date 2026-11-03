@@ -215,11 +215,11 @@ Marketplace listings use `posts` (`For Sale` / `Giveaway`); business catalog lis
 
 Payment verification and signed webhooks commit local payment/inventory state through the database. Escrow transitions include pending, paid, shipped, delivered, completed, disputed and cancelled. Refund amounts are recorded separately; never infer a refund solely from a cancelled status.
 
-The canonical commission is 3%, defined in `src/lib/shared/constants.ts`. Marketplace checkout adds the platform commission as an additional fee; event commission is deducted at organizer payout. Reconcile provider fees and actual settlement in the sandbox before launch changes.
+The canonical marketplace and service commission is 3%, defined in `src/lib/shared/constants.ts`. New Payluk checkouts use its configured native merchant commission; existing rows keep their recorded fee mode. Event commissions follow the same native merchant-ledger verification requirement. Reconcile a funded and released staging order before live checkout.
 
 ## 8. Payment Flow
 
-Payluk is the only payment provider. See [payments.md](payments.md) for the current integration and remaining live verification.
+Payluk handles marketplace, service, and new event payments. Paystack is reserved for YRDLY subscriptions and historical ticket-order recovery. See [payments.md](payments.md) for the current integration and remaining live verification.
 
 | File | Role |
 |---|---|

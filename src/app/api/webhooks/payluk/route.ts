@@ -1,3 +1,5 @@
+import { approveBookingMilestone } from '@/lib/bookings/milestone-release';
+import { recordCampaignRefund } from '@/lib/campaigns/order-evidence';
 import { invokeServerFunction } from '@/lib/notifications/server-functions';
 import { applyEscrowPayment } from '@/lib/payments/escrow-payment';
 import { ESCROW_ALLOWED_FROM, paymentReferenceFilter, paylukEscrowPrincipal } from '@/lib/payments/payment-state';
@@ -8,6 +10,7 @@ import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
 import { EscrowStatus } from '@/types/escrow';
 import { NotificationService } from '@/lib/notifications/server-notification-service';
 import { TicketService } from '@/lib/events/ticket-service';
+import { assertPaylukEventEnvironment } from '@/lib/events/payluk-event-finance-config';
 import { PaylukService } from '@/lib/payments/payluk-service';
 import { handlePaylukWebhookEvent as handleBookingPaymentEvent } from '@/lib/bookings/booking-payments';
 import { applyDisputeSettlement } from '@/lib/disputes/dispute-settlement';
@@ -81,6 +84,32 @@ export async function POST(request: NextRequest) {
     if (['escrow.completed', 'escrow.refunded', 'escrow.cancelled', 'escrow.split'].includes(event)) {
       const { data: transaction, error } = await findTransactionByPaylukData(data);
       if (error) throw error;
+      if (transaction?.metadata?.booking_payment_flow === 'staged_50_50') {
+        const dispute = await supabaseAdmin.from('disputes').select('id').eq('transaction_id',transaction.id).maybeSingle();
+        if(dispute.error) throw dispute.error;
+        if(dispute.data){
+          const op=await supabaseAdmin.from('dispute_resolution_operations').select('provider_plan,status').eq('dispute_id',dispute.data.id).maybeSingle();
+          if(op.error) throw op.error;
+          if(op.data?.provider_plan?.milestone === true){
+            const remote=await PaylukService.verifyEscrow(transaction.payluk_tx_ref);
+            await applyDisputeSettlement(transaction.id,remote);
+            return NextResponse.json({status:'ok'});
+          }
+        }
+        if (event !== 'escrow.completed') {
+          await flagPayment('payluk', data.id, transaction.id, 'staged_milestone_refund_requires_reconciliation');
+          return NextResponse.json({ status: 'ok' });
+        }
+        const releases = await supabaseAdmin.from('booking_milestone_releases').select('position,status')
+          .eq('transaction_id', transaction.id).in('status', ['approving','released']).order('position');
+        if (releases.error) throw releases.error;
+        for (const milestone of releases.data || []) {
+          await approveBookingMilestone(transaction.item_id, transaction.buyer_id, milestone.position as 1 | 2);
+        }
+        // A final lifecycle callback is never consent for either release.
+        await flagPayment('payluk', data.id, transaction.id, 'staged_completion_reconciled_by_milestone');
+        return NextResponse.json({ status: 'ok' });
+      }
       if (transaction) {
         const { data: dispute, error: disputeError } = await supabaseAdmin.from('disputes')
           .select('id').eq('transaction_id', transaction.id).maybeSingle();
@@ -186,18 +215,20 @@ export async function POST(request: NextRequest) {
 
 // ── Handlers ─────────────────────────────────────────────────────────────────
 
-async function findTransactionByPaylukData(data: Pick<PaylukEscrowData, 'id' | 'paymentToken'>) {
+async function findTransactionByPaylukData(data: Pick<PaylukEscrowData, 'id' | 'paymentToken'> & { environment?: unknown }) {
   const targetId = data.id;
   const token = data.paymentToken;
 
   const columns = ['payluk_escrow_id', 'payluk_tx_ref', 'id', 'payment_reference'];
   const orClause = paymentReferenceFilter(targetId, columns) + (token ? `,${paymentReferenceFilter(token, columns)}` : '');
 
-  return await supabaseAdmin
+  const result = await supabaseAdmin
     .from('escrow_transactions')
     .select('id, status, buyer_id, seller_id, item_id, item_type, amount, commission, total_amount, seller_amount, payment_provider, payluk_tx_ref, payluk_escrow_id, metadata')
     .or(orClause)
     .maybeSingle();
+  if (result.data) assertPaylukEventEnvironment(result.data, data);
+  return result;
 }
 
 async function handleEscrowOngoing(data: Pick<PaylukEscrowData, 'id' | 'paymentToken'>) {
@@ -438,6 +469,7 @@ async function handleEscrowRefunded(data: PaylukEscrowData) {
     await flagPayment('payluk', data.id, tx.id, 'refund_amount_mismatch');
     throw new Error('Refund principal does not match the stored purchase');
   }
+  if (tx.item_type === 'catalog_item') await recordCampaignRefund(tx.id);
   const { data: applied, error: refundError } = await supabaseAdmin.rpc('apply_escrow_refund', {
     // The ledger records the gross purchase allocation, before retained fees.
     p_transaction_id: tx.id, p_provider_reference: data.id, p_refund_amount: Number(tx.amount),

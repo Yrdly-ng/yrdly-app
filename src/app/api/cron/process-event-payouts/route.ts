@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { advanceNextPaylukEventWithdrawal } from '@/lib/events/payluk-event-finance';
 import { EventEscrowService } from '@/lib/events/event-escrow-service';
 
 /**
@@ -17,6 +18,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const result = await EventEscrowService.processMaturedPayouts();
+    const payluk = await advanceNextPaylukEventWithdrawal();
 
     console.log('[CRON] Event payouts processed:', result);
 
@@ -24,6 +26,7 @@ export async function GET(request: NextRequest) {
       success: true,
       timestamp: new Date().toISOString(),
       ...result,
+      payluk,
     });
   } catch (error) {
     console.error('[CRON] Event payout processing failed:', error);

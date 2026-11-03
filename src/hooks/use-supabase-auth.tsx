@@ -45,6 +45,19 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+async function getFunctionErrorMessage(error: any): Promise<string> {
+  const response = error?.context;
+  if (response && typeof response.clone === "function") {
+    try {
+      const body = await response.clone().json();
+      if (typeof body?.error === "string") return body.error;
+    } catch {
+      // Fall back to Supabase's transport error if the response isn't JSON.
+    }
+  }
+  return error?.message || "The verification request failed. Please try again.";
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<AuthUser | null>(null);
@@ -243,7 +256,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { pinId: data.pinId, error: null };
     } catch (error: any) {
       console.error("sendPhoneOtp error:", error);
-      return { pinId: null, error: error.message || error };
+      return { pinId: null, error: await getFunctionErrorMessage(error) };
     }
   };
 
@@ -277,7 +290,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { verified: true, error: null };
     } catch (error: any) {
       console.error("verifyPhoneOtp error:", error);
-      let errMessage = error.message || error;
+      let errMessage = await getFunctionErrorMessage(error);
       if (
         typeof errMessage === "string" &&
         (errMessage.toLowerCase().includes("token") ||

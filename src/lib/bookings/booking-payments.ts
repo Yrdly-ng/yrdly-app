@@ -85,7 +85,15 @@ export async function createCheckoutForBooking(opts: BookingCheckoutOptions) {
       metadata: { ...tx.metadata, payluk_fee: escrow.fee },
     }).eq('id', tx.id).eq('status', 'creating_escrow').select('id').maybeSingle();
     if (storeError || !stored) throw new Error('Could not persist booking provider checkout');
-    await PaylukService.addAdditionalFee(escrow.paymentToken, Number(tx.commission), deadline);
+    // New reservations use the merchant commission configured in Payluk.
+    // Keep the legacy additional-fee call only for reservations created under
+    // the previous contract so retries cannot silently change their price.
+    if (tx.metadata?.payluk_fee_mode === 'buyer_commission_v1') {
+      await PaylukService.addAdditionalFee(escrow.paymentToken, Number(tx.commission), deadline);
+    } else if (!paylukAmountsMatch(tx, escrow) ||
+      !Number.isFinite(escrow.fee) || escrow.fee < Number(tx.commission) || escrow.fee > Number(tx.amount)) {
+      throw new Error('Payluk native commission configuration needs reconciliation');
+    }
     const { data: ready, error: readyError } = await supabaseAdmin.from('escrow_transactions')
       .update({ status: 'pending' }).eq('id', tx.id).eq('status', 'creating_escrow').select('id').maybeSingle();
     if (readyError || !ready) throw new Error('Could not finalize booking provider checkout');

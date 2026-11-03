@@ -10,6 +10,7 @@ import {
   Check,
   Hash,
 } from "lucide-react";
+import { filterBanks } from "@/lib/payments/bank-search";
 import { BankLogo } from "@/components/BankLogo";
 import { useToast } from "@/hooks/use-toast";
 
@@ -31,6 +32,8 @@ export default function PayoutSettingsPage() {
 
   const [banks, setBanks] = useState<BankItem[]>([]);
   const [bankSearch, setBankSearch] = useState("");
+  const [banksLoading, setBanksLoading] = useState(true);
+  const [banksError, setBanksError] = useState(false);
   const [selectedBank, setSelectedBank] = useState<BankItem | null>(null);
 
   const [accountNumber, setAccountNumber] = useState("");
@@ -60,6 +63,8 @@ export default function PayoutSettingsPage() {
   }, []);
 
   const fetchBanks = useCallback(async () => {
+    setBanksLoading(true);
+    setBanksError(false);
     try {
       const res = await fetch("/api/seller/banks");
       const data = await res.json();
@@ -67,9 +72,11 @@ export default function PayoutSettingsPage() {
       setBanks(data.banks);
     } catch (e) {
       console.error("Failed to fetch banks", e);
-      toast({ title: "Banks Unavailable", description: "Could not load banks. Please reload to try again.", variant: "destructive" });
+      setBanksError(true);
+    } finally {
+      setBanksLoading(false);
     }
-  }, [toast]);
+  }, []);
 
   useEffect(() => {
     fetchExisting();
@@ -100,7 +107,7 @@ export default function PayoutSettingsPage() {
         setTimeout(() => setStep("confirmed"), 600);
       } else {
         setStep("account");
-        toast({ title: "Verification Failed", description: "Could not verify this account number.", variant: "destructive" });
+        toast({ title: "Verification Failed", description: data.error || "Could not verify this account number.", variant: "destructive" });
       }
     } catch (e: any) {
       setStep("account");
@@ -218,9 +225,7 @@ export default function PayoutSettingsPage() {
     );
   }
 
-  const filteredBanks = banks.filter((b) =>
-    b.name.toLowerCase().includes(bankSearch.toLowerCase())
-  );
+  const filteredBanks = filterBanks(banks, bankSearch);
 
   return (
     <div className="min-h-screen bg-[var(--yrdly-dark)] text-[var(--yrdly-text)] pb-20 font-yrdly-body">
@@ -266,13 +271,26 @@ export default function PayoutSettingsPage() {
                 value={bankSearch}
                 onChange={(e) => setBankSearch(e.target.value)}
                 placeholder="Search banks…"
+                aria-label="Search banks"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
                 className="w-full bg-transparent text-[14px] text-[var(--yrdly-text)] placeholder-[var(--yrdly-label)] outline-none font-yrdly-body"
               />
             </div>
 
             {/* Bank List */}
             <div className="bg-[var(--yrdly-surface-alt)] border border-[var(--yrdly-glass-border)] rounded-[22px] overflow-hidden">
-              {filteredBanks.map((item, index) => (
+              {banksLoading ? (
+                <p role="status" className="px-5 py-6 text-sm">Loading banks…</p>
+              ) : banksError ? (
+                <div role="alert" className="px-5 py-6 space-y-3">
+                  <p>Could not load banks. Please try again.</p>
+                  <button type="button" onClick={() => void fetchBanks()} className="font-semibold text-[var(--yrdly-text)] underline">Try again</button>
+                </div>
+              ) : filteredBanks.length === 0 ? (
+                <p role="status" className="px-5 py-6 text-sm">{banks.length ? 'No banks found. Try another name or clear your search.' : 'No banks are available right now. Please try again later.'}</p>
+              ) : filteredBanks.map((item, index) => (
                 <div key={item.code}>
                   <button
                     onClick={() => {

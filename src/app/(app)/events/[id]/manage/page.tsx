@@ -170,16 +170,22 @@ export default function ManageEventPage() {
     if (
       refundInFlight.current ||
       ticket.status !== "PAID" ||
-      ticket.payment_provider !== "paystack" ||
+      !["paystack", "payluk"].includes(ticket.payment_provider || "") ||
       ticket.refund_status
     )
       return;
     if (
       !window.confirm(
-        `Request a refund of ₦${Number(ticket.amount_paid || 0).toLocaleString("en-NG")} for ${ticket.attendee_name || "this attendee"}? The ticket will be blocked from entry while the refund is processed.`,
+        ticket.payment_provider === "payluk"
+          ? `Request a refund review for ${ticket.attendee_name || "this attendee"}'s ₦${Number(ticket.amount_paid || 0).toLocaleString("en-NG")} ticket? Retained payment fees will be deducted, even for a cancelled event. Yrdly does not cover these fees. Entry will be blocked during review. Refunds cannot be started once payout processing begins, and Payluk cannot refund released funds.`
+          : `Request a refund of ₦${Number(ticket.amount_paid || 0).toLocaleString("en-NG")} for ${ticket.attendee_name || "this attendee"}? The ticket will be blocked from entry while the refund is processed.`,
       )
     )
       return;
+    const reason = ticket.payment_provider === "payluk"
+      ? window.prompt("Explain why this ticket needs a refund (at least 5 characters). Support will review the request with Payluk.")?.trim()
+      : undefined;
+    if (ticket.payment_provider === "payluk" && (!reason || reason.length < 5)) return;
     refundInFlight.current = true;
     setRefundingId(ticket.id);
     setRefundMessage("");
@@ -187,7 +193,7 @@ export default function ManageEventPage() {
       const result = await authenticatedFetch<{
         refund?: { status: string };
         message?: string;
-      }>("/api/events/tickets/refund", { ticket_id: ticket.id });
+      }>("/api/events/tickets/refund", { ticket_id: ticket.id, ...(reason ? { reason } : {}) });
       const status = result.refund?.status;
       setTickets((current) =>
         current.map((row) =>
@@ -203,11 +209,11 @@ export default function ManageEventPage() {
         ),
       );
       setRefundMessage(
-        status === "processed"
+        result.message || (status === "processed"
           ? "Refund confirmed."
           : ["failed", "review", "needs-attention"].includes(status || "")
             ? "This refund needs support review. The ticket remains blocked from entry."
-            : "Refund requested. Refresh the roster to check confirmation.",
+            : "Refund requested. Refresh the roster to check confirmation."),
       );
     } catch (error) {
       setRefundMessage(
@@ -323,23 +329,23 @@ export default function ManageEventPage() {
     <div className="min-h-screen bg-background pb-12">
       {/* Top Header */}
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 sm:py-0 sm:h-14 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3">
+          <div className="flex min-w-0 items-center gap-3 sm:flex-1">
             <Button
               aria-label="Back"
               variant="ghost"
               size="icon"
               onClick={() => router.back()}
-              className="rounded-full hover:bg-secondary"
+              className="shrink-0 rounded-full hover:bg-secondary"
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
-            <h1 className="text-lg font-bold font-sans text-foreground truncate">
+            <h1 className="min-w-0 flex-1 text-lg font-bold font-sans text-foreground truncate">
               Manage: {event.title}
             </h1>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -604,7 +610,7 @@ export default function ManageEventPage() {
                           {t.status}
                         </span>
                       )}
-                      {t.payment_provider === "paystack" &&
+                      {["paystack", "payluk"].includes(t.payment_provider || "") &&
                         t.status === "PAID" &&
                         !t.refund_status && (
                           <Button

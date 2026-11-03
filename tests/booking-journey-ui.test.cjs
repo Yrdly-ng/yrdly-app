@@ -31,7 +31,10 @@ async function mountDetail({ payment = 'unpaid', role = 'customer', ended = fals
     business: { name: 'Local Studio', owner_id: 'provider' }, customer: { name: 'Customer' },
   };
   const query = { select() { return this; }, eq() { return this; }, single: async () => ({ data: row, error: null }) };
+  const milestoneComponent = compile('src/components/bookings/BookingMilestones.tsx', { '@/lib/supabase/supabase': { supabase: {auth:{getSession:async()=>({data:{session:{access_token:'test'}}})}} } });
+  const originalFetch=global.fetch;global.fetch=async()=>Response.json({enabled:false,canPay:false,milestones:[]});
   const Page = compile('src/app/(app)/bookings/[bookingId]/page.tsx', {
+    '@/components/bookings/BookingMilestones': milestoneComponent,
     'next/navigation': { useParams: () => ({ bookingId: id }), useRouter: () => ({ push: url => routes.push(url), back() {} }) },
     '@/hooks/use-supabase-auth': { useAuth: () => ({ user: { id: role } }) },
     '@/lib/bookings/booking-service': { BookingService: {}, CANCELLATION_WINDOW_HOURS: 5 },
@@ -44,7 +47,7 @@ async function mountDetail({ payment = 'unpaid', role = 'customer', ended = fals
   const container = document.createElement('div'); document.body.appendChild(container);
   const root = createRoot(container);
   await act(async () => root.render(React.createElement(Page)));
-  return { container, routes, unmount: async () => { await act(() => root.unmount()); container.remove(); } };
+  return { container, routes, unmount: async () => { await act(() => root.unmount()); container.remove();global.fetch=originalFetch; } };
 }
 
 test('unpriced booking details remain readable and customer can find booking history', async () => {
@@ -75,7 +78,7 @@ test('accepted staged booking explains payment hold without offering a legacy fu
   const h = await mountDetail({ status: 'confirmed', priced: true, staged: true });
   try {
     assert.match(h.container.textContent, /Agreed service price/);
-    assert.match(h.container.textContent, /Staged payment setup pending/);
+    assert.match(h.container.textContent, /Online staged payments are not available yet/);
     assert.ok(![...h.container.querySelectorAll('button')].some(node => node.textContent === 'Review booking payment'));
   } finally { await h.unmount(); }
 });

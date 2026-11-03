@@ -1,5 +1,7 @@
 # Paystack event payments implementation
 
+31 October owner decision: new event tickets will use Payluk; Paystack is reserved for YRDLY subscriptions and historical ticket recovery. The sandbox implementation and QA history below remain relevant to existing Paystack orders. See `output/qa/payluk-event-ticketing-working.md` and ADR 0007 for the approved replacement work. No live Paystack event activation is authorized.
+
 Approved scope: new event ticket purchases use Paystack after activation. Existing Payluk purchases keep their original checkout, verification, refund and settlement handling. Marketplace and service bookings remain unchanged.
 
 ## Delivery sequence

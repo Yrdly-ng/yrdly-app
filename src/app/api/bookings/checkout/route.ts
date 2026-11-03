@@ -1,3 +1,4 @@
+import { createStagedBookingCheckout } from '@/lib/bookings/milestone-checkout';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/supabase/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
@@ -72,9 +73,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Wait for the business to accept your appointment and final price before paying.' }, { status: 409 });
   }
   if (booking.payment_flow === 'staged_50_50') {
-    // Milestone escrow cannot use the per-payment additional fee of legacy
-    // standard escrows. Do not silently collect a full-release legacy payment.
-    return NextResponse.json({ error: 'Staged service checkout is not available yet. No payment has been started.' }, { status: 503 });
+    try {
+      const checkout = await createStagedBookingCheckout(booking.id, user.id, booking.appointment_time);
+      return NextResponse.json({ ok: true, ...checkout, type: 'escrow', bookingId: booking.id });
+    } catch (error) {
+      return NextResponse.json({ error: error instanceof BookingCheckoutError ? error.message : 'Could not prepare service payment.' },
+        { status: error instanceof BookingCheckoutError ? error.status : 503 });
+    }
   }
   if (['deposit_paid', 'fully_paid', 'escrow_held', 'escrow_released'].includes(booking.payment_status)) {
     return NextResponse.json({ error: 'This booking has already been paid' }, { status: 409 });

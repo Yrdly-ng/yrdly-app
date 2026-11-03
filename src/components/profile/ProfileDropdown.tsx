@@ -8,6 +8,7 @@ import {
   UserPlus,
   LogOut,
   CalendarDays,
+  Trophy,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-supabase-auth";
@@ -51,6 +52,16 @@ export function ProfileDropdown({ onClose }: ProfileDropdownProps) {
   };
 
   const menuItems = [
+    {
+      label: "Businessplace Campaign",
+      icon: Trophy,
+      onClick: () => navigate("/campaigns/small-businesses"),
+    },
+    ...((profile as { is_admin?: boolean; role?: string } | null)?.is_admin || (profile as { role?: string } | null)?.role === "admin" ? [{
+      label: "Campaign review",
+      icon: Trophy,
+      onClick: () => navigate("/admin/campaigns/small-businesses"),
+    }] : []),
     {
       label: "My Bookings",
       icon: CalendarDays,

@@ -37,8 +37,9 @@ async function handler(request: NextRequest) {
     // ── Find SHIPPED transactions older than 48h ──────────
     const { data: staleTransactions, error: fetchError } = await supabaseAdmin
       .from('escrow_transactions')
-      .select('id, buyer_id, seller_id, item_id, amount, seller_amount, shipped_at, payment_provider, payluk_tx_ref')
-      .eq('status', EscrowStatus.SHIPPED)
+      .select('metadata, id, buyer_id, seller_id, item_id, amount, seller_amount, shipped_at, payment_provider, payluk_tx_ref')
+      .or('item_type.is.null,item_type.neq.ticket')
+    .eq('status', EscrowStatus.SHIPPED)
       .lt('shipped_at', cutoffDate.toISOString());
 
     if (fetchError) {
@@ -54,6 +55,7 @@ async function handler(request: NextRequest) {
     const errors: string[] = [];
 
     for (const tx of staleTransactions) {
+      if (tx.metadata?.booking_payment_flow === 'staged_50_50') continue;
       try {
         // Release a Payluk escrow at the provider before changing our local ledger.
         if (tx.payment_provider === 'payluk') {

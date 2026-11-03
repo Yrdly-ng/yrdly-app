@@ -46,6 +46,7 @@ import { usePosts } from "@/hooks/use-posts";
 import type { Business, BusinessMode } from "@/types/index";
 import Image from "next/image";
 import { cn } from "@/lib/shared/utils";
+import { getBusinessLogo } from "@/lib/businesses/presentation";
 
 const inputBase =
   "bg-background/80 border border-border/80 text-foreground placeholder:text-muted-foreground/70 placeholder:italic font-sans text-sm focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary transition-all";
@@ -192,6 +193,20 @@ const BlobImage = memo(
 );
 BlobImage.displayName = "BlobImage";
 
+function getExistingBusinessPhotos(business?: Business): string[] {
+  const photos = Array.isArray(business?.image_urls) ? business.image_urls : [];
+  return Array.from(new Set([business?.cover_image, ...photos].filter((url): url is string => typeof url === "string" && url.trim().length > 0)));
+}
+
+function normalizeBusinessEditLocation(location: unknown): LocationValue {
+  if (typeof location === "string") return { address: location };
+  if (location && typeof location === "object" && !Array.isArray(location)) {
+    const value = location as Record<string, unknown>;
+    return { ...value, address: typeof value.address === "string" ? value.address : "" };
+  }
+  return { address: "" };
+}
+
 const getFormSchema = (isEditMode: boolean, businessToEdit?: Business) =>
   z.object({
     name: z.string().min(1, "Business name can't be empty.").max(100),
@@ -200,7 +215,7 @@ const getFormSchema = (isEditMode: boolean, businessToEdit?: Business) =>
     description: z.string().min(1, "Description is required.").max(1000),
     location: z
       .custom<LocationValue>()
-      .refine((value) => value && value.address.length > 0, {
+      .refine((value) => typeof value?.address === "string" && value.address.trim().length > 0, {
         message: "Location is required.",
       }),
     phone: z
@@ -224,8 +239,9 @@ const getFormSchema = (isEditMode: boolean, businessToEdit?: Business) =>
       .union([z.string().url("Please enter a valid URL."), z.literal("")])
       .optional(),
     hours: z.string().max(100).optional().or(z.literal("")),
+    logoImage: z.any().optional(),
     image: z.any().refine((files) => {
-      if (isEditMode && businessToEdit?.image_urls?.length) return true;
+      if (isEditMode && getExistingBusinessPhotos(businessToEdit).length) return true;
       return (
         files &&
         ((typeof FileList !== "undefined" &&
@@ -262,6 +278,7 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
   const [closeTime, setCloseTime] = useState("");
   const isMobile = useIsMobile();
   const isEditMode = !!businessToEdit;
+  const existingImageUrls = useMemo(() => getExistingBusinessPhotos(businessToEdit), [businessToEdit]);
 
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
 
@@ -283,6 +300,7 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
       website: "",
       hours: "",
       image: undefined,
+      logoImage: undefined,
     },
   });
 
@@ -307,12 +325,14 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
             mode: (businessToEdit.mode as BusinessMode) || "both",
             category: businessToEdit.category,
             description: businessToEdit.description,
-            location: businessToEdit.location,
+            location: normalizeBusinessEditLocation(businessToEdit.location),
             phone: businessToEdit.phone || "",
             email: businessToEdit.email || "",
             website: businessToEdit.website || "",
             hours: businessToEdit.hours || "",
-            image: businessToEdit.image_urls || [],
+            // Saved URLs render separately; this field contains new upload files only.
+            image: undefined,
+            logoImage: undefined,
           });
           const parsed = parseHours(businessToEdit.hours);
           setHoursDays(parsed.days);
@@ -330,6 +350,7 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
             website: "",
             hours: "",
             image: undefined,
+            logoImage: undefined,
           });
           setHoursDays([]);
           setOpenTime("");
@@ -345,12 +366,7 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
     setLoading(true);
     setSubmitError("");
 
-    let filteredImageUrls: string[] = [];
-    if (businessToEdit?.image_urls) {
-      filteredImageUrls = businessToEdit.image_urls.filter(
-        (_, i) => !removedImageIndexes.includes(i),
-      );
-    }
+    const filteredImageUrls = existingImageUrls.filter((_, i) => !removedImageIndexes.includes(i));
 
     let validImageFiles: FileList | undefined;
     if (values.image && values.image.length > 0) {
@@ -374,6 +390,7 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
       email: values.email || undefined,
       website: values.website || undefined,
       hours: values.hours || undefined,
+      logo_url: businessToEdit ? getBusinessLogo(businessToEdit) : undefined,
       image_urls: filteredImageUrls,
       cover_image: filteredImageUrls[0] || undefined,
     };
@@ -383,6 +400,7 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
         businessData,
         businessToEdit?.id,
         validImageFiles,
+        values.logoImage?.length ? values.logoImage : undefined,
       );
       if (!savedBusinessId)
         throw new Error("The business could not be saved. Please try again.");
@@ -421,7 +439,8 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
     [onOpenChange, externalOpen, form],
   );
 
-  const goToNextStep = async () => {
+  const goToNextStep = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
     const step1Valid = await form.trigger([
       "name",
       "mode",
@@ -724,6 +743,35 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
           {/* STEP 2: Media & Hours */}
           {activeStep === 2 && (
             <div className="space-y-5 animate-in fade-in-50 duration-200">
+              <FormField
+                control={form.control}
+                name="logoImage"
+                render={({ field: { onChange, value, name, onBlur, ref } }) => (
+                  <FormItem className="space-y-2 rounded-2xl border border-border/80 bg-muted/20 p-4">
+                    <FormLabel className={labelClass}>Business profile image <span className="font-normal text-muted-foreground">(optional)</span></FormLabel>
+                    <p className="text-xs leading-5 text-muted-foreground">Your logo or profile photo, shown beside your business name and on the campaign leaderboard.</p>
+                    <div className="flex items-center gap-4">
+                      <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-full border border-border bg-background">
+                        {value?.[0] ? (
+                          <BlobImage file={value[0]} className="h-full w-full object-cover" />
+                        ) : businessToEdit && getBusinessLogo(businessToEdit) ? (
+                          <Image src={getBusinessLogo(businessToEdit)!} alt="Current business profile image" fill className="object-cover" />
+                        ) : (
+                          <div className="flex h-full items-center justify-center text-primary"><Building2 className="h-8 w-8" aria-hidden="true" /></div>
+                        )}
+                      </div>
+                      <FormControl>
+                        <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-border bg-background px-4 text-xs font-semibold focus-within:ring-2 focus-within:ring-primary">
+                          <UploadCloud className="h-4 w-4" aria-hidden="true" />Choose profile image
+                          <input ref={ref} name={name} onBlur={onBlur} type="file" accept="image/*" className="sr-only" aria-label="Business profile image" onChange={event => onChange(event.target.files ?? undefined)} />
+                        </label>
+                      </FormControl>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">A square image works best.</p>
+                    <FormMessage className="text-red-400 text-xs" />
+                  </FormItem>
+                )}
+              />
               {/* Business Photos Upload */}
               <FormField
                 control={form.control}
@@ -732,7 +780,7 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
                   <FormItem className="space-y-2">
                     <FormLabel className={labelClass}>
                       <ImageIcon className="w-3.5 h-3.5 text-primary" />
-                      <span>Business Photos</span>
+                      <span>Banner &amp; gallery photos</span>
                     </FormLabel>
                     <FormControl>
                       <label
@@ -747,12 +795,13 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
                           Click to upload photos
                         </span>
                         <span className="text-[11px] text-muted-foreground font-sans mt-0.5">
-                          High resolution JPEG or PNG photos recommended
+                          Your first photo appears as the banner at the top of your business page.
                         </span>
                         <input
                           type="file"
                           accept="image/*"
                           multiple
+                          aria-label="Banner and gallery photos"
                           className="sr-only"
                           onChange={(e) =>
                             onChange(e.target.files ?? undefined)
@@ -764,12 +813,9 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
 
                     {/* Previews */}
                     {((value && value.length > 0) ||
-                      (businessToEdit?.image_urls &&
-                        businessToEdit.image_urls.filter(
-                          (_, i) => !removedImageIndexes.includes(i),
-                        ).length > 0)) && (
+                      existingImageUrls.some((_, i) => !removedImageIndexes.includes(i))) && (
                       <div className="grid grid-cols-4 gap-2 pt-2">
-                        {businessToEdit?.image_urls?.map((url, index) => {
+                        {existingImageUrls.map((url, index) => {
                           if (removedImageIndexes.includes(index)) return null;
                           return (
                             <div
@@ -784,7 +830,7 @@ const CreateBusinessDialogComponent = memo(function CreateBusinessDialog({
                               />
                               {index === 0 && (
                                 <span className="absolute bottom-1 left-1 bg-black/60 backdrop-blur-md text-white text-[9px] px-1.5 py-0.5 rounded font-semibold">
-                                  Cover
+                                  Banner
                                 </span>
                               )}
                               <button

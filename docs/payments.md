@@ -1,6 +1,6 @@
 # Payments
 
-Payluk is the only payment provider in `yrdly-app`. Marketplace, business and event checkouts use Payluk escrow. Bank lists, account verification and withdrawals also use Payluk. Event checkout has no provider selection or fallback to another gateway.
+Payluk is selected for marketplace, service and new event ticket payments. Paystack is reserved for YRDLY subscriptions and recovery of historical Paystack ticket orders. New event checkout now uses Payluk staging only when explicitly enabled and native commission is confirmed; this local change has not been deployed. See [the event handoff](../output/qa/payluk-event-ticketing-working.md) and [ADR 0007](adr/0007-payluk-for-new-event-ticket-orders.md). The historical fee examples below describe existing contracts, which must not be rewritten.
 
 ## Configuration
 
@@ -9,36 +9,59 @@ Payluk is the only payment provider in `yrdly-app`. Marketplace, business and ev
 - `NEXT_PUBLIC_APP_URL`: application return URL.
 - `SUPABASE_SERVICE_ROLE_KEY`: server-only database access.
 - `CRON_SECRET`: authenticated scheduled tasks.
+- `PAYLUK_EVENT_CHECKOUT_ENABLED` and `PAYLUK_EVENT_NATIVE_COMMISSION_CONFIRMED`: explicit event checkout sandbox gates. `PAYLUK_EVENT_FINANCE_ENABLED` permits sandbox refund requests and reconciliation. New organizer withdrawals additionally require `PAYLUK_EVENT_WITHDRAWALS_ENABLED=true`; finance activation alone cannot enable payouts. These gates reject live keys/hosts and default to disabled.
+- `PAYLUK_EVENT_ALLOW_UNLINKED_PAYOUT_STAGING`: narrowly permits paid event creation for the exact QA Staging project when Payluk test checkout is enabled and withdrawals are off. Use only for checkout tests; it does not mark a payout account verified or enable organizer payouts.
 
 Use project-specific Supabase credentials and test Payluk keys in the ignored `.env.qa`. Never commit keys. Production and preview deployment settings must be updated separately when publishing the matching code.
 
-For marketplace and catalog checkout through `/api/payment/initialize`, Yrdly's
-canonical 3% is the buyer's additional fee. Set Payluk's optional dashboard
-merchant commission to zero to avoid charging Yrdly commission twice. Payluk's
-own merchant escrow fee is separate and charged to the seller. Use the returned
-escrow fee to record seller proceeds; do not assume an aggregate wallet balance
-is the proceeds of one sale. Commission and totals are rounded to kobo.
+For new marketplace, catalog and standard service checkouts, Yrdly uses the
+Payluk merchant commission configured on the dashboard. The buyer pays the
+listed amount; no `additionalFee` is added. The provider's returned escrow fee
+must include at least the stored 3% Yrdly commission, and seller proceeds are
+recorded as listed amount less that returned fee. New rows are tagged
+`native_commission_v1`. Existing `buyer_commission_v1` rows keep their original
+buyer-paid additional fee when recovered; do not rewrite historical rows.
 
 The official fee references are [Payluk fees](https://payluk.ng/help/fees) and
 [fees and settlement](https://docs.payluk.ng/concepts/fees-and-settlement).
-The 11 October sandbox sale verified a 2,500 principal, 75 Yrdly fee, 50 Payluk
-fee, 2,575 buyer payment and 2,450 seller credit. This does not verify live
-dashboard settings. Funded catalog checkout also verified a 1,234.56 principal,
-37.04 Yrdly commission, 24.69 provider fee and 1,209.87 seller credit.
+The 11 October sandbox sale verified the former contract: a 2,500 principal,
+75 Yrdly additional fee, 50 Payluk fee, 2,575 buyer payment and 2,450 seller
+credit. Funded catalog checkout likewise verified the former contract. Neither
+proves the current dashboard's 3% commission is credited to Yrdly. Before live
+checkout, reconcile a funded and released staging order against the Payluk
+merchant ledger and verify the buyer total and seller proceeds.
 
-Event tickets preserve the advertised price, as confirmed by the user. Their
-Payluk principal is the ticket total minus Yrdly's 3%; the same 3% is assigned as
-the merchant additional fee. The buyer pays the advertised total, and the
-organizer receives the principal minus the returned Payluk fee. Gross ticket
-prices remain in the application ledger. A server-managed fee-mode marker
-distinguishes these new orders from historical tickets. Organizer payout must
-confirm the ticket escrows are released and use their actual net proceeds;
-commission is not deducted again at withdrawal. Legacy orders require
-reconciliation. Sixteen funded sandbox checks verified an advertised/buyer
-price of 2,500, Yrdly credit of 75, returned Payluk fee of 48.50 and organizer
-wallet credit of 2,376.50. Ticket issuance, idempotent replays and simultaneous
-single-use scans passed. Automatic maturity claims and bank payouts remain
-separate requirements.
+New event tickets preserve the advertised gross ticket price as the Payluk
+escrow principal. New orders use `native_commission_v1`, `whoPays: seller`, and
+`additionalFee: 0`; the stored 3% Yrdly commission is not added to the buyer's
+checkout total or deducted again at organizer withdrawal. Payluk's returned
+escrow fee reduces organizer proceeds, while Yrdly's actual share must be
+verified from the Payluk merchant commission ledger after a funded and released
+QA order. The owner reports setting a 3% Payluk dashboard rate, but that credit
+has not yet been independently reconciled. Do not set
+`PAYLUK_EVENT_NATIVE_COMMISSION_CONFIRMED=true` until it has been verified.
+Historical `seller_commission_v1` ticket orders retain their former reduced
+principal/additional-fee contract and must be reconciled with that original
+provider state. Earlier October funded ticket tests exercised that historical
+contract and are not evidence for this new native-commission flow.
+
+The new Payluk event checkout and finance code is currently QA-only: exact
+staging host, test key and explicit feature flags are required, and live keys
+are rejected. `maxDelivery` is rounded so seller claim cannot be available
+before event end +24 hours, although Payluk's provider-side claim grace and
+whole-day rounding can delay release. Yrdly's user-facing release endpoints
+exclude ticket orders; hosted Payluk early-confirm controls still require
+staging validation. Paid refunds are support-assisted: a request holds the
+ticket/proceeds, but it is not a refund until Payluk confirms the provider
+resolution. Partial and post-release refunds are not automated.
+
+For new Payluk tickets, approved refunds return the refundable held balance after
+retained payment fees, including organizer cancellations. Yrdly does not top up
+these refunds or reimburse retained fees. This policy was approved on 2 November
+2026; older orders keep their disclosed terms. In Staging a ₦1,200 ticket returned
+₦1,140: ₦36 commission was credited to Yrdly and ₦24 was the processing share.
+Do not label a refund request as a completed refund or promise the gross ticket
+price before provider confirmation.
 
 Paid ticket checkout reserves seats atomically before creating its provider
 escrow. Retries reuse the order; a single setup claim prevents duplicate escrow
@@ -49,8 +72,8 @@ can cancel unpaid checkout; paid or uncertain outcomes remain held for review.
 The service-only reservation migration must ship with its matching web code.
 Reconcile any legacy unfulfilled paid-ticket checkout before applying it.
 
-Booking checkout uses the inline SDK and the same buyer-paid 3% additional fee
-as marketplace/catalog checkout. A service-only RPC locks the booking, enforces
+New standard booking checkout uses the inline SDK and Payluk's native merchant
+commission. A service-only RPC locks the booking, enforces
 its configured payment type and computes its service/accepted-quote price before
 creating one common escrow-ledger order. A single setup claim prevents duplicate
 provider creation. Unknown provider outcomes remain reserved for review.
@@ -73,17 +96,15 @@ final price before checkout. Acceptance snapshots the agreed price; an indicativ
 "from" price requires an accepted quote. Existing paid bookings and unfinished
 legacy checkouts keep their original payment terms and recovery path.
 
-The approved new arrangement is full funding followed by two equal releases:
+The proposed new arrangement is full funding followed by two equal releases:
 50% explicitly approved by the customer upfront and 50% after customer-confirmed
-completion. **This staged checkout is disabled pending Payluk confirmation of a
-supported YRDLY 3% commission setup.** No new staged reservation or provider
+completion. **This staged checkout is disabled pending Payluk confirmation of
+the milestone commission and release contract.** No new staged reservation or provider
 charge is created. Acceptance does not mean that payment was received. Free and
 pay-later services continue without a staged payment requirement.
 
-Payluk milestone escrow requires buyer-paid provider fees and does not support
-the standard escrow per-payment additional fee used by the current integration.
-Do not enable a global dashboard commission or silently fall back to full-release
-standard escrow. The provider question draft is in
+The standard-checkout commission cutover does not enable staged milestone
+bookings. The provider question draft is in
 `output/qa/payluk-service-milestones-email.md`.
 
 The scheduling, acceptance-price and new-checkout-acceptance migrations must ship

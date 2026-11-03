@@ -9,7 +9,8 @@ const eventId = '10000000-0000-0000-0000-000000000001';
 const tierId = '20000000-0000-0000-0000-000000000001';
 const txId = '30000000-0000-0000-0000-000000000001';
 const input = { event_id: eventId, tier_id: tierId, buyer_id: 'buyer', quantity: 2, attendee_name: 'Ada', attendee_email: 'ada@example.test', attendee_phone: null };
-function harness({ providerFailure, identityFailure, reserveError } = {}) {
+function harness({ providerFailure, identityFailure, reserveError, slowPreflight = false } = {}) {
+  let elapsed=0;const signalClock=slowPreflight?{timeout(ms){const start=elapsed;return {throwIfAborted(){if(elapsed-start>=ms)throw Error('expired request deadline');}};}}:AbortSignal;
   const calls = [];
   const tables = {
     escrow_transactions: [], tickets: [], ticket_checkout_reservations: [], notifications: [], users: [],
@@ -66,6 +67,10 @@ function harness({ providerFailure, identityFailure, reserveError } = {}) {
       }
       return { data: { transaction: structuredClone(tx) }, error: null };
     }
+    if (name === 'record_payluk_event_fee_evidence') {
+      const tx=tables.escrow_transactions.find(t=>t.id===args.p_transaction);
+      tx.seller_amount=Number(tx.amount)-args.p_fee;tx.metadata.payluk_fee=args.p_fee;return {data:structuredClone(tx)};
+    }
     if (name === 'release_ticket_checkout') {
       tables.escrow_transactions[0].status = 'cancelled';
       tables.ticket_checkout_reservations[0].remaining = 0;
@@ -74,15 +79,16 @@ function harness({ providerFailure, identityFailure, reserveError } = {}) {
     throw new Error(`Unexpected RPC ${name}`);
   } };
   const payluk = {
-    updateCustomerPermissions: async () => {},
-    createEscrow: async (seller, body) => {
+    updateCustomerPermissions: async () => { if(slowPreflight)elapsed+=9000; },
+    createEscrow: async (seller, body, signal) => {
+      signal?.throwIfAborted();
       calls.push({ name: 'createEscrow', seller, body });
       if (providerFailure) throw new Error(providerFailure);
-      provider = { id: 'provider-id', paymentToken: 'PY_TOKEN', status: 'PENDING', state: 'AWAITING_PAYMENT', fee: 80, ...body };
+      provider = { id: 'provider-id', paymentToken: 'PY_TOKEN', status: 'PENDING', state: 'AWAITING_PAYMENT', fee: 200, additionalFee: 0, ...body };
       return structuredClone(provider);
     },
     addAdditionalFee: async (token, fee) => { provider.additionalFee = fee; },
-    verifyEscrow: async () => { calls.push({ name: 'verifyEscrow' }); return structuredClone(provider); },
+    verifyEscrow: async () => { calls.push({ name: 'verifyEscrow' }); return {...structuredClone(provider),environment:'test'}; },
     deleteEscrow: async () => { calls.push({ name: 'deleteEscrow' }); provider.status = 'DELETED'; },
   };
   const cache = {};
@@ -91,14 +97,16 @@ function harness({ providerFailure, identityFailure, reserveError } = {}) {
     const module = { exports: {} };
     cache[file] = module.exports;
     const output = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText;
-    new Function('require', 'module', 'exports', output)((name) => {
+    new Function('require', 'module', 'exports', 'AbortSignal', output)((name) => {
       if (name === 'server-only') return {};
       if (name === 'next/server') return { after: () => {} };
+      if (name.includes('payluk-event-finance-config')) return {paylukEventEnvironment:()=> 'test',assertPaylukEventEnvironment:(tx,remote)=>{if(tx.metadata?.payluk_environment && (tx.metadata.payluk_environment!=='test'||(remote&&remote.environment!=='test')))throw Error('environment mismatch');}};
+      if (name.includes('payluk-event-checkout')) return { paylukEventCheckoutEnabled: () => true, paylukEventDeliveryDays: () => 1 };
       if (name.includes('paystack-service')) return { getPaystackEventMode: () => null };
       if (name.includes('paystack-ticket-service')) return {};
       if (name.includes('supabase-admin')) return { supabaseAdmin: db };
       if (name.includes('payluk-service')) return { PaylukService: payluk };
-      if (name.includes('payluk-onboarding')) return { getPaylukCustomerId: async (user) => { if (identityFailure) throw new Error(identityFailure); return `provider-${user}`; } };
+      if (name.includes('payluk-onboarding')) return { getPaylukCustomerId: async (user) => { if (identityFailure) throw new Error(identityFailure); if(slowPreflight)elapsed+=9000;return `provider-${user}`; } };
       if (name.includes('payment-reconciliation')) return { flagPayment: async (...args) => calls.push({ name: 'flagPayment', args }) };
       if (name.includes('resend-service')) return { ResendEmailService: { isConfigured: () => false } };
       if (name.includes('server-push-notification')) return { sendPushNotification: async () => {} };
@@ -109,7 +117,7 @@ function harness({ providerFailure, identityFailure, reserveError } = {}) {
       if (name.startsWith('@/')) return load(`${name.replace('@/', 'src/')}.ts`);
       if (name.startsWith('.')) return load(path.resolve(path.dirname(file), `${name}.ts`));
       throw new Error(`Unexpected dependency ${name}`);
-    }, module, module.exports);
+    }, module, module.exports,signalClock);
     return (cache[file] = module.exports);
   }
   return {
@@ -125,7 +133,10 @@ test('paid ticket flow reserves once, reopens existing checkout, verifies paymen
   const h = harness();
   const checkout = await h.create();
   assert.equal(checkout.totalAmount, 4000);
-  assert.equal(h.provider().amount + h.provider().additionalFee, 4000);
+  assert.equal(h.provider().amount, 4000);
+  assert.equal(h.provider().additionalFee, 0);
+  assert.equal(h.tables.escrow_transactions[0].metadata.payluk_fee_mode, 'native_commission_v1');
+  assert.equal(h.tables.escrow_transactions[0].seller_amount, 3800);
   assert.equal(h.tables.tickets.length, 0);
   const retry = await h.create();
   assert.equal(retry.transactionId, checkout.transactionId);
@@ -237,10 +248,10 @@ function purchaseRoute({ price = 2000, errorTable, eventEnd = '2099-01-02T12:00:
   };
   const output = ts.transpileModule(fs.readFileSync('src/app/api/events/tickets/purchase/route.ts', 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText;
   const module = { exports: {} };
-  new Function('require', 'module', 'exports', output)((name) => {
+  new Function('require', 'module', 'exports', 'AbortSignal', output)((name) => {
     if (!(name in mocks)) throw new Error(`Unexpected dependency ${name}`);
     return mocks[name];
-  }, module, module.exports);
+  }, module, module.exports,AbortSignal);
   return { calls, run: () => module.exports.POST(new Request('https://yrdly.test/api/events/tickets/purchase', { method: 'POST', body: JSON.stringify(input) })) };
 }
 
@@ -270,4 +281,18 @@ test('ended events cannot issue free tickets or start paid checkout', async () =
     assert.equal(response.status, 400);
     assert.equal(h.calls.filter((c) => ['createTicketCheckout', 'insert'].includes(c.name)).length, 0);
   }
+});
+
+test('slow independent account preparation does not expire the later escrow submission deadline',async()=>{
+ const f=harness({slowPreflight:true});const r=await f.create();assert.equal(r.paylukPaymentToken,'PY_TOKEN');assert.equal(f.calls.filter(c=>c.name==='createEscrow').length,1);
+});
+
+test('checkout returns an immutable order id so a funding callback cannot invalidate verification',async()=>{
+ const f=harness();const checkout=await f.create();assert.equal(checkout.tx_ref,txId);f.tables.escrow_transactions[0].payment_reference='provider-replaced-reference';f.provider().status='ONGOING';f.provider().state='OPENED';const ticket=await f.checkout.verifyTicketCheckout(checkout.tx_ref,'buyer');assert.ok(ticket.id);
+});
+
+test('paid native ticket recovery repairs provisional seller net against verified provider fee',async()=>{
+ const f=harness();const checkout=await f.create();const tx=f.tables.escrow_transactions[0];tx.status='paid';tx.seller_amount=3880;f.provider().status='ONGOING';f.provider().state='OPENED';
+ await f.ticketService.verifyAndProcessTicket(checkout.transactionId,'buyer');assert.equal(tx.seller_amount,3800);assert.equal(tx.metadata.payluk_fee,200);assert.equal(f.calls.filter(c=>c.name==='record_payluk_event_fee_evidence').length,1);
+ await f.ticketService.verifyAndProcessTicket(checkout.transactionId,'buyer');assert.equal(f.calls.filter(c=>c.name==='record_payluk_event_fee_evidence').length,1);
 });

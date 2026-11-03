@@ -1,10 +1,8 @@
 import 'server-only';
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
 import { PaystackService, paystackKeyMode, getPaystackEventMode, paystackSandboxUserAllowed } from '@/lib/payments/paystack-service';
-
-export class EventFinanceError extends Error {
-  constructor(message: string, public readonly status = 409) { super(message); }
-}
+import { EventFinanceError } from './event-finance-error';
+export { EventFinanceError } from './event-finance-error';
 
 function check(error: { message: string } | null) {
   if (error) throw new Error(`Event ledger operation failed: ${error.message}`);

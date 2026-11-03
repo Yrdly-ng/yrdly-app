@@ -1,3 +1,4 @@
+import { stagedBookingOperationsEnabled } from '../bookings/staged-booking-config';
 import { isTransientPaylukFailure, paylukRetryAfterSeconds, payoutRateLimitMessage } from './payluk-rate-limit';
 import { supabaseAdmin } from '../supabase/supabase-admin';
 import { PaylukService } from './payluk-service';
@@ -35,7 +36,7 @@ export class PayoutService {
       // Get completed transactions for this seller
       const { data: transactions, error } = await supabaseAdmin
         .from('escrow_transactions')
-        .select('seller_amount, status, item_type, payment_provider')
+        .select('seller_amount, status, item_type, payment_provider, metadata')
         .eq('seller_id', sellerId);
 
       if (error) {
@@ -43,8 +44,14 @@ export class PayoutService {
         throw error;
       }
 
-      const completedTransactions = transactions?.filter(t => t.status === 'completed' && t.item_type !== 'ticket' && t.payment_provider === 'payluk') || [];
-      const totalEarnings = completedTransactions.reduce((sum, t) => sum + t.seller_amount, 0);
+      const completedTransactions = transactions?.filter(t => t.status === 'completed' && t.item_type !== 'ticket' && t.payment_provider === 'payluk' && t.metadata?.booking_payment_flow !== 'staged_50_50') || [];
+      let totalEarnings = completedTransactions.reduce((sum, t) => sum + t.seller_amount, 0);
+
+      if (stagedBookingOperationsEnabled()) {
+        const earned = await supabaseAdmin.rpc('staged_seller_earned_total', { p_seller: sellerId });
+        if (earned.error || !Number.isFinite(Number(earned.data))) throw new Error('Milestone earnings could not be verified');
+        totalEarnings = Number(earned.data);
+      }
 
       // Get payout requests
       const { data: payouts, error: payoutError } = await supabaseAdmin
@@ -251,6 +258,13 @@ export class PayoutService {
               },
             });
 
+            if (paylukResult.submissionRejected === true) {
+              const reset = await supabaseAdmin.from('payout_requests').update({ execution_stage: 'preparing' })
+                .eq('id', payoutRequestId).eq('status', 'processing').eq('execution_stage', 'submitted')
+                .eq('transaction_reference', persistedReference).select('id').maybeSingle();
+              if (reset.error || !reset.data) throw new Error('Rejected withdrawal needs reconciliation.');
+              submissionMayHaveStarted = false;
+            }
             transferSuccess = paylukResult.outcome === 'success';
             transferPending = paylukResult.outcome === 'pending';
             retryAfterSeconds = paylukResult.retryAfterSeconds;

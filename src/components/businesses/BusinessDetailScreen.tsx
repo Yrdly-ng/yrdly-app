@@ -47,6 +47,7 @@ import Image from "next/image";
 import { shortenAddress } from "@/lib/shared/utils";
 import { CreateCatalogItemDialog } from "@/components/catalog/CreateCatalogItemDialog";
 import { CreateBusinessDialog } from "@/components/businesses/CreateBusinessDialog";
+import { CampaignBanner } from "@/components/campaigns/CampaignBanner";
 import { CatalogService } from "@/lib/catalog/catalog-service";
 import { ReviewService } from "@/lib/reviews/review-service";
 import { WriteBusinessReviewDialog } from "@/components/reviews/WriteBusinessReviewDialog";
@@ -538,6 +539,7 @@ export function BusinessDetailScreen({
         </div>
 
         {/* Action buttons */}
+        {isOwner && <CampaignBanner compact />}
         <div className="flex gap-2">
           {isOwner && (
             <div className="flex flex-wrap gap-2 w-full rounded-3xl border border-border bg-card p-4">

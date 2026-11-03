@@ -606,6 +606,7 @@ export const usePosts = (filter?: LocationFilter | null) => {
       businessData: Omit<Business, "id" | "owner_id" | "created_at">,
       businessIdToUpdate?: string,
       imageFiles?: FileList,
+      logoImageFiles?: FileList,
     ): Promise<string | undefined> => {
       if (!user) {
         toast({
@@ -623,6 +624,13 @@ export const usePosts = (filter?: LocationFilter | null) => {
           imageUrls = businessIdToUpdate
             ? [...imageUrls, ...uploadedUrls]
             : uploadedUrls;
+        }
+
+        let uploadedLogoUrl: string | undefined;
+        if (logoImageFiles?.length) {
+          if (logoImageFiles.length !== 1) throw new Error("Choose one business profile image.");
+          [uploadedLogoUrl] = await uploadImages(logoImageFiles, "businesses");
+          if (!uploadedLogoUrl) throw new Error("Your business profile image could not be uploaded. Please try again.");
         }
 
         // Auto-stamp the creator's location from their profile
@@ -656,6 +664,8 @@ export const usePosts = (filter?: LocationFilter | null) => {
           owner_id: user.id,
           is_active: true,
           image_urls: imageUrls,
+          cover_image: imageUrls[0] || businessData.cover_image || null,
+          ...(uploadedLogoUrl ? { logo_url: uploadedLogoUrl, logo: uploadedLogoUrl } : {}),
           lga: resolvedLga,
           ward: resolvedWard,
           ...(locationGeom ? { location_geom: locationGeom } : {}),

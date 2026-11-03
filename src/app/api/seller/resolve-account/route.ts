@@ -16,6 +16,15 @@ async function resolveHandler(bankCode: string, accountNumber: string, request: 
   if (result.valid && result.accountName) {
     return NextResponse.json({ success: true, accountName: result.accountName });
   }
+  if (result.errorCode === 'STAGING_REAL_BANK_LOOKUP_LIMIT') {
+    return NextResponse.json(
+      {
+        code: result.errorCode,
+        error: "Payluk Staging has reached its daily limit for real-bank lookups. Stop retrying today. Payluk recommends test bank code 001, but a matching test account is not in the current bank list; otherwise retry after the limit resets.",
+      },
+      { status: 429 }
+    );
+  }
   return NextResponse.json(
     { error: 'Could not resolve account details. Please check your account number and bank.' },
     { status: 422 }

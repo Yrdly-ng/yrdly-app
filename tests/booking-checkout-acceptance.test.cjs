@@ -20,13 +20,17 @@ test('database prevents new payment before acceptance and preserves unfinished l
       CREATE TABLE quote_requests(id uuid,customer_id uuid,business_id uuid,status text,converted_booking_id uuid,expires_at timestamptz,estimated_price numeric);
       CREATE TABLE escrow_transactions(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),item_id text,item_type text,buyer_id uuid,seller_id uuid,
         amount numeric,commission numeric,total_amount numeric,seller_amount numeric,status text,payment_method text,
-        delivery_details jsonb,payment_provider text,payment_reference text,metadata jsonb);
+        delivery_details jsonb,payment_provider text,payment_reference text,metadata jsonb,payluk_escrow_id text);
       CREATE TABLE booking_payments(id uuid DEFAULT gen_random_uuid(),booking_id uuid,amount numeric,type payment_type_enum,
         status text,provider text,payluk_reference text,escrow_hold boolean,escrow_transaction_id uuid,commission numeric,total_amount numeric,created_at timestamptz DEFAULT now());
+      CREATE TABLE dispute_resolution_operations(id uuid,status text,dispute_id uuid,refund_amount numeric,seller_amount numeric,provider_plan jsonb,updated_at timestamptz);
+      CREATE TABLE disputes(id uuid,transaction_id uuid);
+      CREATE FUNCTION reserve_catalog_stock(uuid,integer) RETURNS boolean LANGUAGE sql AS 'SELECT true';
       INSERT INTO businesses(id,owner_id) VALUES('${id(1)}','${id(2)}');
       INSERT INTO service_offerings(id,business_id) VALUES('${id(3)}','${id(1)}');
       INSERT INTO bookings(id,customer_id,business_id,service_id) VALUES('${id(4)}','${id(5)}','${id(1)}','${id(3)}');`);
     await db.exec(readFileSync('supabase/migrations/20261028170816_require_booking_acceptance_for_new_checkout.sql', 'utf8'));
+    await db.exec(readFileSync('supabase/migrations/20261031184957_payluk_native_commission_cutover.sql', 'utf8'));
     const reserve = () => db.query('SELECT reserve_booking_checkout($1,$2)', [id(4), id(5)]);
     await assert.rejects(reserve(), /business to accept/);
     assert.equal((await db.query('SELECT * FROM escrow_transactions')).rows.length, 0);
@@ -40,6 +44,9 @@ test('database prevents new payment before acceptance and preserves unfinished l
     const first = (await reserve()).rows[0].reserve_booking_checkout;
     assert.equal(first.newly_created, true);
     assert.equal(Number(first.transaction.commission), 90);
+    assert.equal(Number(first.transaction.total_amount), 3000);
+    assert.equal(first.transaction.metadata.payluk_fee_mode, 'native_commission_v1');
+    assert.equal(Number((await db.query('SELECT total_amount FROM booking_payments')).rows[0].total_amount), 3000);
     await db.exec(`UPDATE bookings SET status='requested'`);
     const recovered = (await reserve()).rows[0].reserve_booking_checkout;
     assert.equal(recovered.newly_created, false);
@@ -59,6 +66,7 @@ function routeFor(booking) {
     from(table) { return { select() { return this; }, eq() { return this; }, single: async () => ({ data: rows[table] }) }; },
   };
   const mocks = {
+    '@/lib/bookings/milestone-checkout': { createStagedBookingCheckout: async () => { throw new Error('Staged rollout disabled'); } },
     'next/server': { NextResponse: { json: (body, options = {}) => ({ body, status: options.status || 200 }) } },
     '@/lib/supabase/supabase-server': { getAuthenticatedUser: async () => ({ data: { user: { id: id(5) } } }) },
     '@/lib/supabase/supabase-admin': { supabaseAdmin: db },

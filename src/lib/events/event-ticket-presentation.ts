@@ -3,6 +3,7 @@ export type TicketPresentationInput = {
   status: string;
   refund_status?: string | null;
   amount_paid?: number;
+  payment_provider?: string | null;
   expires_at?: string | null;
   event?: { status?: string; end_time?: string | null } | null;
 };
@@ -35,7 +36,9 @@ export function getEventTicketPresentation(
         )
       : result(
           "Refunded",
-          "The payment provider has confirmed this refund. If it has not reached your account, contact the organiser or YRDLY support.",
+          ticket.payment_provider === "payluk"
+            ? "Payluk has confirmed this refund. Retained payment fees are deducted, so the refunded amount may be less than the ticket price. Contact the organiser or YRDLY support if you need help."
+            : "The payment provider has confirmed this refund. If it has not reached your account, contact the organiser or YRDLY support.",
           false,
           true,
         );

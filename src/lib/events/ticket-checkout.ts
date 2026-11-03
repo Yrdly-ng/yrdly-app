@@ -2,8 +2,9 @@ import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
 import { PaylukService } from '@/lib/payments/payluk-service';
 import { getPaylukCustomerId } from '@/lib/payments/payluk-onboarding';
 import { TicketService } from '@/lib/events/ticket-service';
-import { getPaystackEventMode } from '@/lib/payments/paystack-service';
-import { createPaystackTicketCheckout, cancelPaystackTicketCheckout, verifyPaystackTicketCheckout } from '@/lib/events/paystack-ticket-service';
+import { cancelPaystackTicketCheckout, verifyPaystackTicketCheckout } from '@/lib/events/paystack-ticket-service';
+import { paylukEventCheckoutEnabled, paylukEventDeliveryDays } from './payluk-event-checkout';
+import { assertPaylukEventEnvironment, paylukEventEnvironment } from './payluk-event-finance-config';
 import { flagPayment } from '@/lib/payments/payment-reconciliation';
 import { paylukAmountsMatch, paylukEscrowPrincipal } from '../payments/payment-state';
 
@@ -29,6 +30,7 @@ export async function cancelTicketCheckout(transactionId: string, expectedBuyerI
   if (!tx || (expectedBuyerId && tx.buyer_id !== expectedBuyerId)) throw new TicketCheckoutError('Checkout not found', 404);
   if (tx.payment_provider === 'paystack') return cancelPaystackTicketCheckout(tx.id, expectedBuyerId);
   if (tx.payment_provider !== 'payluk') throw new TicketCheckoutError('Unsupported checkout provider.');
+  assertPaylukEventEnvironment(tx);
   if (tx.status === 'cancelled') return;
   if (tx.status !== 'pending') throw new TicketCheckoutError('Payment is processing or needs review; the reservation is still held.');
   if (!tx.payluk_escrow_id && !tx.payluk_tx_ref) {
@@ -45,6 +47,7 @@ export async function cancelTicketCheckout(transactionId: string, expectedBuyerI
   let deletionSubmitted = false;
   try {
     const remote = await PaylukService.verifyEscrow(tx.payluk_tx_ref);
+    assertPaylukEventEnvironment(tx, remote as unknown as { environment?: unknown });
     if (['ONGOING','COMPLETED','CLAIMED'].includes(remote.status)) {
       await TicketService.verifyAndProcessTicket(tx.id, tx.buyer_id);
       throw new TicketCheckoutError('This order has been paid; use support for a refund.');
@@ -87,7 +90,7 @@ async function expireOneCheckout(tierId: string) {
 
 export async function verifyTicketCheckout(reference: string, expectedBuyerId?: string) {
   if (!/^[A-Za-z0-9._=-]{1,100}$/.test(reference)) throw new TicketCheckoutError('Invalid payment reference.', 400);
-  let query = supabaseAdmin.from('escrow_transactions').select('id, payment_provider, buyer_id')
+  let query = supabaseAdmin.from('escrow_transactions').select('id, payment_provider, buyer_id, item_type, metadata')
     .eq('item_type', 'ticket');
   query = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(reference)
     ? query.or(`id.eq.${reference},payment_reference.eq.${reference}`)
@@ -99,41 +102,42 @@ export async function verifyTicketCheckout(reference: string, expectedBuyerId?: 
   }
   if (transaction.payment_provider === 'paystack') return verifyPaystackTicketCheckout(transaction.id, expectedBuyerId);
   if (transaction.payment_provider !== 'payluk') throw new TicketCheckoutError('Unsupported checkout provider.');
+  assertPaylukEventEnvironment(transaction);
   return TicketService.verifyAndProcessTicket(transaction.id, expectedBuyerId);
 }
 
-export async function createTicketCheckout(input: TicketCheckoutInput, purpose: string, endTime: string, hostedCheckoutSupported = false) {
-  const paystackMode = getPaystackEventMode();
-  if (process.env.PAYSTACK_EVENT_CHECKOUT_ENABLED === 'true' && !paystackMode) {
-    throw new TicketCheckoutError('Ticket payments are temporarily unavailable while payment configuration is checked.', 503);
-  }
-  if (paystackMode) {
-    if (!hostedCheckoutSupported) throw new TicketCheckoutError('Update the app to purchase tickets securely.', 426);
-    const origin = new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://app.yrdly.ng').origin;
-    return createPaystackTicketCheckout(input, `${origin}/events/${input.event_id}?paystack_return=1`);
-  }
+export async function createTicketCheckout(input: TicketCheckoutInput, purpose: string, endTime: string, _hostedCheckoutSupported = false) {
+  // Provider selection applies only to new orders. Existing references are always
+  // verified/cancelled with their stored provider above.
+  if (!paylukEventCheckoutEnabled()) throw new TicketCheckoutError('Paid tickets are temporarily unavailable while event payments are prepared.', 503);
+  const environment = paylukEventEnvironment();
+  if (!environment) throw new TicketCheckoutError('Event payment configuration is unavailable.', 503);
+  const days = paylukEventDeliveryDays(endTime);
   await expireOneCheckout(input.tier_id);
   const { data: reservation, error } = await supabaseAdmin.rpc('reserve_ticket_checkout', { p_payload: input });
   if (error || !reservation?.transaction) throw new TicketCheckoutError(error?.message || 'Could not reserve tickets.');
   const tx = reservation.transaction;
+  // An existing reservation keeps its original environment even before funding.
+  assertPaylukEventEnvironment(tx);
   const response = (buyerPaylukId: string) => ({
-    success: true, transactionId: tx.id, tx_ref: tx.payment_reference, provider: 'payluk',
+    success: true, transactionId: tx.id, tx_ref: tx.id, provider: 'payluk',
     paylukPaymentToken: tx.payluk_tx_ref, paylukEscrowId: tx.payluk_escrow_id,
     buyerPaylukId, totalAmount: Number(tx.total_amount),
   });
   if (['paid','shipped','delivered','completed'].includes(tx.status)) {
     const ticket = await TicketService.verifyAndProcessTicket(tx.id, input.buyer_id);
-    return { success: true, alreadyPaid: true, ticket_id: ticket.id, tx_ref: tx.payment_reference };
+    return { success: true, alreadyPaid: true, ticket_id: ticket.id, tx_ref: tx.id };
   }
   if (tx.status === 'pending' && tx.payluk_tx_ref && tx.payluk_escrow_id) {
     const remote = await PaylukService.verifyEscrow(tx.payluk_tx_ref);
+    assertPaylukEventEnvironment(tx, remote as unknown as { environment?: unknown });
     if (!paylukAmountsMatch(tx, remote)) {
       await flagPayment('payluk', tx.payluk_escrow_id, tx.id, 'ticket_retry_amount_mismatch');
       throw new TicketCheckoutError('Checkout needs reconciliation.');
     }
     if (['ONGOING','COMPLETED','CLAIMED'].includes(remote.status)) {
       const ticket = await TicketService.verifyAndProcessTicket(tx.id, input.buyer_id);
-      return { success: true, alreadyPaid: true, ticket_id: ticket.id, tx_ref: tx.payment_reference };
+      return { success: true, alreadyPaid: true, ticket_id: ticket.id, tx_ref: tx.id };
     }
     if (remote.status !== 'PENDING' || remote.state !== 'AWAITING_PAYMENT') throw new TicketCheckoutError('Checkout needs reconciliation.');
     return response(await getPaylukCustomerId(input.buyer_id));
@@ -144,21 +148,22 @@ export async function createTicketCheckout(input: TicketCheckoutInput, purpose: 
     }
     throw new TicketCheckoutError('Checkout is processing or needs review. No new payment was started.');
   }
+  const nativeMetadata = { ...tx.metadata, payluk_fee_mode: 'native_commission_v1', payluk_environment: environment,
+    event_end_at: endTime, event_release_not_before: new Date(Date.parse(endTime) + 86_400_000).toISOString() };
   const { data: claimed, error: claimError } = await supabaseAdmin.from('escrow_transactions')
-    .update({ status: 'creating_escrow', creating_escrow_started_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .update({ status: 'creating_escrow', metadata: nativeMetadata, creating_escrow_started_at: new Date().toISOString(), updated_at: new Date().toISOString() })
     .eq('id', tx.id).eq('status', 'pending').is('payluk_escrow_id', null).select('id').maybeSingle();
   if (claimError) throw claimError;
   if (!claimed) throw new TicketCheckoutError('Checkout is already processing. Retry shortly.');
+  tx.metadata = nativeMetadata;
   let submitted = false;
   let escrowId: string | undefined;
-  const deadline = AbortSignal.timeout(20_000);
   try {
     const buyer = await getPaylukCustomerId(input.buyer_id);
     const seller = await getPaylukCustomerId(tx.seller_id);
-    await PaylukService.updateCustomerPermissions(buyer, { canBuy: true }, deadline);
-    await PaylukService.updateCustomerPermissions(seller, { canSell: true }, deadline);
-    const days = Math.ceil((new Date(endTime).getTime() - Date.now()) / 86_400_000);
-    if (!Number.isFinite(days) || days < 1 || days > 365) throw new Error('Event is outside the supported escrow window');
+    await PaylukService.updateCustomerPermissions(buyer, { canBuy: true }, AbortSignal.timeout(10_000));
+    await PaylukService.updateCustomerPermissions(seller, { canSell: true }, AbortSignal.timeout(10_000));
+    const deadline = AbortSignal.timeout(20_000);
     submitted = true;
     const principal = paylukEscrowPrincipal(tx);
     const escrow = await PaylukService.createEscrow(seller, {
@@ -166,17 +171,19 @@ export async function createTicketCheckout(input: TicketCheckoutInput, purpose: 
       maxDelivery: days, deliveryTimeline: 'days', totalQuantity: 1,
     }, deadline);
     escrowId = escrow.id;
-    if (!Number.isFinite(escrow.fee) || escrow.fee < 0 || escrow.fee > principal) throw new Error('Invalid provider fee');
-    // Persist the token before another provider mutation can fail.
+    // Persist identity even if the quote is wrong so support can reconcile the
+    // existing provider object instead of creating a replacement.
     const { data: stored, error: storeError } = await supabaseAdmin.from('escrow_transactions').update({
       payluk_escrow_id: escrow.id, payluk_tx_ref: escrow.paymentToken,
-      seller_amount: Math.round((principal - escrow.fee) * 100) / 100,
       metadata: { ...tx.metadata, payluk_fee: escrow.fee },
     }).eq('id', tx.id).eq('status', 'creating_escrow').select('id').maybeSingle();
     if (storeError || !stored) throw new Error('Could not persist provider checkout');
-    await PaylukService.addAdditionalFee(escrow.paymentToken, Number(tx.commission), deadline);
+    const verified = await PaylukService.verifyEscrow(escrow.paymentToken);
+    if (verified.id !== escrow.id || verified.paymentToken !== escrow.paymentToken || verified.fee !== escrow.fee || verified.state !== 'AWAITING_PAYMENT' || verified.status !== 'PENDING') throw new Error('Created checkout requires reconciliation');
+    assertPaylukEventEnvironment(tx, verified);
+    if (!paylukAmountsMatch(tx, verified) || !Number.isFinite(escrow.fee) || escrow.fee < Number(tx.commission) || escrow.fee > principal) throw new Error('Invalid provider fee or commission configuration');
     const { data: ready, error: readyError } = await supabaseAdmin.from('escrow_transactions')
-      .update({ status: 'pending', updated_at: new Date().toISOString() })
+      .update({ status: 'pending', seller_amount: Math.round((principal - escrow.fee) * 100) / 100, updated_at: new Date().toISOString() })
       .eq('id', tx.id).eq('status', 'creating_escrow').select('id').maybeSingle();
     if (readyError || !ready) throw new Error('Could not finalize provider checkout');
     tx.payluk_tx_ref = escrow.paymentToken; tx.payluk_escrow_id = escrow.id;
