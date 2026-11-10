@@ -6,6 +6,8 @@ on:
   pull_request:
     paths:
       - 'src/app/onboarding/**'
+      - 'src/lib/auth/auth-service.ts'
+      - 'tests/onboarding-login-bootstrap.test.cjs'
       - 'src/lib/telemetry/**'
       - 'src/components/providers/TelemetryHandler.tsx'
       - 'src/app/(app)/posts/create/page.tsx'
@@ -34,6 +36,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Telemetry regression tests
         run: pnpm test:telemetry
+      - name: Login bootstrap safety tests
+        run: node --test tests/onboarding-login-bootstrap.test.cjs
       - name: TypeScript check
         run: pnpm typecheck
       - name: ESLint
