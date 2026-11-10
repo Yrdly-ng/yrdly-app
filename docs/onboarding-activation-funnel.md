@@ -47,3 +47,12 @@ Save both insights to an **Onboarding & Retention** dashboard. Add a trend of un
 
 ## Limitations
 Existing users without a new `onboarding_profile_completed` event will not enter the new-user activation funnel, as intended. Users whose signup finished before deployment cannot be retroactively attributed. Anonymous browsing is not included. PostHog's memory-only identity resets on reload for anonymous users, but authenticated UUIDs link recognized return sessions.
+
+## QA environment verification — 10 November 2026
+
+- Existing staging Supabase project reference: `jxgpvvehajxegeeozlnl`.
+- Restored 8,798 public ward reference records from the production reference catalog to the isolated staging `lga_wards` table; verified 8,798 distinct state/LGA/ward triples.
+- The feature branch's Vercel Preview configuration explicitly uses staging URL and staging publishable key. `SUPABASE_SERVICE_ROLE_KEY` is deliberately nonfunctional on this feature branch, preventing privileged server calls during public UX smoke tests.
+- QA preview instrumentation is disabled to avoid contaminating production PostHog metrics. Verify ingestion on production only after signed-off release, or use a separate nonproduction PostHog project with its own key.
+- The Supabase Staging branch status remains `MIGRATIONS_FAILED`; its migration history is materially different from production. Do **not** reset, rebase or mark migrations applied without examining the specific failed migration and preserving staging test data.
+- A passing build and public-browser smoke test are not equivalent to an authenticated end-to-end test. Test the full signup/verification flow using a dedicated QA backend and controlled test accounts before promotion.
