@@ -331,12 +331,12 @@ function OnboardingProfileContent() {
         }
       }
 
-      const cleanHandle = handle.replace(/^@/, '').trim().toLowerCase() || user.email?.split('@')[0];
+      const cleanHandle = handle.replace(/^@/, '').trim().toLowerCase();
       const lat = confirmedLocation.lat ?? gps.location?.lat ?? null;
       const lng = confirmedLocation.lng ?? gps.location?.lng ?? null;
 
       await AuthService.updateUserProfile(user.id, {
-        username: cleanHandle,
+        ...(cleanHandle ? { username: cleanHandle } : {}),
         bio: bio.trim(),
         avatar_url: avatarUrl,
         interests: selectedInterests,
