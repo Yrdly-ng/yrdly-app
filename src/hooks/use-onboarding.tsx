@@ -21,9 +21,7 @@ export function useOnboarding() {
     // Check if profile is completed
     if (!profile.profile_completed) return 'profile_setup';
     
-    // Check if tour is completed
-    if (!profile.tour_completed) return 'tour';
-    
+    // The tour is optional: never block a user from reaching the app.
     return 'completed';
   };
 
