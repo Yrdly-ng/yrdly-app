@@ -51,7 +51,7 @@ jobs:
       - name: Install Chromium for browser smoke test
         run: pnpm exec playwright install --with-deps chromium
       - name: Public browser smoke test (no real backend)
-        run: pnpm test:e2e:smoke
+        run: pnpm exec e2e run tests/smoke.e2e.ts tests/onboarding-public.e2e.ts
         env:
           E2E_TELEMETRY_DISABLED: '1'
           NEXT_PUBLIC_TELEMETRY_DISABLED: 'true'
