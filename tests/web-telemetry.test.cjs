@@ -404,3 +404,33 @@ test('async initialization uses the latest account state and counts same-route a
   const states = r.calls.filter(([name]) => name === 'capture').map(([, , properties]) => properties.home_state);
   assert.deepEqual(states, ['Ogun', 'Lagos']);
 });
+
+test("activation events are identifiable, privacy-safe and include only bounded action categories", async () => {
+  const r = runtime();
+  const analytics = r.load("analytics");
+  await analytics.trackWebActivationEvent("onboarding_active_visit");
+  assert.equal(r.calls.filter(([name]) => name === "capture").length, 0, "anonymous visits are excluded");
+  analytics.setWebAnalyticsUser(A);
+  await analytics.trackWebActivationEvent("onboarding_profile_completed");
+  await analytics.trackWebActivationEvent("onboarding_home_reached");
+  await analytics.trackWebActivationEvent("onboarding_meaningful_action", "community_post");
+  await analytics.trackWebActivationEvent("onboarding_meaningful_action", "business_message");
+  await analytics.trackWebActivationEvent("onboarding_active_visit");
+  const captures = r.calls.filter(([name]) => name === "capture");
+  assert.deepEqual(captures.map(([, event]) => event), [
+    "onboarding_profile_completed", "onboarding_home_reached",
+    "onboarding_meaningful_action", "onboarding_meaningful_action", "onboarding_active_visit",
+  ]);
+  const scrub = r.analyticsOptions.before_send;
+  const permitted = scrub({ event: "onboarding_meaningful_action", properties: {
+    distinct_id: A, action_type: "community_post", email: "private@example.com",
+    location: "private", message: "private", $current_url: "private",
+  } });
+  assert.equal(permitted.properties.action_type, "community_post");
+  assert.ok(!JSON.stringify(permitted).includes("private"));
+  const rejected = scrub({ event: "onboarding_meaningful_action", properties: {
+    action_type: "unrecognized", email: "private@example.com",
+  } });
+  assert.equal(rejected.properties.action_type, undefined);
+  assert.equal(scrub({event:"unknown_funnel_event",properties:{}}),null);
+});
