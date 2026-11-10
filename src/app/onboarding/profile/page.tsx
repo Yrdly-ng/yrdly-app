@@ -1,3 +1,4 @@
+import { trackWebActivationEvent } from "@/lib/telemetry/analytics";
 "use client";
 
 import { safeRelativePath } from '@/lib/auth/auth-navigation';
@@ -349,6 +350,8 @@ function OnboardingProfileContent() {
         onboarding_completed_at: new Date().toISOString(),
         welcome_message_sent: true,
       } as any);
+
+      void trackWebActivationEvent('onboarding_profile_completed');
 
       const { NotificationTriggers } = await import('@/lib/notifications/notification-triggers');
       try {
