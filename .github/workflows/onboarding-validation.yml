@@ -38,8 +38,23 @@ jobs:
         run: pnpm typecheck
       - name: ESLint
         run: pnpm lint
-      - name: Production compilation
+      # Compile safely without any real backend credentials.
+      - name: Production compilation (isolated placeholders)
         run: pnpm build
         env:
           SENTRY_DISABLE_AUTO_UPLOAD: 'true'
           NEXT_TELEMETRY_DISABLED: '1'
+          NEXT_PUBLIC_TELEMETRY_DISABLED: 'true'
+          NEXT_PUBLIC_SUPABASE_URL: 'https://example.supabase.co'
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: 'placeholder-local-only'
+          SUPABASE_SERVICE_ROLE_KEY: 'placeholder-local-only'
+      - name: Install Chromium for browser smoke test
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Public browser smoke test (no real backend)
+        run: pnpm test:e2e:smoke
+        env:
+          E2E_TELEMETRY_DISABLED: '1'
+          NEXT_PUBLIC_TELEMETRY_DISABLED: 'true'
+          NEXT_PUBLIC_SUPABASE_URL: 'https://example.supabase.co'
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: 'placeholder-local-only'
+          SUPABASE_SERVICE_ROLE_KEY: 'placeholder-local-only'
