@@ -260,7 +260,7 @@ function OnboardingProfileContent() {
     );
   };
 
-  const handleStep1Next = async () => {
+  const handleStep1Next = async (personalize = false) => {
     setUsernameErr('');
     const cleanHandle = handle.replace(/^@/, '').trim().toLowerCase();
     if (cleanHandle) {
@@ -297,15 +297,20 @@ function OnboardingProfileContent() {
       setLocError('Please choose your neighbourhood location to proceed.');
       return;
     }
-    setStep(2);
+    if (personalize) {
+      setStep(2);
+    } else {
+      await handleComplete(activeLoc);
+    }
   };
 
-  const handleComplete = async () => {
+  const handleComplete = async (locationOverride?: ResolvedWard) => {
     if (!user) {
       setSaveError('Account session missing or email unverified. Please verify your email first.');
       return;
     }
-    if (!selectedLoc) {
+    const confirmedLocation = locationOverride || selectedLoc;
+    if (!confirmedLocation) {
       setSaveError('Please select your neighbourhood location first.');
       return;
     }
@@ -325,17 +330,17 @@ function OnboardingProfileContent() {
       }
 
       const cleanHandle = handle.replace(/^@/, '').trim().toLowerCase() || user.email?.split('@')[0];
-      const lat = selectedLoc.lat ?? gps.location?.lat ?? null;
-      const lng = selectedLoc.lng ?? gps.location?.lng ?? null;
+      const lat = confirmedLocation.lat ?? gps.location?.lat ?? null;
+      const lng = confirmedLocation.lng ?? gps.location?.lng ?? null;
 
       await AuthService.updateUserProfile(user.id, {
         username: cleanHandle,
         bio: bio.trim(),
         avatar_url: avatarUrl,
         interests: selectedInterests,
-        home_state: selectedLoc.state,
-        home_lga: selectedLoc.lga,
-        home_ward: selectedLoc.ward,
+        home_state: confirmedLocation.state,
+        home_lga: confirmedLocation.lga,
+        home_ward: confirmedLocation.ward,
         home_lat: lat,
         home_lng: lng,
         onboarding_status: 'tour',
@@ -346,7 +351,8 @@ function OnboardingProfileContent() {
       const { NotificationTriggers } = await import('@/lib/notifications/notification-triggers');
       await NotificationTriggers.onUserSignup(user.id, handle.trim() || user.user_metadata?.name || 'neighbor');
 
-      router.replace(`/onboarding/tour${nextPath ? `?next=${encodeURIComponent(nextPath)}` : ''}`);
+      // Route straight to the destination that originally prompted sign-up.
+      router.replace(nextPath || '/home');
     } catch (err: any) {
       setSaveError(err?.message || 'Something went wrong. Please try again.');
     } finally {
@@ -362,7 +368,7 @@ function OnboardingProfileContent() {
         <StepBar
           step={step}
           total={2}
-          label={step === 1 ? 'Location & Identity' : 'Interests & Profile'}
+          label={step === 1 ? 'Choose Your Area' : 'Optional Profile Details'}
         />
       </div>
 
@@ -378,16 +384,16 @@ function OnboardingProfileContent() {
           {step === 1 ? (
             <>
               <div className="flex flex-col gap-1 text-left mb-4">
-                <h2 className="text-2xl font-black text-white">Your Identity & Area</h2>
+                <h2 className="text-2xl font-black text-white">Find your neighbourhood</h2>
                 <p className="text-sm font-normal text-white/55">
-                  Set up your handle and neighbourhood to connect locally
+                  Choose where you live to see relevant posts, listings and businesses nearby.
                 </p>
               </div>
 
               <div className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-xs font-semibold text-white/70 tracking-wider uppercase">
-                    USERNAME HANDLE
+                    USERNAME HANDLE (OPTIONAL)
                   </label>
                   <GlassInput
                     placeholder="e.g. john_doe"
@@ -550,7 +556,9 @@ function OnboardingProfileContent() {
               </div>
 
               <div className="pt-4">
-                <PrimaryBtn label="Continue" onClick={handleStep1Next} icon={<ArrowRight className="w-4 h-4" />} />
+                {saveError && <p role="alert" className="text-xs text-red-400 font-medium mb-3">{saveError}</p>}
+                <PrimaryBtn label="Explore my neighbourhood" onClick={() => void handleStep1Next(false)} loading={loading} icon={<ArrowRight className="w-4 h-4" />} />
+                <button type="button" onClick={() => void handleStep1Next(true)} disabled={loading} className="mt-3 w-full text-center text-sm text-white/70 hover:text-white underline disabled:opacity-50">Personalize my profile first (optional)</button>
               </div>
             </>
           ) : (
@@ -566,7 +574,7 @@ function OnboardingProfileContent() {
                 <h2 className="text-2xl font-black text-white">Personalize Profile</h2>
               </div>
               <p className="text-sm font-normal text-white/55 mb-4">
-                Add an avatar, bio, and choose topics you care about
+                Everything here is optional. You can also edit it later in Settings.
               </p>
 
               {/* Avatar Photo Picker */}
@@ -634,7 +642,7 @@ function OnboardingProfileContent() {
               </div>
 
               <div className="pt-4">
-                <PrimaryBtn label="Complete Profile" onClick={handleComplete} loading={loading} />
+                <PrimaryBtn label="Save and explore" onClick={() => void handleComplete()} loading={loading} />
               </div>
             </>
           )}
