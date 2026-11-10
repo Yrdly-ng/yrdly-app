@@ -1,5 +1,6 @@
-import { trackWebActivationEvent } from "@/lib/telemetry/analytics";
 "use client";
+
+import { trackWebActivationEvent } from "@/lib/telemetry/analytics";
 
 import { safeRelativePath } from '@/lib/auth/auth-navigation';
 
