@@ -1,0 +1,45 @@
+name: Onboarding validation
+on:
+  push:
+    branches:
+      - feature/streamlined-onboarding-nov-2026
+  pull_request:
+    paths:
+      - 'src/app/onboarding/**'
+      - 'src/lib/telemetry/**'
+      - 'src/components/providers/TelemetryHandler.tsx'
+      - 'src/app/(app)/posts/create/page.tsx'
+      - 'src/components/messages/BusinessChatScreen.tsx'
+      - 'tests/web-telemetry.test.cjs'
+      - 'package.json'
+      - '.github/workflows/onboarding-validation.yml'
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Set up Node 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - name: Enable Corepack
+        run: corepack enable
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Telemetry regression tests
+        run: pnpm test:telemetry
+      - name: TypeScript check
+        run: pnpm typecheck
+      - name: ESLint
+        run: pnpm lint
+      - name: Production compilation
+        run: pnpm build
+        env:
+          SENTRY_DISABLE_AUTO_UPLOAD: 'true'
+          NEXT_TELEMETRY_DISABLED: '1'
