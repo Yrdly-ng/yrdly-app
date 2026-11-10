@@ -56,3 +56,19 @@ Existing users without a new `onboarding_profile_completed` event will not enter
 - QA preview instrumentation is disabled to avoid contaminating production PostHog metrics. Verify ingestion on production only after signed-off release, or use a separate nonproduction PostHog project with its own key.
 - The Supabase Staging branch status remains `MIGRATIONS_FAILED`; its migration history is materially different from production. Do **not** reset, rebase or mark migrations applied without examining the specific failed migration and preserving staging test data.
 - A passing build and public-browser smoke test are not equivalent to an authenticated end-to-end test. Test the full signup/verification flow using a dedicated QA backend and controlled test accounts before promotion.
+
+## Verified QA flows — 10 November 2026
+
+- Latest onboarding code / build was validated on Vercel's staging-isolated Preview.
+- Browser signup with an isolated synthetic account reached `/onboarding/verify-email`. The connection trace contacted **only** the Supabase Staging host.
+- A controlled mailbox **received** an actual YRDLY confirmation email containing a six-digit code. Delivery was verified; automated submission of that real code was prevented by the test environment's safety check, so an OTP-exchange pass is **not claimed**.
+- A separate synthetic account was confirmed **directly in the staging database**, then tested using a real browser with the new login-bootstrap fix. It successfully navigated through `/onboarding/profile`, selected Lagos → Ikeja, clicked `Explore my neighbourhood`, and returned to `/marketplace`, preserving `next`.
+- Database inspection confirmed the profile was persisted with `profile_completed=true`, `onboarding_status=completed`, `tour_completed=true`, and Lagos/Ikeja location. This does not attest that the user submitted an actual email OTP.
+- Both synthetic QA accounts were deleted from Supabase Staging afterward. Temporary local QA credentials were cleared.
+
+### Remaining Supabase migration repair
+
+- Existing persistent `Staging` branch is usable for the application flow, but the management status remains `MIGRATIONS_FAILED`.
+- Its custom QA baseline has 35 recorded migrations, versus 107 recorded production migrations. Several migrations overlap by function but have different versions; applying production migrations blindly or re-marking versions as applied would be unsafe.
+- Supabase's supported recovery is to correct the migration sources and rebuild a **clean** branch. A new branch incurs additional billed compute; the current quoted rate was **US$0.01344/hour**. The Supabase tool requires **specific cost approval**, which has not been provided. Do not create a billed branch or reset/delete staging without that approval and a data preservation plan.
+- Do not merge this draft PR into production on the basis of a mock OTP or a green build alone.
