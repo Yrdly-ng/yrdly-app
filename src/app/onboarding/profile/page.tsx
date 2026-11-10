@@ -343,13 +343,20 @@ function OnboardingProfileContent() {
         home_ward: confirmedLocation.ward,
         home_lat: lat,
         home_lng: lng,
-        onboarding_status: 'tour',
+        onboarding_status: 'completed',
         profile_completed: true,
+        tour_completed: true,
+        onboarding_completed_at: new Date().toISOString(),
         welcome_message_sent: true,
       } as any);
 
       const { NotificationTriggers } = await import('@/lib/notifications/notification-triggers');
-      await NotificationTriggers.onUserSignup(user.id, handle.trim() || user.user_metadata?.name || 'neighbor');
+      try {
+        await NotificationTriggers.onUserSignup(user.id, handle.trim() || user.user_metadata?.name || 'neighbor');
+      } catch (notificationError) {
+        // A notification issue must not prevent successful onboarding.
+        console.error('Welcome notification failed:', notificationError);
+      }
 
       // Route straight to the destination that originally prompted sign-up.
       router.replace(nextPath || '/home');
