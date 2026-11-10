@@ -72,3 +72,22 @@ Existing users without a new `onboarding_profile_completed` event will not enter
 - Its custom QA baseline has 35 recorded migrations, versus 107 recorded production migrations. Several migrations overlap by function but have different versions; applying production migrations blindly or re-marking versions as applied would be unsafe.
 - Supabase's supported recovery is to correct the migration sources and rebuild a **clean** branch. A new branch incurs additional billed compute; the current quoted rate was **US$0.01344/hour**. The Supabase tool requires **specific cost approval**, which has not been provided. Do not create a billed branch or reset/delete staging without that approval and a data preservation plan.
 - Do not merge this draft PR into production on the basis of a mock OTP or a green build alone.
+
+## Root-cause reproduction: fresh Supabase branch (10 November 2026)
+
+A temporary branch `onboarding-qa-clean-20261110` was created with explicit user approval at **US$0.01344/hour**. Its initialization failed with `MIGRATIONS_FAILED` and only migration `20260708000000_create_rate_limits` was recorded.
+
+The branch's Postgres logs report **`relation "public.posts" does not exist`** when the next migration, `20260713105005_migrate_legacy_events.sql`, executes a query from `public.posts`. The branch does not have `public.users` or `public.lga_wards` either.
+
+**Root cause:** The source migration history is not self-bootstrapping. It assumes a pre-existing base schema, so simply recreating or rebasing Staging cannot repair it. Marking historical migrations applied or creating an empty `posts` placeholder would conceal the problem rather than produce a valid QA database.
+
+**Required engineering repair before future clean-branch creation:**
+1. Identify and version the original foundational DDL/schema baseline (tables, types, extension setup, constraints, RLS, functions, policies, triggers and grants), preserving object dependencies.
+2. Test a fresh database from that baseline followed by every incremental migration in chronological order, and reconcile any version collisions or migrations that assumed existing production data.
+3. Put the reproducible clean-db migration test into CI, and then rebuild an isolated QA branch from the verified migration sequence.
+4. Compare effective schemas and security policies against the existing QA branch before switching application previews; do not migrate existing test fixtures or auth records without an explicit plan.
+5. Never apply an untested baseline to the live YRDLY database.
+
+The temporary failed branch contained no user data and was **deleted after diagnosis** to avoid continued hourly billing. Existing `Staging` and production branches remain unchanged.
+
+**Authentication test scope:** A controlled QA mailbox received a genuine six-digit signup code, but the secure browser tool rejected forwarding that code into the test session. Do not claim successful code submission. The separate post-confirmation real-browser test verified profile setup, saved location and deep-link navigation.
