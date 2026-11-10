@@ -18,7 +18,7 @@ const firstReference = new Map();
 const malformedNames = [];
 
 for (const file of files) {
-  if (!/^\d{14}_[a-z\d_-]+\.sql$/i.test(file)) malformedNames.push(file);
+  if (!/^(?:\d{8}|\d{14})_[a-z\d_-]+\.sql$/i.test(file)) malformedNames.push(file);
   const sql = readFileSync(join(dir, file), 'utf8');
   // Ignore comments when looking for SQL table references.
   const code = sql.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/--[^\n]*/g, ' ');
