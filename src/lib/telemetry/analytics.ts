@@ -145,6 +145,24 @@ export async function trackWebEvent(
   }
 }
 
+/** Strictly bounded activation events; user IDs and URL details never enter properties. */
+export async function trackWebActivationEvent(
+  event: "onboarding_profile_completed" | "onboarding_home_reached" | "onboarding_meaningful_action" | "onboarding_active_visit",
+  actionType?: "community_post" | "business_message",
+): Promise<void> {
+  if (!enabled() || !desiredUser || !productEvents.has(event)) return;
+  try {
+    await initializeWebAnalytics();
+    if (!client || appliedUser !== desiredUser) return;
+    client.capture(event, {
+      app_environment: environment(),
+      ...(event === "onboarding_meaningful_action" && actionType ? { action_type: actionType } : {}),
+    });
+  } catch {
+    /* Activation instrumentation must never interrupt the product. */
+  }
+}
+
 export async function captureWebAnalyticsError(error: unknown): Promise<void> {
   try {
     await initializeWebAnalytics();
