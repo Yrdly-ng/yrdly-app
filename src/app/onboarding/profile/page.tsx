@@ -235,18 +235,22 @@ function OnboardingProfileContent() {
       try {
         const details = await places.getPlaceDetails(item.place_id);
         const resolved: ResolvedWard = {
-          state: details.state || 'Lagos',
-          lga: details.lga || 'Ikeja',
+          state: details.state || '',
+          lga: details.lga || '',
           ward: details.ward || '',
           label: details.address || item.label,
           lat: details.geopoint?.latitude,
           lng: details.geopoint?.longitude,
         };
+        if (!resolved.state || !resolved.lga) {
+          throw new Error('Location missing a state or LGA. Please choose from local suggestions or use manual selection.');
+        }
         setSelectedLoc(resolved);
         setLocQuery(resolved.label);
       } catch {
-        setSelectedLoc(item);
+        setSelectedLoc(null);
         setLocQuery(item.label);
+        setLocError('Unable to confirm this location. Search for an LGA or select your state and LGA manually.');
       } finally {
         setLocSearching(false);
       }
@@ -295,8 +299,8 @@ function OnboardingProfileContent() {
       }
     }
 
-    if (!activeLoc) {
-      setLocError('Please choose your neighbourhood location to proceed.');
+    if (!activeLoc?.state || !activeLoc?.lga) {
+      setLocError('Choose a confirmed state and LGA to continue.');
       return;
     }
     if (personalize) {
@@ -312,8 +316,8 @@ function OnboardingProfileContent() {
       return;
     }
     const confirmedLocation = locationOverride || selectedLoc;
-    if (!confirmedLocation) {
-      setSaveError('Please select your neighbourhood location first.');
+    if (!confirmedLocation?.state || !confirmedLocation?.lga) {
+      setSaveError('Please confirm your state and LGA first.');
       return;
     }
     setLoading(true);
@@ -332,8 +336,10 @@ function OnboardingProfileContent() {
       }
 
       const cleanHandle = handle.replace(/^@/, '').trim().toLowerCase();
-      const lat = confirmedLocation.lat ?? gps.location?.lat ?? null;
-      const lng = confirmedLocation.lng ?? gps.location?.lng ?? null;
+      // Never assign coordinates from a different GPS location to a manually selected area.
+      const sameGpsArea = gps.location?.state === confirmedLocation.state && gps.location?.lga === confirmedLocation.lga;
+      const lat = confirmedLocation.lat ?? (sameGpsArea ? gps.location?.lat : null) ?? null;
+      const lng = confirmedLocation.lng ?? (sameGpsArea ? gps.location?.lng : null) ?? null;
 
       await AuthService.updateUserProfile(user.id, {
         ...(cleanHandle ? { username: cleanHandle } : {}),
