@@ -18,6 +18,8 @@ function VerifyEmailForm() {
   const [error, setError] = useState("");
   const [verifying, setVerifying] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const verificationInFlight = useRef(false);
+  const verificationSucceeded = useRef(false);
 
   useEffect(() => {
     const timer = setInterval(() => setCountdown((c) => (c > 0 ? c - 1 : 0)), 1000);
@@ -45,7 +47,8 @@ function VerifyEmailForm() {
 
   const handleVerifyOtp = async () => {
     const token = digits.join("");
-    if (token.length < 6) return;
+    if (token.length < 6 || verificationInFlight.current || verificationSucceeded.current) return;
+    verificationInFlight.current = true;
 
     setError("");
     setVerifying(true);
@@ -57,16 +60,17 @@ function VerifyEmailForm() {
         type: "signup",
       });
 
-      setVerifying(false);
-
       if (err) {
         setError(err.message || "Invalid verification code");
       } else {
+        verificationSucceeded.current = true;
         router.push(`/onboarding/verify-phone${nextPath ? `?next=${encodeURIComponent(nextPath)}` : ""}`);
       }
     } catch (e: any) {
-      setVerifying(false);
       setError(e.message || "Verification failed");
+    } finally {
+      verificationInFlight.current = false;
+      setVerifying(false);
     }
   };
 
