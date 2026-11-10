@@ -1,5 +1,6 @@
-import { trackWebActivationEvent } from "@/lib/telemetry/analytics";
 "use client";
+
+import { trackWebActivationEvent } from "@/lib/telemetry/analytics";
 
 import { authenticatedFetch } from '@/lib/auth/authenticated-fetch';
 import React, { useState, useRef } from "react";
