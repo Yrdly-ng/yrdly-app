@@ -48,7 +48,9 @@ export function useOnboarding() {
       await updateProfile({ 
         profile_completed: true,
         welcome_message_sent: true,   // mark as sent so we never route to /welcome
-        onboarding_status: 'tour'
+        tour_completed: true,
+        onboarding_status: 'completed',
+        onboarding_completed_at: new Date().toISOString()
       });
       onboardingAnalytics.trackStepComplete('profile_setup', { userId: user.id });
     } catch (error: any) {
