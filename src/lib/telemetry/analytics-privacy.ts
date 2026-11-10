@@ -3,7 +3,7 @@ import type { CaptureResult } from "posthog-js";
 import { pageRoutes } from "./routes";
 import { deviceLabel, homeState } from "./metadata";
 
-export const productEvents = new Set(["message_sent", "business_saved", "ticket_checkout_started", "ticket_checkout_opened", "ticket_checkout_failed", "ticket_verification_failed", "ticket_issued", "ticket_refund_requested", "ticket_refund_failed", "event_withdrawal_requested", "event_withdrawal_failed", "booking_checkout_started", "booking_payment_confirmed", "booking_checkout_failed"]);
+export const productEvents = new Set(["onboarding_profile_completed", "onboarding_home_reached", "onboarding_meaningful_action", "onboarding_active_visit", "post_created","message_sent", "business_saved", "ticket_checkout_started", "ticket_checkout_opened", "ticket_checkout_failed", "ticket_verification_failed", "ticket_issued", "ticket_refund_requested", "ticket_refund_failed", "event_withdrawal_requested", "event_withdrawal_failed", "booking_checkout_started", "booking_payment_confirmed", "booking_checkout_failed"]);
 const allowedEvents = new Set(["$pageview", "$identify", ...productEvents]);
 const routes = new Set<string>(pageRoutes);
 const identityKeys = new Set([
@@ -81,6 +81,10 @@ export function sanitizeAnalyticsEvent(
     properties.$device_type = source.$device_type;
   const state = homeState(source.home_state);
   if (state && source.$is_identified === true) properties.home_state = state;
+  if (event.event === "onboarding_meaningful_action" &&
+      ["community_post", "business_message"].includes(String(source.action_type))) {
+    properties.action_type = source.action_type;
+  }
   if (event.event === "$pageview") {
     if (!routes.has(source.$pathname)) return null;
     properties.$pathname = source.$pathname;
