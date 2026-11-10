@@ -1,3 +1,4 @@
+import { trackWebActivationEvent } from "@/lib/telemetry/analytics";
 "use client";
 
 import { authenticatedFetch } from '@/lib/auth/authenticated-fetch';
@@ -271,6 +272,7 @@ export default function CreatePostPage() {
 
 
 
+      void trackWebActivationEvent("onboarding_meaningful_action", "community_post");
       setPosting(false);
       setUploadProgress(100);
       
