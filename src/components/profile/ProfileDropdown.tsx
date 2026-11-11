@@ -9,6 +9,7 @@ import {
   LogOut,
   CalendarDays,
   Trophy,
+  MessageCircle,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-supabase-auth";
