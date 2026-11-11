@@ -39,6 +39,11 @@ jobs:
           db="$(docker ps --format '{{.Names}}' | grep '^supabase_db_' | head -n 1)"
           test -n "$db"
           docker exec -i "$db" psql -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/tests/qa-migration-replay-assertions.sql
+      - name: Print QA-only schema identifiers for production parity audit
+        run: |
+          db="$(docker ps --format '{{.Names}}' | grep '^supabase_db_' | head -n 1)"
+          test -n "$db"
+          docker exec -i "$db" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres -t -A < supabase/tests/qa-schema-inventory.sql
       - name: Stop local database
         if: always()
         run: supabase stop --no-backup || true
