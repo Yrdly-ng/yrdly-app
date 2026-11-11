@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { X, Lock, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
@@ -48,11 +48,59 @@ export function BuyButton({
 
   const [open, setOpen]         = useState(false);
   const [loading, setLoading]   = useState(false);
+  const [pendingTransactionId, setPendingTransactionId] = useState<string | null>(null);
+  const [checkingPending, setCheckingPending] = useState(false);
+  // Store only the order UUID, never a Payluk token or customer identity.
+  const pendingKey = user ? `yrdly:pending-checkout:${user.id}:${itemType}:${itemId}` : null;
+  useEffect(() => {
+    if (!pendingKey) { setPendingTransactionId(null); return; }
+    try {
+      const stored = window.localStorage.getItem(pendingKey);
+      setPendingTransactionId(stored && /^[0-9a-f-]{36}$/i.test(stored) ? stored : null);
+    } catch { setPendingTransactionId(null); }
+  }, [pendingKey]);
 
-  const commission = Math.round(price * MARKETPLACE_CONSTANTS.COMMISSION_RATE);
-  const totalPay   = price + commission;
+  const savePending = (txId: string) => {
+    setPendingTransactionId(txId);
+    try { if (pendingKey) window.localStorage.setItem(pendingKey, txId); } catch { /* storage disabled */ }
+  };
+  const clearPending = () => {
+    setPendingTransactionId(null);
+    try { if (pendingKey) window.localStorage.removeItem(pendingKey); } catch { /* storage disabled */ }
+  };
 
-  const handleBuy = async () => {
+  const checkPendingPayment = async () => {
+    if (!pendingTransactionId || !user || checkingPending) return;
+    setCheckingPending(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error('Please log in again to check your payment.');
+      const response = await fetch('/api/payment/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ txRef: pendingTransactionId }),
+      });
+      const result = await response.json();
+      if (response.ok && result.success) {
+        const confirmed = pendingTransactionId;
+        clearPending();
+        toast({ title: 'Payment confirmed', description: 'Your purchase is now linked to your order.' });
+        router.push(`/transactions/${confirmed}`);
+      } else if (response.status === 402) {
+        toast({ title: 'Payment still processing', description: 'If your transfer has reached your Payluk wallet, resume and choose Pay from wallet. Do not transfer again.' });
+      } else {
+        toast({ title: 'Payment needs attention', description: result.error || 'Contact support before paying again.', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Unable to check payment', description: 'Your checkout is saved. Try again or contact support.', variant: 'destructive' });
+    } finally { setCheckingPending(false); }
+  };
+
+  const commission = Math.round(price * MARKETPLACE_CONSTANTS.COMMISSION_RATE * 100) / 100;
+  // Native commission is charged to the seller, not added to the buyer's total.
+  const totalPay = price;
+
+  const handleBuy = async (method: 'checkout' | 'wallet' = 'checkout') => {
     if (!user) {
       toast({ title: "Sign in required", description: "Please log in to purchase items.", variant: "destructive" });
       return;
@@ -139,6 +187,12 @@ export function BuyButton({
         return;
       }
 
+      if (res.ok && data.alreadyPaid && data.transactionId) {
+        clearPending();
+        router.push(`/transactions/${data.transactionId}`);
+        return;
+      }
+
       if (!res.ok || (!data.paylukPaymentToken && !data.paymentLink)) {
         console.error("[BuyButton] Payment initialization failed:", res.status, data);
         toast({
@@ -149,7 +203,28 @@ export function BuyButton({
         return;
       }
 
+      if (data.transactionId) savePending(data.transactionId);
       setOpen(false);
+
+      if (method === 'wallet') {
+        if (!data.transactionId) throw new Error('Checkout reference missing. Please try again.');
+        const walletResponse = await fetch('/api/payment/pay-with-wallet', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+          body: JSON.stringify({ transactionId: data.transactionId }),
+        });
+        const walletResult = await walletResponse.json();
+        if (walletResponse.ok && walletResult.success) {
+          clearPending();
+          toast({ title: 'Payment confirmed', description: 'Your Payluk wallet has funded the purchase.' });
+          router.push(`/transactions/${data.transactionId}`);
+        } else if (walletResponse.status === 202) {
+          toast({ title: 'Payment being verified', description: walletResult.message || 'Do not pay again. Check the saved transaction.' });
+        } else {
+          toast({ title: 'Wallet payment not completed', description: walletResult.error || 'Check your balance or contact support.', variant: 'destructive' });
+        }
+        return;
+      }
 
       if (data.paylukPaymentToken) {
         try {
@@ -197,9 +272,9 @@ export function BuyButton({
                 msgLower.includes('paid');
 
               if (isSuccess) {
-                paymentSucceeded = true;
+                // An SDK callback is a signal to verify, never proof of settlement.
                 try {
-                  await fetch('/api/payment/verify', {
+                  const verification = await fetch('/api/payment/verify', {
                     method: 'POST',
                     headers: {
                       'Content-Type': 'application/json',
@@ -207,11 +282,19 @@ export function BuyButton({
                     },
                     body: JSON.stringify({ txRef: data.transactionId }),
                   });
+                  const verified = await verification.json();
+                  if (verification.ok && verified.success) {
+                    paymentSucceeded = true;
+                    clearPending();
+                    toast({ title: 'Payment Successful', description: 'Your purchase is confirmed.' });
+                    router.push(`/transactions/${data.transactionId}`);
+                  } else {
+                    toast({ title: 'Payment still processing', description: 'Your checkout is saved. Check it after Payluk reconciliation.' });
+                  }
                 } catch (verifyErr) {
                   console.error('[BuyButton] Payment verification error:', verifyErr);
+                  toast({ title: 'Verification pending', description: 'Your checkout is saved. Do not transfer again.' });
                 }
-                toast({ title: "Payment Successful", description: "Your transaction has been processed." });
-                router.push(`/transactions/${data.transactionId}`);
               } else {
                 console.warn('[BuyButton] Payluk callback with non-success result:', result);
               }
@@ -232,7 +315,8 @@ export function BuyButton({
                   const verifyData = await verifyRes.json();
                   if (verifyData?.success) {
                     paymentSucceeded = true;
-                    toast({ title: "Payment Successful", description: "Your transaction has been processed." });
+                    clearPending();
+                    toast({ title: "Payment Successful", description: "Your purchase is confirmed." });
                     router.push(`/transactions/${data.transactionId}`);
                     return;
                   }
@@ -240,7 +324,8 @@ export function BuyButton({
                   console.warn('[BuyButton] onClose verification check error:', err);
                 }
 
-                toast({ title: "Payment Cancelled", description: "You closed the payment window." });
+                // Backgrounding the dialog does not cancel the remote escrow.
+                toast({ title: 'Checkout saved', description: 'Your transfer may still be reconciling. Return to check or resume; do not transfer again.' });
               }
             },
           });
@@ -260,6 +345,24 @@ export function BuyButton({
 
   return (
     <>
+      {pendingTransactionId && (
+        <div className="mb-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 space-y-2">
+          <p className="text-sm font-semibold text-foreground">Previous checkout saved</p>
+          <p className="text-xs text-muted-foreground">
+            Left YRDLY to pay by bank transfer? Check your payment before transferring again.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={checkPendingPayment} disabled={checkingPending || loading}
+              className="rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50">
+              {checkingPending ? 'Checking...' : 'Check payment status'}
+            </button>
+            <button type="button" onClick={() => setOpen(true)} disabled={loading}
+              className="rounded-lg border border-border px-3 py-2 text-xs font-semibold text-foreground disabled:opacity-50">
+              Resume checkout
+            </button>
+          </div>
+        </div>
+      )}
       {/* Trigger */}
       <button
         onClick={() => setOpen(true)}
@@ -335,7 +438,7 @@ export function BuyButton({
                       <Info className="w-3.5 h-3.5 text-muted-foreground/70 hover:text-foreground transition-colors" />
                     </div>
                   </div>
-                  <span className="font-semibold text-muted-foreground">₦{commission.toLocaleString()}</span>
+                  <span className="font-semibold text-muted-foreground">₦{commission.toLocaleString()} (seller pays)</span>
                 </div>
 
                 <div className="h-px w-full bg-border/50 my-0.5" />
@@ -347,7 +450,8 @@ export function BuyButton({
                   </span>
                 </div>
                 <p className="text-[0.7rem] text-muted-foreground/80 leading-normal">
-                  Funds are held securely in escrow until you confirm item receipt
+                  Funds are held securely in escrow until you confirm item receipt.
+                  Bank transfers may take up to 30 minutes or longer to reconcile.
                 </p>
               </div>
 
@@ -369,7 +473,7 @@ export function BuyButton({
               {/* CTA */}
               <div className="pt-2 flex flex-col items-center gap-3">
                 <button
-                  onClick={handleBuy}
+                  onClick={() => handleBuy('checkout')}
                   disabled={loading}
                   className="w-full h-13 py-3.5 bg-primary text-primary-foreground rounded-2xl font-bold text-sm shadow-[0_4px_24px_rgba(0,210,106,0.25)] hover:shadow-[0_6px_28px_rgba(0,210,106,0.35)] active:scale-[0.98] transition-all flex items-center justify-center disabled:opacity-60"
                 >
@@ -385,6 +489,13 @@ export function BuyButton({
                     `Pay ₦${totalPay.toLocaleString()} Securely`
                   )}
                 </button>
+                <button type="button" onClick={() => handleBuy('wallet')} disabled={loading}
+                  className="w-full rounded-2xl border border-border px-4 py-3 text-sm font-semibold text-foreground disabled:opacity-50">
+                  {loading ? 'Processing...' : 'Pay from my Payluk wallet'}
+                </button>
+                <p className="text-xs text-muted-foreground text-center">
+                  Already transferred money but checkout expired? Use your credited Payluk wallet without transferring again.
+                </p>
                 <div className="flex items-center gap-1.5 text-muted-foreground/70">
                   <Lock className="w-3.5 h-3.5" />
                   <span className="text-[0.6875rem] font-medium">
