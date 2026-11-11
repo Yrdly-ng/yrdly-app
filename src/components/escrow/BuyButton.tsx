@@ -50,6 +50,7 @@ export function BuyButton({
   const [loading, setLoading]   = useState(false);
   const [pendingTransactionId, setPendingTransactionId] = useState<string | null>(null);
   const [checkingPending, setCheckingPending] = useState(false);
+  const walletRecoveryAvailable = process.env.NEXT_PUBLIC_PAYLUK_WALLET_RECOVERY_ENABLED === 'true';
   // Store only the order UUID, never a Payluk token or customer identity.
   const pendingKey = user ? `yrdly:pending-checkout:${user.id}:${itemType}:${itemId}` : null;
   useEffect(() => {
@@ -489,6 +490,7 @@ export function BuyButton({
                     `Pay ₦${totalPay.toLocaleString()} Securely`
                   )}
                 </button>
+                {walletRecoveryAvailable && (
                 <button type="button" onClick={() => handleBuy('wallet')} disabled={loading}
                   className="w-full rounded-2xl border border-border px-4 py-3 text-sm font-semibold text-foreground disabled:opacity-50">
                   {loading ? 'Processing...' : 'Pay from my Payluk wallet'}
@@ -496,6 +498,7 @@ export function BuyButton({
                 <p className="text-xs text-muted-foreground text-center">
                   Already transferred money but checkout expired? Use your credited Payluk wallet without transferring again.
                 </p>
+                )}
                 <div className="flex items-center gap-1.5 text-muted-foreground/70">
                   <Lock className="w-3.5 h-3.5" />
                   <span className="text-[0.6875rem] font-medium">
