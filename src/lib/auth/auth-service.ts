@@ -137,11 +137,32 @@ export class AuthService {
         throw new Error("This session has been replaced by a newer sign-in.");
       }
       if (data.user) {
-        const { data: profile, error: profileError } = await supabase
+        const profileQuery = () => supabase
           .from("users")
           .select("is_suspended, is_banned, status, suspension_reason")
-          .eq("id", data.user.id)
+          .eq("id", data.user!.id)
           .maybeSingle();
+        let { data: profile, error: profileError } = await profileQuery();
+
+        // Email-confirmed accounts may not yet have a public profile.
+        // Bootstrap under their authenticated RLS session before enforcing
+        // account-status checks; do not bootstrap if the initial read errored.
+        if (!profileError && !profile) {
+          try {
+            await AuthService.createUserProfile(
+              data.user,
+              data.user.user_metadata?.name ||
+                data.user.user_metadata?.full_name ||
+                data.user.email?.split("@")[0] ||
+                "User",
+            );
+            const result = await profileQuery();
+            profile = result.data;
+            profileError = result.error;
+          } catch (creationError) {
+            console.error("Account profile bootstrap failed:", creationError);
+          }
+        }
 
         if (profileError || !profile) {
           await supabase.auth.signOut({ scope: "local" });

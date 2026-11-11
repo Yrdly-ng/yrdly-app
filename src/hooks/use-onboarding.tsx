@@ -21,9 +21,7 @@ export function useOnboarding() {
     // Check if profile is completed
     if (!profile.profile_completed) return 'profile_setup';
     
-    // Check if tour is completed
-    if (!profile.tour_completed) return 'tour';
-    
+    // The tour is optional: never block a user from reaching the app.
     return 'completed';
   };
 
@@ -50,7 +48,9 @@ export function useOnboarding() {
       await updateProfile({ 
         profile_completed: true,
         welcome_message_sent: true,   // mark as sent so we never route to /welcome
-        onboarding_status: 'tour'
+        tour_completed: true,
+        onboarding_status: 'completed',
+        onboarding_completed_at: new Date().toISOString()
       });
       onboardingAnalytics.trackStepComplete('profile_setup', { userId: user.id });
     } catch (error: any) {

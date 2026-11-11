@@ -1,5 +1,7 @@
 "use client";
 
+import { trackWebActivationEvent } from "@/lib/telemetry/analytics";
+
 import { authenticatedFetch } from '@/lib/auth/authenticated-fetch';
 import React, { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -264,9 +266,15 @@ export default function CreatePostPage() {
 
       if (insertErr) throw insertErr;
 
-      if (newPost) {
+      if (!newPost) throw new Error('The post was not saved. Please retry.');
+
+      // Count only posts persisted successfully, irrespective of notification delivery.
+      void trackWebActivationEvent("onboarding_meaningful_action", "community_post");
+      try {
         const { NotificationTriggers } = await import('@/lib/notifications/notification-triggers');
         await NotificationTriggers.onMentionsInContent(user.id, newPost.id, trimmedText);
+      } catch (notificationError) {
+        console.error("Post mention notification failed:", notificationError);
       }
 
 

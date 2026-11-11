@@ -1,0 +1,69 @@
+name: Onboarding validation
+on:
+  push:
+    branches:
+      - feature/streamlined-onboarding-nov-2026
+  pull_request:
+    paths:
+      - 'src/app/onboarding/**'
+      - 'src/lib/auth/auth-service.ts'
+      - 'src/lib/auth/phone-otp-errors.ts'
+      - 'src/hooks/use-supabase-auth.tsx'
+      - 'tests/phone-otp-errors.test.cjs'
+      - 'tests/onboarding-login-bootstrap.test.cjs'
+      - 'src/lib/telemetry/**'
+      - 'src/components/providers/TelemetryHandler.tsx'
+      - 'src/app/(app)/posts/create/page.tsx'
+      - 'src/components/messages/BusinessChatScreen.tsx'
+      - 'tests/web-telemetry.test.cjs'
+      - 'package.json'
+      - '.github/workflows/onboarding-validation.yml'
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Set up Node 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - name: Enable Corepack
+        run: corepack enable
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Telemetry regression tests
+        run: pnpm test:telemetry
+      - name: Login bootstrap safety tests
+        run: node --test tests/onboarding-login-bootstrap.test.cjs
+      - name: Phone OTP failure message tests
+        run: node --test tests/phone-otp-errors.test.cjs
+      - name: TypeScript check
+        run: pnpm typecheck
+      - name: ESLint
+        run: pnpm lint
+      # Compile safely without any real backend credentials.
+      - name: Production compilation (isolated placeholders)
+        run: pnpm build
+        env:
+          SENTRY_DISABLE_AUTO_UPLOAD: 'true'
+          NEXT_TELEMETRY_DISABLED: '1'
+          NEXT_PUBLIC_TELEMETRY_DISABLED: 'true'
+          NEXT_PUBLIC_SUPABASE_URL: 'https://example.supabase.co'
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: 'placeholder-local-only'
+          SUPABASE_SERVICE_ROLE_KEY: 'placeholder-local-only'
+      - name: Install Chromium for browser smoke test
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Public browser smoke test (no real backend)
+        run: pnpm exec e2e run tests/smoke.e2e.ts tests/onboarding-public.e2e.ts
+        env:
+          E2E_TELEMETRY_DISABLED: '1'
+          NEXT_PUBLIC_TELEMETRY_DISABLED: 'true'
+          NEXT_PUBLIC_SUPABASE_URL: 'https://example.supabase.co'
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: 'placeholder-local-only'
+          SUPABASE_SERVICE_ROLE_KEY: 'placeholder-local-only'

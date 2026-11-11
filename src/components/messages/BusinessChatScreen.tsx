@@ -1,7 +1,7 @@
 "use client";
 
 import { captureWebError } from '@/lib/telemetry/sentry';
-import { trackWebEvent } from '@/lib/telemetry/analytics';
+import { trackWebEvent, trackWebActivationEvent } from '@/lib/telemetry/analytics';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -376,6 +376,7 @@ export function BusinessChatScreen({
 
       if (insertedMessage) {
         void trackWebEvent('message_sent');
+        void trackWebActivationEvent('onboarding_meaningful_action', 'business_message');
         const { data: userData } = await supabase
           .from("public_profiles")
           .select("name, avatar_url")

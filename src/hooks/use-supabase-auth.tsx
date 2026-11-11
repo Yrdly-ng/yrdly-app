@@ -11,6 +11,7 @@ import {
 import { User } from "@supabase/supabase-js";
 import { AuthService, AuthUser } from "@/lib/auth/auth-service";
 import { supabase } from "@/lib/supabase/supabase";
+import { describePhoneOtpFailure } from "@/lib/auth/phone-otp-errors";
 import { watchSession } from "@/lib/auth/session-policy";
 import { clientFeedState } from "@/lib/activity/client-feed-state";
 
@@ -232,18 +233,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { data, error } = await supabase.functions.invoke(
         "send-phone-otp",
-        {
-          body: { phone },
-        },
+        { body: { phone } },
       );
 
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
+      if (error || data?.error) {
+        return {
+          pinId: null,
+          error: await describePhoneOtpFailure(error, data),
+        };
+      }
 
+      if (typeof data?.pinId !== "string" || !data.pinId) {
+        return {
+          pinId: null,
+          error: await describePhoneOtpFailure(null),
+        };
+      }
       return { pinId: data.pinId, error: null };
-    } catch (error: any) {
-      console.error("sendPhoneOtp error:", error);
-      return { pinId: null, error: error.message || error };
+    } catch (error: unknown) {
+      // A FunctionsHttpError contains a response with the actionable reason.
+      // Do not expose raw provider errors or tokens in console logs.
+      return { pinId: null, error: await describePhoneOtpFailure(error) };
     }
   };
 
