@@ -122,7 +122,9 @@ const dependencies={
       assert.equal(id,buyer);
       const w=await request('GET','/v1/wallet',{customerId:id});
       const mainBal=w.mainBalance ?? w.availableBalance ?? w.wallet?.mainBalance ?? w.main_balance ?? w.available_balance ?? w.balance ?? 0;
-      return {mainBalance:Number(mainBal),escrowBalance:Number(w.escrowBalance ?? w.wallet?.escrowBalance ?? w.escrow_balance ?? 0),currency:w.currency||'NGN'};
+      const received = {mainBalance:Number(mainBal),escrowBalance:Number(w.escrowBalance ?? w.wallet?.escrowBalance ?? w.escrow_balance ?? 0),currency:w.currency||'NGN'};
+      console.log('QA wallet check:',{currency:received.currency,amountSufficient:received.mainBalance>=2300,isFinite:Number.isFinite(received.mainBalance),hasCurrencyField:w.currency!==undefined,accountCreditedEarlier:credited>=2300});
+      return received;
     },
     fundEscrowFromWallet:async(customerId,escrowId,amount,reference)=>{
       assert.equal(customerId,buyer);assert.equal(escrowId,draft.id);
