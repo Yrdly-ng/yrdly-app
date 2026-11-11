@@ -47,3 +47,32 @@ SELECT
   (SELECT COUNT(*) FROM pg_policies WHERE schemaname='public') AS public_policies,
   (SELECT COUNT(*) FROM pg_proc WHERE pronamespace='public'::regnamespace) AS public_functions,
   (SELECT COUNT(*) FROM supabase_migrations.schema_migrations) AS migrations_applied;
+
+
+-- Compare these read-only fingerprints with a separately captured, vetted
+-- production schema inventory. Do not fail merely because fingerprints differ:
+-- differences require review, not automatic schema modification.
+WITH
+  tbl AS (
+    SELECT c.relname || ':' || c.relkind::text || ':' || c.relrowsecurity::text AS k
+    FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+    WHERE n.nspname='public' AND c.relkind IN ('r','p')
+  ),
+  col AS (
+    SELECT c.relname || '.' || a.attname || ':' || pg_catalog.format_type(a.atttypid,a.atttypmod)
+    || ':' || a.attnotnull::text AS k
+    FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+    JOIN pg_attribute a ON a.attrelid=c.oid AND a.attnum>0 AND NOT a.attisdropped
+    WHERE n.nspname='public' AND c.relkind IN ('r','p')
+  ),
+  pol AS (
+    SELECT tablename||'.'||policyname||':'||cmd||':'||array_to_string(roles,',') AS k
+    FROM pg_policies WHERE schemaname='public'
+  )
+SELECT
+ (SELECT count(*) FROM tbl) AS table_count,
+ (SELECT md5(string_agg(k,E'\\n' ORDER BY k)) FROM tbl) AS table_fingerprint,
+ (SELECT count(*) FROM col) AS column_count,
+ (SELECT md5(string_agg(k,E'\\n' ORDER BY k)) FROM col) AS column_fingerprint,
+ (SELECT count(*) FROM pol) AS policy_count,
+ (SELECT md5(string_agg(k,E'\\n' ORDER BY k)) FROM pol) AS policy_fingerprint;
