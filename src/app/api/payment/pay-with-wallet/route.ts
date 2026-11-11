@@ -86,7 +86,11 @@ export async function POST(request: NextRequest) {
     const customerId = await getPaylukCustomerId(user.id);
     const wallet = await PaylukService.getCustomerWallet(customerId);
     const debit = Number(tx.total_amount);
-    if (wallet.currency !== 'NGN' || !Number.isFinite(wallet.mainBalance) ||
+    // Payluk describes Nigerian wallets with country code NG in its wallet
+    // response, while NGN is the ISO currency code. Both denote the NGN wallet;
+    // reject other currencies rather than converting balances.
+    const walletCurrency = String(wallet.currency || '').toUpperCase();
+    if (!['NG', 'NGN'].includes(walletCurrency) || !Number.isFinite(wallet.mainBalance) ||
         !Number.isFinite(debit) || wallet.mainBalance + 0.00001 < debit) {
       return NextResponse.json({
         error: 'Your Payluk wallet does not yet contain enough for this order. Check again after bank-transfer reconciliation.',
