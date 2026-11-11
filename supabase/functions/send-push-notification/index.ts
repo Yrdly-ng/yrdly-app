@@ -255,14 +255,17 @@ serve(async (req) => {
       );
     }
 
+    // Do not let callers bypass the editorial kill switch by omitting the
+    // top-level type while placing daily_prompt inside payload.data.
+    const isDailyPrompt = type === "daily_prompt" || payload.data?.type === "daily_prompt";
     // Keep editorial reminders OFF unless explicitly enabled at the
     // function runtime. Missing consent is always an opt-out.
-    if (type === "daily_prompt" && Deno.env.get("DAILY_PROMPT_PUSH_ENABLED") !== "true") {
+    if (isDailyPrompt && Deno.env.get("DAILY_PROMPT_PUSH_ENABLED") !== "true") {
       return new Response(JSON.stringify({ success: true, skipped: true, reason: "campaign_paused" }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    if (type === "daily_prompt" && userData?.notification_settings?.dailyPrompts !== true) {
+    if (isDailyPrompt && userData?.notification_settings?.dailyPrompts !== true) {
       return new Response(JSON.stringify({ success: true, skipped: true, reason: "user_opt_out" }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
