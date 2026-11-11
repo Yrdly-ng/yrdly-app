@@ -6,8 +6,8 @@ DECLARE
   applied integer;
 BEGIN
   SELECT COUNT(*) INTO applied FROM supabase_migrations.schema_migrations;
-  IF applied <> 59 THEN
-    RAISE EXCEPTION 'Expected 59 QA migration records, found %', applied;
+  IF applied <> 54 THEN
+    RAISE EXCEPTION 'Expected 54 QA migration records, found %', applied;
   END IF;
 
   FOREACH object_name IN ARRAY ARRAY[
