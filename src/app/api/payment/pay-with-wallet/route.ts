@@ -20,6 +20,12 @@ export const maxDuration = 60;
  * status, amount, buyer identity and wallet balance are verified server-side.
  */
 export async function POST(request: NextRequest) {
+  // Default OFF until the full Payluk funded sandbox wallet test passes.
+  if (process.env.PAYLUK_WALLET_RECOVERY_ENABLED !== 'true') {
+    return NextResponse.json({
+      error: 'Direct wallet checkout is not available yet. You can resume the Payluk checkout or contact YRDLY support.',
+    }, { status: 503 });
+  }
   try {
     const { data: { user }, error: authError } = await getAuthenticatedUser(request);
     if (!user || authError) return NextResponse.json(
