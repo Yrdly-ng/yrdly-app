@@ -8,6 +8,8 @@
  */
 import { randomUUID, randomInt } from 'node:crypto';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import ts from 'typescript';
 
 const QA_REF = 'jxgpvvehajxegeeozlnl';
 const qaCommit = process.env.VERCEL_GIT_COMMIT_REF === 'feature/streamlined-onboarding-nov-2026';
@@ -83,16 +85,94 @@ const before = await wallet();
 await request('POST','/v1/payment/topup',{customerId:buyer,body:{amount:2300}});
 const credited = await wallet();
 assert.ok(credited >= before + 2300 - 0.01, 'Sandbox wallet topup did not credit the full amount');
-const paymentRef = 'yrdly-wallet-' + randomUUID();
-await request('POST','/v1/payment/escrow',{
-  customerId:buyer,
-  body:{amount:2300,reference:paymentRef,transactionType:'escrow',
-        gateway:'wallet',escrowDetails:{escrowId:draft.id}}
-});
+// Exercise the ACTUAL application API route with provider-backed sandbox calls.
+ // Only auth/database dependencies are synthetic, with no production Supabase connection.
+const buyerId = randomUUID(),txId = randomUUID();
+const txRecord = {
+  id:txId,buyer_id:buyerId,seller_id:randomUUID(),item_type:'catalog_item',
+  status:'pending',payment_provider:'payluk',payluk_escrow_id:draft.id,
+  payluk_tx_ref:draft.paymentToken,amount:2300,total_amount:2300,commission:69,
+  created_at:new Date().toISOString(),metadata:{payluk_fee_mode:'native_commission_v1'}
+};
+const records = { row:txRecord, applied:0, flags:0, fundingCalls:0, authId:'unauthorized' };
+const from = (table)=>{
+  assert.equal(table,'escrow_transactions');
+  const conditions=[];let mutation=null;
+  const query={
+    select(){return query;},
+    eq(k,v){conditions.push([k,v]);return query;},
+    update(value){mutation=value;return query;},
+    async maybeSingle(){
+      if(conditions.some(([k,v])=>records.row[k]!==v))return {data:null,error:null};
+      if(mutation)Object.assign(records.row,mutation);
+      return {data:structuredClone(records.row),error:null};
+    }
+  };
+  return query;
+};
+const dependencies={
+  'next/server': { NextResponse:{json:(body,options)=>Response.json(body,options)} },
+  '@/lib/supabase/supabase-server': {
+    getAuthenticatedUser:async()=>({data:{user:{id:records.authId}},error:null})
+  },
+  '@/lib/supabase/supabase-admin': {supabaseAdmin:{from}},
+  '@/lib/payments/payluk-service': {PaylukService:{
+    verifyEscrow:async(token)=>request('GET','/v1/escrow/verify/'+encodeURIComponent(token)),
+    getCustomerWallet:async(id)=>{
+      assert.equal(id,buyer);
+      const w=await request('GET','/v1/wallet',{customerId:id});
+      return {mainBalance:Number(w.mainBalance),escrowBalance:Number(w.escrowBalance||0),currency:w.currency||'NGN'};
+    },
+    fundEscrowFromWallet:async(customerId,escrowId,amount,reference)=>{
+      assert.equal(customerId,buyer);assert.equal(escrowId,draft.id);
+      assert.equal(amount,2300);assert.equal(reference,'yrdly-wallet-'+txId);
+      records.fundingCalls++;
+      return request('POST','/v1/payment/escrow',{
+        customerId,
+        body:{amount,reference,transactionType:'escrow',gateway:'wallet',
+          escrowDetails:{escrowId}}
+      });
+    }
+  }},
+  '@/lib/payments/payluk-onboarding':{getPaylukCustomerId:async(userId)=>{
+    assert.equal(userId,buyerId);return buyer;
+  }},
+  '@/lib/payments/payment-state':{paylukAmountsMatch:(tx,escrow)=>
+    Math.round(Number(tx.amount)*100)===Math.round(Number(escrow.amount)*100) &&
+    escrow.whoPays==='seller'&&Number(escrow.additionalFee??0)===0},
+  '@/lib/payments/checkout-reservation-expiry':{reservationHasExpired:()=>false},
+  '@/lib/payments/escrow-payment':{applyEscrowPayment:async()=>{records.applied++;records.row.status='paid';return true;}},
+  '@/lib/payments/payment-reconciliation':{flagPayment:async()=>{records.flags++;}}
+};
+const source=await readFile('src/app/api/payment/pay-with-wallet/route.ts','utf8');
+const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+const moduleHolder={exports:{}};
+new Function('require','module','exports','process',compiled)((name)=>{
+  assert.ok(Object.prototype.hasOwnProperty.call(dependencies,name),'Unexpected dependency '+name);
+  return dependencies[name];
+},moduleHolder,moduleHolder.exports,{env:{PAYLUK_WALLET_RECOVERY_ENABLED:'true'}});
+const run=(id)=>moduleHolder.exports.POST(new Request('https://qa.invalid/api/payment/pay-with-wallet',{
+  method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({transactionId:id})
+}));
+const unauthorized=await run(txId);
+assert.equal(unauthorized.status,404,'Wrong buyer must never access wallet recovery');
+assert.equal(records.fundingCalls,0,'Wrong buyer caused a provider charge');
+records.authId=buyerId;
+const paid=await run(txId);
+const paidBody=await paid.json();
+assert.equal(paid.status,200,'Wallet route did not report confirmed settlement');
+assert.equal(paidBody.success,true);
+assert.equal(records.row.status,'paid');
+assert.equal(records.fundingCalls,1,'Expected exactly one actual Payluk wallet debit');
+assert.equal(records.applied,1,'Expected one transaction settlement');
+const replay=await run(txId);
+assert.equal(replay.status,200);
+assert.equal(records.fundingCalls,1,'A second request must not debit the wallet again');
+assert.equal(records.flags,0,'Successful wallet test requires no manual review flags');
 const after = await wallet();
 const funded = await request('GET','/v1/escrow/verify/' + encodeURIComponent(draft.paymentToken));
 assert.equal(funded.id,draft.id);
 assert.ok(['ONGOING','COMPLETED','CLAIMED'].includes(String(funded.status).toUpperCase()),
   'Provider did not settle the escrow');
 assert.ok(after <= credited - 2300 + 0.01, 'Buyer wallet was not debited for escrow purchase');
-console.log('PASS Payluk STAGING: new synthetic wallet credited ₦2,300 and funded owned escrow exactly once.');
+console.log('PASS Payluk STAGING: full wallet API route integration, authorized settlement, replay protection, and provider wallet debit.');
