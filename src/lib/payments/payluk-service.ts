@@ -703,7 +703,7 @@ export class PaylukService {
   ): Promise<void> {
     if (!buyerCustomerId || !escrowId ||
         !Number.isFinite(amount) || amount < 1000 ||
-        Math.round(amount * 100) !== amount * 100 ||
+        Math.abs(Math.round(amount * 100) - amount * 100) > 0.000001 ||
         !/^yrdly-wallet-[0-9a-f-]{36}$/i.test(reference)) {
       throw new Error('Invalid escrow wallet funding request');
     }
