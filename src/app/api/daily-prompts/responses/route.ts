@@ -46,6 +46,6 @@ export async function GET(request: NextRequest) {
     .filter(a => Array.isArray(a.blocked_users) && a.blocked_users.includes(user.id))
     .map(a => a.id));
   const myBlocked = new Set(Array.isArray(profile.blocked_users) ? profile.blocked_users : []);
-  const responses = items.filter(p => !!p.user_id && !myBlocked.has(p.user_id) && !reverseBlocked.has(p.user_id));
+  const responses = items.slice(0, PAGE_SIZE).filter(p => !!p.user_id && !myBlocked.has(p.user_id) && !reverseBlocked.has(p.user_id));
   return NextResponse.json({ responses, nextPage: items.length > PAGE_SIZE ? page + 1 : null }, { headers: { 'Cache-Control':'no-store' } });
 }
