@@ -54,6 +54,11 @@ jobs:
           db="$(docker ps --format '{{.Names}}' | grep '^supabase_db_' | head -n 1)"
           test -n "$db"
           docker exec -i "$db" psql -X -v ON_ERROR_STOP=1 -t -A -U postgres -d postgres < supabase/tests/qa-object-fingerprints.sql
+      - name: Assert QA schema exactly matches approved production catalog
+        run: |
+          db="$(docker ps --format '{{.Names}}' | grep '^supabase_db_' | head -n 1)"
+          test -n "$db"
+          docker exec -i "$db" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/tests/qa-production-parity.sql
       - name: Stop local database
         if: always()
         run: supabase stop --no-backup || true
