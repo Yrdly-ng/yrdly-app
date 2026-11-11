@@ -121,7 +121,8 @@ const dependencies={
     getCustomerWallet:async(id)=>{
       assert.equal(id,buyer);
       const w=await request('GET','/v1/wallet',{customerId:id});
-      return {mainBalance:Number(w.mainBalance),escrowBalance:Number(w.escrowBalance||0),currency:w.currency||'NGN'};
+      const mainBal=w.mainBalance ?? w.availableBalance ?? w.wallet?.mainBalance ?? w.main_balance ?? w.available_balance ?? w.balance ?? 0;
+      return {mainBalance:Number(mainBal),escrowBalance:Number(w.escrowBalance ?? w.wallet?.escrowBalance ?? w.escrow_balance ?? 0),currency:w.currency||'NGN'};
     },
     fundEscrowFromWallet:async(customerId,escrowId,amount,reference)=>{
       assert.equal(customerId,buyer);assert.equal(escrowId,draft.id);
@@ -160,6 +161,10 @@ assert.equal(records.fundingCalls,0,'Wrong buyer caused a provider charge');
 records.authId=buyerId;
 const paid=await run(txId);
 const paidBody=await paid.json();
+if(paid.status!==200) {
+  // Report only high-level diagnostic fields; never wallet details or identities.
+  console.error('QA wallet route response:', {status:paid.status, reason:paidBody.error || paidBody.message || 'unknown', flags:records.flags, providerChargeAttempted:records.fundingCalls>0});
+}
 assert.equal(paid.status,200,'Wallet route did not report confirmed settlement');
 assert.equal(paidBody.success,true);
 assert.equal(records.row.status,'paid');
