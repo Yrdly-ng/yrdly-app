@@ -43,7 +43,7 @@ export default function AdminDailyPromptsPage() {
   };
   return (
     <main className="mx-auto max-w-4xl p-4 sm:p-8 pb-24 space-y-5">
-      <Link href="/admin" className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+      <Link href="/settings" className="inline-flex items-center gap-2 text-sm text-muted-foreground">
         <ArrowLeft className="h-4 w-4" /> Admin
       </Link>
       <div className="space-y-2">
