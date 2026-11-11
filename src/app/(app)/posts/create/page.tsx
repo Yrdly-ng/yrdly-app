@@ -3,7 +3,7 @@
 import { trackWebActivationEvent } from "@/lib/telemetry/analytics";
 
 import { authenticatedFetch } from '@/lib/auth/authenticated-fetch';
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useAuth } from "@/hooks/use-supabase-auth";
@@ -36,6 +36,27 @@ export default function CreatePostPage() {
   const { refreshPosts } = usePosts();
 
   const [text, setText] = useState("");
+  const [requestedPromptId, setRequestedPromptId] = useState<string | null>(null);
+  const [dailyPrompt, setDailyPrompt] = useState<{id:string;question:string} | null>(null);
+  const [promptResolved, setPromptResolved] = useState(false);
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get('dailyPrompt');
+    if (!id) { setPromptResolved(true); return; }
+    setRequestedPromptId(id);
+    let active = true;
+    void fetch('/api/daily-prompts', { cache:'no-store' })
+      .then(r => r.ok ? r.json() : null)
+      .then(result => {
+        if (!active) return;
+        if (result?.prompt?.id === id) {
+          setDailyPrompt({id,question:result.prompt.question});
+          setVisibility('public');
+        }
+      })
+      .catch(() => {})
+      .finally(() => { if(active)setPromptResolved(true); });
+    return () => {active=false;};
+  }, []);
   const [visibility, setVisibility] = useState<"public" | "private">("public");
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [videoFiles, setVideoFiles] = useState<File[]>([]);
@@ -152,6 +173,14 @@ export default function CreatePostPage() {
 
   const handleSubmit = async () => {
     if (posting || pickingVideo.current || isEditingVideo) return;
+    if (requestedPromptId && (!promptResolved || !dailyPrompt)) {
+      toast({ title: 'Question unavailable', description: 'This daily question has expired. Please return to Home.' });
+      return;
+    }
+    if (dailyPrompt && visibility !== 'public') {
+      toast({ title: 'Public answer required', description: 'Daily question responses must be public neighbourhood posts.' });
+      return;
+    }
     if (!user) {
       toast({
         variant: "destructive",
@@ -258,6 +287,7 @@ export default function CreatePostPage() {
         timestamp: new Date().toISOString(),
       };
 
+      if (dailyPrompt) postPayload.daily_prompt_id = dailyPrompt.id;
       if (uploadedVideoUrls.length > 0) {
         postPayload.video_urls = uploadedVideoUrls;
       }
@@ -456,6 +486,18 @@ export default function CreatePostPage() {
             </div>
           </div>
 
+          {requestedPromptId && (!promptResolved || !dailyPrompt) && (
+            <div role="alert" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-400">
+              {!promptResolved ? "Checking today's question…" : "This question is no longer active. Return to Home to see the latest question."}
+            </div>
+          )}
+          {dailyPrompt && (
+            <aside className="rounded-2xl border border-[#82DB7E]/30 bg-[#82DB7E]/10 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#82DB7E]">Answering today's question</p>
+              <p className="mt-1 text-sm font-semibold">{dailyPrompt.question}</p>
+              <p className="mt-1 text-xs text-[var(--yrdly-label)]">Your response will be a public neighbourhood post.</p>
+            </aside>
+          )}
           {/* Main Text Input */}
           <Textarea
             placeholder="What's happening in your neighbourhood?"
