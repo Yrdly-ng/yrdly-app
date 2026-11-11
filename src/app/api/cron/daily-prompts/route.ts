@@ -76,7 +76,8 @@ export async function GET(request:Request){
           if(claim.error)throw new Error('Could not reserve a unique reminder');
           if(!claim.data?.length){counters.skipped++;return;}
           counters.reserved++;
-          let resultCode='uncertain',status:'uncertain';
+          let resultCode='uncertain';
+          let status: 'uncertain' | 'submitted' | 'skipped' = 'uncertain';
           try{
             const response=await invokeServerFunction<{success?:boolean;skipped?:boolean;reason?:string}>(
               supabaseAdmin,'send-push-notification',{
