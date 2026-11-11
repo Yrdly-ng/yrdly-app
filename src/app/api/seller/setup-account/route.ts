@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
       if (profileName && !namesMatch(resolvedName, profileName)) {
         return NextResponse.json(
           {
-            error: `This bank account does not appear to belong to you. Please add an account registered in your own name.`,
+            error: 'Your bank name needs to match your YRDLY display name. Kindly change your name in Profile to match your bank name.',
             code: 'OWNERSHIP_MISMATCH',
           },
           { status: 422 }
