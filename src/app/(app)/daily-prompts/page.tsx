@@ -54,7 +54,7 @@ export default function DailyPromptAnswersPage() {
         !prompt ? <div className="rounded-3xl border p-6 text-center"><h1 className="font-bold text-lg">No question is live right now</h1><p className="text-sm text-muted-foreground mt-2">Check back for the next neighbourhood conversation.</p></div> :
         <>
           <header className="rounded-3xl border border-[#82DB7E]/30 bg-[#82DB7E]/10 p-5 space-y-3">
-            <p className="uppercase text-xs font-bold tracking-wider text-[#82DB7E]">Today's neighbourhood question</p>
+            <p className="uppercase text-xs font-bold tracking-wider text-[#82DB7E]">Today&apos;s neighbourhood question</p>
             <h1 className="font-yrdly-display text-xl font-bold">{prompt.question}</h1>
             <Link className="inline-flex items-center gap-2 rounded-full bg-[#82DB7E] text-black px-4 py-2 font-bold text-sm"
               href={`/posts/create?dailyPrompt=${encodeURIComponent(prompt.id)}`}><MessageCircle className="h-4 w-4"/> Share your answer</Link>
