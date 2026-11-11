@@ -77,7 +77,7 @@ BEGIN
 
     RETURN jsonb_build_object('id', v_notification_id, 'should_push', true, 'message', p_message);
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.remove_notification_actor(p_user_id uuid, p_type character varying, p_sender_id uuid, p_related_id uuid)
@@ -138,7 +138,7 @@ BEGIN
     END IF;
     RETURN false;
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.toggle_post_like(p_post_id uuid, p_user_id uuid)
@@ -191,7 +191,7 @@ BEGIN
     'liked_by', v_new_liked_by
   );
 END;
-$function$
+$function$;
 
 
 -- Drop only obsolete QA storage policies that no longer exist in production.
