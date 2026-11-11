@@ -137,7 +137,7 @@ test('network timeout after successful provider debit is verified before reporti
 
 test('reservation period spans multiple Payluk reconciliation cycles',()=>{
   const expiry=fs.readFileSync('src/lib/payments/checkout-reservation-expiry.ts','utf8');
-  const migration=fs.readFileSync('supabase/migrations/20261111090000_extend_marketplace_checkout_reconciliation.sql','utf8');
+  const migration=fs.readFileSync('supabase/migrations/20261111092106_extend_marketplace_checkout_reconciliation.sql','utf8');
   assert.match(expiry,/CHECKOUT_RESERVATION_TTL_MS = 2 \* 60 \* 60 \* 1000/);
   assert.match(migration,/lifetime := interval '2 hours'/);
   assert.match(migration,/lifetime := interval '10 minutes'/);
