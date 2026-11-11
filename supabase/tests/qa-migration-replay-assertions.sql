@@ -6,8 +6,8 @@ DECLARE
   applied integer;
 BEGIN
   SELECT COUNT(*) INTO applied FROM supabase_migrations.schema_migrations;
-  IF applied <> 55 THEN
-    RAISE EXCEPTION 'Expected 55 QA migration records, found %', applied;
+  IF applied <> 56 THEN
+    RAISE EXCEPTION 'Expected 56 QA migration records, found %', applied;
   END IF;
 
   FOREACH object_name IN ARRAY ARRAY[
@@ -92,4 +92,18 @@ BEGIN
   IF (SELECT COUNT(*) FROM pg_trigger WHERE NOT tgisinternal AND tgname LIKE 'audit_guard_%') < 11 THEN
     RAISE EXCEPTION 'Production audit triggers were not restored';
   END IF;
+END $$;
+
+-- Remove legacy storage media exposure and require the audited production roles.
+DO $$
+BEGIN
+ IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='storage' AND tablename='objects' AND policyname='Allow authenticated users to view chat images') THEN
+   RAISE EXCEPTION 'Legacy chat image storage policy still exposed';
+ END IF;
+ IF (SELECT COUNT(*) FROM pg_policies WHERE schemaname='storage') <> 27 THEN
+   RAISE EXCEPTION 'Expected exactly 27 production storage policies';
+ END IF;
+ IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='storage' AND tablename='objects' AND policyname='audit_chat_media_read') THEN
+   RAISE EXCEPTION 'Audited storage chat read policy missing';
+ END IF;
 END $$;
