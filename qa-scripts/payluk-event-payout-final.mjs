@@ -42,7 +42,7 @@ const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL,process.env.SUPABAS
   auth:{persistSession:false,autoRefreshToken:false}
 });
 function ok(result, name) {
-  if (result.error) throw Error(name+': '+result.error.code);
+  if (result.error) throw Error(name+': '+JSON.stringify({code:result.error.code||null, name:result.error.name||null, message:String(result.error.message||'').slice(0,220)}));
   return result.data;
 }
 function moduleTS(file, deps={}) {
