@@ -9,9 +9,11 @@ type Delivery = {
   attempt_count: number;
   expires_at: string;
   provider_ticket_id: string | null;
+  notification_type?: string;
 };
 
 const preferenceMap: Record<string, string> = {
+  daily_prompt: "dailyPrompts",
   message: "messages",
   message_reaction: "messages",
   marketplace_message: "messages",
@@ -308,6 +310,25 @@ serve(async (req) => {
           await updateDelivery(admin,delivery.id,{status:'skipped',last_error:'Community muted or membership ended'});
           continue;
         }
+      }
+      const notificationType = String(pushData?.type ?? delivery.notification_type ?? "");
+      // Emergency stop and strict opt-in are checked at delivery, too:
+      // queued reminders must never bypass an opt-out or a campaign pause.
+      if (notificationType === "daily_prompt" &&
+          Deno.env.get("DAILY_PROMPT_PUSH_ENABLED") !== "true") {
+        await updateDelivery(admin, delivery.id, {
+          status: "skipped",
+          last_error: "Daily prompt campaign paused",
+        });
+        continue;
+      }
+      if (notificationType === "daily_prompt" &&
+          recipient?.notification_settings?.dailyPrompts !== true) {
+        await updateDelivery(admin, delivery.id, {
+          status: "skipped",
+          last_error: "Daily prompts not opted in",
+        });
+        continue;
       }
       const preference = preferenceMap[String(pushData?.type ?? "")];
       if (
