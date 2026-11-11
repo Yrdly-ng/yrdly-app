@@ -255,9 +255,23 @@ serve(async (req) => {
       );
     }
 
+    // Keep editorial reminders OFF unless explicitly enabled at the
+    // function runtime. Missing consent is always an opt-out.
+    if (type === "daily_prompt" && Deno.env.get("DAILY_PROMPT_PUSH_ENABLED") !== "true") {
+      return new Response(JSON.stringify({ success: true, skipped: true, reason: "campaign_paused" }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (type === "daily_prompt" && userData?.notification_settings?.dailyPrompts !== true) {
+      return new Response(JSON.stringify({ success: true, skipped: true, reason: "user_opt_out" }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Enforce notification preferences
     if (type && userData?.notification_settings) {
       const preferenceMap: Record<string, string> = {
+        daily_prompt: "dailyPrompts",
         message: "messages",
         message_reaction: "messages",
         marketplace_message: "messages",
