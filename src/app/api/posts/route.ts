@@ -18,6 +18,23 @@ async function save(request: NextRequest, editing: boolean) {
       (input.image_urls != null && (!Array.isArray(input.image_urls) || input.image_urls.length > 10 || input.image_urls.some((url: unknown) => typeof url !== 'string')))) {
     return NextResponse.json({ error: 'Invalid post details' }, { status: 400 });
   }
+  const clientPostId = !editing ? input.id : undefined;
+  if (clientPostId !== undefined && (typeof clientPostId !== 'string' || !UUID_PATTERN.test(clientPostId))) {
+    return NextResponse.json({ error: 'Invalid post identifier' }, { status: 400 });
+  }
+  // Mobile retries reuse the draft's client-generated ID. Return the original
+  // row before moderation or uploads can create side effects a second time.
+  if (clientPostId) {
+    const { data: existing, error: lookupError } = await supabaseAdmin.from('posts')
+      .select('*').eq('id', clientPostId).maybeSingle();
+    if (lookupError) return NextResponse.json({ error: 'Could not verify post status' }, { status: 503 });
+    if (existing) {
+      if (existing.user_id !== user.id) return NextResponse.json({ error: 'Post identifier unavailable' }, { status: 409 });
+      if (input.daily_prompt_id != null && existing.daily_prompt_id !== input.daily_prompt_id)
+        return NextResponse.json({ error: 'The saved post belongs to a different question' }, { status: 409 });
+      return NextResponse.json({ data: existing, error: null });
+    }
+  }
   // Untrusted clients cannot link a post to an unpublished or expired question.
   let promptId: string | null = null;
   if (input.daily_prompt_id !== undefined && input.daily_prompt_id !== null) {
@@ -34,21 +51,6 @@ async function save(request: NextRequest, editing: boolean) {
     if (lookupError) return NextResponse.json({ error: 'Could not verify question' }, { status: 503 });
     if (!approved) return NextResponse.json({ error: 'Today’s question has expired' }, { status: 409 });
     promptId = approved.id;
-  }
-  const clientPostId = !editing ? input.id : undefined;
-  if (clientPostId !== undefined && (typeof clientPostId !== 'string' || !UUID_PATTERN.test(clientPostId))) {
-    return NextResponse.json({ error: 'Invalid post identifier' }, { status: 400 });
-  }
-  // Mobile retries reuse the draft's client-generated ID. Return the original
-  // row before moderation or uploads can create side effects a second time.
-  if (clientPostId) {
-    const { data: existing, error: lookupError } = await supabaseAdmin.from('posts')
-      .select('*').eq('id', clientPostId).maybeSingle();
-    if (lookupError) return NextResponse.json({ error: 'Could not verify post status' }, { status: 503 });
-    if (existing) {
-      if (existing.user_id !== user.id) return NextResponse.json({ error: 'Post identifier unavailable' }, { status: 409 });
-      return NextResponse.json({ data: existing, error: null });
-    }
   }
   let category = input.category;
   let price = input.price;
