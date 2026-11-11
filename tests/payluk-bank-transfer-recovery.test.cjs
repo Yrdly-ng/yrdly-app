@@ -60,10 +60,10 @@ function setup({ buyer = BUYER, balance = 2300, status = 'pending', remoteStatus
   const module = { exports: {} };
   const source = fs.readFileSync('src/app/api/payment/pay-with-wallet/route.ts','utf8');
   const compiled = ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
-  new Function('require','module','exports',compiled)((name)=>{
+  new Function('require','module','exports','process',compiled)((name)=>{
     if (!(name in dependencies)) throw Error('Unexpected dependency '+name);
     return dependencies[name];
-  },module,module.exports);
+  },module,module.exports,{ env: { PAYLUK_WALLET_RECOVERY_ENABLED: 'true' } });
   const invoke = () => module.exports.POST(new Request('https://qa.invalid/api/payment/pay-with-wallet',{
     method:'POST',body:JSON.stringify({transactionId:TX}),
   }));
