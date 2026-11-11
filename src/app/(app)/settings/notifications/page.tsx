@@ -143,6 +143,16 @@ export default function NotificationSettingsPage() {
                     <CardDescription className="text-[var(--yrdly-label)]">Manage how you receive notifications from Yrdly.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
+                    <div className="flex items-center justify-between gap-3">
+                        <Label htmlFor="dailyPrompts" className="flex flex-col space-y-1">
+                            <span className="text-foreground font-medium">Daily Neighbourhood Questions</span>
+                            <span className="text-sm text-[var(--yrdly-label)]">
+                                An optional 6 PM reminder about today&apos;s question. Off until you enable it.
+                            </span>
+                        </Label>
+                        <Switch id="dailyPrompts" checked={settings?.dailyPrompts === true}
+                            onCheckedChange={(value) => handleSettingChange('dailyPrompts',value)} />
+                    </div>
                     <div className="flex items-center justify-between">
                         <Label htmlFor="friendRequests" className="flex flex-col space-y-1">
                             <span className="text-foreground font-medium">Friend Requests</span>

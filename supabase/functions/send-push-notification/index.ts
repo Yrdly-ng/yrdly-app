@@ -255,9 +255,21 @@ serve(async (req) => {
       );
     }
 
+    // Emergency stop, independent of the Next.js campaign scheduler.
+    if (type === 'daily_prompt' && Deno.env.get('DAILY_PROMPT_PUSH_ENABLED') !== 'true') {
+      return new Response(JSON.stringify({success:true,skipped:true,reason:'campaign_paused'}),
+        {status:200,headers:{...corsHeaders,'Content-Type':'application/json'}});
+    }
+    // Engagement reminders are strict opt-in, including old profiles without this key.
+    // An absent preference must never fall through to the default-send path.
+    if (type === 'daily_prompt' && userData?.notification_settings?.dailyPrompts !== true) {
+      return new Response(JSON.stringify({ success:true, skipped:true, reason:'user_opt_out' }),
+        {status:200,headers:{...corsHeaders,'Content-Type':'application/json'}});
+    }
     // Enforce notification preferences
     if (type && userData?.notification_settings) {
       const preferenceMap: Record<string, string> = {
+        daily_prompt: "dailyPrompts",
         message: "messages",
         message_reaction: "messages",
         marketplace_message: "messages",

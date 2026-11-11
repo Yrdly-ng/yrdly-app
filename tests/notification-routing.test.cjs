@@ -368,3 +368,10 @@ test('organizer ticket-sale notifications open event management on web and mobil
     '/events/event-id/manage'
   );
 });
+
+test('opt-in daily prompt notifications resolve to the question screen',()=>{
+  assert.equal(route({type:'daily_prompt',data:{}}),'/daily-prompts');
+  assert.equal(r.getPushNotificationDestination({type:'daily_prompt',url:'/daily-prompts'}),'/daily-prompts');
+  assert.equal(r.getPushNotificationDestination({title:'YRDLY',data:{type:'daily_prompt',url:'/daily-prompts'}}),'/daily-prompts');
+  assert.equal(r.getNotificationTarget({type:'daily_prompt'}),null);
+});
