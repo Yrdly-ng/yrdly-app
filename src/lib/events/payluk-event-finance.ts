@@ -180,6 +180,13 @@ export async function advancePaylukEventWithdrawal(reference: string, owner: str
         await PaylukService.claimFunds(customer, tx.payluk_tx_ref);
         escrow = await PaylukService.verifyEscrow(tx.payluk_tx_ref);
       }
+      // Payluk acknowledges a seller claim before the buyer's final 24-hour
+      // response window closes. CLAIMED + OPENED is pending, not released.
+      // Do not claim again, mark review, or submit a bank withdrawal.
+      if (escrow.status === 'CLAIMED' && escrow.state === 'OPENED') {
+        await save({ next_attempt_at: new Date(Date.now() + 60 * 60_000).toISOString() });
+        return intent;
+      }
       if (!matches() || escrow.state !== 'CLOSED' || !['COMPLETED', 'CLAIMED'].includes(escrow.status)) throw new WithdrawalReviewRequired('Escrow release is not confirmed.');
       await checkpoint(tx.id, 'released');
       return intent;
