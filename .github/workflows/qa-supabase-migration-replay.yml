@@ -31,7 +31,7 @@ jobs:
       - name: Validate QA baseline safety guard
         run: |
           grep -q 'Refusing baseline restore: target is not the verified empty QA branch' supabase/migrations/20261010140615_qa_schema_baseline_20261010.sql
-          test "$(find supabase/migrations -maxdepth 1 -name '*.sql' | wc -l)" -eq 54
+          test "$(find supabase/migrations -maxdepth 1 -name '*.sql' | wc -l)" -eq 55
       - name: Rebuild isolated local PostgreSQL from migrations
         run: supabase db start
       - name: Verify migration count, critical schema and RLS

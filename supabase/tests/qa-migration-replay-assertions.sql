@@ -6,8 +6,8 @@ DECLARE
   applied integer;
 BEGIN
   SELECT COUNT(*) INTO applied FROM supabase_migrations.schema_migrations;
-  IF applied <> 54 THEN
-    RAISE EXCEPTION 'Expected 54 QA migration records, found %', applied;
+  IF applied <> 55 THEN
+    RAISE EXCEPTION 'Expected 55 QA migration records, found %', applied;
   END IF;
 
   FOREACH object_name IN ARRAY ARRAY[
@@ -76,3 +76,20 @@ SELECT
  (SELECT md5(string_agg(k,E'\\n' ORDER BY k)) FROM col) AS column_fingerprint,
  (SELECT count(*) FROM pol) AS policy_count,
  (SELECT md5(string_agg(k,E'\\n' ORDER BY k)) FROM pol) AS policy_fingerprint;
+
+-- Guard against reintroducing permissive policies that were replaced in prod.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='users' AND policyname='Users can read all users') THEN
+    RAISE EXCEPTION 'Legacy public profile-read policy survived QA bootstrap';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='users' AND policyname='users_private_read') THEN
+    RAISE EXCEPTION 'Production-private users RLS policy is missing';
+  END IF;
+  IF (SELECT COUNT(*) FROM pg_proc WHERE pronamespace='public'::regnamespace AND proname LIKE 'audit_guard_%') < 5 THEN
+    RAISE EXCEPTION 'Production audit functions were not restored';
+  END IF;
+  IF (SELECT COUNT(*) FROM pg_trigger WHERE NOT tgisinternal AND tgname LIKE 'audit_guard_%') < 11 THEN
+    RAISE EXCEPTION 'Production audit triggers were not restored';
+  END IF;
+END $$;
