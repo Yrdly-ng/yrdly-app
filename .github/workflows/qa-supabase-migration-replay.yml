@@ -49,6 +49,11 @@ jobs:
           db="$(docker ps --format '{{.Names}}' | grep '^supabase_db_' | head -n 1)"
           test -n "$db"
           docker exec -i "$db" psql -X -v ON_ERROR_STOP=1 -t -A -U postgres -d postgres < supabase/tests/qa-schema-fingerprints.sql
+      - name: Print per-object DDL hashes for remaining differences
+        run: |
+          db="$(docker ps --format '{{.Names}}' | grep '^supabase_db_' | head -n 1)"
+          test -n "$db"
+          docker exec -i "$db" psql -X -v ON_ERROR_STOP=1 -t -A -U postgres -d postgres < supabase/tests/qa-object-fingerprints.sql
       - name: Stop local database
         if: always()
         run: supabase stop --no-backup || true
