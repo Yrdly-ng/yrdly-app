@@ -491,6 +491,7 @@ export function BuyButton({
                   )}
                 </button>
                 {walletRecoveryAvailable && (
+                <>
                 <button type="button" onClick={() => handleBuy('wallet')} disabled={loading}
                   className="w-full rounded-2xl border border-border px-4 py-3 text-sm font-semibold text-foreground disabled:opacity-50">
                   {loading ? 'Processing...' : 'Pay from my Payluk wallet'}
@@ -498,6 +499,7 @@ export function BuyButton({
                 <p className="text-xs text-muted-foreground text-center">
                   Already transferred money but checkout expired? Use your credited Payluk wallet without transferring again.
                 </p>
+                </>
                 )}
                 <div className="flex items-center gap-1.5 text-muted-foreground/70">
                   <Lock className="w-3.5 h-3.5" />
