@@ -30,6 +30,7 @@ import Image from "next/image";
 import { supabase } from "@/lib/supabase/supabase";
 import { clientFeedState } from "@/lib/activity/client-feed-state";
 import { CampaignBanner } from "@/components/campaigns/CampaignBanner";
+import DailyPromptCard from "@/components/daily-prompts/DailyPromptCard";
 
 const GREEN = "#82DB7E";
 
@@ -510,6 +511,8 @@ export function HomeScreen({ onViewProfile }: HomeScreenProps) {
             Post
           </button>
         </div>
+
+        <DailyPromptCard />
 
         {/* Onboarding Dialogs */}
         <EventCreatorOnboarding
