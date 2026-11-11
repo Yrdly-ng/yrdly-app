@@ -7,7 +7,7 @@ const BUYER = 'b11d0000-0000-0000-0000-000000000001';
 const TX = 'c22d0000-0000-0000-0000-000000000002';
 const escrowId = 'payluk-escrow-qa';
 
-function setup({ buyer = BUYER, balance = 2300, status = 'pending', remoteStatus = 'PENDING',
+function setup({ buyer = BUYER, balance = 2300, currency = 'NGN', status = 'pending', remoteStatus = 'PENDING',
                  wrongAmount = false, expired = false, uncertain = false, fundBeforeThrow = false } = {}) {
   let debits = 0, applied = 0, flags = 0, verified = 0;
   const row = {
@@ -40,7 +40,7 @@ function setup({ buyer = BUYER, balance = 2300, status = 'pending', remoteStatus
     '@/lib/supabase/supabase-admin': { supabaseAdmin: { from } },
     '@/lib/payments/payluk-service': { PaylukService: {
       verifyEscrow: async () => { verified++;return structuredClone(escrow); },
-      getCustomerWallet: async () => ({ mainBalance: balance, escrowBalance: 0, currency:'NGN' }),
+      getCustomerWallet: async () => ({ mainBalance: balance, escrowBalance: 0, currency }),
       fundEscrowFromWallet: async (_buyer,escrowRef,amount,reference) => {
         debits++;
         assert.equal(escrowRef,escrowId);assert.equal(amount,2300);
@@ -88,6 +88,21 @@ test('another user cannot spend buyer wallet',async()=>{
   assert.equal(res.status,404);
   assert.equal(h.counters().debits,0);
   assert.equal(h.counters().verified,0);
+});
+
+test('Payluk Nigerian wallet country code NG is accepted for NGN balance',async()=>{
+  const h=setup({currency:'NG'});
+  const res=await h.invoke();
+  assert.equal(res.status,200);
+  assert.equal(h.counters().debits,1);
+  assert.equal(h.counters().applied,1);
+});
+
+test('non-Nigerian wallet currency cannot be charged',async()=>{
+  const h=setup({currency:'USD'});
+  const res=await h.invoke();
+  assert.equal(res.status,409);
+  assert.equal(h.counters().debits,0);
 });
 
 test('insufficient deposited wallet balance cannot charge or change the order',async()=>{
