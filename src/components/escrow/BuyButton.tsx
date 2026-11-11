@@ -88,7 +88,7 @@ export function BuyButton({
         toast({ title: 'Payment confirmed', description: 'Your purchase is now linked to your order.' });
         router.push(`/transactions/${confirmed}`);
       } else if (response.status === 402) {
-        toast({ title: 'Payment still processing', description: 'If your transfer has reached your Payluk wallet, resume and choose Pay from wallet. Do not transfer again.' });
+        toast({ title: 'Payment still processing', description: 'Your transfer may have been credited to Payluk. Contact support or use an available Payluk wallet option before transferring again.' });
       } else {
         toast({ title: 'Payment needs attention', description: result.error || 'Contact support before paying again.', variant: 'destructive' });
       }
