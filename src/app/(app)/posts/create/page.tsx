@@ -493,7 +493,7 @@ export default function CreatePostPage() {
           )}
           {dailyPrompt && (
             <aside className="rounded-2xl border border-[#82DB7E]/30 bg-[#82DB7E]/10 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-[#82DB7E]">Answering today's question</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#82DB7E]">Answering today&apos;s question</p>
               <p className="mt-1 text-sm font-semibold">{dailyPrompt.question}</p>
               <p className="mt-1 text-xs text-[var(--yrdly-label)]">Your response will be a public neighbourhood post.</p>
             </aside>
