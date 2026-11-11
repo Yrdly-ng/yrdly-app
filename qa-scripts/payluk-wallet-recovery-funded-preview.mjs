@@ -52,11 +52,11 @@ const create = async (role) => {
       email:'yrdly.qa.wallet.' + role + '.' + randomUUID() + '@example.test',
       phone:phone()},
   });
-  assert.ok(c?.id, role + ' Payluk customer creation failed');
-  await request('PUT','/v1/customer/permissions/' + encodeURIComponent(c.id),{
+  assert.ok(c?.customerId, role + ' Payluk customer creation failed');
+  await request('PUT','/v1/customer/permissions/' + encodeURIComponent(c.customerId),{
     body:role==='buyer'?{canBuy:true}:{canSell:true}
   });
-  return c.id;
+  return c.customerId;
 };
 const seller = await create('seller');
 const buyer = await create('buyer');
