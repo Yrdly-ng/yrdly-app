@@ -180,6 +180,17 @@ export async function advancePaylukEventWithdrawal(reference: string, owner: str
         await PaylukService.claimFunds(customer, tx.payluk_tx_ref);
         escrow = await PaylukService.verifyEscrow(tx.payluk_tx_ref);
       }
+      // Payluk's seller-claim API only OPENS a 24-hour dispute window.
+      // The provider may return CLAIMED + OPENED while funds are still held.
+      // Keep the one-time claiming checkpoint, poll after the hold and NEVER
+      // call claimFunds again. Bank payout requires CLOSED provider evidence.
+      if (escrow.status === 'CLAIMED' && escrow.state === 'OPENED') {
+        if (allocation.release_status !== 'claiming') {
+          throw new WithdrawalReviewRequired('Untracked Payluk seller claim requires review.');
+        }
+        await save({ next_attempt_at: new Date(Date.now() + 60 * 60 * 1000).toISOString() });
+        return intent;
+      }
       if (!matches() || escrow.state !== 'CLOSED' || !['COMPLETED', 'CLAIMED'].includes(escrow.status)) throw new WithdrawalReviewRequired('Escrow release is not confirmed.');
       await checkpoint(tx.id, 'released');
       return intent;
