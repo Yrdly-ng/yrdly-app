@@ -66,8 +66,8 @@ test('cron requires explicit opt in, feature flags, secure request and no uncert
  const route=fs.readFileSync('src/app/api/cron/daily-prompts/route.ts','utf8');
  for(const term of ['CRON_SECRET','DAILY_PROMPT_PUSH_ENABLED','DAILY_PROMPTS_ENABLED',
   'dailyReminderTesterIds','ignoreDuplicates:true','daily_prompt_reminders',
-  'send-push-notification','dailyReminderExpiresAt','status=\'uncertain\'',
-  'notification_settings',{ }].filter(x=>typeof x==='string')){
+   'send-push-notification','dailyReminderExpiresAt',"resultCode='uncertain'",
+   'notification_settings'].filter(x=>typeof x==='string')){
    assert.ok(route.includes(term),'missing '+term);
  }
  const config=JSON.parse(fs.readFileSync('vercel.json','utf8'));
