@@ -688,6 +688,39 @@ export class PaylukService {
     return { ...response.data, environment };
   }
 
+  /**
+   * Explicit, buyer-authorized payment from an existing Payluk main wallet.
+   * This does NOT create a deposit or transfer money from a bank account.
+   * The caller must first verify the outstanding escrow and lock its local order.
+   * A stable reference is required so uncertain outcomes are reconciled, never
+   * retried with a new reference.
+   */
+  static async fundEscrowFromWallet(
+    buyerCustomerId: string,
+    escrowId: string,
+    amount: number,
+    reference: string,
+  ): Promise<void> {
+    if (!buyerCustomerId || !escrowId ||
+        !Number.isFinite(amount) || amount < 1000 ||
+        Math.round(amount * 100) !== amount * 100 ||
+        !/^yrdly-wallet-[0-9a-f-]{36}$/i.test(reference)) {
+      throw new Error('Invalid escrow wallet funding request');
+    }
+    await paylukRequest<unknown>('/v1/payment/escrow', {
+      method: 'POST',
+      customerId: buyerCustomerId,
+      redirect: 'error',
+      body: JSON.stringify({
+        amount,
+        reference,
+        transactionType: 'escrow',
+        gateway: 'wallet',
+        escrowDetails: { escrowId },
+      }),
+    });
+  }
+
   /** Alias for backward compatibility */
   static async getEscrowDetails(
     _customerId: string,
