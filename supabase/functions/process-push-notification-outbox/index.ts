@@ -278,6 +278,11 @@ serve(async (req) => {
           continue;
         }
       }
+      // Disable outstanding editorial reminders instantly during an incident.
+      if(pushData?.type==='daily_prompt' && Deno.env.get('DAILY_PROMPT_PUSH_ENABLED')!=='true') {
+        await updateDelivery(admin,delivery.id,{status:'skipped',last_error:'Daily question campaign paused'});
+        continue;
+      }
       // A queued campaign must still respect a user opting out before send.
       if (pushData?.type === 'daily_prompt' && recipient?.notification_settings?.dailyPrompts !== true) {
         await updateDelivery(admin,delivery.id,{status:'skipped',last_error:'Daily questions not opted in'});
