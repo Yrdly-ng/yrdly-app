@@ -63,6 +63,11 @@ export function ProfileDropdown({ onClose }: ProfileDropdownProps) {
       icon: Trophy,
       onClick: () => navigate("/admin/campaigns/small-businesses"),
     }] : []),
+    ...((profile as {is_admin?:boolean}|null)?.is_admin ? [{
+      label:"Daily questions",
+      icon:MessageCircle,
+      onClick:()=>navigate("/admin/daily-prompts"),
+    }] : []),
     {
       label: "My Bookings",
       icon: CalendarDays,
