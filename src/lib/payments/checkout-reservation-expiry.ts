@@ -4,7 +4,10 @@ import { getPaylukCustomerId } from './payluk-onboarding';
 import { applyEscrowPayment } from './escrow-payment';
 import { flagPayment } from './payment-reconciliation';
 
-export const CHECKOUT_RESERVATION_TTL_MS = 10 * 60 * 1000;
+// Bank transfers are reconciled asynchronously by Payluk (up to 30 minutes per cycle).
+// Keep provider-backed escrows available for four cycles; no-provider setup
+// orphans still expire after 10 minutes through the SQL cleanup worker.
+export const CHECKOUT_RESERVATION_TTL_MS = 2 * 60 * 60 * 1000;
 export const RESERVATION_SELECT = 'id,buyer_id,seller_id,item_type,status,payluk_tx_ref,payluk_escrow_id,total_amount,metadata,creating_escrow_started_at,created_at,updated_at';
 
 type Reservation = {
