@@ -1,0 +1,43 @@
+name: QA-only Supabase migration replay
+
+# This workflow has NO Supabase access tokens or production DB credentials.
+# It tests the isolated QA-only migration snapshot in a disposable local DB.
+on:
+  push:
+    branches:
+      - qa/onboarding-clean-migrations
+    paths:
+      - 'supabase/**'
+      - '.github/workflows/qa-supabase-migration-replay.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  migration-replay:
+    name: Fresh database migration replay (local only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out QA-only schema
+        uses: actions/checkout@v4
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v3
+        with:
+          version: v3.stable
+      - name: Print CLI and database versions
+        run: |
+          supabase --version
+          docker --version
+      - name: Validate QA baseline safety guard
+        run: |
+          grep -q 'Refusing baseline restore: target is not the verified empty QA branch' supabase/migrations/20261010140615_qa_schema_baseline_20261010.sql
+          test "$(find supabase/migrations -maxdepth 1 -name '*.sql' | wc -l)" -eq 59
+      - name: Rebuild isolated local PostgreSQL from migrations
+        run: supabase db start
+      - name: Print migration state
+        run: supabase migration list
+      - name: Stop local database
+        if: always()
+        run: supabase stop --no-backup || true
