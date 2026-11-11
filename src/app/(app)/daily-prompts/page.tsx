@@ -50,7 +50,7 @@ export default function DailyPromptAnswersPage() {
   return (
     <main className="max-w-2xl mx-auto px-4 py-8 pb-28 space-y-5">
       <Link href="/home" className="flex items-center gap-2 text-sm text-[var(--yrdly-label)]"><ArrowLeft className="h-4 w-4"/> Home</Link>
-      {loading ? <p className="text-sm text-muted-foreground">Loading today's question…</p> :
+      {loading ? <p className="text-sm text-muted-foreground">Loading today&apos;s question…</p> :
         !prompt ? <div className="rounded-3xl border p-6 text-center"><h1 className="font-bold text-lg">No question is live right now</h1><p className="text-sm text-muted-foreground mt-2">Check back for the next neighbourhood conversation.</p></div> :
         <>
           <header className="rounded-3xl border border-[#82DB7E]/30 bg-[#82DB7E]/10 p-5 space-y-3">
