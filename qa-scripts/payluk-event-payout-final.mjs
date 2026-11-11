@@ -27,7 +27,7 @@ assert.equal(process.env.VERCEL_ENV,'preview','Production payout QA is prohibite
 assert.equal(process.env.QA_ENVIRONMENT,'staging');
 assert.equal(process.env.QA_EXPECTED_PROJECT_REF,QA_PROJECT);
 assert.equal(process.env.NEXT_PUBLIC_SUPABASE_URL,`https://${QA_PROJECT}.supabase.co`);
-assert.ok(process.env.SUPABASE_SERVICE_ROLE_KEY,'Isolated QA service role is required');
+assert.ok(process.env.QA_EVENT_PAYOUT_BRIDGE_TOKEN && process.env.QA_EVENT_PAYOUT_BRIDGE_TOKEN.length > 45,'Ephemeral QA bridge authentication is required');
 assert.ok(process.env.PAYLUK_SECRET_KEY?.startsWith('sk_test_'),'Test Payluk credentials only');
 assert.equal(process.env.PAYLUK_BASE_URL,'https://staging.api.payluk.ng');
 assert.ok(['inspect','advance'].includes(MODE),'Invalid payout QA mode');
@@ -38,8 +38,26 @@ if (MODE === 'advance') {
   assert.notEqual(process.env.PAYLUK_EVENT_LIVE_APPROVED,'true');
 }
 
-const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY,{
-  auth:{persistSession:false,autoRefreshToken:false}
+const qaUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const restrictedBridge = qaUrl + '/functions/v1/yrdly-qa-payout-bridge-20261111';
+const bridgeFetch = async (input, options={}) => {
+  const inputUrl = new URL(typeof input === 'string' ? input : input.url || input.toString());
+  if(inputUrl.origin !== qaUrl || !inputUrl.pathname.startsWith('/rest/v1/')){
+    throw Error('QA bridge cannot access non-staging database endpoints');
+  }
+  const headers = Object.fromEntries(new Headers(options.headers || {}).entries());
+  const response = await fetch(restrictedBridge,{
+    method:'POST',
+    headers:{'content-type':'application/json','x-yrdly-qa-token':process.env.QA_EVENT_PAYOUT_BRIDGE_TOKEN},
+    body:JSON.stringify({method:options.method||'GET',path:inputUrl.pathname+inputUrl.search,
+      headers,body:typeof options.body==='string'?options.body:null}),
+    redirect:'error',signal:AbortSignal.timeout(15000)
+  });
+  return response;
+};
+const db = createClient(qaUrl,'qa-temporary-read-write-bridge',{
+  auth:{persistSession:false,autoRefreshToken:false},
+  global:{fetch:bridgeFetch}
 });
 function ok(result, name) {
   if (result.error) throw Error(name+': '+JSON.stringify({code:result.error.code||null, name:result.error.name||null, message:String(result.error.message||'').slice(0,220)}));
