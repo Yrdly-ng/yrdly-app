@@ -7,6 +7,9 @@ on:
     paths:
       - 'src/app/onboarding/**'
       - 'src/lib/auth/auth-service.ts'
+      - 'src/lib/auth/phone-otp-errors.ts'
+      - 'src/hooks/use-supabase-auth.tsx'
+      - 'tests/phone-otp-errors.test.cjs'
       - 'tests/onboarding-login-bootstrap.test.cjs'
       - 'src/lib/telemetry/**'
       - 'src/components/providers/TelemetryHandler.tsx'
@@ -38,6 +41,8 @@ jobs:
         run: pnpm test:telemetry
       - name: Login bootstrap safety tests
         run: node --test tests/onboarding-login-bootstrap.test.cjs
+      - name: Phone OTP failure message tests
+        run: node --test tests/phone-otp-errors.test.cjs
       - name: TypeScript check
         run: pnpm typecheck
       - name: ESLint
