@@ -12,6 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PushNotificationService } from '@/lib/notifications/push-notification-service';
+import { registerBrowserPush, webPushErrorMessage } from '@/lib/notifications/web-push-client';
 import type { NotificationSettings } from "../../../../types";
 
 export default function NotificationSettingsPage() {
@@ -217,55 +218,39 @@ export default function NotificationSettingsPage() {
                 <CardHeader>
                     <CardTitle className="font-yrdly-display text-foreground text-xl">Test Push Notifications</CardTitle>
                     <CardDescription className="text-[var(--yrdly-label)]">
-                        Test if push notifications are working properly.
+                        Register this browser and request a test notification. On iPhone, install YRDLY to your Home Screen first. A successful send means the push service accepted it; you still need to confirm it appears.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Button 
+                    <Button
                         onClick={async () => {
                             if (!user) return;
-                            
-                            try {
-                                if (typeof window !== 'undefined' && 'Notification' in window) {
-                                    if (Notification.permission === 'default') {
-                                        const perm = await Notification.requestPermission();
-                                        if (perm !== 'granted') {
-                                            toast({
-                                                variant: "destructive",
-                                                title: "Permission Denied",
-                                                description: "Please enable notifications in your browser settings to receive test notifications.",
-                                            });
-                                            return;
-                                        }
-                                    } else if (Notification.permission === 'denied') {
-                                        toast({
-                                            variant: "destructive",
-                                            title: "Permission Denied",
-                                            description: "Notifications are blocked in your browser settings. Please unblock them to test.",
-                                        });
-                                        return;
-                                    }
-                                }
-
-                                const success = await PushNotificationService.testNotification(user.id);
-                                if (success) {
-                                    toast({
-                                        title: "Test Notification Sent 🔔",
-                                        description: "A test notification was delivered to your device.",
-                                    });
-                                } else {
-                                    toast({
-                                        variant: "destructive",
-                                        title: "Test Failed",
-                                        description: "Could not send test notification. Please try again.",
-                                    });
-                                }
-                            } catch (error) {
-                                console.error('Error testing push notification:', error);
+                            // The test must register *this* browser and must
+                            // never be interpreted as proof of handset receipt.
+                            const registered = await registerBrowserPush(user.id, true);
+                            if (!registered.ok) {
                                 toast({
                                     variant: "destructive",
-                                    title: "Test Failed",
-                                    description: "An error occurred while testing push notifications.",
+                                    title: "Browser notifications unavailable",
+                                    description: webPushErrorMessage(registered),
+                                });
+                                return;
+                            }
+                            try {
+                                const accepted = await PushNotificationService.testNotification(user.id);
+                                toast(accepted ? {
+                                    title: "Web push test requested",
+                                    description: "The push service accepted your test. Check your browser's system notification; acceptance does not confirm display.",
+                                } : {
+                                    variant: "destructive",
+                                    title: "Web push test not accepted",
+                                    description: "The web push service couldn't accept this notification. Check notification permissions or try again.",
+                                });
+                            } catch {
+                                toast({
+                                    variant: "destructive",
+                                    title: "Web push test failed",
+                                    description: "Try again after refreshing the app.",
                                 });
                             }
                         }}

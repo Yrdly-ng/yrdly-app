@@ -3,11 +3,17 @@
 import { useRouter } from 'next/navigation';
 import { ToastAction } from '@/components/ui/toast';
 import { getNotificationDestination } from '@/lib/notifications/notification-routing';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/use-supabase-auth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase/supabase';
 import { Bell, X } from 'lucide-react';
+import {
+    registerBrowserPush,
+    unsubscribeBrowserPushLocally,
+    webPushAvailability,
+    webPushErrorMessage,
+} from '@/lib/notifications/web-push-client';
 
 export function PushNotificationManager() {
     const { user, profile } = useAuth();
@@ -17,97 +23,43 @@ export function PushNotificationManager() {
     const [permission, setPermission] = useState<NotificationPermission>('default');
     const [showBanner, setShowBanner] = useState(true);
 
+    const userId = user?.id;
+    const hasProfile = Boolean(profile);
     useEffect(() => {
-        // Check if push notifications are supported
-        if ('Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window) {
-            setIsSupported(true);
-            setPermission(Notification.permission);
-        }
+        const checkPermission = () => {
+            const supported = webPushAvailability();
+            setIsSupported(supported.ok);
+            if ('Notification' in window) setPermission(Notification.permission);
+        };
+        checkPermission();
+        document.addEventListener('visibilitychange', checkPermission);
+        return () => document.removeEventListener('visibilitychange', checkPermission);
     }, []);
 
-    const subscribeUser = async (): Promise<boolean> => {
-        try {
-            if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || !user || !profile) return false;
+    const subscribeUser = useCallback(async (requestPermission = false) => {
+        if (!userId || !hasProfile)
+            return { ok: false, reason: 'unsupported' } as const;
+        return registerBrowserPush(userId, requestPermission);
+    }, [userId, hasProfile]);
 
-            const registration = await navigator.serviceWorker.ready;
-            
-            const applicationServerKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-            const base64 = applicationServerKey
-                .replace(/-/g, '+')
-                .replace(/_/g, '/');
-            const padded = base64 + '='.repeat((4 - base64.length % 4) % 4);
-            
-            const binaryString = atob(padded);
-            const keyArray = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-                keyArray[i] = binaryString.charCodeAt(i);
-            }
-            
-            const subscription = await registration.pushManager.getSubscription()
-                ?? await registration.pushManager.subscribe({
-                    userVisibleOnly: true,
-                    applicationServerKey: keyArray
-                });
-
-            const subscriptionJson = subscription.toJSON();
-            const { data: existing, error: lookupError } = await supabase
-                .from('push_subscriptions')
-                .select('id')
-                .eq('user_id', user.id)
-                .filter('subscription->>endpoint', 'eq', subscription.endpoint)
-                .maybeSingle();
-
-            if (lookupError) throw lookupError;
-
-            if (existing) {
-                const { error } = await supabase
-                    .from('push_subscriptions')
-                    .update({ subscription: subscriptionJson, updated_at: new Date().toISOString() })
-                    .eq('id', existing.id);
-                if (error) throw error;
-            } else {
-                const { error } = await supabase.from('push_subscriptions').insert({
-                    user_id: user.id,
-                    subscription: subscriptionJson,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
-                });
-
-                // Strict Mode or two tabs can race the lookup. If the other
-                // request inserted the endpoint first, refresh that row.
-                if (error?.code === '23505') {
-                    const { data: racedRow, error: raceLookupError } = await supabase
-                        .from('push_subscriptions')
-                        .select('id')
-                        .eq('user_id', user.id)
-                        .filter('subscription->>endpoint', 'eq', subscription.endpoint)
-                        .maybeSingle();
-                    if (raceLookupError || !racedRow) throw error;
-
-                    const { error: updateError } = await supabase
-                        .from('push_subscriptions')
-                        .update({ subscription: subscriptionJson, updated_at: new Date().toISOString() })
-                        .eq('id', racedRow.id);
-                    if (updateError) throw updateError;
-                } else if (error) {
-                    throw error;
-                }
-            }
-            return true;
-
-        } catch (error) {
-            console.error("Push notification setup error:", error);
-            return false;
-        }
-    };
-
-    // Auto-subscribe if permission is already granted and profile exists in public.users
+    // Permissions can persist across visits; refresh an existing subscription
+    // when a user logs in or the browser's VAPID key has changed.
     useEffect(() => {
-        if (!user || !profile || !isSupported) return;
-        if (permission === 'granted') {
-            subscribeUser();
-        }
-    }, [user, profile, isSupported, permission]);
+        if (!userId || !hasProfile || !isSupported || permission !== 'granted') return;
+        void subscribeUser().then((result) => {
+            if (!result.ok) console.warn('Browser notification registration:', result.reason);
+        });
+    }, [userId, hasProfile, isSupported, permission, subscribeUser]);
+
+    // Covers forced auth invalidation and other sign-out paths. Normal logout
+    // removes the user's database row before clearing authentication.
+    useEffect(() => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+            if (event === 'SIGNED_OUT')
+                void unsubscribeBrowserPushLocally().catch(() => {});
+        });
+        return () => subscription.unsubscribe();
+    }, []);
 
     // Real-time listener: capture & display every notification (messages, friend requests, alerts, etc.)
     useEffect(() => {
@@ -146,30 +98,25 @@ export function PushNotificationManager() {
         };
     }, [user, toast, router]);
 
-    // Handle user tapping Enable Notifications button
+    // Browser permission and subscription happen only after the user taps Enable.
     const handleEnableNotifications = async () => {
         try {
-            const result = await Notification.requestPermission();
-            setPermission(result);
-            if (result === 'granted') {
-                const subscribed = await subscribeUser();
-                toast(subscribed ? {
-                    title: "Notifications Enabled",
-                    description: "You'll now receive updates and messages in real time.",
-                } : {
-                    variant: "destructive",
-                    title: "Notifications couldn't be set up",
-                    description: "Please try again. If the issue continues, refresh the app and retry.",
-                });
-            } else if (result === 'denied') {
-                toast({
-                    variant: "destructive",
-                    title: "Permission Denied",
-                    description: "Notifications are blocked. You can enable them in your device browser settings.",
-                });
-            }
-        } catch (err) {
-            console.error("Request permission error:", err);
+            const result = await subscribeUser(true);
+            if ('Notification' in window) setPermission(Notification.permission);
+            toast(result.ok ? {
+                title: "Notifications Enabled",
+                description: "This browser is registered for YRDLY notifications.",
+            } : {
+                variant: "destructive",
+                title: "Notifications couldn't be set up",
+                description: webPushErrorMessage(result),
+            });
+        } catch {
+            toast({
+                variant: "destructive",
+                title: "Notifications couldn't be set up",
+                description: "Please try again from Notification Settings.",
+            });
         } finally {
             setShowBanner(false);
         }
