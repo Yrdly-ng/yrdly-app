@@ -11,11 +11,11 @@ function loadRouting() {
   return module.exports;
 }
 const routing = loadRouting();
-function worker() {
+function worker({ clientList = [] } = {}) {
   const handlers = {}, shown = [], opened = [];
   const self = { location: { origin: 'https://app.yrdly.ng' }, addEventListener: (name, handler) => handlers[name] = handler,
     registration: { showNotification: async (title, options) => shown.push({ title, ...options }) } };
-  const context = vm.createContext({ self, URL, clients: { matchAll: async () => [], openWindow: async url => opened.push(url) },
+  const context = vm.createContext({ self, URL, clients: { matchAll: async () => clientList, openWindow: async url => opened.push(url) },
     importScripts: () => vm.runInContext(fs.readFileSync('public/notification-routing.js', 'utf8'), context) });
   vm.runInContext(fs.readFileSync('public/sw.js', 'utf8'), context);
   return { handlers, shown, opened, self };
@@ -108,4 +108,40 @@ test('the authenticated layout mounts one push guard and preserves the entire lo
   assert.equal((source.match(/<NotificationRouteGuard>/g) || []).length, 1);
   assert.ok(source.includes('window.location.search'));
   assert.ok(source.includes('encodeURIComponent(next)'));
+});
+
+test('empty Web Push events still create a visible system notification', async () => {
+  const w = worker(); let pending;
+  w.handlers.push({ data: null, waitUntil: value => pending = value });
+  await pending;
+  assert.equal(w.shown.length, 1);
+  assert.equal(w.shown[0].title, 'YRDLY');
+  assert.ok(w.shown[0].body);
+});
+test('service-worker message notifications extend the event lifetime', async () => {
+  const w = worker(); let pending;
+  w.handlers.message({ data: { type: 'SHOW_NOTIFICATION',
+    payload: { title: 'YRDLY', body: 'Test', data: { type: 'welcome' } } },
+    waitUntil: value => pending = value });
+  assert.ok(pending && typeof pending.then === 'function');
+  await pending;
+  assert.equal(w.shown[0].body, 'Test');
+});
+test('notification taps navigate and focus an existing same-origin PWA window', async () => {
+  const navigated = [], focused = [];
+  const current = {
+    url: 'https://app.yrdly.ng/home',
+    async navigate(url) { navigated.push(url); return this; },
+    async focus() { focused.push(true); },
+  };
+  const w = worker({ clientList: [current] }); let pending;
+  w.handlers.notificationclick({
+    notification: { data: { type: 'post_like', postId: 'test-post' }, close() {} },
+    waitUntil: value => pending = value,
+  });
+  await pending;
+  assert.equal(w.opened.length, 0);
+  assert.equal(focused.length, 1);
+  assert.equal(new URL(navigated[0]).pathname, '/posts/test-post');
+  assert.equal(new URL(navigated[0]).origin, 'https://app.yrdly.ng');
 });
