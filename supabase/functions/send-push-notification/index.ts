@@ -191,12 +191,13 @@ serve(async (req) => {
       body.set(chunk, offset);
       offset += chunk.length;
     }
-    const { userId, payload, type } = JSON.parse(
+    const { userId, payload, type, channel } = JSON.parse(
       new TextDecoder().decode(body),
     ) as {
       userId: string;
       payload: PushPayload;
       type?: string;
+      channel?: "web" | "all";
     };
 
     if (
@@ -463,7 +464,8 @@ serve(async (req) => {
     };
 
     let queuedCount = 0;
-    if (validTokenRows.length > 0) {
+    // A web self-test must never send notifications to native devices.
+    if (validTokenRows.length > 0 && channel !== "web") {
       const notificationId =
         typeof safeData.notificationId === "string" &&
         /^[0-9a-f-]{36}$/i.test(safeData.notificationId)
