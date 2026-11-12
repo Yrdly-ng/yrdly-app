@@ -341,12 +341,20 @@ serve(async (req) => {
         });
         continue;
       }
-      const { data: tokenRow } = await admin
+      const { data: tokenRow, error: tokenLoadError } = await admin
         .from("user_push_tokens")
-        .select("push_token")
+        .select("id,push_token")
         .eq("user_id", delivery.user_id)
         .eq("device_id", delivery.device_id)
         .maybeSingle();
+      if (tokenLoadError) {
+        await updateDelivery(admin, delivery.id, {
+          status: "queued",
+          next_attempt_at: new Date(Date.now() + 60_000).toISOString(),
+          last_error: "Cannot verify native push token right now",
+        });
+        continue;
+      }
       if (!tokenRow?.push_token) {
         await updateDelivery(admin, delivery.id, {
           status: "failed",
@@ -354,6 +362,40 @@ serve(async (req) => {
         });
         continue;
       }
+
+      // A single Expo push token represents one app installation. Historical
+      // reinstall/account-switch rows can share the same token; sending to
+      // them leaks another account's message and fans out duplicates.
+      // Only the latest registered row may receive pushes. Fail closed when
+      // ownership cannot be verified (never send on a database read error).
+      const { data: tokenOwners, error: ownershipError } = await admin
+        .from("user_push_tokens")
+        .select("id,user_id,device_id")
+        .eq("push_token", tokenRow.push_token)
+        .order("updated_at", { ascending: false })
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .limit(501);
+      if (ownershipError || !tokenOwners || tokenOwners.length >= 501) {
+        await updateDelivery(admin, delivery.id, {
+          status: "queued",
+          next_attempt_at: new Date(Date.now() + 60_000).toISOString(),
+          last_error: "Could not verify native push token ownership",
+        });
+        continue;
+      }
+      const currentOwner = tokenOwners[0];
+      if (!currentOwner ||
+          currentOwner.id !== tokenRow.id ||
+          currentOwner.user_id !== delivery.user_id ||
+          currentOwner.device_id !== delivery.device_id) {
+        await updateDelivery(admin, delivery.id, {
+          status: "skipped",
+          last_error: "Superseded native token registration; avoiding wrong-account or duplicate push",
+        });
+        continue;
+      }
+
       sendable.push({
         delivery,
         token: tokenRow.push_token,

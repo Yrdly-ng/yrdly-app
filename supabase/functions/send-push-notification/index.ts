@@ -85,6 +85,8 @@ function pushExpiry(
   data: Record<string, unknown> | undefined,
   type?: string,
 ): string {
+  // Self-tests must not arrive hours later and be mistaken for live events.
+  if (type === "push_test") return new Date(Date.now() + 120_000).toISOString();
   const explicitExpiry =
     data?.expiresAt ??
     data?.expires_at ??
@@ -191,13 +193,14 @@ serve(async (req) => {
       body.set(chunk, offset);
       offset += chunk.length;
     }
-    const { userId, payload, type, channel } = JSON.parse(
+    const { userId, payload, type, channel, targetDeviceId } = JSON.parse(
       new TextDecoder().decode(body),
     ) as {
       userId: string;
       payload: PushPayload;
       type?: string;
-      channel?: "web" | "all";
+      channel?: "web" | "native" | "all";
+      targetDeviceId?: string;
     };
 
     if (
@@ -214,6 +217,16 @@ serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         },
       );
+    }
+
+    // A native test may target only a specific locally registered device.
+    // The caller is an authenticated server endpoint, not an untrusted SDK.
+    if (channel === "native" &&
+        (typeof targetDeviceId !== "string" ||
+         !/^[0-9a-f-]{36}$/i.test(targetDeviceId))) {
+      return new Response(JSON.stringify({ error: "native_device_required" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Init Supabase admin client to read the user's push token
@@ -234,7 +247,7 @@ serve(async (req) => {
     const [tokenResult, webSubscriptionResult] = await Promise.all([
       supabaseAdmin
         .from("user_push_tokens")
-        .select("device_id, push_token")
+        .select("id, device_id, push_token")
         .eq("user_id", userId),
       supabaseAdmin
         .from("push_subscriptions")
@@ -258,8 +271,9 @@ serve(async (req) => {
 
     const validTokenRows = (tokenRows ?? []).filter(
       (row) =>
-        row.push_token.startsWith("ExponentPushToken[") ||
-        row.push_token.startsWith("ExpoPushToken["),
+        (!targetDeviceId || row.device_id === targetDeviceId) &&
+        (row.push_token.startsWith("ExponentPushToken[") ||
+        row.push_token.startsWith("ExpoPushToken[")),
     );
     const validTokens = validTokenRows.map((row) => row.push_token);
     const webSubscriptions = webSubscriptionRows ?? [];
@@ -449,7 +463,7 @@ serve(async (req) => {
       ...(collapseId
         ? { collapseId, tag: collapseId, threadId: collapseId }
         : {}),
-      ttl: [
+      ttl: type === "push_test" ? 120 : [
         "message",
         "message_reaction",
         "marketplace_message",
@@ -464,8 +478,43 @@ serve(async (req) => {
     };
 
     let queuedCount = 0;
-    // A web self-test must never send notifications to native devices.
+    let skippedNativeRegistrations = 0;
+    // A native Expo token identifies one physical installation, even if an
+    // old account or reinstall has left multiple database rows behind.
+    // Avoid queuing duplicate or cross-account deliveries, and fail closed if
+    // we cannot confirm which row is currently authoritative.
+    let eligibleNativeTokenRows: typeof validTokenRows = [];
     if (validTokenRows.length > 0 && channel !== "web") {
+      const uniqueTokens = [...new Set(validTokenRows.map((row) => row.push_token))];
+      const { data: owners, error: ownerError } = await supabaseAdmin
+        .from("user_push_tokens")
+        .select("id,user_id,device_id,push_token")
+        .in("push_token", uniqueTokens)
+        .order("updated_at", { ascending: false })
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .limit(2001);
+      if (ownerError || !owners || owners.length >= 2001) {
+        console.error("Native push token ownership cannot be confirmed; native delivery skipped");
+        skippedNativeRegistrations = validTokenRows.length;
+      } else {
+        const latestByToken = new Map<string, typeof owners[number]>();
+        for (const owner of owners) {
+          if (!latestByToken.has(owner.push_token))
+            latestByToken.set(owner.push_token, owner);
+        }
+        eligibleNativeTokenRows = validTokenRows.filter((row) => {
+          const current = latestByToken.get(row.push_token);
+          return !!current && current.id === row.id &&
+            current.user_id === userId && current.device_id === row.device_id;
+        });
+        skippedNativeRegistrations = validTokenRows.length - eligibleNativeTokenRows.length;
+        if (skippedNativeRegistrations)
+          console.warn("Suppressed superseded native push registrations:", skippedNativeRegistrations);
+      }
+    }
+    // A web self-test must never send notifications to native devices.
+    if (eligibleNativeTokenRows.length > 0 && channel !== "web") {
       const notificationId =
         typeof safeData.notificationId === "string" &&
         /^[0-9a-f-]{36}$/i.test(safeData.notificationId)
@@ -479,7 +528,7 @@ serve(async (req) => {
       const { data: queuedRows, error: queueError } = await supabaseAdmin
         .from("push_notification_deliveries")
         .upsert(
-          validTokenRows.map((tokenRow) => ({
+          eligibleNativeTokenRows.map((tokenRow) => ({
             notification_id: notificationId,
             user_id: userId,
             device_id: tokenRow.device_id,
@@ -495,7 +544,7 @@ serve(async (req) => {
         )
         .select("id");
       if (queueError) throw queueError;
-      queuedCount = queuedRows?.length ?? validTokenRows.length;
+      queuedCount = queuedRows?.length ?? eligibleNativeTokenRows.length;
     }
 
     // One browser endpoint is a single physical browser subscription. Older
@@ -567,10 +616,11 @@ serve(async (req) => {
     const vapidSubject =
       Deno.env.get("VAPID_SUBJECT") ?? "mailto:support@yrdly.ng";
 
-    if (eligibleWebSubscriptions.length > 0 && vapidPublicKey && vapidPrivateKey) {
+    if (channel !== "native" && eligibleWebSubscriptions.length > 0 && vapidPublicKey && vapidPrivateKey) {
       try {
         webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
-        const webTTL = ["message", "message_reaction", "marketplace_message"].includes(type ?? "")
+        const webTTL = type === "push_test" ? 120
+          : ["message", "message_reaction", "marketplace_message"].includes(type ?? "")
           ? 3600 : 86400;
         const results = await Promise.allSettled(
           eligibleWebSubscriptions.map(async (row) => {
@@ -615,7 +665,7 @@ serve(async (req) => {
       } catch {
         console.error("Web push sender failed to initialize");
       }
-    } else if (eligibleWebSubscriptions.length > 0) {
+    } else if (channel !== "native" && eligibleWebSubscriptions.length > 0) {
       console.error("Web push subscriptions exist but VAPID credentials are not configured");
     }
 
@@ -627,6 +677,7 @@ serve(async (req) => {
         webSkippedStale: staleWebSubscriptions,
         webPruned,
         queuedNativeDevices: queuedCount,
+        skippedNativeRegistrations,
         reason:
           webSent === 0 && queuedCount === 0 ? "delivery_failed" : undefined,
       }),
