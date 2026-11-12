@@ -85,6 +85,8 @@ function pushExpiry(
   data: Record<string, unknown> | undefined,
   type?: string,
 ): string {
+  // Self-tests must not arrive hours later and be mistaken for live events.
+  if (type === "push_test") return new Date(Date.now() + 120_000).toISOString();
   const explicitExpiry =
     data?.expiresAt ??
     data?.expires_at ??
@@ -461,7 +463,7 @@ serve(async (req) => {
       ...(collapseId
         ? { collapseId, tag: collapseId, threadId: collapseId }
         : {}),
-      ttl: [
+      ttl: type === "push_test" ? 120 : [
         "message",
         "message_reaction",
         "marketplace_message",
@@ -617,7 +619,8 @@ serve(async (req) => {
     if (channel !== "native" && eligibleWebSubscriptions.length > 0 && vapidPublicKey && vapidPrivateKey) {
       try {
         webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
-        const webTTL = ["message", "message_reaction", "marketplace_message"].includes(type ?? "")
+        const webTTL = type === "push_test" ? 120
+          : ["message", "message_reaction", "marketplace_message"].includes(type ?? "")
           ? 3600 : 86400;
         const results = await Promise.allSettled(
           eligibleWebSubscriptions.map(async (row) => {
