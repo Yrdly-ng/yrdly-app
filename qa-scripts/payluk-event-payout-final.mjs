@@ -152,7 +152,7 @@ console.log('QA PRECHECK:',JSON.stringify({
   bankKind:'Payluk Provider Test Bank',amountNaira:1140,
   providerReferencePresent:!!row.provider_reference,transferStarted:!!row.transfer_started_at
 }));
-if (MODE==='inspect') { const wallet=await service.getCustomerWallet(customer); console.log('QA WALLET:',JSON.stringify({mainBalance:wallet.mainBalance,escrowBalance:wallet.escrowBalance,withdrawalAmount:1140})); process.exit(0); }
+if (MODE==='inspect') { const wallet=await service.getCustomerWallet(customer); const banks=await service.getBankList(); const bankCode=bank.account_details.bank_code||bank.account_details.bankCode; const match=Array.isArray(banks)?banks.find(b=>b.code===bankCode):null; console.log('QA WALLET/BANK:',JSON.stringify({mainBalance:wallet.mainBalance,escrowBalance:wallet.escrowBalance,withdrawalAmount:1140,bankListValid:Array.isArray(banks),bankCodeMatched:!!match,bankActive:match?.active,bankDeleted:match?.is_deleted})); process.exit(0); }
 assert.equal(config.paylukEventEnvironment(),'test');
 assert.equal(config.paylukEventWithdrawalsEnabled(),true);
 assert.ok(claimedAt!==null,'Cannot infer provider claim eligibility');
