@@ -179,7 +179,8 @@ export async function unregisterBrowserPush(userId: string): Promise<void> {
     await supabase.from("push_subscriptions")
       .delete()
       .eq("user_id", userId)
-      .filter("subscription->>endpoint", "eq", subscription.endpoint);
+      .filter("subscription->>endpoint", "eq", subscription.endpoint)
+      .abortSignal(AbortSignal.timeout(2500));
     await subscription.unsubscribe();
   } catch {
     // A disconnected browser or expired session should not prevent sign-out.
