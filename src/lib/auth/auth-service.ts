@@ -247,6 +247,22 @@ export class AuthService {
   // Sign out
   static async signOut() {
     try {
+      // Unsubscribe this browser while the previous user's RLS session is
+      // still valid. Never leave a shared browser receiving account pushes.
+      // Cleanup is best-effort so notification failures cannot block logout.
+      if (typeof window !== "undefined") {
+        try {
+          const { data } = await supabase.auth.getSession();
+          if (data.session?.user?.id) {
+            const { unregisterBrowserPush } = await import(
+              "@/lib/notifications/web-push-client"
+            );
+            await unregisterBrowserPush(data.session.user.id);
+          }
+        } catch {
+          // Continue to the security-critical session sign out.
+        }
+      }
       const { error } = await supabase.auth.signOut({ scope: "local" });
       if (error) throw error;
       return { error: null };
