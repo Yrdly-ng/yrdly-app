@@ -496,6 +496,55 @@ serve(async (req) => {
       queuedCount = queuedRows?.length ?? validTokenRows.length;
     }
 
+    // One browser endpoint is a single physical browser subscription. Older
+    // account rows must not receive a different account's private messages.
+    // PostgREST's JSON path filter matches the exact endpoint, including
+    // subscriptions stored for other accounts. Fail closed on lookup errors.
+    type BrowserSubscription = {
+      id: string;
+      user_id: string;
+      subscription: { endpoint?: string; keys?: Record<string, string> };
+      updated_at?: string | null;
+      created_at?: string | null;
+    };
+    let eligibleWebSubscriptions: BrowserSubscription[] = [];
+    let staleWebSubscriptions = 0;
+    const endpoints = Array.from(new Set(
+      (webSubscriptions as BrowserSubscription[])
+        .map((row) => row.subscription?.endpoint)
+        .filter((endpoint): endpoint is string =>
+          typeof endpoint === "string" && endpoint.startsWith("https://")),
+    ));
+    if (endpoints.length) {
+      const { data: owners, error: ownerError } = await supabaseAdmin
+        .from("push_subscriptions")
+        .select("id, user_id, subscription, updated_at, created_at")
+        .in("subscription->>endpoint", endpoints)
+        .order("updated_at", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false, nullsFirst: false })
+        .order("id", { ascending: false })
+        .limit(2000);
+      if (ownerError || !owners || owners.length >= 2000) {
+        console.error("Web push ownership check unavailable; browser delivery skipped");
+      } else {
+        const latestByEndpoint = new Map<string, BrowserSubscription>();
+        for (const candidate of owners as BrowserSubscription[]) {
+          const endpoint = candidate.subscription?.endpoint;
+          if (typeof endpoint === "string" && !latestByEndpoint.has(endpoint))
+            latestByEndpoint.set(endpoint, candidate);
+        }
+        eligibleWebSubscriptions = (webSubscriptions as BrowserSubscription[])
+          .filter((row) =>
+            row.subscription?.endpoint &&
+            latestByEndpoint.get(row.subscription.endpoint)?.id === row.id &&
+            latestByEndpoint.get(row.subscription.endpoint)?.user_id === userId,
+          );
+        staleWebSubscriptions = webSubscriptions.length - eligibleWebSubscriptions.length;
+        if (staleWebSubscriptions)
+          console.warn("Web push suppressed stale account/browser subscription:", staleWebSubscriptions);
+      }
+    }
+
     // Browser notifications remain immediate; native delivery is handled by the durable outbox worker.
     const webPayload = JSON.stringify({
       title: pushTitle,
@@ -506,6 +555,9 @@ serve(async (req) => {
     });
 
     let webSent = 0;
+    let webFailed = 0;
+    let webPruned = 0;
+    const failureCodes = new Map<string, number>();
     const vapidPublicKey =
       Deno.env.get("VAPID_PUBLIC_KEY") ??
       Deno.env.get("NEXT_PUBLIC_VAPID_PUBLIC_KEY");
@@ -513,46 +565,65 @@ serve(async (req) => {
     const vapidSubject =
       Deno.env.get("VAPID_SUBJECT") ?? "mailto:support@yrdly.ng";
 
-    if (webSubscriptions.length > 0 && vapidPublicKey && vapidPrivateKey) {
+    if (eligibleWebSubscriptions.length > 0 && vapidPublicKey && vapidPrivateKey) {
       try {
         webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
+        const webTTL = ["message", "message_reaction", "marketplace_message"].includes(type ?? "")
+          ? 3600 : 86400;
         const results = await Promise.allSettled(
-          webSubscriptions.map(async (row) => {
+          eligibleWebSubscriptions.map(async (row) => {
             try {
-              await webpush.sendNotification(row.subscription, webPayload);
+              // Provider acceptance != delivery to the user's browser.
+              await webpush.sendNotification(row.subscription, webPayload, {
+                TTL: webTTL,
+                urgency: "normal",
+              });
               webSent += 1;
             } catch (error) {
               const statusCode = (error as { statusCode?: number }).statusCode;
+              const label = typeof statusCode === "number"
+                ? String(statusCode) : "unknown";
+              failureCodes.set(label, (failureCodes.get(label) ?? 0) + 1);
               if (statusCode === 404 || statusCode === 410) {
-                await supabaseAdmin
+                // Expired endpoints cannot recover: remove this exact row.
+                const { error: deleteError } = await supabaseAdmin
                   .from("push_subscriptions")
                   .delete()
-                  .eq("id", row.id);
+                  .eq("id", row.id)
+                  .eq("user_id", userId);
+                if (!deleteError) webPruned += 1;
               }
               throw error;
             }
           }),
         );
-        const failures = results.filter(
-          (result) => result.status === "rejected",
-        ).length;
-        if (failures > 0)
-          console.error(
-            `Web push failed for ${failures} subscription(s) for user ${userId}`,
-          );
-      } catch (error) {
-        console.error("Could not send web push notifications:", error);
+        webFailed = results.filter((result) => result.status === "rejected").length;
+        if (webFailed) {
+          console.error("Web push provider rejected subscriptions:", JSON.stringify({
+            failed: webFailed,
+            statusCodes: Object.fromEntries(failureCodes),
+          }));
+        }
+        console.info("Web push delivery summary:", JSON.stringify({
+          acceptedByProvider: webSent,
+          failed: webFailed,
+          staleAccountSubscriptionsSkipped: staleWebSubscriptions,
+          expiredSubscriptionsPruned: webPruned,
+        }));
+      } catch {
+        console.error("Web push sender failed to initialize");
       }
-    } else if (webSubscriptions.length > 0) {
-      console.error(
-        "Web push subscriptions exist but VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY are not configured",
-      );
+    } else if (eligibleWebSubscriptions.length > 0) {
+      console.error("Web push subscriptions exist but VAPID credentials are not configured");
     }
 
     return new Response(
       JSON.stringify({
         success: webSent > 0 || queuedCount > 0,
         webSent,
+        webFailed,
+        webSkippedStale: staleWebSubscriptions,
+        webPruned,
         queuedNativeDevices: queuedCount,
         reason:
           webSent === 0 && queuedCount === 0 ? "delivery_failed" : undefined,
