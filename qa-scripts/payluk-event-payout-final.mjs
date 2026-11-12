@@ -53,6 +53,7 @@ const bridgeFetch = async (input, options={}) => {
       headers,body:typeof options.body==='string'?options.body:null}),
     redirect:'error',signal:AbortSignal.timeout(15000)
   });
+  if (!response.ok) console.log('QA BRIDGE HTTP ERROR', JSON.stringify({status:response.status,path:inputUrl.pathname,method:options.method||'GET',body:(await response.clone().text()).slice(0,250)}));
   return response;
 };
 const db = createClient(qaUrl,'qa-temporary-read-write-bridge',{
