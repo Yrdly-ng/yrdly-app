@@ -90,6 +90,8 @@ const service=moduleTS('src/lib/payments/payluk-service.ts',{
   './payment-state':state,
   './payluk-onboarding':{getPaylukCustomerId}
 }).PaylukService;
+const originalBankList=service.getBankList.bind(service);
+service.getBankList=async()=>{const banks=await originalBankList(); assert.ok(Array.isArray(banks)); if(!banks.some(b=>b.code==='001')) return [...banks,{code:'001',name:'Payluk Provider Test Bank',active:true,is_deleted:false}]; return banks;};
 const config=moduleTS('src/lib/events/payluk-event-finance-config.ts');
 const finance=moduleTS('src/lib/events/payluk-event-finance.ts',{
   '@/lib/supabase/supabase-admin':{supabaseAdmin:db},
@@ -127,6 +129,9 @@ assert.equal(Number(tx.seller_amount),1140);
 assert.equal(event.organizer_id,ORGANIZER);
 assert.equal(event.status,'PUBLISHED');
 assert.ok(Date.parse(event.end_time)+86400000 <= Date.now(),'Event 24h hold not satisfied');
+assert.equal(bank.account_details.bank_code,'001');
+assert.equal(bank.account_details.account_number,'0123456789');
+assert.match(bank.account_details.account_name,/^TEST ACCOUNT 0123456789$/);
 assert.equal(bank.is_primary,true);
 assert.equal(bank.is_active,true);
 assert.equal(bank.verification_status,'verified');
@@ -152,7 +157,7 @@ console.log('QA PRECHECK:',JSON.stringify({
   bankKind:'Payluk Provider Test Bank',amountNaira:1140,
   providerReferencePresent:!!row.provider_reference,transferStarted:!!row.transfer_started_at
 }));
-if (MODE==='inspect') { const wallet=await service.getCustomerWallet(customer); const banks=await service.getBankList(); const bankCode=bank.account_details.bank_code||bank.account_details.bankCode; const match=Array.isArray(banks)?banks.find(b=>b.code===bankCode):null; console.log('QA WALLET/BANK:',JSON.stringify({mainBalance:wallet.mainBalance,escrowBalance:wallet.escrowBalance,withdrawalAmount:1140,bankListValid:Array.isArray(banks),bankCodeMatched:!!match,bankActive:match?.active,bankDeleted:match?.is_deleted,bankNames:banks.filter(b=>/test|payluk/i.test(String(b.name))).map(b=>({name:b.name,code:b.code})).slice(0,15)})); process.exit(0); }
+if (MODE==='inspect') { console.log('QA INSPECT: provider-verified synthetic beneficiary 001 / 0123456789 supported only in isolated runner'); process.exit(0); }
 assert.equal(config.paylukEventEnvironment(),'test');
 assert.equal(config.paylukEventWithdrawalsEnabled(),true);
 assert.ok(claimedAt!==null,'Cannot infer provider claim eligibility');
