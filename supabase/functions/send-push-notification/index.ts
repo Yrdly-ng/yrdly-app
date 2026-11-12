@@ -119,6 +119,25 @@ serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  // The VAPID *public* key is intentionally accessible to web/PWA clients.
+  // The private key and all POST/notification operations remain server-only.
+  // This avoids relying on build-time Vercel environment configuration.
+  if (req.method === "GET") {
+    const publicKey = Deno.env.get("VAPID_PUBLIC_KEY") ??
+      Deno.env.get("NEXT_PUBLIC_VAPID_PUBLIC_KEY");
+    const available = Boolean(publicKey && Deno.env.get("VAPID_PRIVATE_KEY"));
+    return new Response(
+      JSON.stringify(available ? { publicKey } : { error: "web_push_unavailable" }),
+      {
+        status: available ? 200 : 503,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+          "Cache-Control": "no-store",
+        },
+      },
+    );
+  }
   if (req.method !== "POST")
     return new Response("Method not allowed", {
       status: 405,
