@@ -234,7 +234,7 @@ serve(async (req) => {
     const [tokenResult, webSubscriptionResult] = await Promise.all([
       supabaseAdmin
         .from("user_push_tokens")
-        .select("device_id, push_token")
+        .select("id, device_id, push_token")
         .eq("user_id", userId),
       supabaseAdmin
         .from("push_subscriptions")
@@ -464,8 +464,43 @@ serve(async (req) => {
     };
 
     let queuedCount = 0;
-    // A web self-test must never send notifications to native devices.
+    let skippedNativeRegistrations = 0;
+    // A native Expo token identifies one physical installation, even if an
+    // old account or reinstall has left multiple database rows behind.
+    // Avoid queuing duplicate or cross-account deliveries, and fail closed if
+    // we cannot confirm which row is currently authoritative.
+    let eligibleNativeTokenRows: typeof validTokenRows = [];
     if (validTokenRows.length > 0 && channel !== "web") {
+      const uniqueTokens = [...new Set(validTokenRows.map((row) => row.push_token))];
+      const { data: owners, error: ownerError } = await supabaseAdmin
+        .from("user_push_tokens")
+        .select("id,user_id,device_id,push_token")
+        .in("push_token", uniqueTokens)
+        .order("updated_at", { ascending: false })
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .limit(2001);
+      if (ownerError || !owners || owners.length >= 2001) {
+        console.error("Native push token ownership cannot be confirmed; native delivery skipped");
+        skippedNativeRegistrations = validTokenRows.length;
+      } else {
+        const latestByToken = new Map<string, typeof owners[number]>();
+        for (const owner of owners) {
+          if (!latestByToken.has(owner.push_token))
+            latestByToken.set(owner.push_token, owner);
+        }
+        eligibleNativeTokenRows = validTokenRows.filter((row) => {
+          const current = latestByToken.get(row.push_token);
+          return !!current && current.id === row.id &&
+            current.user_id === userId && current.device_id === row.device_id;
+        });
+        skippedNativeRegistrations = validTokenRows.length - eligibleNativeTokenRows.length;
+        if (skippedNativeRegistrations)
+          console.warn("Suppressed superseded native push registrations:", skippedNativeRegistrations);
+      }
+    }
+    // A web self-test must never send notifications to native devices.
+    if (eligibleNativeTokenRows.length > 0 && channel !== "web") {
       const notificationId =
         typeof safeData.notificationId === "string" &&
         /^[0-9a-f-]{36}$/i.test(safeData.notificationId)
@@ -479,7 +514,7 @@ serve(async (req) => {
       const { data: queuedRows, error: queueError } = await supabaseAdmin
         .from("push_notification_deliveries")
         .upsert(
-          validTokenRows.map((tokenRow) => ({
+          eligibleNativeTokenRows.map((tokenRow) => ({
             notification_id: notificationId,
             user_id: userId,
             device_id: tokenRow.device_id,
@@ -495,7 +530,7 @@ serve(async (req) => {
         )
         .select("id");
       if (queueError) throw queueError;
-      queuedCount = queuedRows?.length ?? validTokenRows.length;
+      queuedCount = queuedRows?.length ?? eligibleNativeTokenRows.length;
     }
 
     // One browser endpoint is a single physical browser subscription. Older
@@ -627,6 +662,7 @@ serve(async (req) => {
         webSkippedStale: staleWebSubscriptions,
         webPruned,
         queuedNativeDevices: queuedCount,
+        skippedNativeRegistrations,
         reason:
           webSent === 0 && queuedCount === 0 ? "delivery_failed" : undefined,
       }),
