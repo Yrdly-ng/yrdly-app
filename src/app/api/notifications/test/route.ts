@@ -9,6 +9,10 @@ export async function POST(request:NextRequest) {
   if (limitError) return NextResponse.json({ error:'Try again later' },{ status:503 });
   if (!allowed) return NextResponse.json({ error:'Too many requests' },{ status:429 });
   const { data,error:pushError } = await invokeServerFunction(supabaseAdmin, 'send-push-notification',
-    { userId:user.id,payload:{ title:'Yrdly push test',body:'Your push notifications are working.',url:'/home' } });
-  return NextResponse.json({ success:!pushError && data?.success === true });
+    { userId:user.id,channel:'web',type:'push_test',payload:{ title:'YRDLY web push test',body:'This is a test notification for your browser.',url:'/home' } });
+  const webAccepted = typeof data?.webSent === 'number' ? data.webSent : 0;
+  return NextResponse.json({
+    success: !pushError && webAccepted > 0,
+    webAccepted,
+  }, { headers: { 'Cache-Control': 'no-store' } });
 }
