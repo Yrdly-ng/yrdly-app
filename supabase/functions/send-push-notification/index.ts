@@ -191,13 +191,14 @@ serve(async (req) => {
       body.set(chunk, offset);
       offset += chunk.length;
     }
-    const { userId, payload, type, channel } = JSON.parse(
+    const { userId, payload, type, channel, targetDeviceId } = JSON.parse(
       new TextDecoder().decode(body),
     ) as {
       userId: string;
       payload: PushPayload;
       type?: string;
-      channel?: "web" | "all";
+      channel?: "web" | "native" | "all";
+      targetDeviceId?: string;
     };
 
     if (
@@ -214,6 +215,16 @@ serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         },
       );
+    }
+
+    // A native test may target only a specific locally registered device.
+    // The caller is an authenticated server endpoint, not an untrusted SDK.
+    if (channel === "native" &&
+        (typeof targetDeviceId !== "string" ||
+         !/^[0-9a-f-]{36}$/i.test(targetDeviceId))) {
+      return new Response(JSON.stringify({ error: "native_device_required" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Init Supabase admin client to read the user's push token
@@ -258,8 +269,9 @@ serve(async (req) => {
 
     const validTokenRows = (tokenRows ?? []).filter(
       (row) =>
-        row.push_token.startsWith("ExponentPushToken[") ||
-        row.push_token.startsWith("ExpoPushToken["),
+        (!targetDeviceId || row.device_id === targetDeviceId) &&
+        (row.push_token.startsWith("ExponentPushToken[") ||
+        row.push_token.startsWith("ExpoPushToken[")),
     );
     const validTokens = validTokenRows.map((row) => row.push_token);
     const webSubscriptions = webSubscriptionRows ?? [];
@@ -602,7 +614,7 @@ serve(async (req) => {
     const vapidSubject =
       Deno.env.get("VAPID_SUBJECT") ?? "mailto:support@yrdly.ng";
 
-    if (eligibleWebSubscriptions.length > 0 && vapidPublicKey && vapidPrivateKey) {
+    if (channel !== "native" && eligibleWebSubscriptions.length > 0 && vapidPublicKey && vapidPrivateKey) {
       try {
         webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
         const webTTL = ["message", "message_reaction", "marketplace_message"].includes(type ?? "")
@@ -650,7 +662,7 @@ serve(async (req) => {
       } catch {
         console.error("Web push sender failed to initialize");
       }
-    } else if (eligibleWebSubscriptions.length > 0) {
+    } else if (channel !== "native" && eligibleWebSubscriptions.length > 0) {
       console.error("Web push subscriptions exist but VAPID credentials are not configured");
     }
 
