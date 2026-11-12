@@ -59,14 +59,28 @@ function decodeVapidKey(value: string): Uint8Array {
 }
 
 async function publicVapidKey(): Promise<Uint8Array> {
-  const response = await fetch("/api/push/public-key", { cache: "no-store" });
-  if (!response.ok) throw new Error("Public VAPID key unavailable");
-  const data: unknown = await response.json();
-  const key = data && typeof data === "object" && "publicKey" in data
-    ? (data as { publicKey?: unknown }).publicKey
-    : null;
-  if (typeof key !== "string") throw new Error("Public VAPID key unavailable");
-  return decodeVapidKey(key);
+  // Prefer the live public key so rotation is automatic. Some Cloudflare
+  // bot challenges block fetch() to a public endpoint; never require a
+  // successful automated request to obtain a key built into the PWA.
+  try {
+    const response = await fetch("/api/push/public-key", {
+      cache: "no-store",
+      signal: typeof AbortSignal.timeout === "function"
+        ? AbortSignal.timeout(6000) : undefined,
+    });
+    if (response.ok) {
+      const data: unknown = await response.json();
+      const key = data && typeof data === "object" && "publicKey" in data
+        ? (data as { publicKey?: unknown }).publicKey
+        : null;
+      if (typeof key === "string") return decodeVapidKey(key);
+    }
+  } catch {
+    // Use the public build-time fallback when Cloudflare challenges the fetch.
+  }
+  const fallback = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  if (typeof fallback === "string") return decodeVapidKey(fallback);
+  throw new Error("Public VAPID key unavailable");
 }
 
 function keysMatch(existing: ArrayBuffer | null, expected: Uint8Array) {
