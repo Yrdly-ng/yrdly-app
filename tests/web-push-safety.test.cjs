@@ -12,7 +12,7 @@ const compiled = ts.transpileModule(source, {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText;
 
-function harness({ permission = 'granted', ios = false, standalone = true, keyAvailable = true, oldKey = false } = {}) {
+function harness({ permission = 'granted', ios = false, standalone = true, keyAvailable = true, oldKey = false, fallbackKey = false } = {}) {
   const calls = { registered: 0, subscribed: 0, unsubscribed: 0, rows: [], deleted: [], permissions: 0 };
   const state = { subscription: null };
   const mockSubscription = (key) => ({
@@ -68,11 +68,12 @@ function harness({ permission = 'granted', ios = false, standalone = true, keyAv
     return { ok: keyAvailable, async json() { return { publicKey }; } };
   };
   const module = { exports: {} };
-  new Function('require', 'module', 'exports', 'window', 'navigator', 'Notification', 'fetch', 'atob', 'AbortSignal', 'console',
+  new Function('require', 'module', 'exports', 'window', 'navigator', 'Notification', 'fetch', 'atob', 'AbortSignal', 'console', 'process',
     compiled)(
     (id) => { assert.equal(id, '@/lib/supabase/supabase'); return { supabase }; },
     module, module.exports, window, navigator, Notification, fetched,
     (value) => Buffer.from(value, 'base64').toString('binary'), AbortSignal, console,
+    { env: { NEXT_PUBLIC_VAPID_PUBLIC_KEY: fallbackKey ? publicKey : undefined } },
   );
   return { api: module.exports, calls, state };
 }
@@ -93,6 +94,14 @@ test('missing public-key endpoint fails closed without registering', async () =>
   const result = await api.registerBrowserPush('user-a');
   assert.deepEqual(result, { ok: false, reason: 'vapid_unavailable' });
   assert.equal(calls.subscribed, 0);
+});
+
+test('Cloudflare-challenged public-key requests fall back to the safe build-time public key', async () => {
+  const { api, calls } = harness({ keyAvailable: false, fallbackKey: true });
+  const result = await api.registerBrowserPush('user-a');
+  assert.equal(result.ok, true);
+  assert.equal(calls.registered, 1);
+  assert.equal(calls.subscribed, 1);
 });
 
 test('changing the VAPID key removes stale subscription before registering fresh', async () => {
