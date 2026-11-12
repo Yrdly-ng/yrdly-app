@@ -157,7 +157,7 @@ console.log('QA PRECHECK:',JSON.stringify({
   bankKind:'Payluk Provider Test Bank',amountNaira:1140,
   providerReferencePresent:!!row.provider_reference,transferStarted:!!row.transfer_started_at
 }));
-if (MODE==='inspect') { console.log('QA INSPECT: provider-verified synthetic beneficiary 001 / 0123456789 supported only in isolated runner'); process.exit(0); }
+if (MODE==='inspect') { if(row.provider_reference){const remote=await service.getWithdrawalDetails(customer,row.provider_reference); console.log('QA PROVIDER TRANSFER:',JSON.stringify(remote));} else console.log('QA INSPECT: no provider reference'); process.exit(0); }
 assert.equal(config.paylukEventEnvironment(),'test');
 assert.equal(config.paylukEventWithdrawalsEnabled(),true);
 assert.ok(claimedAt!==null,'Cannot infer provider claim eligibility');
