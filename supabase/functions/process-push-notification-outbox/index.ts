@@ -9,9 +9,11 @@ type Delivery = {
   attempt_count: number;
   expires_at: string;
   provider_ticket_id: string | null;
+  notification_type?: string;
 };
 
 const preferenceMap: Record<string, string> = {
+  daily_prompt: "dailyPrompts",
   message: "messages",
   message_reaction: "messages",
   marketplace_message: "messages",
@@ -90,6 +92,33 @@ function expoDeliveryError(result: {
     return 'FCM SENDER_ID_MISMATCH: the Firebase sender in this Android app does not match the Expo FCM credentials.';
   }
   return result.message ?? result.details?.error ?? 'Expo could not deliver the notification';
+}
+
+// Permanent Expo/FCM failures need a new token, corrected credentials,
+// or a corrected payload: retrying the same job cannot repair them.
+function isPermanentExpoError(result: {
+  message?: string;
+  details?: { error?: string; fcm?: { response?: string } };
+}): boolean {
+  const code = result.details?.error ?? "";
+  let fcmCode = "";
+  try {
+    const response = JSON.parse(result.details?.fcm?.response ?? "{}");
+    fcmCode = response.error?.details?.find(
+      (entry: { errorCode?: string }) => typeof entry.errorCode === "string",
+    )?.errorCode ?? "";
+  } catch {
+    // Malformed provider diagnostics must not crash this worker.
+  }
+  const permanent = new Set([
+    "DeviceNotRegistered", "InvalidCredentials", "InvalidPushToken",
+    "MessageTooBig", "MismatchSenderId", "SenderIdMismatch",
+    "SENDER_ID_MISMATCH", "INVALID_ARGUMENT", "UNREGISTERED",
+    "THIRD_PARTY_AUTH_ERROR",
+  ]);
+  return permanent.has(code) || permanent.has(fcmCode) ||
+    /malformed or contained invalid parameters|recipient device is not registered|sender.id.mismatch/i
+      .test(result.message ?? "");
 }
 
 function validServiceKey(req: Request): string | null {
@@ -216,6 +245,11 @@ serve(async (req) => {
             status: "failed",
             last_error: message,
           });
+        } else if (isPermanentExpoError(receipt)) {
+          await updateDelivery(admin, delivery.id, {
+            status: "failed",
+            last_error: message,
+          });
         } else if (
           delivery.attempt_count < 5 &&
           Date.parse(delivery.expires_at) > Date.now()
@@ -277,6 +311,25 @@ serve(async (req) => {
           continue;
         }
       }
+      const notificationType = String(pushData?.type ?? delivery.notification_type ?? "");
+      // Emergency stop and strict opt-in are checked at delivery, too:
+      // queued reminders must never bypass an opt-out or a campaign pause.
+      if (notificationType === "daily_prompt" &&
+          Deno.env.get("DAILY_PROMPT_PUSH_ENABLED") !== "true") {
+        await updateDelivery(admin, delivery.id, {
+          status: "skipped",
+          last_error: "Daily prompt campaign paused",
+        });
+        continue;
+      }
+      if (notificationType === "daily_prompt" &&
+          recipient?.notification_settings?.dailyPrompts !== true) {
+        await updateDelivery(admin, delivery.id, {
+          status: "skipped",
+          last_error: "Daily prompts not opted in",
+        });
+        continue;
+      }
       const preference = preferenceMap[String(pushData?.type ?? "")];
       if (
         preference &&
@@ -326,8 +379,21 @@ serve(async (req) => {
         },
         body: JSON.stringify(sendable.map((item) => item.message)),
       });
-      if (!expoResponse.ok)
+      if (!expoResponse.ok) {
+        // A permanent 4xx rejects the entire batch. Do not repeatedly
+        // resend invalid payloads (408 and 429 are retryable).
+        if (expoResponse.status >= 400 && expoResponse.status < 500 &&
+            expoResponse.status !== 408 && expoResponse.status !== 429) {
+          for (const { delivery } of sendable) {
+            await updateDelivery(admin, delivery.id, {
+              status: "failed",
+              last_error: `Expo rejected batch (HTTP ${expoResponse.status}); check payload and FCM credentials`,
+            });
+          }
+          continue;
+        }
         throw new Error(`Expo push service returned ${expoResponse.status}`);
+      }
       const result = await expoResponse.json();
       for (let i = 0; i < sendable.length; i += 1) {
         const { delivery, token } = sendable[i];
@@ -351,8 +417,13 @@ serve(async (req) => {
               status: "failed",
               last_error: message,
             });
-          } else if (
-            delivery.attempt_count < 5 &&
+          } else if (isPermanentExpoError(ticket ?? {})) {
+          await updateDelivery(admin, delivery.id, {
+            status: "failed",
+            last_error: message,
+          });
+        } else if (
+          delivery.attempt_count < 5 &&
             Date.parse(delivery.expires_at) > Date.now()
           ) {
             await updateDelivery(admin, delivery.id, {

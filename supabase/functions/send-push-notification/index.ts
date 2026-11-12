@@ -255,9 +255,26 @@ serve(async (req) => {
       );
     }
 
+    // Do not let callers bypass the editorial kill switch by omitting the
+    // top-level type while placing daily_prompt inside payload.data.
+    const isDailyPrompt = type === "daily_prompt" || payload.data?.type === "daily_prompt";
+    // Keep editorial reminders OFF unless explicitly enabled at the
+    // function runtime. Missing consent is always an opt-out.
+    if (isDailyPrompt && Deno.env.get("DAILY_PROMPT_PUSH_ENABLED") !== "true") {
+      return new Response(JSON.stringify({ success: true, skipped: true, reason: "campaign_paused" }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (isDailyPrompt && userData?.notification_settings?.dailyPrompts !== true) {
+      return new Response(JSON.stringify({ success: true, skipped: true, reason: "user_opt_out" }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Enforce notification preferences
     if (type && userData?.notification_settings) {
       const preferenceMap: Record<string, string> = {
+        daily_prompt: "dailyPrompts",
         message: "messages",
         message_reaction: "messages",
         marketplace_message: "messages",
