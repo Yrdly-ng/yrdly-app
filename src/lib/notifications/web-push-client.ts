@@ -111,7 +111,7 @@ export async function registerBrowserPush(
       }
       subscription ??= await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: vapidKey,
+        applicationServerKey: Uint8Array.from(vapidKey).buffer as ArrayBuffer,
       });
       const json = subscription.toJSON();
       if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth)
