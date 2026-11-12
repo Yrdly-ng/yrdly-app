@@ -93,18 +93,28 @@ self.addEventListener('fetch', (event) => {
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
     const { title, body, icon, badge, data } = event.data.payload || {};
-    self.registration.showNotification(title || 'Yrdly', {
+    event.waitUntil(self.registration.showNotification(title || 'Yrdly', {
       body: body || '',
       icon: icon || '/icon-192x192.png',
       badge: badge || '/icon-192x192.png',
       data: data || {},
       vibrate: [100, 50, 100],
-    });
+    }));
   }
 });
 
 self.addEventListener('push', (event) => {
-  if (!event.data) return;
+  // Safari requires a visible notification for every push, even if a remote
+  // provider sends no payload. An invisible push can revoke permission.
+  if (!event.data) {
+    event.waitUntil(self.registration.showNotification('YRDLY', {
+      body: 'You have a new update.',
+      icon: '/icon-192x192.png',
+      badge: '/icon-192x192.png',
+      data: {},
+    }));
+    return;
+  }
   let data;
   try {
     data = event.data.json();
@@ -136,6 +146,19 @@ self.addEventListener('notificationclick', (event) => {
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       const existing = clientList.find((c) => c.url === targetUrl && 'focus' in c);
       if (existing) return existing.focus();
+      // Installed PWAs should reuse their existing window rather than
+      // opening a separate copy on each notification tap.
+      const reusable = clientList.find((c) => {
+        try {
+          return new URL(c.url).origin === self.location.origin &&
+            'navigate' in c && 'focus' in c;
+        } catch {
+          return false;
+        }
+      });
+      if (reusable) return reusable.navigate(targetUrl)
+        .then(() => reusable.focus())
+        .catch(() => clients.openWindow(targetUrl));
       return clients.openWindow(targetUrl);
     })
   );
