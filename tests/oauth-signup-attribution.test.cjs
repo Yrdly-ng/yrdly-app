@@ -10,7 +10,7 @@ function compile(path, jsx = false) {
     compilerOptions: {
       module: ts.ModuleKind.CommonJS,
       target: ts.ScriptTarget.ES2022,
-      jsx: jsx ? ts.JsxEmit.ReactJSX : undefined,
+      ...(jsx ? { jsx: ts.JsxEmit.ReactJSX } : {}),
     },
     reportDiagnostics: true,
   });
