@@ -1,4 +1,4 @@
-import { signupAttribution } from "@/lib/attribution/signup";
+import { signupAttribution, appendOAuthAttribution } from "@/lib/attribution/signup";
 import { trackWebAccountCreated } from "@/lib/telemetry/analytics";
 import { checkActiveSession, endRevokedSession } from "./session-policy";
 import { safeRelativePath } from "./auth-navigation";
@@ -208,6 +208,7 @@ export class AuthService {
       const callbackUrl = new URL("/auth/callback", window.location.origin);
       const destination = safeRelativePath(next, "");
       if (destination) callbackUrl.searchParams.set("next", destination);
+      appendOAuthAttribution(callbackUrl, signupAttribution());
       const redirectUrl = callbackUrl.toString();
 
       const { data, error } = await supabase.auth.signInWithOAuth({
@@ -233,6 +234,7 @@ export class AuthService {
       const callbackUrl = new URL("/auth/callback", window.location.origin);
       const destination = safeRelativePath(next, "");
       if (destination) callbackUrl.searchParams.set("next", destination);
+      appendOAuthAttribution(callbackUrl, signupAttribution());
       const redirectUrl = callbackUrl.toString();
 
       const { data, error } = await supabase.auth.signInWithOAuth({
