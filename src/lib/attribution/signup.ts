@@ -100,9 +100,11 @@ export function acquisitionTouch(url: URL, referrer: string): AcquisitionTouch |
   const domain = referrerDomain(referrer);
   let source = safeValue(q.get("utm_source"));
   let medium = safeValue(q.get("utm_medium"));
-  if (!source && (q.has("gclid") || q.has("gad_source"))) {
-    source = "google"; medium = "cpc";
-  } else if (!source && q.has("msclkid")) {
+  const googleAdClick = ["gclid", "gad_source", "gbraid", "wbraid"]
+    .some(key => q.has(key));
+  if (!source && googleAdClick) source = "google";
+  if (!medium && source === "google" && googleAdClick) medium = "cpc";
+  if (!source && q.has("msclkid")) {
     source = "bing"; medium = "cpc";
   } else if (!source && domain) {
     if (/(^|\.)yrdly\.ng$/.test(domain)) {
