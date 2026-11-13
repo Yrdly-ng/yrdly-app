@@ -1,3 +1,6 @@
+import { signupAttribution, appendOAuthAttribution } from "@/lib/attribution/signup";
+import { trackWebAccountCreated } from "@/lib/telemetry/analytics";
+import { reportGoogleAdsSignup } from "@/lib/attribution/google-ads";
 import { checkActiveSession, endRevokedSession } from "./session-policy";
 import { safeRelativePath } from "./auth-navigation";
 import { supabase } from "../supabase/supabase";
@@ -66,6 +69,7 @@ export class AuthService {
     username?: string,
   ) {
     try {
+      const attribution = signupAttribution();
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -77,6 +81,7 @@ export class AuthService {
           data: {
             name,
             username,
+            signup_attribution: attribution,
           },
         },
       });
@@ -115,6 +120,12 @@ export class AuthService {
         };
       }
 
+      // Count genuine account creation, not pageviews, CTA clicks or
+      // duplicate emails. Telemetry never blocks registration success.
+      if (data.user) {
+        reportGoogleAdsSignup(data.user.id);
+        void trackWebAccountCreated(data.user.id, attribution);
+      }
       return { user: data.user, error: null };
     } catch (error) {
       console.error("Sign up error:", error);
@@ -201,6 +212,7 @@ export class AuthService {
       const callbackUrl = new URL("/auth/callback", window.location.origin);
       const destination = safeRelativePath(next, "");
       if (destination) callbackUrl.searchParams.set("next", destination);
+      appendOAuthAttribution(callbackUrl, signupAttribution());
       const redirectUrl = callbackUrl.toString();
 
       const { data, error } = await supabase.auth.signInWithOAuth({
@@ -226,6 +238,7 @@ export class AuthService {
       const callbackUrl = new URL("/auth/callback", window.location.origin);
       const destination = safeRelativePath(next, "");
       if (destination) callbackUrl.searchParams.set("next", destination);
+      appendOAuthAttribution(callbackUrl, signupAttribution());
       const redirectUrl = callbackUrl.toString();
 
       const { data, error } = await supabase.auth.signInWithOAuth({

@@ -1,3 +1,5 @@
+import { readOAuthAttribution, type SignupAttribution } from '@/lib/attribution/signup';
+import { captureNewOAuthAccount } from '@/lib/attribution/server-events';
 import { safeRelativePath } from '@/lib/auth/auth-navigation';
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/supabase-server';
@@ -41,6 +43,15 @@ export async function GET(request: Request) {
       .eq('id', userId)
       .maybeSingle();
 
+    // Only newly created OAuth accounts are attributable as new signups.
+    // An old user whose public profile was deleted must NOT count again.
+    const authProvider = session.user.app_metadata?.provider;
+    const createdAgo = Date.now() - Date.parse(session.user.created_at);
+    const newOAuthMethod: "google" | "apple" | null =
+      (authProvider === "google" || authProvider === "apple") &&
+      Number.isFinite(createdAgo) && createdAgo >= -60_000 && createdAgo < 600_000
+        ? authProvider : null;
+
     // If profile does not exist yet (first-time Google OAuth sign in)
     if (!profile) {
       const googleName = session.user.user_metadata?.full_name || 
@@ -63,6 +74,23 @@ export async function GET(request: Request) {
         return NextResponse.redirect(`${requestUrl.origin}/login?error=${encodeURIComponent('Could not create your profile. Please try again.')}`);
       }
 
+      if (newOAuthMethod) {
+        const unknown = { source: "unknown", medium: "unknown" };
+        const attribution: SignupAttribution = readOAuthAttribution(requestUrl) ?? {
+          version: 1, first: unknown, last: unknown,
+          captured_at: new Date().toISOString(),
+        };
+        // Store the same bounded marketing source with the authenticated
+        // identity. This is analytics metadata, never an authorization claim.
+        const { error: metadataError } = await supabase.auth.updateUser({
+          data: { signup_attribution: attribution },
+        });
+        if (metadataError) console.warn("Could not attach OAuth signup attribution");
+        await captureNewOAuthAccount(userId, newOAuthMethod, attribution);
+        // Browser-based Google Ads tag may report one real signup after login;
+        // browser verifies account age before acting on this routing marker.
+        return onboardingRedirect('/onboarding/verify-phone?new_signup=' + newOAuthMethod);
+      }
       return onboardingRedirect('/onboarding/verify-phone');
     }
 

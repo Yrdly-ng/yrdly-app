@@ -13,6 +13,8 @@ import { ServiceWorkerRegister } from '@/components/providers/ServiceWorkerRegis
 import { PushNotificationManager } from '@/components/notifications/PushNotificationManager';
 import { CrispChat } from '@/components/CrispChat';
 import { TelemetryHandler } from '@/components/providers/TelemetryHandler';
+import { AcquisitionCapture } from '@/components/providers/AcquisitionCapture';
+import { SignupConversionHandler } from '@/components/providers/SignupConversionHandler';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://app.yrdly.ng'),
@@ -74,7 +76,9 @@ export default function RootLayout({
           disableTransitionOnChange
           storageKey="yrdly-theme"
         >
+          <AcquisitionCapture />
           <AuthProvider>
+            <SignupConversionHandler />
             <TelemetryHandler />
             {children}
             <PushNotificationManager />
@@ -84,6 +88,21 @@ export default function RootLayout({
           <Analytics />
           <SpeedInsights />
           <ServiceWorkerRegister />
+          {process.env.VERCEL_ENV === "production" && (
+            <>
+              <Script
+                id="yrdly-google-ads-gtag"
+                strategy="afterInteractive"
+                src="https://www.googletagmanager.com/gtag/js?id=AW-18468457055"
+              />
+              <Script id="yrdly-google-ads-config" strategy="afterInteractive">{`
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                gtag('js', new Date());
+                gtag('config', 'AW-18468457055');
+              `}</Script>
+            </>
+          )}
           {process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY && (
             <Script
               src={`https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places`}

@@ -434,3 +434,37 @@ test("activation events are identifiable, privacy-safe and include only bounded 
   assert.equal(rejected.properties.action_type, undefined);
   assert.equal(scrub({event:"unknown_funnel_event",properties:{}}),null);
 });
+
+
+test("account-created analytics preserves campaign dimensions but never private URL data", async () => {
+  const r = runtime();
+  const analytics = r.load("analytics");
+  await analytics.trackWebAccountCreated(A, {
+    version: 1,
+    first: { source: "instagram", medium: "social", campaign: "profile_bio" },
+    last: { source: "google", medium: "cpc", campaign: "november_ads" },
+    captured_at: "2026-11-13T00:00:00Z",
+  });
+  assert.ok(r.calls.some(([name, id]) => name === "identify" && id === A));
+  const [, eventName, payload] = r.calls.find(([name, event]) =>
+    name === "capture" && event === "account_created");
+  assert.equal(eventName, "account_created");
+  assert.equal(payload.acquisition_first_source, "instagram");
+  assert.equal(payload.acquisition_last_campaign, "november_ads");
+  const sanitized = r.analyticsOptions.before_send({
+    event: "account_created",
+    properties: {
+      ...payload,
+      email: "someone@example.com",
+      $current_url: "https://app.yrdly.ng/login?password=secret",
+      gclid: "private-click-id",
+      $set: { phone: "secret" },
+      acquisition_first_source: "alice@example.com",
+    },
+  });
+  assert.ok(sanitized);
+  assert.equal(sanitized.properties.acquisition_first_source, undefined);
+  assert.equal(sanitized.properties.acquisition_last_source, "google");
+  assert.equal(sanitized.properties.signup_method, "email");
+  assert.doesNotMatch(JSON.stringify(sanitized), /example\.com|password|private-click-id|phone|secret/);
+});

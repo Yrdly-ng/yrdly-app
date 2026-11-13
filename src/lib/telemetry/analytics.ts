@@ -4,6 +4,7 @@ import { isTelemetryUserId } from "./sentry-privacy";
 import { productEvents, sanitizeAnalyticsEvent } from "./analytics-privacy";
 import { pageTemplate } from "./routes";
 import { homeState } from "./metadata";
+import type { SignupAttribution } from "@/lib/attribution/signup";
 
 let client: PostHog | undefined;
 let initializing: Promise<void> | undefined;
@@ -160,6 +161,35 @@ export async function trackWebActivationEvent(
     });
   } catch {
     /* Activation instrumentation must never interrupt the product. */
+  }
+}
+
+/**
+ * Genuine email account creation only. PostHog's privacy filter allows
+ * exactly these bounded attribution dimensions, never arbitrary URLs or PII.
+ * An account is counted once when Supabase returns a new identity.
+ */
+export async function trackWebAccountCreated(
+  userId: string,
+  attribution: SignupAttribution,
+): Promise<void> {
+  if (!enabled() || !isTelemetryUserId(userId)) return;
+  try {
+    setWebAnalyticsUser(userId);
+    await initializeWebAnalytics();
+    if (!client || appliedUser !== userId) return;
+    client.capture("account_created", {
+      app_environment: environment(),
+      acquisition_first_source: attribution.first.source,
+      acquisition_first_medium: attribution.first.medium,
+      acquisition_first_campaign: attribution.first.campaign,
+      acquisition_last_source: attribution.last.source,
+      acquisition_last_medium: attribution.last.medium,
+      acquisition_last_campaign: attribution.last.campaign,
+      signup_method: "email",
+    });
+  } catch {
+    /* Tracking must not slow or fail a successful signup. */
   }
 }
 
