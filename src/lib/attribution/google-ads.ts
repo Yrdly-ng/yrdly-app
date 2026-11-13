@@ -21,7 +21,8 @@ export function reportGoogleAdsSignup(userId: string): boolean {
     };
     const payload = {
       send_to: AD_DESTINATION,
-      transaction_id: userId, // Prevent Google Ads double counting the same signup.
+      // Random conversion ID; never share a Supabase account identifier with Ads.
+      transaction_id: window.crypto.randomUUID(),
     };
     if (typeof win.gtag === "function") {
       win.gtag("event", "conversion", payload);
