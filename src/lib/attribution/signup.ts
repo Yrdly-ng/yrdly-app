@@ -161,3 +161,40 @@ export function signupAttribution(): SignupAttribution {
   const unknown: AcquisitionTouch = { source: "unknown", medium: "unknown" };
   return { version: 1, first: unknown, last: unknown, captured_at: new Date().toISOString() };
 }
+
+
+/**
+ * PKCE OAuth redirects cross origins and lose sessionStorage; carry only
+ * allowlisted acquisition dimensions through redirectTo, never IDs or full URLs.
+ * Supabase's callback URI already accepts normal query parameters like "next".
+ */
+export function appendOAuthAttribution(destination: URL, record: SignupAttribution): void {
+  const fields: Array<[string, string | undefined]> = [
+    ["acq_fs", record.first.source],
+    ["acq_fm", record.first.medium],
+    ["acq_fc", record.first.campaign],
+    ["acq_ls", record.last.source],
+    ["acq_lm", record.last.medium],
+    ["acq_lc", record.last.campaign],
+  ];
+  for (const [key, value] of fields) {
+    const safe = safeValue(value);
+    if (safe) destination.searchParams.set(key, safe);
+  }
+}
+
+/** OAuth callback reads strictly validated source strings, not visitor identity. */
+export function readOAuthAttribution(url: URL): SignupAttribution | null {
+  const first = validTouch({
+    source: url.searchParams.get("acq_fs"),
+    medium: url.searchParams.get("acq_fm"),
+    ...(url.searchParams.has("acq_fc") ? { campaign: url.searchParams.get("acq_fc") } : {}),
+  });
+  const last = validTouch({
+    source: url.searchParams.get("acq_ls"),
+    medium: url.searchParams.get("acq_lm"),
+    ...(url.searchParams.has("acq_lc") ? { campaign: url.searchParams.get("acq_lc") } : {}),
+  });
+  if (!first || !last) return null;
+  return { version: 1, first, last, captured_at: new Date().toISOString() };
+}
