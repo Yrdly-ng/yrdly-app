@@ -13,6 +13,7 @@ import { ServiceWorkerRegister } from '@/components/providers/ServiceWorkerRegis
 import { PushNotificationManager } from '@/components/notifications/PushNotificationManager';
 import { CrispChat } from '@/components/CrispChat';
 import { TelemetryHandler } from '@/components/providers/TelemetryHandler';
+import { AcquisitionCapture } from '@/components/providers/AcquisitionCapture';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://app.yrdly.ng'),
@@ -74,6 +75,7 @@ export default function RootLayout({
           disableTransitionOnChange
           storageKey="yrdly-theme"
         >
+          <AcquisitionCapture />
           <AuthProvider>
             <TelemetryHandler />
             {children}
