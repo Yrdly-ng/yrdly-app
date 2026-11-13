@@ -1,0 +1,64 @@
+name: QA-only Supabase migration replay
+
+# This workflow has NO Supabase access tokens or production DB credentials.
+# It tests the isolated QA-only migration snapshot in a disposable local DB.
+on:
+  push:
+    branches:
+      - qa/onboarding-clean-migrations
+    paths:
+      - 'supabase/**'
+      - '.github/workflows/qa-supabase-migration-replay.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  migration-replay:
+    name: Fresh database migration replay (local only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out QA-only schema
+        uses: actions/checkout@v4
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v3
+      - name: Print CLI and database versions
+        run: |
+          supabase --version
+          docker --version
+      - name: Validate QA baseline safety guard
+        run: |
+          grep -q 'Refusing baseline restore: target is not the verified empty QA branch' supabase/migrations/20261010140615_qa_schema_baseline_20261010.sql
+          test "$(find supabase/migrations -maxdepth 1 -name '*.sql' | wc -l)" -eq 56
+      - name: Rebuild isolated local PostgreSQL from migrations
+        run: supabase db start
+      - name: Verify migration count, critical schema and RLS
+        run: |
+          db="$(docker ps --format '{{.Names}}' | grep '^supabase_db_' | head -n 1)"
+          test -n "$db"
+          docker exec -i "$db" psql -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/tests/qa-migration-replay-assertions.sql
+      - name: Print QA-only schema identifiers for production parity audit
+        run: |
+          db="$(docker ps --format '{{.Names}}' | grep '^supabase_db_' | head -n 1)"
+          test -n "$db"
+          docker exec -i "$db" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres -t -A < supabase/tests/qa-schema-inventory.sql
+      - name: Print detailed QA schema and security fingerprints
+        run: |
+          db="$(docker ps --format '{{.Names}}' | grep '^supabase_db_' | head -n 1)"
+          test -n "$db"
+          docker exec -i "$db" psql -X -v ON_ERROR_STOP=1 -t -A -U postgres -d postgres < supabase/tests/qa-schema-fingerprints.sql
+      - name: Print per-object DDL hashes for remaining differences
+        run: |
+          db="$(docker ps --format '{{.Names}}' | grep '^supabase_db_' | head -n 1)"
+          test -n "$db"
+          docker exec -i "$db" psql -X -v ON_ERROR_STOP=1 -t -A -U postgres -d postgres < supabase/tests/qa-object-fingerprints.sql
+      - name: Assert QA schema exactly matches approved production catalog
+        run: |
+          db="$(docker ps --format '{{.Names}}' | grep '^supabase_db_' | head -n 1)"
+          test -n "$db"
+          docker exec -i "$db" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/tests/qa-production-parity.sql
+      - name: Stop local database
+        if: always()
+        run: supabase stop --no-backup || true
