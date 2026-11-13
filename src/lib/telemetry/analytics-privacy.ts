@@ -3,7 +3,7 @@ import type { CaptureResult } from "posthog-js";
 import { pageRoutes } from "./routes";
 import { deviceLabel, homeState } from "./metadata";
 
-export const productEvents = new Set(["onboarding_profile_completed", "onboarding_home_reached", "onboarding_meaningful_action", "onboarding_active_visit", "post_created","message_sent", "business_saved", "ticket_checkout_started", "ticket_checkout_opened", "ticket_checkout_failed", "ticket_verification_failed", "ticket_issued", "ticket_refund_requested", "ticket_refund_failed", "event_withdrawal_requested", "event_withdrawal_failed", "booking_checkout_started", "booking_payment_confirmed", "booking_checkout_failed"]);
+export const productEvents = new Set(["account_created", "onboarding_profile_completed", "onboarding_home_reached", "onboarding_meaningful_action", "onboarding_active_visit", "post_created","message_sent", "business_saved", "ticket_checkout_started", "ticket_checkout_opened", "ticket_checkout_failed", "ticket_verification_failed", "ticket_issued", "ticket_refund_requested", "ticket_refund_failed", "event_withdrawal_requested", "event_withdrawal_failed", "booking_checkout_started", "booking_payment_confirmed", "booking_checkout_failed"]);
 const allowedEvents = new Set(["$pageview", "$identify", ...productEvents]);
 const routes = new Set<string>(pageRoutes);
 const identityKeys = new Set([
@@ -84,6 +84,21 @@ export function sanitizeAnalyticsEvent(
   if (event.event === "onboarding_meaningful_action" &&
       ["community_post", "business_message"].includes(String(source.action_type))) {
     properties.action_type = source.action_type;
+  }
+  if (event.event === "account_created") {
+    // First/last campaign dimensions only. No raw referrers, UTM click IDs,
+    // profile data, arbitrary query strings or user-provided URLs.
+    const safe = /^[a-z0-9][a-z0-9._-]{0,63}$/;
+    for (const key of [
+      "acquisition_first_source", "acquisition_first_medium",
+      "acquisition_first_campaign", "acquisition_last_source",
+      "acquisition_last_medium", "acquisition_last_campaign",
+    ]) {
+      const value = source[key];
+      if (typeof value === "string" && safe.test(value))
+        properties[key] = value;
+    }
+    if (source.signup_method === "email") properties.signup_method = "email";
   }
   if (event.event === "$pageview") {
     if (!routes.has(source.$pathname)) return null;
