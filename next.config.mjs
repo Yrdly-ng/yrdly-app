@@ -102,7 +102,8 @@ const nextConfig = {
   skipTrailingSlashRedirect: true,
 };
 
-const uploadSourceMaps = Boolean(process.env.SENTRY_AUTH_TOKEN && process.env.SENTRY_ORG && process.env.SENTRY_PROJECT)
+// The org/project defaults below are valid upload targets too.
+const uploadSourceMaps = Boolean(process.env.SENTRY_AUTH_TOKEN)
   && process.env.NEXT_PUBLIC_TELEMETRY_DISABLED !== 'true'
   && process.env.SENTRY_DISABLE_AUTO_UPLOAD !== 'true';
 
