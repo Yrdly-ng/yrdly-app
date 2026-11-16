@@ -71,7 +71,8 @@ test('cron requires explicit opt in, feature flags, secure request and no uncert
    assert.ok(route.includes(term),'missing '+term);
  }
  const config=JSON.parse(fs.readFileSync('vercel.json','utf8'));
- assert.ok(config.crons.some(c=>c.path==='/api/cron/daily-prompts'&&c.schedule==='*/15 17-18 * * *'));
+ assert.ok(!config.crons.some(c=>c.path==='/api/cron/daily-prompts'));
+ assert.ok(route.includes('DAILY_PROMPT_CRON_SECRET'));
 });
 test('push sender and outbox have independent safety kill-switch and consent checks',()=>{
  const sender=fs.readFileSync('supabase/functions/send-push-notification/index.ts','utf8');

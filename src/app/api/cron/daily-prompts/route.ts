@@ -13,7 +13,8 @@ export const maxDuration=300;
 // A scheduled job may retry after network failure. The database ledger makes
 // each user+question at-most-once, including uncertain provider submissions.
 export async function GET(request:Request){
-  if(!process.env.CRON_SECRET || request.headers.get('authorization')!==`Bearer ${process.env.CRON_SECRET}`)
+  const secrets=[process.env.CRON_SECRET,process.env.DAILY_PROMPT_CRON_SECRET].filter((key):key is string=>!!key);
+  if(!secrets.some(key=>request.headers.get('authorization')===`Bearer ${key}`))
     return NextResponse.json({error:'Unauthorized'},{status:401});
   if(!DAILY_PROMPTS_ENABLED() || process.env.DAILY_PROMPT_PUSH_ENABLED!=='true')
     return NextResponse.json({skipped:'disabled'});

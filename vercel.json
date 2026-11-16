@@ -22,10 +22,6 @@
     {
       "path": "/api/cron/event-reminders",
       "schedule": "0 9 * * *"
-    },
-    {
-      "path": "/api/cron/daily-prompts",
-      "schedule": "*/15 17-18 * * *"
     }
   ]
 }

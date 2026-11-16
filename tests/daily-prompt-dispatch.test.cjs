@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const ts=require('typescript');
 const A='4e0d2091-df62-4f90-bf53-f06dac1cfe93';
-function runtime({enabled=true,cohort=A,provider={success:true},lookupFailure=false,consent=true}={}){
+function runtime({enabled=true,cohort=A,provider={success:true},lookupFailure=false,consent=true,dedicatedCron=false}={}){
   const ledger=new Map(),calls=[];
   const db={
     async rpc(name,args){
@@ -43,7 +43,7 @@ function runtime({enabled=true,cohort=A,provider={success:true},lookupFailure=fa
   };
   new Function('require','module','exports','process','console',js)(
     name=>{assert.ok(dependencies[name],name);return dependencies[name]},mod,mod.exports,
-    {env:{CRON_SECRET:'fixture',DAILY_PROMPT_PUSH_ENABLED:'true',DAILY_PROMPT_PUSH_TESTER_IDS:cohort}}, {error(){}});
+    {env:{CRON_SECRET:dedicatedCron?undefined:'fixture',DAILY_PROMPT_CRON_SECRET:dedicatedCron?'fixture':undefined,DAILY_PROMPT_PUSH_ENABLED:'true',DAILY_PROMPT_PUSH_TESTER_IDS:cohort}}, {error(){}});
   return {run:auth=>mod.exports.GET({headers:new Headers({authorization:auth??'Bearer fixture'})}),calls,ledger};
 }
 test('unauthenticated, disabled and empty-cohort requests cannot send',async()=>{
@@ -65,4 +65,8 @@ test('opt out or unavailable prompt cannot dispatch',async()=>{
  for(const options of [{consent:false},{lookupFailure:true}]){
    const r=runtime(options);await r.run();assert.equal(r.calls.length,0);
  }
+});
+
+test('the dedicated Supabase scheduler credential authorizes dispatch without changing existing cron secrets',async()=>{
+ const r=runtime({dedicatedCron:true});assert.equal((await r.run()).body.submitted,1);
 });
