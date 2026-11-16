@@ -104,6 +104,14 @@ export function sanitizeAnalyticsEvent(
     if (!routes.has(source.$pathname)) return null;
     properties.$pathname = source.$pathname;
     properties.$current_url = `https://app.yrdly.ng${source.$pathname}`;
+    // PostHog Web Analytics needs first-page UTM dimensions to classify paid
+    // campaigns. Preserve labels only; never leak any query string/click ID.
+    const safeTag = /^[a-z0-9][a-z0-9._-]{0,63}$/;
+    for (const key of ["$utm_source", "$utm_medium", "$utm_campaign"]) {
+      const value = source[key];
+      if (typeof value === "string" && safeTag.test(value))
+        properties[key] = value;
+    }
   }
   // Rebuild the payload so arbitrary properties, person updates and URL/referrer data cannot escape.
   return {
