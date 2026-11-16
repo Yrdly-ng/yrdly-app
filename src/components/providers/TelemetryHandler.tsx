@@ -9,7 +9,7 @@ import {
   trackWebPage,
   trackWebActivationEvent,
 } from "@/lib/telemetry/analytics";
-import { setWebUser } from "@/lib/telemetry/sentry";
+import { setWebUser, setWebScreen, startWebDiagnostics, reportWebAppStarted } from "@/lib/telemetry/sentry";
 
 export function TelemetryHandler() {
   const pathname = usePathname();
@@ -18,13 +18,16 @@ export function TelemetryHandler() {
   const { user, profile, loading } = useAuth();
   const id = user?.id ?? null;
   const selectedHomeState = profile?.id === id ? profile?.home_state : null;
+  useEffect(() => startWebDiagnostics(), []);
 
   useEffect(() => {
     // Clear any old identity immediately while an account transition resolves.
     setWebUser(loading ? null : id);
     setWebAnalyticsUser(loading ? null : id, loading ? null : selectedHomeState);
+    setWebScreen(pathname || '');
     if (!id) { visitedUser.current = null; homeReachedUser.current = null; }
     if (loading) return;
+    reportWebAppStarted();
     let cancelled = false;
     void initializeWebAnalytics().then(() => {
       if (cancelled) return;

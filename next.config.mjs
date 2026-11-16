@@ -10,6 +10,7 @@ const supabaseStorageHost = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL || 'htt
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  env: { NEXT_PUBLIC_APP_RELEASE: process.env.VERCEL_GIT_COMMIT_SHA || process.env.NEXT_PUBLIC_APP_RELEASE || '' },
   // Share previews must receive complete metadata in the initial HTML, including
   // clients whose preview user agents are absent from Next's default bot list.
   htmlLimitedBots: /.*/,
