@@ -1,6 +1,7 @@
-import { captureWebAnalyticsError } from "./analytics";
+import { captureWebAnalyticsError, trackWebReliability } from "./analytics";
 import * as Sentry from "@sentry/nextjs";
 import { diagnosticMessage } from './diagnostics';
+import { configureDiagnostics, resetDiagnostics, recordDiagnostic, sanitizeDiagnosticBreadcrumb, setDiagnosticScreen, setDiagnosticState, diagnosticContext } from './reliability';
 import {
   errorOperations,
   isInjectedBrowserError,
@@ -10,6 +11,8 @@ import {
 } from "./sentry-privacy";
 
 type Runtime = "browser" | "nodejs" | "edge";
+let diagnosticUser: string | null = null;
+let diagnosticsStarted = false;
 
 export function initializeWebSentry(runtime: Runtime): void {
   if (process.env.NEXT_PUBLIC_TELEMETRY_DISABLED === "true") return;
@@ -56,9 +59,20 @@ export function initializeWebSentry(runtime: Runtime): void {
       tracePropagationTargets: [],
       replaysSessionSampleRate: 0,
       replaysOnErrorSampleRate: 0,
-      maxBreadcrumbs: 0,
-      beforeBreadcrumb: () => null,
-      beforeSend: (event) => runtime === "browser" && isInjectedBrowserError(event) ? null : sanitizeSentryEvent(event, runtime === "browser"),
+      maxBreadcrumbs: runtime === 'browser' ? 20 : 0,
+      beforeBreadcrumb: runtime === 'browser' ? sanitizeDiagnosticBreadcrumb : () => null,
+      beforeSend: (event) => {
+        if (runtime === 'browser' && isInjectedBrowserError(event)) return null;
+        const safe = sanitizeSentryEvent(event, runtime === 'browser');
+        const values = safe.exception?.values;
+        if (runtime === 'browser' && values?.length) void trackWebReliability('app_error', {
+          ...safe.tags,
+          error_category: values[0].value,
+          error_type: values[0].type,
+          handled: values.every(value => value.mechanism?.handled !== false),
+        });
+        return safe;
+      },
       beforeSendTransaction: () => null,
       integrations: (defaults) =>
         defaults.filter(
@@ -73,7 +87,10 @@ export function initializeWebSentry(runtime: Runtime): void {
             ].includes(integration.name),
         ),
     });
-    if (runtime === "browser") Sentry.setUser(null);
+    if (runtime === "browser") {
+      configureDiagnostics(crumb => Sentry.addBreadcrumb(crumb), () => Sentry.getCurrentScope().clearBreadcrumbs());
+      Sentry.setUser(null);
+    }
   } catch {
     // Telemetry setup must never prevent the app from loading.
   }
@@ -81,6 +98,8 @@ export function initializeWebSentry(runtime: Runtime): void {
 
 export function setWebUser(id: string | null): void {
   if (typeof window === "undefined") return;
+  const next = isTelemetryUserId(id) ? id : null;
+  if (diagnosticUser !== next) { resetDiagnostics(); diagnosticUser = next; }
   try {
     const client = Sentry.getClient();
     if (client && client.getOptions().enabled !== false) {
@@ -89,6 +108,33 @@ export function setWebUser(id: string | null): void {
   } catch {
     /* Reporting must never interrupt an authentication transition. */
   }
+}
+
+export function setWebScreen(pathname: string): void {
+  const screen = setDiagnosticScreen(pathname);
+  try { if (Sentry.getClient()) Sentry.setTag('screen', screen || 'unknown'); } catch { /* Optional reporting. */ }
+}
+
+export function startWebDiagnostics(): () => void {
+  if (typeof window === 'undefined' || typeof document === 'undefined' || process.env.NEXT_PUBLIC_TELEMETRY_DISABLED === 'true') return () => {};
+  const update = () => {
+    const state = setDiagnosticState(document.hidden ? 'hidden' : 'active');
+    try { if (Sentry.getClient()) Sentry.setTag('app_state', state); } catch { /* Optional reporting. */ }
+  };
+  update();
+  document.addEventListener('visibilitychange', update);
+  return () => document.removeEventListener('visibilitychange', update);
+}
+
+export function reportWebAppStarted(): void {
+  if (diagnosticsStarted) return;
+  diagnosticsStarted = true;
+  void trackWebReliability('app_started');
+}
+
+export function reportWebRecoveryRequested(): void {
+  recordDiagnostic('app.recovery', 'retry_requested');
+  void trackWebReliability('app_recovery_requested', diagnosticContext());
 }
 
 export function captureWebError(

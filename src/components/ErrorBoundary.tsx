@@ -1,6 +1,6 @@
 "use client";
 
-import { captureWebError } from '@/lib/telemetry/sentry';
+import { captureWebError, reportWebRecoveryRequested } from '@/lib/telemetry/sentry';
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -49,21 +49,15 @@ export class ErrorBoundary extends Component<Props, State> {
       console.error('ErrorBoundary caught an error:', error, errorInfo);
     }
 
-    console.error('Component Error:', error, {
-      component: 'ErrorBoundary',
-      props: {
-        hasCustomFallback: !!this.props.fallback,
-        hasCustomErrorHandler: !!this.props.onError,
-      },
-    });
-
     // Call custom error handler if provided
     if (this.props.onError) {
-      this.props.onError(error, errorInfo);
+      try { this.props.onError(error, errorInfo); }
+      catch (handlerError) { captureWebError(handlerError, { operation: 'app.error_boundary' }); }
     }
   }
 
   handleRetry = () => {
+    reportWebRecoveryRequested();
     this.setState({
       hasError: false,
       error: null,
@@ -138,11 +132,5 @@ export function useErrorHandler() {
       console.error('Error caught by useErrorHandler:', error, errorInfo);
     }
     
-    console.error('Component Error:', error, {
-      component: 'useErrorHandler',
-      props: {
-        errorInfo,
-      },
-    });
   };
 }

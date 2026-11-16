@@ -3,6 +3,9 @@ export function diagnosticMessage(value: unknown): string {
   const text = value instanceof Error ? value.message :
     value && typeof value === 'object' && 'message' in value && typeof value.message === 'string' ? value.message : '';
   if (diagnosticMessages.has(text)) return text;
+  if (/^(?:Abort|SIGABRT)$/.test(text)) return 'Native abort';
+  if (/out of memory|failed to allocate a [0-9]+ byte allocation/i.test(text)) return 'Memory allocation failed';
+  if (/^The (?:operation|user request) was aborted[.!]?$/.test(text)) return 'Operation cancelled';
   // Emit only fixed categories (or a bounded React error number), never the
   // property name, component content, URL or provider payload in the message.
   const reactError = text.match(/^Minified React error #([0-9]{1,3});/);
@@ -26,6 +29,9 @@ export function diagnosticMessage(value: unknown): string {
 }
 
 export const diagnosticMessages = new Set([
+  'Native abort',
+  'Memory allocation failed',
+  'Operation cancelled',
   'JavaScript stack overflow',
   'Undefined property access',
   'Null property access',

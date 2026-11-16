@@ -2,9 +2,10 @@ import { diagnosticMessage } from './diagnostics';
 import type { CaptureResult } from "posthog-js";
 import { pageRoutes } from "./routes";
 import { deviceLabel, homeState } from "./metadata";
+import { reliabilityEvents, reliabilityProperties } from './reliability';
 
 export const productEvents = new Set(["account_created", "onboarding_profile_completed", "onboarding_home_reached", "onboarding_meaningful_action", "onboarding_active_visit", "post_created","message_sent", "business_saved", "ticket_checkout_started", "ticket_checkout_opened", "ticket_checkout_failed", "ticket_verification_failed", "ticket_issued", "ticket_refund_requested", "ticket_refund_failed", "event_withdrawal_requested", "event_withdrawal_failed", "booking_checkout_started", "booking_payment_confirmed", "booking_checkout_failed"]);
-const allowedEvents = new Set(["$pageview", "$identify", ...productEvents]);
+const allowedEvents = new Set(["$pageview", "$identify", ...productEvents, ...reliabilityEvents]);
 const routes = new Set<string>(pageRoutes);
 const identityKeys = new Set([
   "distinct_id",
@@ -52,6 +53,7 @@ export function sanitizeAnalyticsEvent(
     app_platform: "web",
     $geoip_disable: true,
   };
+  if (reliabilityEvents.has(event.event)) Object.assign(properties, reliabilityProperties(source));
   for (const key of identityKeys) {
     const value = source[key];
     if (typeof value === "string" && /^[a-zA-Z0-9_$:-]{1,128}$/.test(value))

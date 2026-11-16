@@ -12,6 +12,8 @@ const env = {
 };
 function runtime({ config = env, browser = true, fail = false, failReset = false } = {}) {
   const calls = [];
+  const breadcrumbs = [];
+  const tags = {};
   let analyticsOptions;
   let sentryOptions;
   const call = (name, ...args) => {
@@ -35,6 +37,13 @@ function runtime({ config = env, browser = true, fail = false, failReset = false
     capture: (...args) => call("capture", ...args),
   };
   const sentry = {
+    addBreadcrumb(crumb) {
+      const safe = sentryOptions.beforeBreadcrumb(crumb);
+      if (safe) breadcrumbs.push(safe);
+      if (breadcrumbs.length > 20) breadcrumbs.shift();
+    },
+    getCurrentScope() { return { clearBreadcrumbs: () => { breadcrumbs.length = 0; } }; },
+    setTag(name, value) { tags[name] = value; },
     init(options) {
       call("sentry.init");
       sentryOptions = options;
@@ -76,6 +85,8 @@ function runtime({ config = env, browser = true, fail = false, failReset = false
   return {
     load: (name) => load(path.resolve("src/lib/telemetry", name + ".ts")),
     calls,
+    breadcrumbs,
+    tags,
     replayTransitions,
     get analyticsOptions() {
       return analyticsOptions;
@@ -515,4 +526,48 @@ test("account-created analytics preserves campaign dimensions but never private 
   assert.equal(sanitized.properties.acquisition_last_source, "google");
   assert.equal(sanitized.properties.signup_method, "email");
   assert.doesNotMatch(JSON.stringify(sanitized), /example\.com|password|private-click-id|phone|secret/);
+});
+
+test('manual diagnostic breadcrumbs contain templates and fixed actions, and reset when identity changes', async () => {
+  const r=runtime();const s=r.load('sentry'),a=r.load('analytics');s.initializeWebSentry('browser');
+  s.setWebUser(A);s.setWebScreen('/marketplace/private-item');await a.trackWebEvent('ticket_checkout_started');
+  s.reportWebRecoveryRequested();
+  assert.deepEqual(r.breadcrumbs.map(b=>b.category),['app.navigation','app.action','app.recovery']);
+  assert.equal(r.tags.screen,'/marketplace/[itemId]');
+  const safe=r.sentryOptions.beforeSend({tags:{...r.tags,app_state:'active'},breadcrumbs:[...r.breadcrumbs,{category:'fetch',message:'private',data:{token:'private'}}],exception:{values:[{type:'TypeError',value:'Cannot read properties of null',mechanism:{handled:false,type:'generic'}}]}});
+  assert.equal(safe.breadcrumbs.length,3);assert.equal(safe.tags.screen,'/marketplace/[itemId]');
+  assert.ok(!JSON.stringify(safe).includes('private'));
+  await new Promise(resolve=>setImmediate(resolve));
+  const metric=r.calls.find(c=>c[0]==='capture'&&c[1]==='app_error');
+  assert.equal(metric[2].handled,false);assert.equal(metric[2].error_category,'Null property access');
+  s.setWebUser(B);assert.equal(r.breadcrumbs.length,0);
+});
+
+test('reliability analytics keep release/screen/category but drop raw routes, arbitrary events and payloads', async () => {
+  const r=runtime({config:{...env,NEXT_PUBLIC_APP_RELEASE:'abcdef0123456789'}});const a=r.load('analytics');
+  await a.trackWebReliability('app_error',{screen:'/messages/private',error_category:'private',error_type:'private',operation:'private',token:'private',url:'private'});
+  const metric=r.calls.find(c=>c[0]==='capture');
+  const safe=r.analyticsOptions.before_send({event:metric[1],properties:{...metric[2],private:'private'}});
+  assert.equal(safe.properties.app_release,'abcdef0123456789');assert.equal(safe.properties.error_category,'Application operation failed');
+  assert.equal(safe.properties.screen,undefined);assert.ok(!JSON.stringify(safe).includes('private'));
+  const count=r.calls.length;await a.trackWebReliability('private',{message:'private'});assert.equal(r.calls.length,count);
+});
+
+test('server events cannot inherit browser diagnostic breadcrumbs or route state', () => {
+  const r=runtime({browser:false});r.load('sentry').initializeWebSentry('nodejs');
+  const safe=r.sentryOptions.beforeSend({tags:{screen:'/map',app_state:'active'},breadcrumbs:[{category:'app.navigation',message:'/map'}]});
+  assert.equal(safe.tags.screen,undefined);assert.equal(safe.breadcrumbs,undefined);
+});
+
+test('an account switch during async analytics initialization drops the prior account reliability event', async()=>{
+ const r=runtime();const a=r.load('analytics');a.setWebAnalyticsUser(A);
+ const pending=a.trackWebReliability('app_error',{screen:'/marketplace',error_category:'Operation timed out'});
+ a.setWebAnalyticsUser(B);await pending;
+ assert.ok(!r.calls.some(c=>c[0]==='capture'&&c[1]==='app_error'));
+});
+
+test('app launch is counted once after the authenticated analytics identity has settled', async()=>{
+ const r=runtime();const a=r.load('analytics'),s=r.load('sentry');
+ a.setWebAnalyticsUser(A);s.reportWebAppStarted();s.reportWebAppStarted();await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(r.calls.filter(c=>c[0]==='capture'&&c[1]==='app_started').length,1);
 });

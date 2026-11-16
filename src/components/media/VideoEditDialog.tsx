@@ -52,22 +52,31 @@ export default function VideoEditDialog({ file, maxBytes, onFinish }: Props) {
   const mounted = useRef(true);
 
   useEffect(() => {
+    let active = true;
     mounted.current = true;
+    controller.current = null;
+    setMetadata(null);
+    setStart(0);
+    setEnd(0);
+    setError('');
+    setBusy(false);
+    setProgress(0);
     const objectUrl = URL.createObjectURL(file);
     setUrl(objectUrl);
     void readVideoMetadata(file)
       .then((data) => {
-        if (!mounted.current) return;
+        if (!active || !mounted.current) return;
         setMetadata(data);
         setEnd(data.duration);
       })
       .catch(() => {
-        if (mounted.current)
+        if (active && mounted.current)
           setError(
             "This browser could not read the video. Try a different file or keep the original.",
           );
       });
     return () => {
+      active = false;
       mounted.current = false;
       controller.current?.abort();
       videoRef.current?.pause();
@@ -99,7 +108,7 @@ export default function VideoEditDialog({ file, maxBytes, onFinish }: Props) {
           maxBytes,
           signal: abort.signal,
           onProgress: (value) => {
-            if (mounted.current) setProgress(value);
+            if (mounted.current && controller.current === abort && !abort.signal.aborted) setProgress(value);
           },
         },
       );
@@ -112,8 +121,10 @@ export default function VideoEditDialog({ file, maxBytes, onFinish }: Props) {
             : "Could not prepare this video. Try a shorter clip or another file.",
         );
     } finally {
-      controller.current = null;
-      if (mounted.current) setBusy(false);
+      if (controller.current === abort) {
+        controller.current = null;
+        if (mounted.current) setBusy(false);
+      }
     }
   }
 

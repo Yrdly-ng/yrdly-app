@@ -1,5 +1,6 @@
 import { diagnosticMessage } from './diagnostics';
 import type { ErrorEvent, StackFrame } from "@sentry/nextjs";
+import { reliabilityProperties, sanitizeDiagnosticBreadcrumb } from './reliability';
 
 const errorTypes = new Set([
   "Error",
@@ -107,11 +108,13 @@ export function sanitizeSentryEvent(
         : undefined,
     tags: {
       platform: "web",
+      ...(browser ? reliabilityProperties({ screen: event.tags?.screen, app_state: event.tags?.app_state }) : {}),
       ...(typeof operation === "string" && errorOperations.has(operation)
         ? { operation }
         : {}),
       ...(isErrorCode(code) ? { error_code: code } : {}),
     },
+    breadcrumbs: browser ? event.breadcrumbs?.slice(-20).map(sanitizeDiagnosticBreadcrumb).filter((value): value is NonNullable<typeof value> => value !== null) : undefined,
     exception: event.exception
       ? {
           values: event.exception.values?.map((exception) => ({

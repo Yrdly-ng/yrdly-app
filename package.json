@@ -19,7 +19,7 @@
     "test:e2e": "e2e run",
     "test:e2e:smoke": "e2e run tests/smoke.e2e.ts",
     "db:wipe": "node scripts/wipe-database.js",
-    "test:telemetry": "node --test tests/web-telemetry.test.cjs tests/telemetry-diagnostics.test.cjs tests/sentry-build-config.test.cjs",
+    "test:telemetry": "node --test tests/web-telemetry.test.cjs tests/telemetry-diagnostics.test.cjs tests/sentry-build-config.test.cjs tests/crash-recovery.test.cjs",
     "test:reports": "node --test tests/report-review.test.cjs tests/report-review-api.test.cjs",
     "test:maps": "node --test tests/map-model.test.cjs tests/map-location.test.cjs tests/map-query.test.cjs tests/map-presentation.test.cjs",
     "test:directions": "node --test tests/directions-*.test.cjs",

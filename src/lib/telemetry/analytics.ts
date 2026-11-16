@@ -5,6 +5,7 @@ import { productEvents, sanitizeAnalyticsEvent } from "./analytics-privacy";
 import { pageTemplate } from "./routes";
 import { homeState } from "./metadata";
 import { signupAttribution, type SignupAttribution } from "@/lib/attribution/signup";
+import { recordDiagnostic, diagnosticContext, reliabilityEvents, reliabilityProperties } from './reliability';
 
 let client: PostHog | undefined;
 let initializing: Promise<void> | undefined;
@@ -146,12 +147,25 @@ export async function trackWebEvent(
   event: string,
 ): Promise<void> {
   if (!enabled() || !productEvents.has(event)) return;
+  recordDiagnostic('app.action', event);
   try {
     await initializeWebAnalytics();
     client?.capture(event, { app_environment: environment(), home_state: desiredHomeState });
   } catch {
     /* Analytics cannot interrupt the action being measured. */
   }
+}
+
+/** Bounded reliability events for comparing failures/recovery by screen and release. */
+export async function trackWebReliability(event: string, properties: Record<string, unknown> = {}): Promise<void> {
+  if (!enabled() || !reliabilityEvents.has(event)) return;
+  const expectedUser = desiredUser;
+  const safe = reliabilityProperties({ ...diagnosticContext(), app_release: process.env.NEXT_PUBLIC_APP_RELEASE, ...properties });
+  try {
+    await initializeWebAnalytics();
+    if (appliedUser !== expectedUser) return;
+    client?.capture(event, { ...safe, app_environment: environment() });
+  } catch { /* Reporting cannot cause a second failure. */ }
 }
 
 /** Strictly bounded activation events; user IDs and URL details never enter properties. */
