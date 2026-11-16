@@ -169,6 +169,8 @@ function getNotificationDestination(input) {
             const id = firstId(data.fromUserId, relatedId);
             return id ? `/profile/${id}` : "/notifications";
         }
+        case "daily_prompt":
+            return "/daily-prompts";
         case "welcome":
         case "system_announcement":
         default:

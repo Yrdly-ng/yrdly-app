@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/supabase/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
 import { isMoneyAmount, isPaidPrice, MINIMUM_PRICE_MESSAGE } from '@/lib/marketplace/price-policy';
+import { DAILY_PROMPTS_ENABLED, lagosPromptClock } from '@/lib/daily-prompts/daily-prompt-clock';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -29,8 +30,27 @@ async function save(request: NextRequest, editing: boolean) {
     if (lookupError) return NextResponse.json({ error: 'Could not verify post status' }, { status: 503 });
     if (existing) {
       if (existing.user_id !== user.id) return NextResponse.json({ error: 'Post identifier unavailable' }, { status: 409 });
+      if (input.daily_prompt_id != null && existing.daily_prompt_id !== input.daily_prompt_id)
+        return NextResponse.json({ error: 'The saved post belongs to a different question' }, { status: 409 });
       return NextResponse.json({ data: existing, error: null });
     }
+  }
+  // Untrusted clients cannot link a post to an unpublished or expired question.
+  let promptId: string | null = null;
+  if (input.daily_prompt_id !== undefined && input.daily_prompt_id !== null) {
+    if (editing || typeof input.daily_prompt_id !== 'string' ||
+        !UUID_PATTERN.test(input.daily_prompt_id) || !DAILY_PROMPTS_ENABLED() ||
+        input.category !== 'General' || input.visibility !== 'public') {
+      return NextResponse.json({ error: 'Invalid daily question response' }, { status: 400 });
+    }
+    const { date, hour } = lagosPromptClock();
+    if (hour < 7) return NextResponse.json({ error: 'Today’s question is not open yet' }, { status: 409 });
+    const { data: approved, error: lookupError } = await supabaseAdmin.from('daily_prompts')
+      .select('id').eq('id',input.daily_prompt_id).eq('status','approved')
+      .eq('prompt_date',date).maybeSingle();
+    if (lookupError) return NextResponse.json({ error: 'Could not verify question' }, { status: 503 });
+    if (!approved) return NextResponse.json({ error: 'Today’s question has expired' }, { status: 409 });
+    promptId = approved.id;
   }
   let category = input.category;
   let price = input.price;
@@ -57,8 +77,12 @@ async function save(request: NextRequest, editing: boolean) {
     .filter(key => input[key] !== undefined).map(key => [key, input[key]]));
   const payload: Record<string, unknown> = { ...fields, user_id: user.id, author_name: profile.name, author_image: profile.avatar_url,
     moderation_status: approved ? 'approved' : 'pending', updated_at: new Date().toISOString(),
-    ...(!editing ? { timestamp: new Date().toISOString(), state: input.state ?? profile.home_state,
-      lga: input.lga ?? profile.home_lga, ward: input.ward ?? profile.home_ward } : { is_edited: true }) };
+    ...(!editing ? { timestamp: new Date().toISOString(),
+      state: promptId ? profile.home_state : (input.state ?? profile.home_state),
+      lga: promptId ? profile.home_lga : (input.lga ?? profile.home_lga),
+      ward: promptId ? profile.home_ward : (input.ward ?? profile.home_ward),
+      ...(promptId ? { daily_prompt_id: promptId } : {}),
+    } : { is_edited: true }) };
   const query = editing ? supabaseAdmin.from('posts').update(payload).eq('id', body.id).eq('user_id', user.id)
     : supabaseAdmin.from('posts').insert(clientPostId ? { ...payload, id: clientPostId } : payload);
   const { data, error: saveError } = await query.select().single();
