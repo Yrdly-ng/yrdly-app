@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { dailyPromptRecipientEnabled } from '../_shared/daily-prompt-policy.ts';
 
 type Delivery = {
   id: string;
@@ -315,7 +316,7 @@ serve(async (req) => {
       // Emergency stop and strict opt-in are checked at delivery, too:
       // queued reminders must never bypass an opt-out or a campaign pause.
       if (notificationType === "daily_prompt" &&
-          Deno.env.get("DAILY_PROMPT_PUSH_ENABLED") !== "true") {
+          !await dailyPromptRecipientEnabled(admin,delivery.user_id,Deno.env.get("DAILY_PROMPT_PUSH_ENABLED"))) {
         await updateDelivery(admin, delivery.id, {
           status: "skipped",
           last_error: "Daily prompt campaign paused",

@@ -135,5 +135,5 @@ test('sender requires latest browser-endpoint owner and web test skips native', 
   assert.ok(c.includes('latestByEndpoint.get(row.subscription.endpoint)?.user_id === userId'));
   assert.ok(c.includes('Web push ownership check unavailable; browser delivery skipped'));
   assert.ok(c.includes('channel !== "web"'));
-  assert.ok(c.includes('if (isDailyPrompt && Deno.env.get("DAILY_PROMPT_PUSH_ENABLED") !== "true")'));
+  assert.ok(c.includes('if (isDailyPrompt && !await dailyPromptRecipientEnabled(supabaseAdmin,userId,Deno.env.get("DAILY_PROMPT_PUSH_ENABLED")))'));
 });
