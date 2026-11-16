@@ -330,6 +330,28 @@ test("handled error bridge sends bounded context and never forwards database pay
   assert.ok(!error.message.includes("private"));
 });
 
+test('Sentry preserves safe runtime categories without forwarding the original error payload', () => {
+  const r = runtime();
+  r.load('sentry').initializeWebSentry('browser');
+  const cases = [
+    ['Maximum call stack size exceeded', 'JavaScript stack overflow'],
+    ["Cannot read properties of undefined (reading 'private')", 'Undefined property access'],
+    ["Cannot read properties of null (reading 'private')", 'Null property access'],
+    ['Loading chunk 123 failed. (https://private.invalid/token)', 'Application chunk unavailable'],
+    ['Minified React error #185; visit https://private.invalid/?args=private', 'React runtime error #185'],
+    ['Google Maps JavaScript API error: RefererNotAllowedMapError https://private.invalid', 'Google Maps referrer rejected'],
+  ];
+  for (const [value, category] of cases) {
+    const event = { exception: { values: [{ type: 'Error', value }] } };
+    const safe = r.sentryOptions.beforeSend(event);
+    assert.equal(safe.exception.values[0].value, category);
+    assert.equal(r.sentryOptions.beforeSend(safe).exception.values[0].value, category);
+    assert.ok(!JSON.stringify(safe).includes('private'));
+  }
+  r.load('sentry').captureWebError({ message: 'Loading chunk 123 failed. https://private.invalid' });
+  assert.equal(r.calls.find(([name]) => name === 'exception')[1].message, 'Application chunk unavailable');
+});
+
 test("SDK failures cannot break actions or error handling", async () => {
   const r = runtime({ fail: true });
   const s = r.load("sentry");

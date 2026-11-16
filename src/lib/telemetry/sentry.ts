@@ -1,5 +1,6 @@
 import { captureWebAnalyticsError } from "./analytics";
 import * as Sentry from "@sentry/nextjs";
+import { diagnosticMessage } from './diagnostics';
 import {
   errorOperations,
   isInjectedBrowserError,
@@ -106,7 +107,7 @@ export function captureWebError(
     Sentry.captureException(
       error instanceof Error
         ? error
-        : new Error("Application operation failed"),
+        : new Error(diagnosticMessage(error)),
       {
         tags: {
           ...(context?.operation && errorOperations.has(context.operation)
