@@ -1,2 +1,6 @@
 [functions.process-community-jobs]
 verify_jwt = false
+
+[functions.dispatch-daily-prompts]
+# The handler validates the service key itself, including modern secret keys.
+verify_jwt = false

@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
+import { dailyPromptRecipientEnabled } from '../_shared/daily-prompt-policy.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -294,7 +295,7 @@ serve(async (req) => {
     const isDailyPrompt = type === "daily_prompt" || payload.data?.type === "daily_prompt";
     // Keep editorial reminders OFF unless explicitly enabled at the
     // function runtime. Missing consent is always an opt-out.
-    if (isDailyPrompt && Deno.env.get("DAILY_PROMPT_PUSH_ENABLED") !== "true") {
+    if (isDailyPrompt && !await dailyPromptRecipientEnabled(supabaseAdmin,userId,Deno.env.get("DAILY_PROMPT_PUSH_ENABLED"))) {
       return new Response(JSON.stringify({ success: true, skipped: true, reason: "campaign_paused" }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
