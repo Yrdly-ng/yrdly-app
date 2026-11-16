@@ -22,7 +22,11 @@ function fixture(initialProfile, readError = null) {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
   }).outputText;
   const mod = { exports: {} };
+  const unexpectedSignupTracking = () => { throw new Error('Password sign-in must not create signup attribution or conversion events'); };
   new Function('require','module','exports',compiled)((path) => {
+    if (path === '@/lib/attribution/signup') return { signupAttribution: unexpectedSignupTracking, appendOAuthAttribution: unexpectedSignupTracking };
+    if (path === '@/lib/telemetry/analytics') return { trackWebAccountCreated: unexpectedSignupTracking };
+    if (path === '@/lib/attribution/google-ads') return { reportGoogleAdsSignup: unexpectedSignupTracking };
     if (path === './session-policy') return { checkActiveSession: async () => true, endRevokedSession: async () => {} };
     if (path === './auth-navigation') return { safeRelativePath: (s) => s };
     if (path === '../supabase/supabase') return { supabase };
