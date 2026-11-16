@@ -1,0 +1,13 @@
+# Daily questions and opt-in reminders
+
+The web and native clients use `/api/daily-prompts` for the current approved question, and authenticated `/api/daily-prompts/responses` for moderated, public answers in the viewer's home state/LGA. Both directions of user blocking are enforced. Normal posts remain unchanged when no question is attached.
+
+Questions are curated in `/admin/daily-prompts`. Only server-verified administrators can create drafts, edit, approve or pause them. Drafts are never automatically published. `DAILY_PROMPTS_ENABLED=true` is required to display questions. The database independently enforces the Lagos date, 7 AM opening, public General category and immutable response context.
+
+The Vercel schedule calls `/api/cron/daily-prompts` at 17:00 UTC (6 PM Nigeria), with 15-minute catch-up attempts through 18:45 UTC. Previously reserved recipients are excluded from each attempt. It requires `CRON_SECRET`, `DAILY_PROMPTS_ENABLED=true` and `DAILY_PROMPT_PUSH_ENABLED=true`. Default scope is `testers`; set `DAILY_PROMPT_PUSH_TESTER_IDS` to test account UUIDs. `all` is an explicit rollout scope, but still requires each recipient's `notification_settings.dailyPrompts` to be exactly true. Users who answered or have no registered push destination are excluded. The sender and outbox worker retain their independent campaign kill switch.
+
+The service-only recipient RPC excludes existing reservations before pagination, so bounded retries make progress. The ledger reserves each user/question once, and uncertain provider handoffs are not automatically replayed. `submitted` means provider acceptance, not confirmed device delivery. Reminder expiration is the end of the Nigerian day.
+
+Validation: execute `tests/daily-prompt-database.sql` only on staging; all fixtures roll back. Run daily prompt/dispatch/routing unit tests, typecheck, lint, production compilation and browser smoke tests. Check production RLS/grants and migrations separately. No approved production question or campaign is created by these migrations.
+
+Android delivery remains a separate release gate: APK #72's exact `google_api_key` resource was rejected by Firebase Installations with HTTP 400 / `API_KEY_INVALID` on 16 November 2026. Project, sender and app ID match the configured YRDLY app. A valid Android client configuration and a newly installed APK must pass registration and receipt/tap tests before Android delivery can be called verified. Do not rotate server credentials or remove API restrictions based solely on the historical `FIS_AUTH_ERROR` message.
