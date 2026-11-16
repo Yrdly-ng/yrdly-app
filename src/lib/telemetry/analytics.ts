@@ -4,7 +4,7 @@ import { isTelemetryUserId } from "./sentry-privacy";
 import { productEvents, sanitizeAnalyticsEvent } from "./analytics-privacy";
 import { pageTemplate } from "./routes";
 import { homeState } from "./metadata";
-import type { SignupAttribution } from "@/lib/attribution/signup";
+import { signupAttribution, type SignupAttribution } from "@/lib/attribution/signup";
 
 let client: PostHog | undefined;
 let initializing: Promise<void> | undefined;
@@ -123,10 +123,18 @@ export async function trackWebPage(pathname: string): Promise<void> {
     await initializeWebAnalytics();
     if (client && desiredReplay) client.startSessionRecording();
     if (!client || lastPath === pathname) return;
+    const campaign = signupAttribution().last;
+    // Add only allowlisted campaign dimensions to the pageview. The privacy
+    // sanitizer retains them without storing full URLs or click IDs.
     client.capture("$pageview", {
       $pathname: template,
       app_environment: environment(),
       home_state: desiredHomeState,
+      ...(campaign.source !== "unknown" ? {
+        $utm_source: campaign.source,
+        $utm_medium: campaign.medium,
+        $utm_campaign: campaign.campaign,
+      } : {}),
     });
     lastPath = pathname;
   } catch {

@@ -61,6 +61,7 @@ function runtime({ config = env, browser = true, fail = false, failReset = false
     new Function("require", "module", "exports", "process", "window", compiled)(
       (id) => {
         if (id === "posthog-js") return { __esModule: true, default: ph };
+        if (id === "@/lib/attribution/signup") return load(path.resolve("src/lib/attribution/signup.ts"));
         if (id === "@sentry/nextjs") return sentry;
         assert.ok(id.startsWith("."));
         return load(path.resolve(path.dirname(file), id.endsWith(".json") ? id : id + ".ts"));
@@ -210,6 +211,31 @@ test("PostHog payload scrubbing drops private properties and unexpected events",
     }),
     null,
   );
+});
+
+test("ad campaign labels survive pageview scrubbing without raw URLs or click IDs", async () => {
+  const r = runtime();
+  await r.load("analytics").initializeWebAnalytics();
+  const safe = r.analyticsOptions.before_send({
+    event: "$pageview",
+    properties: {
+      $pathname: "/home",
+      $utm_source: "tiktok",
+      $utm_medium: "paid_social",
+      $utm_campaign: "traffic_1",
+      $utm_content: "not_allowed",
+      $utm_term: "secret",
+      $current_url: "https://app.yrdly.ng/home?gclid=private-click",
+      email: "private@example.com",
+    },
+  });
+  assert.equal(safe.properties.$utm_source, "tiktok");
+  assert.equal(safe.properties.$utm_medium, "paid_social");
+  assert.equal(safe.properties.$utm_campaign, "traffic_1");
+  assert.equal(safe.properties.$utm_term, undefined);
+  assert.equal(safe.properties.$utm_content, undefined);
+  assert.equal(safe.properties.$current_url, "https://app.yrdly.ng/home");
+  assert.doesNotMatch(JSON.stringify(safe), /private|secret|gclid|example\\.com/);
 });
 
 test("Sentry covers all runtimes, excludes request/user data on server, and preserves debug IDs", () => {

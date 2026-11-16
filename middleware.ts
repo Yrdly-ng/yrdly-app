@@ -22,6 +22,23 @@ export function middleware(request: NextRequest) {
     const marketingUrl = process.env.NEXT_PUBLIC_MARKETING_URL || 'https://yrdly.ng';
     const redirectUrl = new URL(marketingUrl);
     request.nextUrl.searchParams.forEach((value, key) => redirectUrl.searchParams.set(key, value));
+
+    // Logged-out visitors to /home are redirected here with the original URL
+    // inside "next". Copy ONLY bounded public campaign tags onto the marketing
+    // landing URL so the source survives the app -> marketing-site handoff.
+    const next = request.nextUrl.searchParams.get('next');
+    if (next?.startsWith('/') && !next.startsWith('//')) {
+      try {
+        const nested = new URL(next, request.nextUrl.origin);
+        for (const key of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content']) {
+          const value = nested.searchParams.get(key);
+          if (value && /^[a-z0-9][a-z0-9._-]{0,63}$/.test(value) &&
+              !redirectUrl.searchParams.has(key)) {
+            redirectUrl.searchParams.set(key, value);
+          }
+        }
+      } catch { /* Malformed next is never allowed to break login. */ }
+    }
     return NextResponse.redirect(redirectUrl);
   }
 
