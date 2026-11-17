@@ -38,6 +38,7 @@ async function mountDetail({ payment = 'unpaid', role = 'customer', ended = fals
     '@/lib/notifications/notification-triggers': { NotificationTriggers: {} },
     '@/lib/supabase/supabase': { supabase: { from: () => query } },
     '@/lib/auth/authenticated-fetch': { authenticatedFetch: async () => ({}) },
+    '@/components/bookings/BookingMilestones': { BookingMilestones: () => React.createElement('div', {}, 'Booking milestones') },
     '@/components/bookings/BookingReschedulePanel': { BookingReschedulePanel: () => React.createElement('div', {}, 'Reschedule controls') },
     '@/components/reviews/WriteBusinessReviewDialog': { WriteBusinessReviewDialog: () => React.createElement('button', {}, 'Review booking') },
   }).default;
