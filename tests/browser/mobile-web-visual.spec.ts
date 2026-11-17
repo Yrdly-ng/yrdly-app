@@ -466,7 +466,12 @@ for (const theme of ["light", "dark"] as const) {
       await expect(page.getByRole("button", { name: "Send message", exact: true })).toBeEnabled();
       await noOverflow();
       await page.screenshot({ path: `${OUTPUT}/${theme}-${width}-conversation.png`, fullPage: true });
-      await page.addStyleTag({ content: "html { font-size: 200% !important; }" });
+      // Keep the font preference on the root itself: Next head reconciliation
+      // can remove injected style tags and silently undo text scaling.
+      await page.evaluate(() => document.documentElement.style.setProperty("font-size", "32px", "important"));
+      await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).fontSize)).toBe("32px");
+      await expect(page.getByRole("region", { name: "Conversation messages", exact: true }).getByText(longMessage, { exact: true }))
+        .toHaveCSS("font-size", "32px");
       await noOverflow();
       const inputSize = await input.boundingBox();
       expect(inputSize?.width, "Enlarged-text composer remains usable").toBeGreaterThanOrEqual(100);
