@@ -13,7 +13,6 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -23,7 +22,6 @@ import {
   Search,
   Plus,
   Store,
-  CheckCircle,
 } from "lucide-react";
 import Image from "next/image";
 import { CategoryIcon } from "@/components/discovery/CategoryIcon";
@@ -244,12 +242,6 @@ export function BusinessHub({ searchQuery = "" }: { searchQuery?: string }) {
                     <div className="flex items-center justify-center h-full text-muted-foreground">
                       <Building2 className="h-12 w-12" />
                     </div>
-                  )}
-                  {biz.is_verified && (
-                    <Badge className="absolute top-3 right-3 bg-blue-600 text-white gap-1">
-                      <CheckCircle className="h-3 w-3" />
-                      Verified
-                    </Badge>
                   )}
                 </div>
 
