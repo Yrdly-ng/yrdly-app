@@ -63,7 +63,8 @@ function TabBar({ active, onChange }: { active: string; onChange: (k: string) =>
           <button
             key={key}
             onClick={() => onChange(key)}
-            className={`flex-1 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all text-center ${
+            aria-pressed={isActive}
+            className={`flex-1 min-h-11 py-2 rounded-full text-sm font-bold uppercase tracking-wider transition-all text-center ${
               isActive
                 ? "bg-primary text-primary-foreground shadow-sm"
                 : "text-[var(--yrdly-label)] hover:text-foreground"
@@ -371,10 +372,10 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
         {/* ── Top Header ── */}
         <div className="flex items-center justify-between py-2 mb-4">
           {onBack ? (
-            <button onClick={onBack} className="w-9 h-9 rounded-xl flex items-center justify-center border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)]">
+            <button aria-label="Back" onClick={onBack} className="w-11 h-11 rounded-xl flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)]">
               <ArrowLeft className="w-4 h-4 text-foreground" />
             </button>
-          ) : <div className="w-9" />}
+          ) : <div className="w-11" />}
 
           <h1 className="text-base font-bold text-foreground font-yrdly-display">
             Profile
@@ -383,12 +384,12 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
           {actualIsOwnProfile ? (
             <button
               onClick={() => router.push("/settings")}
-              className="w-9 h-9 rounded-xl flex items-center justify-center border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] transition-colors hover:bg-white/5"
+              className="w-11 h-11 rounded-xl flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] transition-colors hover:bg-white/5"
               title="Settings"
             >
               <Settings className="w-4 h-4 text-[var(--yrdly-label)]" />
             </button>
-          ) : <div className="w-9" />}
+          ) : <div className="w-11" />}
         </div>
 
         {/* ── Identity Block (Mobile Parity + Desktop Redesign) ── */}
@@ -402,11 +403,12 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
               {actualIsOwnProfile && (
                 <button
                   onClick={() => router.push("/settings/profile")}
-                  className="absolute bottom-0 right-0 w-6 h-6 rounded-full flex items-center justify-center border-2 border-background"
-                  style={{ background: GREEN }}
+                  className="absolute -bottom-2 -right-2 w-11 h-11 rounded-full flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   title="Edit Photo"
                 >
-                  <Camera className="w-3 h-3 text-black" />
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-background" style={{ background: GREEN }}>
+                    <Camera className="w-3 h-3 text-black" />
+                  </span>
                 </button>
               )}
             </div>
@@ -426,7 +428,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
                   {actualIsOwnProfile ? (
                     <button
                       onClick={() => router.push("/settings/profile")}
-                      className="h-9 px-5 rounded-full border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] text-xs font-semibold text-[var(--yrdly-label)] font-yrdly-body transition-colors hover:bg-white/5"
+                      className="min-h-11 px-5 rounded-full border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] text-sm font-semibold text-muted-foreground font-yrdly-body transition-colors hover:bg-white/5"
                     >
                       Edit Profile
                     </button>
@@ -434,7 +436,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
                     <button
                       onClick={handleToggleFollow}
                       disabled={followLoading}
-                      className={`h-9 px-5 rounded-full text-xs font-bold font-yrdly-body transition-all flex items-center gap-1.5 ${
+                      className={`min-h-11 px-5 rounded-full text-sm font-bold font-yrdly-body transition-all flex items-center gap-1.5 ${
                         isFollowing
                           ? "bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] text-foreground hover:bg-white/10"
                           : "bg-primary text-black hover:opacity-90"
@@ -452,7 +454,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
                   {!actualIsOwnProfile && isMutualFollow && (
                     <button
                       onClick={handleMessageMutual}
-                      className="h-9 px-4 rounded-full border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] text-xs font-semibold text-foreground font-yrdly-body transition-colors hover:bg-white/10 flex items-center gap-1.5"
+                      className="min-h-11 px-4 rounded-full border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] text-sm font-semibold text-foreground font-yrdly-body transition-colors hover:bg-white/10 flex items-center gap-1.5"
                     >
                       <MessageCircle className="w-3.5 h-3.5" /> Message
                     </button>
@@ -513,7 +515,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
             {actualIsOwnProfile ? (
               <button
                 onClick={() => router.push("/settings/profile")}
-                className="h-9 px-5 rounded-full border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] text-xs font-semibold text-[var(--yrdly-label)] font-yrdly-body transition-colors hover:bg-white/5"
+                className="min-h-11 px-5 rounded-full border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] text-sm font-semibold text-muted-foreground font-yrdly-body transition-colors hover:bg-white/5"
               >
                 Edit Profile
               </button>
@@ -521,7 +523,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
               <button
                 onClick={handleToggleFollow}
                 disabled={followLoading}
-                className={`h-9 px-5 rounded-full text-xs font-bold font-yrdly-body transition-all flex items-center gap-1.5 ${
+                className={`min-h-11 px-5 rounded-full text-sm font-bold font-yrdly-body transition-all flex items-center gap-1.5 ${
                   isFollowing
                     ? "bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] text-foreground hover:bg-white/10"
                     : "bg-primary text-black hover:opacity-90"
@@ -539,7 +541,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
             {!actualIsOwnProfile && isMutualFollow && (
               <button
                 onClick={handleMessageMutual}
-                className="h-9 px-4 rounded-full border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] text-xs font-semibold text-foreground font-yrdly-body transition-colors hover:bg-white/10 flex items-center gap-1.5"
+                className="min-h-11 px-4 rounded-full border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] text-sm font-semibold text-foreground font-yrdly-body transition-colors hover:bg-white/10 flex items-center gap-1.5"
               >
                 <MessageCircle className="w-3.5 h-3.5" /> Message
               </button>

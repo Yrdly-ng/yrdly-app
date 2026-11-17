@@ -125,20 +125,20 @@ export function EventsScreen({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "mx-auto min-h-[70vh] max-w-7xl space-y-7 px-4 py-6 pb-28 font-yrdly-body sm:px-6 lg:py-10",
+        "mx-auto min-h-[70vh] max-w-7xl space-y-4 px-1 pb-28 sm:space-y-7 sm:py-6 font-yrdly-body sm:px-6 lg:py-10",
         className,
       )}
     >
-      <header className="flex flex-wrap items-start justify-between gap-5">
-        <div className="max-w-xl space-y-3">
+      <header className="flex flex-wrap items-start justify-between gap-3 sm:gap-5">
+        <div className="max-w-xl space-y-2 sm:space-y-3">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">
             OUT THERE, TOGETHER
           </p>
-          <h1 className="font-yrdly-display text-4xl font-bold tracking-tight sm:text-5xl">
+          <h1 className="font-yrdly-display text-3xl font-bold tracking-tight sm:text-5xl">
             Make a plan.
           </h1>
           <p className="text-base leading-relaxed text-muted-foreground">
-            Good company. New experiences. Find your next reason to head out.
+            Find your next neighbourhood outing.
           </p>
         </div>
         <button
@@ -150,7 +150,7 @@ export function EventsScreen({ className }: { className?: string }) {
           Create event
         </button>
       </header>
-      <nav aria-label="Your events" className="flex flex-wrap gap-3">
+      <nav aria-label="Your events" className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:gap-3 [&>a]:shrink-0">
         <Link
           href="/my-tickets"
           className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold hover:border-primary"
@@ -196,7 +196,7 @@ export function EventsScreen({ className }: { className?: string }) {
           placeholder="Search events, places or interests"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="min-w-0 flex-1 bg-transparent py-4 text-sm outline-none"
+          className="min-w-0 flex-1 bg-transparent py-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg"
         />
         {query && (
           <button

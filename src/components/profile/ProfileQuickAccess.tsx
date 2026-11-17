@@ -59,11 +59,11 @@ export function ProfileQuickAccess({
           const content = (
             <div className="flex flex-col items-center gap-1.5 group cursor-pointer text-center">
               <div
-                className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all duration-200 group-hover:scale-105 ${item.color}`}
+                className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all duration-200 group-hover:scale-105 ${item.color}`}
               >
                 <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
-              <span className="text-xs font-medium text-foreground line-clamp-1 group-hover:text-primary transition-colors">
+              <span className="text-sm font-medium text-foreground leading-snug group-hover:text-primary transition-colors">
                 {item.label}
               </span>
             </div>
@@ -71,7 +71,7 @@ export function ProfileQuickAccess({
 
           if (item.href) {
             return (
-              <Link key={idx} href={item.href} className="focus:outline-none">
+              <Link key={idx} href={item.href} className="rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
                 {content}
               </Link>
             );
@@ -81,7 +81,7 @@ export function ProfileQuickAccess({
             <button
               key={idx}
               onClick={item.onClick}
-              className="focus:outline-none w-full text-left"
+              className="rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary w-full text-left"
               type="button"
             >
               {content}

@@ -145,9 +145,9 @@ export function BusinessesScreen({
   }, [profile, router, searchParams]);
 
   return (
-    <section className="mx-auto max-w-6xl space-y-7 px-4 py-6 pb-24 font-yrdly-body text-foreground sm:px-6 sm:py-8">
+    <section className="mx-auto max-w-6xl space-y-4 px-1 pb-24 sm:space-y-7 font-yrdly-body text-foreground sm:px-6 sm:py-8">
       <CampaignBanner />
-      <header className="space-y-6">
+      <header className="space-y-3 sm:space-y-6">
         {backTarget === "/businesses" && (
           <button
             onClick={() => router.push("/explore")}
@@ -156,15 +156,15 @@ export function BusinessesScreen({
             <ArrowLeft size={17} /> Explore
           </button>
         )}
-        <div className="flex flex-wrap items-end justify-between gap-5">
+        <div className="flex flex-wrap items-end justify-between gap-3 sm:gap-5">
           <div className="max-w-xl">
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
               Good people. Great local finds.
             </p>
-            <h1 className="font-yrdly-display text-4xl font-bold tracking-tight sm:text-5xl">
+            <h1 className="font-yrdly-display text-3xl font-bold tracking-tight sm:text-5xl">
               Your local directory<span className="text-primary">.</span>
             </h1>
-            <p className="mt-3 max-w-lg text-sm leading-relaxed text-muted-foreground sm:text-base">
+            <p className="mt-2 max-w-lg sm:mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
               Find the shops, services and people worth knowing in your
               neighbourhood.
             </p>
@@ -176,7 +176,7 @@ export function BusinessesScreen({
             <Plus size={18} className="mr-2" /> Add your business
           </Button>
         </div>
-        <div className="flex flex-col gap-3 rounded-3xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:p-5">
+        <div className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-3 sm:gap-3 sm:rounded-3xl sm:flex-row sm:items-center sm:p-5">
           <div className="relative flex-1">
             <Search
               size={19}
@@ -193,7 +193,7 @@ export function BusinessesScreen({
               <button
                 aria-label="Clear search"
                 onClick={() => setQuery("")}
-                className="absolute right-1 top-1 flex h-10 w-10 items-center justify-center rounded-xl"
+                className="absolute right-0.5 top-0.5 flex h-11 w-11 items-center justify-center rounded-xl"
               >
                 <X size={17} />
               </button>

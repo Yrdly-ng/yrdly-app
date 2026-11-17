@@ -199,6 +199,33 @@ for (const theme of ["light", "dark"] as const) {
             mask: [page.locator("input[type=password]")],
           });
           console.log(`PASS authenticated ${route} at ${width}px`);
+          if (width === 390 && route === "/settings") {
+            const email = page.getByRole("button", { name: /^Email Address/ });
+            await email.focus();
+            await email.press("Enter");
+            const dialog = page.getByRole("alertdialog", { name: "Change Email" });
+            await expect(dialog).toBeVisible();
+            await dialog.getByRole("button", { name: "OK", exact: true }).click();
+            await expect(dialog).toBeHidden();
+            const toggle = page.getByRole("switch", { name: "Dark Mode", exact: true });
+            const size = await toggle.boundingBox();
+            expect(size?.height).toBeGreaterThanOrEqual(44);
+            expect(size?.width).toBeGreaterThanOrEqual(44);
+            await toggle.focus();
+            await toggle.press("Enter");
+            await expect(toggle).toHaveAttribute("aria-checked", String(theme !== "dark"));
+            await toggle.press("Enter");
+            await expect(toggle).toHaveAttribute("aria-checked", String(theme === "dark"));
+            await expect(page.locator("html")).toHaveClass(new RegExp(`\\b${theme}\\b`));
+          }
+          if (width === 390 && route === "/profile") {
+            for (const name of ["Edit Profile", "Posts", "Texts", "Saved"]) {
+              const control = page.locator("main").getByRole("button", { name, exact: true });
+              const size = await control.boundingBox();
+              expect(size?.height, `${name} touch height`).toBeGreaterThanOrEqual(44);
+            }
+          }
+
         }
       }
     });
