@@ -165,7 +165,7 @@ export function MarketplaceItemCard({
   };
 
   return (
-    <GlassCard className="group overflow-hidden rounded-2xl transition-all duration-200 hover:shadow-md w-full flex flex-col justify-between">
+    <GlassCard className="group overflow-hidden rounded-3xl border border-border/70 bg-card transition-all duration-200 hover:border-primary/40 hover:shadow-md w-full flex flex-col justify-between">
       <div className="relative">
         <Link
           href={`/marketplace/${item.id}`}
@@ -192,12 +192,12 @@ export function MarketplaceItemCard({
           </div>
 
           {/* Content Body */}
-          <div className="p-4 space-y-2.5">
+          <div className="p-3 sm:p-4 space-y-2">
             <h4 className="line-clamp-2 min-h-10 text-sm font-bold text-foreground group-hover:text-primary transition-colors">
               {item.title || item.text || "Item"}
             </h4>
 
-            <p className="break-words text-base sm:text-lg font-bold tracking-tight text-foreground">
+            <p className="break-words text-lg sm:text-xl font-bold tracking-tight text-primary">
               {getListingPriceLabel(item.price, formatPrice)}
             </p>
             {/* Seller information */}
