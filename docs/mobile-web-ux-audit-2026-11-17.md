@@ -1,72 +1,62 @@
 # Mobile web UX audit — 17 November 2026
 
-Status: **in progress; release blocked**. Continue branch `feature/mobile-web-ux-refresh-nov2026` and draft PR #97. No merge or production deployment.
+Status: **in progress; keep PR #97 draft**. Continue `feature/mobile-web-ux-refresh-nov2026`. No production merge or deployment.
 
-## Browser evidence and limits
+## Authentication and isolated QA
 
-The Work cloud browser reached both production and the isolated QA site. Both redirected to login. A real QA login screenshot was captured and inspected at the browser's current 1363px viewport. The secure QA sign-in request was declined; no credentials were entered. Authenticated screens, installed PWA behavior and the requested viewport matrix have **not** been visually approved.
+All five dedicated core QA accounts were reset and their GitHub environment passwords updated by the user. Buyer, seller, organizer, admin and non-admin password sign-ins were verified after the seed job. Credentials are not included in this report or screenshots.
 
-Screenshot: [QA login before changes](https://chatgpt.com/library?file_id=libfile_645e4ab50a7481919843210e31dcb298&account_id=personal). This shows the deployed QA revision, not this branch's new changes.
+The initial workflow failed before runner allocation because the environment rejected `refs/pull/97/merge`. The environment now allows that exact PR ref; account validation, seeding, builds and authenticated Playwright execution run successfully against the isolated QA tenant. Production credentials/data were not used. Conflicts with current main were resolved while retaining the stronger booking regression fixtures.
 
-| Surface | Live visual review this session | Prepared browser coverage |
+The Work cloud browser reached production and isolated QA login pages. Its secure QA login later returned a generic Network error; automatic retries stopped. **CI authentication is working; this does not establish a signed-in Work browser session.** Native runtime and installed PWA behavior remain unverified.
+
+## Screenshot coverage and evidence quality
+
+The suite covers **320, 360, 375, 390, 430, 768, 1024 and 1440px**, in light and dark mode. Twelve surfaces per combination produce 192 screenshots: Home, Explore, Marketplace, Businessplace, Events, Messages, Profile, Settings, Create menu, and the first post/listing/event creation screens.
+
+Initial authenticated run 44093721245 passed six matrix tests, but visual inspection found loading placeholders and a Create exit animation in early captures. Those captures are provisional evidence. Readiness checks now wait for visible accessible headings, YRDLY shimmer skeletons, pulse/spinner placeholders, category loading and fonts. Desktop Settings intentionally hides its mobile heading, so readiness uses accessible headings rather than the first DOM h1. Create-menu captures wait for panel and backdrop opacity to reach their final values; creation captures also wait for the menu exit animation to finish.
+
+Final run **44110010185** at commit `be5d1b5264d141792739e18b518a5161efd87703`: **6 passed (5.1m)**; static and visual jobs both succeeded. All 192 PNGs were downloaded and their archive SHA-256 verified. Representative loaded light/dark screenshots were inspected, including the previously incomplete desktop Create, Marketplace and Messages captures. This confirms those evidence-timing defects are fixed; it does not approve the entire redesign.
+
+[Successful CI run and full private artifact](https://github.com/Yrdly-ng/yrdly-app/actions/runs/44110010185). [Screenshot review archive](https://chatgpt.com/library?file_id=libfile_2a0e83af63108191be360dc765755f11&account_id=personal) contains 176 original PNGs; the 16 Settings captures with account contact details remain in the private GitHub artifact.
+
+Only disposable QA fixtures are shown. Tests open creation screens without publishing. The verified QA buyer reached the actual first listing/event form screens; phone-gate captures do not substitute for form review. Later wizard steps and submission are not covered by this visual suite.
+
+## Findings and implementation
+
+| Finding | Evidence | Change/status |
 | --- | --- | --- |
-| Login | Desktop screenshot and accessibility tree inspected | Auth entry used by isolated QA tests |
-| Home, Explore, Marketplace, Businessplace, Events | Blocked by QA sign-in | All eight widths, light and dark |
-| Messages, Profile, Settings | Blocked by QA sign-in | All eight widths, light and dark |
-| Create menu | Blocked by QA sign-in | Four actions, geometry, Escape and focus return, both themes |
-| Post, listing and event creation | Blocked by QA sign-in | Open existing routes or capture the existing phone gate; no publishing |
-| Installed iPhone PWA | Not inspected | Physical-device checks still required |
+| Small login controls, missing password-toggle name and autofill metadata | Deployed login screenshot/accessibility tree and source | Named 44px password toggle, focus state, input names/autocomplete, 16px mobile fields and larger recovery/sign-up controls |
+| Create action hierarchy and small navigation targets | Source and rendered mobile screenshots | Four distinctive illustrated action cards, larger navigation targets, compact topbar and clearer Marketplace typography |
+| Global topbar and bottom navigation duplicate creation screen controls | Actual 320–1440 creation screenshots | Hide global chrome on post/listing/event creation; retain page back controls and desktop sidebar; safe-area bottom padding |
+| Category chips and form labels lack robust accessible semantics | Source and rendered creation forms | Associated title/description labels, 44px category chips, selected states and Post content name |
+| Business verification label implies independent business verification | Business detail source | Say Phone verified only for an explicit true phone flag |
+| Create close button can shrink beside long title | Source and narrow screenshots | Preserve 44px width and action selectors |
+| Businessplace and Events consume most of the first phone viewport with hero/search/filter controls | Loaded 390px screenshots in both themes | Remaining mobile hierarchy/spacing refinement; content begins near or below the bottom navigation |
+| Small secondary copy and controls remain in feed metadata, Profile shortcuts and Settings descriptions | Representative loaded phone screenshots | Remaining readability and touch-target audit, especially at 320px and with text scaling |
+| Desktop Settings has a hidden mobile heading | 1024px browser failure | Fixed readiness check; not an application navigation failure |
+| Shimmer skeletons were not covered by generic animation waits | Actual dark Marketplace/Messages captures and Skeleton source | Wait for `.yrdly-skeleton` before screenshot capture |
 
-Widths prepared: **320, 360, 375, 390, 430, 768, 1024, 1440**. Test discovery is not browser execution. Phone-gate screenshots are explicitly named as such and do not count as review of a creation form; a verified QA buyer is needed for that release gate.
+No payment, auth, verification or notification dispatch logic was changed by the UX work. Current main was integrated, including its already-existing unrelated fixes.
 
-## Findings and changes
+## Native reference and limits
 
-| Finding | Evidence | Change in this branch |
-| --- | --- | --- |
-| Password toggle has no accessible name and only a 16px icon hit area | Live login accessibility tree, screenshot and source | Named Show/Hide password control, pressed state, 44px hit area and keyboard focus ring |
-| Login fields rely on placeholders and lack autofill metadata | Live tree and source | Explicit accessible names, names and autocomplete attributes |
-| Login inputs use 14px text; small mobile input text risks Safari focus zoom | Source; mobile behavior still needs device verification | 16px on phones, existing desktop sizing retained |
-| Sign-up and password recovery controls are small | Live screenshot and source | 44px minimum height and larger readable text |
-| Business detail announces independent business verification | Source: `BusinessDetailScreen.tsx` | Remove generic verification claim; show Phone verified only for an explicit true phone flag, matching directory semantics |
-| Listing/event title and description labels lack input associations | Source | Associate labels and fields; improve label readability |
-| Event/listing category chips have small touch areas and no selected state for assistive technology | Source | 44px minimum height, keyboard focus rings and `aria-pressed` |
-| Post content lacks a persistent accessible name | Source | Add Post content accessible name |
-| Create close control can shrink beside a long heading | Source | Preserve 44px width with `shrink-0`; add stable action selectors for browser tests |
-| Existing screenshot suite omits 360/1024 for page captures and has no theme matrix | Source | All eight widths in both themes, route assertions and failure screenshots |
-
-The new visual changes still need rendered screenshot review. These code findings are not claims about uninspected authenticated screens.
-
-## Native reference
-
-Source comparison only: native `src/components/ScreenHeader.tsx` uses 16px horizontal spacing, a 17px bold Outfit title, safe-area-aware top spacing, and map/notification actions. Native `VerifiedBadge.tsx` has distinct visual badge shapes, but its generic verification semantics must not override the web requirement to say Phone verified. No native runtime screenshots were inspected, so cross-platform visual parity remains pending.
-
-## Why visual CI fails before browsers
-
-Confirmed on GitHub's job annotations for run `44086932514`, attempt 2, job `134069062063`:
-
-> Branch "refs/pull/97/merge" is not allowed to deploy to yrdly-qa due to environment protection rules.
-
-GitHub records zero executed steps and no runner assignment. This is an environment protection rejection, not a Playwright installation or test failure. The retry had the same result. Environment protections and secret scope were preserved.
-
-An administrator must provide an allowed execution path for the PR's isolated QA job, or make a deliberate environment-policy change. Do not use `pull_request_target`, remove the environment to expose secrets, or use production credentials as a workaround.
-
-The workflow now also runs TypeScript, lint, parity, payment/business regressions and browser-test discovery in a separate job without QA secrets. This does not resolve or replace the authenticated visual release gate.
+Source comparison: native ScreenHeader uses 16px horizontal spacing, a 17px bold Outfit title, safe-area-aware spacing and map/notification actions. Focused creation screens and consistent mobile navigation follow that hierarchy. Native badge artwork does not override phone-verification semantics. No native runtime screenshots were reviewed, so visual parity is not approved.
 
 ## Validation
 
-- TypeScript: passed locally.
-- Lint: passed with existing repository warnings.
+- TypeScript and lint pass; lint retains existing repository warnings.
 - Feature parity: 46 passed.
 - Payment regressions: 108 passed; mocked/local tests, no live payments.
-- Business regressions: 37 passed after updating two stale harnesses to load the existing staged-booking module and render the real milestone component against a disabled local fixture. No production booking/payment logic changed.
-- Playwright: six matrix tests discovered successfully. Authenticated execution and generated matrix screenshots remain blocked.
-- `git diff --check`: passed.
+- Business regressions: 37 passed. Two stale harnesses now exercise staged checkout delegation and the actual milestone component with a disabled local fixture; no provider payments.
+- Conflict resolution: the seven directly affected booking tests pass.
+- Browser tests check authenticated routes, theme, page overflow, Create geometry, Escape/focus return, existing creation destinations, and hidden mobile app navigation on focused creation screens.
+- `git diff --check` passes.
 
 ## Remaining release gates
 
-- Authenticate the Work browser with a dedicated QA account and inspect every requested screen at all eight widths.
-- Resolve the isolated QA environment execution restriction and inspect actual screenshots from the branch.
-- Inspect later wizard steps, dialogs, keyboard navigation, text scaling, light/dark contrast, loading/error/empty states, and long content.
-- Compare rendered screens with the native app and continue the wider Home/Explore/Messages/Profile/Settings redesign from that evidence.
-- Test physical iPhone Safari and installed PWA viewport/safe-area/keyboard behavior.
-- Keep PR #97 in draft until these gates pass. Daily prompts, PWA push testing and native Liquid Glass remain on hold.
+- Continue the wider mobile hierarchy, typography and touch-target refinements identified above; inspect final loaded screenshots at every requested breakpoint.
+- Inspect later listing/event wizard steps, dialogs, populated conversations, validation errors, keyboard focus, text scaling, contrast and long content.
+- Resolve the Work browser QA sign-in network error before claiming interactive authenticated cloud-browser review.
+- Compare rendered native screens and test physical iPhone Safari and installed PWA safe areas, viewport and keyboard behavior.
+- Keep PR #97 draft until redesign and QA are complete. Daily prompts, PWA push testing and native Liquid Glass remain on hold.
