@@ -85,7 +85,7 @@ test('known category labels resolve to consistent outline icon meanings', () => 
 test('every existing business catalog category has a designated icon', () => {
   const source = fs.readFileSync('src/lib/businesses/catalog-categories.ts', 'utf8');
   const catalog = source.slice(source.indexOf('const CATALOG_CATEGORIES'), source.indexOf('function catalogSector'));
-  const labels = [...new Set([...catalog.matchAll(/'([^']+)'/g)].map(match => match[1]))];
+  const labels = [...new Set([...catalog.matchAll(/'([^']+)'|"([^"]+)"/g)].map(match => match[1] || match[2]))];
   const known = new Set(
     Object.values(CATEGORY_ICON_GROUPS).flat().map(normalizeCategoryLabel),
   );
