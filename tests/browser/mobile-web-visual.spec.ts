@@ -446,6 +446,8 @@ for (const theme of ["light", "dark"] as const) {
       await open.press("Enter");
       const input = page.getByRole("textbox", { name: "Message", exact: true });
       await expect(input).toBeVisible();
+      await expect(input).toBeInViewport();
+      await expect(page.locator("main")).toHaveCount(1);
       await expect(page.getByText(longMessage, { exact: true })).toBeVisible();
       for (const name of ["Back to messages", "Conversation options", "Attach photo", "Attach video", "Send a GIF", "Send message"]) {
         const control = page.getByRole("button", { name, exact: true });
@@ -501,6 +503,29 @@ for (const theme of ["light", "dark"] as const) {
         await page.goto(route);
         const quote = page.getByRole("complementary", { name: "Daily question context", exact: true });
         await expect(quote).toContainText(prompt.question);
+        const contrast = await quote.evaluate(el => {
+          const rgba = (color: string) => {
+            const values = color.match(/[\d.]+/g)?.map(Number) || [0, 0, 0];
+            return [...values.slice(0, 3), values[3] ?? 1];
+          };
+          const luminance = (rgb: number[]) => rgb.slice(0, 3).map(value => {
+            const v = value / 255;
+            return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+          }).reduce((sum, value, index) => sum + value * [0.2126, 0.7152, 0.0722][index], 0);
+          return Array.from(el.querySelectorAll("p, blockquote, a")).map(node => {
+            let background = [255, 255, 255];
+            const ancestors: Element[] = [];
+            for (let parent: Element | null = node; parent; parent = parent.parentElement) ancestors.unshift(parent);
+            for (const ancestor of ancestors) {
+              const color = rgba(getComputedStyle(ancestor).backgroundColor);
+              background = background.map((value, index) => color[index] * color[3] + value * (1 - color[3]));
+            }
+            const fg = luminance(rgba(getComputedStyle(node).color));
+            const bg = luminance(background);
+            return (Math.max(fg, bg) + 0.05) / (Math.min(fg, bg) + 0.05);
+          });
+        });
+        for (const ratio of contrast) expect(ratio, "Daily-question text contrast").toBeGreaterThanOrEqual(4.5);
         await expect(page.getByText("Chicken Republic", { exact: true }).first()).toBeVisible();
         const link = quote.getByRole("link", { name: "View question and neighbours’ answers", exact: true });
         await expect(link).toHaveAttribute("href", `/daily-prompts?promptId=${promptId}`);

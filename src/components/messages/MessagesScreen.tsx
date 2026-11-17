@@ -526,7 +526,7 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
       {/* ── Left Sidebar (Conversations List) ── */}
       <div
         className={cn(
-          "w-full md:w-80 lg:w-96 flex flex-col h-full shrink-0 border-r border-[var(--yrdly-glass-border)] bg-[var(--yrdly-dark)]",
+          "w-full md:w-[min(20rem,35%)] lg:w-[min(24rem,35%)] flex flex-col h-full shrink-0 border-r border-[var(--yrdly-glass-border)] bg-[var(--yrdly-dark)]",
           selectedConvId ? "hidden md:flex" : "flex",
         )}
       >
@@ -733,7 +733,7 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
       {/* ── Right Main Pane (Active Chat Screen) ── */}
       <div
         className={cn(
-          "flex-1 flex flex-col h-full min-h-0 bg-[var(--yrdly-dark)]/50",
+          "flex-1 flex flex-col h-full min-h-0 min-w-0 bg-[var(--yrdly-dark)]/50",
           !selectedConvId ? "hidden md:flex" : "flex",
         )}
       >

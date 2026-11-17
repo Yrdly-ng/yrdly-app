@@ -911,7 +911,7 @@ export function ConversationScreen({
   const avatarSrc = otherParticipant.avatar_url;
 
   return (
-    <div className="w-full h-full flex-1 flex flex-col min-h-0 bg-[var(--yrdly-dark)] text-foreground font-yrdly-body relative">
+    <div className="w-full h-full flex-1 flex flex-col min-h-0 min-w-0 bg-[var(--yrdly-dark)] text-foreground font-yrdly-body relative">
       {videoEditor}
       {gifPickerVisible && (
         <GiphyPicker
@@ -1072,7 +1072,8 @@ export function ConversationScreen({
       )}
 
       {/* ── Messages List ── */}
-      <main
+      <section
+        aria-label="Conversation messages"
         ref={messageListRef}
         className="flex-1 overflow-y-auto px-4 py-4 space-y-3"
         onScroll={(event) => {
@@ -1359,7 +1360,7 @@ export function ConversationScreen({
         )}
 
         <div ref={messagesEndRef} />
-      </main>
+      </section>
 
       {/* ── Input ── */}
       <footer
@@ -1427,7 +1428,7 @@ export function ConversationScreen({
             </button>
           </div>
         )}
-        <form onSubmit={handleSend} className="grid grid-cols-[auto_auto_auto_1fr] items-center gap-2 sm:flex sm:gap-3">
+        <form onSubmit={handleSend} className="flex flex-wrap items-center gap-2 sm:gap-3">
           <button
             type="button"
             aria-label="Send a GIF"
@@ -1472,7 +1473,7 @@ export function ConversationScreen({
           >
             <VideoIcon className="w-5 h-5" />
           </button>
-          <div className="order-first col-span-4 min-w-0 sm:order-none sm:flex-1 relative">
+          <div className="order-first basis-full min-w-0 sm:order-none sm:basis-auto sm:min-w-[8rem] sm:flex-1 relative">
             <input
               type="text"
               aria-label="Message"
@@ -1500,7 +1501,7 @@ export function ConversationScreen({
               sending ||
               isEditingVideo
             }
-            className="w-12 h-12 justify-self-end rounded-full flex items-center justify-center flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring bg-primary text-primary-foreground transition-all duration-200 active:scale-95 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100 shadow-md"
+            className="w-12 h-12 ml-auto rounded-full flex items-center justify-center flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring bg-primary text-primary-foreground transition-all duration-200 active:scale-95 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100 shadow-md"
           >
             {sending ? (
               <Loader2 className="w-5 h-5 text-primary-foreground animate-spin" />
