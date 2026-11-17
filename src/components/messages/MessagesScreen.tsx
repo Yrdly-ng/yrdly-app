@@ -88,10 +88,12 @@ function ConversationItem({
   const activity = getUserActivityStatus(item.isOnline, item.lastSeen, now);
 
   return (
-    <div
+    <button
+      type="button"
+      aria-label={`Open conversation with ${item.participantName}`}
       onClick={(e) => onSelect(item.id, e)}
       className={cn(
-        "group flex items-center gap-3.5 px-4 py-3 cursor-pointer transition-all hover:bg-white/5 border-l-4 border-transparent relative",
+        "group flex w-full items-center gap-3.5 px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring cursor-pointer transition-all hover:bg-white/5 border-l-4 border-transparent relative",
         isUnread && "bg-[#82DB7E]/[0.03]",
         isActive && "bg-[#82DB7E]/10 border-l-[#82DB7E]",
       )}
@@ -130,7 +132,7 @@ function ConversationItem({
           <div className="flex items-center gap-1.5 min-w-0">
             <span
               className={cn(
-                "text-sm font-semibold truncate text-foreground font-yrdly-display",
+                "text-base font-semibold truncate text-foreground font-yrdly-display",
                 isUnread && "font-extrabold",
               )}
             >
@@ -153,7 +155,7 @@ function ConversationItem({
         <div className="flex items-center justify-between gap-2">
           <p
             className={cn(
-              "text-xs truncate font-yrdly-body",
+              "text-sm truncate font-yrdly-body",
               isUnread
                 ? "text-foreground font-medium"
                 : "text-[var(--yrdly-label)]",
@@ -172,13 +174,13 @@ function ConversationItem({
         </div>
 
         {item.context?.itemTitle && (
-          <div className="flex items-center gap-1 mt-1 text-[11px] text-[var(--yrdly-label)]">
+          <div className="flex items-center gap-1 mt-1 text-xs text-[var(--yrdly-label)]">
             <ShoppingBag size={11} />
             <span className="truncate">{item.context.itemTitle}</span>
           </div>
         )}
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -539,11 +541,12 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  aria-label="Search messages"
                   placeholder="Search messages..."
-                  className="w-full bg-transparent outline-none text-sm text-foreground placeholder:text-[var(--yrdly-label)] font-yrdly-body"
+                  className="w-full bg-transparent outline-none text-base text-foreground placeholder:text-[var(--yrdly-label)] font-yrdly-body"
                 />
                 {searchQuery.length > 0 && (
-                  <button type="button" onClick={() => setSearchQuery("")}>
+                  <button type="button" aria-label="Clear search" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full focus-visible:ring-2 focus-visible:ring-ring" onClick={() => setSearchQuery("")}>
                     <X className="w-4 h-4 text-[var(--yrdly-label)]" />
                   </button>
                 )}
@@ -578,8 +581,9 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
+                  aria-label="Search messages"
                   onClick={() => setSearching(true)}
-                  className="w-9 h-9 rounded-full bg-surface border border-[var(--yrdly-glass-border)] flex items-center justify-center text-foreground hover:bg-white/5 transition-all"
+                  className="h-11 w-11 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-full bg-surface border border-[var(--yrdly-glass-border)] flex items-center justify-center text-foreground hover:bg-white/5 transition-all"
                 >
                   <Search className="w-4 h-4" />
                 </button>
@@ -591,7 +595,8 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
                   <DialogTrigger asChild>
                     <button
                       type="button"
-                      className="w-9 h-9 rounded-full flex items-center justify-center text-black font-bold transition-all hover:opacity-90"
+                      aria-label="New message"
+                      className="h-11 w-11 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-full flex items-center justify-center text-black font-bold transition-all hover:opacity-90"
                       style={{ backgroundColor: GREEN }}
                     >
                       <Plus className="w-5 h-5" />
@@ -654,9 +659,10 @@ export function MessagesScreen({ initialConvId }: MessagesScreenProps) {
                   <button
                     key={item.key}
                     type="button"
+                    aria-pressed={active}
                     onClick={() => setActiveFilter(item.key)}
                     className={cn(
-                      "px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all border flex-shrink-0",
+                      "min-h-11 px-3.5 py-2 rounded-full text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-all border flex-shrink-0",
                       active
                         ? "bg-[#82DB7E]/10 border-[#82DB7E]/30 text-[#82DB7E] font-bold"
                         : "bg-transparent border-[var(--yrdly-glass-border)] text-[var(--yrdly-label)] hover:text-foreground",

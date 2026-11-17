@@ -68,6 +68,7 @@ import {
 import { timeAgo, formatPrice, cn } from "@/lib/shared/utils";
 import { useRouter } from "next/navigation";
 import { GlassCard } from "@/components/ui/glass-card";
+import { DailyPromptQuote } from "./DailyPromptQuote";
 
 /* ─── design tokens ─────────────────────────────────────────────── */
 const GREEN = "hsl(var(--primary))";
@@ -1792,10 +1793,11 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
     cardContent = (
       <>
         {PostHeader}
+        <DailyPromptQuote promptId={post.daily_prompt_id} />
         {/* Body text */}
         {text && (
           <div className="px-yrdly-md pb-yrdly-sm">
-            <p className="font-yrdly-body font-normal text-[0.8125rem] leading-[15px] text-foreground whitespace-pre-wrap">
+            <p className="font-yrdly-body font-normal text-base leading-relaxed text-foreground whitespace-pre-wrap [overflow-wrap:anywhere]">
               {displayText}
               {shouldTruncate && (
                 <button

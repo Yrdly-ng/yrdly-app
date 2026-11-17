@@ -24,6 +24,9 @@ try {
   const headers={'Content-Type':'application/json',Authorization:`Bearer ${auth.session.access_token}`};
   const current=await fetch(`${origin}/api/daily-prompts`);
   assert.equal(current.status,200);assert.equal((await current.json()).prompt?.id,prompt.id,'QA feature must expose the real approved question');
+  const quoted=await fetch(`${origin}/api/daily-prompts?promptId=${prompt.id}`);
+  assert.equal(quoted.status,200);assert.equal((await quoted.json()).prompt?.id,prompt.id,'Post quote must resolve its stored question ID');
+  const malformed=await fetch(`${origin}/api/daily-prompts?promptId=not-a-question`);assert.equal(malformed.status,400);
   const post={id:ids[0],category:'General',visibility:'public',daily_prompt_id:prompt.id,text:'YRDLY-QA response persistence regression.',state:'Abuja',lga:'Wrong client location'};
   const invalid=await fetch(`${origin}/api/posts`,{method:'POST',headers,body:JSON.stringify({post:{...post,visibility:'private'}})});
   assert.equal(invalid.status,400,'Private prompt responses must be rejected');

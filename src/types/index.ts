@@ -92,6 +92,7 @@ export interface Post {
   author_image?: string;
   text: string;
   description?: string;
+  daily_prompt_id?: string | null;
   image_url?: string;
   image_urls?: string[];
   video_url?: string | null;

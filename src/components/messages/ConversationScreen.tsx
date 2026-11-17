@@ -921,18 +921,19 @@ export function ConversationScreen({
       )}
       {/* ── Top Bar ── */}
       <header className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 bg-[var(--yrdly-dark)]/90 backdrop-blur-md border-b border-[var(--yrdly-glass-border)]">
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <button
             type="button"
+            aria-label="Back to messages"
             onClick={() => (onBack ? onBack() : router.push("/messages"))}
             className={cn(
-              "w-9 h-9 rounded-xl flex items-center justify-center border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] transition-colors hover:bg-white/5",
+              "h-11 w-11 shrink-0 rounded-xl flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] transition-colors hover:bg-white/5",
               isEmbedded && "md:hidden",
             )}
           >
             <ArrowLeft className="w-4 h-4 text-foreground" />
           </button>
-          <div className="flex items-center gap-2.5">
+          <div className="flex min-w-0 items-center gap-2.5">
             <div className="relative">
               <Avatar className="w-9 h-9 border border-[var(--yrdly-glass-border)]">
                 {avatarSrc ? (
@@ -949,25 +950,26 @@ export function ConversationScreen({
                 </div>
               )}
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-1 min-w-0">
-                <h2 className="text-sm font-bold text-foreground font-yrdly-display truncate max-w-[160px]">
+                <h2 className="text-base font-bold text-foreground font-yrdly-display truncate">
                   {titleName}
                 </h2>
                 {(otherParticipant as any)?.phone_verified && (
                   <VerifiedBadge size={15} type="user" />
                 )}
               </div>
-              <p className="text-[0.65rem] text-[var(--yrdly-label)] font-yrdly-body">
+              <p className="truncate text-xs text-[var(--yrdly-label)] font-yrdly-body">
                 {`@${(otherParticipant as any)?.username || otherParticipant.name || "user"}`}
               </p>
             </div>
           </div>
         </div>
 
-        <div className="relative">
+        <div className="relative shrink-0">
           <button
-            className="w-9 h-9 rounded-xl flex items-center justify-center border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] transition-colors hover:bg-white/5"
+            aria-label="Conversation options"
+            className="h-11 w-11 shrink-0 rounded-xl flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] transition-colors hover:bg-white/5"
             onClick={(e) => {
               const menu = e.currentTarget.nextElementSibling as HTMLElement;
               if (menu)
@@ -1163,13 +1165,13 @@ export function ConversationScreen({
               >
                 {needsDateHeader && (
                   <div className="flex justify-center my-3">
-                    <span className="text-[0.625rem] font-bold tracking-widest rounded-full px-3 py-1 bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] text-[var(--yrdly-label)] font-yrdly-display">
+                    <span className="text-xs font-bold tracking-wide rounded-full px-3 py-1 bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] text-[var(--yrdly-label)] font-yrdly-display">
                       {dateText}
                     </span>
                   </div>
                 )}
                 <div
-                  className={`flex items-end gap-2.5 max-w-[85%] group ${isOwn ? "self-end flex-row-reverse" : "self-start"}`}
+                  className={`flex min-w-0 items-end gap-1.5 max-w-[95%] sm:max-w-[85%] group ${isOwn ? "self-end flex-row-reverse" : "self-start"}`}
                 >
                   {!isOwn && (
                     <Avatar className="w-7 h-7 flex-shrink-0">
@@ -1182,7 +1184,7 @@ export function ConversationScreen({
 
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <button className="opacity-0 group-hover:opacity-100 p-1 text-[var(--yrdly-label)] hover:text-foreground rounded-full transition-opacity self-center">
+                      <button aria-label="Message options" className="flex h-11 w-11 shrink-0 items-center justify-center text-[var(--yrdly-label)] hover:text-foreground rounded-full self-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                         <MoreVertical className="w-3.5 h-3.5" />
                       </button>
                     </DropdownMenuTrigger>
@@ -1240,7 +1242,7 @@ export function ConversationScreen({
                     </DropdownMenuContent>
                   </DropdownMenu>
 
-                  <div className="flex flex-col gap-1">
+                  <div className="flex min-w-0 flex-col gap-1">
                     {(msg.image_url ||
                       (msg.media_type === "image" && msg.media_url)) && (
                       <div
@@ -1300,13 +1302,13 @@ export function ConversationScreen({
                     )}
                     {(msg.text || msg.content) && (
                       <div
-                        className={`px-4 py-2.5 text-xs leading-relaxed font-yrdly-body ${isOwn ? "bg-primary text-foreground rounded-[20px] rounded-br-[4px] font-semibold" : "bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] text-foreground rounded-[20px] rounded-bl-[4px]"}`}
+                        className={`px-4 py-2.5 text-base leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere] font-yrdly-body ${isOwn ? "bg-primary text-primary-foreground rounded-[20px] rounded-br-[4px] font-semibold" : "bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] text-foreground rounded-[20px] rounded-bl-[4px]"}`}
                       >
                         {msg.text || msg.content}
                       </div>
                     )}
                     <span
-                      className={`text-[0.625rem] px-1 font-yrdly-body text-[var(--yrdly-label)] ${isOwn ? "text-right" : "text-left"}`}
+                      className={`text-xs px-1 font-yrdly-body text-[var(--yrdly-label)] ${isOwn ? "text-right" : "text-left"}`}
                     >
                       {formatTime(msg.created_at)}
                       {isOwn &&
@@ -1425,20 +1427,21 @@ export function ConversationScreen({
             </button>
           </div>
         )}
-        <form onSubmit={handleSend} className="flex items-center gap-3">
+        <form onSubmit={handleSend} className="grid grid-cols-[auto_auto_auto_1fr] items-center gap-2 sm:flex sm:gap-3">
           <button
             type="button"
             aria-label="Send a GIF"
             disabled={sending || isEditingVideo}
             onClick={() => setGifPickerVisible(true)}
-            className="rounded-full bg-primary/10 px-3 py-2 text-xs font-bold text-primary disabled:opacity-50"
+            className="min-h-11 min-w-11 rounded-full bg-primary/10 px-3 py-2 text-sm font-bold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
           >
             GIF
           </button>
           <button
             type="button"
+            aria-label="Attach photo"
             onClick={() => fileInputRef.current?.click()}
-            className="p-2.5 rounded-full flex-shrink-0 transition-all duration-200 hover:scale-105 text-primary"
+            className="flex h-11 w-11 items-center justify-center rounded-full flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring text-primary"
             style={{ background: "var(--c-card2)" }}
             onMouseEnter={(e) =>
               ((e.currentTarget as HTMLElement).style.background =
@@ -1456,7 +1459,7 @@ export function ConversationScreen({
             disabled={sending || isEditingVideo}
             aria-label="Attach video"
             onClick={() => videoInputRef.current?.click()}
-            className="p-2.5 rounded-full flex-shrink-0 transition-all duration-200 hover:scale-105 text-primary"
+            className="flex h-11 w-11 items-center justify-center rounded-full flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring text-primary"
             style={{ background: "var(--c-card2)" }}
             onMouseEnter={(e) =>
               ((e.currentTarget as HTMLElement).style.background =
@@ -1469,9 +1472,10 @@ export function ConversationScreen({
           >
             <VideoIcon className="w-5 h-5" />
           </button>
-          <div className="flex-1 relative">
+          <div className="order-first col-span-4 min-w-0 sm:order-none sm:flex-1 relative">
             <input
               type="text"
+              aria-label="Message"
               placeholder="Message..."
               value={newMessage}
               onChange={(e) => {
@@ -1490,12 +1494,13 @@ export function ConversationScreen({
           </div>
           <button
             type="submit"
+            aria-label="Send message"
             disabled={
               (!newMessage.trim() && !selectedFile && !videoFile) ||
               sending ||
               isEditingVideo
             }
-            className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 bg-primary text-primary-foreground transition-all duration-200 active:scale-95 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100 shadow-md"
+            className="w-12 h-12 justify-self-end rounded-full flex items-center justify-center flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring bg-primary text-primary-foreground transition-all duration-200 active:scale-95 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100 shadow-md"
           >
             {sending ? (
               <Loader2 className="w-5 h-5 text-primary-foreground animate-spin" />

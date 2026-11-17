@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import { MediaCollage, type MediaItem } from "./PostCard";
+import { DailyPromptQuote } from "./DailyPromptQuote";
 import { useRouter } from "next/navigation";
 import {
   ChevronLeft,
@@ -385,9 +386,10 @@ export function PostDetailView({
             </span>
           </div>
 
+          <DailyPromptQuote promptId={post.daily_prompt_id} />
           {/* Post body text */}
           <div className="px-4 pb-3">
-            <p className="font-sans font-normal text-[0.8125rem] leading-[15px] text-foreground whitespace-pre-wrap">
+            <p className="font-sans font-normal text-base leading-relaxed text-foreground whitespace-pre-wrap [overflow-wrap:anywhere]">
               {post.text || ""}
             </p>
           </div>

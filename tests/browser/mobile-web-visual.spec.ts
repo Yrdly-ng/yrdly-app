@@ -392,3 +392,132 @@ for (const theme of ["light", "dark"] as const) {
     expect(publications, "Reviewing forms must not upload media or publish content").toBe(0);
   });
 }
+
+
+for (const theme of ["light", "dark"] as const) {
+  test(`${theme} populated conversations support long messages and enlarged text`, async ({ page }) => {
+    test.setTimeout(240000);
+    mkdirSync(OUTPUT, { recursive: true });
+    await page.addInitScript(value => localStorage.setItem("yrdly-theme", value), theme);
+    await page.emulateMedia({ colorScheme: theme, reducedMotion: "reduce" });
+    await loginQaBuyer(page);
+    const seed = JSON.parse(readFileSync("qa-seed-output.json", "utf8"));
+    const buyer = seed.users.buyer;
+    const neighbour = "22222222-2222-4222-8222-222222222222";
+    const conversationId = "33333333-3333-4333-8333-333333333333";
+    const timestamp = new Date().toISOString();
+    const longMessage = "YRDLY-QA long message " + "neighbourhood".repeat(16) + "\nSecond line stays readable.";
+    const conversation = { id: conversationId, participant_ids: [buyer, neighbour], type: "friend", last_message_text: longMessage, last_message_timestamp: timestamp, last_message_sender_id: neighbour, created_at: timestamp, updated_at: timestamp };
+    const messages = [
+      { id: "44444444-4444-4444-8444-444444444444", conversation_id: conversationId, sender_id: neighbour, text: longMessage, image_url: null, created_at: timestamp, is_read: true, read_by: [buyer], delivered_by: [buyer] },
+      { id: "55555555-5555-4555-8555-555555555555", conversation_id: conversationId, sender_id: buyer, text: "YRDLY-QA reply: yes, we can meet near the community centre.", image_url: null, created_at: timestamp, is_read: true, read_by: [neighbour], delivered_by: [neighbour] },
+    ];
+    // Explicit presentation fixtures: real QA sign-in, no new conversations,
+    // message sends, read-receipt writes or notification side effects.
+    await page.route(`https://${QA_REF}.supabase.co/rest/v1/**`, async route => {
+      const request = route.request();
+      const url = new URL(request.url());
+      const table = url.pathname.split("/").pop();
+      if (request.method() !== "GET") return route.fulfill({ json: [] });
+      if (table === "conversations") return route.fulfill({ json: request.headers().accept?.includes("vnd.pgrst.object") ? conversation : [conversation] });
+      if (table === "messages") return route.fulfill({ json: messages });
+      if (table === "chat_messages") return route.fulfill({ json: [] });
+      if (table === "public_profiles" && url.search.includes(neighbour)) return route.fulfill({ json: [
+        { id: buyer, name: "YRDLY-QA Buyer", username: "yrdly_qa_buyer", created_at: timestamp },
+        { id: neighbour, name: "YRDLY-QA Neighbour With A Long Display Name", username: "yrdly_qa_neighbour_long_username", created_at: timestamp, is_online: false, phone_verified: false },
+      ] });
+      return route.continue();
+    });
+    const noOverflow = async () => {
+      await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+      const bubbles = page.locator("[data-message-id]");
+      for (const bubble of await bubbles.all()) {
+        const dims = await bubble.evaluate(el => ({ client: el.clientWidth, scroll: el.scrollWidth }));
+        expect(dims.scroll).toBeLessThanOrEqual(dims.client + 1);
+      }
+    };
+    for (const width of [320, 390, 1440]) {
+      await page.setViewportSize({ width, height: width < 768 ? 844 : 900 });
+      await page.goto("/messages");
+      const open = page.getByRole("button", { name: "Open conversation with YRDLY-QA Neighbour With A Long Display Name", exact: true });
+      await expect(open).toBeVisible();
+      if (width !== 1440) await page.screenshot({ path: `${OUTPUT}/${theme}-${width}-populated-messages.png`, fullPage: true });
+      await open.focus();
+      await open.press("Enter");
+      const input = page.getByRole("textbox", { name: "Message", exact: true });
+      await expect(input).toBeVisible();
+      await expect(page.getByText(longMessage, { exact: true })).toBeVisible();
+      for (const name of ["Back to messages", "Conversation options", "Attach photo", "Attach video", "Send a GIF", "Send message"]) {
+        const control = page.getByRole("button", { name, exact: true });
+        if (name === "Back to messages" && width >= 768) continue;
+        await expect(control).toBeVisible();
+        const size = await control.boundingBox();
+        expect(size?.height, name).toBeGreaterThanOrEqual(44);
+        expect(size?.width, name).toBeGreaterThanOrEqual(44);
+      }
+      await input.fill("QA draft only — never sent");
+      await expect(page.getByRole("button", { name: "Send message", exact: true })).toBeEnabled();
+      await noOverflow();
+      await page.screenshot({ path: `${OUTPUT}/${theme}-${width}-conversation.png`, fullPage: true });
+      await page.addStyleTag({ content: "html { font-size: 200% !important; }" });
+      await noOverflow();
+      const inputSize = await input.boundingBox();
+      expect(inputSize?.width, "Enlarged-text composer remains usable").toBeGreaterThanOrEqual(100);
+      await page.screenshot({ path: `${OUTPUT}/${theme}-${width}-conversation-large-text.png`, fullPage: true });
+    }
+  });
+}
+
+for (const theme of ["light", "dark"] as const) {
+  test(`${theme} daily answers quote their original question in feed and detail`, async ({ page }) => {
+    test.setTimeout(240000);
+    mkdirSync(OUTPUT, { recursive: true });
+    await page.addInitScript(value => localStorage.setItem("yrdly-theme", value), theme);
+    await page.emulateMedia({ colorScheme: theme, reducedMotion: "reduce" });
+    await loginQaBuyer(page);
+    const seed = JSON.parse(readFileSync("qa-seed-output.json", "utf8"));
+    const promptId = "66666666-6666-4666-8666-666666666666";
+    const postId = "77777777-7777-4777-8777-777777777777";
+    const prompt = { id: promptId, question: "What’s your favourite restaurant in your area?", prompt_date: "2026-11-16", category: "food" };
+    const post = { id: postId, user_id: seed.users.buyer, author_name: "YRDLY-QA Buyer", text: "Chicken Republic", category: "General", daily_prompt_id: promptId, liked_by: [], comment_count: 0, timestamp: new Date().toISOString(), created_at: new Date().toISOString(), visibility: "public", moderation_status: "approved", user: { id: seed.users.buyer, name: "YRDLY-QA Buyer" } };
+    await page.route(`https://${QA_REF}.supabase.co/rest/v1/posts?**`, route => {
+      if (route.request().method() !== "GET") return route.fulfill({ json: [] });
+      return route.fulfill({ json: route.request().headers().accept?.includes("vnd.pgrst.object") ? post : [post] });
+    });
+    await page.route("**/api/daily-prompts?promptId=**", route => {
+      expect(new URL(route.request().url()).searchParams.get("promptId")).toBe(promptId);
+      return route.fulfill({ json: { date: "2026-11-17", prompt } });
+    });
+    await page.route("**/api/daily-prompts/responses?**", route => {
+      expect(new URL(route.request().url()).searchParams.get("promptId")).toBe(promptId);
+      return route.fulfill({ json: { responses: [
+        { id: postId, user_id: seed.users.buyer, author_name: "YRDLY-QA Buyer", text: "Chicken Republic", comment_count: 0 },
+        { id: "88888888-8888-4888-8888-888888888888", user_id: seed.users.seller, author_name: "YRDLY-QA Neighbour", text: "The small restaurant beside the community centre", comment_count: 2 },
+      ], nextPage: null } });
+    });
+    for (const width of [320, 390, 1440]) {
+      await page.setViewportSize({ width, height: width < 768 ? 844 : 900 });
+      for (const [route, label] of [["/home", "feed"], [`/posts/${postId}`, "detail"]]) {
+        await page.goto(route);
+        const quote = page.getByRole("complementary", { name: "Daily question context", exact: true });
+        await expect(quote).toContainText(prompt.question);
+        await expect(page.getByText("Chicken Republic", { exact: true }).first()).toBeVisible();
+        const link = quote.getByRole("link", { name: "View question and neighbours’ answers", exact: true });
+        await expect(link).toHaveAttribute("href", `/daily-prompts?promptId=${promptId}`);
+        expect((await link.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+        await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+        await page.screenshot({ path: `${OUTPUT}/${theme}-${width}-daily-answer-${label}.png`, fullPage: true });
+        if (label === "detail") {
+          await link.click();
+          await expect(page).toHaveURL(new RegExp(`/daily-prompts\\?promptId=${promptId}$`));
+          await expect(page.getByRole("heading", { name: prompt.question, exact: true })).toBeVisible();
+          await expect(page.getByText("Past neighbourhood question", { exact: true })).toBeVisible();
+          await expect(page.getByText("Chicken Republic", { exact: true })).toBeVisible();
+          await expect(page.getByText("The small restaurant beside the community centre", { exact: true })).toBeVisible();
+          await expect(page.getByRole("link", { name: "Share your answer", exact: true })).toHaveCount(0);
+          await page.screenshot({ path: `${OUTPUT}/${theme}-${width}-daily-neighbour-answers.png`, fullPage: true });
+        }
+      }
+    }
+  });
+}

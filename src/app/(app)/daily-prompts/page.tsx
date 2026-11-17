@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { authenticatedFetch } from '@/lib/auth/authenticated-fetch';
 import { ArrowLeft, MessageCircle } from 'lucide-react';
@@ -11,6 +12,11 @@ type Answer = {
   text: string; created_at: string; comment_count: number;
 };
 export default function DailyPromptAnswersPage() {
+  return <Suspense fallback={<p className="p-4 text-sm text-muted-foreground">Loading question…</p>}><DailyPromptAnswersContent /></Suspense>;
+}
+function DailyPromptAnswersContent() {
+  const requestedId = useSearchParams().get('promptId');
+  const [currentDate,setCurrentDate] = useState('');
   const [prompt,setPrompt] = useState<Prompt | null>(null);
   const [answers,setAnswers] = useState<Answer[]>([]);
   const [nextPage,setNextPage] = useState<number | null>(null);
@@ -19,12 +25,19 @@ export default function DailyPromptAnswersPage() {
   const [error,setError] = useState('');
   useEffect(() => {
     let active = true;
+    setLoading(true);
+    setError('');
+    setPrompt(null);
+    setAnswers([]);
+    setNextPage(null);
     const start = async () => {
       try {
-        const res = await fetch('/api/daily-prompts',{cache:'no-store'});
-        if (!res.ok) throw new Error('Unable to load today’s question.');
+        const endpoint = requestedId ? `/api/daily-prompts?promptId=${encodeURIComponent(requestedId)}` : '/api/daily-prompts';
+        const res = await fetch(endpoint,{cache:'no-store'});
+        if (!res.ok) throw new Error('This question is unavailable.');
         const data = await res.json();
         if (!active) return;
+        setCurrentDate(data.date);
         setPrompt(data.prompt ?? null);
         if (!data.prompt) return;
         const list = await authenticatedFetch<{responses:Answer[];nextPage:number|null}>(
@@ -35,7 +48,7 @@ export default function DailyPromptAnswersPage() {
     };
     void start();
     return () => {active=false;};
-  },[]);
+  },[requestedId]);
   const loadMore = async () => {
     if (!prompt || nextPage === null || loadingMore) return;
     setLoadingMore(true);
@@ -54,17 +67,18 @@ export default function DailyPromptAnswersPage() {
         !prompt ? <div className="rounded-3xl border p-6 text-center"><h1 className="font-bold text-lg">No question is live right now</h1><p className="text-sm text-muted-foreground mt-2">Check back for the next neighbourhood conversation.</p></div> :
         <>
           <header className="rounded-3xl border border-primary/30 bg-primary/10 p-5 space-y-3">
-            <p className="uppercase text-xs font-bold tracking-wider text-primary">Today&apos;s neighbourhood question</p>
+            <p className="uppercase text-xs font-bold tracking-wider text-primary">{prompt.prompt_date === currentDate ? "Today’s neighbourhood question" : "Past neighbourhood question"}</p>
             <h1 className="font-yrdly-display text-xl font-bold">{prompt.question}</h1>
-            <Link className="inline-flex min-h-11 items-center gap-2 rounded-full bg-primary text-primary-foreground px-4 py-2 font-bold text-sm"
-              href={`/posts/create?dailyPrompt=${encodeURIComponent(prompt.id)}`}><MessageCircle className="h-4 w-4"/> Share your answer</Link>
+            {prompt.prompt_date === currentDate ? <Link className="inline-flex min-h-11 items-center gap-2 rounded-full bg-primary text-primary-foreground px-4 py-2 font-bold text-sm"
+              href={`/posts/create?dailyPrompt=${encodeURIComponent(prompt.id)}`}><MessageCircle className="h-4 w-4"/> Share your answer</Link> :
+              <Link href="/daily-prompts" className="inline-flex min-h-11 items-center rounded-lg text-sm font-semibold text-primary underline underline-offset-4">View today’s question</Link>}
           </header>
           <h2 className="font-bold text-lg">Answers from your neighbourhood</h2>
           {answers.length===0 ? <p className="text-sm text-muted-foreground">No responses nearby yet. You can be the first!</p> :
             <div className="space-y-3">{answers.map(answer=>(
               <article key={answer.id} className="rounded-2xl border bg-card p-4 space-y-2">
                 <p className="font-semibold text-sm">{answer.author_name}</p>
-                <p className="text-sm whitespace-pre-wrap break-words">{answer.text}</p>
+                <p className="text-base leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere]">{answer.text}</p>
                 <Link href={`/posts/${answer.id}`} className="inline-flex min-h-11 items-center text-primary text-sm font-medium">Join the conversation · {answer.comment_count || 0} comments</Link>
               </article>
             ))}</div>}

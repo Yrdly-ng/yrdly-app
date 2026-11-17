@@ -40,6 +40,8 @@ jobs:
       - run: pnpm test:parity
       - run: pnpm test:payments
       - run: pnpm test:business
+      - name: Check daily-question context and visibility
+        run: node --test tests/daily-prompts.test.cjs tests/daily-prompt-question.test.cjs
       - name: Validate browser test discovery without QA credentials
         run: pnpm exec playwright test --config=playwright.qa.config.ts tests/browser/mobile-web-visual.spec.ts --list
 
