@@ -399,6 +399,7 @@ function getPushNotificationDestination(input) {
         const path = url.pathname.replace(/\/$/, "") || "/";
         const list = [
             "/home",
+            "/daily-prompts",
             "/messages",
             "/community",
             "/events",

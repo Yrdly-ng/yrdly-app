@@ -354,7 +354,9 @@ for (const theme of ["light", "dark"] as const) {
       const prompt = { id: "11111111-1111-4111-8111-111111111111", question: "Which local business would you recommend to a new neighbour?", category: "General", prompt_date: new Date().toISOString().slice(0, 10) };
       await page.route("**/api/daily-prompts", route => route.fulfill({ json: { date: prompt.prompt_date, prompt } }));
       await page.route("**/api/daily-prompts/responses?**", route => route.fulfill({ json: { responses: [], nextPage: null } }));
-      await page.goto("/daily-prompts");
+      // Exercise the exact URL-only push preflight that previously fell back to Notifications.
+      await page.goto("/daily-prompts?notificationTarget=%2Fdaily-prompts");
+      await expect(page).toHaveURL(/\/daily-prompts$/);
       await expect(page.getByRole("heading", { name: prompt.question, exact: true })).toBeVisible();
       await expect(page.locator("main")).toHaveCount(1);
       await capture(width, "daily-question");

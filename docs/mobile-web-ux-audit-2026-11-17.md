@@ -57,6 +57,12 @@ Commit `4686e868231937d193d8fef02deab1e1ce9329eb` implements the discovery/accou
 - Browser tests check authenticated routes, theme, page overflow, Create geometry, Escape/focus return, existing creation destinations, and hidden mobile app navigation on focused creation screens.
 - `git diff --check` passes.
 
+## Daily prompt tap regression
+
+The user confirmed daily-question push receipt but tapping opened Notifications. The `/daily-prompts` URL was missing from the web safe-destination list. The service worker and authenticated URL-only preflight therefore fell back to `/notifications`, including a typed daily reminder after its type was reduced to a legacy target URL. Add the existing question route to the allowlist; retain same-origin checks, recipient checks and source authorization. A regression reproduced the failure before the fix and now passes for typed reminders, self-tests and legacy URL payloads. The browser release test also exercises the exact `notificationTarget=/daily-prompts` preflight.
+
+Release QA at `14ffc846`: 8 Playwright tests passed (4.8m), including later wizard review and mocked daily-question presentation, plus all static checks. The new routing patch needs its updated CI run and a fresh physical PWA tap before release approval.
+
 ## Resumed release checks
 
 - User confirmed an actual iPhone PWA background push and successful Home tap.

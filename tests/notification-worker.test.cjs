@@ -145,3 +145,16 @@ test('notification taps navigate and focus an existing same-origin PWA window', 
   assert.equal(new URL(navigated[0]).pathname, '/posts/test-post');
   assert.equal(new URL(navigated[0]).origin, 'https://app.yrdly.ng');
 });
+
+test('daily-question routing tests open answers through the worker and authenticated legacy preflight', async () => {
+  for (const type of ['push_test', 'daily_prompt', undefined]) {
+    const w = worker(); let pending;
+    w.handlers.notificationclick({ notification: { data: { type, url: '/daily-prompts', recipientId: 'user' }, close() {} }, waitUntil: p => pending = p });
+    await pending;
+    const url = new URL(w.opened[0]);
+    assert.equal(url.pathname, '/daily-prompts');
+    assert.equal(url.searchParams.get('notificationTarget'), '/daily-prompts');
+  }
+  const result = await routing.resolveNotificationNavigation({url: '/daily-prompts'}, async () => { throw Error('Question list must not look up a notification row'); });
+  assert.deepEqual(result,{destination:'/daily-prompts',unavailable:false,failed:false});
+});
