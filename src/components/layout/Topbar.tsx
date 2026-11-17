@@ -53,13 +53,16 @@ export function Topbar({
     >
       <div className="flex w-full min-w-0 items-center gap-2 sm:gap-3 md:gap-4">
         <Link href="/home" className="flex shrink-0 items-center gap-2">
-          <span className="font-wordmark text-2xl tracking-tight text-[#82DB7E]">
+          <span className="hidden font-wordmark text-2xl tracking-tight text-[#82DB7E] min-[380px]:inline">
             YRDLY
+          </span>
+          <span className="font-wordmark text-2xl tracking-tight text-[#82DB7E] min-[380px]:hidden" aria-label="YRDLY">
+            Y
           </span>
         </Link>
 
         <div className="min-w-0 flex-1 overflow-visible sm:flex-none">
-          <div className="max-w-[min(100%,128px)] sm:max-w-[180px] [&_button]:max-w-full [&_button_span]:truncate">
+          <div className="max-w-[96px] min-[420px]:max-w-[128px] sm:max-w-[180px] [&_button]:max-w-full [&_button_span]:truncate">
             <LocationChip />
           </div>
         </div>
@@ -97,7 +100,7 @@ export function Topbar({
         <div className="hidden flex-1 sm:flex" />
 
         <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-1.5 md:gap-2">
-          <div className="group/tip relative hidden min-[420px]:block">
+          <div className="group/tip relative">
             <Link href="/map">
               <Button aria-label="Change location"
                 variant="ghost"
