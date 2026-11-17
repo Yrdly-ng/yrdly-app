@@ -313,7 +313,6 @@ test("business discovery shows approved real storefronts and retains cards after
     "@/components/discovery/CategoryIcon": {
       CategoryIcon: ({ category }) => React.createElement("span", { "aria-hidden": true }, category || "Other"),
     },
-    "@/components/discovery/CategoryIcon": { CategoryIcon: () => null },
     "./CreateBusinessDialog": { CreateBusinessDialog: () => null },
     "./BusinessCreatorOnboarding": { BusinessCreatorOnboarding: () => null },
     "@/contexts/LocationContext": {
