@@ -97,6 +97,8 @@ for (const theme of ["light", "dark"] as const) {
           name: "What would you like to create?",
         });
         await expect(dialog).toBeVisible();
+        await expect(dialog).toHaveCSS("opacity", "1");
+        await expect(dialog.locator("xpath=preceding-sibling::*[1]")).toHaveCSS("opacity", "1");
         for (const title of [
           "Community post",
           "Marketplace listing",
