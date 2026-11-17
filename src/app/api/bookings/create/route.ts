@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/supabase/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
+import { NotificationService } from '@/lib/notifications/server-notification-service';
 
 export async function POST(request: NextRequest) {
   const { data: { user }, error } = await getAuthenticatedUser(request);
@@ -44,6 +45,35 @@ export async function POST(request: NextRequest) {
     if (message) return NextResponse.json({ error: message }, { status: 400 });
     console.error('[Bookings] Could not create booking', { code: insertError.code });
     return NextResponse.json({ error: 'Could not create booking' }, { status: 500 });
+  }
+  // Booking is persisted and authorized. Notify the business owner on the
+  // server so a closing browser or mobile app cannot suppress the event.
+  // Delivery failures must not roll back the confirmed booking request.
+  const ownerId = data.business?.owner_id;
+  if (ownerId && ownerId !== user.id) {
+    try {
+      const [{ data: customer }, { data: persistedService }] = await Promise.all([
+        supabaseAdmin.from('users').select('name').eq('id', user.id).maybeSingle(),
+        supabaseAdmin.from('service_offerings').select('name').eq('id', body.serviceId).maybeSingle(),
+      ]);
+      const customerName = (customer?.name || 'A customer').trim().slice(0, 80);
+      const serviceName = (persistedService?.name || 'a service').trim().slice(0, 100);
+      await NotificationService.createNotification({
+        userId: ownerId,
+        senderId: user.id,
+        type: 'booking_requested',
+        title: 'New booking request',
+        message: `${customerName} requested ${serviceName}.`,
+        relatedId: data.id,
+        relatedType: 'booking',
+        data: { bookingId: data.id, businessId: body.businessId },
+      });
+    } catch (error) {
+      console.error('[Bookings] Booking saved, owner notification failed', {
+        bookingId: data.id,
+        error: error instanceof Error ? error.message : 'unknown',
+      });
+    }
   }
   return NextResponse.json({ data });
 }

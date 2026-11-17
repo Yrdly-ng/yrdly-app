@@ -31,13 +31,40 @@ export class NotificationService extends BrowserNotificationService {
             .maybeSingle()
         : { data: null };
       const actorCount = storedNotification.data?.data?.actor_count;
+      // The sender name must be resolved server-side, never trusted from a client
+      // supplied payload. Only social messages need a visible lock-screen actor.
+      const shouldNameSender = [
+        "message",
+        "message_reaction",
+        "marketplace_message",
+        "catalog_item_inquiry",
+      ].includes(params.type);
+      const { data: senderProfile } =
+        shouldNameSender && params.senderId
+          ? await supabaseAdmin
+              .from("users")
+              .select("name")
+              .eq("id", params.senderId)
+              .maybeSingle()
+          : { data: null };
+      const fromUserName =
+        typeof senderProfile?.name === "string"
+          ? senderProfile.name.trim().slice(0, 80)
+          : "";
+      // Some existing callers provide relatedId but not conversationId.
+      const resolvedConversationId =
+        typeof params.data?.conversationId === "string"
+          ? params.data.conversationId
+          : params.relatedType === "conversation"
+            ? params.relatedId
+            : undefined;
       const deliveryKey =
         typeof params.data?.messageId === "string"
           ? `${notificationId}:${params.data.messageId}`
           : typeof params.data?.eventId === "string"
             ? `${notificationId}:${params.data.eventId}`
             : `${notificationId}:${crypto.randomUUID()}`;
-      const conversationId = params.data?.conversationId;
+      const conversationId = resolvedConversationId;
       const messageCount =
         (params.type === "message" || params.type === "marketplace_message") &&
         typeof conversationId === "string" &&
@@ -66,6 +93,11 @@ export class NotificationService extends BrowserNotificationService {
           data: {
             ...(params.data || {}),
             ...(messageCount ? { messageCount } : {}),
+            ...(fromUserName ? { fromUserName } : {}),
+            ...(params.senderId && shouldNameSender
+              ? { fromUserId: params.senderId }
+              : {}),
+            ...(conversationId ? { conversationId } : {}),
             ...(actorCount ? { actor_count: actorCount } : {}),
             type: params.type,
             notificationId,

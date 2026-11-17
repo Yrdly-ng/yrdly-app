@@ -5,7 +5,6 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useAvailableSlots } from "@/hooks/use-bookings";
 import { BookingService } from "@/lib/bookings/booking-service";
-import { NotificationTriggers } from "@/lib/notifications/notification-triggers";
 import { supabase } from "@/lib/supabase/supabase";
 
 export default function CreateBookingWebPage() {
@@ -179,27 +178,6 @@ export default function CreateBookingWebPage() {
         notes: notes.trim() || undefined,
         staffId: selectedStaffId,
       });
-
-      const userName =
-        (user as any)?.name ||
-        (user as any)?.user_metadata?.full_name ||
-        "Customer";
-      try {
-        if (business?.owner_id) {
-          await NotificationTriggers.onBookingRequested({
-            providerOwnerId: business.owner_id,
-            customerName: userName,
-            serviceName: service.name,
-            appointmentTime: selectedSlotTime,
-            bookingId: newBooking.id,
-          });
-        }
-      } catch (notificationError) {
-        console.error(
-          "Booking saved; notification delivery needs retry",
-          notificationError,
-        );
-      }
 
       const paymentRequired =
         service.deposit_required ||
