@@ -418,7 +418,12 @@ for (const theme of ["light", "dark"] as const) {
       const request = route.request();
       const url = new URL(request.url());
       const table = url.pathname.split("/").pop();
-      if (request.method() !== "GET") return route.fulfill({ json: [] });
+      if (table === "acknowledge_messages") return route.fulfill({ json: [] });
+      if (request.method() !== "GET") {
+        if (["conversations", "messages", "chat_messages"].includes(table || "")) return route.fulfill({ json: [] });
+        // Session-policy RPCs must reach isolated QA; mocking them signs the user out.
+        return route.continue();
+      }
       if (table === "conversations") return route.fulfill({ json: request.headers().accept?.includes("vnd.pgrst.object") ? conversation : [conversation] });
       if (table === "messages") return route.fulfill({ json: messages });
       if (table === "chat_messages") return route.fulfill({ json: [] });
