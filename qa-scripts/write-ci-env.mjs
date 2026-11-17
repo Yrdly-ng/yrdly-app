@@ -3,6 +3,8 @@ import { readQaEnv } from './qa-common.mjs';
 
 const values = {
   QA_ENVIRONMENT: 'staging',
+  DAILY_PROMPTS_ENABLED: 'true',
+  DAILY_PROMPT_PUSH_ENABLED: 'false',
   QA_EXPECTED_PROJECT_REF: 'jxgpvvehajxegeeozlnl',
   SUPABASE_URL: process.env.QA_SUPABASE_URL,
   NEXT_PUBLIC_SUPABASE_URL: process.env.QA_SUPABASE_URL,

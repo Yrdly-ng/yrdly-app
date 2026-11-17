@@ -90,6 +90,8 @@ jobs:
           done
           echo 'QA app did not start' >&2
           exit 1
+      - name: Verify real isolated daily-question persistence
+        run: node qa-scripts/daily-prompt-release-regression.mjs
       - name: Install Playwright Chromium
         run: pnpm exec playwright install --with-deps chromium
       - name: Inspect responsive authenticated pages and Create menu
