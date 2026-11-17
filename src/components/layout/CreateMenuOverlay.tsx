@@ -227,7 +227,7 @@ export function CreateMenuOverlay({
                 aria-label="Close"
                 className="flex h-11 w-11 items-center justify-center rounded-full text-[var(--c-text-muted)] hover:bg-[var(--c-card2)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
-                <X size={18} weight="bold" />
+                <X size={20} strokeWidth={2.5} />
               </button>
             </div>
 
