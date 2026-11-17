@@ -37,6 +37,7 @@ export function EventsScreen({ className }: { className?: string }) {
   const [reload, setReload] = useState(0);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("All");
+  const [eventCategory, setEventCategory] = useState<string | null>(null);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [paymentError, setPaymentError] = useState<{
     message: string;
@@ -85,9 +86,14 @@ export function EventsScreen({ className }: { className?: string }) {
       current = false;
     };
   }, [state, lga, ward, reload]);
+  const actualEventCategories = useMemo(
+    () => [...new Set(events.map((event) => event.category?.trim()).filter((name): name is string => !!name))].sort(),
+    [events],
+  );
   const visible = useMemo(
     () =>
       events.filter((event) => {
+        if (eventCategory && event.category?.trim() !== eventCategory) return false;
         if (
           query.trim() &&
           ![event.title, event.category, event.location_address]
@@ -100,7 +106,7 @@ export function EventsScreen({ className }: { className?: string }) {
           return getEventPriceLabel(event, formatPrice) === "Free entry";
         return filter === "All" || matchesEventDay(event.start_time, filter);
       }),
-    [events, query, filter],
+    [events, query, filter, eventCategory],
   );
   // Highlight the earliest actual event only when browsing everything.
   // "Up next" is chronological, never a fabricated paid/featured status.
@@ -226,6 +232,37 @@ export function EventsScreen({ className }: { className?: string }) {
           </button>
         ))}
       </div>
+      {!!actualEventCategories.length && (
+        <div role="group" aria-label="Event categories" className="flex gap-2 overflow-x-auto pb-2">
+          <button
+            type="button"
+            aria-pressed={eventCategory === null}
+            onClick={() => setEventCategory(null)}
+            className={cn(
+              "inline-flex min-h-11 shrink-0 items-center gap-2 rounded-2xl border px-4 text-sm font-semibold",
+              eventCategory === null ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-foreground",
+            )}
+          >
+            <CategoryIcon category="All" size={18} />
+            All categories
+          </button>
+          {actualEventCategories.map((category) => (
+            <button
+              type="button"
+              key={category}
+              aria-pressed={eventCategory === category}
+              onClick={() => setEventCategory(category)}
+              className={cn(
+                "inline-flex min-h-11 shrink-0 items-center gap-2 rounded-2xl border px-4 text-sm font-semibold",
+                eventCategory === category ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-foreground hover:border-primary/50",
+              )}
+            >
+              <CategoryIcon category={category} size={18} />
+              {category}
+            </button>
+          ))}
+        </div>
+      )}
       {error && (
         <div
           role="alert"
@@ -317,26 +354,27 @@ export function EventsScreen({ className }: { className?: string }) {
             <div className="flex flex-col items-center rounded-[26px] border border-dashed border-border px-6 py-16 text-center">
               <SlidersHorizontal className="mb-4 h-9 w-9 text-primary" />
               <h3 className="font-yrdly-display text-2xl font-bold">
-                {query || filter !== "All"
+                {query || filter !== "All" || eventCategory
                   ? "No matches just yet."
                   : "A little quiet around here."}
               </h3>
               <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
-                {query || filter !== "All"
+                {query || filter !== "All" || eventCategory
                   ? "Try another search or explore all events."
                   : "Bring people together. Create an event or check back for something new."}
               </p>
               <button
                 type="button"
                 onClick={() => {
-                  if (query || filter !== "All") {
+                  if (query || filter !== "All" || eventCategory) {
                     setQuery("");
                     setFilter("All");
+                    setEventCategory(null);
                   } else create();
                 }}
                 className="mt-5 min-h-11 rounded-xl bg-primary px-5 text-sm font-bold text-primary-foreground"
               >
-                {query || filter !== "All"
+                {query || filter !== "All" || eventCategory
                   ? "Clear filters"
                   : "Create an event"}
               </button>
