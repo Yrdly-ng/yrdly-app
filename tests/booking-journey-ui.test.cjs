@@ -38,6 +38,7 @@ async function mountDetail({ payment = 'unpaid', role = 'customer', ended = fals
     '@/lib/notifications/notification-triggers': { NotificationTriggers: {} },
     '@/lib/supabase/supabase': { supabase: { from: () => query } },
     '@/lib/auth/authenticated-fetch': { authenticatedFetch: async () => ({}) },
+    '@/components/bookings/BookingMilestones': { BookingMilestones: () => React.createElement('div', {}, 'Booking milestones') },
     '@/components/bookings/BookingReschedulePanel': { BookingReschedulePanel: () => React.createElement('div', {}, 'Reschedule controls') },
     '@/components/reviews/WriteBusinessReviewDialog': { WriteBusinessReviewDialog: () => React.createElement('button', {}, 'Review booking') },
   }).default;
@@ -75,7 +76,7 @@ test('accepted staged booking explains payment hold without offering a legacy fu
   const h = await mountDetail({ status: 'confirmed', priced: true, staged: true });
   try {
     assert.match(h.container.textContent, /Agreed service price/);
-    assert.match(h.container.textContent, /Staged payment setup pending/);
+    assert.match(h.container.textContent, /Booking milestones/);
     assert.ok(![...h.container.querySelectorAll('button')].some(node => node.textContent === 'Review booking payment'));
   } finally { await h.unmount(); }
 });
