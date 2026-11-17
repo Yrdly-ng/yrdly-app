@@ -132,7 +132,7 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
       if (activeCategory === "All Items") return true;
       const pill = CATEGORY_PILLS.find((p) => p.label === activeCategory);
       if (!pill || pill.keywords.length === 0) return true;
-      const searchable = [title, (item as PostType & { sub_category?: string | null }).sub_category || "", item.text || ""].join(" ").toLowerCase();
+      const searchable = [title, (item as PostType & { sub_category?: string | null }).sub_category || ""].join(" ").toLowerCase();
       return pill.keywords.some((kw) => searchable.includes(kw));
     });
   }, [items, searchTerm, activeCategory]);
