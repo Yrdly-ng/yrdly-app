@@ -49,7 +49,9 @@ test('private account updates use specific labels but never blindly show payment
     'payout_failed','dispute_opened','dispute_resolved']) {
     assert.ok(sender.includes(kind + ': { title:'), kind);
   }
-  assert.match(sender, /isPrivateAccountUpdate\s*\? privateCopy\.body/);
+  assert.match(sender, /isPrivateAccountUpdate\\s*\\? marketplaceCopy/);
+  assert.match(sender, /purchasedBy/);
+  assert.match(sender, /purchasedItem/);
   assert.match(sender, /isPrivateAccountUpdate\s*\? privateCopy\.title/);
   assert.match(sender, /"Account update"/);
 });
