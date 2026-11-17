@@ -119,3 +119,16 @@ test('web event category icons are backed by actual published event categories',
   assert.match(events, /CategoryIcon category=\{category\}/);
   assert.match(events, /setEventCategory\(category\)/);
 });
+
+test('web shoppable collage is used only for multi-photo For Sale posts', () => {
+  const card = fs.readFileSync('src/components/posts/PostCard.tsx', 'utf8');
+  const collage = fs.readFileSync('src/components/posts/ShoppablePhotoCollage.tsx', 'utf8');
+  assert.match(card, /post\.category === "For Sale" && urls\.length >= 2 && videoUrls\.length === 0/);
+  assert.match(card, /!showShoppablePhotoCollage && mediaItems\.length > 0/);
+  assert.match(card, /<ShoppablePhotoCollage/);
+  assert.match(card, /onOpen=\{handleImageClick\}/);
+  assert.match(collage, /images\.slice\(0, 3\)/);
+  assert.match(collage, /Math\.max\(0, images\.length - 3\)/);
+  assert.match(collage, /aria-label=\{`View photo/);
+  assert.doesNotMatch(collage, /From ₦3,500/);
+});
