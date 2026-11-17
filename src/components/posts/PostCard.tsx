@@ -3,6 +3,7 @@
 import type { User, Post } from "@/types/index";
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import Image from "next/image";
+import { ShoppablePhotoCollage } from "./ShoppablePhotoCollage";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Heart,
@@ -1342,6 +1343,8 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
     ...urls.map((url) => ({ type: "image" as const, url })),
     ...videoUrls.map((url) => ({ type: "video" as const, url })),
   ];
+  const showShoppablePhotoCollage =
+    post.category === "For Sale" && urls.length >= 2 && videoUrls.length === 0;
 
   /* ── post header ── */
   const PostHeader = (
@@ -1705,8 +1708,18 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
         <p className="px-yrdly-md pb-yrdly-xs font-yrdly-display font-semibold text-[1.125rem] text-foreground leading-[21px]">
           {itemTitle}
         </p>
-        {/* Media */}
-        {mediaItems.length > 0 && (
+        {/* Photo-only marketplace posts use an adaptive collage; video retains the carousel. */}
+        {showShoppablePhotoCollage && (
+          <div className="px-yrdly-sm pb-yrdly-sm">
+            <ShoppablePhotoCollage
+              images={urls}
+              title={itemTitle}
+              priceLabel={post.price ? formatPrice(post.price) : "Free"}
+              onOpen={handleImageClick}
+            />
+          </div>
+        )}
+        {!showShoppablePhotoCollage && mediaItems.length > 0 && (
           <div className="px-yrdly-sm pb-yrdly-sm">
             <MediaCollage
               items={mediaItems}
@@ -1725,9 +1738,11 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
           </div>
         )}
         {/* Price */}
-        <p className="px-yrdly-md pb-1 font-yrdly-display font-bold text-[1.5rem] leading-[28px] text-primary">
-          {post.price ? formatPrice(post.price) : "Free"}
-        </p>
+        {!showShoppablePhotoCollage && (
+          <p className="px-yrdly-md pb-1 font-yrdly-display font-bold text-[1.5rem] leading-[28px] text-primary">
+            {post.price ? formatPrice(post.price) : "Free"}
+          </p>
+        )}
         {/* Description / subtitle */}
         {desc && (
           <p className="px-yrdly-md pb-yrdly-sm font-yrdly-body font-normal text-[0.8125rem] text-[var(--yrdly-label)] leading-[15px]">

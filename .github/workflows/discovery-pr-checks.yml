@@ -1,0 +1,44 @@
+name: Discovery pull request checks
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/components/discovery/**'
+      - 'src/lib/discovery/**'
+      - 'src/components/marketplace/**'
+      - 'src/components/businesses/**'
+      - 'src/components/events/**'
+      - 'src/components/posts/**'
+      - 'tests/catalog-category-policy.test.cjs'
+      - '.github/workflows/discovery-pr-checks.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: discovery-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  discovery-checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CI: '1'
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+      - run: npm install --global pnpm@11.2.2
+      - run: pnpm install --frozen-lockfile
+      - name: Type-check web application
+        run: pnpm typecheck
+      - name: Validate category icons, visual semantics and feature parity
+        run: |
+          node --test tests/catalog-category-policy.test.cjs
+          pnpm test:parity

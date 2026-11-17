@@ -6,7 +6,7 @@ import Image from "next/image";
 import {
   ArrowLeft,
   ArrowUpRight,
-  BadgeCheck,
+  Phone,
   MapPin,
   Plus,
   Search,
@@ -28,6 +28,7 @@ import {
 } from "@/lib/businesses/presentation";
 import type { Business } from "@/types";
 import { CampaignBanner } from "@/components/campaigns/CampaignBanner";
+import { CategoryIcon } from "@/components/discovery/CategoryIcon";
 
 export function BusinessesScreen({
   backTarget = "/businesses",
@@ -212,8 +213,9 @@ export function BusinessesScreen({
           <button
             onClick={() => selectCategory(null)}
             aria-pressed={!category}
-            className={`min-h-11 shrink-0 rounded-full border px-5 text-sm font-semibold ${!category ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground"}`}
+            className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border px-5 text-sm font-semibold ${!category ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground"}`}
           >
+            <CategoryIcon category="All" size={16} />
             All businesses
           </button>
           {categories.map((item) => (
@@ -221,8 +223,9 @@ export function BusinessesScreen({
               key={item}
               onClick={() => selectCategory(item)}
               aria-pressed={category === item}
-              className={`min-h-11 shrink-0 rounded-full border px-5 text-sm font-semibold ${category === item ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground"}`}
+              className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border px-5 text-sm font-semibold ${category === item ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground"}`}
             >
+              <CategoryIcon category={item} size={16} />
               {item}
             </button>
           ))}
@@ -332,7 +335,7 @@ export function BusinessDirectoryCard({
   return (
     <button
       onClick={onOpen}
-      className="group flex h-full w-full flex-col overflow-hidden rounded-3xl border border-border bg-card text-left transition-colors hover:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      className="group flex h-full w-full flex-col overflow-hidden rounded-3xl border border-border bg-card text-left transition-all duration-200 hover:border-primary/60 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
     >
       <div className="relative flex h-48 w-full items-center justify-center overflow-hidden bg-muted">
         {photo ? (
@@ -351,13 +354,17 @@ export function BusinessDirectoryCard({
         </span>
       </div>
       <div className="flex flex-1 flex-col p-5">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          <CategoryIcon category={business.category} size={15} className="shrink-0" />
           {business.category || "Local business"}
         </p>
         <h3 className="mt-1 flex items-center gap-2 font-yrdly-display text-xl font-bold">
           {business.name}
-          {business.verified_seller && (
-            <BadgeCheck size={18} className="shrink-0 text-primary" />
+          {(business as Business & { phone_verified?: boolean }).phone_verified === true && (
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-primary" aria-label="Phone number verified">
+              <Phone size={13} className="shrink-0" />
+              Phone verified
+            </span>
           )}
         </h3>
         {business.description && (
@@ -382,7 +389,7 @@ export function BusinessDirectoryCard({
               <span className="text-muted-foreground">Meet this business</span>
             )}
             <span className="flex items-center gap-1 text-primary">
-              Explore <ArrowUpRight size={16} />
+              View business <ArrowUpRight size={16} />
             </span>
           </div>
         </div>

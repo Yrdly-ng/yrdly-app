@@ -310,6 +310,9 @@ test("business discovery shows approved real storefronts and retains cards after
     },
     "@/components/ui/skeleton": { Skeleton: () => null },
     "@/components/campaigns/CampaignBanner": { CampaignBanner: () => null },
+    "@/components/discovery/CategoryIcon": {
+      CategoryIcon: ({ category }) => React.createElement("span", { "aria-hidden": true }, category || "Other"),
+    },
     "./CreateBusinessDialog": { CreateBusinessDialog: () => null },
     "./BusinessCreatorOnboarding": { BusinessCreatorOnboarding: () => null },
     "@/contexts/LocationContext": {
