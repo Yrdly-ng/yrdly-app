@@ -26,7 +26,7 @@ The following labels cover the current mobile discovery filters, legacy events, 
 | vehicles | Vehicles, Automotive, Car Parts, Tyres & Wheels, Car Accessories, Motorcycle Parts, Car Care |
 | food | Food, Food & Drink, Food & Drinks, Food & Catering, Restaurant & Café, Restaurant & Cafe, Meals, Snacks, Baked Goods, Groceries, Fresh Produce, Catering Packages, Desserts, Nutrition, Food Fair |
 | coffee | Drinks, Cafes & Restaurants, Café |
-| beauty | Beauty, Beauty & Salon, Beauty & Personal Care, Hair Care, Skin Care, Makeup, Fragrances, Nail Care, Beauty Tools, Salon Products |
+| beauty | Beauty, Beauty & Salon, Beauty & Personal Care, Health & Beauty, Hair Care, Skin Care, Makeup, Fragrances, Nail Care, Beauty Tools, Salon Products |
 | services | Services, Local Services, Professional Services, Maintenance, Installation |
 | retail | Retail, Shopping |
 | health | Health, Health & Wellness, Personal Care, Wellness Products, Health Equipment, Supplements, First Aid, Mobility Aids |
