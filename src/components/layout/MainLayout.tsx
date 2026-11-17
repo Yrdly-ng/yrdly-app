@@ -58,6 +58,7 @@ export function MainLayout({ children }: MainLayoutProps) {
     (pathname.startsWith("/messages/") && pathname !== "/messages") ||
     pathname.includes("/chat");
   const isMapPage = pathname === "/map";
+  const isCreationPage = ["/posts/create", "/marketplace/create", "/events/create"].includes(pathname);
   const isHomePage = pathname === "/home";
   const isMessagesPage = pathname === "/messages" || pathname.startsWith("/messages");
   const isExplorePage = pathname === "/explore";
@@ -273,7 +274,7 @@ export function MainLayout({ children }: MainLayoutProps) {
         />
       )}
 
-      {!isChatPage && !isMapPage && (
+      {!isChatPage && !isMapPage && !isCreationPage && (
         <Topbar
           unreadMessages={unreadMessagesCount}
           unreadNotifications={unreadCount}
@@ -293,7 +294,7 @@ export function MainLayout({ children }: MainLayoutProps) {
           "flex min-h-[100dvh] bg-[var(--c-bg)]",
           isMapPage
             ? ""
-            : isChatPage
+            : isChatPage || isCreationPage
             ? "pt-0 lg:pl-64"
             : "pt-[64px] md:pt-[84px] lg:pt-0 lg:pl-64"
         )}
@@ -301,7 +302,9 @@ export function MainLayout({ children }: MainLayoutProps) {
         <main
           className={cn(
             "flex-1 w-full min-w-0",
-            isMapPage || isChatPage
+            isCreationPage
+              ? "px-0 py-0 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] lg:px-6 lg:py-4"
+              : isMapPage || isChatPage
               ? "h-[100dvh] p-0 overflow-hidden"
               : isEdgeToEdgePage
               ? "h-[calc(100dvh-64px)] md:h-[calc(100dvh-84px)] lg:h-[100dvh] p-0 pb-20 lg:pb-0 overflow-y-auto overflow-x-hidden"
@@ -375,7 +378,7 @@ export function MainLayout({ children }: MainLayoutProps) {
 
       </div>
 
-      {!isChatPage && !isMapPage && (
+      {!isChatPage && !isMapPage && !isCreationPage && (
         <BottomNav
           navItems={navItems.filter((i) => i.href !== "/map")}
           pathname={pathname}

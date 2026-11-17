@@ -223,6 +223,11 @@ for (const theme of ["light", "dark"] as const) {
                 });
           await trigger.click();
           await page.locator(`[data-create-action="${action}"]`).click();
+          await expect(
+            page.getByRole("dialog", {
+              name: "What would you like to create?",
+            }),
+          ).toHaveCount(0);
           // The general QA seed does not promise a phone-verified buyer.
           // Capture the existing gate explicitly; never bypass it for screenshots.
           const destination =
@@ -235,6 +240,14 @@ for (const theme of ["light", "dark"] as const) {
             );
           await expect(page.locator("main h1")).toBeVisible();
           await waitForLoadedContent(page, gated ? "/verify-phone" : route);
+          if (!gated && width < 1024) {
+            await expect(
+              page.getByRole("navigation", {
+                name: "Main navigation",
+                exact: true,
+              }),
+            ).toBeHidden();
+          }
           await expect
             .poll(() =>
               page.evaluate(
