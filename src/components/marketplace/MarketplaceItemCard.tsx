@@ -15,7 +15,7 @@ import { formatPrice } from "@/lib/shared/utils";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { supabase } from "@/lib/supabase/supabase";
 import { GlassCard } from "@/components/GlassCard";
-import { VerifiedBadge } from "@/components/VerifiedBadge";
+import { Phone } from "lucide-react";
 
 interface MarketplaceItemCardProps {
   item: Post;
@@ -90,7 +90,7 @@ export function MarketplaceItemCard({
   const imageUrl = getListingCover(item);
   const sellerName = item.user?.name || item.author_name || "Seller";
   const sellerAvatar = item.user?.avatar_url || item.author_image;
-  const isVerifiedSeller = item.user?.verified_seller;
+  const isPhoneVerified = item.user?.phone_verified;
   const badge = getBadge(item);
   const locationText = [item.lga, item.state].filter(Boolean).join(", ");
 
@@ -219,7 +219,11 @@ export function MarketplaceItemCard({
               <span className="text-[0.6875rem] font-semibold text-foreground min-w-0 truncate">
                 {sellerName}
               </span>
-              {isVerifiedSeller && <VerifiedBadge size={14} />}
+              {isPhoneVerified && (
+                <span title="Phone number verified" aria-label="Phone number verified" className="inline-flex shrink-0 items-center gap-1 text-[10px] font-medium text-primary">
+                  <Phone className="h-3 w-3" /> Phone verified
+                </span>
+              )}
             </div>
 
             <div className="flex flex-wrap gap-x-2 text-xs text-muted-foreground">
