@@ -1,0 +1,78 @@
+name: Mobile-first web visual review (isolated QA)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/components/layout/**'
+      - 'src/components/marketplace/**'
+      - 'src/components/search/**'
+      - 'tests/browser/mobile-web-visual.spec.ts'
+      - '.github/workflows/mobile-web-visual-review.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Avoid resetting disposable QA accounts during another isolated QA run.
+concurrency:
+  group: isolated-yrdly-qa
+  cancel-in-progress: false
+
+jobs:
+  visual-review:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    environment: yrdly-qa
+    timeout-minutes: 40
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      QA_SUPABASE_URL: ${{ secrets.QA_SUPABASE_URL }}
+      QA_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.QA_SUPABASE_PUBLISHABLE_KEY }}
+      QA_SUPABASE_SECRET_KEY: ${{ secrets.QA_SUPABASE_SECRET_KEY }}
+      QA_PAYLUK_SECRET_KEY: ${{ secrets.QA_PAYLUK_SECRET_KEY }}
+      QA_PAYLUK_PUBLIC_KEY: ${{ secrets.QA_PAYLUK_PUBLIC_KEY }}
+      QA_BUYER_EMAIL: ${{ secrets.QA_BUYER_EMAIL }}
+      QA_BUYER_PASSWORD: ${{ secrets.QA_BUYER_PASSWORD }}
+      QA_SELLER_EMAIL: ${{ secrets.QA_SELLER_EMAIL }}
+      QA_SELLER_PASSWORD: ${{ secrets.QA_SELLER_PASSWORD }}
+      QA_ORGANIZER_EMAIL: ${{ secrets.QA_ORGANIZER_EMAIL }}
+      QA_ORGANIZER_PASSWORD: ${{ secrets.QA_ORGANIZER_PASSWORD }}
+      QA_ADMIN_EMAIL: ${{ secrets.QA_ADMIN_EMAIL }}
+      QA_ADMIN_PASSWORD: ${{ secrets.QA_ADMIN_PASSWORD }}
+      QA_NON_ADMIN_EMAIL: ${{ secrets.QA_NON_ADMIN_EMAIL }}
+      QA_NON_ADMIN_PASSWORD: ${{ secrets.QA_NON_ADMIN_PASSWORD }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - run: npm install --global pnpm@11.2.2
+      - run: pnpm install --frozen-lockfile
+      - name: Validate isolated QA credentials
+        run: node qa-scripts/write-ci-env.mjs
+      - name: Seed disposable QA accounts
+        run: node qa-scripts/seed.mjs
+      - name: Build app against isolated QA
+        run: node qa-scripts/run-app.mjs build
+      - name: Start isolated QA server
+        run: |
+          mkdir -p .qa-artifacts/mobile-web-visual
+          node qa-scripts/run-app.mjs start > .qa-artifacts/mobile-web-visual/server.log 2>&1 &
+          for attempt in $(seq 1 75); do
+            if curl --fail --silent http://localhost:9002/login > /dev/null; then exit 0; fi
+            sleep 2
+          done
+          echo 'QA app did not start' >&2
+          exit 1
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Inspect responsive authenticated pages and Create menu
+        run: pnpm exec playwright test --config=playwright.qa.config.ts tests/browser/mobile-web-visual.spec.ts
+      - name: Upload visual evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: yrdly-web-mobile-visual-review
+          path: .qa-artifacts/mobile-web-visual/*.png
+          retention-days: 7
