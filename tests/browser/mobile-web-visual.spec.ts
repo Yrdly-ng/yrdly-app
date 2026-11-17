@@ -47,7 +47,7 @@ async function waitForLoadedContent(
       main.getByRole("button", { name: "Post", exact: true }),
     ).toBeVisible({ timeout: 30000 });
   } else {
-    await expect(main.locator("h1").first()).toBeVisible({ timeout: 30000 });
+    await expect(main.getByRole("heading").first()).toBeVisible({ timeout: 30000 });
   }
   await expect(
     main.locator(".animate-pulse:visible, .animate-spin:visible"),
