@@ -453,7 +453,7 @@ for (const theme of ["light", "dark"] as const) {
       await expect(input).toBeVisible();
       await expect(input).toBeInViewport();
       await expect(page.locator("main")).toHaveCount(1);
-      await expect(page.getByText(longMessage, { exact: true })).toBeVisible();
+      await expect(page.getByRole("region", { name: "Conversation messages", exact: true }).getByText(longMessage, { exact: true })).toBeVisible();
       for (const name of ["Back to messages", "Conversation options", "Attach photo", "Attach video", "Send a GIF", "Send message"]) {
         const control = page.getByRole("button", { name, exact: true });
         if (name === "Back to messages" && width >= 768) continue;
