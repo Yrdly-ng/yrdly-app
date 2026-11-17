@@ -54,6 +54,8 @@ const SAFE_PUSH_DATA_KEYS = [
   "id",
   "senderName",
   "fromUserName",
+  "buyerName",
+  "itemTitle",
   "actor_count",
   "groupCount",
   "messageCount",
@@ -437,6 +439,18 @@ serve(async (req) => {
       title: "Account update",
       body: "You have a private account update. Open YRDLY to view it.",
     };
+    // Only senders authenticated by the server can invoke this function.
+    // Order names are supplied by the trusted, provider-confirmed webhook.
+    // No account numbers, amounts or private message text enter the preview.
+    const purchasedBy = typeof safeData.buyerName === "string"
+      ? safeData.buyerName.trim().slice(0, 80)
+      : "";
+    const purchasedItem = typeof safeData.itemTitle === "string"
+      ? safeData.itemTitle.trim().slice(0, 100)
+      : "";
+    const marketplaceCopy = type === "marketplace_item_sold" && purchasedBy && purchasedItem
+      ? `${purchasedBy} bought ${purchasedItem}. Review your order in YRDLY.`
+      : privateCopy.body;
     const fromUserName = (
       typeof safeData.fromUserName === "string"
         ? safeData.fromUserName
@@ -469,7 +483,7 @@ serve(async (req) => {
             ? `You have ${messageCount} new messages.`
             : "You have a new message."
       : isPrivateAccountUpdate
-        ? privateCopy.body
+        ? marketplaceCopy
         : payload.body;
     if (
       !isPrivateMessage &&
