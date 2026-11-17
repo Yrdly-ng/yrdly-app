@@ -135,7 +135,7 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
       {/* Header bar */}
       <div className="px-4 flex flex-col items-start gap-4 pt-2 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
         <h1 className="text-xl sm:text-2xl font-bold font-yrdly-display text-foreground">
-          Marketplace
+          Buy & sell nearby
         </h1>
         <div className="flex min-w-0 flex-wrap items-center gap-3">
           <LocationChip />
@@ -149,6 +149,8 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
           </Magnetic>
         </div>
       </div>
+
+      <p className="px-4 text-sm text-muted-foreground">Discover good finds from sellers in your neighbourhood.</p>
 
       {/* Search Bar */}
       <div className="px-4">
@@ -176,8 +178,8 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
               onClick={() => setActiveCategory(cat.label)}
               className={`flex-shrink-0 flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold font-yrdly-body transition-all duration-150 active:scale-[0.97] border ${
                 active
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-[var(--yrdly-glass-bg)] text-[var(--yrdly-label)] border-[var(--yrdly-glass-border)]"
+                  ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                  : "bg-card text-foreground border-border hover:border-primary/40"
               }`}
             >
               <span>{cat.emoji}</span>
