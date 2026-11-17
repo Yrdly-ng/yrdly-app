@@ -59,6 +59,8 @@ const SAFE_PUSH_DATA_KEYS = [
   "actor_count",
   "groupCount",
   "messageCount",
+  "promptId",
+  "prompt_id",
   "deliveryKey",
   "expiresAt",
   "expires_at",
