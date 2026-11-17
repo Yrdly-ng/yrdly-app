@@ -55,6 +55,8 @@ test('a successful retry never submits a previously reserved recipient again',as
  const r=runtime();assert.equal((await r.run()).body.submitted,1);
  await r.run();assert.equal(r.calls.length,1);assert.equal(r.ledger.get(A).status,'submitted');
  assert.equal(r.calls[0].payload.data.type,'daily_prompt');
+ assert.equal(r.calls[0].payload.data.promptId,'question');
+ assert.equal(r.calls[0].payload.url,'/daily-prompts?promptId=question');
  assert.equal(r.calls[0].payload.data.expiresAt,'2026-11-16T23:00:00Z');
 });
 test('an uncertain provider handoff is recorded and never automatically replayed',async()=>{

@@ -920,8 +920,8 @@ export function ConversationScreen({
         />
       )}
       {/* ── Top Bar ── */}
-      <header className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 bg-[var(--yrdly-dark)]/90 backdrop-blur-md border-b border-[var(--yrdly-glass-border)]">
-        <div className="flex min-w-0 items-center gap-3">
+      <header className="sticky top-0 z-30 flex items-center justify-between px-[16px] py-[12px] bg-[var(--yrdly-dark)]/90 backdrop-blur-md border-b border-[var(--yrdly-glass-border)]">
+        <div className="flex min-w-0 items-center gap-[12px]">
           <button
             type="button"
             aria-label="Back to messages"
@@ -933,7 +933,7 @@ export function ConversationScreen({
           >
             <ArrowLeft className="w-4 h-4 text-foreground" />
           </button>
-          <div className="flex min-w-0 items-center gap-2.5">
+          <div className="flex min-w-0 items-center gap-[10px]">
             <div className="relative">
               <Avatar className="w-[36px] h-[36px] border border-[var(--yrdly-glass-border)]">
                 {avatarSrc ? (
@@ -1075,7 +1075,7 @@ export function ConversationScreen({
       <section
         aria-label="Conversation messages"
         ref={messageListRef}
-        className="flex-1 overflow-y-auto px-4 py-4 space-y-3"
+        className="flex-1 overflow-y-auto px-[16px] py-[16px] space-y-3"
         onScroll={(event) => {
           const element = event.currentTarget;
           autoScroll.current =
@@ -1172,7 +1172,7 @@ export function ConversationScreen({
                   </div>
                 )}
                 <div
-                  className={`flex min-w-0 items-end gap-1.5 max-w-[95%] sm:max-w-[85%] group ${isOwn ? "self-end flex-row-reverse" : "self-start"}`}
+                  className={`flex min-w-0 items-end gap-[6px] max-w-[95%] sm:max-w-[85%] group ${isOwn ? "self-end flex-row-reverse" : "self-start"}`}
                 >
                   {!isOwn && (
                     <Avatar className="w-[28px] h-[28px] flex-shrink-0">
@@ -1303,7 +1303,7 @@ export function ConversationScreen({
                     )}
                     {(msg.text || msg.content) && (
                       <div
-                        className={`px-4 py-2.5 text-base leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere] font-yrdly-body ${isOwn ? "bg-primary text-primary-foreground rounded-[20px] rounded-br-[4px] font-semibold" : "bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] text-foreground rounded-[20px] rounded-bl-[4px]"}`}
+                        className={`px-[16px] py-[10px] text-base leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere] font-yrdly-body ${isOwn ? "bg-primary text-primary-foreground rounded-[20px] rounded-br-[4px] font-semibold" : "bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] text-foreground rounded-[20px] rounded-bl-[4px]"}`}
                       >
                         {msg.text || msg.content}
                       </div>
@@ -1364,7 +1364,7 @@ export function ConversationScreen({
 
       {/* ── Input ── */}
       <footer
-        className="flex-shrink-0 p-3 sm:p-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-xl"
+        className="flex-shrink-0 p-[12px] sm:p-[16px] pb-[calc(12px+env(safe-area-inset-bottom))] backdrop-blur-xl"
         style={{
           background: "color-mix(in srgb, var(--c-card) 88%, transparent)",
           borderTop: "1px solid var(--c-border)",

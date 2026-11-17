@@ -375,3 +375,15 @@ test('opt-in daily prompt notifications resolve to the question screen',()=>{
   assert.equal(r.getPushNotificationDestination({title:'YRDLY',data:{type:'daily_prompt',url:'/daily-prompts'}}),'/daily-prompts');
   assert.equal(r.getNotificationTarget({type:'daily_prompt'}),null);
 });
+
+test('daily-question destinations keep the original question across typed, URL-only and stale payloads',async()=>{
+ const promptId='11111111-1111-4111-8111-111111111111';
+ const expected=`/daily-prompts?promptId=${promptId}`;
+ assert.equal(route({type:'daily_prompt',data:{promptId}}),expected);
+ assert.equal(r.getPushNotificationDestination({type:'daily_prompt',data:{prompt_id:promptId},url:'/notifications'}),expected);
+ assert.equal(r.getPushNotificationDestination({type:'push_test',url:expected}),expected);
+ assert.equal(r.getPushNotificationDestination({url:`https://app.yrdly.ng${expected}&notificationId=stale`}),expected);
+ const result=await r.resolveNotificationNavigation({url:expected},async()=>{throw Error('Questions are visibility-checked by the question endpoint');});
+ assert.equal(result.destination,expected);assert.equal(result.failed,false);
+ assert.equal(r.getPushNotificationDestination({type:'daily_prompt'}),'/daily-prompts');
+});
