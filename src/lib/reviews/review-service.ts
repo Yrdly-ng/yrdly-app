@@ -161,6 +161,19 @@ export class ReviewService {
       .single();
 
     if (error) throwReviewInsertError(error);
+    // Only the persisted, authorized review can generate a notification.
+    // Keep review submission successful if the push provider is unavailable.
+    try {
+      const { data: business } = await supabase.from('businesses')
+        .select('owner_id').eq('id', businessId).maybeSingle();
+      if (business?.owner_id && business.owner_id !== userId) {
+        await NotificationService.createBusinessReviewReceivedNotification(
+          business.owner_id, '', rating, businessId, data.id
+        );
+      }
+    } catch (error) {
+      console.error('Booking review saved; notification failed', error);
+    }
     return data.id;
   }
 

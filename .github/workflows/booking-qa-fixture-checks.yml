@@ -1,0 +1,25 @@
+name: Booking QA fixture checks
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tests/booking-checkout-acceptance.test.cjs'
+      - 'tests/booking-journey-ui.test.cjs'
+      - '.github/workflows/booking-qa-fixture-checks.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  booking-test-fixtures:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - run: npm install --global pnpm@11.2.2
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:business

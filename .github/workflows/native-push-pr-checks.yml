@@ -1,0 +1,44 @@
+name: Native and web push copy checks
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/lib/notifications/**'
+      - 'supabase/functions/send-push-notification/**'
+      - 'tests/native-push-copy.test.cjs'
+      - 'tests/notification-workflow-contract.test.cjs'
+      - 'src/app/api/webhooks/payluk/route.ts'
+      - 'src/app/api/bookings/create/route.ts'
+      - 'src/app/(app)/bookings/create/page.tsx'
+      - 'src/lib/reviews/review-service.ts'
+      - '.github/workflows/native-push-pr-checks.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: push-copy-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  push-copy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - run: npm install --global pnpm@11.2.2
+      - run: pnpm install --frozen-lockfile
+      - name: Type-check the Next.js code
+        run: pnpm typecheck
+      - name: Check push sender copy, preference and ownership regressions
+        run: node --test tests/native-push-copy.test.cjs tests/notification-workflow-contract.test.cjs tests/native-token-ownership.test.cjs tests/notification-actor-errors.test.cjs tests/web-push-safety.test.cjs
+      - name: Marketplace payment and escrow regression suite
+        run: pnpm test:payments
+      - name: Focused booking and business regression checks
+        run: node --test tests/business-parity.test.cjs tests/booking-schedule.test.cjs tests/booking-scheduling-database.test.cjs
+      - name: Ticket purchase, event cancellation and notification routing tests
+        run: node --test tests/ticket-checkout-flow.test.cjs tests/event-cancellation-delivery.test.cjs tests/notification-routing.test.cjs
