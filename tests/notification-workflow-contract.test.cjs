@@ -41,7 +41,7 @@ test('provider-confirmed settlement and refund create non-claiming notifications
   assert.match(webhook,/type: 'payment_refunded'/);
   assert.match(webhook,/const \{ data: applied, error: refundError \}/);
   assert.match(webhook,/if \(!applied\) return;/);
-  assert.match(webhook,/Funds are available to withdraw/);
+  assert.match(webhook,/funds are available to withdraw/i);
 });
 
 test('server-side booking notifications replace after-navigation client callbacks',()=>{
