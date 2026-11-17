@@ -51,15 +51,17 @@ export function Topbar({
         transform: 'translateZ(0)',
       }}
     >
-      <div className="w-full flex items-center gap-3 md:gap-4">
-        <Link href="/home" className="flex items-center gap-2 flex-shrink-0">
+      <div className="flex w-full min-w-0 items-center gap-2 sm:gap-3 md:gap-4">
+        <Link href="/home" className="flex shrink-0 items-center gap-2">
           <span className="font-wordmark text-2xl tracking-tight text-[#82DB7E]">
             YRDLY
           </span>
         </Link>
 
-        <div className="flex-shrink-0">
-          <LocationChip />
+        <div className="min-w-0 flex-1 overflow-visible sm:flex-none">
+          <div className="max-w-[min(100%,128px)] sm:max-w-[180px] [&_button]:max-w-full [&_button_span]:truncate">
+            <LocationChip />
+          </div>
         </div>
 
         {/* Desktop nav — replaces the old left sidebar */}
@@ -92,10 +94,10 @@ export function Topbar({
           </nav>
         )}
 
-        <div className="flex flex-1" />
+        <div className="hidden flex-1 sm:flex" />
 
-        <div className="flex items-center gap-1.5 md:gap-2 ml-auto flex-shrink-0">
-          <div className="group/tip relative">
+        <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-1.5 md:gap-2">
+          <div className="group/tip relative hidden min-[420px]:block">
             <Link href="/map">
               <Button aria-label="Change location"
                 variant="ghost"
