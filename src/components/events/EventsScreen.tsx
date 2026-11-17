@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   CalendarDays,
   Plus,
@@ -100,6 +101,16 @@ export function EventsScreen({ className }: { className?: string }) {
       }),
     [events, query, filter],
   );
+  // Highlight the earliest actual event only when browsing everything.
+  // "Up next" is chronological, never a fabricated paid/featured status.
+  const upcomingSpotlight =
+    filter === "All" && !query.trim() && !error && visible[0]?.cover_image_url
+      ? visible[0]
+      : null;
+  const moreEvents = upcomingSpotlight
+    ? visible.filter((event) => event.id !== upcomingSpotlight.id)
+    : visible;
+
   const create = () =>
     profile?.phone_verified
       ? setOnboardingOpen(true)
@@ -248,15 +259,43 @@ export function EventsScreen({ className }: { className?: string }) {
               : `${visible.length} ${visible.length === 1 ? "event" : "events"}`}
           </span>
         </div>
+        {upcomingSpotlight && (
+          <Link
+            href={`/events/${upcomingSpotlight.id}`}
+            aria-label={`View upcoming event ${upcomingSpotlight.title}`}
+            className="group relative mb-6 block h-64 overflow-hidden rounded-[26px] border border-border bg-card shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:h-80"
+          >
+            <Image
+              src={upcomingSpotlight.cover_image_url!}
+              alt={upcomingSpotlight.title}
+              fill
+              sizes="(max-width: 768px) 100vw, 1152px"
+              className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+            />
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/65 to-transparent px-5 pb-5 pt-20 text-white sm:px-7 sm:pb-7">
+              <p className="text-xs font-bold uppercase tracking-widest text-emerald-200">Up next</p>
+              <h3 className="mt-2 line-clamp-2 font-yrdly-display text-2xl font-bold sm:text-3xl">
+                {upcomingSpotlight.title}
+              </h3>
+              <p className="mt-2 text-sm text-white/90">
+                {new Date(upcomingSpotlight.start_time).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" })}
+                {upcomingSpotlight.location_address ? ` · ${upcomingSpotlight.location_address}` : ""}
+              </p>
+              <p className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-emerald-200">
+                View event <span aria-hidden="true">→</span>
+              </p>
+            </div>
+          </Link>
+        )}
         {loading && events.length === 0 ? (
           <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
             {[1, 2, 3].map((item) => (
               <Skeleton key={item} className="h-80 rounded-[26px]" />
             ))}
           </div>
-        ) : visible.length > 0 ? (
+        ) : moreEvents.length > 0 ? (
           <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-            {visible.map((event) => (
+            {moreEvents.map((event) => (
               <EventCard
                 key={event.id}
                 event={
@@ -272,7 +311,7 @@ export function EventsScreen({ className }: { className?: string }) {
             ))}
           </div>
         ) : (
-          !error && (
+          !error && !upcomingSpotlight && (
             <div className="flex flex-col items-center rounded-[26px] border border-dashed border-border px-6 py-16 text-center">
               <SlidersHorizontal className="mb-4 h-9 w-9 text-primary" />
               <h3 className="font-yrdly-display text-2xl font-bold">
