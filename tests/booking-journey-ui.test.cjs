@@ -76,7 +76,7 @@ test('accepted staged booking explains payment hold without offering a legacy fu
   const h = await mountDetail({ status: 'confirmed', priced: true, staged: true });
   try {
     assert.match(h.container.textContent, /Agreed service price/);
-    assert.match(h.container.textContent, /Staged payment setup pending/);
+    assert.match(h.container.textContent, /Booking milestones/);
     assert.ok(![...h.container.querySelectorAll('button')].some(node => node.textContent === 'Review booking payment'));
   } finally { await h.unmount(); }
 });
