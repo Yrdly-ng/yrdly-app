@@ -959,7 +959,7 @@ export function ConversationScreen({
                   <VerifiedBadge size={15} type="user" />
                 )}
               </div>
-              <p className="truncate text-xs text-[var(--yrdly-label)] font-yrdly-body">
+              <p className="truncate text-xs text-foreground/75 font-yrdly-body">
                 {`@${(otherParticipant as any)?.username || otherParticipant.name || "user"}`}
               </p>
             </div>
@@ -977,12 +977,12 @@ export function ConversationScreen({
                   menu.style.display === "block" ? "none" : "block";
             }}
           >
-            <MoreVertical className="w-4 h-4 text-[var(--yrdly-label)]" />
+            <MoreVertical className="w-4 h-4 text-foreground/75" />
           </button>
 
           <GlassCard className="options-menu hidden absolute right-0 top-11 w-48 py-1.5 z-40 rounded-xl p-0 shadow-xl border border-[var(--yrdly-glass-border)]">
             <button
-              className="w-full text-left px-4 py-2.5 text-xs text-[var(--yrdly-label)] hover:text-foreground hover:bg-white/5 transition-colors font-yrdly-body"
+              className="w-full text-left px-4 py-2.5 text-xs text-foreground/75 hover:text-foreground hover:bg-white/5 transition-colors font-yrdly-body"
               onClick={async () => {
                 if (confirm("Report this user?")) {
                   alert("User reported successfully.");
@@ -1108,7 +1108,7 @@ export function ConversationScreen({
             <p className="text-foreground text-base font-bold font-yrdly-display">
               No messages yet
             </p>
-            <p className="text-xs text-[var(--yrdly-label)] mt-1 max-w-xs font-yrdly-body">
+            <p className="text-xs text-foreground/75 mt-1 max-w-xs font-yrdly-body">
               Say hello{" "}
               {otherParticipant?.name
                 ? `to ${otherParticipant.name.split(" ")[0]}`
@@ -1166,7 +1166,7 @@ export function ConversationScreen({
               >
                 {needsDateHeader && (
                   <div className="flex justify-center my-3">
-                    <span className="text-xs font-bold tracking-wide rounded-full px-3 py-1 bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] text-[var(--yrdly-label)] font-yrdly-display">
+                    <span className="text-xs font-bold tracking-wide rounded-full px-3 py-1 bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] text-foreground/75 font-yrdly-display">
                       {dateText}
                     </span>
                   </div>
@@ -1185,7 +1185,7 @@ export function ConversationScreen({
 
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <button aria-label="Message options" className="flex h-[44px] w-[44px] shrink-0 items-center justify-center text-[var(--yrdly-label)] hover:text-foreground rounded-full self-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                      <button aria-label="Message options" className="flex h-[44px] w-[44px] shrink-0 items-center justify-center text-foreground/75 hover:text-foreground rounded-full self-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                         <MoreVertical className="w-3.5 h-3.5" />
                       </button>
                     </DropdownMenuTrigger>
@@ -1303,13 +1303,13 @@ export function ConversationScreen({
                     )}
                     {(msg.text || msg.content) && (
                       <div
-                        className={`px-[16px] py-[10px] text-base leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere] font-yrdly-body ${isOwn ? "bg-primary text-primary-foreground rounded-[20px] rounded-br-[4px] font-semibold" : "bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] text-foreground rounded-[20px] rounded-bl-[4px]"}`}
+                        className={`px-[16px] py-[10px] text-base leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere] font-yrdly-body ${isOwn ? "bg-primary text-black rounded-[20px] rounded-br-[4px] font-semibold" : "bg-[var(--yrdly-glass-bg)] border border-[var(--yrdly-glass-border)] text-foreground rounded-[20px] rounded-bl-[4px]"}`}
                       >
                         {msg.text || msg.content}
                       </div>
                     )}
                     <span
-                      className={`text-xs px-1 font-yrdly-body text-[var(--yrdly-label)] ${isOwn ? "text-right" : "text-left"}`}
+                      className={`text-xs px-1 font-yrdly-body text-foreground/75 ${isOwn ? "text-right" : "text-left"}`}
                     >
                       {formatTime(msg.created_at)}
                       {isOwn &&
@@ -1352,7 +1352,7 @@ export function ConversationScreen({
                   />
                 ))}
               </div>
-              <span className="text-[0.65rem] text-[var(--yrdly-label)] font-yrdly-body">
+              <span className="text-[0.65rem] text-foreground/75 font-yrdly-body">
                 {otherTypingUsers[0]?.user_name} is typing...
               </span>
             </GlassCard>
@@ -1434,7 +1434,7 @@ export function ConversationScreen({
             aria-label="Send a GIF"
             disabled={sending || isEditingVideo}
             onClick={() => setGifPickerVisible(true)}
-            className="min-h-11 min-w-11 rounded-full bg-primary/10 px-3 py-2 text-sm font-bold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+            className="min-h-11 min-w-11 rounded-full bg-primary/10 px-3 py-2 text-sm font-bold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
           >
             GIF
           </button>

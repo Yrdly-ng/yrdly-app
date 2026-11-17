@@ -462,6 +462,15 @@ for (const theme of ["light", "dark"] as const) {
         expect(size?.height, name).toBeGreaterThanOrEqual(44);
         expect(size?.width, name).toBeGreaterThanOrEqual(44);
       }
+      const reply = page.getByRole("region", { name: "Conversation messages", exact: true }).getByText("YRDLY-QA reply: yes, we can meet near the community centre.", { exact: true });
+      const replyContrast = await reply.evaluate(el => {
+        const channel = (value: number) => { const v = value / 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+        const luminance = (color: string) => (color.match(/[\d.]+/g) || []).slice(0, 3).map(Number).map(channel)
+          .reduce((sum, value, i) => sum + value * [0.2126, 0.7152, 0.0722][i], 0);
+        const style = getComputedStyle(el), fg = luminance(style.color), bg = luminance(style.backgroundColor);
+        return (Math.max(fg, bg) + 0.05) / (Math.min(fg, bg) + 0.05);
+      });
+      expect(replyContrast, "Outgoing message contrast").toBeGreaterThanOrEqual(4.5);
       await input.fill("QA draft only — never sent");
       await expect(page.getByRole("button", { name: "Send message", exact: true })).toBeEnabled();
       await noOverflow();
