@@ -927,7 +927,7 @@ export function ConversationScreen({
             aria-label="Back to messages"
             onClick={() => (onBack ? onBack() : router.push("/messages"))}
             className={cn(
-              "h-11 w-11 shrink-0 rounded-xl flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] transition-colors hover:bg-white/5",
+              "h-[44px] w-[44px] shrink-0 rounded-xl flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] transition-colors hover:bg-white/5",
               isEmbedded && "md:hidden",
             )}
           >
@@ -935,7 +935,7 @@ export function ConversationScreen({
           </button>
           <div className="flex min-w-0 items-center gap-2.5">
             <div className="relative">
-              <Avatar className="w-9 h-9 border border-[var(--yrdly-glass-border)]">
+              <Avatar className="w-[36px] h-[36px] border border-[var(--yrdly-glass-border)]">
                 {avatarSrc ? (
                   <AvatarImage src={avatarSrc} />
                 ) : (
@@ -969,7 +969,7 @@ export function ConversationScreen({
         <div className="relative shrink-0">
           <button
             aria-label="Conversation options"
-            className="h-11 w-11 shrink-0 rounded-xl flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] transition-colors hover:bg-white/5"
+            className="h-[44px] w-[44px] shrink-0 rounded-xl flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] transition-colors hover:bg-white/5"
             onClick={(e) => {
               const menu = e.currentTarget.nextElementSibling as HTMLElement;
               if (menu)
@@ -1175,7 +1175,7 @@ export function ConversationScreen({
                   className={`flex min-w-0 items-end gap-1.5 max-w-[95%] sm:max-w-[85%] group ${isOwn ? "self-end flex-row-reverse" : "self-start"}`}
                 >
                   {!isOwn && (
-                    <Avatar className="w-7 h-7 flex-shrink-0">
+                    <Avatar className="w-[28px] h-[28px] flex-shrink-0">
                       <AvatarImage src={sender?.avatar_url} />
                       <AvatarFallback className="bg-primary text-foreground font-bold font-yrdly-display text-[10px]">
                         {sender?.name?.charAt(0).toUpperCase()}
@@ -1185,7 +1185,7 @@ export function ConversationScreen({
 
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <button aria-label="Message options" className="flex h-11 w-11 shrink-0 items-center justify-center text-[var(--yrdly-label)] hover:text-foreground rounded-full self-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                      <button aria-label="Message options" className="flex h-[44px] w-[44px] shrink-0 items-center justify-center text-[var(--yrdly-label)] hover:text-foreground rounded-full self-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                         <MoreVertical className="w-3.5 h-3.5" />
                       </button>
                     </DropdownMenuTrigger>
@@ -1442,7 +1442,7 @@ export function ConversationScreen({
             type="button"
             aria-label="Attach photo"
             onClick={() => fileInputRef.current?.click()}
-            className="flex h-11 w-11 items-center justify-center rounded-full flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring text-primary"
+            className="flex h-[44px] w-[44px] items-center justify-center rounded-full flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring text-primary"
             style={{ background: "var(--c-card2)" }}
             onMouseEnter={(e) =>
               ((e.currentTarget as HTMLElement).style.background =
@@ -1460,7 +1460,7 @@ export function ConversationScreen({
             disabled={sending || isEditingVideo}
             aria-label="Attach video"
             onClick={() => videoInputRef.current?.click()}
-            className="flex h-11 w-11 items-center justify-center rounded-full flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring text-primary"
+            className="flex h-[44px] w-[44px] items-center justify-center rounded-full flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring text-primary"
             style={{ background: "var(--c-card2)" }}
             onMouseEnter={(e) =>
               ((e.currentTarget as HTMLElement).style.background =
@@ -1501,7 +1501,7 @@ export function ConversationScreen({
               sending ||
               isEditingVideo
             }
-            className="w-12 h-12 ml-auto rounded-full flex items-center justify-center flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring bg-primary text-primary-foreground transition-all duration-200 active:scale-95 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100 shadow-md"
+            className="w-[48px] h-[48px] ml-auto rounded-full flex items-center justify-center flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring bg-primary text-primary-foreground transition-all duration-200 active:scale-95 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100 shadow-md"
           >
             {sending ? (
               <Loader2 className="w-5 h-5 text-primary-foreground animate-spin" />
