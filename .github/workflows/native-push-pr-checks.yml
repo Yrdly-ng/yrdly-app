@@ -7,6 +7,10 @@ on:
       - 'src/lib/notifications/**'
       - 'supabase/functions/send-push-notification/**'
       - 'tests/native-push-copy.test.cjs'
+      - 'tests/notification-workflow-contract.test.cjs'
+      - 'src/app/api/webhooks/payluk/route.ts'
+      - 'src/app/api/bookings/create/route.ts'
+      - 'src/app/(app)/bookings/create/page.tsx'
       - '.github/workflows/native-push-pr-checks.yml'
 
 permissions:
@@ -30,4 +34,4 @@ jobs:
       - name: Type-check the Next.js code
         run: pnpm typecheck
       - name: Check push sender copy, preference and ownership regressions
-        run: node --test tests/native-push-copy.test.cjs tests/native-token-ownership.test.cjs tests/notification-actor-errors.test.cjs tests/web-push-safety.test.cjs
+        run: node --test tests/native-push-copy.test.cjs tests/notification-workflow-contract.test.cjs tests/native-token-ownership.test.cjs tests/notification-actor-errors.test.cjs tests/web-push-safety.test.cjs
