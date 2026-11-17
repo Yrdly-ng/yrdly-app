@@ -111,3 +111,11 @@ test('web discovery category icons cover Marketplace, Businessplace and Events',
   assert.match(events, /CategoryIcon category=\{item\}/);
   assert.match(renderer, /WEB_CATEGORY_ICONS: Record<CategoryIconKey, LucideIcon>/);
 });
+
+test('web event category icons are backed by actual published event categories', () => {
+  const events = fs.readFileSync('src/components/events/EventsScreen.tsx', 'utf8');
+  assert.match(events, /actualEventCategories/);
+  assert.match(events, /events\.map\(\(event\) => event\.category\?\.trim\(\)\)/);
+  assert.match(events, /CategoryIcon category=\{category\}/);
+  assert.match(events, /setEventCategory\(category\)/);
+});
