@@ -27,24 +27,24 @@ export default function DailyPromptCard() {
   if (!today?.prompt) return null;
   return (
     <section aria-label="Today&apos;s neighbourhood question"
-      className="rounded-3xl border border-[#82DB7E]/30 bg-gradient-to-br from-[#82DB7E]/10 via-card to-card p-4 sm:p-5 space-y-3">
-      <div className="flex items-center gap-2 text-xs font-semibold tracking-wide text-[#82DB7E]">
+      className="rounded-3xl border border-primary/30 bg-gradient-to-br from-primary/10 via-card to-card p-4 sm:p-5 space-y-3">
+      <div className="flex items-center gap-2 text-xs font-semibold tracking-wide text-primary">
         <Sparkles className="h-4 w-4" aria-hidden />
         TODAY&apos;S NEIGHBOURHOOD QUESTION
       </div>
       <h2 className="text-lg sm:text-xl font-bold leading-snug text-foreground font-yrdly-display">
         {today.prompt.question}
       </h2>
-      <p className="text-xs sm:text-sm text-[var(--yrdly-label)]">
+      <p className="text-sm text-muted-foreground">
         Share your experience with neighbours nearby. Real recommendations, real conversations.
       </p>
       <div className="flex flex-wrap items-center gap-2">
         <Link href={`/posts/create?dailyPrompt=${encodeURIComponent(today.prompt.id)}`}
-          className="inline-flex items-center gap-2 rounded-full bg-[#82DB7E] text-black px-4 py-2 text-sm font-bold font-yrdly-display">
+          className="inline-flex min-h-11 items-center gap-2 rounded-full bg-primary text-primary-foreground px-4 py-2 text-sm font-bold font-yrdly-display">
           <MessageCircle className="h-4 w-4" aria-hidden/> Answer prompt
         </Link>
         <Link href="/daily-prompts"
-          className="inline-flex items-center gap-2 rounded-full border border-[var(--yrdly-glass-border)] px-4 py-2 text-sm font-medium text-foreground">
+          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--yrdly-glass-border)] px-4 py-2 text-sm font-medium text-foreground">
           See neighbours&apos; answers <ArrowRight className="h-4 w-4" aria-hidden/>
         </Link>
       </div>

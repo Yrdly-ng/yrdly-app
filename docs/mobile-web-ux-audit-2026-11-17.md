@@ -57,10 +57,19 @@ Commit `4686e868231937d193d8fef02deab1e1ce9329eb` implements the discovery/accou
 - Browser tests check authenticated routes, theme, page overflow, Create geometry, Escape/focus return, existing creation destinations, and hidden mobile app navigation on focused creation screens.
 - `git diff --check` passes.
 
+## Resumed release checks
+
+- User confirmed an actual iPhone PWA background push and successful Home tap.
+- Two Android self-test provider receipts were `ok`; phone-display/tap confirmation remains pending. A third tester was sent one labelled, device-scoped test.
+- Found and reproduced a worker defect: short delivery TTL expired awaiting-receipt rows before the 15-minute provider check. The fix separates send expiry from a bounded 24-hour receipt window; expired notifications cannot be resent. Four new behavioral regressions pass locally.
+- Daily question/reminder and notification suite: 132 baseline checks passed. Live scheduler active; campaign disabled, tester cohort empty, seven approved questions and two opted-in users. No broadcast enabled.
+- Added later listing/event review and daily-answer composer browser coverage. Daily endpoint responses in these presentation tests are explicit mocks; this is not database response persistence proof.
+- Separate isolated QA deployment requested using its existing QA environment. Main-project branch preview lacks server configuration; production credentials were not copied to previews.
+
 ## Remaining release gates
 
 - Inspect the updated discovery/account screenshots at every requested breakpoint and complete remaining text-scaling/contrast review.
 - Inspect later listing/event wizard steps, dialogs, populated conversations, validation errors, keyboard focus, text scaling, contrast and long content.
 - Resolve the Work browser QA sign-in network error before claiming interactive authenticated cloud-browser review.
 - Compare rendered native screens and test physical iPhone Safari and installed PWA safe areas, viewport and keyboard behavior.
-- Keep PR #97 draft until redesign and QA are complete. Daily prompts, PWA push testing and native Liquid Glass remain on hold.
+- Keep PR #97 draft until redesign and QA are complete. Daily prompts and PWA/native push testing resumed on 17 November under the user’s release instruction. Native Liquid Glass remains postponed.

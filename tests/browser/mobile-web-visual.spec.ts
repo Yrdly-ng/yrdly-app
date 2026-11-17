@@ -294,3 +294,78 @@ for (const theme of ["light", "dark"] as const) {
     });
   });
 }
+
+for (const theme of ["light", "dark"] as const) {
+  test(`${theme} release forms and daily question UI reach review without publishing`, async ({ page }) => {
+    test.setTimeout(480000);
+    mkdirSync(OUTPUT, { recursive: true });
+    await page.addInitScript(value => localStorage.setItem("yrdly-theme", value), theme);
+    await page.emulateMedia({ colorScheme: theme, reducedMotion: "reduce" });
+    await loginQaBuyer(page);
+    let publications = 0;
+    page.on("request", request => {
+      if (request.method() === "POST" && /\/api\/posts$|\/api\/events\/create$|\/storage\/v1\/object\//.test(request.url())) publications++;
+    });
+    // Presentation-only fixtures. Authentication still uses the isolated QA tenant.
+    await page.route("**/api/seller/setup-account", route => route.fulfill({ json: { account: { isVerified: true } } }));
+    await page.route("**/rest/v1/categories?**", route => route.fulfill({ json: [{ id: "qa-release-category", name: "Community", type: "event", is_active: true }] }));
+    const capture = async (width: number, surface: string) => {
+      await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+      await page.evaluate(async () => { await document.fonts.ready; });
+      await page.screenshot({ path: `${OUTPUT}/${theme}-${width}-${surface}.png`, fullPage: true });
+    };
+    for (const width of [320, 390, 1440]) {
+      await page.setViewportSize({ width, height: width < 768 ? 844 : 900 });
+      await page.goto("/marketplace/create");
+      await page.locator('input[type="file"]').setInputFiles({ name: "qa-release.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aWQAAAABJRU5ErkJggg==", "base64") });
+      await page.getByRole("button", { name: "Continue to Details", exact: true }).click();
+      await page.getByLabel("Title *", { exact: true }).fill("YRDLY-QA release review item");
+      const price = page.getByLabel("Price (₦) *", { exact: true });
+      await price.fill("1199");
+      await page.getByRole("button", { name: "Continue", exact: true }).click();
+      await expect(page.getByText("Valid Price Required", { exact: true }).first()).toBeVisible();
+      await price.fill("2500");
+      await capture(width, "listing-details");
+      await page.getByRole("button", { name: "Continue", exact: true }).click();
+      await page.getByLabel("Description", { exact: true }).fill("QA preview only. This item will not be published.");
+      await capture(width, "listing-description");
+      await page.getByRole("button", { name: "Review Listing", exact: true }).click();
+      await expect(page.getByRole("heading", { name: "Review & Publish", exact: true })).toBeVisible();
+      await capture(width, "listing-review");
+
+      await page.goto("/events/create");
+      await page.getByLabel("Title *", { exact: true }).fill("YRDLY-QA release review event");
+      await page.getByRole("button", { name: "Community", exact: true }).click();
+      await page.getByRole("button", { name: "Continue to Date & Time", exact: true }).click();
+      await page.locator('input[type="date"]').fill(new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10));
+      await capture(width, "event-date");
+      await page.getByRole("button", { name: "Continue to Location", exact: true }).click();
+      await page.getByRole("button", { name: /Online/ }).click();
+      await page.getByPlaceholder("https://zoom.us/j/... or Youtube Live link").fill("https://example.test/qa-release");
+      await capture(width, "event-location");
+      await page.getByRole("button", { name: "Continue to Tickets", exact: true }).click();
+      await capture(width, "event-tickets");
+      await page.getByRole("button", { name: "Continue to Media", exact: true }).click();
+      await capture(width, "event-media");
+      await page.getByRole("button", { name: "Review Event", exact: true }).click();
+      await expect(page.getByRole("heading", { name: "Review & Publish", exact: true })).toBeVisible();
+      await capture(width, "event-review");
+
+      const prompt = { id: "11111111-1111-4111-8111-111111111111", question: "Which local business would you recommend to a new neighbour?", category: "General", prompt_date: new Date().toISOString().slice(0, 10) };
+      await page.route("**/api/daily-prompts", route => route.fulfill({ json: { date: prompt.prompt_date, prompt } }));
+      await page.route("**/api/daily-prompts/responses?**", route => route.fulfill({ json: { responses: [], nextPage: null } }));
+      await page.goto("/daily-prompts");
+      await expect(page.getByRole("heading", { name: prompt.question, exact: true })).toBeVisible();
+      await expect(page.locator("main")).toHaveCount(1);
+      await capture(width, "daily-question");
+      const answer = page.getByRole("link", { name: "Share your answer", exact: true });
+      expect((await answer.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+      await answer.click();
+      await expect(page).toHaveURL(/\/posts\/create\?dailyPrompt=/);
+      await expect(page.getByText(prompt.question, { exact: true })).toBeVisible();
+      await expect(page.getByRole("textbox", { name: "Post content", exact: true })).toBeVisible();
+      await capture(width, "daily-answer-composer");
+    }
+    expect(publications, "Reviewing forms must not upload media or publish content").toBe(0);
+  });
+}

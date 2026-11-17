@@ -48,15 +48,15 @@ export default function DailyPromptAnswersPage() {
     finally{setLoadingMore(false);}
   };
   return (
-    <main className="max-w-2xl mx-auto px-4 py-8 pb-28 space-y-5">
-      <Link href="/home" className="flex items-center gap-2 text-sm text-[var(--yrdly-label)]"><ArrowLeft className="h-4 w-4"/> Home</Link>
+    <div className="max-w-2xl mx-auto px-4 py-8 pb-28 space-y-5">
+      <Link href="/home" className="inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg"><ArrowLeft className="h-4 w-4"/> Home</Link>
       {loading ? <p className="text-sm text-muted-foreground">Loading today&apos;s question…</p> :
         !prompt ? <div className="rounded-3xl border p-6 text-center"><h1 className="font-bold text-lg">No question is live right now</h1><p className="text-sm text-muted-foreground mt-2">Check back for the next neighbourhood conversation.</p></div> :
         <>
-          <header className="rounded-3xl border border-[#82DB7E]/30 bg-[#82DB7E]/10 p-5 space-y-3">
-            <p className="uppercase text-xs font-bold tracking-wider text-[#82DB7E]">Today&apos;s neighbourhood question</p>
+          <header className="rounded-3xl border border-primary/30 bg-primary/10 p-5 space-y-3">
+            <p className="uppercase text-xs font-bold tracking-wider text-primary">Today&apos;s neighbourhood question</p>
             <h1 className="font-yrdly-display text-xl font-bold">{prompt.question}</h1>
-            <Link className="inline-flex items-center gap-2 rounded-full bg-[#82DB7E] text-black px-4 py-2 font-bold text-sm"
+            <Link className="inline-flex min-h-11 items-center gap-2 rounded-full bg-primary text-primary-foreground px-4 py-2 font-bold text-sm"
               href={`/posts/create?dailyPrompt=${encodeURIComponent(prompt.id)}`}><MessageCircle className="h-4 w-4"/> Share your answer</Link>
           </header>
           <h2 className="font-bold text-lg">Answers from your neighbourhood</h2>
@@ -65,13 +65,13 @@ export default function DailyPromptAnswersPage() {
               <article key={answer.id} className="rounded-2xl border bg-card p-4 space-y-2">
                 <p className="font-semibold text-sm">{answer.author_name}</p>
                 <p className="text-sm whitespace-pre-wrap break-words">{answer.text}</p>
-                <Link href={`/posts/${answer.id}`} className="text-[#82DB7E] text-xs font-medium">Join the conversation · {answer.comment_count || 0} comments</Link>
+                <Link href={`/posts/${answer.id}`} className="inline-flex min-h-11 items-center text-primary text-sm font-medium">Join the conversation · {answer.comment_count || 0} comments</Link>
               </article>
             ))}</div>}
           {nextPage!==null&&<button onClick={()=>void loadMore()} disabled={loadingMore}
-            className="rounded-full border px-4 py-2 text-sm font-medium">{loadingMore?'Loading…':'Load more answers'}</button>}
+            className="min-h-11 rounded-full border px-4 py-2 text-sm font-medium">{loadingMore?'Loading…':'Load more answers'}</button>}
         </>}
       {error&&<p role="alert" className="text-sm text-amber-500">{error}</p>}
-    </main>
+    </div>
   );
 }
