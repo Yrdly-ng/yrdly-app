@@ -28,6 +28,7 @@ import {
 } from "@/lib/businesses/presentation";
 import type { Business } from "@/types";
 import { CampaignBanner } from "@/components/campaigns/CampaignBanner";
+import { CategoryIcon } from "@/components/discovery/CategoryIcon";
 
 export function BusinessesScreen({
   backTarget = "/businesses",
@@ -212,8 +213,9 @@ export function BusinessesScreen({
           <button
             onClick={() => selectCategory(null)}
             aria-pressed={!category}
-            className={`min-h-11 shrink-0 rounded-full border px-5 text-sm font-semibold ${!category ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground"}`}
+            className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border px-5 text-sm font-semibold ${!category ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground"}`}
           >
+            <CategoryIcon category="All" size={16} />
             All businesses
           </button>
           {categories.map((item) => (
@@ -221,8 +223,9 @@ export function BusinessesScreen({
               key={item}
               onClick={() => selectCategory(item)}
               aria-pressed={category === item}
-              className={`min-h-11 shrink-0 rounded-full border px-5 text-sm font-semibold ${category === item ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground"}`}
+              className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border px-5 text-sm font-semibold ${category === item ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground"}`}
             >
+              <CategoryIcon category={item} size={16} />
               {item}
             </button>
           ))}
@@ -351,7 +354,8 @@ export function BusinessDirectoryCard({
         </span>
       </div>
       <div className="flex flex-1 flex-col p-5">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          <CategoryIcon category={business.category} size={15} className="shrink-0" />
           {business.category || "Local business"}
         </p>
         <h3 className="mt-1 flex items-center gap-2 font-yrdly-display text-xl font-bold">
