@@ -22,7 +22,7 @@ interface CreateOption {
   title: string;
   subtitle: string;
   icon: LucideIcon;
-  color: string;
+  iconClassName: string;
   tint: string;
   glyph: string;
   ordinal: string;
@@ -101,7 +101,7 @@ export function CreateMenuOverlay({
       title: "Community post",
       subtitle: "Share thoughts, photos and stories",
       icon: MessageSquareText,
-      color: "#287B36",
+      iconClassName: "text-emerald-700 dark:text-emerald-300",
       tint: "rgba(130,219,126,0.16)",
       glyph: "rgba(130,219,126,0.13)",
       ordinal: "01",
@@ -113,7 +113,7 @@ export function CreateMenuOverlay({
       title: "Marketplace listing",
       subtitle: "Sell or give away something nearby",
       icon: ShoppingBag,
-      color: "#3976CC",
+      iconClassName: "text-blue-700 dark:text-blue-300",
       tint: "rgba(91,154,246,0.15)",
       glyph: "rgba(91,154,246,0.13)",
       ordinal: "02",
@@ -125,7 +125,7 @@ export function CreateMenuOverlay({
       title: "Event",
       subtitle: "Bring your neighbourhood together",
       icon: CalendarDays,
-      color: "#9561CD",
+      iconClassName: "text-violet-700 dark:text-violet-300",
       tint: "rgba(172,114,233,0.16)",
       glyph: "rgba(172,114,233,0.12)",
       ordinal: "03",
@@ -137,7 +137,7 @@ export function CreateMenuOverlay({
       title: "Safety alert",
       subtitle: "Help neighbours stay informed",
       icon: ShieldAlert,
-      color: "#D35F52",
+      iconClassName: "text-rose-700 dark:text-rose-300",
       tint: "rgba(225,109,94,0.15)",
       glyph: "rgba(225,109,94,0.11)",
       ordinal: "04",
@@ -260,7 +260,7 @@ export function CreateMenuOverlay({
                         className="flex h-14 w-14 items-center justify-center rounded-[18px] border border-white/10 shadow-sm sm:h-16 sm:w-16"
                         style={{ background: option.tint }}
                       >
-                        <Icon size={30} strokeWidth={1.85} style={{ color: option.color }} aria-hidden="true" />
+                        <Icon size={30} strokeWidth={1.85} className={option.iconClassName} aria-hidden="true" />
                       </span>
                       <span className="text-xs font-semibold tabular-nums text-muted-foreground/70" aria-hidden="true">
                         {option.ordinal}
