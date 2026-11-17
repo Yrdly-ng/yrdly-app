@@ -252,58 +252,78 @@ async function handleEscrowOngoing(data: Pick<PaylukEscrowData, 'id' | 'paymentT
   }
   if (!applied) return;
 
-  // 3. Notify seller
+  // Only confirmed marketplace purchases produce marketplace orders. Ticket
+  // and service escrow events have their own verified fulfillment handlers.
+  if (!['post', 'catalog_item'].includes(tx.item_type)) return;
   try {
-    const { data: buyer } = await supabaseAdmin
-      .from('users')
-      .select('name')
-      .eq('id', tx.buyer_id)
-      .single();
+    const [{ data: buyer }, { data: item }] = await Promise.all([
+      supabaseAdmin.from('users').select('name').eq('id', tx.buyer_id).maybeSingle(),
+      supabaseAdmin.from(tx.item_type === 'catalog_item' ? 'catalog_items' : 'posts')
+        .select('title').eq('id', tx.item_id).maybeSingle(),
+    ]);
+    const buyerName = (buyer?.name || 'A buyer').trim().slice(0, 80);
+    const itemTitle = (item?.title || 'your item').trim().slice(0, 100);
 
-    const buyerName = buyer?.name || 'A buyer';
-
-    const message = `${buyerName} has paid for your item. Arrange handover with the buyer.`;
-    const { data: notification, error: notificationError } = await supabaseAdmin.rpc('create_notification', {
-      p_user_id: tx.seller_id,
-      p_type: 'payment_successful',
-      p_title: 'Payment Received! 💰',
-      p_message: message,
-      p_sender_id: null,
-      p_related_id: tx.id,
-      p_related_type: 'escrow_transaction',
-      p_data: { buyerName, transactionId: tx.id },
-    });
-    let shouldPush = true;
-    if (notificationError) {
-      console.error(`[PaylukWebhook] Notification RPC failed for tx ${tx.id}:`, notificationError.message);
-      const { error: insertError } = await supabaseAdmin.from('notifications').insert({
-        user_id: tx.seller_id,
+    // State change already passed Payluk verification + applyEscrowPayment.
+    // A duplicate webhook is stopped by the "applied" guard above.
+    const notifications = [
+      NotificationService.createNotification({
+        userId: tx.seller_id,
+        senderId: tx.buyer_id,
+        type: 'marketplace_item_sold',
+        title: 'New order',
+        message: `${buyerName} bought ${itemTitle}. Arrange handover with the buyer.`,
+        relatedId: tx.item_id,
+        relatedType: 'marketplace_item',
+        data: { buyerName, itemTitle, itemId: tx.item_id, transactionId: tx.id },
+      }),
+      NotificationService.createNotification({
+        userId: tx.buyer_id,
         type: 'payment_successful',
-        title: 'Payment Received! 💰',
-        message,
-        related_id: tx.id,
-        related_type: 'escrow_transaction',
-        data: { buyerName, transactionId: tx.id },
-      });
-      if (insertError) throw insertError;
-    } else if (notification && typeof notification === 'object') {
-      shouldPush = (notification as any).should_push ?? true;
-    }
-    if (shouldPush) {
-      const { error: pushError } = await invokeServerFunction(supabaseAdmin, 'send-push-notification', {
-          userId: tx.seller_id,
-          payload: {
-            title: 'Payment Received! 💰',
-            body: message,
-            data: { buyerName, transactionId: tx.id },
-            url: `/transactions/${tx.id}`,
-          },
-          type: 'payment_successful',
-      });
-      if (pushError) console.error(`[PaylukWebhook] Push notification failed for tx ${tx.id}:`, pushError.message);
-    }
-  } catch (notifErr) {
-    console.error(`[PaylukWebhook] Error sending seller notification for tx ${tx.id}:`, notifErr);
+        title: 'Payment confirmed',
+        message: `Your payment for ${itemTitle} was confirmed. Arrange handover with the seller.`,
+        relatedId: tx.id,
+        relatedType: 'escrow_transaction',
+        data: { itemTitle, itemId: tx.item_id, transactionId: tx.id },
+      }),
+    ];
+    const outcomes = await Promise.allSettled(notifications);
+    outcomes.forEach((outcome, index) => {
+      if (outcome.status === 'rejected') {
+        console.error('[PaylukWebhook] Confirmed marketplace notification failed', {
+          side: index === 0 ? 'seller' : 'buyer',
+          transactionId: tx.id,
+          error: outcome.reason instanceof Error ? outcome.reason.message : 'unknown',
+        });
+      }
+    });
+  } catch (error) {
+    // Never undo a verified payment because a notification provider failed.
+    console.error('[PaylukWebhook] Confirmed marketplace notification failed', {
+      transactionId: tx.id, error: error instanceof Error ? error.message : 'unknown',
+    });
+  }
+}
+
+/** Emit a settlement notice only after a provider-confirmed COMPLETED transition.
+ * Never imply that the seller withdrew money to their bank account.
+ */
+async function notifyReleasedFunds(tx: { id: string; seller_id: string | null; item_type?: string }) {
+  if (!tx.seller_id || !['post','catalog_item'].includes(tx.item_type || '')) return;
+  try {
+    await NotificationService.createNotification({
+      userId: tx.seller_id,
+      type: 'funds_released',
+      title: 'Funds available',
+      message: 'The escrow for your sale was completed. Your funds are available to withdraw.',
+      relatedId: tx.id,
+      relatedType: 'escrow_transaction',
+      data: { transactionId: tx.id },
+    });
+  } catch (error) {
+    console.error('[PaylukWebhook] Funds release notice failed', {
+      transactionId: tx.id, error: error instanceof Error ? error.message : 'unknown',
+    });
   }
 }
 
@@ -338,6 +358,8 @@ async function handleEscrowCompleted(data: PaylukEscrowData) {
     console.log(`[PaylukWebhook] escrow.completed: tx ${tx.id} → COMPLETED`);
   }
   if (!transitioned?.length) { await flagPayment('payluk',data.id,tx.id,'invalid_transition'); return; }
+  // A completed provider-confirmed escrow releases the seller's funds.
+  await notifyReleasedFunds(tx);
 
 }
 
@@ -375,22 +397,7 @@ async function handleEscrowClaimed(data: PaylukEscrowData) {
   if (!transitioned?.length) { await flagPayment('payluk',data.id,tx.id,'invalid_transition'); return; }
 
 
-  // Notify the seller that their funds have been released.
-  try {
-    await supabaseAdmin.rpc('create_notification', {
-      p_user_id: tx.seller_id,
-      p_type: 'payment_successful',
-      p_title: 'Funds Released 💸',
-      p_message: `Your funds for escrow ${data.id} have been released to your wallet.`,
-      p_sender_id: null,
-      p_related_id: tx.id,
-      p_related_type: 'escrow_transaction',
-      p_data: { paylukEscrowId: data.id, transactionId: tx.id },
-    });
-  } catch (notifErr) {
-    // Non-fatal — log but don't surface
-    console.error(`[PaylukWebhook] escrow.claimed: failed to notify seller ${tx.seller_id}:`, notifErr);
-  }
+  await notifyReleasedFunds(tx);
 }
 
 async function handleEscrowDisputed(data: PaylukEscrowData) {
@@ -480,21 +487,22 @@ async function handleEscrowRefunded(data: PaylukEscrowData) {
   }
   if (!applied) return;
 
-  // 3. Notify buyer
+  // The refund RPC applied a new, provider-verified state. Notify once.
   try {
     if (tx.buyer_id) {
-      await supabaseAdmin.rpc('create_notification', {
-        p_user_id: tx.buyer_id,
-        p_type: 'payment_refunded',
-        p_title: 'Payment Refunded 💸',
-        p_message: 'Your payment was refunded/reversed by Payluk.',
-        p_sender_id: null,
-        p_related_id: tx.id,
-        p_related_type: 'escrow_transaction',
-        p_data: { transactionId: tx.id },
+      await NotificationService.createNotification({
+        userId: tx.buyer_id,
+        type: 'payment_refunded',
+        title: 'Refund processed',
+        message: 'Your Payluk payment was refunded. Open your transaction for details.',
+        relatedId: tx.id,
+        relatedType: 'escrow_transaction',
+        data: { transactionId: tx.id },
       });
     }
-  } catch (notifErr) {
-    console.error(`[PaylukWebhook] Error sending refund notifications for tx ${tx.id}:`, notifErr);
+  } catch (error) {
+    console.error('[PaylukWebhook] Refund notification failed', {
+      transactionId: tx.id, error: error instanceof Error ? error.message : 'unknown',
+    });
   }
 }
