@@ -20,7 +20,6 @@ import {
   Trash2,
   Plus,
   Package,
-  BadgeCheck,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -476,14 +475,14 @@ export function BusinessDetailScreen({
       <div className="px-5 pb-7 pt-16 space-y-5 sm:px-7">
         <div className="space-y-2">
           <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <h1 className="font-yrdly-display text-3xl sm:text-4xl font-bold tracking-tight text-foreground flex items-center gap-2">
-                {business.name}
-                {business.verified_seller && (
-                  <BadgeCheck
-                    aria-label="Verified business"
-                    className="w-6 h-6 text-primary shrink-0"
-                  />
+            <div className="min-w-0 flex-1">
+              <h1 className="font-yrdly-display text-3xl sm:text-4xl font-bold tracking-tight text-foreground flex flex-wrap items-center gap-2">
+                <span className="min-w-0 break-words">{business.name}</span>
+                {(business as Business & { phone_verified?: boolean }).phone_verified === true && (
+                  <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-primary">
+                    <Phone size={14} aria-hidden="true" />
+                    Phone verified
+                  </span>
                 )}
               </h1>
               <Badge variant="outline" className="mt-1">

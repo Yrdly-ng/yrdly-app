@@ -439,8 +439,9 @@ export default function CreateMarketplaceListingPage() {
 
                 {/* Title */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Title *</label>
+                  <label htmlFor="listing-title" className="text-sm font-semibold text-muted-foreground">Title *</label>
                   <Input
+                    id="listing-title"
                     placeholder="e.g. iPhone 14 Pro 256GB Space Black"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
@@ -482,8 +483,9 @@ export default function CreateMarketplaceListingPage() {
                           key={cat.id}
                           type="button"
                           onClick={() => setSubCategory(cat.name)}
+                          aria-pressed={subCategory === cat.name}
                           className={cn(
-                            "px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all",
+                            "min-h-11 px-3.5 py-2 rounded-full text-sm font-semibold border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                             subCategory === cat.name
                               ? "bg-primary text-foreground border-primary"
                               : "bg-secondary/50 text-secondary-foreground border-border hover:bg-secondary"
@@ -506,7 +508,7 @@ export default function CreateMarketplaceListingPage() {
                         type="button"
                         onClick={() => setCondition(cond)}
                         className={cn(
-                          "px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all",
+                          "min-h-11 px-3.5 py-2 rounded-full text-sm font-semibold border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                           condition === cond
                             ? "bg-primary text-foreground border-primary"
                             : "bg-secondary/50 text-secondary-foreground border-border hover:bg-secondary"
@@ -558,8 +560,9 @@ export default function CreateMarketplaceListingPage() {
 
                 {/* Description Textarea */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Description</label>
+                  <label htmlFor="listing-description" className="text-sm font-semibold text-muted-foreground">Description</label>
                   <Textarea
+                    id="listing-description"
                     placeholder="Provide details about condition, reason for selling, accessories included..."
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}

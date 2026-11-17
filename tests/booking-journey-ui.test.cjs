@@ -31,12 +31,22 @@ async function mountDetail({ payment = 'unpaid', role = 'customer', ended = fals
     business: { name: 'Local Studio', owner_id: 'provider' }, customer: { name: 'Customer' },
   };
   const query = { select() { return this; }, eq() { return this; }, single: async () => ({ data: row, error: null }) };
+  const originalFetch = global.fetch;
+  global.fetch = async url => {
+    assert.equal(url, `/api/bookings/${id}/milestones`);
+    return Response.json({ enabled: false, canPay: false, milestones: [] });
+  };
+  const supabase = { from: () => query, auth: { getSession: async () => ({ data: { session: null } }) } };
+  const milestones = compile('src/components/bookings/BookingMilestones.tsx', {
+    '@/lib/supabase/supabase': { supabase },
+  });
   const Page = compile('src/app/(app)/bookings/[bookingId]/page.tsx', {
     'next/navigation': { useParams: () => ({ bookingId: id }), useRouter: () => ({ push: url => routes.push(url), back() {} }) },
     '@/hooks/use-supabase-auth': { useAuth: () => ({ user: { id: role } }) },
     '@/lib/bookings/booking-service': { BookingService: {}, CANCELLATION_WINDOW_HOURS: 5 },
     '@/lib/notifications/notification-triggers': { NotificationTriggers: {} },
-    '@/lib/supabase/supabase': { supabase: { from: () => query } },
+    '@/lib/supabase/supabase': { supabase },
+    '@/components/bookings/BookingMilestones': milestones,
     '@/lib/auth/authenticated-fetch': { authenticatedFetch: async () => ({}) },
     '@/components/bookings/BookingReschedulePanel': { BookingReschedulePanel: () => React.createElement('div', {}, 'Reschedule controls') },
     '@/components/reviews/WriteBusinessReviewDialog': { WriteBusinessReviewDialog: () => React.createElement('button', {}, 'Review booking') },
@@ -44,7 +54,7 @@ async function mountDetail({ payment = 'unpaid', role = 'customer', ended = fals
   const container = document.createElement('div'); document.body.appendChild(container);
   const root = createRoot(container);
   await act(async () => root.render(React.createElement(Page)));
-  return { container, routes, unmount: async () => { await act(() => root.unmount()); container.remove(); } };
+  return { container, routes, unmount: async () => { await act(() => root.unmount()); container.remove(); global.fetch = originalFetch; } };
 }
 
 test('unpriced booking details remain readable and customer can find booking history', async () => {
@@ -71,11 +81,11 @@ test('new payment waits for acceptance while pending legacy checkout can recover
     } finally { await h.unmount(); }
   }
 });
-test('accepted staged booking explains payment hold without offering a legacy full-release checkout', async () => {
+test('disabled staged booking explains the rollout and never offers legacy checkout', async () => {
   const h = await mountDetail({ status: 'confirmed', priced: true, staged: true });
   try {
     assert.match(h.container.textContent, /Agreed service price/);
-    assert.match(h.container.textContent, /Staged payment setup pending/);
+    assert.match(h.container.textContent, /Online staged payments are not available yet. No payment is expected now/);
     assert.ok(![...h.container.querySelectorAll('button')].some(node => node.textContent === 'Review booking payment'));
   } finally { await h.unmount(); }
 });

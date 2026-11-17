@@ -225,7 +225,7 @@ export function CreateMenuOverlay({
                 ref={closeButtonRef}
                 onClick={onClose}
                 aria-label="Close"
-                className="flex h-11 w-11 items-center justify-center rounded-full text-[var(--c-text-muted)] hover:bg-[var(--c-card2)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--c-text-muted)] hover:bg-[var(--c-card2)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <X size={20} strokeWidth={2.5} />
               </button>
@@ -238,6 +238,7 @@ export function CreateMenuOverlay({
                   <motion.button
                     type="button"
                     key={option.key}
+                    data-create-action={option.action}
                     initial={reducedMotion ? false : { opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={reducedMotion ? { duration: 0 } : { delay: 0.05 + i * 0.04, duration: 0.2, ease: "easeOut" }}

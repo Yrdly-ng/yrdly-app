@@ -4,10 +4,11 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'src/components/layout/**'
-      - 'src/components/marketplace/**'
-      - 'src/components/search/**'
-      - 'tests/browser/mobile-web-visual.spec.ts'
+      - 'src/app/**'
+      - 'src/components/**'
+      - 'playwright.qa.config.ts'
+      - 'qa-scripts/**'
+      - 'tests/**'
       - '.github/workflows/mobile-web-visual-review.yml'
   workflow_dispatch:
 
@@ -20,6 +21,28 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  static-checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - run: npm install --global pnpm@11.2.2
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test:parity
+      - run: pnpm test:payments
+      - run: pnpm test:business
+      - name: Validate browser test discovery without QA credentials
+        run: pnpm exec playwright test --config=playwright.qa.config.ts tests/browser/mobile-web-visual.spec.ts --list
+
   visual-review:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
@@ -44,6 +67,8 @@ jobs:
       QA_NON_ADMIN_PASSWORD: ${{ secrets.QA_NON_ADMIN_PASSWORD }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '24'
@@ -74,5 +99,7 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: yrdly-web-mobile-visual-review
-          path: .qa-artifacts/mobile-web-visual/*.png
+          path: |
+            .qa-artifacts/mobile-web-visual/*.png
+            .qa-artifacts/browser-failures/**/*.png
           retention-days: 7

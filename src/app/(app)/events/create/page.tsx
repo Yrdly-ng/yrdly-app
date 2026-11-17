@@ -597,10 +597,11 @@ export default function CreateEventPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  <label htmlFor="event-title" className="text-sm font-semibold text-muted-foreground">
                     Title *
                   </label>
                   <Input
+                    id="event-title"
                     placeholder="e.g. Lekki Neighborhood BBQ & Music Fest"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
@@ -625,8 +626,9 @@ export default function CreateEventPage() {
                           key={cat.id}
                           type="button"
                           onClick={() => setCategory(cat.name)}
+                          aria-pressed={category === cat.name}
                           className={cn(
-                            "px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all",
+                            "min-h-11 px-3.5 py-2 rounded-full text-sm font-semibold border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                             category === cat.name
                               ? "bg-primary text-foreground border-primary"
                               : "bg-secondary/50 text-secondary-foreground border-border hover:bg-secondary",
@@ -640,10 +642,11 @@ export default function CreateEventPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  <label htmlFor="event-description" className="text-sm font-semibold text-muted-foreground">
                     Description
                   </label>
                   <Textarea
+                    id="event-description"
                     placeholder="Describe what attendees can expect, rules, schedule..."
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
