@@ -73,7 +73,9 @@ export class NotificationService extends BrowserNotificationService {
               .from("messages")
               .select("read_by")
               .eq("conversation_id", conversationId)
-              .neq("sender_id", params.userId)
+              // The preview names this sender, so their count must not include
+              // unread messages from other participants in a group chat.
+              .eq("sender_id", params.senderId)
               .gte("created_at", new Date(Date.now() - 60_000).toISOString())
               .then(({ data: messages }) =>
                 Math.max(

@@ -8,6 +8,85 @@ const ts = require('typescript');
 const service = fs.readFileSync('src/lib/notifications/server-notification-service.ts', 'utf8');
 const sender = fs.readFileSync('supabase/functions/send-push-notification/index.ts', 'utf8');
 
+function trustedService(messages, { shouldPush = true } = {}) {
+  const pushed = [];
+  const admin = {
+    rpc: async () => ({ data: { id: 'notification', should_push: shouldPush }, error: null }),
+    from(table) {
+      const predicates = [];
+      const query = {
+        select() { return this; },
+        eq(key, value) { predicates.push(row => row[key] === value); return this; },
+        neq(key, value) { predicates.push(row => row[key] !== value); return this; },
+        gte(key, value) { predicates.push(row => row[key] >= value); return this; },
+        async maybeSingle() {
+          return { data: table === 'users' ? { name: 'Caleb' } : { data: {} }, error: null };
+        },
+        then(resolve, reject) {
+          return Promise.resolve({ data: messages.filter(row => predicates.every(match => match(row))), error: null })
+            .then(resolve, reject);
+        },
+        gte(key, value) { predicates.push(row => row[key] >= value); return this; },
+        async maybeSingle() {
+          return { data: table === 'users' ? { name: 'Caleb' } : { data: {} } };
+        },
+        then(resolve, reject) {
+          return Promise.resolve({ data: messages.filter(row => predicates.every(p => p(row))) })
+            .then(resolve, reject);
+        },
+      };
+      return query;
+    },
+  };
+  const mocks = {
+    'server-only': {},
+    './notification-service': { NotificationService: class {} },
+    '../supabase/supabase-admin': { supabaseAdmin: admin },
+    './server-push-notification': {
+      sendPushNotification: async (...args) => pushed.push(args[2]),
+    },
+  };
+  const module = { exports: {} };
+  new Function('require', 'module', 'exports', ts.transpileModule(service, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+  }).outputText)(name => {
+    assert.ok(name in mocks, `Unexpected import: ${name}`);
+    return mocks[name];
+  }, module, module.exports);
+  return { service: module.exports.NotificationService, pushed };
+}
+
+test('a named sender count excludes other group participants and read or old messages', async () => {
+  const recent = new Date().toISOString();
+  const row = { conversation_id: 'group', sender_id: 'caleb', read_by: [], created_at: recent };
+  const app = trustedService([
+    row, { ...row },
+    { ...row, sender_id: 'another-participant' },
+    { ...row, sender_id: 'recipient' },
+    { ...row, read_by: ['recipient'] },
+    { ...row, conversation_id: 'another-group' },
+    { ...row, created_at: new Date(Date.now() - 120_000).toISOString() },
+  ]);
+  await app.service.createNotification({
+    userId: 'recipient', senderId: 'caleb', type: 'message',
+    title: 'New message', message: 'Private text', relatedId: 'group', relatedType: 'conversation',
+    data: { messageId: 'message' },
+  });
+  assert.equal(app.pushed.length, 1);
+  assert.equal(app.pushed[0].data.fromUserName, 'Caleb');
+  assert.equal(app.pushed[0].data.messageCount, 2);
+  assert.equal(app.pushed[0].data.conversationId, 'group');
+});
+
+test('a grouped notification suppressed by persistence does not send another push', async () => {
+  const app = trustedService([], { shouldPush: false });
+  await app.service.createNotification({
+    userId: 'recipient', senderId: 'caleb', type: 'post_like',
+    title: 'New like', message: 'Caleb liked your post.', relatedId: 'post', relatedType: 'post',
+  });
+  assert.equal(app.pushed.length, 0);
+});
+
 test('the trusted Next service and Deno sender remain valid TypeScript', () => {
   for (const [name, source] of [['trusted-service', service], ['edge-sender', sender]]) {
     const built = ts.transpileModule(source, {
