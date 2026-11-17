@@ -6,7 +6,7 @@ import Image from "next/image";
 import {
   ArrowLeft,
   ArrowUpRight,
-  BadgeCheck,
+  Phone,
   MapPin,
   Plus,
   Search,
@@ -332,7 +332,7 @@ export function BusinessDirectoryCard({
   return (
     <button
       onClick={onOpen}
-      className="group flex h-full w-full flex-col overflow-hidden rounded-3xl border border-border bg-card text-left transition-colors hover:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      className="group flex h-full w-full flex-col overflow-hidden rounded-3xl border border-border bg-card text-left transition-all duration-200 hover:border-primary/60 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
     >
       <div className="relative flex h-48 w-full items-center justify-center overflow-hidden bg-muted">
         {photo ? (
@@ -356,8 +356,11 @@ export function BusinessDirectoryCard({
         </p>
         <h3 className="mt-1 flex items-center gap-2 font-yrdly-display text-xl font-bold">
           {business.name}
-          {business.verified_seller && (
-            <BadgeCheck size={18} className="shrink-0 text-primary" />
+          {(business as Business & { phone_verified?: boolean }).phone_verified === true && (
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-primary" aria-label="Phone number verified">
+              <Phone size={13} className="shrink-0" />
+              Phone verified
+            </span>
           )}
         </h3>
         {business.description && (
@@ -382,7 +385,7 @@ export function BusinessDirectoryCard({
               <span className="text-muted-foreground">Meet this business</span>
             )}
             <span className="flex items-center gap-1 text-primary">
-              Explore <ArrowUpRight size={16} />
+              View business <ArrowUpRight size={16} />
             </span>
           </div>
         </div>
