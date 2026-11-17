@@ -21,6 +21,7 @@ import {
 } from "@/lib/events/event-presentation";
 import type { Event } from "@/types/events";
 import { EventCard } from "./EventCard";
+import { CategoryIcon } from "@/components/discovery/CategoryIcon";
 import { EventCreatorOnboarding } from "./EventCreatorOnboarding";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn, formatPrice } from "@/lib/shared/utils";
@@ -214,12 +215,13 @@ export function EventsScreen({ className }: { className?: string }) {
             aria-pressed={item === filter}
             onClick={() => setFilter(item)}
             className={cn(
-              "min-h-11 shrink-0 rounded-full border px-5 text-sm font-semibold transition-colors",
+              "inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border px-5 text-sm font-semibold transition-colors",
               item === filter
                 ? "border-primary bg-primary text-primary-foreground"
                 : "border-border bg-card text-muted-foreground hover:text-foreground",
             )}
           >
+            <CategoryIcon category={item} size={16} />
             {item}
           </button>
         ))}
