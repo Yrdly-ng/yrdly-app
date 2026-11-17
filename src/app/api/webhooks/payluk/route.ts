@@ -255,6 +255,10 @@ async function handleEscrowOngoing(data: Pick<PaylukEscrowData, 'id' | 'paymentT
   // Only confirmed marketplace purchases produce marketplace orders. Ticket
   // and service escrow events have their own verified fulfillment handlers.
   if (!['post', 'catalog_item'].includes(tx.item_type)) return;
+  if (!tx.buyer_id || !tx.seller_id || !tx.item_id) {
+    console.error('[PaylukWebhook] Confirmed marketplace transaction is missing ownership or item');
+    return;
+  }
   try {
     const [{ data: buyer }, { data: item }] = await Promise.all([
       supabaseAdmin.from('users').select('name').eq('id', tx.buyer_id).maybeSingle(),
