@@ -12,6 +12,7 @@ import { useLocation } from "@/contexts/LocationContext";
 import { LocationChip } from "@/components/location/LocationChip";
 import { MarketplaceCreatorOnboarding } from "@/components/marketplace/MarketplaceCreatorOnboarding";
 import { MarketplaceItemCard } from "@/components/marketplace/MarketplaceItemCard";
+import { CategoryIcon } from "@/components/discovery/CategoryIcon";
 import { Magnetic } from "@/components/ui/Magnetic";
 import { GlassCard } from "@/components/ui/glass-card";
 
@@ -39,6 +40,11 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
 
   const CATEGORY_PILLS: { label: string; emoji: string; keywords: string[] }[] = [
     { label: "All Items", emoji: "🗂️", keywords: [] },
+    { label: "Fashion", emoji: "👕", keywords: ["fashion", "clothing", "dress", "shirt", "shoe"] },
+    { label: "Home & Living", emoji: "🏠", keywords: ["furniture", "sofa", "home", "appliance", "kitchen", "decor"] },
+    { label: "Vehicles", emoji: "🚙", keywords: ["car", "vehicle", "motor", "tyre", "bike"] },
+    { label: "Food", emoji: "🍲", keywords: ["food", "cater", "meal", "groceries", "drink"] },
+    { label: "Services", emoji: "🛠️", keywords: ["service", "repair", "clean", "installation"] },
     { label: "Phones", emoji: "📱", keywords: ["phone", "iphone", "samsung", "android", "smartphone"] },
     { label: "Accessories", emoji: "🎧", keywords: ["accessor", "case", "charger", "headphone", "earbud", "cable"] },
     { label: "Health & Beauty", emoji: "🌿", keywords: ["health", "beauty", "skincare", "cosmetic", "primrose", "oil", "cream"] },
@@ -126,7 +132,8 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
       if (activeCategory === "All Items") return true;
       const pill = CATEGORY_PILLS.find((p) => p.label === activeCategory);
       if (!pill || pill.keywords.length === 0) return true;
-      return pill.keywords.some((kw) => title.toLowerCase().includes(kw));
+      const searchable = [title, item.sub_category || "", item.text || ""].join(" ").toLowerCase();
+      return pill.keywords.some((kw) => searchable.includes(kw));
     });
   }, [items, searchTerm, activeCategory]);
 
@@ -176,13 +183,13 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
             <button
               key={cat.label}
               onClick={() => setActiveCategory(cat.label)}
-              className={`flex-shrink-0 flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold font-yrdly-body transition-all duration-150 active:scale-[0.97] border ${
+              className={`min-h-10 flex-shrink-0 flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-semibold font-yrdly-body transition-all duration-150 active:scale-[0.97] border ${
                 active
                   ? "bg-primary text-primary-foreground border-primary shadow-sm"
                   : "bg-card text-foreground border-border hover:border-primary/40"
               }`}
             >
-              <span>{cat.emoji}</span>
+              <CategoryIcon category={cat.label} size={16} className="shrink-0" />
               {cat.label}
             </button>
           );
