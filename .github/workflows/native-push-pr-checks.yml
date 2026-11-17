@@ -35,3 +35,7 @@ jobs:
         run: pnpm typecheck
       - name: Check push sender copy, preference and ownership regressions
         run: node --test tests/native-push-copy.test.cjs tests/notification-workflow-contract.test.cjs tests/native-token-ownership.test.cjs tests/notification-actor-errors.test.cjs tests/web-push-safety.test.cjs
+      - name: Marketplace payment and booking regression suites
+        run: pnpm test:payments && pnpm test:business
+      - name: Ticket purchase, event cancellation and notification routing tests
+        run: node --test tests/ticket-checkout-flow.test.cjs tests/event-cancellation-delivery.test.cjs tests/notification-routing.test.cjs
