@@ -63,6 +63,7 @@ function routeFor(booking) {
     '@/lib/supabase/supabase-server': { getAuthenticatedUser: async () => ({ data: { user: { id: id(5) } } }) },
     '@/lib/supabase/supabase-admin': { supabaseAdmin: db },
     '@/lib/marketplace/price-policy': { isPaidPrice: amount => amount >= 1200, MINIMUM_PRICE_MESSAGE: 'Invalid price' },
+    '@/lib/bookings/milestone-checkout': { createStagedBookingCheckout: async () => { throw Object.assign(new Error('Staged service checkout is not available'), { status: 503 }); } },
     '@/lib/bookings/booking-payments': {
       BookingCheckoutError: class extends Error {}, computeDepositAmount: () => null,
       createCheckoutForBooking: async () => { charges++; return { transactionId: id(8) }; },
