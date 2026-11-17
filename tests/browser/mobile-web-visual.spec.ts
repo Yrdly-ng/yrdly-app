@@ -35,6 +35,31 @@ async function loginQaBuyer(page: import("@playwright/test").Page) {
   await expect(page).not.toHaveURL(/\/login/, { timeout: 30000 });
 }
 
+async function waitForLoadedContent(
+  page: import("@playwright/test").Page,
+  route: string,
+) {
+  const main = page.locator("main");
+  // MainLayout can mount before the screen hydrates. Wait for the screen's
+  // own content, then for its loading placeholders and category requests.
+  if (route === "/home") {
+    await expect(
+      main.getByRole("button", { name: "Post", exact: true }),
+    ).toBeVisible({ timeout: 30000 });
+  } else {
+    await expect(main.locator("h1").first()).toBeVisible({ timeout: 30000 });
+  }
+  await expect(
+    main.locator(".animate-pulse:visible, .animate-spin:visible"),
+  ).toHaveCount(0, { timeout: 30000 });
+  await expect(main.getByText(/Loading categories/)).toHaveCount(0, {
+    timeout: 30000,
+  });
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+  });
+}
+
 const widths = [320, 360, 375, 390, 430, 768, 1024, 1440] as const;
 
 for (const theme of ["light", "dark"] as const) {
@@ -56,6 +81,7 @@ for (const theme of ["light", "dark"] as const) {
       for (const width of widths) {
         await page.setViewportSize({ width, height: width < 768 ? 844 : 900 });
         await page.goto("/home");
+        await waitForLoadedContent(page, "/home");
         await expect(
           page.getByRole("link", { name: "Explore", exact: true }),
         ).toBeVisible({ timeout: 30000 });
@@ -130,7 +156,7 @@ for (const theme of ["light", "dark"] as const) {
       }
     });
 
-    test("authenticated mobile-first page snapshots remain readable and avoid horizontal overflow", async ({
+    test("authenticated loaded page snapshots cover every breakpoint without horizontal overflow", async ({
       page,
     }) => {
       test.setTimeout(480000);
@@ -152,6 +178,7 @@ for (const theme of ["light", "dark"] as const) {
           await expect(page.locator("main")).toHaveCount(1);
           await expect(page.locator("main")).toBeVisible({ timeout: 30000 });
           await expect(page).toHaveURL(new RegExp(`${route}$`));
+          await waitForLoadedContent(page, route);
           await expect(page.locator("html")).toHaveClass(
             new RegExp(`\\b${theme}\\b`),
           );
@@ -207,6 +234,7 @@ for (const theme of ["light", "dark"] as const) {
               `Phone verification required for ${action}; form review remains pending`,
             );
           await expect(page.locator("main h1")).toBeVisible();
+          await waitForLoadedContent(page, gated ? "/verify-phone" : route);
           await expect
             .poll(() =>
               page.evaluate(
