@@ -63,6 +63,10 @@ The user confirmed daily-question push receipt but tapping opened Notifications.
 
 Release QA at `14ffc846`: 8 Playwright tests passed (4.8m), including later wizard review and mocked daily-question presentation, plus all static checks. The new routing patch needs its updated CI run and a fresh physical PWA tap before release approval.
 
+## Wizard screenshot findings
+
+Later-step screenshots exposed a 320px toast clipped by the global reduced-motion `transform:none` rule. Remove that rule while keeping animation/transition duration reduction; preserve structural centering transforms. Toast dismiss controls now have an accessible name and 44px target. Mobile listing/event review steps also need actual entered details: add summaries before publication controls, without changing submission behavior. Browser checks assert toast geometry under reduced motion and mobile summary contents.
+
 ## Resumed release checks
 
 - User confirmed an actual iPhone PWA background push and successful Home tap.

@@ -1244,6 +1244,18 @@ export default function CreateEventPage() {
                 </div>
 
                 {/* Audience Visibility */}
+                <section aria-label="Event summary" className="space-y-3 rounded-2xl border border-border bg-card p-4 md:hidden">
+                  <h3 className="break-words text-lg font-bold">{title}</h3>
+                  <p className="text-sm font-semibold text-primary">{eventDate} · {startTimeStr}–{endTimeStr}</p>
+                  <p className="break-words text-sm">{locationOnline ? `Online: ${onlineLink}` : locationAddress || "Venue not specified"}</p>
+                  {description && <p className="whitespace-pre-wrap break-words text-sm text-muted-foreground">{description}</p>}
+                  <ul className="space-y-2 text-sm">
+                    {ticketTiers.map(tier => <li key={tier.id} className="break-words">
+                      {tier.name}: {tier.isFree ? "Free" : `₦${Number(tier.price).toLocaleString("en-NG")}`} · {tier.capacity ?? "Unlimited"} places
+                    </li>)}
+                  </ul>
+                </section>
+
                 <div className="p-4 rounded-2xl bg-secondary/50 border border-border space-y-3">
                   <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     Audience Visibility

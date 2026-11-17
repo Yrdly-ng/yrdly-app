@@ -323,7 +323,17 @@ for (const theme of ["light", "dark"] as const) {
       const price = page.getByLabel("Price (₦) *", { exact: true });
       await price.fill("1199");
       await page.getByRole("button", { name: "Continue", exact: true }).click();
-      await expect(page.getByText("Valid Price Required", { exact: true }).first()).toBeVisible();
+      const errorToast = page.getByText("Valid Price Required", { exact: true }).first().locator("xpath=ancestor::li[1]");
+      await expect(errorToast).toBeVisible();
+      await expect.poll(async () => {
+        const box = await errorToast.boundingBox();
+        return !!box && box.x >= 0 && box.x + box.width <= width + 1;
+      }).toBe(true);
+      await capture(width, "listing-validation");
+      const dismiss = errorToast.getByRole("button", { name: "Dismiss notification" });
+      expect((await dismiss.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+      await dismiss.click();
+      await expect(errorToast).toBeHidden();
       await price.fill("2500");
       await capture(width, "listing-details");
       await page.getByRole("button", { name: "Continue", exact: true }).click();
@@ -331,6 +341,11 @@ for (const theme of ["light", "dark"] as const) {
       await capture(width, "listing-description");
       await page.getByRole("button", { name: "Review Listing", exact: true }).click();
       await expect(page.getByRole("heading", { name: "Review & Publish", exact: true })).toBeVisible();
+      if (width < 768) {
+        const summary = page.getByRole("region", { name: "Listing summary" });
+        await expect(summary).toContainText("YRDLY-QA release review item");
+        await expect(summary).toContainText("₦2,500");
+      }
       await capture(width, "listing-review");
 
       await page.goto("/events/create");
@@ -349,6 +364,12 @@ for (const theme of ["light", "dark"] as const) {
       await capture(width, "event-media");
       await page.getByRole("button", { name: "Review Event", exact: true }).click();
       await expect(page.getByRole("heading", { name: "Review & Publish", exact: true })).toBeVisible();
+      if (width < 768) {
+        const summary = page.getByRole("region", { name: "Event summary" });
+        await expect(summary).toContainText("YRDLY-QA release review event");
+        await expect(summary).toContainText("https://example.test/qa-release");
+        await expect(summary).toContainText("Free");
+      }
       await capture(width, "event-review");
 
       const prompt = { id: "11111111-1111-4111-8111-111111111111", question: "Which local business would you recommend to a new neighbour?", category: "General", prompt_date: new Date().toISOString().slice(0, 10) };

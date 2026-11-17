@@ -619,6 +619,16 @@ export default function CreateMarketplaceListingPage() {
                   <p className="text-sm text-muted-foreground">Review your listing card details before publishing.</p>
                 </div>
 
+                <section aria-label="Listing summary" className="space-y-3 rounded-2xl border border-border bg-card p-4 md:hidden">
+                  <h3 className="break-words text-lg font-bold">{title}</h3>
+                  <p className="text-lg font-bold text-primary">
+                    {listingType === "Giveaway" ? "FREE" : `₦${Number(price).toLocaleString("en-NG")}`}
+                  </p>
+                  <p className="text-sm text-muted-foreground">{condition} · {subCategory || "Other"}</p>
+                  {description && <p className="whitespace-pre-wrap break-words text-sm">{description}</p>}
+                  <p className="break-words text-sm text-muted-foreground">Location: {locationAddress || "Not specified"}</p>
+                </section>
+
                 {/* Visibility Selector */}
                 <div className="p-4 rounded-2xl bg-secondary/50 border border-border space-y-3">
                   <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Audience Visibility</label>
