@@ -16,7 +16,7 @@ The suite covers **320, 360, 375, 390, 430, 768, 1024 and 1440px**, in light and
 
 Initial authenticated run 44093721245 passed six matrix tests, but visual inspection found loading placeholders and a Create exit animation in early captures. Those captures are provisional evidence. Readiness checks now wait for visible accessible headings, YRDLY shimmer skeletons, pulse/spinner placeholders, category loading and fonts. Desktop Settings intentionally hides its mobile heading, so readiness uses accessible headings rather than the first DOM h1. Create-menu captures wait for panel and backdrop opacity to reach their final values; creation captures also wait for the menu exit animation to finish.
 
-Final run **44110010185** at commit `be5d1b5264d141792739e18b518a5161efd87703`: **6 passed (5.1m)**; static and visual jobs both succeeded. All 192 PNGs were downloaded and their archive SHA-256 verified. Representative loaded light/dark screenshots were inspected, including the previously incomplete desktop Create, Marketplace and Messages captures. This confirms those evidence-timing defects are fixed; it does not approve the entire redesign.
+Baseline run **44110010185** at commit `be5d1b5264d141792739e18b518a5161efd87703`: **6 passed (5.1m)**; static and visual jobs both succeeded. All 192 PNGs were downloaded and their archive SHA-256 verified. Representative loaded light/dark screenshots were inspected, including the previously incomplete desktop Create, Marketplace and Messages captures. This confirms those evidence-timing defects are fixed; it does not approve the entire redesign.
 
 [Successful CI run and full private artifact](https://github.com/Yrdly-ng/yrdly-app/actions/runs/44110010185). [Screenshot review archive](https://chatgpt.com/library?file_id=libfile_2a0e83af63108191be360dc765755f11&account_id=personal) contains 176 original PNGs; the 16 Settings captures with account contact details remain in the private GitHub artifact.
 
@@ -32,8 +32,8 @@ Only disposable QA fixtures are shown. Tests open creation screens without publi
 | Category chips and form labels lack robust accessible semantics | Source and rendered creation forms | Associated title/description labels, 44px category chips, selected states and Post content name |
 | Business verification label implies independent business verification | Business detail source | Say Phone verified only for an explicit true phone flag |
 | Create close button can shrink beside long title | Source and narrow screenshots | Preserve 44px width and action selectors |
-| Businessplace and Events consume most of the first phone viewport with hero/search/filter controls | Loaded 390px screenshots in both themes | Remaining mobile hierarchy/spacing refinement; content begins near or below the bottom navigation |
-| Small secondary copy and controls remain in feed metadata, Profile shortcuts and Settings descriptions | Representative loaded phone screenshots | Remaining readability and touch-target audit, especially at 320px and with text scaling |
+| Businessplace and Events consume most of the first phone viewport with hero/search/filter controls | Loaded 390px screenshots in both themes | Compacted mobile heading/section gaps and removed duplicate inner padding; Events management links scroll in one row; updated screenshot review tracked in PR #97 |
+| Small secondary copy and controls remain in feed metadata, Profile shortcuts and Settings descriptions | Representative loaded phone screenshots | Profile actions/tabs now 44px; shortcuts have larger labels and focus rings. Settings rows are keyboard buttons, wrap descriptions at 14px with 16px titles, and have a named 44px theme switch; updated screenshot review tracked in PR #97 |
 | Desktop Settings has a hidden mobile heading | 1024px browser failure | Fixed readiness check; not an application navigation failure |
 | Shimmer skeletons were not covered by generic animation waits | Actual dark Marketplace/Messages captures and Skeleton source | Wait for `.yrdly-skeleton` before screenshot capture |
 
@@ -42,6 +42,10 @@ No payment, auth, verification or notification dispatch logic was changed by the
 ## Native reference and limits
 
 Source comparison: native ScreenHeader uses 16px horizontal spacing, a 17px bold Outfit title, safe-area-aware spacing and map/notification actions. Focused creation screens and consistent mobile navigation follow that hierarchy. Native badge artwork does not override phone-verification semantics. No native runtime screenshots were reviewed, so visual parity is not approved.
+
+## Latest polish pass
+
+Commit `4686e868231937d193d8fef02deab1e1ce9329eb` implements the discovery/account fixes above. Local TypeScript, lint and browser discovery pass. The authenticated matrix now also exercises the Settings email dialog by keyboard, toggles theme with the keyboard and restores it, and checks Profile action/tab touch heights. The latest authenticated run and screenshot review are linked in PR #97; the baseline evidence above predates this polish pass.
 
 ## Validation
 
@@ -55,7 +59,7 @@ Source comparison: native ScreenHeader uses 16px horizontal spacing, a 17px bold
 
 ## Remaining release gates
 
-- Continue the wider mobile hierarchy, typography and touch-target refinements identified above; inspect final loaded screenshots at every requested breakpoint.
+- Inspect the updated discovery/account screenshots at every requested breakpoint and complete remaining text-scaling/contrast review.
 - Inspect later listing/event wizard steps, dialogs, populated conversations, validation errors, keyboard focus, text scaling, contrast and long content.
 - Resolve the Work browser QA sign-in network error before claiming interactive authenticated cloud-browser review.
 - Compare rendered native screens and test physical iPhone Safari and installed PWA safe areas, viewport and keyboard behavior.
