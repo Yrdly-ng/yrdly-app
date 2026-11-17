@@ -50,7 +50,7 @@ async function waitForLoadedContent(
     await expect(main.getByRole("heading").first()).toBeVisible({ timeout: 30000 });
   }
   await expect(
-    main.locator(".animate-pulse:visible, .animate-spin:visible"),
+    main.locator(".yrdly-skeleton:visible, .animate-pulse:visible, .animate-spin:visible"),
   ).toHaveCount(0, { timeout: 30000 });
   await expect(main.getByText(/Loading categories/)).toHaveCount(0, {
     timeout: 30000,
