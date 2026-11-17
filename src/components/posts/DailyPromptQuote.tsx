@@ -12,7 +12,11 @@ function loadQuestion(id: string) {
   const existing = pending.get(id);
   if (existing) return existing;
   const request = fetch(`/api/daily-prompts?promptId=${encodeURIComponent(id)}`, { cache: "no-store" })
-    .then(async response => response.ok ? (await response.json()).prompt ?? null : null)
+    .then(async response => {
+      if (!response.ok) return null;
+      const data = await response.json();
+      return data.prompt?.id === id ? data.prompt : null;
+    })
     .catch(() => null)
     .finally(() => pending.delete(id));
   pending.set(id, request);
@@ -20,15 +24,14 @@ function loadQuestion(id: string) {
 }
 
 export function DailyPromptQuote({ promptId }: { promptId?: string | null }) {
-  const [question, setQuestion] = useState<Question | null>(null);
-  const [loading, setLoading] = useState(!!promptId);
+  const [result, setResult] = useState<{ id: string; question: Question | null } | null>(null);
+  const question = result && result.id === promptId ? result.question : null;
+  const loading = !!promptId && result?.id !== promptId;
   useEffect(() => {
-    setQuestion(null);
-    setLoading(!!promptId);
     if (!promptId) return;
     let active = true;
     void loadQuestion(promptId).then(value => {
-      if (active) { setQuestion(value); setLoading(false); }
+      if (active) setResult({ id: promptId, question: value });
     });
     return () => { active = false; };
   }, [promptId]);
