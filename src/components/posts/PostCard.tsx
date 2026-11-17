@@ -838,7 +838,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
           id: "unknown",
           uid: "unknown",
           name: post.author_name || "Anonymous",
-          avatar_url: post.author_image || "https://placehold.co/100x100.png",
+          avatar_url: post.author_image || undefined,
           timestamp: post.timestamp,
         });
         setLoadingAuthor(false);
@@ -854,7 +854,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
             avatar_url:
               post.user.avatar_url ||
               post.author_image ||
-              "https://placehold.co/100x100.png",
+              undefined,
             timestamp: (post.user as any).created_at || post.timestamp,
             verified_seller: (post.user as any).verified_seller,
             is_verified: (post.user as any).is_verified,
@@ -876,7 +876,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
                   uid: post.user_id,
                   name: post.author_name || "Anonymous",
                   avatar_url:
-                    post.author_image || "https://placehold.co/100x100.png",
+                    post.author_image || undefined,
                   timestamp: post.timestamp,
                 }
               : ({
@@ -884,7 +884,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
                   uid: data.id,
                   name: data.name || "Anonymous",
                   avatar_url:
-                    data.avatar_url || "https://placehold.co/100x100.png",
+                    data.avatar_url || undefined,
                   timestamp: data.created_at || post.timestamp,
                   verified_seller: data.verified_seller,
                   is_verified: (data as any).is_verified || false,
@@ -898,7 +898,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
           id: post.user_id,
           uid: post.user_id,
           name: post.author_name || "Anonymous",
-          avatar_url: post.author_image || "https://placehold.co/100x100.png",
+          avatar_url: post.author_image || undefined,
           timestamp: post.timestamp,
         });
         setLoadingAuthor(false);

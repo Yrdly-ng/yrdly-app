@@ -508,6 +508,7 @@ for (const theme of ["light", "dark"] as const) {
         await page.goto(route);
         const quote = page.getByRole("complementary", { name: "Daily question context", exact: true });
         await expect(quote).toContainText(prompt.question);
+        await expect(page.locator('img[src*="placehold.co/100x100"]')).toHaveCount(0);
         const contrast = await quote.evaluate(el => {
           const rgba = (color: string) => {
             const values = color.match(/[\d.]+/g)?.map(Number) || [0, 0, 0];
