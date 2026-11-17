@@ -26,6 +26,7 @@ import {
   CheckCircle,
 } from "lucide-react";
 import Image from "next/image";
+import { CategoryIcon } from "@/components/discovery/CategoryIcon";
 import { CreateBusinessDialog } from "./CreateBusinessDialog";
 import { getBusinessRating } from "@/lib/businesses/presentation";
 
@@ -178,6 +179,7 @@ export function BusinessHub({ searchQuery = "" }: { searchQuery?: string }) {
             onClick={() => setActiveCategory(null)}
             className="rounded-full shrink-0"
           >
+            <CategoryIcon category="All" size={16} className="mr-1" />
             All Categories
           </Button>
           {categories.map((cat) => (
@@ -190,6 +192,7 @@ export function BusinessHub({ searchQuery = "" }: { searchQuery?: string }) {
               }
               className="rounded-full shrink-0"
             >
+              <CategoryIcon category={cat} size={16} className="mr-1" />
               {cat}
             </Button>
           ))}
