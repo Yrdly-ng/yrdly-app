@@ -492,15 +492,21 @@ serve(async (req) => {
       ["post_like", "post_comment", "post_share", "mention"].includes(
         type ?? "",
       ) &&
-      !/\b\d+\s+other/i.test(pushBody)
+      !/\b\d+\s+other/i.test(pushBody) &&
+      !/\band\s+[^.]+\sliked your post/i.test(pushBody)
     ) {
       pushBody = `${pushBody} (${socialCount} updates)`;
     }
+    const postId = typeof safeData.postId === "string"
+      ? safeData.postId
+      : safeData.relatedType === "post" && typeof safeData.relatedId === "string"
+        ? safeData.relatedId
+        : undefined;
     const collapseId =
       typeof safeData.conversationId === "string"
         ? `conversation-${safeData.conversationId}`
-        : typeof safeData.postId === "string"
-          ? `post-${safeData.postId}`
+        : postId && ["post_like", "post_comment"].includes(type ?? "")
+          ? `${type}-${postId}`
           : undefined;
     const expoPayload = {
       title: pushTitle,
