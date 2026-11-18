@@ -28,7 +28,7 @@ interface MarketplaceScreenProps {
 const pillClass =
   "inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full border px-3.5 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 const gridClass =
-  "grid grid-cols-2 gap-3 min-[390px]:gap-4 sm:grid-cols-[repeat(auto-fill,minmax(210px,1fr))]";
+  "grid grid-cols-[repeat(auto-fill,minmax(min(100%,8rem),1fr))] gap-3 min-[390px]:gap-4 sm:grid-cols-[repeat(auto-fill,minmax(210px,1fr))]";
 
 export function MarketplaceScreen({
   onItemClick,
