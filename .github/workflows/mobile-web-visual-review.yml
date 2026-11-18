@@ -48,6 +48,10 @@ jobs:
   visual-review:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
+    # Preinstalled system libraries avoid slow Ubuntu mirror downloads for WebKit.
+    # Install browsers below with the project's pinned Playwright package.
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble@sha256:2f05f8a734509a7b3f26a912639488ee08f58a7b292d14d62271bcff9038768f
     environment: yrdly-qa
     timeout-minutes: 40
     env:
@@ -95,7 +99,7 @@ jobs:
       - name: Verify real isolated daily-question persistence
         run: node qa-scripts/daily-prompt-release-regression.mjs
       - name: Install Playwright Chromium and WebKit
-        run: pnpm exec playwright install --with-deps chromium webkit
+        run: pnpm exec playwright install chromium webkit
       - name: Inspect responsive authenticated pages and Create menu
         run: pnpm exec playwright test --config=playwright.qa.config.ts tests/browser/mobile-web-visual.spec.ts
       - name: Upload visual evidence
