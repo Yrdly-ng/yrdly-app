@@ -1,4 +1,5 @@
 import { test, expect, chromium, webkit } from "@playwright/test";
+import { createClient } from "@supabase/supabase-js";
 import { mkdirSync, readFileSync } from "node:fs";
 import { parse } from "dotenv";
 
@@ -693,5 +694,107 @@ for (const theme of ["light", "dark"] as const) {
     await expect(cards).toHaveCount(6);
     // Real link semantics remain available for detail pages and modifier clicks.
     await expect(cards.first()).toHaveAttribute("href", "/marketplace/qa-groceries");
+  });
+}
+
+for (const theme of ["light", "dark"] as const) {
+  test(`${theme} navigation avatar displays photos and a readable broken-photo fallback`, async ({ page }) => {
+    test.setTimeout(120000);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.addInitScript(value => localStorage.setItem("yrdly-theme", value), theme);
+    const env = isolatedCredentials();
+    const isolatedUrl = new URL(env.SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL);
+    const seed = JSON.parse(readFileSync("qa-seed-output.json", "utf8"));
+    expect(isolatedUrl.origin).toBe(`https://${QA_REF}.supabase.co`);
+    expect(seed.projectRef).toBe(QA_REF);
+    const client = createClient(isolatedUrl.origin, env.SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    });
+    const buyer = seed.users.buyer;
+    const username = "yrdly_qa_buyer";
+    const original = await client.from("users").select("name,avatar_url")
+      .eq("id", buyer).eq("username", username).single();
+    const profile = original.data;
+    if (original.error || typeof profile?.name !== "string") {
+      throw new Error(`Disposable QA buyer profile could not be read (${original.error?.code ?? "missing profile"})`);
+    }
+    const name = profile.name.trim();
+    const setPhoto = async (avatarUrl: string | null) => {
+      const { error } = await client.from("users").update({ avatar_url: avatarUrl })
+        .eq("id", buyer).eq("username", username).select("id").single();
+      expect(error?.code).toBeUndefined();
+    };
+    const profileButton = page.getByRole("button", { name: "Open profile", exact: true });
+    mkdirSync(OUTPUT, { recursive: true });
+    // A disposable QA profile exercises the same persisted image loading path
+    // as production. Restore its original avatar even when an assertion fails.
+    try {
+      await setPhoto(`data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" fill="#513d8f"/><circle cx="16" cy="13" r="6" fill="#fff"/><ellipse cx="16" cy="29" rx="11" ry="9" fill="#fff"/></svg>')}`);
+      await loginQaBuyer(page);
+      const avatar = profileButton.getByRole("img", { name: `${name}'s avatar`, exact: true });
+      await expect(avatar).toBeVisible({ timeout: 30000 });
+      await expect.poll(() => avatar.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
+      await page.screenshot({ path: `${OUTPUT}/${theme}-390-avatar-photo.png` });
+      for (const [state, url] of [["broken", "data:image/png;base64,AAAA"], ["missing", null]] as const) {
+        await setPhoto(url);
+        await page.reload();
+        const fallback = profileButton.getByText(Array.from(name)[0].toUpperCase(), { exact: true });
+        await expect(fallback).toBeVisible({ timeout: 30000 });
+        const presentation = await fallback.evaluate(element => {
+          const style = getComputedStyle(element);
+          const bounds = element.getBoundingClientRect();
+          return { background: style.backgroundColor, color: style.color, width: bounds.width, height: bounds.height };
+        });
+        expect(presentation.background).not.toBe("rgba(0, 0, 0, 0)");
+        expect(presentation.background).not.toBe(presentation.color);
+        expect(presentation.width).toBeGreaterThanOrEqual(32);
+        expect(presentation.height).toBeGreaterThanOrEqual(32);
+        await expect(avatar).toHaveCount(0);
+        await page.screenshot({ path: `${OUTPUT}/${theme}-390-avatar-${state}.png` });
+      }
+    } finally {
+      await setPhoto(profile.avatar_url);
+    }
+  });
+}
+
+for (const theme of ["light", "dark"] as const) {
+  test(`${theme} daily question opens its own neighbours answers with recovery`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.addInitScript(value => localStorage.setItem("yrdly-theme", value), theme);
+    await loginQaBuyer(page);
+    const id = "11111111-1111-4111-8111-111111111111";
+    const prompt = { id, question: "QA: Which local restaurant do you recommend?", prompt_date: "2026-11-17", category: "General" };
+    await page.route("**/api/daily-prompts?**", route => route.fulfill({ json: { date: "2026-11-18", prompt } }));
+    await page.route("**/api/daily-prompts", route => route.fulfill({ json: { date: "2026-11-18", prompt } }));
+    let mode = "populated";
+    await page.route("**/api/daily-prompts/responses?**", route => {
+      expect(new URL(route.request().url()).searchParams.get("promptId")).toBe(id);
+      if (mode === "error") return route.fulfill({ status: 503, json: { error: "Could not load answers" } });
+      if (mode === "location") return route.fulfill({ json: { responses: [], nextPage: null, locationRequired: true } });
+      const pageNumber = new URL(route.request().url()).searchParams.get("page");
+      return route.fulfill({ json: { responses: [{ id: pageNumber === "0" ? "qa-answer-1" : "qa-answer-2", author_name: pageNumber === "0" ? "QA neighbour A" : "QA neighbour B", text: pageNumber === "0" ? "Chicken Republic" : "The local cafe", comment_count: 2 }], nextPage: pageNumber === "0" ? 1 : null } });
+    });
+    await page.goto("/home");
+    const answersLink = page.getByRole("link", { name: /See neighbours.*answers/ });
+    await expect(answersLink).toHaveAttribute("href", `/daily-prompts?promptId=${id}`);
+    await answersLink.click();
+    await expect(page.getByRole("heading", { name: prompt.question, exact: true })).toBeVisible();
+    await expect(page.getByText("Chicken Republic", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Load more answers", exact: true }).click();
+    await expect(page.getByText("The local cafe", { exact: true })).toBeVisible();
+    mkdirSync(OUTPUT, { recursive: true });
+    await page.screenshot({ path: `${OUTPUT}/${theme}-390-neighbour-answers.png`, fullPage: true });
+    mode = "error";
+    await page.reload();
+    await expect(page.getByRole("alert").filter({ hasText: "Could not load answers" })).toBeVisible();
+    await expect(page.getByText("No responses nearby yet. You can be the first!", { exact: true })).toHaveCount(0);
+    mode = "populated";
+    await page.getByRole("button", { name: "Try again", exact: true }).click();
+    await expect(page.getByText("Chicken Republic", { exact: true })).toBeVisible();
+    mode = "location";
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "Choose your neighbourhood to see local answers" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Set your home neighbourhood" })).toHaveAttribute("href", "/onboarding/profile");
   });
 }

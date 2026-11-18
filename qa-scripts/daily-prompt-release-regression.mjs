@@ -10,7 +10,15 @@ const seed=JSON.parse(await readFile('qa-seed-output.json','utf8'));
 assert.equal(seed.projectRef,QA_PROJECT_REF);assert.equal(seed.qaPrefix,QA_PREFIX);
 const admin=createAdminClient(env),buyer=seed.users.buyer;
 const ok=({data,error})=>{if(error)throw Error(`QA operation failed (${error.code || 'unknown'})`);return data;};
-const clock=new Intl.DateTimeFormat('en-CA',{timeZone:'Africa/Lagos',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+const now = new Date();
+const lagosDate = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Africa/Lagos', year: 'numeric', month: '2-digit', day: '2-digit',
+});
+const lagosHour = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Africa/Lagos', hour: '2-digit', hourCycle: 'h23',
+});
+const isOpen = Number(lagosHour.format(now)) >= 7;
+const clock = lagosDate.format(isOpen ? now : new Date(now.getTime() - 86_400_000));
 const profile=ok(await admin.from('users').select('home_state,home_lga,home_ward').eq('id',buyer).single());
 let prompt,createdPrompt=false;
 const ids=[randomUUID(),randomUUID(),randomUUID()];
@@ -23,7 +31,13 @@ try {
   const auth=ok(await reader.auth.signInWithPassword({email:env.QA_BUYER_EMAIL,password:env.QA_BUYER_PASSWORD}));
   const headers={'Content-Type':'application/json',Authorization:`Bearer ${auth.session.access_token}`};
   const current=await fetch(`${origin}/api/daily-prompts`);
-  assert.equal(current.status,200);assert.equal((await current.json()).prompt?.id,prompt.id,'QA feature must expose the real approved question');
+  assert.equal(current.status, 200);
+  const currentQuestion = (await current.json()).prompt;
+  if (isOpen) {
+    assert.equal(currentQuestion?.id, prompt.id, 'QA feature must expose the real approved question');
+  } else {
+    assert.equal(currentQuestion, null, 'Today’s question is hidden before 7 a.m. Lagos time');
+  }
   const quoted=await fetch(`${origin}/api/daily-prompts?promptId=${prompt.id}`);
   assert.equal(quoted.status,200);assert.equal((await quoted.json()).prompt?.id,prompt.id,'Post quote must resolve its stored question ID');
   const malformed=await fetch(`${origin}/api/daily-prompts?promptId=not-a-question`);assert.equal(malformed.status,400);
@@ -31,21 +45,39 @@ try {
   const invalid=await fetch(`${origin}/api/posts`,{method:'POST',headers,body:JSON.stringify({post:{...post,visibility:'private'}})});
   assert.equal(invalid.status,400,'Private prompt responses must be rejected');
   const saved=await fetch(`${origin}/api/posts`,{method:'POST',headers,body:JSON.stringify({post})});
-  assert.equal(saved.status,200,'Real QA response API must persist the answer');
-  const row=ok(await admin.from('posts').select('id,user_id,daily_prompt_id,state,lga,visibility').eq('id',ids[0]).single());
-  assert.equal(row.user_id,buyer);assert.equal(row.daily_prompt_id,prompt.id);assert.equal(row.state,'Lagos');assert.equal(row.lga,'Ikeja');assert.equal(row.visibility,'public');
-  const retry=await fetch(`${origin}/api/posts`,{method:'POST',headers,body:JSON.stringify({post})});assert.equal(retry.status,200);
-  assert.equal(ok(await admin.from('posts').select('id').eq('id',ids[0])).length,1,'Retry must not duplicate an answer');
-  ok(await admin.from('posts').update({moderation_status:'approved'}).eq('id',ids[0]).eq('user_id',buyer));
-  ok(await admin.from('posts').insert([
-    {id:ids[1],user_id:buyer,author_name:'YRDLY-QA',text:'YRDLY-QA pending answer',category:'General',visibility:'public',daily_prompt_id:prompt.id,state:'Lagos',lga:'Ikeja',moderation_status:'pending'},
-    {id:ids[2],user_id:seed.users.seller,author_name:'YRDLY-QA',text:'YRDLY-QA other neighbourhood',category:'General',visibility:'public',daily_prompt_id:prompt.id,state:'Lagos',lga:'Epe',moderation_status:'approved'},
-  ]));
+  if (isOpen) {
+    assert.equal(saved.status,200,'Real QA response API must persist the answer');
+    const row=ok(await admin.from('posts').select('id,user_id,daily_prompt_id,state,lga,visibility').eq('id',ids[0]).single());
+    assert.equal(row.user_id,buyer);assert.equal(row.daily_prompt_id,prompt.id);assert.equal(row.state,'Lagos');assert.equal(row.lga,'Ikeja');assert.equal(row.visibility,'public');
+    const retry=await fetch(`${origin}/api/posts`,{method:'POST',headers,body:JSON.stringify({post})});assert.equal(retry.status,200);
+    assert.equal(ok(await admin.from('posts').select('id').eq('id',ids[0])).length,1,'Retry must not duplicate an answer');
+    ok(await admin.from('posts').update({moderation_status:'approved'}).eq('id',ids[0]).eq('user_id',buyer));
+    ok(await admin.from('posts').insert([
+      {id:ids[1],user_id:buyer,author_name:'YRDLY-QA',text:'YRDLY-QA pending answer',category:'General',visibility:'public',daily_prompt_id:prompt.id,state:'Lagos',lga:'Ikeja',moderation_status:'pending'},
+      {id:ids[2],user_id:seed.users.seller,author_name:'YRDLY-QA',text:'YRDLY-QA other neighbourhood',category:'General',visibility:'public',daily_prompt_id:prompt.id,state:'Lagos',lga:'Epe',moderation_status:'approved'},
+    ]));
+  } else {
+    assert.equal(saved.status, 409, 'Previously published questions are closed for new answers');
+  }
   const response=await fetch(`${origin}/api/daily-prompts/responses?promptId=${prompt.id}`,{headers});assert.equal(response.status,200);
   const visible=(await response.json()).responses.map(p=>p.id);
-  assert.ok(visible.includes(ids[0]));assert.ok(!visible.includes(ids[1]));assert.ok(!visible.includes(ids[2]));
+  assert.equal(visible.includes(ids[0]), isOpen);
+  if (isOpen) {
+    assert.ok(!visible.includes(ids[1]));
+    assert.ok(!visible.includes(ids[2]));
+  }
+  ok(await admin.from('users').update({home_state:null,home_lga:null}).eq('id',buyer));
+  const missingHome=await fetch(`${origin}/api/daily-prompts/responses?promptId=${prompt.id}`,{headers});
+  assert.equal(missingHome.status,200);
+  const missingHomeBody=await missingHome.json();
+  assert.equal(missingHomeBody.locationRequired,true);
+  assert.deepEqual(missingHomeBody.responses,[]);
+  ok(await admin.from('users').update({home_state:'Lagos',home_lga:'Ikeja'}).eq('id',buyer));
   const anonymous=await fetch(`${origin}/api/daily-prompts/responses?promptId=${prompt.id}`);assert.equal(anonymous.status,401);
-  console.log('PASS real isolated daily question: approved display, answer persistence, retry dedupe, server-owned location, moderation/locality filtering and authentication');
+  const timingChecks = isOpen
+    ? 'answer persistence, retry dedupe, server-owned location and moderation/locality filtering'
+    : 'overnight publication, answer cutoff and historical lookup';
+  console.log(`PASS real isolated daily question: approved display, ${timingChecks}, location requirement and authentication`);
 } finally {
   ok(await admin.from('moderation_queue').delete().in('content_id',ids).eq('table_name','posts'));
   ok(await admin.from('posts').delete().in('id',ids).in('user_id',[buyer,seed.users.seller]));

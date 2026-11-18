@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { MapPin, Bell } from "@phosphor-icons/react";
 import Link from "next/link";
 import Image from "next/image";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { NavigationAvatar } from "./NavigationAvatar";
 import { cn } from "@/lib/shared/utils";
 
 import { LocationChip } from "@/components/location/LocationChip";
@@ -140,12 +140,7 @@ export function Topbar({
             className="flex w-9 h-9 md:w-10 md:h-10 rounded-full overflow-hidden p-0.5 ml-1 border border-[var(--c-border)] bg-[var(--c-card2)] shadow-sm"
             onClick={onProfile}
           >
-            <Avatar className="w-full h-full rounded-full">
-              <AvatarImage src={profile?.avatar_url || ""} />
-              <AvatarFallback className="bg-[var(--primary)] text-white font-bold">
-                {profile?.name?.charAt(0).toUpperCase() || "U"}
-              </AvatarFallback>
-            </Avatar>
+            <NavigationAvatar profile={profile} />
           </Button>
         </div>
       </div>

@@ -11,7 +11,7 @@ import {
   Bell,
   Plus,
 } from "@phosphor-icons/react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { NavigationAvatar } from "./NavigationAvatar";
 import { LocationChip } from "@/components/location/LocationChip";
 import { cn } from "@/lib/shared/utils";
 
@@ -171,12 +171,7 @@ export function Sidebar({
           title="Profile menu"
           aria-label="Profile menu"
         >
-          <Avatar className="w-full h-full rounded-full">
-            <AvatarImage src={profile?.avatar_url || ""} />
-            <AvatarFallback className="bg-primary text-white font-bold text-xs">
-              {profile?.name?.charAt(0).toUpperCase() || "U"}
-            </AvatarFallback>
-          </Avatar>
+            <NavigationAvatar profile={profile} />
         </button>
       </div>
     </aside>
