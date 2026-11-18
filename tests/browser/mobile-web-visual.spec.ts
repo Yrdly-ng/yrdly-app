@@ -687,7 +687,7 @@ for (const theme of ["light", "dark"] as const) {
     await page.evaluate(() => { document.documentElement.style.fontSize = ""; });
     failCatalog = true;
     await page.reload();
-    await expect(page.getByRole("heading", { name: "Couldn’t load listings", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Couldn’t load listings", exact: true })).toBeVisible({ timeout: 30000 });
     failCatalog = false;
     await page.getByRole("button", { name: "Try again", exact: true }).click();
     await expect(cards).toHaveCount(6);

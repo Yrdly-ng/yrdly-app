@@ -130,7 +130,7 @@ export function MarketplaceScreen({
     <div className="w-full space-y-5 px-3 pb-20 pt-2 font-yrdly-body min-[390px]:px-4 sm:pb-8">
       <header className="space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
+          <div className="min-w-[min(100%,8rem)] flex-1">
             <h1 className="text-xl font-bold font-yrdly-display text-foreground sm:text-2xl">
               Buy & sell nearby
             </h1>
