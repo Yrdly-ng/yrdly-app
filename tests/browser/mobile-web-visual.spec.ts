@@ -695,3 +695,41 @@ for (const theme of ["light", "dark"] as const) {
     await expect(cards.first()).toHaveAttribute("href", "/marketplace/qa-groceries");
   });
 }
+
+for (const theme of ["light", "dark"] as const) {
+  test(`${theme} navigation avatar displays photos and a readable broken-photo fallback`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.addInitScript(value => localStorage.setItem("yrdly-theme", value), theme);
+    await loginQaBuyer(page);
+    let photo = "/logo.png";
+    await page.route(`https://${QA_REF}.supabase.co/rest/v1/users?**`, async route => {
+      if (route.request().method() !== "GET") return route.continue();
+      const response = await route.fetch();
+      if (!response.ok()) return route.fulfill({ response });
+      const data = await response.json();
+      const present = (profile: Record<string, unknown>) => ({ ...profile, name: "QA Avatar", avatar_url: photo });
+      return route.fulfill({ response, json: Array.isArray(data) ? data.map(present) : present(data) });
+    });
+    await page.goto("/home");
+    const profileButton = page.getByRole("button", { name: "Open profile", exact: true });
+    await expect(profileButton.getByRole("img", { name: "QA Avatar's avatar", exact: true })).toBeVisible();
+    await expect.poll(() => profileButton.locator("img").evaluate((image: HTMLImageElement) => image.naturalWidth > 0)).toBe(true);
+    for (const [state, url] of [["broken", "/qa-missing-avatar.png"], ["missing", ""]]) {
+      photo = url;
+      await page.reload();
+      const fallback = profileButton.getByText("Q", { exact: true });
+      await expect(fallback).toBeVisible();
+      const presentation = await fallback.evaluate(element => {
+        const style = getComputedStyle(element);
+        const bounds = element.getBoundingClientRect();
+        return { background: style.backgroundColor, color: style.color, width: bounds.width, height: bounds.height };
+      });
+      expect(presentation.background).not.toBe("rgba(0, 0, 0, 0)");
+      expect(presentation.background).not.toBe(presentation.color);
+      expect(presentation.width).toBeGreaterThanOrEqual(32);
+      expect(presentation.height).toBeGreaterThanOrEqual(32);
+      mkdirSync(OUTPUT, { recursive: true });
+      await page.screenshot({ path: `${OUTPUT}/${theme}-390-avatar-${state}.png` });
+    }
+  });
+}
