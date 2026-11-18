@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, chromium, webkit } from "@playwright/test";
 import { mkdirSync, readFileSync } from "node:fs";
 import { parse } from "dotenv";
 
@@ -61,6 +61,43 @@ async function waitForLoadedContent(
 }
 
 const widths = [320, 360, 375, 390, 430, 768, 1024, 1440] as const;
+
+for (const [engine, browserType] of [["chromium", chromium], ["webkit", webkit]] as const) {
+  test(`Create actions respond to a single phone tap in ${engine}`, async () => {
+    test.setTimeout(180000);
+    const browser = await browserType.launch();
+    const context = await browser.newContext({
+      baseURL: "http://localhost:9002",
+      viewport: { width: 390, height: 844 },
+      isMobile: true,
+      hasTouch: true,
+      reducedMotion: "no-preference",
+    });
+    const page = await context.newPage();
+    try {
+      await loginQaBuyer(page);
+      for (const [action, route] of [
+        ["post", "/posts/create"], ["listing", "/marketplace/create"],
+        ["event", "/events/create"], ["alert", "/alerts/new"],
+      ] as const) {
+        await page.goto("/home");
+        await waitForLoadedContent(page, "/home");
+        await page.getByRole("button", { name: "Create a post, listing, event or safety alert" }).tap();
+        await page.locator(`[data-create-action="${action}"]`).tap();
+        await expect(page).toHaveURL(new RegExp(
+          action === "listing" || action === "event" ? `(?:${route}|/verify-phone)$` : `${route}$`,
+        ), { timeout: 15000 });
+        await expect(page.getByRole("dialog", { name: "What would you like to create?" })).toHaveCount(0);
+        await expect(page.locator("main h1")).toBeVisible();
+        mkdirSync(OUTPUT, { recursive: true });
+        await page.screenshot({ path: `${OUTPUT}/touch-${engine}-${action}.png` });
+      }
+    } finally {
+      await context.close();
+      await browser.close();
+    }
+  });
+}
 
 for (const theme of ["light", "dark"] as const) {
   test.describe(`${theme} appearance`, () => {
