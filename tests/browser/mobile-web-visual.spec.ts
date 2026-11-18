@@ -714,8 +714,10 @@ for (const theme of ["light", "dark"] as const) {
     const username = "yrdly_qa_buyer";
     const original = await client.from("users").select("name,avatar_url")
       .eq("id", buyer).eq("username", username).single();
-    expect(original.error?.code).toBeUndefined();
-    const profile = original.data!;
+    const profile = original.data;
+    if (original.error || typeof profile?.name !== "string") {
+      throw new Error(`Disposable QA buyer profile could not be read (${original.error?.code ?? "missing profile"})`);
+    }
     const name = profile.name.trim();
     const setPhoto = async (avatarUrl: string | null) => {
       const { error } = await client.from("users").update({ avatar_url: avatarUrl })
