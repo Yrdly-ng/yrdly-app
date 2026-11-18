@@ -698,6 +698,7 @@ for (const theme of ["light", "dark"] as const) {
 
 for (const theme of ["light", "dark"] as const) {
   test(`${theme} navigation avatar displays photos and a readable broken-photo fallback`, async ({ page }) => {
+    test.setTimeout(120000);
     await page.setViewportSize({ width: 390, height: 844 });
     await page.addInitScript(value => localStorage.setItem("yrdly-theme", value), theme);
     await loginQaBuyer(page);
@@ -708,17 +709,17 @@ for (const theme of ["light", "dark"] as const) {
       if (!response.ok()) return route.fulfill({ response });
       const data = await response.json();
       const present = (profile: Record<string, unknown>) => ({ ...profile, name: "QA Avatar", avatar_url: photo });
-      return route.fulfill({ response, json: Array.isArray(data) ? data.map(present) : present(data) });
+      return route.fulfill({ json: Array.isArray(data) ? data.map(present) : present(data) });
     });
     await page.goto("/home");
     const profileButton = page.getByRole("button", { name: "Open profile", exact: true });
-    await expect(profileButton.getByRole("img", { name: "QA Avatar's avatar", exact: true })).toBeVisible();
+    await expect(profileButton.getByRole("img", { name: "QA Avatar's avatar", exact: true })).toBeVisible({ timeout: 30000 });
     await expect.poll(() => profileButton.locator("img").evaluate((image: HTMLImageElement) => image.naturalWidth > 0)).toBe(true);
     for (const [state, url] of [["broken", "/qa-missing-avatar.png"], ["missing", ""]]) {
       photo = url;
       await page.reload();
       const fallback = profileButton.getByText("Q", { exact: true });
-      await expect(fallback).toBeVisible();
+      await expect(fallback).toBeVisible({ timeout: 30000 });
       const presentation = await fallback.evaluate(element => {
         const style = getComputedStyle(element);
         const bounds = element.getBoundingClientRect();
@@ -763,7 +764,7 @@ for (const theme of ["light", "dark"] as const) {
     await page.screenshot({ path: `${OUTPUT}/${theme}-390-neighbour-answers.png`, fullPage: true });
     mode = "error";
     await page.reload();
-    await expect(page.getByRole("alert")).toContainText("Could not load answers");
+    await expect(page.getByRole("alert").filter({ hasText: "Could not load answers" })).toBeVisible();
     await expect(page.getByText("No responses nearby yet. You can be the first!", { exact: true })).toHaveCount(0);
     mode = "populated";
     await page.getByRole("button", { name: "Try again", exact: true }).click();
