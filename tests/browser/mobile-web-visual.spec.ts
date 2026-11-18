@@ -1,4 +1,5 @@
 import { test, expect, chromium, webkit } from "@playwright/test";
+import { createClient } from "@supabase/supabase-js";
 import { mkdirSync, readFileSync } from "node:fs";
 import { parse } from "dotenv";
 
@@ -701,45 +702,56 @@ for (const theme of ["light", "dark"] as const) {
     test.setTimeout(120000);
     await page.setViewportSize({ width: 390, height: 844 });
     await page.addInitScript(value => localStorage.setItem("yrdly-theme", value), theme);
-    const buyer = JSON.parse(readFileSync("qa-seed-output.json", "utf8")).users.buyer;
-    let photo = `data:image/png;base64,${readFileSync("public/logo.png").toString("base64")}`;
-    // Keep sign-in and session policy real. Only fixture the buyer’s profile
-    // and image so other account reads or cached images cannot change the case.
-    await page.route(`https://${QA_REF}.supabase.co/rest/v1/users?**`, async route => {
-      const request = route.request();
-      const query = new URL(request.url()).searchParams;
-      if (request.method() !== "GET" || query.get("id") !== `eq.${buyer}` || query.get("select") !== "*") return route.continue();
-      const profile = {
-        id: buyer, name: "QA Avatar", avatar_url: photo,
-        username: "yrdly_qa_buyer", role: "user", is_admin: false,
-        profile_completed: true, onboarding_status: "completed", tour_completed: true,
-      };
-      const json = request.headers().accept?.includes("vnd.pgrst.object") ? profile : [profile];
-      return route.fulfill({ headers: { "access-control-allow-origin": "*", "cache-control": "no-store" }, json });
+    const env = isolatedCredentials();
+    const isolatedUrl = new URL(env.SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL);
+    const seed = JSON.parse(readFileSync("qa-seed-output.json", "utf8"));
+    expect(isolatedUrl.origin).toBe(`https://${QA_REF}.supabase.co`);
+    expect(seed.projectRef).toBe(QA_REF);
+    const client = createClient(isolatedUrl.origin, env.SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
     });
-    await loginQaBuyer(page);
-    await page.goto("/home");
+    const buyer = seed.users.buyer;
+    const username = "yrdly_qa_buyer";
+    const original = await client.from("users").select("name,avatar_url")
+      .eq("id", buyer).eq("username", username).single();
+    expect(original.error?.code).toBeUndefined();
+    const profile = original.data!;
+    const name = profile.name.trim();
+    const setPhoto = async (avatarUrl: string | null) => {
+      const { error } = await client.from("users").update({ avatar_url: avatarUrl })
+        .eq("id", buyer).eq("username", username).select("id").single();
+      expect(error?.code).toBeUndefined();
+    };
     const profileButton = page.getByRole("button", { name: "Open profile", exact: true });
-    const avatar = profileButton.getByRole("img", { name: "QA Avatar's avatar", exact: true });
-    await expect(avatar).toBeVisible({ timeout: 30000 });
-    await expect.poll(() => avatar.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
     mkdirSync(OUTPUT, { recursive: true });
-    await page.screenshot({ path: `${OUTPUT}/${theme}-390-avatar-photo.png` });
-    for (const [state, url] of [["broken", "data:image/png;base64,AAAA"], ["missing", ""]]) {
-      photo = url;
-      await page.reload();
-      const fallback = profileButton.getByText("Q", { exact: true });
-      await expect(fallback).toBeVisible({ timeout: 30000 });
-      const presentation = await fallback.evaluate(element => {
-        const style = getComputedStyle(element);
-        const bounds = element.getBoundingClientRect();
-        return { background: style.backgroundColor, color: style.color, width: bounds.width, height: bounds.height };
-      });
-      expect(presentation.background).not.toBe("rgba(0, 0, 0, 0)");
-      expect(presentation.background).not.toBe(presentation.color);
-      expect(presentation.width).toBeGreaterThanOrEqual(32);
-      expect(presentation.height).toBeGreaterThanOrEqual(32);
-      await page.screenshot({ path: `${OUTPUT}/${theme}-390-avatar-${state}.png` });
+    // A disposable QA profile exercises the same persisted image loading path
+    // as production. Restore its original avatar even when an assertion fails.
+    try {
+      await setPhoto(`data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" fill="#513d8f"/><circle cx="16" cy="13" r="6" fill="#fff"/><ellipse cx="16" cy="29" rx="11" ry="9" fill="#fff"/></svg>')}`);
+      await loginQaBuyer(page);
+      const avatar = profileButton.getByRole("img", { name: `${name}'s avatar`, exact: true });
+      await expect(avatar).toBeVisible({ timeout: 30000 });
+      await expect.poll(() => avatar.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
+      await page.screenshot({ path: `${OUTPUT}/${theme}-390-avatar-photo.png` });
+      for (const [state, url] of [["broken", "data:image/png;base64,AAAA"], ["missing", null]] as const) {
+        await setPhoto(url);
+        await page.reload();
+        const fallback = profileButton.getByText(Array.from(name)[0].toUpperCase(), { exact: true });
+        await expect(fallback).toBeVisible({ timeout: 30000 });
+        const presentation = await fallback.evaluate(element => {
+          const style = getComputedStyle(element);
+          const bounds = element.getBoundingClientRect();
+          return { background: style.backgroundColor, color: style.color, width: bounds.width, height: bounds.height };
+        });
+        expect(presentation.background).not.toBe("rgba(0, 0, 0, 0)");
+        expect(presentation.background).not.toBe(presentation.color);
+        expect(presentation.width).toBeGreaterThanOrEqual(32);
+        expect(presentation.height).toBeGreaterThanOrEqual(32);
+        await expect(avatar).toHaveCount(0);
+        await page.screenshot({ path: `${OUTPUT}/${theme}-390-avatar-${state}.png` });
+      }
+    } finally {
+      await setPhoto(profile.avatar_url);
     }
   });
 }
