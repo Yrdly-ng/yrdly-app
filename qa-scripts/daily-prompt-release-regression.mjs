@@ -52,20 +52,20 @@ try {
     const retry=await fetch(`${origin}/api/posts`,{method:'POST',headers,body:JSON.stringify({post})});assert.equal(retry.status,200);
     assert.equal(ok(await admin.from('posts').select('id').eq('id',ids[0])).length,1,'Retry must not duplicate an answer');
     ok(await admin.from('posts').update({moderation_status:'approved'}).eq('id',ids[0]).eq('user_id',buyer));
+    ok(await admin.from('posts').insert([
+      {id:ids[1],user_id:buyer,author_name:'YRDLY-QA',text:'YRDLY-QA pending answer',category:'General',visibility:'public',daily_prompt_id:prompt.id,state:'Lagos',lga:'Ikeja',moderation_status:'pending'},
+      {id:ids[2],user_id:seed.users.seller,author_name:'YRDLY-QA',text:'YRDLY-QA other neighbourhood',category:'General',visibility:'public',daily_prompt_id:prompt.id,state:'Lagos',lga:'Epe',moderation_status:'approved'},
+    ]));
   } else {
     assert.equal(saved.status, 409, 'Previously published questions are closed for new answers');
-    ok(await admin.from('posts').insert({
-      ...post, user_id: buyer, author_name: 'YRDLY-QA', state: 'Lagos', lga: 'Ikeja',
-      moderation_status: 'approved',
-    }));
   }
-  ok(await admin.from('posts').insert([
-    {id:ids[1],user_id:buyer,author_name:'YRDLY-QA',text:'YRDLY-QA pending answer',category:'General',visibility:'public',daily_prompt_id:prompt.id,state:'Lagos',lga:'Ikeja',moderation_status:'pending'},
-    {id:ids[2],user_id:seed.users.seller,author_name:'YRDLY-QA',text:'YRDLY-QA other neighbourhood',category:'General',visibility:'public',daily_prompt_id:prompt.id,state:'Lagos',lga:'Epe',moderation_status:'approved'},
-  ]));
   const response=await fetch(`${origin}/api/daily-prompts/responses?promptId=${prompt.id}`,{headers});assert.equal(response.status,200);
   const visible=(await response.json()).responses.map(p=>p.id);
-  assert.ok(visible.includes(ids[0]));assert.ok(!visible.includes(ids[1]));assert.ok(!visible.includes(ids[2]));
+  assert.equal(visible.includes(ids[0]), isOpen);
+  if (isOpen) {
+    assert.ok(!visible.includes(ids[1]));
+    assert.ok(!visible.includes(ids[2]));
+  }
   ok(await admin.from('users').update({home_state:null,home_lga:null}).eq('id',buyer));
   const missingHome=await fetch(`${origin}/api/daily-prompts/responses?promptId=${prompt.id}`,{headers});
   assert.equal(missingHome.status,200);
@@ -74,8 +74,10 @@ try {
   assert.deepEqual(missingHomeBody.responses,[]);
   ok(await admin.from('users').update({home_state:'Lagos',home_lga:'Ikeja'}).eq('id',buyer));
   const anonymous=await fetch(`${origin}/api/daily-prompts/responses?promptId=${prompt.id}`);assert.equal(anonymous.status,401);
-  const timingChecks = isOpen ? 'answer persistence, retry dedupe and server-owned location' : 'overnight publication and answer cutoff';
-  console.log(`PASS real isolated daily question: approved display, ${timingChecks}, moderation/locality filtering and authentication`);
+  const timingChecks = isOpen
+    ? 'answer persistence, retry dedupe, server-owned location and moderation/locality filtering'
+    : 'overnight publication, answer cutoff and historical lookup';
+  console.log(`PASS real isolated daily question: approved display, ${timingChecks}, location requirement and authentication`);
 } finally {
   ok(await admin.from('moderation_queue').delete().in('content_id',ids).eq('table_name','posts'));
   ok(await admin.from('posts').delete().in('id',ids).in('user_id',[buyer,seed.users.seller]));
