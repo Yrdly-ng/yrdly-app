@@ -24,19 +24,6 @@ interface MarketplaceItemCardProps {
   onBuyNow?: (item: Post) => void;
 }
 
-type BadgeType = "Just Listed" | "Popular" | "Price Reduced" | "Free";
-
-function getBadge(item: Post): BadgeType | null {
-  if (item.price === 0) return "Free";
-  const ageHours =
-    (Date.now() - new Date(item.timestamp || item.created_at || "").getTime()) /
-    3600000;
-  if (ageHours < 6) return "Just Listed";
-  if ((item as any).view_count > 50) return "Popular";
-  if ((item as any).price_reduced) return "Price Reduced";
-  return null;
-}
-
 export function MarketplaceItemCard({
   item,
   onPress,
@@ -91,7 +78,6 @@ export function MarketplaceItemCard({
   const sellerName = item.user?.name || item.author_name || "Seller";
   const sellerAvatar = item.user?.avatar_url || item.author_image;
   const isPhoneVerified = item.user?.phone_verified;
-  const badge = getBadge(item);
   const locationText = [item.lga, item.state].filter(Boolean).join(", ");
 
   const toggleSaved = async (e: React.MouseEvent) => {
@@ -165,7 +151,10 @@ export function MarketplaceItemCard({
   };
 
   return (
-    <GlassCard className="group overflow-hidden rounded-3xl border border-border/70 bg-card transition-all duration-200 hover:border-primary/40 hover:shadow-md w-full flex flex-col justify-between">
+    <GlassCard
+      borderRadius={16}
+      className="group flex w-full flex-col justify-between overflow-hidden border border-border bg-card transition-colors hover:border-primary/50"
+    >
       <div className="relative">
         <Link
           href={`/marketplace/${item.id}`}
@@ -182,62 +171,70 @@ export function MarketplaceItemCard({
                 alt={item.title || item.text || "Marketplace Item"}
                 fill
                 sizes="(max-width: 640px) 50vw, 280px"
-                className="object-cover transition-transform duration-300 group-hover:scale-105"
+                className="object-cover motion-safe:transition-transform motion-safe:duration-300 motion-safe:group-hover:scale-105"
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center bg-emerald-950/30">
-                <ShoppingBag className="h-10 w-10 text-primary/40" />
+                <ShoppingBag
+                  className="h-10 w-10 text-primary"
+                  aria-hidden="true"
+                />
               </div>
             )}
           </div>
 
-          {/* Content Body */}
-          <div className="space-y-2 p-2.5 min-[390px]:p-3 sm:p-4">
-            <h4 className="line-clamp-2 min-h-10 text-[13px] leading-5 font-bold text-foreground group-hover:text-primary transition-colors min-[390px]:text-sm">
-              {item.title || item.text || "Item"}
-            </h4>
-
-            <p className="break-words text-base font-bold tracking-tight text-primary min-[390px]:text-lg sm:text-xl">
+          {/* Content stays readable in a two-column phone grid. */}
+          <div className="space-y-2 p-3 sm:p-4">
+            <p className="break-words text-lg font-bold leading-6 tracking-tight text-foreground sm:text-xl">
               {getListingPriceLabel(item.price, formatPrice)}
             </p>
-            {/* Seller information */}
-            <div className="flex min-w-0 items-center gap-2 text-muted-foreground">
-              <div className="relative h-6 w-6 shrink-0 rounded-full overflow-hidden bg-primary/20 flex items-center justify-center">
+            <h2 className="line-clamp-2 min-h-10 break-words text-sm font-semibold leading-5 text-foreground transition-colors group-hover:text-primary">
+              {item.title || item.text || "Item"}
+            </h2>
+            {!!locationText && (
+              <p className="flex min-w-0 items-start gap-1 text-xs leading-5 text-muted-foreground">
+                <MapPin
+                  className="mt-0.5 h-3.5 w-3.5 shrink-0"
+                  aria-hidden="true"
+                />
+                <span className="line-clamp-2 break-words">{locationText}</span>
+              </p>
+            )}
+            <div className="flex min-w-0 items-center gap-1.5">
+              <div className="relative flex h-5 w-5 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10">
                 {sellerAvatar ? (
                   <Image
                     src={sellerAvatar}
-                    alt={sellerName}
+                    alt=""
                     fill
                     className="object-cover"
                   />
                 ) : (
-                  <span className="text-[0.625rem] font-bold text-primary">
+                  <span
+                    className="text-xs font-semibold text-primary"
+                    aria-hidden="true"
+                  >
                     {sellerName.charAt(0).toUpperCase()}
                   </span>
                 )}
               </div>
-              <span className="min-w-0 truncate text-xs font-semibold text-foreground">
+              <span className="min-w-0 truncate text-xs text-muted-foreground">
                 {sellerName}
               </span>
-              {isPhoneVerified && (
-                <span title="Phone number verified" aria-label="Phone number verified" className="inline-flex shrink-0 items-center gap-1 text-[10px] font-medium text-primary">
-                  <Phone className="h-3 w-3" /> Phone verified
-                </span>
-              )}
             </div>
-
-            <div className="flex flex-wrap gap-x-2 text-xs text-muted-foreground">
-              {item.condition && <span>{item.condition}</span>}
-              {badge && <span>{badge}</span>}
-            </div>
-            {!!locationText && (
-              <div className="flex items-center gap-1 text-[0.6875rem] text-muted-foreground">
-                <MapPin className="h-3 w-3 flex-shrink-0 text-primary" />
-                <span className="truncate">{locationText}</span>
-              </div>
+            {isPhoneVerified === true && (
+              <p className="flex flex-wrap items-center gap-1 text-xs font-medium leading-5 text-primary">
+                <Phone className="h-3 w-3 shrink-0" aria-hidden="true" />
+                Phone verified
+              </p>
             )}
           </div>
         </Link>
+        {item.condition && (
+          <span className="pointer-events-none absolute left-2 top-2 max-w-[calc(100%-4.5rem)] rounded-lg bg-background px-2 py-1 text-xs font-semibold leading-5 text-foreground shadow-sm">
+            {item.condition}
+          </span>
+        )}
         {/* Bookmark Button */}
         <button
           aria-label={saved ? "Unsave item" : "Save item"}
@@ -245,7 +242,7 @@ export function MarketplaceItemCard({
           aria-busy={saving}
           disabled={saving}
           onClick={toggleSaved}
-          className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-background/70 backdrop-blur-md transition-all hover:bg-background/90 active:scale-95 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-60"
+          className="absolute right-2 top-2 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-background text-foreground shadow-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-60"
         >
           <Bookmark
             className={`h-4 w-4 ${saved ? "fill-red-500 text-red-500" : "text-foreground"}`}
@@ -255,13 +252,13 @@ export function MarketplaceItemCard({
 
       {/* Action Footer */}
       {!isOwner && !item.is_sold && (
-        <div className="p-3.5 pt-0">
+        <div className="px-3 pb-3 sm:px-4 sm:pb-4">
           <button
             onClick={handleMessage}
-            className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary/10 py-2 text-sm font-semibold text-primary hover:bg-primary/20 transition-all active:scale-95"
+            className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary/10 py-2 text-sm font-semibold text-primary hover:bg-primary/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <MessageCircle className="h-3.5 w-3.5" />
-            <span>Chat Seller</span>
+            <span>Chat seller</span>
           </button>
         </div>
       )}

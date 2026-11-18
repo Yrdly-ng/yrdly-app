@@ -104,7 +104,7 @@ test('web discovery category icons cover Marketplace, Businessplace and Events',
   const businessHub = fs.readFileSync('src/components/businesses/BusinessHub.tsx', 'utf8');
   const events = fs.readFileSync('src/components/events/EventsScreen.tsx', 'utf8');
   const renderer = fs.readFileSync('src/components/discovery/CategoryIcon.tsx', 'utf8');
-  assert.match(marketplace, /CategoryIcon category=\{cat\.label\}/);
+  assert.match(marketplace, /CategoryIcon\s+category=\{category\.label\}/);
   assert.match(businesses, /CategoryIcon category=\{item\}/);
   assert.match(businesses, /CategoryIcon category=\{business\.category\}/);
   assert.match(businessHub, /CategoryIcon category=\{cat\}/);
