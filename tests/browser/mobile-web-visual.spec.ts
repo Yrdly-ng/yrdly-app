@@ -701,21 +701,31 @@ for (const theme of ["light", "dark"] as const) {
     test.setTimeout(120000);
     await page.setViewportSize({ width: 390, height: 844 });
     await page.addInitScript(value => localStorage.setItem("yrdly-theme", value), theme);
-    await loginQaBuyer(page);
-    let photo = "/logo.png";
+    const buyer = JSON.parse(readFileSync("qa-seed-output.json", "utf8")).users.buyer;
+    let photo = `data:image/png;base64,${readFileSync("public/logo.png").toString("base64")}`;
+    // Keep sign-in and session policy real. Only fixture the buyer’s profile
+    // and image so other account reads or cached images cannot change the case.
     await page.route(`https://${QA_REF}.supabase.co/rest/v1/users?**`, async route => {
-      if (route.request().method() !== "GET") return route.continue();
-      const response = await route.fetch();
-      if (!response.ok()) return route.fulfill({ response });
-      const data = await response.json();
-      const present = (profile: Record<string, unknown>) => ({ ...profile, name: "QA Avatar", avatar_url: photo });
-      return route.fulfill({ headers: { "access-control-allow-origin": "*" }, json: Array.isArray(data) ? data.map(present) : present(data) });
+      const request = route.request();
+      const query = new URL(request.url()).searchParams;
+      if (request.method() !== "GET" || query.get("id") !== `eq.${buyer}` || query.get("select") !== "*") return route.continue();
+      const profile = {
+        id: buyer, name: "QA Avatar", avatar_url: photo,
+        username: "yrdly_qa_buyer", role: "user", is_admin: false,
+        profile_completed: true, onboarding_status: "completed", tour_completed: true,
+      };
+      const json = request.headers().accept?.includes("vnd.pgrst.object") ? profile : [profile];
+      return route.fulfill({ headers: { "access-control-allow-origin": "*", "cache-control": "no-store" }, json });
     });
+    await loginQaBuyer(page);
     await page.goto("/home");
     const profileButton = page.getByRole("button", { name: "Open profile", exact: true });
-    await expect(profileButton.getByRole("img", { name: "QA Avatar's avatar", exact: true })).toBeVisible({ timeout: 30000 });
-    await expect.poll(() => profileButton.locator("img").evaluate((image: HTMLImageElement) => image.naturalWidth > 0)).toBe(true);
-    for (const [state, url] of [["broken", "/qa-missing-avatar.png"], ["missing", ""]]) {
+    const avatar = profileButton.getByRole("img", { name: "QA Avatar's avatar", exact: true });
+    await expect(avatar).toBeVisible({ timeout: 30000 });
+    await expect.poll(() => avatar.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
+    mkdirSync(OUTPUT, { recursive: true });
+    await page.screenshot({ path: `${OUTPUT}/${theme}-390-avatar-photo.png` });
+    for (const [state, url] of [["broken", "data:image/png;base64,AAAA"], ["missing", ""]]) {
       photo = url;
       await page.reload();
       const fallback = profileButton.getByText("Q", { exact: true });
@@ -729,7 +739,6 @@ for (const theme of ["light", "dark"] as const) {
       expect(presentation.background).not.toBe(presentation.color);
       expect(presentation.width).toBeGreaterThanOrEqual(32);
       expect(presentation.height).toBeGreaterThanOrEqual(32);
-      mkdirSync(OUTPUT, { recursive: true });
       await page.screenshot({ path: `${OUTPUT}/${theme}-390-avatar-${state}.png` });
     }
   });
