@@ -98,6 +98,17 @@ jobs:
           exit 1
       - name: Verify real isolated daily-question persistence
         run: node qa-scripts/daily-prompt-release-regression.mjs
+      - name: Serve WebKit QA over trusted loopback HTTPS
+        run: |
+          openssl req -x509 -nodes -newkey rsa:2048 -days 1 -subj '/CN=localhost' -addext 'subjectAltName=DNS:localhost,IP:127.0.0.1' -keyout /tmp/yrdly-qa-local.key -out /usr/local/share/ca-certificates/yrdly-qa-local.crt > /tmp/yrdly-qa-local-cert.log 2>&1
+          update-ca-certificates
+          node qa-scripts/serve-qa-https.mjs /usr/local/share/ca-certificates/yrdly-qa-local.crt /tmp/yrdly-qa-local.key > /tmp/yrdly-qa-https.log 2>&1 &
+          for attempt in $(seq 1 20); do
+            if curl --fail --silent https://localhost:9443/login > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          echo 'Local QA HTTPS server did not start' >&2
+          exit 1
       - name: Install Playwright Chromium and WebKit
         run: pnpm exec playwright install chromium webkit
       - name: Inspect responsive authenticated pages and Create menu

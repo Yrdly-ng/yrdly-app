@@ -26,7 +26,7 @@ function isolatedCredentials() {
 
 async function loginQaBuyer(page: import("@playwright/test").Page) {
   const env = isolatedCredentials();
-  await page.goto("/login");
+  await page.goto("/login", { waitUntil: "domcontentloaded" });
   await page.getByPlaceholder("Email address").fill(env.QA_BUYER_EMAIL);
   await page
     .getByPlaceholder("Password", { exact: true })
@@ -67,7 +67,7 @@ for (const [engine, browserType] of [["chromium", chromium], ["webkit", webkit]]
     test.setTimeout(180000);
     const browser = await browserType.launch();
     const context = await browser.newContext({
-      baseURL: "http://localhost:9002",
+      baseURL: engine === "webkit" ? "https://localhost:9443" : "http://localhost:9002",
       viewport: { width: 390, height: 844 },
       isMobile: true,
       hasTouch: true,
@@ -80,7 +80,7 @@ for (const [engine, browserType] of [["chromium", chromium], ["webkit", webkit]]
         ["post", "/posts/create"], ["listing", "/marketplace/create"],
         ["event", "/events/create"], ["alert", "/alerts/new"],
       ] as const) {
-        await page.goto("/home");
+        await page.goto("/home", { waitUntil: "domcontentloaded" });
         await waitForLoadedContent(page, "/home");
         await page.getByRole("button", { name: "Create a post, listing, event or safety alert" }).tap();
         await page.locator(`[data-create-action="${action}"]`).tap();
@@ -92,6 +92,10 @@ for (const [engine, browserType] of [["chromium", chromium], ["webkit", webkit]]
         mkdirSync(OUTPUT, { recursive: true });
         await page.screenshot({ path: `${OUTPUT}/touch-${engine}-${action}.png` });
       }
+    } catch (error) {
+      mkdirSync(OUTPUT, { recursive: true });
+      await page.screenshot({ path: `${OUTPUT}/touch-${engine}-failure.png` });
+      throw error;
     } finally {
       await context.close();
       await browser.close();
