@@ -733,3 +733,44 @@ for (const theme of ["light", "dark"] as const) {
     }
   });
 }
+
+for (const theme of ["light", "dark"] as const) {
+  test(`${theme} daily question opens its own neighbours answers with recovery`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.addInitScript(value => localStorage.setItem("yrdly-theme", value), theme);
+    await loginQaBuyer(page);
+    const id = "11111111-1111-4111-8111-111111111111";
+    const prompt = { id, question: "QA: Which local restaurant do you recommend?", prompt_date: "2026-11-17", category: "General" };
+    await page.route("**/api/daily-prompts?**", route => route.fulfill({ json: { date: "2026-11-18", prompt } }));
+    await page.route("**/api/daily-prompts", route => route.fulfill({ json: { date: "2026-11-18", prompt } }));
+    let mode = "populated";
+    await page.route("**/api/daily-prompts/responses?**", route => {
+      expect(new URL(route.request().url()).searchParams.get("promptId")).toBe(id);
+      if (mode === "error") return route.fulfill({ status: 503, json: { error: "Could not load answers" } });
+      if (mode === "location") return route.fulfill({ json: { responses: [], nextPage: null, locationRequired: true } });
+      const pageNumber = new URL(route.request().url()).searchParams.get("page");
+      return route.fulfill({ json: { responses: [{ id: pageNumber === "0" ? "qa-answer-1" : "qa-answer-2", author_name: pageNumber === "0" ? "QA neighbour A" : "QA neighbour B", text: pageNumber === "0" ? "Chicken Republic" : "The local cafe", comment_count: 2 }], nextPage: pageNumber === "0" ? 1 : null } });
+    });
+    await page.goto("/home");
+    const answersLink = page.getByRole("link", { name: /See neighbours.*answers/ });
+    await expect(answersLink).toHaveAttribute("href", `/daily-prompts?promptId=${id}`);
+    await answersLink.click();
+    await expect(page.getByRole("heading", { name: prompt.question, exact: true })).toBeVisible();
+    await expect(page.getByText("Chicken Republic", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Load more answers", exact: true }).click();
+    await expect(page.getByText("The local cafe", { exact: true })).toBeVisible();
+    mkdirSync(OUTPUT, { recursive: true });
+    await page.screenshot({ path: `${OUTPUT}/${theme}-390-neighbour-answers.png`, fullPage: true });
+    mode = "error";
+    await page.reload();
+    await expect(page.getByRole("alert")).toContainText("Could not load answers");
+    await expect(page.getByText("No responses nearby yet. You can be the first!", { exact: true })).toHaveCount(0);
+    mode = "populated";
+    await page.getByRole("button", { name: "Try again", exact: true }).click();
+    await expect(page.getByText("Chicken Republic", { exact: true })).toBeVisible();
+    mode = "location";
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "Choose your neighbourhood to see local answers" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Set your home neighbourhood" })).toHaveAttribute("href", "/onboarding/profile");
+  });
+}

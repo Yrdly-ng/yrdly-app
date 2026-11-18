@@ -43,7 +43,7 @@ export default function DailyPromptCard() {
           className="inline-flex min-h-11 items-center gap-2 rounded-full bg-primary text-primary-foreground px-4 py-2 text-sm font-bold font-yrdly-display">
           <MessageCircle className="h-4 w-4" aria-hidden/> Answer prompt
         </Link>
-        <Link href="/daily-prompts"
+        <Link href={`/daily-prompts?promptId=${encodeURIComponent(today.prompt.id)}`}
           className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--yrdly-glass-border)] px-4 py-2 text-sm font-medium text-foreground">
           See neighbours&apos; answers <ArrowRight className="h-4 w-4" aria-hidden/>
         </Link>

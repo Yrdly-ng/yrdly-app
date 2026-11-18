@@ -44,6 +44,13 @@ try {
   const response=await fetch(`${origin}/api/daily-prompts/responses?promptId=${prompt.id}`,{headers});assert.equal(response.status,200);
   const visible=(await response.json()).responses.map(p=>p.id);
   assert.ok(visible.includes(ids[0]));assert.ok(!visible.includes(ids[1]));assert.ok(!visible.includes(ids[2]));
+  ok(await admin.from('users').update({home_state:null,home_lga:null}).eq('id',buyer));
+  const missingHome=await fetch(`${origin}/api/daily-prompts/responses?promptId=${prompt.id}`,{headers});
+  assert.equal(missingHome.status,200);
+  const missingHomeBody=await missingHome.json();
+  assert.equal(missingHomeBody.locationRequired,true);
+  assert.deepEqual(missingHomeBody.responses,[]);
+  ok(await admin.from('users').update({home_state:'Lagos',home_lga:'Ikeja'}).eq('id',buyer));
   const anonymous=await fetch(`${origin}/api/daily-prompts/responses?promptId=${prompt.id}`);assert.equal(anonymous.status,401);
   console.log('PASS real isolated daily question: approved display, answer persistence, retry dedupe, server-owned location, moderation/locality filtering and authentication');
 } finally {

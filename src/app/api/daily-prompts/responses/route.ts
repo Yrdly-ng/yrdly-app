@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
   const { data: profile, error: profileError } = await supabaseAdmin.from('users')
     .select('home_state,home_lga,blocked_users').eq('id', user.id).single();
   if (profileError || !profile) return NextResponse.json({ error: 'Could not load neighbourhood' }, { status: 503 });
-  if (!profile.home_state || !profile.home_lga) return NextResponse.json({ responses: [], nextPage: null });
+  if (!profile.home_state || !profile.home_lga) return NextResponse.json({ responses: [], nextPage: null, locationRequired: true }, { headers: { 'Cache-Control': 'no-store' } });
 
   const { data: posts, error: postsError } = await supabaseAdmin.from('posts')
     .select('id,user_id,author_name,author_image,text,created_at,comment_count,liked_by,moderation_status,category,visibility,state,lga')

@@ -23,10 +23,13 @@ function DailyPromptAnswersContent() {
   const [loading,setLoading] = useState(true);
   const [loadingMore,setLoadingMore] = useState(false);
   const [error,setError] = useState('');
+  const [reload,setReload] = useState(0);
+  const [locationRequired,setLocationRequired] = useState(false);
   useEffect(() => {
     let active = true;
     setLoading(true);
     setError('');
+    setLocationRequired(false);
     setPrompt(null);
     setAnswers([]);
     setNextPage(null);
@@ -40,21 +43,24 @@ function DailyPromptAnswersContent() {
         setCurrentDate(data.date);
         setPrompt(data.prompt ?? null);
         if (!data.prompt) return;
-        const list = await authenticatedFetch<{responses:Answer[];nextPage:number|null}>(
+        const list = await authenticatedFetch<{responses:Answer[];nextPage:number|null;locationRequired?:boolean}>(
           `/api/daily-prompts/responses?promptId=${encodeURIComponent(data.prompt.id)}&page=0`,null,'GET');
-        if (active) {setAnswers(list.responses);setNextPage(list.nextPage);}
+        if (!Array.isArray(list.responses)) throw new Error('Answers are temporarily unavailable. Please try again.');
+        if (active) {setAnswers(list.responses);setNextPage(list.nextPage);setLocationRequired(list.locationRequired === true);}
       } catch(e) {if(active)setError(e instanceof Error ? e.message : 'Unable to load answers.');}
       finally {if(active)setLoading(false);}
     };
     void start();
     return () => {active=false;};
-  },[requestedId]);
+  },[requestedId,reload]);
   const loadMore = async () => {
     if (!prompt || nextPage === null || loadingMore) return;
     setLoadingMore(true);
+    setError('');
     try {
-      const list = await authenticatedFetch<{responses:Answer[];nextPage:number|null}>(
+      const list = await authenticatedFetch<{responses:Answer[];nextPage:number|null;locationRequired?:boolean}>(
         `/api/daily-prompts/responses?promptId=${encodeURIComponent(prompt.id)}&page=${nextPage}`,null,'GET');
+      if (!Array.isArray(list.responses)) throw new Error('Invalid answers response');
       setAnswers(prev => [...prev,...list.responses.filter(item=>!prev.some(p=>p.id===item.id))]);
       setNextPage(list.nextPage);
     } catch {setError('More responses could not be loaded.');}
@@ -74,7 +80,7 @@ function DailyPromptAnswersContent() {
               <Link href="/daily-prompts" className="inline-flex min-h-11 items-center rounded-lg text-sm font-semibold text-primary underline underline-offset-4">View today’s question</Link>}
           </header>
           <h2 className="font-bold text-lg">Answers from your neighbourhood</h2>
-          {answers.length===0 ? <p className="text-sm text-muted-foreground">No responses nearby yet. You can be the first!</p> :
+          {locationRequired ? <div className="rounded-2xl border bg-card p-5 space-y-3"><h3 className="font-semibold">Choose your neighbourhood to see local answers</h3><p className="text-sm text-muted-foreground">Set your home state and area so we can show answers from your neighbours.</p><Link href="/onboarding/profile" className="inline-flex min-h-11 items-center text-sm font-semibold text-primary underline">Set your home neighbourhood</Link></div> : error && answers.length===0 ? null : answers.length===0 ? <p className="text-sm text-muted-foreground">No responses nearby yet. You can be the first!</p> :
             <div className="space-y-3">{answers.map(answer=>(
               <article key={answer.id} className="rounded-2xl border bg-card p-4 space-y-2">
                 <p className="font-semibold text-sm">{answer.author_name}</p>
@@ -85,7 +91,7 @@ function DailyPromptAnswersContent() {
           {nextPage!==null&&<button onClick={()=>void loadMore()} disabled={loadingMore}
             className="min-h-11 rounded-full border px-4 py-2 text-sm font-medium">{loadingMore?'Loading…':'Load more answers'}</button>}
         </>}
-      {error&&<p role="alert" className="text-sm text-amber-500">{error}</p>}
+      {error&&<div role="alert" className="rounded-2xl border bg-card p-4 space-y-2"><p className="text-sm text-foreground">{error}</p><button type="button" onClick={()=>nextPage !== null && answers.length > 0 ? void loadMore() : setReload(value=>value+1)} disabled={loading || loadingMore} className="min-h-11 rounded-lg px-3 text-sm font-semibold text-primary underline">Try again</button></div>}
     </div>
   );
 }
