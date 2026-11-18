@@ -606,3 +606,92 @@ for (const theme of ["light", "dark"] as const) {
     }
   });
 }
+
+for (const theme of ["light", "dark"] as const) {
+  test(`${theme} marketplace search, budget, sorting and recovery work on phones`, async ({ page }) => {
+    test.setTimeout(240000);
+    mkdirSync(OUTPUT, { recursive: true });
+    await page.addInitScript(value => localStorage.setItem("yrdly-theme", value), theme);
+    await page.emulateMedia({ colorScheme: theme, reducedMotion: "reduce" });
+    await loginQaBuyer(page);
+    // Read-only catalog fixtures: real QA authentication, no listings published.
+    const base = {
+      user_id: "11111111-1111-4111-8111-111111111111", category: "For Sale",
+      text: "", is_sold: false, image_urls: [], state: "Lagos", lga: "Ikeja",
+      user: { id: "11111111-1111-4111-8111-111111111111", name: "QA seller with a long display name", phone_verified: true },
+    };
+    const fixtures = [
+      { ...base, id: "qa-groceries", title: "QA fresh grocery basket", price: 4500, condition: "New", image_urls: ["/images/cards/card-center.jpg"], created_at: "2026-11-06" },
+      { ...base, id: "qa-shirt", title: "QA cotton shirt", description: "Blue, size medium", price: 9500, condition: "Used", created_at: "2026-11-05" },
+      { ...base, id: "qa-case", title: "QA phone case", price: 10000, condition: "New", created_at: "2026-11-04" },
+      { ...base, id: "qa-phone", title: "QA Android phone", price: 25000, condition: "Used", created_at: "2026-11-03" },
+      { ...base, id: "qa-free", title: "QA kitchen shelf", price: 0, condition: "Used", created_at: "2026-11-02" },
+      { ...base, id: "qa-unknown", title: "QA dining table", price: null, created_at: "2026-11-01", user: { ...base.user, phone_verified: false } },
+    ];
+    let failCatalog = false;
+    await page.route("**/rest/v1/posts?**", async route => {
+      const url = new URL(route.request().url());
+      if (route.request().method() !== "GET" || url.searchParams.get("category") !== "eq.For Sale") return route.continue();
+      return failCatalog
+        ? route.fulfill({ status: 503, json: { message: "QA simulated network failure" } })
+        : route.fulfill({ json: fixtures });
+    });
+    await page.goto("/marketplace");
+    const listings = page.getByRole("region", { name: "Marketplace listings", exact: true });
+    const cards = listings.getByRole("link", { name: /^View / });
+    const budgets = page.getByRole("group", { name: "Listing budget", exact: true });
+    const categories = page.getByRole("group", { name: "Listing categories", exact: true });
+    const search = page.getByRole("searchbox", { name: "Search marketplace", exact: true });
+    await expect(cards).toHaveCount(6);
+    for (const width of widths) {
+      await page.setViewportSize({ width, height: width < 768 ? 844 : 900 });
+      await page.evaluate(async () => { await document.fonts.ready; });
+      await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+      for (const control of [budgets.getByRole("button", { name: "All prices", exact: true }), page.getByRole("button", { name: "Save item", exact: true }).first(), page.getByRole("combobox", { name: "Sort listings" })]) {
+        const bounds = await control.boundingBox();
+        expect(bounds?.height).toBeGreaterThanOrEqual(44);
+      }
+      await expect(cards.first().getByRole("img")).toBeVisible();
+      await expect.poll(() => cards.first().getByRole("img").evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
+      await page.screenshot({ path: `${OUTPUT}/${theme}-${width}-marketplace-fixtures.png`, fullPage: true });
+    }
+    await page.setViewportSize({ width: 390, height: 844 });
+    await budgets.getByRole("button", { name: "Under ₦10,000", exact: true }).click();
+    await expect(cards).toHaveCount(3);
+    await expect(cards.filter({ hasText: "QA phone case" })).toHaveCount(0);
+    await categories.getByRole("button", { name: "Fashion", exact: true }).click();
+    await expect(cards).toHaveCount(1);
+    await search.fill(" BLUE shirt ");
+    await expect(cards.first()).toContainText("QA cotton shirt");
+    await search.fill("unmatched");
+    await expect(page.getByRole("heading", { name: "No matching listings", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Clear search", exact: true }).click();
+    await expect(search).toBeFocused();
+    await expect(cards).toHaveCount(1);
+    await page.getByRole("button", { name: "Clear filters", exact: true }).click();
+    await budgets.getByRole("button", { name: "Free", exact: true }).click();
+    await expect(cards).toHaveCount(1);
+    await expect(cards.first()).toContainText("QA kitchen shelf");
+    await budgets.getByRole("button", { name: "All prices", exact: true }).click();
+    await page.getByRole("combobox", { name: "Sort listings" }).selectOption("price-high");
+    await expect(cards.first()).toContainText("QA Android phone");
+    await expect(cards.last()).toContainText("Price unavailable");
+    await page.getByRole("combobox", { name: "Sort listings" }).selectOption("price-low");
+    await expect(cards.first()).toContainText("QA kitchen shelf");
+    await expect(cards.last().getByText("Phone verified", { exact: true })).toHaveCount(0);
+    await page.getByRole("combobox", { name: "Sort listings" }).selectOption("newest");
+    await page.setViewportSize({ width: 320, height: 844 });
+    await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.screenshot({ path: `${OUTPUT}/${theme}-320-marketplace-text-200.png`, fullPage: true });
+    await page.evaluate(() => { document.documentElement.style.fontSize = ""; });
+    failCatalog = true;
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "Couldn’t load listings", exact: true })).toBeVisible();
+    failCatalog = false;
+    await page.getByRole("button", { name: "Try again", exact: true }).click();
+    await expect(cards).toHaveCount(6);
+    // Real link semantics remain available for detail pages and modifier clicks.
+    await expect(cards.first()).toHaveAttribute("href", "/marketplace/qa-groceries");
+  });
+}
