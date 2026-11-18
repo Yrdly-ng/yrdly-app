@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import { MediaCollage, type MediaItem } from "./PostCard";
+import { DailyPromptQuote } from "./DailyPromptQuote";
 import { useRouter } from "next/navigation";
 import {
   ChevronLeft,
@@ -82,7 +83,7 @@ export function PostDetailView({
           id: "unknown",
           uid: "unknown",
           name: post.author_name || "Anonymous",
-          avatar_url: post.author_image || "https://placehold.co/100x100.png",
+          avatar_url: post.author_image || undefined,
           timestamp: post.timestamp,
         });
         setLoadingAuthor(false);
@@ -96,7 +97,7 @@ export function PostDetailView({
           avatar_url:
             post.user.avatar_url ||
             post.author_image ||
-            "https://placehold.co/100x100.png",
+            undefined,
           timestamp: post.timestamp,
         });
         setLoadingAuthor(false);
@@ -115,7 +116,7 @@ export function PostDetailView({
           avatar_url:
             data.avatar_url ||
             post.author_image ||
-            "https://placehold.co/100x100.png",
+            undefined,
           timestamp: data.created_at || post.timestamp,
         });
       } else {
@@ -123,7 +124,7 @@ export function PostDetailView({
           id: post.user_id,
           uid: post.user_id,
           name: post.author_name || "Anonymous",
-          avatar_url: post.author_image || "https://placehold.co/100x100.png",
+          avatar_url: post.author_image || undefined,
           timestamp: post.timestamp,
         });
       }
@@ -385,9 +386,10 @@ export function PostDetailView({
             </span>
           </div>
 
+          <DailyPromptQuote promptId={post.daily_prompt_id} />
           {/* Post body text */}
           <div className="px-4 pb-3">
-            <p className="font-sans font-normal text-[0.8125rem] leading-[15px] text-foreground whitespace-pre-wrap">
+            <p className="font-sans font-normal text-base leading-relaxed text-foreground whitespace-pre-wrap [overflow-wrap:anywhere]">
               {post.text || ""}
             </p>
           </div>

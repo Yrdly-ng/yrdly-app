@@ -53,6 +53,7 @@ test('database prevents new payment before acceptance and preserves unfinished l
 
 function routeFor(booking) {
   let charges = 0;
+  let stagedAttempts = 0;
   const rows = { bookings: booking, service_offerings: { price: 3000, escrow_enabled: true }, businesses: { owner_id: id(2), name: 'Studio' } };
   const db = {
     rpc: async () => ({ data: true }),
@@ -63,7 +64,9 @@ function routeFor(booking) {
     '@/lib/supabase/supabase-server': { getAuthenticatedUser: async () => ({ data: { user: { id: id(5) } } }) },
     '@/lib/supabase/supabase-admin': { supabaseAdmin: db },
     '@/lib/marketplace/price-policy': { isPaidPrice: amount => amount >= 1200, MINIMUM_PRICE_MESSAGE: 'Invalid price' },
-    '@/lib/bookings/milestone-checkout': { createStagedBookingCheckout: async () => { throw Object.assign(new Error('Staged service checkout is not available'), { status: 503 }); } },
+    '@/lib/bookings/milestone-checkout': {
+      createStagedBookingCheckout: async () => { stagedAttempts++; throw new Error('Staged checkout unavailable in this fixture'); },
+    },
     '@/lib/bookings/booking-payments': {
       BookingCheckoutError: class extends Error {}, computeDepositAmount: () => null,
       createCheckoutForBooking: async () => { charges++; return { transactionId: id(8) }; },
@@ -74,9 +77,9 @@ function routeFor(booking) {
     compilerOptions: { module: ts.ModuleKind.CommonJS },
   }).outputText;
   Function('require','module','exports',code)(name => mocks[name] || require(name), module, module.exports);
-  return { post: () => module.exports.POST({ json: async () => ({ bookingId: booking.id }) }), charges: () => charges };
+  return { post: () => module.exports.POST({ json: async () => ({ bookingId: booking.id }) }), charges: () => charges, stagedAttempts: () => stagedAttempts };
 }
-test('checkout API rejects unaccepted and paused staged bookings before creating provider payments', async () => {
+test('checkout API rejects unaccepted bookings and delegates staged checkout without using legacy payments', async () => {
   for (const scenario of [
     { status: 'requested', payment_status: 'unpaid', expected: 409 },
     { status: 'requested', payment_status: 'failed', expected: 409 },
@@ -89,5 +92,6 @@ test('checkout API rejects unaccepted and paused staged bookings before creating
     const route = routeFor(row);
     assert.equal((await route.post()).status, scenario.expected);
     assert.equal(route.charges(), scenario.expected === 200 ? 1 : 0);
+    assert.equal(route.stagedAttempts(), scenario.payment_flow === 'staged_50_50' ? 1 : 0);
   }
 });

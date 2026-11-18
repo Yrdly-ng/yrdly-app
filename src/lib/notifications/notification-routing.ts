@@ -226,8 +226,10 @@ export function getNotificationDestination(
       const id = firstId(data.fromUserId, relatedId);
       return id ? `/profile/${id}` : "/notifications";
     }
-    case "daily_prompt":
-      return "/daily-prompts";
+    case "daily_prompt": {
+      const promptId = firstId(data.promptId, data.prompt_id);
+      return promptId ? `/daily-prompts?promptId=${encodeURIComponent(promptId)}` : "/daily-prompts";
+    }
     case "welcome":
     case "system_announcement":
     default:
@@ -477,6 +479,7 @@ export function getPushNotificationDestination(
     type: String(data.type || ""),
     data,
   });
+  if (data.type === "daily_prompt" && firstId(data.promptId, data.prompt_id)) return typed;
   if (getNotificationTarget({ ...data, url: undefined })) return typed;
   if (["payout_processed", "payout_failed"].includes(data.type)) return typed;
   if (typeof data.url !== "string") return typed;
@@ -493,6 +496,7 @@ export function getPushNotificationDestination(
     const path = url.pathname.replace(/\/$/, "") || "/";
     const list = [
       "/home",
+      "/daily-prompts",
       "/messages",
       "/community",
       "/events",

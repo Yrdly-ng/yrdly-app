@@ -500,6 +500,7 @@ export default function CreatePostPage() {
           )}
           {/* Main Text Input */}
           <Textarea
+            aria-label="Post content"
             placeholder="What's happening in your neighbourhood?"
             value={text}
             onChange={(e) => setText(e.target.value)}

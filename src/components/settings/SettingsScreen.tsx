@@ -29,19 +29,22 @@ const GREEN = "hsl(var(--primary))";
 function Toggle({
   checked,
   onChange,
+  label,
 }: {
   checked: boolean;
   onChange: (v: boolean) => void;
+  label: string;
 }) {
   return (
     <button
       type="button"
       role="switch"
+      aria-label={label}
       aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full transition-colors duration-200"
-      style={{ background: checked ? GREEN : "rgba(255,255,255,0.15)" }}
+      className="inline-flex h-11 w-11 flex-shrink-0 items-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
     >
+      <span className="relative h-6 w-11 rounded-full transition-colors duration-200" style={{ background: checked ? GREEN : "hsl(var(--muted-foreground) / 0.35)" }}>
       <span
         className="pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transition-transform duration-200"
         style={{
@@ -49,6 +52,7 @@ function Toggle({
           marginTop: 2,
         }}
       />
+      </span>
     </button>
   );
 }
@@ -101,10 +105,12 @@ function SettingRow({
   chevron?: boolean;
   onPress?: () => void;
 }) {
+  const Container = onPress && !toggle ? "button" : "div";
   return (
-    <div
+    <Container
+      type={Container === "button" ? "button" : undefined}
       onClick={onPress}
-      className={`flex items-center px-5 py-4 transition-colors ${
+      className={`flex min-h-16 w-full items-center px-4 py-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary ${
         onPress || toggle ? "cursor-pointer hover:bg-white/5" : ""
       }`}
     >
@@ -119,14 +125,14 @@ function SettingRow({
       </div>
       <div className="flex-1 min-w-0 pl-3.5 pr-2">
         <p
-          className={`text-sm font-bold truncate font-yrdly-display ${
+          className={`text-base font-bold break-words font-yrdly-display ${
             danger ? "text-red-500" : "text-foreground"
           }`}
         >
           {label}
         </p>
         {sub && (
-          <p className="text-xs truncate mt-0.5 text-[var(--yrdly-label)] font-yrdly-body">
+          <p className="text-sm break-words mt-0.5 text-muted-foreground font-yrdly-body">
             {sub}
           </p>
         )}
@@ -137,12 +143,12 @@ function SettingRow({
         </span>
       )}
       {toggle && (
-        <Toggle checked={!!toggled} onChange={(v) => onToggle && onToggle(v)} />
+        <Toggle label={label} checked={!!toggled} onChange={(v) => onToggle && onToggle(v)} />
       )}
       {!toggle && chevron && (
         <ChevronRight className="w-4 h-4 flex-shrink-0 text-[var(--yrdly-label)]" />
       )}
-    </div>
+    </Container>
   );
 }
 
@@ -181,15 +187,16 @@ export function SettingsScreen({ onBack }: { onBack?: () => void }) {
       {/* ── Header ── */}
       <header className="sticky top-0 z-40 flex items-center justify-between px-4 py-3.5 border-b border-[var(--yrdly-glass-border)] bg-[var(--yrdly-dark)]/80 backdrop-blur-md">
         <button
+          aria-label="Back"
           onClick={() => (onBack ? onBack() : router.back())}
-          className="w-9 h-9 rounded-xl flex items-center justify-center border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] transition-colors hover:bg-white/5"
+          className="w-11 h-11 rounded-xl flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] transition-colors hover:bg-white/5"
         >
           <ArrowLeft className="w-4 h-4 text-foreground" />
         </button>
         <h1 className="text-base font-bold text-foreground font-yrdly-display">
           Settings
         </h1>
-        <div className="w-9" />
+        <div className="w-11" />
       </header>
 
       <div className="max-w-xl mx-auto px-4 pt-6">

@@ -597,10 +597,11 @@ export default function CreateEventPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  <label htmlFor="event-title" className="text-sm font-semibold text-muted-foreground">
                     Title *
                   </label>
                   <Input
+                    id="event-title"
                     placeholder="e.g. Lekki Neighborhood BBQ & Music Fest"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
@@ -625,8 +626,9 @@ export default function CreateEventPage() {
                           key={cat.id}
                           type="button"
                           onClick={() => setCategory(cat.name)}
+                          aria-pressed={category === cat.name}
                           className={cn(
-                            "px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all",
+                            "min-h-11 px-3.5 py-2 rounded-full text-sm font-semibold border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                             category === cat.name
                               ? "bg-primary text-foreground border-primary"
                               : "bg-secondary/50 text-secondary-foreground border-border hover:bg-secondary",
@@ -640,10 +642,11 @@ export default function CreateEventPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  <label htmlFor="event-description" className="text-sm font-semibold text-muted-foreground">
                     Description
                   </label>
                   <Textarea
+                    id="event-description"
                     placeholder="Describe what attendees can expect, rules, schedule..."
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
@@ -1241,6 +1244,18 @@ export default function CreateEventPage() {
                 </div>
 
                 {/* Audience Visibility */}
+                <section aria-label="Event summary" className="space-y-3 rounded-2xl border border-border bg-card p-4 md:hidden">
+                  <h3 className="break-words text-lg font-bold">{title}</h3>
+                  <p className="text-sm font-semibold text-primary">{eventDate} · {startTimeStr}–{endTimeStr}</p>
+                  <p className="break-words text-sm">{locationOnline ? `Online: ${onlineLink}` : locationAddress || "Venue not specified"}</p>
+                  {description && <p className="whitespace-pre-wrap break-words text-sm text-muted-foreground">{description}</p>}
+                  <ul className="space-y-2 text-sm">
+                    {ticketTiers.map(tier => <li key={tier.id} className="break-words">
+                      {tier.name}: {tier.isFree ? "Free" : `₦${Number(tier.price).toLocaleString("en-NG")}`} · {tier.capacity ?? "Unlimited"} places
+                    </li>)}
+                  </ul>
+                </section>
+
                 <div className="p-4 rounded-2xl bg-secondary/50 border border-border space-y-3">
                   <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     Audience Visibility

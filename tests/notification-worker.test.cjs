@@ -145,3 +145,30 @@ test('notification taps navigate and focus an existing same-origin PWA window', 
   assert.equal(new URL(navigated[0]).pathname, '/posts/test-post');
   assert.equal(new URL(navigated[0]).origin, 'https://app.yrdly.ng');
 });
+
+test('daily-question routing tests open answers through the worker and authenticated legacy preflight', async () => {
+  for (const type of ['push_test', 'daily_prompt', undefined]) {
+    const w = worker(); let pending;
+    w.handlers.notificationclick({ notification: { data: { type, url: '/daily-prompts', recipientId: 'user' }, close() {} }, waitUntil: p => pending = p });
+    await pending;
+    const url = new URL(w.opened[0]);
+    assert.equal(url.pathname, '/daily-prompts');
+    assert.equal(url.searchParams.get('notificationTarget'), '/daily-prompts');
+  }
+  const result = await routing.resolveNotificationNavigation({url: '/daily-prompts'}, async () => { throw Error('Question list must not look up a notification row'); });
+  assert.deepEqual(result,{destination:'/daily-prompts',unavailable:false,failed:false});
+});
+
+test('push transport preserves daily question identifiers without leaking answer content', () => {
+  const fs = require('node:fs');
+  const ts = require('typescript');
+  const sender = fs.readFileSync('supabase/functions/send-push-notification/index.ts', 'utf8');
+  const start = sender.indexOf('const SAFE_PUSH_DATA_KEYS');
+  const end = sender.indexOf('function pushExpiry');
+  assert.ok(start >= 0 && end > start);
+  const code = ts.transpileModule(sender.slice(start, end), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+  const filter = new Function(`${code}; return safePushData;`)();
+  const promptId = '11111111-1111-4111-8111-111111111111';
+  const url = `/daily-prompts?promptId=${promptId}`;
+  assert.deepEqual(filter({ promptId, prompt_id: promptId, answerText: 'private answer', exactAddress: 'private address' }, 'daily_prompt', url), { promptId, prompt_id: promptId, type: 'daily_prompt', url });
+});

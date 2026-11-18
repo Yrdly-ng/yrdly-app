@@ -280,7 +280,7 @@ function LoginFormPage() {
                 setIsSignUp(!isSignUp);
                 setError("");
               }}
-              className="text-xs font-bold text-[#82DB7E] hover:underline"
+              className="min-h-11 px-3 text-sm font-bold text-[#82DB7E] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#82DB7E] rounded-lg"
             >
               {isSignUp ? "Log in" : "Sign up"}
             </button>
@@ -293,7 +293,7 @@ function LoginFormPage() {
               <h2 className="text-2xl font-bold font-yrdly-display text-white tracking-tight">
                 {isSignUp ? "Create an account" : "Log in to Yrdly"}
               </h2>
-              <p className="text-xs text-zinc-400">
+              <p className="text-sm text-zinc-400">
                 {isSignUp
                   ? "Connect with your neighbours and community"
                   : "Welcome back! Enter your details to continue"}
@@ -301,7 +301,7 @@ function LoginFormPage() {
             </div>
 
             {error && (
-              <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-[#1c1214]/90 border border-red-500/35 text-red-400 text-xs font-semibold leading-snug shadow-[0_8px_25px_rgba(239,68,68,0.15)] backdrop-blur-md animate-in fade-in-0 slide-in-from-top-2 duration-200">
+              <div role="alert" className="flex items-center gap-3 p-3.5 rounded-2xl bg-[#1c1214]/90 border border-red-500/35 text-red-400 text-xs font-semibold leading-snug shadow-[0_8px_25px_rgba(239,68,68,0.15)] backdrop-blur-md animate-in fade-in-0 slide-in-from-top-2 duration-200">
                 <div className="w-7 h-7 rounded-xl bg-red-500/15 border border-red-500/30 flex items-center justify-center shrink-0 text-red-400 shadow-[0_0_10px_rgba(239,68,68,0.2)]">
                   <AlertCircle className="w-4 h-4 stroke-[2.2]" />
                 </div>
@@ -313,11 +313,15 @@ function LoginFormPage() {
               {isSignUp && (
                 <div className="relative w-full">
                   <input
+                    id="signup-name"
+                    name="name"
+                    autoComplete="name"
+                    aria-label="Full name"
                     type="text"
                     placeholder="Full name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full h-[50px] px-4 rounded-xl bg-[#121214] border border-white/20 focus:border-white/50 focus:bg-[#18181b] outline-none text-sm text-white placeholder:text-zinc-500 font-yrdly-body transition-all"
+                    className="w-full h-[50px] px-4 rounded-xl bg-[#121214] border border-white/20 focus:border-white/50 focus:bg-[#18181b] outline-none text-base sm:text-sm text-white placeholder:text-zinc-400 font-yrdly-body transition-all"
                   />
                 </div>
               )}
@@ -325,27 +329,38 @@ function LoginFormPage() {
               {/* Email */}
               <div className="relative w-full">
                 <input
+                  id="login-email"
+                  name="email"
+                  autoComplete="email"
+                  aria-label="Email address"
                   type="email"
                   placeholder="Email address"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full h-[50px] px-4 rounded-xl bg-[#121214] border border-white/20 focus:border-white/50 focus:bg-[#18181b] outline-none text-sm text-white placeholder:text-zinc-500 font-yrdly-body transition-all"
+                  className="w-full h-[50px] px-4 rounded-xl bg-[#121214] border border-white/20 focus:border-white/50 focus:bg-[#18181b] outline-none text-base sm:text-sm text-white placeholder:text-zinc-400 font-yrdly-body transition-all"
                 />
               </div>
 
               {/* Password */}
               <div className="relative w-full flex items-center">
                 <input
+                  id="login-password"
+                  name="password"
+                  autoComplete={isSignUp ? "new-password" : "current-password"}
+                  aria-label="Password"
                   type={showPassword ? "text" : "password"}
                   placeholder="Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full h-[50px] pl-4 pr-11 rounded-xl bg-[#121214] border border-white/20 focus:border-white/50 focus:bg-[#18181b] outline-none text-sm text-white placeholder:text-zinc-500 font-yrdly-body transition-all"
+                  className="w-full h-[50px] pl-4 pr-11 rounded-xl bg-[#121214] border border-white/20 focus:border-white/50 focus:bg-[#18181b] outline-none text-base sm:text-sm text-white placeholder:text-zinc-400 font-yrdly-body transition-all"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 text-zinc-400 hover:text-white transition-colors"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  aria-pressed={showPassword}
+                  aria-controls="login-password"
+                  className="absolute right-0.5 flex h-11 w-11 items-center justify-center rounded-lg text-zinc-400 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#82DB7E]"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -377,7 +392,7 @@ function LoginFormPage() {
               <button
                 type="button"
                 onClick={() => router.push("/forgot-password")}
-                className="text-xs text-white/60 hover:text-white transition-colors font-medium"
+                className="min-h-11 px-3 text-sm text-white/75 hover:text-white transition-colors font-medium rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#82DB7E]"
               >
                 Forgotten password?
               </button>

@@ -39,7 +39,8 @@ test('internal worker rejects untrusted callers and defaults to no sending',asyn
 test('enabled internal dispatch uses the approved question and safe local destination exactly once',async()=>{
  const r=runtime({enabled:true});assert.equal((await r.run()).body.submitted,1);
  await r.run();assert.equal(r.sent.length,1);
- assert.equal(r.sent[0].payload.url,'/daily-prompts');
+ assert.equal(r.sent[0].payload.url,'/daily-prompts?promptId=question');
+ assert.equal(r.sent[0].payload.data.promptId,'question');
  assert.equal(r.sent[0].payload.data.expiresAt,'2026-11-16T23:00:00.000Z');
 });
 test('an empty cohort, explicit emergency stop and opted-out profile never send',async()=>{

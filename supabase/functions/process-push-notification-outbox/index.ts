@@ -178,8 +178,21 @@ serve(async (req) => {
       last_error: "Notification expired before delivery",
       updated_at: now.toISOString(),
     })
-    .in("status", ["queued", "sending", "awaiting_receipt"])
+    .in("status", ["queued", "sending"])
     .lte("expires_at", now.toISOString());
+
+  // Delivery TTL stops new sends, not receipt collection for an existing ticket.
+  // Expo receipts may arrive after a short-lived self-test has expired.
+  const receiptCutoff = new Date(now.getTime() - 24 * 60 * 60_000).toISOString();
+  await admin
+    .from("push_notification_deliveries")
+    .update({
+      status: "failed",
+      last_error: "Provider receipt unavailable after 24 hours",
+      updated_at: now.toISOString(),
+    })
+    .eq("status", "awaiting_receipt")
+    .lte("last_attempt_at", receiptCutoff);
 
   const { data: receipts, error: receiptLoadError } = await admin
     .from("push_notification_deliveries")
@@ -188,7 +201,7 @@ serve(async (req) => {
     )
     .eq("status", "awaiting_receipt")
     .lte("next_attempt_at", now.toISOString())
-    .gt("expires_at", now.toISOString())
+    .gt("last_attempt_at", receiptCutoff)
     .not("provider_ticket_id", "is", null)
     .limit(100);
   if (receiptLoadError)

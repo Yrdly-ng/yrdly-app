@@ -22,7 +22,7 @@ export function Toaster() {
 
         return (
           <Toast key={id} variant={variant} {...props}>
-            <div className="flex gap-3.5 items-start flex-1 min-w-0 pr-4">
+            <div className="flex gap-3.5 items-start flex-1 min-w-0 pr-8">
               <div
                 className={cn(
                   "w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 border shadow-inner transition-all",
@@ -39,12 +39,12 @@ export function Toaster() {
               </div>
               <div className="grid gap-0.5 min-w-0 flex-1">
                 {title && (
-                  <ToastTitle className="text-[13.5px] font-bold text-white tracking-tight leading-tight">
+                  <ToastTitle className="break-words text-sm font-bold text-white tracking-tight leading-tight">
                     {title}
                   </ToastTitle>
                 )}
                 {description && (
-                  <ToastDescription className="text-xs text-white/70 leading-relaxed font-normal">
+                  <ToastDescription className="break-words text-sm text-white/80 leading-relaxed font-normal">
                     {description}
                   </ToastDescription>
                 )}

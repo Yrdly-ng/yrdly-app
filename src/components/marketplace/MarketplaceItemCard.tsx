@@ -192,12 +192,12 @@ export function MarketplaceItemCard({
           </div>
 
           {/* Content Body */}
-          <div className="p-3 sm:p-4 space-y-2">
-            <h4 className="line-clamp-2 min-h-10 text-sm font-bold text-foreground group-hover:text-primary transition-colors">
+          <div className="space-y-2 p-2.5 min-[390px]:p-3 sm:p-4">
+            <h4 className="line-clamp-2 min-h-10 text-[13px] leading-5 font-bold text-foreground group-hover:text-primary transition-colors min-[390px]:text-sm">
               {item.title || item.text || "Item"}
             </h4>
 
-            <p className="break-words text-lg sm:text-xl font-bold tracking-tight text-primary">
+            <p className="break-words text-base font-bold tracking-tight text-primary min-[390px]:text-lg sm:text-xl">
               {getListingPriceLabel(item.price, formatPrice)}
             </p>
             {/* Seller information */}
@@ -216,7 +216,7 @@ export function MarketplaceItemCard({
                   </span>
                 )}
               </div>
-              <span className="text-[0.6875rem] font-semibold text-foreground min-w-0 truncate">
+              <span className="min-w-0 truncate text-xs font-semibold text-foreground">
                 {sellerName}
               </span>
               {isPhoneVerified && (
@@ -258,7 +258,7 @@ export function MarketplaceItemCard({
         <div className="p-3.5 pt-0">
           <button
             onClick={handleMessage}
-            className="w-full flex items-center justify-center gap-2 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary py-2 text-xs font-semibold transition-all active:scale-95"
+            className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary/10 py-2 text-sm font-semibold text-primary hover:bg-primary/20 transition-all active:scale-95"
           >
             <MessageCircle className="h-3.5 w-3.5" />
             <span>Chat Seller</span>

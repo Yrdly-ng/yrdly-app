@@ -73,9 +73,10 @@ export async function GET(request:Request){
               supabaseAdmin,'send-push-notification',{
                 userId:u.id,type:'daily_prompt',payload:{
                   title:prompt.push_title||'Your neighbourhood is talking 🌿',
-                  body:prompt.push_body||prompt.question,url:'/daily-prompts',
+                  body:prompt.push_body||prompt.question,url:`/daily-prompts?promptId=${encodeURIComponent(prompt.id)}`,
                   data:{
                     type:'daily_prompt',
+                    promptId:prompt.id,
                     deliveryKey:dailyReminderDedupeKey(now.date,u.id),
                     expiresAt:dailyReminderExpiresAt(now.date),
                   },

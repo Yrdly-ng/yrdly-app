@@ -1,0 +1,124 @@
+name: Mobile-first web visual review (isolated QA)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/app/**'
+      - 'src/components/**'
+      - 'playwright.qa.config.ts'
+      - 'qa-scripts/**'
+      - 'tests/**'
+      - '.github/workflows/mobile-web-visual-review.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Avoid resetting disposable QA accounts during another isolated QA run.
+concurrency:
+  group: isolated-yrdly-qa
+  cancel-in-progress: false
+
+jobs:
+  static-checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - run: npm install --global pnpm@11.2.2
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test:parity
+      - run: pnpm test:payments
+      - run: pnpm test:business
+      - name: Check daily-question context and visibility
+        run: node --test tests/daily-prompts.test.cjs tests/daily-prompt-question.test.cjs
+      - name: Validate browser test discovery without QA credentials
+        run: pnpm exec playwright test --config=playwright.qa.config.ts tests/browser/mobile-web-visual.spec.ts --list
+
+  visual-review:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    # Preinstalled system libraries avoid slow Ubuntu mirror downloads for WebKit.
+    # Install browsers below with the project's pinned Playwright package.
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble@sha256:2f05f8a734509a7b3f26a912639488ee08f58a7b292d14d62271bcff9038768f
+    environment: yrdly-qa
+    timeout-minutes: 40
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      QA_SUPABASE_URL: ${{ secrets.QA_SUPABASE_URL }}
+      QA_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.QA_SUPABASE_PUBLISHABLE_KEY }}
+      QA_SUPABASE_SECRET_KEY: ${{ secrets.QA_SUPABASE_SECRET_KEY }}
+      QA_PAYLUK_SECRET_KEY: ${{ secrets.QA_PAYLUK_SECRET_KEY }}
+      QA_PAYLUK_PUBLIC_KEY: ${{ secrets.QA_PAYLUK_PUBLIC_KEY }}
+      QA_BUYER_EMAIL: ${{ secrets.QA_BUYER_EMAIL }}
+      QA_BUYER_PASSWORD: ${{ secrets.QA_BUYER_PASSWORD }}
+      QA_SELLER_EMAIL: ${{ secrets.QA_SELLER_EMAIL }}
+      QA_SELLER_PASSWORD: ${{ secrets.QA_SELLER_PASSWORD }}
+      QA_ORGANIZER_EMAIL: ${{ secrets.QA_ORGANIZER_EMAIL }}
+      QA_ORGANIZER_PASSWORD: ${{ secrets.QA_ORGANIZER_PASSWORD }}
+      QA_ADMIN_EMAIL: ${{ secrets.QA_ADMIN_EMAIL }}
+      QA_ADMIN_PASSWORD: ${{ secrets.QA_ADMIN_PASSWORD }}
+      QA_NON_ADMIN_EMAIL: ${{ secrets.QA_NON_ADMIN_EMAIL }}
+      QA_NON_ADMIN_PASSWORD: ${{ secrets.QA_NON_ADMIN_PASSWORD }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - run: npm install --global pnpm@11.2.2
+      - run: pnpm install --frozen-lockfile
+      - name: Validate isolated QA credentials
+        run: node qa-scripts/write-ci-env.mjs
+      - name: Seed disposable QA accounts
+        run: node qa-scripts/seed.mjs
+      - name: Build app against isolated QA
+        run: node qa-scripts/run-app.mjs build
+      - name: Start isolated QA server
+        run: |
+          mkdir -p .qa-artifacts/mobile-web-visual
+          node qa-scripts/run-app.mjs start > .qa-artifacts/mobile-web-visual/server.log 2>&1 &
+          for attempt in $(seq 1 75); do
+            if curl --fail --silent http://localhost:9002/login > /dev/null; then exit 0; fi
+            sleep 2
+          done
+          echo 'QA app did not start' >&2
+          exit 1
+      - name: Verify real isolated daily-question persistence
+        run: node qa-scripts/daily-prompt-release-regression.mjs
+      - name: Serve WebKit QA over trusted loopback HTTPS
+        run: |
+          openssl req -x509 -nodes -newkey rsa:2048 -days 1 -subj '/CN=localhost' -addext 'subjectAltName=DNS:localhost,IP:127.0.0.1' -keyout /tmp/yrdly-qa-local.key -out /usr/local/share/ca-certificates/yrdly-qa-local.crt > /tmp/yrdly-qa-local-cert.log 2>&1
+          update-ca-certificates
+          node qa-scripts/serve-qa-https.mjs /usr/local/share/ca-certificates/yrdly-qa-local.crt /tmp/yrdly-qa-local.key > /tmp/yrdly-qa-https.log 2>&1 &
+          for attempt in $(seq 1 20); do
+            if curl --fail --silent https://localhost:9443/login > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          echo 'Local QA HTTPS server did not start' >&2
+          exit 1
+      - name: Install Playwright Chromium and WebKit
+        run: pnpm exec playwright install chromium webkit
+      - name: Inspect responsive authenticated pages and Create menu
+        run: pnpm exec playwright test --config=playwright.qa.config.ts tests/browser/mobile-web-visual.spec.ts
+      - name: Upload visual evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: yrdly-web-mobile-visual-review
+          path: |
+            .qa-artifacts/mobile-web-visual/*.png
+            .qa-artifacts/browser-failures/**/*.png
+          retention-days: 7

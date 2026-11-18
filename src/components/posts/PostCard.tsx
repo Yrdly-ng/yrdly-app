@@ -68,6 +68,7 @@ import {
 import { timeAgo, formatPrice, cn } from "@/lib/shared/utils";
 import { useRouter } from "next/navigation";
 import { GlassCard } from "@/components/ui/glass-card";
+import { DailyPromptQuote } from "./DailyPromptQuote";
 
 /* ─── design tokens ─────────────────────────────────────────────── */
 const GREEN = "hsl(var(--primary))";
@@ -837,7 +838,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
           id: "unknown",
           uid: "unknown",
           name: post.author_name || "Anonymous",
-          avatar_url: post.author_image || "https://placehold.co/100x100.png",
+          avatar_url: post.author_image || undefined,
           timestamp: post.timestamp,
         });
         setLoadingAuthor(false);
@@ -853,7 +854,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
             avatar_url:
               post.user.avatar_url ||
               post.author_image ||
-              "https://placehold.co/100x100.png",
+              undefined,
             timestamp: (post.user as any).created_at || post.timestamp,
             verified_seller: (post.user as any).verified_seller,
             is_verified: (post.user as any).is_verified,
@@ -875,7 +876,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
                   uid: post.user_id,
                   name: post.author_name || "Anonymous",
                   avatar_url:
-                    post.author_image || "https://placehold.co/100x100.png",
+                    post.author_image || undefined,
                   timestamp: post.timestamp,
                 }
               : ({
@@ -883,7 +884,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
                   uid: data.id,
                   name: data.name || "Anonymous",
                   avatar_url:
-                    data.avatar_url || "https://placehold.co/100x100.png",
+                    data.avatar_url || undefined,
                   timestamp: data.created_at || post.timestamp,
                   verified_seller: data.verified_seller,
                   is_verified: (data as any).is_verified || false,
@@ -897,7 +898,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
           id: post.user_id,
           uid: post.user_id,
           name: post.author_name || "Anonymous",
-          avatar_url: post.author_image || "https://placehold.co/100x100.png",
+          avatar_url: post.author_image || undefined,
           timestamp: post.timestamp,
         });
         setLoadingAuthor(false);
@@ -1792,10 +1793,11 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
     cardContent = (
       <>
         {PostHeader}
+        <DailyPromptQuote promptId={post.daily_prompt_id} />
         {/* Body text */}
         {text && (
           <div className="px-yrdly-md pb-yrdly-sm">
-            <p className="font-yrdly-body font-normal text-[0.8125rem] leading-[15px] text-foreground whitespace-pre-wrap">
+            <p className="font-yrdly-body font-normal text-base leading-relaxed text-foreground whitespace-pre-wrap [overflow-wrap:anywhere]">
               {displayText}
               {shouldTruncate && (
                 <button

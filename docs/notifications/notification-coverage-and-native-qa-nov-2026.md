@@ -67,7 +67,7 @@ This table defines the **target product behavior**, not an assertion that every 
 - Recent like notifications without device pushes primarily targeted accounts without registered native tokens. A follow recipient had multiple old registrations but none was the current authoritative owner of that Expo token, so cross-account push was correctly suppressed.
 - A successful Expo receipt is not proof a notification was displayed. QA photos show messages/comments/test pushes, but not guaranteed closed-app delivery across all device states.
 - In-app likes already use grouping by distinct actor, with push suppression while the group remains unread.
-- **Do not** re-enable daily prompt push campaigns during this work: that is a separate on-hold rollout.
+- Daily prompt implementation has resumed under the user’s instruction. Keep its campaign disabled until the combined test round and controlled-cohort release gate; no broad rollout is authorized by this checklist.
 
 ### Change set in the associated draft PR
 

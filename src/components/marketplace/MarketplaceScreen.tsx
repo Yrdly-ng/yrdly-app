@@ -162,14 +162,14 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
       {/* Search Bar */}
       <div className="px-4">
         <GlassCard className="rounded-full p-0">
-          <div className="flex items-center px-3 py-1.5 gap-2">
+          <div className="flex min-h-12 items-center gap-2 px-4 py-1.5">
             <Search className="w-4 h-4 text-[var(--yrdly-label)] flex-shrink-0" />
             <input
               type="text"
               placeholder="Search items, phones, laptops..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-transparent text-xs text-foreground placeholder-[var(--yrdly-label)] focus:outline-none font-yrdly-body"
+              className="min-h-10 w-full min-w-0 bg-transparent text-base text-foreground placeholder-[var(--yrdly-label)] focus:outline-none font-yrdly-body"
             />
           </div>
         </GlassCard>
@@ -198,7 +198,7 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
 
       {/* Items grid */}
       {loading ? (
-        <div className="px-4 grid grid-cols-1 min-[360px]:grid-cols-2 sm:grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-4 pb-28">
+        <div className="grid grid-cols-2 gap-2.5 px-3 pb-28 min-[390px]:gap-3 min-[390px]:px-4 sm:grid-cols-[repeat(auto-fill,minmax(210px,1fr))] sm:gap-4">
           {[...Array(8)].map((_, i) => (
             <GlassCard key={i} className="h-64 w-full rounded-xl">
               <Skeleton className="h-full w-full rounded-lg" />
@@ -206,7 +206,7 @@ export function MarketplaceScreen({ onItemClick, onMessageSeller }: MarketplaceS
           ))}
         </div>
       ) : filteredItems.length > 0 ? (
-        <div className="px-4 grid grid-cols-1 min-[360px]:grid-cols-2 sm:grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-4 pb-28">
+        <div className="grid grid-cols-2 gap-2.5 px-3 pb-28 min-[390px]:gap-3 min-[390px]:px-4 sm:grid-cols-[repeat(auto-fill,minmax(210px,1fr))] sm:gap-4">
           {filteredItems.map((item) => (
             <MarketplaceItemCard
               key={item.id}

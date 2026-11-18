@@ -372,7 +372,7 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
-    transform: none !important;
+    /* Preserve layout transforms used to center dialogs and notifications. */
   }
 }
 

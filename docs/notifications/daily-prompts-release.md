@@ -1,6 +1,6 @@
 # Daily questions and opt-in reminders
 
-The web and native clients use `/api/daily-prompts` for the current approved question, and authenticated `/api/daily-prompts/responses` for moderated, public answers in the viewer's home state/LGA. Both directions of user blocking are enforced. Normal posts remain unchanged when no question is attached.
+The web and native clients use `/api/daily-prompts` for the current approved question and `?promptId=<id>` for its original approved historical question, and authenticated `/api/daily-prompts/responses` for moderated, public answers in the viewer's home state/LGA. Both directions of user blocking are enforced. Normal posts remain unchanged when no question is attached.
 
 Questions are curated in `/admin/daily-prompts`. Only server-verified administrators can create drafts, edit, approve or pause them. Drafts are never automatically published. `DAILY_PROMPTS_ENABLED=true` is required to display questions. The database independently enforces the Lagos date, 7 AM opening, public General category and immutable response context.
 
@@ -12,4 +12,14 @@ The service-only recipient RPC excludes existing reservations before pagination,
 
 Validation: execute `tests/daily-prompt-database.sql` only on staging; all fixtures roll back. Run daily prompt/dispatch/routing unit tests, typecheck, lint, production compilation and browser smoke tests. Check production RLS/grants and migrations separately. No approved production question or campaign is created by these migrations.
 
-Android delivery remains a separate release gate: APK #72's exact `google_api_key` resource was rejected by Firebase Installations with HTTP 400 / `API_KEY_INVALID` on 16 November 2026. Project, sender and app ID match the configured YRDLY app. A valid Android client configuration and a newly installed APK must pass registration and receipt/tap tests before Android delivery can be called verified. Do not rotate server credentials or remove API restrictions based solely on the historical `FIS_AUTH_ERROR` message.
+Historical Android diagnosis: APK #72's exact `google_api_key` resource was rejected by Firebase Installations with HTTP 400 / `API_KEY_INVALID` on 16 November 2026. Project, sender and app ID match the configured YRDLY app. That older diagnosis is superseded by the 17 November confirmations and combined-candidate notes below; it is not evidence that the current key is revoked. Do not rotate server credentials or remove API restrictions based solely on the historical `FIS_AUTH_ERROR` message.
+
+## Consolidated implementation — 17 November 2026
+
+- Existing answer posts retain `daily_prompt_id`; feed cards and post details quote that approved question without rewriting customer posts. Links open the exact question and its moderated local answers. Ordinary posts remain ordinary posts.
+- Both scheduled dispatchers include the original `promptId` and question-specific URL. Web/PWA and Expo routing preserve it through typed, nested, legacy and authenticated URL-only navigation. Historical questions stay readable; answering remains limited to the current approved question.
+- Native daily-answer UI is in mobile PR #24 and depends on web PR #97's question-by-ID endpoint. Approved native discovery UI is already merged in mobile PR #23; web counterpart #96 is merged. Liquid Glass remains postponed.
+- Web PR #97 also corrects short-TTL native receipt bookkeeping. The source patches do not update deployed Edge Functions by themselves.
+- The user confirmed physical iPhone PWA and Android push receipt. The original daily-question tap opened Notifications; the corrected tap still requires the combined device round. Scheduled daily campaigns remain disabled with an empty tester cohort. No campaign flags were changed.
+- Android QA APK #78 stopped before compilation at installation-token preflight; no APK was produced. The same configuration subsequently completed synthetic create/auth/cleanup locally. The rejection's provider status was not retained, so its exact cause is unconfirmed. Preflight source now includes the SDK's app ID, one bounded retry for HTTP 5xx and safe HTTP diagnostics. API restrictions remain unchanged; invalid/permanently denied requests still fail closed.
+- Hold further APK builds until this combined implementation is ready. Do not equate bundle compilation, provider acceptance or source checks with installed-device QA.
