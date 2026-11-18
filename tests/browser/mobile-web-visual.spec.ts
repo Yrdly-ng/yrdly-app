@@ -709,7 +709,7 @@ for (const theme of ["light", "dark"] as const) {
       if (!response.ok()) return route.fulfill({ response });
       const data = await response.json();
       const present = (profile: Record<string, unknown>) => ({ ...profile, name: "QA Avatar", avatar_url: photo });
-      return route.fulfill({ json: Array.isArray(data) ? data.map(present) : present(data) });
+      return route.fulfill({ headers: { "access-control-allow-origin": "*" }, json: Array.isArray(data) ? data.map(present) : present(data) });
     });
     await page.goto("/home");
     const profileButton = page.getByRole("button", { name: "Open profile", exact: true });
