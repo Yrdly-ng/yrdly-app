@@ -143,14 +143,13 @@ for (const theme of ["light", "dark"] as const) {
           "Safety alert",
         ]) {
           await expect(
-            dialog.getByRole("button", { name: new RegExp(title) }),
+            dialog.getByRole("link", { name: new RegExp(title) }),
           ).toBeVisible();
         }
 
         const dims = await dialog.evaluate((el) => {
           const b = el.getBoundingClientRect();
-          const boxes = Array.from(el.querySelectorAll("button"))
-            .filter((button) => button.hasAttribute("data-create-action"))
+          const boxes = Array.from(el.querySelectorAll("[data-create-action]"))
             .map((button) => {
               const r = button.getBoundingClientRect();
               return { width: r.width, height: r.height };

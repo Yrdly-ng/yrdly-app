@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useRef, type MouseEvent } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   MessageSquareText,
@@ -45,7 +44,6 @@ export function CreateMenuOverlay({
   onListing,
   onEvent,
 }: CreateMenuOverlayProps) {
-  const router = useRouter();
   const { profile } = useAuth();
   const reducedMotion = useReducedMotion();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -146,31 +144,24 @@ export function CreateMenuOverlay({
     },
   ];
 
-  const handleSelect = (option: CreateOption) => {
+  const destination = (option: CreateOption) => {
+    if (option.requiresPhoneVerification && !profile?.phone_verified)
+      return "/verify-phone";
+    return {
+      post: "/posts/create",
+      listing: "/marketplace/create",
+      event: "/events/create",
+      alert: "/alerts/new",
+    }[option.action];
+  };
+
+  const handleSelect = (event: MouseEvent<HTMLAnchorElement>, option: CreateOption) => {
+    if (option.requiresPhoneVerification && !profile?.phone_verified) return;
+    const callback = { post: onPost, listing: onListing, event: onEvent, alert: undefined }[option.action];
+    if (!callback || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
     onClose();
-
-    if (option.requiresPhoneVerification && !profile?.phone_verified) {
-      router.push("/verify-phone");
-      return;
-    }
-
-    switch (option.action) {
-      case "post":
-        if (onPost) onPost();
-        else router.push("/posts/create");
-        break;
-      case "listing":
-        if (onListing) onListing();
-        else router.push("/marketplace/create");
-        break;
-      case "event":
-        if (onEvent) onEvent();
-        else router.push("/events/create");
-        break;
-      case "alert":
-        router.push("/alerts/new");
-        break;
-    }
+    callback();
   };
 
   return (
@@ -235,18 +226,18 @@ export function CreateMenuOverlay({
               {options.map((option, i) => {
                 const Icon = option.icon;
                 return (
-                  <motion.button
-                    type="button"
+                  <motion.a
+                    href={destination(option)}
                     key={option.key}
                     data-create-action={option.action}
                     initial={reducedMotion ? false : { opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={reducedMotion ? { duration: 0 } : { delay: 0.05 + i * 0.04, duration: 0.2, ease: "easeOut" }}
-                    onClick={() => handleSelect(option)}
+                    onClick={(event) => handleSelect(event, option)}
                     aria-label={`${option.title}. ${option.subtitle}`}
                     className={cn(
                       "group relative flex min-h-[174px] flex-col items-start overflow-hidden rounded-[22px] border border-border/75 bg-[var(--c-card2)] p-3.5 text-left shadow-sm",
-                      "transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-lg active:translate-y-0",
+                      "transition-[border-color,box-shadow] duration-200 hover:border-primary/40 hover:shadow-lg",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                       "sm:min-h-[184px] sm:p-4"
                     )}
@@ -277,7 +268,7 @@ export function CreateMenuOverlay({
                       {option.subtitle}
                     </span>
                     <ArrowUpRight size={16} strokeWidth={2} aria-hidden="true" className="absolute bottom-3 right-3 text-muted-foreground/60 transition-colors group-hover:text-primary" />
-                  </motion.button>
+                  </motion.a>
                 );
               })}
             </div>
