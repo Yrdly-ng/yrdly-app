@@ -186,6 +186,32 @@ export async function trackWebActivationEvent(
   }
 }
 
+function acquisitionProperties(attribution: SignupAttribution) {
+  return {
+    acquisition_first_source: attribution.first.source,
+    acquisition_first_medium: attribution.first.medium,
+    acquisition_first_campaign: attribution.first.campaign,
+    acquisition_last_source: attribution.last.source,
+    acquisition_last_medium: attribution.last.medium,
+    acquisition_last_campaign: attribution.last.campaign,
+  };
+}
+
+export async function trackWebBusinessProfileCreated(userId: string): Promise<void> {
+  if (!enabled() || !isTelemetryUserId(userId) || desiredUser !== userId) return;
+  try {
+    const attribution = signupAttribution();
+    await initializeWebAnalytics();
+    if (!client || desiredUser !== userId || appliedUser !== userId) return;
+    client.capture("business_profile_created", {
+      app_environment: environment(),
+      ...acquisitionProperties(attribution),
+    });
+  } catch {
+    /* Analytics cannot interrupt a successful business registration. */
+  }
+}
+
 /**
  * Genuine email account creation only. PostHog's privacy filter allows
  * exactly these bounded attribution dimensions, never arbitrary URLs or PII.
@@ -202,12 +228,7 @@ export async function trackWebAccountCreated(
     if (!client || appliedUser !== userId) return;
     client.capture("account_created", {
       app_environment: environment(),
-      acquisition_first_source: attribution.first.source,
-      acquisition_first_medium: attribution.first.medium,
-      acquisition_first_campaign: attribution.first.campaign,
-      acquisition_last_source: attribution.last.source,
-      acquisition_last_medium: attribution.last.medium,
-      acquisition_last_campaign: attribution.last.campaign,
+      ...acquisitionProperties(attribution),
       signup_method: "email",
     });
   } catch {
