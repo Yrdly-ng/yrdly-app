@@ -65,6 +65,14 @@ try {
   if (isOpen) {
     assert.ok(!visible.includes(ids[1]));
     assert.ok(!visible.includes(ids[2]));
+    const linked = await fetch(`${origin}/api/daily-prompts/responses?promptId=${prompt.id}&answerId=${ids[2]}`, {headers});
+    assert.equal(linked.status, 200);
+    const body = await linked.json();
+    assert.equal(body.linkedAnswer?.id, ids[2]);
+    assert.ok(!body.responses.some(p => p.id === ids[2]));
+    const pending = await fetch(`${origin}/api/daily-prompts/responses?promptId=${prompt.id}&answerId=${ids[1]}`, {headers});
+    assert.equal(pending.status, 200);
+    assert.equal((await pending.json()).linkedAnswer, null);
   }
   ok(await admin.from('users').update({home_state:null,home_lga:null}).eq('id',buyer));
   const missingHome=await fetch(`${origin}/api/daily-prompts/responses?promptId=${prompt.id}`,{headers});

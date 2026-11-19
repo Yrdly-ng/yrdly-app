@@ -1793,7 +1793,7 @@ export function PostCard({ post, onDelete, onCreatePost }: PostCardProps) {
     cardContent = (
       <>
         {PostHeader}
-        <DailyPromptQuote promptId={post.daily_prompt_id} />
+        <DailyPromptQuote promptId={post.daily_prompt_id} answerId={post.id} />
         {/* Body text */}
         {text && (
           <div className="px-yrdly-md pb-yrdly-sm">

@@ -23,7 +23,7 @@ function loadQuestion(id: string) {
   return request;
 }
 
-export function DailyPromptQuote({ promptId }: { promptId?: string | null }) {
+export function DailyPromptQuote({ promptId, answerId }: { promptId?: string | null; answerId: string }) {
   const [result, setResult] = useState<{ id: string; question: Question | null } | null>(null);
   const question = result && result.id === promptId ? result.question : null;
   const loading = !!promptId && result?.id !== promptId;
@@ -42,7 +42,7 @@ export function DailyPromptQuote({ promptId }: { promptId?: string | null }) {
       {loading ? <p className="text-sm text-muted-foreground" role="status">Loading question…</p> :
         question ? <blockquote className="font-yrdly-display text-base font-semibold leading-relaxed [overflow-wrap:anywhere]">{question.question}</blockquote> :
         <p className="text-sm text-muted-foreground">The original question is currently unavailable.</p>}
-      {question && <Link href={`/daily-prompts?promptId=${encodeURIComponent(promptId)}`} onClick={event => event.stopPropagation()}
+      {question && <Link href={{ pathname: "/daily-prompts", query: { promptId, answerId } }} onClick={event => event.stopPropagation()}
         className="mt-2 inline-flex min-h-11 items-center gap-2 rounded-lg text-sm font-semibold text-foreground underline decoration-primary underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
         <MessageCircle aria-hidden="true" className="h-4 w-4 shrink-0" /> View question and neighbours’ answers
       </Link>}

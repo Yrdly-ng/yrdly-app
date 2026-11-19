@@ -386,7 +386,7 @@ export function PostDetailView({
             </span>
           </div>
 
-          <DailyPromptQuote promptId={post.daily_prompt_id} />
+          <DailyPromptQuote promptId={post.daily_prompt_id} answerId={post.id} />
           {/* Post body text */}
           <div className="px-4 pb-3">
             <p className="font-sans font-normal text-base leading-relaxed text-foreground whitespace-pre-wrap [overflow-wrap:anywhere]">
