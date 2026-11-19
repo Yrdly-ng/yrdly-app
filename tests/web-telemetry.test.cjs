@@ -78,7 +78,7 @@ function runtime({ config = env, browser = true, fail = false, failReset = false
       module,
       module.exports,
       { env: config },
-      browser ? {} : undefined,
+      browser === true ? {} : browser || undefined,
     );
     return module.exports;
   }
@@ -526,6 +526,47 @@ test("account-created analytics preserves campaign dimensions but never private 
   assert.equal(sanitized.properties.acquisition_last_source, "google");
   assert.equal(sanitized.properties.signup_method, "email");
   assert.doesNotMatch(JSON.stringify(sanitized), /example\.com|password|private-click-id|phone|secret/);
+});
+
+test("successful business registrations use the newsletter campaign without exposing profile data", async () => {
+  const attribution = {
+    version: 1,
+    first: { source: "yrdly_newsletter", medium: "email", campaign: "small_businesses_spotlight" },
+    last: { source: "yrdly_newsletter", medium: "email", campaign: "small_businesses_spotlight" },
+    captured_at: new Date().toISOString(),
+  };
+  const r = runtime({ browser: { sessionStorage: { getItem: () => JSON.stringify(attribution) } } });
+  const analytics = r.load("analytics");
+  analytics.setWebAnalyticsUser(A);
+  await analytics.trackWebBusinessProfileCreated(B);
+  await analytics.trackWebBusinessProfileCreated(A);
+  const conversions = r.calls.filter(([method, event]) =>
+    method === "capture" && event === "business_profile_created");
+  assert.equal(conversions.length, 1);
+  const permitted = r.analyticsOptions.before_send({
+    event: "business_profile_created",
+    properties: {
+      ...conversions[0][2],
+      business_name: "Private business",
+      email: "private@example.com",
+      $current_url: "https://app.yrdly.ng/businesses?private=data",
+      signup_method: "email",
+    },
+  });
+  assert.equal(permitted.properties.acquisition_last_campaign, "small_businesses_spotlight");
+  assert.equal(permitted.properties.acquisition_last_medium, "email");
+  assert.doesNotMatch(JSON.stringify(permitted), /Private business|example\.com|private=data|signup_method/);
+});
+
+test("only a successful business insert triggers registration tracking", () => {
+  const source = readFileSync("src/hooks/use-posts.tsx", "utf8");
+  const registration = source.slice(source.indexOf("const createBusiness ="), source.indexOf("const deletePost ="));
+  const insert = registration.indexOf(".insert(");
+  const success = registration.indexOf("savedBusinessId = createdBusiness.id;");
+  const event = registration.indexOf("void trackWebBusinessProfileCreated(user.id);");
+  assert.notEqual(insert, -1);
+  assert.ok(success > insert && event > success);
+  assert.equal(registration.match(/trackWebBusinessProfileCreated\(user.id\)/g)?.length, 1);
 });
 
 test('manual diagnostic breadcrumbs contain templates and fixed actions, and reset when identity changes', async () => {

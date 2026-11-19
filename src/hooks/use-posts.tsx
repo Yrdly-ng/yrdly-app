@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/use-supabase-auth";
 import { supabase } from "@/lib/supabase/supabase";
 import { StorageService } from "@/lib/media/storage-service";
 import { UserActivityService } from "@/lib/activity/user-activity-service";
+import { trackWebBusinessProfileCreated } from "@/lib/telemetry/analytics";
 
 import { Post, Business } from "@/types";
 import { useToast } from "./use-toast";
@@ -714,6 +715,7 @@ export const usePosts = (filter?: LocationFilter | null) => {
           if (!createdBusiness)
             throw new Error("Business was saved without returning an ID.");
           savedBusinessId = createdBusiness.id;
+          void trackWebBusinessProfileCreated(user.id);
           toast({
             title: "Success",
             description: "Business added successfully.",
