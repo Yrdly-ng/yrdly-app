@@ -551,9 +551,10 @@ for (const theme of ["light", "dark"] as const) {
       return route.fulfill({ json: { date: "2026-11-17", prompt } });
     });
     await page.route("**/api/daily-prompts/responses?**", route => {
-      expect(new URL(route.request().url()).searchParams.get("promptId")).toBe(promptId);
-      return route.fulfill({ json: { responses: [
-        { id: postId, user_id: seed.users.buyer, author_name: "YRDLY-QA Buyer", text: "Chicken Republic", comment_count: 0 },
+      const query = new URL(route.request().url()).searchParams;
+      expect(query.get("promptId")).toBe(promptId);
+      expect(query.get("answerId")).toBe(postId);
+      return route.fulfill({ json: { linkedAnswer: post, responses: [
         { id: "88888888-8888-4888-8888-888888888888", user_id: seed.users.seller, author_name: "YRDLY-QA Neighbour", text: "The small restaurant beside the community centre", comment_count: 2 },
       ], nextPage: null } });
     });
@@ -589,16 +590,16 @@ for (const theme of ["light", "dark"] as const) {
         for (const ratio of contrast) expect(ratio, "Daily-question text contrast").toBeGreaterThanOrEqual(4.5);
         await expect(page.getByText("Chicken Republic", { exact: true }).first()).toBeVisible();
         const link = quote.getByRole("link", { name: "View question and neighbours’ answers", exact: true });
-        await expect(link).toHaveAttribute("href", `/daily-prompts?promptId=${promptId}`);
+        await expect(link).toHaveAttribute("href", `/daily-prompts?promptId=${promptId}&answerId=${postId}`);
         expect((await link.boundingBox())?.height).toBeGreaterThanOrEqual(44);
         await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
         await page.screenshot({ path: `${OUTPUT}/${theme}-${width}-daily-answer-${label}.png`, fullPage: true });
         if (label === "detail") {
           await link.click();
-          await expect(page).toHaveURL(new RegExp(`/daily-prompts\\?promptId=${promptId}$`));
+          await expect(page).toHaveURL(`/daily-prompts?promptId=${promptId}&answerId=${postId}`);
           await expect(page.getByRole("heading", { name: prompt.question, exact: true })).toBeVisible();
           await expect(page.getByText("Past neighbourhood question", { exact: true })).toBeVisible();
-          await expect(page.getByText("Chicken Republic", { exact: true })).toBeVisible();
+          await expect(page.getByRole("region", { name: "Answer you opened" }).getByText("Chicken Republic", { exact: true })).toBeVisible();
           await expect(page.getByText("The small restaurant beside the community centre", { exact: true })).toBeVisible();
           await expect(page.getByRole("link", { name: "Share your answer", exact: true })).toHaveCount(0);
           await page.screenshot({ path: `${OUTPUT}/${theme}-${width}-daily-neighbour-answers.png`, fullPage: true });
