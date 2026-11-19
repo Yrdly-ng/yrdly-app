@@ -1,5 +1,6 @@
 "use client";
 
+import { NotificationTriggers } from "@/lib/notifications/notification-triggers";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -120,10 +121,12 @@ export function RightRail({
           .eq("following_id", neighborId);
         setFollowedNeighbors((prev) => ({ ...prev, [neighborId]: false }));
       } else {
-        await supabase
+        const { error } = await supabase
           .from("followers")
           .insert({ follower_id: viewerId, following_id: neighborId });
+        if (error) throw error;
         setFollowedNeighbors((prev) => ({ ...prev, [neighborId]: true }));
+        void NotificationTriggers.onNewFollower(viewerId, neighborId);
       }
     } catch (err) {
       console.error("Error toggling follow neighbor:", err);

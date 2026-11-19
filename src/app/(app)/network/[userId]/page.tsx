@@ -1,5 +1,6 @@
 "use client";
 
+import { NotificationTriggers } from "@/lib/notifications/notification-triggers";
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Search, UserCheck, UserPlus, UserMinus, ShieldCheck } from "lucide-react";
@@ -118,9 +119,11 @@ export default function NetworkPage() {
         });
         toast({ title: "Unfollowed user" });
       } else {
-        await supabase
+        const { error } = await supabase
           .from("followers")
           .insert({ follower_id: currentUser.id, following_id: userId });
+        if (error) throw error;
+        void NotificationTriggers.onNewFollower(currentUser.id, userId);
 
         setMyFollowingIds((prev) => new Set(prev).add(userId));
         toast({ title: "Now following user" });

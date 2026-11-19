@@ -677,9 +677,7 @@ export function ConversationScreen({
               .then(({ NotificationTriggers }) =>
                 NotificationTriggers.onMessageSent(
                   recipient,
-                  owner,
                   message.conversation_id,
-                  message.text || "Sent an attachment",
                 ),
               )
               .catch(() => {});

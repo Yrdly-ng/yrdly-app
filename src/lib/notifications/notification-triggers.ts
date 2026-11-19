@@ -91,63 +91,35 @@ export class NotificationTriggers {
     }
   }
 
-  /**
-   * Trigger notification when a message is sent
-   */
+  static async onNewFollower(followerId: string, followedId: string) {
+    try {
+      await NotificationService.createNotification({
+        userId: followedId,
+        type: 'new_follower',
+        relatedId: followerId,
+        relatedType: 'user',
+        title: 'New Follower',
+        message: 'You have a new follower.',
+      });
+    } catch (error) {
+      console.error('Error creating new follower notification:', error);
+    }
+  }
+
   static async onMessageSent(
     toUserId: string,
-    fromUserId: string,
     conversationId: string,
-    messageContent: string,
     notificationType: 'message' | 'marketplace_message' = 'message'
   ) {
     try {
-      
-      // Debounce: Check for recent notifications in the last 60 seconds to prevent spam
-      const oneMinuteAgo = new Date(Date.now() - 60000).toISOString();
-      const { data: recentNotifs } = await supabase
-        .from('notifications')
-        .select('id')
-        .eq('user_id', toUserId)
-        .eq('type', notificationType)
-        .eq('sender_id', fromUserId)
-        .eq('related_id', conversationId)
-        .gte('created_at', oneMinuteAgo)
-        .limit(1);
-
-      if (recentNotifs && recentNotifs.length > 0) {
-         return;
-      }
-
-      // Get sender's name
-      const { data: senderData } = await supabase
-        .from('public_profiles')
-        .select('name')
-        .eq('id', fromUserId)
-        .single();
-
-      if (senderData) {
-        const messagePreview = messageContent.length > 50 
-          ? messageContent.substring(0, 50) + '...' 
-          : messageContent;
-
-
-        await NotificationService.createNotification({
-          userId: toUserId,
-          type: notificationType,
-          senderId: fromUserId,
-          relatedId: conversationId,
-          relatedType: 'conversation',
-          title: `New message from ${senderData.name}`,
-          message: messagePreview,
-          data: { 
-            fromUserName: senderData.name, 
-            conversationId, 
-            messagePreview,
-          }
-        });
-      } else {
-      }
+      await NotificationService.createNotification({
+        userId: toUserId,
+        type: notificationType,
+        relatedId: conversationId,
+        relatedType: 'conversation',
+        title: 'New Message',
+        message: 'You have a new message.',
+      });
     } catch (error) {
       console.error('Error creating message notification:', error);
     }
