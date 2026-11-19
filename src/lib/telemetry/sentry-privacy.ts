@@ -21,6 +21,7 @@ export const errorOperations = new Set([
   "app.logger",
   "app.request",
   "notification.actor",
+  "maps.load",
 ]);
 
 export function isTelemetryUserId(value: unknown): value is string {
@@ -47,6 +48,9 @@ function codeFilename(value?: string): string | undefined {
   if (/^https?:\/\//.test(clean)) {
     try {
       const url = new URL(clean);
+      if (url.origin === 'https://maps.googleapis.com' && url.pathname === '/maps/api/js') {
+        return `${url.origin}${url.pathname}`;
+      }
       return /\.(?:[cm]?js|tsx?)$/.test(url.pathname)
         ? `${url.origin}${url.pathname}`
         : undefined;
@@ -78,8 +82,13 @@ export function sanitizeSentryEvent(
   event: ErrorEvent,
   browser = false,
 ): ErrorEvent {
-  const operation = event.tags?.operation;
+  const candidateOperation = event.tags?.operation;
+  const operation = typeof candidateOperation === "string" && errorOperations.has(candidateOperation)
+    ? candidateOperation
+    : undefined;
   const code = event.tags?.error_code;
+  const reliability = browser ? reliabilityProperties({ screen: event.tags?.screen, app_state: event.tags?.app_state }) : {};
+  const safeScreen = reliability.screen;
   const safe: ErrorEvent = {
     type: undefined,
     event_id: event.event_id,
@@ -108,32 +117,39 @@ export function sanitizeSentryEvent(
         : undefined,
     tags: {
       platform: "web",
-      ...(browser ? reliabilityProperties({ screen: event.tags?.screen, app_state: event.tags?.app_state }) : {}),
-      ...(typeof operation === "string" && errorOperations.has(operation)
-        ? { operation }
-        : {}),
+      ...reliability,
+      ...(operation ? { operation } : {}),
       ...(isErrorCode(code) ? { error_code: code } : {}),
     },
     breadcrumbs: browser ? event.breadcrumbs?.slice(-20).map(sanitizeDiagnosticBreadcrumb).filter((value): value is NonNullable<typeof value> => value !== null) : undefined,
     exception: event.exception
       ? {
-          values: event.exception.values?.map((exception) => ({
-            type: errorTypes.has(exception.type || "")
-              ? exception.type
-              : "Error",
-            value: diagnosticMessage({ message: exception.value }) === 'Application operation failed' ? 'Error details omitted for privacy' : diagnosticMessage({ message: exception.value }),
-            stacktrace: exception.stacktrace
-              ? { frames: exception.stacktrace.frames?.map(cleanFrame) }
-              : undefined,
-            mechanism: exception.mechanism
-              ? {
-                  type: /^[a-zA-Z0-9_.-]{1,100}$/.test(exception.mechanism.type)
-                    ? exception.mechanism.type
-                    : "generic",
-                  handled: exception.mechanism.handled,
-                }
-              : undefined,
-          })),
+          values: event.exception.values?.map((exception) => {
+            const type = exception.type && errorTypes.has(exception.type) ? exception.type : 'Error';
+            const category = diagnosticMessage({ message: exception.value });
+            const frames = exception.stacktrace?.frames?.map(cleanFrame);
+            const origin = frames?.at(-1);
+            const fromMaps = [origin?.filename, origin?.abs_path].some(path =>
+              path === 'https://maps.googleapis.com/maps/api/js' || path === 'app:///maps/api/js',
+            );
+            const context = operation || (fromMaps ? 'Google Maps runtime' : safeScreen);
+            const location = context ? ` in ${context}` : '';
+            return {
+              type,
+              value: category === 'Application operation failed'
+                ? `${type}${location}: cause unclassified`
+                : category,
+              stacktrace: exception.stacktrace ? { frames } : undefined,
+              mechanism: exception.mechanism
+                ? {
+                    type: /^[a-zA-Z0-9_.-]{1,100}$/.test(exception.mechanism.type)
+                      ? exception.mechanism.type
+                      : "generic",
+                    handled: exception.mechanism.handled,
+                  }
+                : undefined,
+            };
+          }),
         }
       : undefined,
   };
