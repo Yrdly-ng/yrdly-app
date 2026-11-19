@@ -266,7 +266,7 @@ export function CommentSection({
             try {
                 const { NotificationTriggers } = await import('@/lib/notifications/notification-triggers');
                 await Promise.all([
-                    NotificationTriggers.onPostCommented(postId, currentUser.id, text),
+                    NotificationTriggers.onPostCommented(postId, currentUser.id),
                     NotificationTriggers.onMentionsInContent(currentUser.id, postId, text),
                 ]);
             } catch {}

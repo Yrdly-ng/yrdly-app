@@ -240,9 +240,7 @@ export class SupabaseChatService {
             await import("@/lib/notifications/notification-triggers");
           await NotificationTriggers.onMessageSent(
             toUserId,
-            senderId,
             chatId,
-            imageUrl ? "📷 Photo" : content,
           );
         }
       } catch (notifError) {

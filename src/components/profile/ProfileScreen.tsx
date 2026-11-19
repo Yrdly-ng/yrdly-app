@@ -301,6 +301,7 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
         if (error) throw error;
         setIsFollowing(true);
         setIsMutualFollow(targetFollowsMe);
+        void NotificationTriggers.onNewFollower(currentUser.id, targetUser.id);
       }
     } catch (e: any) {
       toast({ variant: 'destructive', description: e.message });

@@ -1,5 +1,6 @@
 "use client";
 
+import { NotificationTriggers } from "@/lib/notifications/notification-triggers";
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase/supabase';
 import { useAuth } from './use-supabase-auth';
@@ -62,6 +63,7 @@ export function useFollowStatus(targetId?: string) {
 
         if (error) throw error;
         setIsFollowing(true);
+        void NotificationTriggers.onNewFollower(user.id, targetId);
       }
     } catch (e) {
       console.error('Error toggling follow:', e);
