@@ -345,6 +345,9 @@ test('Sentry preserves safe runtime categories without forwarding the original e
   const r = runtime();
   r.load('sentry').initializeWebSentry('browser');
   const cases = [
+    ['Google Maps script failed to load', 'Google Maps script failed to load'],
+    ['private is not a function', 'Non-callable value invoked'],
+    ['private is not defined', 'JavaScript identifier unavailable'],
     ['Maximum call stack size exceeded', 'JavaScript stack overflow'],
     ["Cannot read properties of undefined (reading 'private')", 'Undefined property access'],
     ["Cannot read properties of null (reading 'private')", 'Null property access'],
@@ -361,6 +364,30 @@ test('Sentry preserves safe runtime categories without forwarding the original e
   }
   r.load('sentry').captureWebError({ message: 'Loading chunk 123 failed. https://private.invalid' });
   assert.equal(r.calls.find(([name]) => name === 'exception')[1].message, 'Application chunk unavailable');
+});
+
+test('Sentry explains unknown errors using only allowlisted operation and screen context', () => {
+  const r = runtime();
+  r.load('sentry').initializeWebSentry('browser');
+  const beforeSend = r.sentryOptions.beforeSend;
+  for (const [tags, type, expected] of [
+    [{ operation: 'notification.actor', error_code: '42501' }, 'Error', 'Error in notification.actor: cause unclassified'],
+    [{ operation: 'private', screen: '/map' }, 'TypeError', 'TypeError in /map: cause unclassified'],
+    [{ operation: 'private', screen: '/private' }, 'private', 'Error: cause unclassified'],
+  ]) {
+    const safe = beforeSend({ tags, exception: { values: [{ type, value: 'private.person@example.invalid' }] } });
+    assert.equal(safe.exception.values[0].value, expected);
+    assert.equal(safe.tags.error_code, tags.error_code);
+    assert.equal(beforeSend(safe).exception.values[0].value, expected);
+    assert.doesNotMatch(JSON.stringify(safe), /private/);
+  }
+  const maps = beforeSend({ exception: { values: [{
+    type: 'Error', value: 'private', stacktrace: { frames: [
+      { filename: 'https://maps.googleapis.com/maps/api/js?key=private', lineno: 42 },
+    ] },
+  }] } });
+  assert.equal(maps.exception.values[0].value, 'Error in Google Maps runtime: cause unclassified');
+  assert.doesNotMatch(JSON.stringify(maps), /private/);
 });
 
 test("SDK failures cannot break actions or error handling", async () => {

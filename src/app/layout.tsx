@@ -14,6 +14,7 @@ import { PushNotificationManager } from '@/components/notifications/PushNotifica
 import { CrispChat } from '@/components/CrispChat';
 import { TelemetryHandler } from '@/components/providers/TelemetryHandler';
 import { AcquisitionCapture } from '@/components/providers/AcquisitionCapture';
+import { GoogleMapsScript } from '@/components/providers/GoogleMapsScript';
 import { SignupConversionHandler } from '@/components/providers/SignupConversionHandler';
 
 export const metadata: Metadata = {
@@ -103,12 +104,7 @@ export default function RootLayout({
               `}</Script>
             </>
           )}
-          {process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY && (
-            <Script
-              src={`https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places`}
-              strategy="afterInteractive"
-            />
-          )}
+          <GoogleMapsScript />
         </ThemeProvider>
       </body>
     </html>

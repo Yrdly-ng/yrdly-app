@@ -14,6 +14,8 @@ export function diagnosticMessage(value: unknown): string {
   if (/maximum call stack size exceeded|too much recursion/i.test(text)) return 'JavaScript stack overflow';
   if (/cannot (?:read|set) propert(?:y|ies) of undefined|undefined is not an object/i.test(text)) return 'Undefined property access';
   if (/cannot (?:read|set) propert(?:y|ies) of null|null is not an object/i.test(text)) return 'Null property access';
+  if (/ is not a function(?:[. ]|$)/i.test(text)) return 'Non-callable value invoked';
+  if (/ is not defined[.!]?$|^Can.t find variable:/i.test(text)) return 'JavaScript identifier unavailable';
   if (/loading (?:css )?chunk .+ failed|chunkloaderror|failed to fetch dynamically imported module|importing a module script failed/i.test(text)) return 'Application chunk unavailable';
   if (/RefererNotAllowedMapError/.test(text)) return 'Google Maps referrer rejected';
   if (/InvalidKeyMapError|MissingKeyMapError/.test(text)) return 'Google Maps API key unavailable';
@@ -35,8 +37,11 @@ export const diagnosticMessages = new Set([
   'JavaScript stack overflow',
   'Undefined property access',
   'Null property access',
+  'Non-callable value invoked',
+  'JavaScript identifier unavailable',
   'Application chunk unavailable',
   'Google Maps referrer rejected',
+  'Google Maps script failed to load',
   'Google Maps API key unavailable',
   'Google Maps API not enabled',
   'Google Maps billing unavailable',
