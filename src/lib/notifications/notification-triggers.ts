@@ -138,25 +138,15 @@ export class NotificationTriggers {
         .single();
 
       if (postData && postData.user_id !== likerId) {
-        // Get liker's name
-        const { data: likerData } = await supabase
-          .from('public_profiles')
-          .select('name')
-          .eq('id', likerId)
-          .single();
-
-        if (likerData) {
-          await NotificationService.createNotification({
-            userId: postData.user_id,
-            type: 'post_like',
-            senderId: likerId,
-            relatedId: postId,
-            relatedType: 'post',
-            title: `${likerData.name} liked your post`,
-            message: `${likerData.name} liked your post`,
-            data: { likerName: likerData.name, postId }
-          });
-        }
+        await NotificationService.createNotification({
+          userId: postData.user_id,
+          type: 'post_like',
+          senderId: likerId,
+          relatedId: postId,
+          relatedType: 'post',
+          title: 'Post activity',
+          message: 'Someone liked your post.',
+        });
       }
     } catch (error) {
       console.error('Error creating post like notification:', error);
@@ -205,7 +195,7 @@ export class NotificationTriggers {
   /**
    * Trigger notification when a post is commented on
    */
-  static async onPostCommented(postId: string, commenterId: string, commentContent: string) {
+  static async onPostCommented(postId: string, commenterId: string) {
     try {
       // Get post details and owner
       const { data: postData } = await supabase
@@ -215,29 +205,15 @@ export class NotificationTriggers {
         .single();
 
       if (postData && postData.user_id !== commenterId) {
-        // Get commenter's name
-        const { data: commenterData } = await supabase
-          .from('public_profiles')
-          .select('name')
-          .eq('id', commenterId)
-          .single();
-
-        if (commenterData) {
-          const commentPreview = commentContent.length > 50 
-            ? commentContent.substring(0, 50) + '...' 
-            : commentContent;
-
-          await NotificationService.createNotification({
-            userId: postData.user_id,
-            type: 'post_comment',
-            senderId: commenterId,
-            relatedId: postId,
-            relatedType: 'post',
-            title: `${commenterData.name} commented on your post`,
-            message: `${commenterData.name} commented: "${commentPreview}"`,
-            data: { commenterName: commenterData.name, postId, commentPreview }
-          });
-        }
+        await NotificationService.createNotification({
+          userId: postData.user_id,
+          type: 'post_comment',
+          senderId: commenterId,
+          relatedId: postId,
+          relatedType: 'post',
+          title: 'Post activity',
+          message: 'Someone commented on your post.',
+        });
       }
     } catch (error) {
       console.error('Error creating post comment notification:', error);
