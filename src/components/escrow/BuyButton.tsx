@@ -10,6 +10,7 @@ import { MARKETPLACE_CONSTANTS } from "@/lib/shared/constants";
 import { supabase } from "@/lib/supabase/supabase";
 
 
+import { DeliveryQuotePreview } from './DeliveryQuotePreview';
 import { GlassCard } from "@/components/ui/glass-card";
 
 /* ── Design tokens ─────────────────────────────────── */
@@ -455,6 +456,9 @@ export function BuyButton({
                   Bank transfers may take up to 30 minutes or longer to reconcile.
                 </p>
               </div>
+
+              {process.env.NEXT_PUBLIC_SHIPBUBBLE_QA_LISTING_ID === itemId && itemType === 'catalog_item' &&
+                user && user.id !== sellerId && !pendingTransactionId && <DeliveryQuotePreview itemId={itemId} />}
 
               {/* Escrow explainer */}
               <div className="p-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 backdrop-blur-md flex gap-3.5 items-start">
