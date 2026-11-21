@@ -181,7 +181,7 @@ export default function TransactionDetailsPage() {
     try {
       setActionLoading(true);
       await TransactionStatusService.confirmShipped(tx.id, user.id);
-      toast({ title: 'Success', description: tx.delivery_details?.option === 'shipbubble' ? 'Courier pickup booked.' : 'Transaction marked as sent.' });
+      toast({ title: 'Success', description: tx.delivery_details?.option === 'shipbubble' ? 'Courier pickup booked.' : tx.delivery_details?.option === 'travo' ? 'Delivery payment is ready for the buyer.' : 'Transaction marked as sent.' });
       await fetchTx();
     } catch (err: any) {
       toast({ title: 'Error', description: err.message || 'Failed to mark as sent.', variant: 'destructive' });
@@ -298,8 +298,10 @@ export default function TransactionDetailsPage() {
 
   const isPaidState = ['paid', 'ongoing', 'opened'].includes(statusStr) || Boolean(tx.paid_at);
   const delivery = tx.delivery_details?.option === 'shipbubble' ? tx.delivery_details : null;
-  const canMarkSent = isSeller && isPaidState && (!delivery || delivery.delivery_status === 'awaiting_seller') && !['shipped', 'delivered', 'completed', 'disputed', 'cancelled'].includes(statusStr);
-  const canConfirmReceipt = isBuyer && (statusStr === 'shipped' || statusStr === 'delivered');
+  const travoDelivery = tx.delivery_details?.option === 'travo' ? tx.delivery_details : null;
+  const canMarkSent = isSeller && isPaidState && (!travoDelivery || travoDelivery.delivery_status === 'awaiting_seller') && (!delivery || delivery.delivery_status === 'awaiting_seller') && !['shipped', 'delivered', 'completed', 'disputed', 'cancelled'].includes(statusStr);
+  const canConfirmReceipt = isBuyer && (statusStr === 'shipped' || statusStr === 'delivered' ||
+    (statusStr === 'paid' && travoDelivery?.delivery_status === 'payment_link_issued'));
 
   const shippedTime = tx.shipped_at ? new Date(tx.shipped_at).getTime() : 0;
   const hoursSinceShipped = (Date.now() - shippedTime) / (1000 * 60 * 60);
@@ -470,6 +472,22 @@ export default function TransactionDetailsPage() {
         {tx.delivery_details?.option === 'arranged_rider' && (
           <p className="rounded-xl border border-border p-4 text-sm">You’re arranging your own rider. Use YRDLY chat to agree on the handoff and courier fee.</p>
         )}
+        {travoDelivery && (
+          <section className="space-y-2 rounded-xl border border-border p-4 text-sm" aria-label="Travo delivery">
+            <p className="font-semibold">Delivery by Travo</p>
+            {travoDelivery.delivery_status === 'awaiting_seller' ? <p>Waiting for the seller to get the parcel ready.</p> : (
+              <>
+                <p>Travo confirms payment and handles dispatch. Check the tracking link for updates.</p>
+                {isBuyer && statusStr === 'paid' && travoDelivery.payment_url && (
+                  <a href={travoDelivery.payment_url} target="_blank" rel="noreferrer" className="mr-4 font-semibold underline">
+                    Pay ₦{(Number(travoDelivery.fee_kobo) / 100).toLocaleString()} to Travo
+                  </a>
+                )}
+                {travoDelivery.tracking_url && <a href={travoDelivery.tracking_url} target="_blank" rel="noreferrer" className="underline">Track with Travo</a>}
+              </>
+            )}
+          </section>
+        )}
         {delivery && (
           <section className="rounded-xl border border-border p-4 text-sm" aria-label="Delivery tracking">
             <p className="font-semibold">Courier delivery</p>
@@ -502,7 +520,7 @@ export default function TransactionDetailsPage() {
               className="w-full h-12 rounded-xl font-bold bg-primary text-primary-foreground hover:bg-primary/90 text-sm flex items-center justify-center gap-2"
             >
               {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Package className="w-4 h-4" />}
-              {delivery ? 'Ready for courier pickup' : "I've Sent the Item"}
+              {travoDelivery ? 'Ready for Travo pickup' : delivery ? 'Ready for courier pickup' : "I've Sent the Item"}
             </Button>
           )}
 

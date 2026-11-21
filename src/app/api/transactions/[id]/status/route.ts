@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/supabase/supabase-server';
 import { NotificationService } from '@/lib/notifications/server-notification-service';
+import { prepareTravoHandoff } from '@/lib/marketplace/travo-handoff';
 import { dispatchDelivery } from '@/lib/marketplace/shipbubble-dispatch';
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
 
@@ -17,6 +18,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const shipping = body.action === 'shipped';
   if (user.id !== (shipping ? transaction.seller_id : transaction.buyer_id)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+  }
+  if (transaction.delivery_details?.option === 'travo') {
+    if (shipping) {
+      const result = await prepareTravoHandoff(id, user.id);
+      return NextResponse.json(result.error ? { error: result.error } : { success: true }, { status: result.status });
+    }
+    if (transaction.delivery_details.delivery_status !== 'payment_link_issued') {
+      return NextResponse.json({ error: 'The delivery has not been arranged yet.' }, { status: 409 });
+    }
   }
   if (transaction.delivery_details?.option === 'shipbubble') {
     if (shipping) {

@@ -13,6 +13,7 @@ import { getPaylukCustomerId } from "@/lib/payments/payluk-onboarding";
 import { expireCheckoutReservation, expireItemCheckoutReservations, reservationHasExpired, RESERVATION_SELECT } from '@/lib/payments/checkout-reservation-expiry';
 
 import { deliveryCheckoutEnabled, deliveryOperationsEnabled, readDeliveryQuote, shipbubbleQuoteConfig } from '@/lib/marketplace/shipbubble-quote';
+import { readTravoQuote, travoCheckoutEnabled, travoSettings } from '@/lib/marketplace/travo-delivery';
 import { paylukAmountsMatch } from '@/lib/payments/payment-state';
 
 import { captureCampaignOrder } from "@/lib/campaigns/order-evidence";
@@ -101,6 +102,7 @@ export async function POST(request: NextRequest) {
       buyerEmail,
       itemType = 'post',
       deliveryQuoteToken,
+      travoQuoteToken,
       handoffOption,
       resumeTransactionId,
     } = body as {
@@ -111,12 +113,14 @@ export async function POST(request: NextRequest) {
       buyerEmail: string;
       itemType?: 'post' | 'catalog_item';
       deliveryQuoteToken?: string;
+      travoQuoteToken?: string;
       handoffOption?: DeliveryOption.FACE_TO_FACE | DeliveryOption.ARRANGED_RIDER;
       resumeTransactionId?: string;
     };
 
-    if (handoffOption !== undefined && (deliveryQuoteToken !== undefined ||
-      (handoffOption !== DeliveryOption.FACE_TO_FACE && handoffOption !== DeliveryOption.ARRANGED_RIDER))) {
+    if ((travoQuoteToken !== undefined && (deliveryQuoteToken !== undefined || handoffOption !== undefined)) ||
+      (handoffOption !== undefined && (deliveryQuoteToken !== undefined ||
+      (handoffOption !== DeliveryOption.FACE_TO_FACE && handoffOption !== DeliveryOption.ARRANGED_RIDER)))) {
       return NextResponse.json({ error: 'Choose one valid delivery method.' }, { status: 400 });
     }
 
@@ -265,6 +269,11 @@ export async function POST(request: NextRequest) {
       }
       if (existing.buyer_id !== buyerId) return NextResponse.json({ error:'Item reserved by another buyer' },{ status:409 });
       const storedHandoff = existing.delivery_details?.option || DeliveryOption.FACE_TO_FACE;
+      if (!['paid','shipped','delivered'].includes(existing.status) &&
+        ((travoQuoteToken !== undefined && (storedHandoff !== 'travo' || travoQuoteToken !== existing.delivery_details?.quote)) ||
+        (storedHandoff === 'travo' && existing.id !== resumeTransactionId && !travoQuoteToken))) {
+        return NextResponse.json({ error: 'Resume your existing checkout before changing its delivery method.' }, { status: 409 });
+      }
       if (handoffOption !== undefined && handoffOption !== storedHandoff &&
           !['paid','shipped','delivered'].includes(existing.status)) {
         return NextResponse.json({ error: 'Resume your existing checkout before changing its delivery method.' }, { status: 409 });
@@ -349,6 +358,14 @@ export async function POST(request: NextRequest) {
         (!storedDelivery && delivery.expiresAt <= Date.now()))) {
       return NextResponse.json({ error: 'Get a new delivery quote before paying.' }, { status: 409 });
     }
+    const travo = !existingTxToResume && travoQuoteToken !== undefined ? travoSettings() : null;
+    const directDelivery = readTravoQuote(travo, travoQuoteToken);
+    if (!existingTxToResume && travoQuoteToken !== undefined && (
+      !travoCheckoutEnabled() || itemType !== 'catalog_item' || travo?.listingId !== itemId || !directDelivery ||
+      directDelivery.buyerId !== buyerId || directDelivery.itemId !== itemId ||
+      directDelivery.itemKobo !== Math.round(authorizedPrice * 100) || directDelivery.expiresAt <= Date.now()
+    )) return NextResponse.json({ error: 'Get a new delivery quote before paying for the item.' }, { status: 409 });
+
     const feeMode = storedDelivery || delivery ? 'native_commission_delivery_v1'
       : existingTxToResume ? (reservationMode || 'buyer_commission_v1') : 'native_commission_v1';
     const totalAmount = Math.round(authorizedPrice * 100 + (delivery?.feeKobo ??
@@ -375,7 +392,10 @@ export async function POST(request: NextRequest) {
         payment_method: PaymentMethod.CARD,
         delivery_details: delivery ? { option: 'shipbubble', quote: requestedQuote, delivery_status: 'awaiting_seller',
           quote_id: createHash('sha256').update(delivery.provider.requestToken).digest('hex') }
-          : { option: handoffOption ?? DeliveryOption.FACE_TO_FACE },
+          : directDelivery ? {
+            option: 'travo', quote: travoQuoteToken, delivery_status: 'awaiting_seller',
+            quote_id: directDelivery.quoteId, fee_kobo: directDelivery.feeKobo, expires_at: directDelivery.expiresAt,
+          } : { option: handoffOption ?? DeliveryOption.FACE_TO_FACE },
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         item_type: itemType,

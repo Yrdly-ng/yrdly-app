@@ -57,6 +57,9 @@ export async function POST(
       return NextResponse.json({ error: 'Only the buyer can complete this transaction' }, { status: 403 });
     }
 
+    if (transaction.delivery_details?.option === 'travo' && !['delivered', 'completed'].includes(transaction.status)) {
+      return NextResponse.json({ error: 'Confirm that you received the item first.' }, { status: 409 });
+    }
     if (transaction.delivery_details?.option === 'shipbubble' && transaction.delivery_details.delivery_status !== 'completed') {
       return NextResponse.json({ error: 'Wait for the courier to complete delivery.' }, { status: 409 });
     }
