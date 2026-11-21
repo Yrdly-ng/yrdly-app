@@ -10,7 +10,7 @@ import { MARKETPLACE_CONSTANTS } from "@/lib/shared/constants";
 import { supabase } from "@/lib/supabase/supabase";
 
 
-import { DeliveryQuotePreview } from './DeliveryQuotePreview';
+import { DeliveryQuotePreview, type Quote } from './DeliveryQuotePreview';
 import { GlassCard } from "@/components/ui/glass-card";
 
 /* ── Design tokens ─────────────────────────────────── */
@@ -50,6 +50,8 @@ export function BuyButton({
   const [open, setOpen]         = useState(false);
   const [loading, setLoading]   = useState(false);
   const [pendingTransactionId, setPendingTransactionId] = useState<string | null>(null);
+  const [delivery, setDelivery] = useState<Quote | null>(null);
+  useEffect(() => { if (!open) setDelivery(null); }, [open]);
   const [checkingPending, setCheckingPending] = useState(false);
   const walletRecoveryAvailable = process.env.NEXT_PUBLIC_PAYLUK_WALLET_RECOVERY_ENABLED === 'true';
   // Store only the order UUID, never a Payluk token or customer identity.
@@ -100,7 +102,7 @@ export function BuyButton({
 
   const commission = Math.round(price * MARKETPLACE_CONSTANTS.COMMISSION_RATE * 100) / 100;
   // Native commission is charged to the seller, not added to the buyer's total.
-  const totalPay = price;
+  const totalPay = (Math.round(price * 100) + (delivery?.feeKobo ?? 0)) / 100;
 
   const handleBuy = async (method: 'checkout' | 'wallet' = 'checkout') => {
     if (!user) {
@@ -140,6 +142,8 @@ export function BuyButton({
           itemTitle,
           sellerName,
           itemType,
+          deliveryQuoteToken: delivery?.token,
+          resumeTransactionId: pendingTransactionId,
         }),
       });
 
@@ -443,6 +447,12 @@ export function BuyButton({
                   <span className="font-semibold text-muted-foreground">₦{commission.toLocaleString()} (seller pays)</span>
                 </div>
 
+                {delivery && (
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">Delivery Fee</span>
+                    <span className="font-semibold text-foreground">₦{(delivery.feeKobo / 100).toLocaleString()}</span>
+                  </div>
+                )}
                 <div className="h-px w-full bg-border/50 my-0.5" />
 
                 <div className="flex justify-between items-center">
@@ -458,7 +468,7 @@ export function BuyButton({
               </div>
 
               {process.env.NEXT_PUBLIC_SHIPBUBBLE_QA_LISTING_ID === itemId && itemType === 'catalog_item' &&
-                user && user.id !== sellerId && !pendingTransactionId && <DeliveryQuotePreview itemId={itemId} />}
+                user && user.id !== sellerId && !pendingTransactionId && <DeliveryQuotePreview itemId={itemId} onQuoteChange={setDelivery} />}
 
               {/* Escrow explainer */}
               <div className="p-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 backdrop-blur-md flex gap-3.5 items-start">
@@ -491,10 +501,10 @@ export function BuyButton({
                       Processing Payment...
                     </span>
                   ) : (
-                    `Pay ₦${totalPay.toLocaleString()} Securely`
+                    pendingTransactionId ? 'Resume secure payment' : `Pay ₦${totalPay.toLocaleString()} Securely`
                   )}
                 </button>
-                {walletRecoveryAvailable && (
+                {walletRecoveryAvailable && !delivery && (
                 <>
                 <button type="button" onClick={() => handleBuy('wallet')} disabled={loading}
                   className="w-full rounded-2xl border border-border px-4 py-3 text-sm font-semibold text-foreground disabled:opacity-50">

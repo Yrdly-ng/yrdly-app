@@ -181,7 +181,7 @@ export default function TransactionDetailsPage() {
     try {
       setActionLoading(true);
       await TransactionStatusService.confirmShipped(tx.id, user.id);
-      toast({ title: 'Success', description: 'Transaction marked as sent.' });
+      toast({ title: 'Success', description: tx.delivery_details?.option === 'shipbubble' ? 'Courier pickup booked.' : 'Transaction marked as sent.' });
       await fetchTx();
     } catch (err: any) {
       toast({ title: 'Error', description: err.message || 'Failed to mark as sent.', variant: 'destructive' });
@@ -284,7 +284,8 @@ export default function TransactionDetailsPage() {
   const thumb = imagesArr[0] || '';
 
   const isPaidState = ['paid', 'ongoing', 'opened'].includes(statusStr) || Boolean(tx.paid_at);
-  const canMarkSent = isSeller && isPaidState && !['shipped', 'delivered', 'completed', 'disputed', 'cancelled'].includes(statusStr);
+  const delivery = tx.delivery_details?.option === 'shipbubble' ? tx.delivery_details : null;
+  const canMarkSent = isSeller && isPaidState && (!delivery || delivery.delivery_status === 'awaiting_seller') && !['shipped', 'delivered', 'completed', 'disputed', 'cancelled'].includes(statusStr);
   const canConfirmReceipt = isBuyer && (statusStr === 'shipped' || statusStr === 'delivered');
 
   const shippedTime = tx.shipped_at ? new Date(tx.shipped_at).getTime() : 0;
@@ -453,6 +454,24 @@ export default function TransactionDetailsPage() {
           </div>
         </div>
 
+        {delivery && (
+          <section className="rounded-xl border border-border p-4 text-sm" aria-label="Delivery tracking">
+            <p className="font-semibold">Courier delivery</p>
+            <p className="mt-1 text-muted-foreground">{{
+              awaiting_seller: 'Waiting for seller to prepare the package',
+              booking: 'Booking pickup',
+              pending: 'Pickup requested',
+              confirmed: 'Courier confirmed',
+              picked_up: 'Package picked up',
+              in_transit: 'Out for delivery',
+              completed: 'Delivered',
+              cancelled: 'Delivery cancelled',
+              needs_review: 'Delivery needs support review',
+            }[String(delivery.delivery_status)] || 'Awaiting status update'}</p>
+            {delivery.tracking_url && <a href={delivery.tracking_url} className="mt-2 inline-block underline" target="_blank" rel="noreferrer">Track shipment</a>}
+          </section>
+        )}
+
         {/* Action Buttons */}
         <div className="flex flex-col gap-3 font-sans">
           {canMarkSent && (
@@ -462,7 +481,7 @@ export default function TransactionDetailsPage() {
               className="w-full h-12 rounded-xl font-bold bg-primary text-primary-foreground hover:bg-primary/90 text-sm flex items-center justify-center gap-2"
             >
               {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Package className="w-4 h-4" />}
-              I&apos;ve Sent the Item
+              {delivery ? 'Ready for courier pickup' : "I've Sent the Item"}
             </Button>
           )}
 

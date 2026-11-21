@@ -3,9 +3,9 @@
 import { useState, type FormEvent } from 'react';
 import { supabase } from '@/lib/supabase/supabase';
 
-type Quote = { feeKobo: number; eta: string | null; kwik: boolean };
+export type Quote = { feeKobo: number; eta: string | null; kwik: boolean; token?: string };
 
-export function DeliveryQuotePreview({ itemId }: { itemId: string }) {
+export function DeliveryQuotePreview({ itemId, onQuoteChange }: { itemId: string; onQuoteChange: (quote: Quote | null) => void }) {
   const [quote, setQuote] = useState<Quote | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -16,6 +16,7 @@ export function DeliveryQuotePreview({ itemId }: { itemId: string }) {
 
     const fields = new FormData(event.currentTarget);
     setQuote(null);
+    onQuoteChange(null);
     setError('');
     setLoading(true);
     try {
@@ -40,9 +41,9 @@ export function DeliveryQuotePreview({ itemId }: { itemId: string }) {
     <section className="rounded-2xl border border-border/60 p-4">
       <h2 className="text-sm font-semibold text-foreground">Delivery quote preview</h2>
       <p className="mt-1 text-xs text-muted-foreground">
-        This test shows a delivery estimate. The payment button below is for pickup.
+        Request an estimate for Lagos delivery or continue with pickup.
       </p>
-      <form className="mt-3" onSubmit={requestQuote} onChange={() => { setQuote(null); setError(''); }}>
+      <form className="mt-3" onSubmit={requestQuote} onChange={() => { setQuote(null); onQuoteChange(null); setError(''); }}>
         <fieldset disabled={loading} className="space-y-3">
           <label className="block text-xs text-foreground">
             Recipient name
@@ -66,11 +67,19 @@ export function DeliveryQuotePreview({ itemId }: { itemId: string }) {
       </form>
       {error && <p role="alert" className="mt-3 text-xs text-destructive">{error}</p>}
       {quote && (
-        <p role="status" className="mt-3 text-sm text-foreground">
-          {quote.kwik ? 'Kwik' : 'Sandbox courier'} estimate{' '}
-          {new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(quote.feeKobo / 100)}
-          {quote.eta && ' · ' + quote.eta}
-        </p>
+        <div className="mt-3 space-y-2">
+          <p role="status" className="text-sm text-foreground">
+            {quote.kwik ? 'Kwik' : 'Sandbox courier'} estimate{' '}
+            {new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(quote.feeKobo / 100)}
+            {quote.eta && ' · ' + quote.eta}
+          </p>
+          {quote.token && (
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className="rounded-lg border border-border px-3 py-2 text-xs" onClick={() => onQuoteChange(quote)}>Use delivery</button>
+              <button type="button" className="rounded-lg border border-border px-3 py-2 text-xs" onClick={() => onQuoteChange(null)}>Use pickup</button>
+            </div>
+          )}
+        </div>
       )}
     </section>
   );

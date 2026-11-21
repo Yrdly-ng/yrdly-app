@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getAuthenticatedUser } from '@/lib/supabase/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
-import { getShipbubblePickupQuote, ShipbubbleQuoteError, shipbubbleQuoteConfig } from '@/lib/marketplace/shipbubble-quote';
+import { deliveryCheckoutEnabled, getShipbubblePickupQuote, sealDeliveryQuote, ShipbubbleQuoteError, shipbubbleQuoteConfig } from '@/lib/marketplace/shipbubble-quote';
 
 const quoteRequest = z.object({
   itemId: z.string().uuid(),
@@ -48,7 +48,12 @@ export async function POST(request: Request) {
   try {
     const quote = await getShipbubblePickupQuote(config, { ...recipient, email: user.email }, { name: item.title, price: Number(item.price) });
     if (!quote) return NextResponse.json({ error: 'No courier pickup quote is available for this address.' }, { status: 422 });
-    return NextResponse.json(quote, { headers: { 'Cache-Control': 'no-store' } });
+    const { provider, ...publicQuote } = quote;
+    const token = provider && deliveryCheckoutEnabled(config) ? sealDeliveryQuote(config, {
+      buyerId: user.id, itemId, priceKobo: Math.round(Number(item.price) * 100), feeKobo: quote.feeKobo,
+      expiresAt: Date.now() + 15 * 60_000, provider,
+    }) : undefined;
+    return NextResponse.json({ ...publicQuote, token }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     if (error instanceof ShipbubbleQuoteError && error.reason === 'invalid_address') {
       return NextResponse.json({ error: 'Enter a verifiable Lagos delivery address.' }, { status: 422 });

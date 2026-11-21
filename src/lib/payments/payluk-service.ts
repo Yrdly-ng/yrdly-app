@@ -673,14 +673,15 @@ export class PaylukService {
    * Does NOT send customer-id header.
    */
   static async verifyEscrow(
-    paymentToken: string
+    paymentToken: string,
+    signal?: AbortSignal
   ): Promise<PaylukEscrow> {
     // Escrow payloads omit environment. Bind evidence to the authenticated transport,
     // never to a client hint, and reject a contradictory provider declaration.
     const environment = verifiedPaylukEnvironment();
     const response = await paylukRequest<PaylukEscrow & { environment?: unknown }>(
       `/v1/escrow/verify/${encodeURIComponent(paymentToken)}`,
-      { method: 'GET', redirect: 'error' },
+      { method: 'GET', redirect: 'error', signal },
     );
     if (response.data.environment != null && response.data.environment !== environment) {
       throw new Error('Payluk escrow environment contradicts the verified transport.');
