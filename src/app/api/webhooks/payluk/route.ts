@@ -2,7 +2,7 @@ import { approveBookingMilestone } from '@/lib/bookings/milestone-release';
 import { recordCampaignRefund } from '@/lib/campaigns/order-evidence';
 import { invokeServerFunction } from '@/lib/notifications/server-functions';
 import { applyEscrowPayment } from '@/lib/payments/escrow-payment';
-import { ESCROW_ALLOWED_FROM, paymentReferenceFilter, paylukEscrowPrincipal } from '@/lib/payments/payment-state';
+import { ESCROW_ALLOWED_FROM, paylukAmountsMatch, paymentReferenceFilter, paylukEscrowPrincipal } from '@/lib/payments/payment-state';
 import { flagPayment } from '@/lib/payments/payment-reconciliation';
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyPaylukWebhookSignature } from '@/lib/payments/payluk-webhook';
@@ -240,6 +240,14 @@ async function handleEscrowOngoing(data: Pick<PaylukEscrowData, 'id' | 'paymentT
     return;
   }
 
+  if (tx.metadata?.payluk_fee_mode === 'native_commission_delivery_v1') {
+    if (!tx.payluk_tx_ref || tx.payluk_escrow_id !== data.id) throw new Error('Delivery escrow reference mismatch');
+    const remote = await PaylukService.verifyEscrow(tx.payluk_tx_ref);
+    if (!['ONGOING', 'COMPLETED', 'CLAIMED'].includes(remote.status) || !paylukAmountsMatch(tx, remote)) {
+      await flagPayment('payluk', data.id, tx.id, 'delivery_amount_mismatch');
+      throw new Error('Could not verify delivery payment');
+    }
+  }
   const applied = await applyEscrowPayment(tx.id,'payluk',data.id);
   // Ticket issuance is separately idempotent and must be retried after a crash.
   if ((tx.item_type === 'ticket' || tx.metadata?.event_id) &&

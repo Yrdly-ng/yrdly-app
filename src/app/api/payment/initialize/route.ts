@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/supabase-admin";
 import { DeliveryOption, PaymentMethod, EscrowStatus } from "@/types/escrow";
@@ -10,6 +11,9 @@ import { applyEscrowPayment } from '@/lib/payments/escrow-payment';
 import { getPaylukCustomerId } from "@/lib/payments/payluk-onboarding";
 
 import { expireCheckoutReservation, expireItemCheckoutReservations, reservationHasExpired, RESERVATION_SELECT } from '@/lib/payments/checkout-reservation-expiry';
+
+import { deliveryCheckoutEnabled, deliveryOperationsEnabled, readDeliveryQuote, shipbubbleQuoteConfig } from '@/lib/marketplace/shipbubble-quote';
+import { paylukAmountsMatch } from '@/lib/payments/payment-state';
 
 import { captureCampaignOrder } from "@/lib/campaigns/order-evidence";
 
@@ -96,6 +100,9 @@ export async function POST(request: NextRequest) {
       price,
       buyerEmail,
       itemType = 'post',
+      deliveryQuoteToken,
+      handoffOption,
+      resumeTransactionId,
     } = body as {
       itemId: string;
       buyerId: string;
@@ -103,7 +110,15 @@ export async function POST(request: NextRequest) {
       price: number;
       buyerEmail: string;
       itemType?: 'post' | 'catalog_item';
+      deliveryQuoteToken?: string;
+      handoffOption?: DeliveryOption.FACE_TO_FACE | DeliveryOption.ARRANGED_RIDER;
+      resumeTransactionId?: string;
     };
+
+    if (handoffOption !== undefined && (deliveryQuoteToken !== undefined ||
+      (handoffOption !== DeliveryOption.FACE_TO_FACE && handoffOption !== DeliveryOption.ARRANGED_RIDER))) {
+      return NextResponse.json({ error: 'Choose one valid delivery method.' }, { status: 400 });
+    }
 
     const effectiveBuyerEmail = buyerEmail || user.email || `${buyerId}@placeholder.yrdly.com`;
 
@@ -242,10 +257,25 @@ export async function POST(request: NextRequest) {
     let existing: NonNullable<typeof activeTx>[number] | null = activeTx?.[0] ?? null;
     if (existing && await expireCheckoutReservation(existing)) existing = null;
     if (existing) {
+      const existingDelivery = existing.metadata?.payluk_fee_mode === 'native_commission_delivery_v1';
+      if ((existingDelivery && !deliveryOperationsEnabled(shipbubbleQuoteConfig())) ||
+          (existingDelivery && existing.id !== resumeTransactionId && existing.delivery_details?.quote !== deliveryQuoteToken) ||
+          (!existingDelivery && deliveryQuoteToken !== undefined && !['paid','shipped','delivered'].includes(existing.status))) {
+        return NextResponse.json({ error: 'Resume your existing checkout before changing its delivery method.' }, { status: 409 });
+      }
       if (existing.buyer_id !== buyerId) return NextResponse.json({ error:'Item reserved by another buyer' },{ status:409 });
+      const storedHandoff = existing.delivery_details?.option || DeliveryOption.FACE_TO_FACE;
+      if (handoffOption !== undefined && handoffOption !== storedHandoff &&
+          !['paid','shipped','delivered'].includes(existing.status)) {
+        return NextResponse.json({ error: 'Resume your existing checkout before changing its delivery method.' }, { status: 409 });
+      }
       if (['paid','shipped','delivered'].includes(existing.status)) return NextResponse.json({ success:true,alreadyPaid:true,transactionId:existing.id,totalAmount:existing.total_amount });
       if (existing.status === 'pending' && existing.payluk_escrow_id && existing.payluk_tx_ref) {
         const remote = await PaylukService.verifyEscrow(existing.payluk_tx_ref);
+        if (existingDelivery && (remote.id !== existing.payluk_escrow_id || !paylukAmountsMatch(existing, remote))) {
+          await flagPayment('payluk', existing.payluk_escrow_id, existing.id, 'delivery_amount_mismatch');
+          return NextResponse.json({ error: 'Delivery payment requires reconciliation.' }, { status: 409 });
+        }
         const status = (remote.status || '').toUpperCase();
         if (['ONGOING','COMPLETED','CLAIMED'].includes(status)) {
           await applyEscrowPayment(existing.id,'payluk',existing.payluk_escrow_id);
@@ -306,10 +336,23 @@ export async function POST(request: NextRequest) {
     const reservationMode = existingTxToResume?.metadata?.payluk_fee_mode;
     // Pre-cutover unfinished rows have no explicit mode; preserve their former
     // buyer-paid fee contract instead of changing terms during a retry.
-    const feeMode = existingTxToResume ? (reservationMode || 'buyer_commission_v1') : 'native_commission_v1';
-    const totalAmount = feeMode === 'buyer_commission_v1'
-      ? Math.round((authorizedPrice + commission) * 100) / 100
-      : authorizedPrice;
+    const storedDelivery = reservationMode === 'native_commission_delivery_v1';
+    const requestedQuote = existingTxToResume ? existingTxToResume.delivery_details?.quote : deliveryQuoteToken;
+    const config = shipbubbleQuoteConfig();
+    const canUseDeliveryQuote = storedDelivery ? deliveryOperationsEnabled(config) : deliveryCheckoutEnabled(config);
+    const delivery = typeof requestedQuote === 'string' && itemType === 'catalog_item' &&
+      canUseDeliveryQuote && config?.listingId === itemId ? readDeliveryQuote(config, requestedQuote) : null;
+    if ((storedDelivery || (!existingTxToResume && deliveryQuoteToken !== undefined)) &&
+      (!delivery || delivery.buyerId !== buyerId || delivery.itemId !== itemId ||
+        delivery.priceKobo !== Math.round(authorizedPrice * 100) ||
+        !Number.isSafeInteger(delivery.feeKobo) || delivery.feeKobo <= 0 ||
+        (!storedDelivery && delivery.expiresAt <= Date.now()))) {
+      return NextResponse.json({ error: 'Get a new delivery quote before paying.' }, { status: 409 });
+    }
+    const feeMode = storedDelivery || delivery ? 'native_commission_delivery_v1'
+      : existingTxToResume ? (reservationMode || 'buyer_commission_v1') : 'native_commission_v1';
+    const totalAmount = Math.round(authorizedPrice * 100 + (delivery?.feeKobo ??
+      (feeMode === 'buyer_commission_v1' ? Math.round(commission * 100) : 0))) / 100;
 
     // ── STEP 1: DB Reservation FIRST (Before external Payluk call) ──
     // Inserting into escrow_transactions first enforces single-buyer reservation at the DB layer
@@ -330,11 +373,13 @@ export async function POST(request: NextRequest) {
         seller_amount: authorizedPrice,
         status: EscrowStatus.PENDING,
         payment_method: PaymentMethod.CARD,
-        delivery_details: { option: DeliveryOption.FACE_TO_FACE },
+        delivery_details: delivery ? { option: 'shipbubble', quote: requestedQuote, delivery_status: 'awaiting_seller',
+          quote_id: createHash('sha256').update(delivery.provider.requestToken).digest('hex') }
+          : { option: handoffOption ?? DeliveryOption.FACE_TO_FACE },
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         item_type: itemType,
-        metadata: { payluk_fee_mode: 'native_commission_v1' },
+        metadata: { payluk_fee_mode: feeMode, ...(delivery ? { delivery_fee_kobo: delivery.feeKobo } : {}) },
       };
 
       const { data: txData, error: txError } = await supabaseAdmin.rpc('create_checkout_reservation', { p_payload: txPayload });
@@ -421,7 +466,7 @@ export async function POST(request: NextRequest) {
         if (!Number.isFinite(providerFee) || providerFee < 0 || providerFee > authorizedPrice) {
           throw new Error('Invalid Payluk escrow fee. Checkout requires reconciliation.');
         }
-        if (feeMode === 'native_commission_v1' && (providerFee < commission || Number(paylukEscrow.additionalFee ?? 0) !== 0)) {
+        if ((feeMode === 'native_commission_v1' || delivery) && (providerFee < commission || Number(paylukEscrow.additionalFee ?? 0) !== 0)) {
           throw new Error('Payluk native commission configuration needs reconciliation.');
         }
         const sellerAmount = Math.round((authorizedPrice - providerFee) * 100) / 100;
@@ -429,6 +474,14 @@ export async function POST(request: NextRequest) {
           .update({ seller_amount:sellerAmount })
           .eq('id',transactionId).eq('status','creating_escrow').select('id').maybeSingle();
         if (proceedsError || !proceedsSaved) throw new Error('Could not persist payment proceeds');
+        if (delivery) {
+          await PaylukService.addAdditionalFee(paylukPaymentToken, delivery.feeKobo / 100, setupDeadline);
+          const payerTerms = await PaylukService.verifyEscrow(paylukPaymentToken, setupDeadline);
+          if (payerTerms.id !== paylukEscrowId || payerTerms.status !== 'PENDING' ||
+              payerTerms.state !== 'AWAITING_PAYMENT' || !paylukAmountsMatch({
+                amount: authorizedPrice, metadata: { payluk_fee_mode: feeMode, delivery_fee_kobo: delivery.feeKobo },
+              }, payerTerms)) throw new Error('Could not verify Payluk delivery fee.');
+        }
         if (feeMode === 'buyer_commission_v1' && commission > 0) {
           await PaylukService.addAdditionalFee(paylukPaymentToken,commission,setupDeadline);
         }

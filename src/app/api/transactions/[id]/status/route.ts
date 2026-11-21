@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/supabase/supabase-server';
 import { NotificationService } from '@/lib/notifications/server-notification-service';
+import { dispatchDelivery } from '@/lib/marketplace/shipbubble-dispatch';
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -10,12 +11,21 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const body = await request.json().catch(() => null);
   if (!['shipped', 'delivered'].includes(body?.action)) return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
   const { data: transaction, error } = await supabaseAdmin.from('escrow_transactions')
-    .select('buyer_id,seller_id,status').eq('id', id).maybeSingle();
+    .select('buyer_id,seller_id,status,delivery_details').eq('id', id).maybeSingle();
   if (error) return NextResponse.json({ error: 'Could not load transaction' }, { status: 500 });
   if (!transaction) return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
   const shipping = body.action === 'shipped';
   if (user.id !== (shipping ? transaction.seller_id : transaction.buyer_id)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+  }
+  if (transaction.delivery_details?.option === 'shipbubble') {
+    if (shipping) {
+      const booking = await dispatchDelivery(id, user.id);
+      return NextResponse.json(booking.error ? { error: booking.error } : { success: true }, { status: booking.status });
+    }
+    if (transaction.delivery_details.delivery_status !== 'completed') {
+      return NextResponse.json({ error: 'Wait for the courier to complete delivery.' }, { status: 409 });
+    }
   }
   if (transaction.status === body.action) return NextResponse.json({ success: true });
   const allowed = shipping ? ['paid'] : ['paid', 'shipped'];

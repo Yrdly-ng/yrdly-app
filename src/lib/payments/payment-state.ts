@@ -3,7 +3,7 @@ export type WithdrawalOutcome = 'success' | 'pending' | 'failed';
 interface PaylukAmountRecord {
   amount: number | string;
   commission?: number | string | null;
-  metadata?: { payluk_fee_mode?: string; payluk_environment?: unknown; event_id?: unknown } | null;
+  metadata?: { payluk_fee_mode?: string; payluk_environment?: unknown; event_id?: unknown; delivery_fee_kobo?: unknown } | null;
 }
 
 /** Ticket prices include organizer-paid commission; legacy principals stay unchanged. */
@@ -26,6 +26,12 @@ export function paylukAmountsMatch(transaction: PaylukAmountRecord, escrow: { am
   if (!Number.isFinite(expected) || !Number.isFinite(escrow.amount) || Math.round(escrow.amount * 100) !== Math.round(expected * 100)) return false;
   if (transaction.metadata?.payluk_fee_mode === 'milestone_native_commission_v1') {
     return escrow.whoPays === 'buyer' && Number(escrow.additionalFee ?? 0) === 0;
+  }
+  if (transaction.metadata?.payluk_fee_mode === 'native_commission_delivery_v1') {
+    const deliveryFee = transaction.metadata.delivery_fee_kobo;
+    return escrow.environment === 'test' && escrow.whoPays === 'seller' &&
+      typeof deliveryFee === 'number' && Number.isSafeInteger(deliveryFee) && deliveryFee >= 0 &&
+      Number.isFinite(escrow.additionalFee) && Math.round(Number(escrow.additionalFee) * 100) === deliveryFee;
   }
   if (transaction.metadata?.payluk_fee_mode === 'native_commission_v1') {
     return escrow.whoPays === 'seller' && Number(escrow.additionalFee ?? 0) === 0;

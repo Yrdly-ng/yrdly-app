@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
   // 1. Load the transaction — all values come from the DB, not from the client.
   const { data: tx, error: fetchError } = await supabaseAdmin
     .from('escrow_transactions')
-    .select('metadata, item_type, id, buyer_id, seller_id, status, payluk_escrow_id, payluk_tx_ref, payment_provider, amount')
+    .select('delivery_details, metadata, item_type, id, buyer_id, seller_id, status, payluk_escrow_id, payluk_tx_ref, payment_provider, amount')
     .eq('id', transactionId)
     .maybeSingle();
 
@@ -57,6 +57,10 @@ export async function POST(request: NextRequest) {
   if (tx.buyer_id !== user.id) {
     return NextResponse.json({ error: 'Only the buyer can confirm delivery' }, { status: 403 });
   }
+
+    if (tx.delivery_details?.option === 'shipbubble' && tx.delivery_details.delivery_status !== 'completed') {
+      return NextResponse.json({ error: 'Wait for the courier to complete delivery.' }, { status: 409 });
+    }
 
   // 3. Validate this is a Payluk transaction with a stored escrow ID.
   if (tx.payment_provider !== 'payluk') {
