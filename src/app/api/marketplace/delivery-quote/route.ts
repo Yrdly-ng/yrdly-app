@@ -49,7 +49,7 @@ export async function POST(request: Request) {
     const quote = await getShipbubblePickupQuote(config, { ...recipient, email: user.email }, { name: item.title, price: Number(item.price) });
     if (!quote) return NextResponse.json({ error: 'No courier pickup quote is available for this address.' }, { status: 422 });
     const { provider, ...publicQuote } = quote;
-    const token = provider && deliveryCheckoutEnabled(config) ? sealDeliveryQuote(config, {
+    const token = provider && quote.feeKobo > 0 && deliveryCheckoutEnabled(config) ? sealDeliveryQuote(config, {
       buyerId: user.id, itemId, priceKobo: Math.round(Number(item.price) * 100), feeKobo: quote.feeKobo,
       expiresAt: Date.now() + 15 * 60_000, provider,
     }) : undefined;

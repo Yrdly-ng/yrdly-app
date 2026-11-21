@@ -88,6 +88,8 @@ test('paid delivery requires the extra flag and Payluk sandbox transport', () =>
   };
   const enabled = load(undefined, supported);
   assert.equal(enabled.deliveryCheckoutEnabled(enabled.shipbubbleQuoteConfig()), true);
+  const paused = load(undefined, { ...supported, SHIPBUBBLE_QA_PAID_DELIVERY: '' });
+  assert.equal(paused.deliveryOperationsEnabled(paused.shipbubbleQuoteConfig()), true);
   for (const override of [{ SHIPBUBBLE_QA_PAID_DELIVERY: '' }, { PAYLUK_SECRET_KEY: 'sk_live_fixture' }, { PAYLUK_BASE_URL: 'https://api.payluk.ng' }]) {
     const disabled = load(undefined, { ...supported, ...override });
     assert.equal(disabled.deliveryCheckoutEnabled(disabled.shipbubbleQuoteConfig()), false);
@@ -164,7 +166,7 @@ test('seller dispatch claims the paid order before booking and blocks duplicate 
     '@/lib/payments/payluk-service': { PaylukService: { async verifyEscrow() { return { id: 'escrow', status: 'ONGOING' }; } } },
     '@/lib/payments/payment-state': { paylukAmountsMatch: () => true },
     './shipbubble-quote': {
-      shipbubbleQuoteConfig: () => ({}), deliveryCheckoutEnabled: () => true,
+      shipbubbleQuoteConfig: () => ({}), deliveryOperationsEnabled: () => true,
       readDeliveryQuote: () => ({ buyerId: 'buyer', itemId: 'item', feeKobo: 42000 }),
       async bookShipbubbleDelivery() {
         calls++;
@@ -194,8 +196,74 @@ test('seller dispatch claims the paid order before booking and blocks duplicate 
   assert.equal(calls, 2);
   assert.equal(tx.delivery_details.delivery_status, 'needs_review');
 
-  assert.equal(dispatch.shouldAdvanceShipment('in_transit', 'confirmed'), false);
-  assert.equal(dispatch.shouldAdvanceShipment('in_transit', 'completed'), true);
-  assert.equal(dispatch.shouldAdvanceShipment('completed', 'cancelled'), false);
-  assert.equal(dispatch.shouldAdvanceShipment('cancelled', 'completed'), false);
+});
+
+function loadTracking({ request = () => assert.fail('Unexpected provider call'), table } = {}) {
+  const source = readFileSync('src/lib/marketplace/shipbubble-tracking.ts', 'utf8');
+  const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
+  const tracking = {};
+  new Function('exports', 'require', 'fetch', compiled)(tracking, name => {
+    assert.equal(name, '@/lib/supabase/supabase-admin');
+    return { supabaseAdmin: { from() { return table; } } };
+  }, request);
+  return tracking;
+}
+
+test('a missing webhook can recover from the exact provider shipment in the paginated listing', async () => {
+  const pages = [];
+  const tracking = loadTracking({
+    async request(path) {
+      const url = new URL(path);
+      assert.equal(url.origin, 'https://api.shipbubble.com');
+      const page = Number(url.searchParams.get('Page'));
+      pages.push(page);
+      return result({
+        results: page === 1 ? [{ order_id: 'SB-OTHER', status: 'completed' }]
+          : [{ order_id: 'SB-OWNED', status: 'in_transit' }],
+        pagination: { next: page === 1 ? 2 : null },
+      });
+    },
+  });
+  assert.equal(await tracking.getShipbubbleStatus({ key: 'sb_sandbox_fixture' }, 'SB-OWNED'), 'in_transit');
+  assert.deepEqual(pages, [1, 2]);
+});
+
+test('missing or unknown provider tracking preserves the last recorded status', async () => {
+  const calls = [];
+  const tracking = loadTracking({ async request(path) {
+    calls.push(path);
+    return result({ results: [{ order_id: 'SB-OTHER', status: 'completed' }], pagination: { next: calls.length + 1 } });
+  } });
+  assert.equal(await tracking.getShipbubbleStatus({}, 'SB-OWNED'), null);
+  assert.equal(calls.length, 3);
+  const unknown = loadTracking({ async request() { return result({ results: [{ order_id: 'SB-OWNED', status: 'unknown' }] }); } });
+  assert.equal(await unknown.getShipbubbleStatus({}, 'SB-OWNED'), null);
+});
+
+test('cancelled shipment keeps escrow paid and cannot advance on a delayed completion event', async () => {
+  const row = { id: 'txn', status: 'paid', delivery_details: { option: 'shipbubble', shipment_id: 'SB-OWNED', delivery_status: 'in_transit' } };
+  let writes = 0;
+  function builder(update) {
+    const match = [];
+    return {
+      eq(key, value) { match.push([key, value]); return this; },
+      select() { return this; },
+      async maybeSingle() {
+        if (!match.every(([key, value]) => (key.includes('->>') ? row.delivery_details[key.split('->>')[1]] : row[key]) === value)) {
+          return { data: null };
+        }
+        if (update) { writes++; Object.assign(row, update); }
+        return { data: structuredClone(row) };
+      },
+    };
+  }
+  const tracking = loadTracking({ table: { select: () => builder(), update: value => builder(value) } });
+  assert.equal(await tracking.syncShipbubbleStatus('SB-OWNED', 'confirmed'), true);
+  assert.equal(writes, 0);
+  assert.equal(await tracking.syncShipbubbleStatus('SB-OWNED', 'cancelled'), true);
+  assert.equal(row.delivery_details.delivery_status, 'cancelled');
+  assert.equal(row.status, 'paid');
+  assert.equal(row.shipped_at, undefined);
+  assert.equal(await tracking.syncShipbubbleStatus('SB-OWNED', 'completed'), true);
+  assert.equal(writes, 1);
 });

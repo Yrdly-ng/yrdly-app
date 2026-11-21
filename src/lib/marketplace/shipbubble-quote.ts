@@ -95,10 +95,13 @@ export type DeliveryQuote = {
   provider: { requestToken: string; serviceCode: string; courierId: string };
 };
 
-export function deliveryCheckoutEnabled(config: QuoteConfig | null): config is QuoteConfig {
-  return Boolean(config && process.env.SHIPBUBBLE_QA_PAID_DELIVERY === 'true' &&
-    process.env.PAYLUK_SECRET_KEY?.startsWith('sk_test_') &&
+export function deliveryOperationsEnabled(config: QuoteConfig | null): config is QuoteConfig {
+  return Boolean(config && process.env.PAYLUK_SECRET_KEY?.startsWith('sk_test_') &&
     process.env.PAYLUK_BASE_URL === 'https://staging.api.payluk.ng');
+}
+
+export function deliveryCheckoutEnabled(config: QuoteConfig | null): config is QuoteConfig {
+  return process.env.SHIPBUBBLE_QA_PAID_DELIVERY === 'true' && deliveryOperationsEnabled(config);
 }
 
 function tokenKey(key: string) {

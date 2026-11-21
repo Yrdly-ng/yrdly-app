@@ -30,6 +30,7 @@ export function DeliveryQuotePreview({ itemId, onQuoteChange }: { itemId: string
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Delivery quotes are temporarily unavailable.');
       setQuote(result);
+      onQuoteChange(result.token ? result : null);
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Delivery quotes are temporarily unavailable.');
     } finally {
@@ -39,9 +40,9 @@ export function DeliveryQuotePreview({ itemId, onQuoteChange }: { itemId: string
 
   return (
     <section className="rounded-2xl border border-border/60 p-4">
-      <h2 className="text-sm font-semibold text-foreground">Delivery quote preview</h2>
+      <h2 className="text-sm font-semibold text-foreground">Lagos delivery quote</h2>
       <p className="mt-1 text-xs text-muted-foreground">
-        Request an estimate for Lagos delivery or continue with pickup.
+        We share the recipient’s details with our delivery partner to get a quote.
       </p>
       <form className="mt-3" onSubmit={requestQuote} onChange={() => { setQuote(null); onQuoteChange(null); setError(''); }}>
         <fieldset disabled={loading} className="space-y-3">
@@ -73,12 +74,6 @@ export function DeliveryQuotePreview({ itemId, onQuoteChange }: { itemId: string
             {new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(quote.feeKobo / 100)}
             {quote.eta && ' · ' + quote.eta}
           </p>
-          {quote.token && (
-            <div className="flex flex-wrap gap-2">
-              <button type="button" className="rounded-lg border border-border px-3 py-2 text-xs" onClick={() => onQuoteChange(quote)}>Use delivery</button>
-              <button type="button" className="rounded-lg border border-border px-3 py-2 text-xs" onClick={() => onQuoteChange(null)}>Use pickup</button>
-            </div>
-          )}
         </div>
       )}
     </section>

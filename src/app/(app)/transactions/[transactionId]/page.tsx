@@ -190,6 +190,19 @@ export default function TransactionDetailsPage() {
     }
   };
 
+  const handleRefreshDelivery = async () => {
+    if (!tx || actionLoading) return;
+    setActionLoading(true);
+    try {
+      await TransactionStatusService.refreshDelivery(tx.id);
+      await fetchTx();
+    } catch (error) {
+      toast({ title: 'Tracking unavailable', description: error instanceof Error ? error.message : 'Try again in a minute.', variant: 'destructive' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleConfirmReceipt = async () => {
     if (!tx || !user) return;
     try {
@@ -454,6 +467,9 @@ export default function TransactionDetailsPage() {
           </div>
         </div>
 
+        {tx.delivery_details?.option === 'arranged_rider' && (
+          <p className="rounded-xl border border-border p-4 text-sm">You’re arranging your own rider. Use YRDLY chat to agree on the handoff and courier fee.</p>
+        )}
         {delivery && (
           <section className="rounded-xl border border-border p-4 text-sm" aria-label="Delivery tracking">
             <p className="font-semibold">Courier delivery</p>
@@ -465,9 +481,14 @@ export default function TransactionDetailsPage() {
               picked_up: 'Package picked up',
               in_transit: 'Out for delivery',
               completed: 'Delivered',
-              cancelled: 'Delivery cancelled',
-              needs_review: 'Delivery needs support review',
+              cancelled: 'Courier cancelled the delivery. Contact support to resolve the order.',
+              needs_review: 'Booking needs support review. Contact support before arranging another rider.',
             }[String(delivery.delivery_status)] || 'Awaiting status update'}</p>
+            {delivery.shipment_id && !['completed', 'cancelled'].includes(delivery.delivery_status) && (
+              <Button type="button" variant="outline" size="sm" className="mt-2" disabled={actionLoading} onClick={handleRefreshDelivery}>
+                {actionLoading ? 'Checking…' : 'Refresh tracking'}
+              </Button>
+            )}
             {delivery.tracking_url && <a href={delivery.tracking_url} className="mt-2 inline-block underline" target="_blank" rel="noreferrer">Track shipment</a>}
           </section>
         )}

@@ -1,19 +1,11 @@
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
 import { PaylukService } from '@/lib/payments/payluk-service';
 import { paylukAmountsMatch } from '@/lib/payments/payment-state';
-import { bookShipbubbleDelivery, deliveryCheckoutEnabled, readDeliveryQuote, shipbubbleQuoteConfig } from './shipbubble-quote';
-
-export const shipmentStatuses = ['pending', 'confirmed', 'picked_up', 'in_transit', 'completed', 'cancelled'] as const;
-export type ShipmentStatus = typeof shipmentStatuses[number];
-
-export function shouldAdvanceShipment(current: string, incoming: ShipmentStatus) {
-  if (current === 'completed' || current === 'cancelled') return false;
-  return shipmentStatuses.indexOf(incoming) > shipmentStatuses.indexOf(current as ShipmentStatus);
-}
+import { bookShipbubbleDelivery, deliveryOperationsEnabled, readDeliveryQuote, shipbubbleQuoteConfig } from './shipbubble-quote';
 
 export async function dispatchDelivery(id: string, sellerId: string) {
   const config = shipbubbleQuoteConfig();
-  if (!deliveryCheckoutEnabled(config)) return { status: 404, error: 'Courier booking is unavailable.' };
+  if (!deliveryOperationsEnabled(config)) return { status: 404, error: 'Courier booking is unavailable.' };
 
   const { data: tx, error } = await supabaseAdmin.from('escrow_transactions')
     .select('id,buyer_id,seller_id,item_id,status,amount,metadata,delivery_details,payluk_escrow_id,payluk_tx_ref')
