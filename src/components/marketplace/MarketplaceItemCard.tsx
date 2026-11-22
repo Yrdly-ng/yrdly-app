@@ -207,6 +207,7 @@ export function MarketplaceItemCard({
                     src={sellerAvatar}
                     alt=""
                     fill
+                    sizes="20px"
                     className="object-cover"
                   />
                 ) : (
