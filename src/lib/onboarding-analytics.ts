@@ -224,18 +224,33 @@ class OnboardingAnalytics {
     // Implement based on your analytics provider
     // Examples:
     
-    // Google Analytics 4
-    if (typeof window !== 'undefined' && (window as any).gtag) {
-      (window as any).gtag('event', event.event, {
-        event_category: 'onboarding',
-        event_label: event.properties?.step || 'unknown',
-        ...event.properties,
-      });
+    // Allow only known event names and bounded, non-identifying values.
+    // Do not forward arbitrary properties, URLs, emails, user agents or errors.
+    const allowedEvents = new Set([
+      'onboarding_step_started', 'onboarding_step_completed',
+      'onboarding_step_skipped', 'onboarding_completed',
+      'onboarding_abandoned', 'email_verification_sent',
+      'email_verification_completed', 'profile_setup_started',
+      'profile_setup_completed', 'welcome_message_sent',
+      'tour_started', 'tour_completed', 'tour_skipped', 'onboarding_error',
+    ]);
+    if (!allowedEvents.has(event.event)) return;
+    const safe: Record<string, number | boolean | string> = {};
+    for (const key of ['timeSpent', 'totalTime', 'stepsCompleted', 'totalSteps', 'locationCompleteness']) {
+      const value = event.properties?.[key];
+      if (typeof value === 'number' && Number.isFinite(value) && value >= 0) safe[key] = value;
     }
-
-    // Mixpanel
+    for (const key of ['hasLocation', 'hasUsername', 'hasAvatar']) {
+      const value = event.properties?.[key];
+      if (typeof value === 'boolean') safe[key] = value;
+    }
+    const method = event.properties?.method;
+    if (method === 'link' || method === 'manual') safe.method = method;
+    if (typeof window !== 'undefined' && (window as any).gtag) {
+      (window as any).gtag('event', event.event, safe);
+    }
     if (typeof window !== 'undefined' && (window as any).mixpanel) {
-      (window as any).mixpanel.track(event.event, event.properties);
+      (window as any).mixpanel.track(event.event, safe);
     }
 
     // Custom analytics endpoint
