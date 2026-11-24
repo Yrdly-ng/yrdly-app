@@ -120,7 +120,9 @@ export async function verifyPaystackTicketCheckout(reference: string, expectedBu
   after(async () => {
     try { await deliverPaystackTickets(tx.id); } catch { /* The outbox retries delivery. */ }
   });
-  return { ...issued.tickets[0], quantity, transaction_id: tx.id };
+  return { ...issued.tickets[0], quantity, transaction_id: tx.id, measurementAmount: expectedBuyerId && order.domain === 'live' && verified.domain === 'live' &&
+    process.env.QA_ENVIRONMENT !== 'staging' &&
+    ['https://yoiyqxtpmxnrrbqqidcs.supabase.co', 'https://api.yrdly.ng'].includes(process.env.NEXT_PUBLIC_SUPABASE_URL || '') ? Number(tx.amount) : undefined };
 }
 
 export async function cancelPaystackTicketCheckout(reference: string, expectedBuyerId?: string) {

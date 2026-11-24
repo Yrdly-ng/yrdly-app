@@ -38,7 +38,9 @@ function chain(result) {
   return query;
 }
 
-function fixture({age=600001, owner='other-buyer', provider=true, remoteStatus='PENDING', deleteFails=false, status='pending', itemType='post'}={}) {
+const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+
+function fixture({age=TWO_HOURS_MS + 1000, owner='other-buyer', provider=true, remoteStatus='PENDING', deleteFails=false, status='pending', itemType='post'}={}) {
   const old={id:'prior',buyer_id:owner,seller_id:'seller',item_type:itemType,status,created_at:new Date(Date.now()-age).toISOString(),updated_at:new Date().toISOString(),total_amount:2575,
     payluk_tx_ref:provider?'old-token':null,payluk_escrow_id:provider?'old-escrow':null};
   let released=false,deleted=false,created=0,paid=0;
@@ -69,12 +71,12 @@ function fixture({age=600001, owner='other-buyer', provider=true, remoteStatus='
   return {run:()=>POST(new Request('https://qa.invalid',{method:'POST',body:JSON.stringify({itemId:'item',buyerId:'buyer',sellerId:'seller',price:2500,itemType})})),state:()=>({released,deleted,created,paid})};
 }
 
-test('another buyer can buy after ten minutes even if updated_at was refreshed',async()=>{
+test('another buyer can buy after two hours even if updated_at was refreshed',async()=>{
   const f=fixture();const response=await f.run();assert.equal(response.status,200);assert.deepEqual(f.state(),{released:true,deleted:true,created:1,paid:0});
 });
 
-test('reservation remains protected before ten minutes',async()=>{
-  const f=fixture({age:599000});assert.equal((await f.run()).status,409);assert.equal(f.state().released,false);assert.equal(f.state().deleted,false);
+test('reservation remains protected before two hours',async()=>{
+  const f=fixture({age:TWO_HOURS_MS - 60_000});assert.equal((await f.run()).status,409);assert.equal(f.state().released,false);assert.equal(f.state().deleted,false);
 });
 test('expired provider checkout for the same buyer is replaced',async()=>{
   const f=fixture({owner:'buyer'});assert.equal((await f.run()).status,200);assert.equal(f.state().deleted,true);
@@ -85,7 +87,7 @@ test('failed provider cancellation cannot release stock or create another checko
 test('paid provider escrow cannot expire into a second sale',async()=>{
   const f=fixture({remoteStatus:'ONGOING'});assert.equal((await f.run()).status,409);assert.equal(f.state().paid,1);assert.equal(f.state().deleted,false);assert.equal(f.state().released,false);
 });
-test('unlinked pending reservation expires but uncertain creation stays protected',async()=>{
+test('request-time cleanup expires an old unlinked reservation but protects uncertain creation',async()=>{
   const f=fixture({provider:false});assert.equal((await f.run()).status,200);assert.equal(f.state().released,true);
   const uncertain=fixture({provider:false,status:'creating_escrow'});assert.equal((await uncertain.run()).status,409);assert.equal(uncertain.state().released,false);
 });

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowLeft, ShieldCheck, Database, Lock, Eye, Bell, Trash2, Smartphone, FileText, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { googleTagManagerEnabled } from '@/lib/attribution/google-measurement';
 
 const FONT_RALEWAY = "var(--font-raleway)";
 const FONT_WORK_SANS = "var(--font-work-sans)";
@@ -43,6 +44,10 @@ export default function PrivacyPolicyPage() {
             Last updated: <span className="text-foreground">September 20, 2026</span>
           </p>
         </div>
+
+        {googleTagManagerEnabled && <div className="mb-6">
+          <Button type="button" variant="outline" onClick={() => window.dispatchEvent(new Event('yrdly:open-cookie-settings'))}>Manage optional measurement cookies</Button>
+        </div>}
 
         <article className="prose prose-neutral dark:prose-invert max-w-none space-y-10 text-muted-foreground" style={{ fontFamily: FONT_RALEWAY }}>
           <section className="bg-card border border-border p-6 md:p-8 rounded-2xl shadow-sm">

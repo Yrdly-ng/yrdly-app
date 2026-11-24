@@ -292,6 +292,8 @@ export default function BookingDetailWebPage() {
         { bookingId: booking.id },
       );
       if (result.alreadyPaid) {
+        try { await authenticatedFetch("/api/bookings/verify", { bookingId: booking.id }); }
+        catch { /* The existing successful booking remains authoritative. */ }
         setMsg({ text: "Your booking payment is confirmed.", type: "success" });
         await fetchBooking();
       } else {

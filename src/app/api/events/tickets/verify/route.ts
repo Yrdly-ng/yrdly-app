@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     }
 
     const ticket = await verifyTicketCheckout(tx_ref, user.id);
-    return NextResponse.json({ success: true, ticket: { id: ticket.id, event_id: ticket.event_id } });
+    return NextResponse.json({ success: true, ticket: { id: ticket.id, event_id: ticket.event_id }, transactionId: ticket.transaction_id, measurementAmount: ticket.measurementAmount });
   } catch (error: any) {
     console.error('Ticket verify POST error:', error);
     return NextResponse.json({ error: error.message || 'Verification failed' }, { status: error instanceof TicketCheckoutError ? error.status : error.message === 'ticket_buyer_mismatch' ? 403 : 400 });
@@ -41,8 +41,11 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    await verifyTicketCheckout(txRef);
-    return NextResponse.redirect(`${appUrl}/my-tickets?success=1`);
+    const ticket = await verifyTicketCheckout(txRef);
+    const orderId = ticket.transaction_id;
+    const returnRef = typeof orderId === 'string' && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(orderId)
+      ? `&tx_ref=${encodeURIComponent(orderId)}` : '';
+    return NextResponse.redirect(`${appUrl}/my-tickets?success=1${returnRef}`);
   } catch (error: any) {
     console.error('Ticket verify error:', error);
     

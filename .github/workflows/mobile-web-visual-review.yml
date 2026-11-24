@@ -6,6 +6,9 @@ on:
     paths:
       - 'src/app/**'
       - 'src/components/**'
+      - 'src/lib/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
       - 'playwright.qa.config.ts'
       - 'qa-scripts/**'
       - 'tests/**'
@@ -40,6 +43,8 @@ jobs:
       - run: pnpm test:parity
       - run: pnpm test:payments
       - run: pnpm test:business
+      - name: Validate Google measurement regressions
+        run: node --test tests/google-measurement.test.cjs
       - name: Check daily-question context and visibility
         run: node --test tests/daily-prompts.test.cjs tests/daily-prompt-question.test.cjs
       - name: Validate browser test discovery without QA credentials
@@ -48,10 +53,8 @@ jobs:
   visual-review:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
-    # Preinstalled system libraries avoid slow Ubuntu mirror downloads for WebKit.
-    # Install browsers below with the project's pinned Playwright package.
-    container:
-      image: mcr.microsoft.com/playwright:v1.64.1-noble@sha256:2f05f8a734509a7b3f26a912639488ee08f58a7b292d14d62271bcff9038768f
+    # Install the lockfile-pinned browsers directly on the runner so setup
+    # failures are reported as named steps instead of container initialization.
     environment: yrdly-qa
     timeout-minutes: 40
     env:
@@ -80,6 +83,8 @@ jobs:
           node-version: '24'
       - run: npm install --global pnpm@11.2.2
       - run: pnpm install --frozen-lockfile
+      - name: Install Playwright Chromium and WebKit with OS dependencies
+        run: pnpm exec playwright install --with-deps chromium webkit
       - name: Validate isolated QA credentials
         run: node qa-scripts/write-ci-env.mjs
       - name: Seed disposable QA accounts
@@ -100,8 +105,9 @@ jobs:
         run: node qa-scripts/daily-prompt-release-regression.mjs
       - name: Serve WebKit QA over trusted loopback HTTPS
         run: |
-          openssl req -x509 -nodes -newkey rsa:2048 -days 1 -subj '/CN=localhost' -addext 'subjectAltName=DNS:localhost,IP:127.0.0.1' -keyout /tmp/yrdly-qa-local.key -out /usr/local/share/ca-certificates/yrdly-qa-local.crt > /tmp/yrdly-qa-local-cert.log 2>&1
-          update-ca-certificates
+          openssl req -x509 -nodes -newkey rsa:2048 -days 1 -subj '/CN=localhost' -addext 'subjectAltName=DNS:localhost,IP:127.0.0.1' -keyout /tmp/yrdly-qa-local.key -out /tmp/yrdly-qa-local.crt > /tmp/yrdly-qa-local-cert.log 2>&1
+          sudo install -m 0644 /tmp/yrdly-qa-local.crt /usr/local/share/ca-certificates/yrdly-qa-local.crt
+          sudo update-ca-certificates
           node qa-scripts/serve-qa-https.mjs /usr/local/share/ca-certificates/yrdly-qa-local.crt /tmp/yrdly-qa-local.key > /tmp/yrdly-qa-https.log 2>&1 &
           for attempt in $(seq 1 20); do
             if curl --fail --silent https://localhost:9443/login > /dev/null; then exit 0; fi
@@ -109,8 +115,6 @@ jobs:
           done
           echo 'Local QA HTTPS server did not start' >&2
           exit 1
-      - name: Install Playwright Chromium and WebKit
-        run: pnpm exec playwright install chromium webkit
       - name: Inspect responsive authenticated pages and Create menu
         run: pnpm exec playwright test --config=playwright.qa.config.ts tests/browser/mobile-web-visual.spec.ts
       - name: Upload visual evidence
