@@ -1,5 +1,6 @@
 import { signupAttribution, appendOAuthAttribution } from "@/lib/attribution/signup";
 import { trackWebAccountCreated } from "@/lib/telemetry/analytics";
+import { googleTagManagerEnabled, reportGoogleConversion } from '@/lib/attribution/google-measurement';
 import { reportGoogleAdsSignup } from "@/lib/attribution/google-ads";
 import { checkActiveSession, endRevokedSession } from "./session-policy";
 import { safeRelativePath } from "./auth-navigation";
@@ -123,7 +124,8 @@ export class AuthService {
       // Count genuine account creation, not pageviews, CTA clicks or
       // duplicate emails. Telemetry never blocks registration success.
       if (data.user) {
-        reportGoogleAdsSignup(data.user.id);
+        if (googleTagManagerEnabled) reportGoogleConversion('sign_up', data.user.id);
+        else reportGoogleAdsSignup(data.user.id);
         void trackWebAccountCreated(data.user.id, attribution);
       }
       return { user: data.user, error: null };
