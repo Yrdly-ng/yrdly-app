@@ -90,7 +90,7 @@ async function expireOneCheckout(tierId: string) {
 
 export async function verifyTicketCheckout(reference: string, expectedBuyerId?: string) {
   if (!/^[A-Za-z0-9._=-]{1,100}$/.test(reference)) throw new TicketCheckoutError('Invalid payment reference.', 400);
-  let query = supabaseAdmin.from('escrow_transactions').select('id, payment_provider, buyer_id, item_type, metadata')
+  let query = supabaseAdmin.from('escrow_transactions').select('id, payment_provider, buyer_id, item_type, metadata, amount')
     .eq('item_type', 'ticket');
   query = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(reference)
     ? query.or(`id.eq.${reference},payment_reference.eq.${reference}`)
@@ -103,7 +103,11 @@ export async function verifyTicketCheckout(reference: string, expectedBuyerId?: 
   if (transaction.payment_provider === 'paystack') return verifyPaystackTicketCheckout(transaction.id, expectedBuyerId);
   if (transaction.payment_provider !== 'payluk') throw new TicketCheckoutError('Unsupported checkout provider.');
   assertPaylukEventEnvironment(transaction);
-  return TicketService.verifyAndProcessTicket(transaction.id, expectedBuyerId);
+  const ticket = await TicketService.verifyAndProcessTicket(transaction.id, expectedBuyerId);
+  return { ...ticket, transaction_id: transaction.id,
+    measurementAmount: transaction.metadata?.payluk_environment === 'live' && paylukEventEnvironment() === 'live'
+      ? Number(transaction.amount) : undefined };
+
 }
 
 export async function createTicketCheckout(input: TicketCheckoutInput, purpose: string, endTime: string, _hostedCheckoutSupported = false) {
