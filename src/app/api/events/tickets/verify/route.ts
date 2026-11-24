@@ -41,8 +41,11 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    await verifyTicketCheckout(txRef);
-    return NextResponse.redirect(`${appUrl}/my-tickets?success=1`);
+    const ticket = await verifyTicketCheckout(txRef);
+    const orderId = ticket.transaction_id;
+    const returnRef = typeof orderId === 'string' && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(orderId)
+      ? `&tx_ref=${encodeURIComponent(orderId)}` : '';
+    return NextResponse.redirect(`${appUrl}/my-tickets?success=1${returnRef}`);
   } catch (error: any) {
     console.error('Ticket verify error:', error);
     
