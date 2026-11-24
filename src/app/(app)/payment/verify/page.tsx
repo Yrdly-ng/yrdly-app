@@ -1,5 +1,6 @@
 "use client";
 
+import { reportVerifiedMarketplacePurchase } from '@/lib/attribution/google-measurement';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/use-supabase-auth';
@@ -56,6 +57,7 @@ export default function PaymentVerificationPage() {
       }
 
       if (result.success) {
+        reportVerifiedMarketplacePurchase(result);
         setVerificationStatus('success');
         setTransactionId(result.transactionId);
 
