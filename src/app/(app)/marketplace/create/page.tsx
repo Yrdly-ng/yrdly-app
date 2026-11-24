@@ -1,5 +1,7 @@
 "use client";
 
+import { reportGoogleConversion } from "@/lib/attribution/google-measurement";
+
 import { authenticatedFetch } from '@/lib/auth/authenticated-fetch';
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -207,6 +209,9 @@ export default function CreateMarketplaceListingPage() {
       const { data: newPost, error: insertErr } = await authenticatedFetch('/api/posts', { post: postPayload });
 
       if (insertErr) throw insertErr;
+      if (newPost?.id && modStatus === "approved") {
+        reportGoogleConversion("listing_published", newPost.id);
+      }
 
       // 5. Insert into moderation_queue if flagged
 
