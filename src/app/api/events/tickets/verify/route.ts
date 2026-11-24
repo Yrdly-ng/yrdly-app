@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     }
 
     const ticket = await verifyTicketCheckout(tx_ref, user.id);
-    return NextResponse.json({ success: true, ticket: { id: ticket.id, event_id: ticket.event_id } });
+    return NextResponse.json({ success: true, ticket: { id: ticket.id, event_id: ticket.event_id }, transactionId: ticket.transaction_id, measurementAmount: ticket.measurementAmount });
   } catch (error: any) {
     console.error('Ticket verify POST error:', error);
     return NextResponse.json({ error: error.message || 'Verification failed' }, { status: error instanceof TicketCheckoutError ? error.status : error.message === 'ticket_buyer_mismatch' ? 403 : 400 });
