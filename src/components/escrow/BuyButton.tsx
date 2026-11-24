@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useRouter } from "next/navigation";
+import { reportGooglePurchase } from '@/lib/attribution/google-measurement';
 import { MARKETPLACE_CONSTANTS } from "@/lib/shared/constants";
 import { supabase } from "@/lib/supabase/supabase";
 
@@ -84,6 +85,7 @@ export function BuyButton({
       const result = await response.json();
       if (response.ok && result.success) {
         const confirmed = pendingTransactionId;
+        void reportGooglePurchase(confirmed, result.amount, itemType);
         clearPending();
         toast({ title: 'Payment confirmed', description: 'Your purchase is now linked to your order.' });
         router.push(`/transactions/${confirmed}`);
@@ -216,6 +218,7 @@ export function BuyButton({
         });
         const walletResult = await walletResponse.json();
         if (walletResponse.ok && walletResult.success) {
+          void reportGooglePurchase(data.transactionId, data.totalAmount, itemType);
           clearPending();
           toast({ title: 'Payment confirmed', description: 'Your Payluk wallet has funded the purchase.' });
           router.push(`/transactions/${data.transactionId}`);
@@ -285,6 +288,7 @@ export function BuyButton({
                   });
                   const verified = await verification.json();
                   if (verification.ok && verified.success) {
+                    void reportGooglePurchase(data.transactionId, verified.amount, itemType);
                     paymentSucceeded = true;
                     clearPending();
                     toast({ title: 'Payment Successful', description: 'Your purchase is confirmed.' });
@@ -314,7 +318,8 @@ export function BuyButton({
                     body: JSON.stringify({ txRef: data.transactionId }),
                   });
                   const verifyData = await verifyRes.json();
-                  if (verifyData?.success) {
+                  if (verifyRes.ok && verifyData?.success) {
+                    void reportGooglePurchase(data.transactionId, verifyData.amount, itemType);
                     paymentSucceeded = true;
                     clearPending();
                     toast({ title: "Payment Successful", description: "Your purchase is confirmed." });
