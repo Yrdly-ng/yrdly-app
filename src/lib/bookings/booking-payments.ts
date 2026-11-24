@@ -114,7 +114,7 @@ export async function verifyBookingCheckout(bookingId: string, buyerId: string) 
     .order('created_at', { ascending: false }).limit(1).maybeSingle();
   if (error) throw error;
   if (!tx) throw new BookingCheckoutError('Booking payment not found.', 404);
-  if (['paid','shipped','delivered','completed'].includes(tx.status)) return { transactionId: tx.id, completed: tx.status === 'completed' };
+  if (['paid','shipped','delivered','completed'].includes(tx.status)) return { transactionId: tx.id, completed: tx.status === 'completed', measurementAmount: Number(tx.amount) };
   if (!tx.payluk_tx_ref) throw new BookingCheckoutError('Booking payment setup is incomplete.');
   const remote = await PaylukService.verifyEscrow(tx.payluk_tx_ref);
   if (!['ONGOING','COMPLETED','CLAIMED'].includes(remote.status)) throw new BookingCheckoutError('Booking payment has not completed.', 402);
@@ -123,7 +123,7 @@ export async function verifyBookingCheckout(bookingId: string, buyerId: string) 
     throw new BookingCheckoutError('Booking payment needs reconciliation.');
   }
   await applyEscrowPayment(tx.id, 'payluk', tx.payluk_escrow_id);
-  return { transactionId: tx.id, completed: false };
+  return { transactionId: tx.id, completed: false, measurementAmount: Number(tx.amount) };
 }
 
 export async function cancelBookingCheckout(transactionId: string, buyerId: string) {
