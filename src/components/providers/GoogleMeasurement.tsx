@@ -8,6 +8,7 @@ import {
   googleTagManagerEnabled,
   setGoogleMeasurementConsent,
   trackGooglePage,
+  syncGoogleMeasurementConsent,
 } from '@/lib/attribution/google-measurement';
 
 export function GoogleMeasurement() {
@@ -15,8 +16,27 @@ export function GoogleMeasurement() {
   const [show, setShow] = useState(false);
   useEffect(() => {
     if (!googleTagManagerEnabled || window.location.origin !== 'https://app.yrdly.ng') return;
-    if (googleMeasurementConsent()) trackGooglePage(pathname);
-    else setShow(!document.cookie.split(/;\s*/).includes('yrdly_cookie_consent=false'));
+    const refresh = () => {
+      syncGoogleMeasurementConsent();
+      if (googleMeasurementConsent()) {
+        trackGooglePage(pathname);
+        setShow(false);
+      } else {
+        setShow(!document.cookie.split(/;\s*/).includes('yrdly_cookie_consent=false'));
+      }
+    };
+    const open = () => setShow(true);
+    refresh();
+    window.addEventListener('focus', refresh);
+    window.addEventListener('yrdly:cookie-consent', refresh);
+    window.addEventListener('yrdly:open-cookie-settings', open);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      window.removeEventListener('yrdly:cookie-consent', refresh);
+      window.removeEventListener('yrdly:open-cookie-settings', open);
+      document.removeEventListener('visibilitychange', refresh);
+    };
   }, [pathname]);
 
   if (!show) return null;
@@ -25,6 +45,7 @@ export function GoogleMeasurement() {
     setGoogleMeasurementConsent(allowed);
     setShow(false);
     if (allowed) trackGooglePage(pathname);
+    else if (document.getElementById('yrdly-gtm')) window.location.reload();
   }
 
   return (

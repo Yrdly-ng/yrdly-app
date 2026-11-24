@@ -15,23 +15,63 @@ export function googleMeasurementConsent(cookie = document.cookie): boolean {
   return cookies.includes(`${CONSENT_COOKIE}=true`) && !cookies.includes(`${CONSENT_COOKIE}=false`);
 }
 
+let consentActive = false;
+
+function queueConsent(queue: unknown[], command: 'default' | 'update', allowed: boolean): void {
+  const storage = allowed ? 'granted' : 'denied';
+  function gtag(...args: unknown[]) { void args; queue.push(arguments); }
+  gtag('consent', command, {
+    analytics_storage: storage, ad_storage: storage,
+    ad_user_data: 'denied', ad_personalization: 'denied',
+  });
+}
+
+export function clearPendingListingMeasurement(): void {
+  try {
+    for (let index = window.localStorage.length - 1; index >= 0; index--) {
+      const key = window.localStorage.key(index);
+      if (key?.startsWith('yrdly:ga4:pending-listings:')) window.localStorage.removeItem(key);
+    }
+  } catch { /* Storage may be unavailable. */ }
+}
+
+export function syncGoogleMeasurementConsent(): void {
+  if (typeof window === 'undefined' || !googleTagManagerEnabled || window.location.origin !== APP_ORIGIN) return;
+  if (googleMeasurementConsent()) return;
+  const queue = (window as Window & { dataLayer?: unknown[] }).dataLayer;
+  if (consentActive && queue) queueConsent(queue, 'update', false);
+  consentActive = false;
+  lastPage = undefined;
+  clearPendingListingMeasurement();
+}
+
 export function setGoogleMeasurementConsent(allowed: boolean): void {
+  document.cookie = `${CONSENT_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax; Secure`;
   document.cookie = `${CONSENT_COOKIE}=${allowed}; Domain=yrdly.ng; Path=/; Max-Age=31536000; SameSite=Lax; Secure`;
+  if (!allowed) syncGoogleMeasurementConsent();
+  window.dispatchEvent(new Event('yrdly:cookie-consent'));
 }
 
 function dataLayer(): unknown[] | undefined {
   if (!googleTagManagerEnabled || typeof window === 'undefined' ||
-      window.location.origin !== APP_ORIGIN || !googleMeasurementConsent()) return;
+      window.location.origin !== APP_ORIGIN) return;
+  if (!googleMeasurementConsent()) { syncGoogleMeasurementConsent(); return; }
 
   const target = window as Window & { dataLayer?: unknown[] };
   const queue = target.dataLayer ??= [];
   if (!document.getElementById('yrdly-gtm')) {
+    queueConsent(queue, 'default', false);
+    queueConsent(queue, 'update', true);
+    consentActive = true;
     const script = document.createElement('script');
     script.id = 'yrdly-gtm';
     script.async = true;
     script.src = `https://www.googletagmanager.com/gtm.js?id=${CONTAINER_ID}`;
     queue.push({ 'gtm.start': Date.now(), event: 'gtm.js' });
     document.head.appendChild(script);
+  } else if (!consentActive) {
+    queueConsent(queue, 'update', true);
+    consentActive = true;
   }
   return queue;
 }
@@ -52,23 +92,31 @@ export function trackGooglePage(path: string): void {
   })) {
     if (value && value !== 'unknown' && /^[a-z][a-z0-9._-]{0,63}$/i.test(value)) url.searchParams.set(key, value);
   }
-  queue.push({ event: 'yrdly_page_view', measurement_page_location: url.href });
+  queue.push({ event: 'yrdly_page_view', measurement_page_location: url.href, measurement_page_referrer: '', measurement_page_title: 'YRDLY' });
   lastPage = path;
 }
 
 /** IDs are used locally for deduplication and excluded from the event payload. */
-export function reportGoogleConversion(event: Conversion, localId: string): void {
-  if (!publishedEvents.has(event) || !UUID.test(localId)) return;
+export function reportGoogleConversion(event: Conversion, localId: string): boolean {
+  if (!publishedEvents.has(event) || typeof localId !== 'string' || !UUID.test(localId)) return false;
   try {
     const queue = dataLayer();
-    if (!queue) return;
+    if (!queue) return false;
     const key = `yrdly:ga4:${event}:${localId.toLowerCase()}`;
-    if (window.sessionStorage.getItem(key)) return;
-    queue.push({ ecommerce: null }, { event });
-    window.sessionStorage.setItem(key, '1');
+    const storage = event === 'listing_published' ? window.localStorage ?? window.sessionStorage : window.sessionStorage;
+    if (storage.getItem(key) || window.sessionStorage.getItem(key)) return true;
+    storage.setItem(key, '1');
+    queue.push({ ecommerce: null }, { event, ...safeConversionPage() });
+    return true;
   } catch {
     // Measurement must never interfere with a successful application action.
+    return false;
   }
+}
+
+function safeConversionPage() {
+  // Conversion pages frequently contain order IDs and callback tokens.
+  return { measurement_page_location: `${APP_ORIGIN}/other`, measurement_page_referrer: '', measurement_page_title: 'YRDLY' };
 }
 
 /** Only call from an authenticated, server-confirmed payment. */
@@ -90,6 +138,7 @@ export async function reportGooglePurchase(orderId: string, amount: unknown, kin
     storage.setItem(key, '1');
     queue.push({ ecommerce: null }, {
       event: 'purchase',
+      ...safeConversionPage(),
       ecommerce: {
         transaction_id: transactionId,
         currency: 'NGN',

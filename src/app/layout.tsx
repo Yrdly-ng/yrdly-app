@@ -17,6 +17,7 @@ import { AcquisitionCapture } from '@/components/providers/AcquisitionCapture';
 import { GoogleMapsScript } from '@/components/providers/GoogleMapsScript';
 import { GoogleMeasurement } from '@/components/providers/GoogleMeasurement';
 import { googleTagManagerEnabled } from '@/lib/attribution/google-measurement';
+import { PendingListingMeasurements } from '@/components/providers/PendingListingMeasurements';
 import { SignupConversionHandler } from '@/components/providers/SignupConversionHandler';
 
 export const metadata: Metadata = {
@@ -82,6 +83,7 @@ export default function RootLayout({
           <AcquisitionCapture />
           <AuthProvider>
             <SignupConversionHandler />
+            {googleTagManagerEnabled && <PendingListingMeasurements />}
             <TelemetryHandler />
             {children}
             <PushNotificationManager />
