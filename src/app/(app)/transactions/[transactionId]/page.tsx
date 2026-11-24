@@ -1,5 +1,6 @@
 "use client";
 
+import { reportVerifiedMarketplacePurchase } from '@/lib/attribution/google-measurement';
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-supabase-auth';
@@ -116,7 +117,8 @@ export default function TransactionDetailsPage() {
             body: JSON.stringify({ txRef: transactionId }),
           });
           const verifyResult = await verifyRes.json();
-          if (verifyResult?.success) {
+          if (verifyRes.ok && verifyResult?.success) {
+            reportVerifiedMarketplacePurchase(verifyResult);
             const updatedData = await TransactionStatusService.getTransactionDetails(transactionId);
             setTx(updatedData);
           }
