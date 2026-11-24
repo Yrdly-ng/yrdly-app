@@ -33,7 +33,7 @@ async function loginQaBuyer(page: import("@playwright/test").Page) {
     .getByPlaceholder("Password", { exact: true })
     .fill(env.QA_BUYER_PASSWORD);
   await page.getByRole("button", { name: "Log in", exact: true }).click();
-  await expect(page).not.toHaveURL(/\/login/, { timeout: 30000 });
+  await expect(page, "Seeded QA buyer must reach home, not onboarding").toHaveURL(/\/home(?:[?#].*)?$/, { timeout: 30000 });
 }
 
 async function waitForLoadedContent(

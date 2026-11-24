@@ -75,3 +75,17 @@ test('database read failures fail closed without bootstrap', async () => {
     console.error = oldError;
   }
 });
+
+const navigationModule = { exports: {} };
+new Function('module','exports',ts.transpileModule(readFileSync('src/lib/auth/auth-navigation.ts','utf8'), {compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(navigationModule,navigationModule.exports);
+const { loginDestination } = navigationModule.exports;
+test('login never treats a missing or stale profile as incomplete onboarding', () => {
+  const owner = 'owner';
+  assert.equal(loginDestination(owner,null,false,'/home'),null);
+  assert.equal(loginDestination(owner,{id:'other',profile_completed:false},false,'/home'),null);
+  assert.equal(loginDestination(owner,{id:owner,profile_completed:true},true,'/home'),null);
+  assert.equal(loginDestination(owner,{id:owner,profile_completed:null},false,'/home'),null);
+  assert.equal(loginDestination(owner,{id:owner,profile_completed:true},false,'/marketplace'),'/marketplace');
+  assert.equal(loginDestination(owner,{id:owner,profile_completed:false},false,'/marketplace'),'/onboarding/profile?next=%2Fmarketplace');
+  assert.equal(loginDestination(owner,{id:owner,profile_completed:true},false,'//evil.example'),'/home');
+});
