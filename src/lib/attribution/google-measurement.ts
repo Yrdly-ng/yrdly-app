@@ -101,3 +101,12 @@ export async function reportGooglePurchase(orderId: string, amount: unknown, kin
     // Checkout can complete regardless of tracking or browser storage support.
   }
 }
+
+/** Only consume the measurement-specific fields returned by the authenticated verify endpoint. */
+export function reportVerifiedMarketplacePurchase(result: unknown): void {
+  if (!result || typeof result !== 'object') return;
+  const payment = result as { success?: unknown; transactionId?: unknown; measurementAmount?: unknown; measurementKind?: unknown };
+  if (payment.success !== true || typeof payment.transactionId !== 'string' ||
+      (payment.measurementKind !== 'post' && payment.measurementKind !== 'catalog_item')) return;
+  void reportGooglePurchase(payment.transactionId, payment.measurementAmount, payment.measurementKind);
+}
