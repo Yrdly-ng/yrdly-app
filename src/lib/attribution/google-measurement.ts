@@ -73,7 +73,8 @@ export function reportGoogleConversion(event: Conversion, localId: string): void
 
 /** Only call from an authenticated, server-confirmed payment. */
 export async function reportGooglePurchase(orderId: string, amount: unknown, kind: 'post' | 'catalog_item' | 'ticket' | 'booking'): Promise<void> {
-  if (!['post', 'catalog_item', 'ticket', 'booking'].includes(kind) || !UUID.test(orderId) || (typeof amount !== 'number' && typeof amount !== 'string')) return;
+  if (!['post', 'catalog_item', 'ticket', 'booking'].includes(kind) || typeof orderId !== 'string' || !UUID.test(orderId) || (typeof amount !== 'number' && typeof amount !== 'string')) return;
+  if (typeof amount === 'string' && !/^\d+(?:\.\d{1,2})?$/.test(amount)) return;
   const value = Number(amount);
   if (!Number.isFinite(value) || value <= 0 || value > 1_000_000_000) return;
   try {
@@ -83,7 +84,10 @@ export async function reportGooglePurchase(orderId: string, amount: unknown, kin
     const queue = dataLayer();
     if (!queue) return;
     const key = `yrdly:ga4:purchase:${transactionId}`;
-    if (window.sessionStorage.getItem(key)) return;
+    // Persist the opaque ID across tab closures; never persist payment credentials.
+    const storage = window.localStorage ?? window.sessionStorage;
+    if (storage.getItem(key) || window.sessionStorage.getItem(key)) return;
+    storage.setItem(key, '1');
     queue.push({ ecommerce: null }, {
       event: 'purchase',
       ecommerce: {
@@ -93,7 +97,6 @@ export async function reportGooglePurchase(orderId: string, amount: unknown, kin
         items: [{ item_id: kind === 'post' ? 'marketplace_listing' : kind, price: value, quantity: 1 }],
       },
     });
-    window.sessionStorage.setItem(key, '1');
   } catch {
     // Checkout can complete regardless of tracking or browser storage support.
   }
