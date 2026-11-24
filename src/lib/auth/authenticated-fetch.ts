@@ -60,11 +60,11 @@ export async function authenticatedFetch<T = any>(path: string, body: unknown, m
     const result = await performAuthenticatedFetch<T>(path, body, method);
     if (method.toUpperCase() === 'POST') {
       recordFlow(path, 'succeeded', result);
-      if (typeof window !== 'undefined' && path === '/api/bookings/verify') {
+      if (typeof window !== 'undefined' && (path === '/api/bookings/verify' || path === '/api/events/tickets/verify')) {
         const payment = result as { success?: boolean; transactionId?: string; measurementAmount?: number };
         if (payment?.success === true && typeof payment.transactionId === 'string') {
           void import('../attribution/google-measurement').then(module =>
-            module.reportGooglePurchase(payment.transactionId!, payment.measurementAmount, 'booking')
+            module.reportGooglePurchase(payment.transactionId!, payment.measurementAmount, path === '/api/bookings/verify' ? 'booking' : 'ticket')
           ).catch(() => {});
         }
       }
