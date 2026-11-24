@@ -90,7 +90,7 @@ async function expireOneCheckout(tierId: string) {
 
 export async function verifyTicketCheckout(reference: string, expectedBuyerId?: string) {
   if (!/^[A-Za-z0-9._=-]{1,100}$/.test(reference)) throw new TicketCheckoutError('Invalid payment reference.', 400);
-  let query = supabaseAdmin.from('escrow_transactions').select('id, payment_provider, buyer_id, item_type, metadata, amount')
+  let query = supabaseAdmin.from('escrow_transactions').select('id, payment_provider, buyer_id, item_type, metadata, amount, commission, payluk_tx_ref, payluk_escrow_id')
     .eq('item_type', 'ticket');
   query = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(reference)
     ? query.or(`id.eq.${reference},payment_reference.eq.${reference}`)
@@ -104,10 +104,24 @@ export async function verifyTicketCheckout(reference: string, expectedBuyerId?: 
   if (transaction.payment_provider !== 'payluk') throw new TicketCheckoutError('Unsupported checkout provider.');
   assertPaylukEventEnvironment(transaction);
   const ticket = await TicketService.verifyAndProcessTicket(transaction.id, expectedBuyerId);
-  return { ...ticket, transaction_id: transaction.id,
-    measurementAmount: transaction.metadata?.payluk_environment === 'live' && paylukEventEnvironment() === 'live'
-      ? Number(transaction.amount) : undefined };
-
+  let measurementAmount: number | undefined;
+  if (expectedBuyerId && process.env.QA_ENVIRONMENT !== 'staging' &&
+      ['https://yoiyqxtpmxnrrbqqidcs.supabase.co', 'https://api.yrdly.ng'].includes(process.env.NEXT_PUBLIC_SUPABASE_URL || '')) {
+    if (transaction.metadata?.payluk_environment === 'live' && paylukEventEnvironment() === 'live') {
+      measurementAmount = Number(transaction.amount);
+    } else if (transaction.metadata?.payluk_environment == null &&
+        process.env.NEXT_PUBLIC_YRDLY_GOOGLE_MEASUREMENT === 'gtm' && transaction.payluk_tx_ref) {
+      // Legacy unbound orders need explicit live provider evidence for analytics.
+      try {
+        const confirmed = await PaylukService.verifyEscrow(transaction.payluk_tx_ref);
+        if (confirmed.environment === 'live' && confirmed.id === transaction.payluk_escrow_id &&
+            ['ONGOING','COMPLETED','CLAIMED'].includes(confirmed.status) && paylukAmountsMatch(transaction, confirmed)) {
+          measurementAmount = Number(transaction.amount);
+        }
+      } catch { /* Ticket issuance already succeeded; optional measurement cannot reverse it. */ }
+    }
+  }
+  return { ...ticket, transaction_id: transaction.id, measurementAmount };
 }
 
 export async function createTicketCheckout(input: TicketCheckoutInput, purpose: string, endTime: string, _hostedCheckoutSupported = false) {
