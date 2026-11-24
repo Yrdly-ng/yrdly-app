@@ -18,6 +18,31 @@ export interface OnboardingMetrics {
   commonIssues: string[];
 }
 
+const ONBOARDING_EVENTS = new Set([
+  'onboarding_step_started', 'onboarding_step_completed',
+  'onboarding_step_skipped', 'onboarding_completed', 'onboarding_abandoned',
+  'onboarding_status_updated', 'email_verification_sent',
+  'email_verification_completed', 'profile_setup_started', 'profile_setup_completed',
+  'welcome_message_sent', 'tour_started', 'tour_completed', 'tour_skipped',
+  'onboarding_error',
+]);
+
+const ONBOARDING_STEPS = new Set([
+  'signup', 'email_verification', 'profile_setup', 'welcome', 'tour', 'completed',
+]);
+
+const ERROR_STEPS = new Set([...ONBOARDING_STEPS, 'update_status', 'tour_skip']);
+const MAX_DURATION_MS = 24 * 60 * 60 * 1000;
+const NUMBER_LIMITS = {
+  timeSpent: MAX_DURATION_MS,
+  totalTime: MAX_DURATION_MS,
+  stepsCompleted: 100,
+  totalSteps: 100,
+  locationCompleteness: 100,
+};
+
+type SafeParameters = Record<string, number | boolean | string>;
+
 class OnboardingAnalytics {
   private events: OnboardingEvent[] = [];
   private stepStartTimes: Map<string, number> = new Map();
@@ -28,22 +53,12 @@ class OnboardingAnalytics {
   track(event: string, properties?: Record<string, any>) {
     const trackingEvent: OnboardingEvent = {
       event,
-      properties: {
-        ...properties,
-        timestamp: new Date().toISOString(),
-        userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : undefined,
-        url: typeof window !== 'undefined' ? window.location.href : undefined,
-      },
+      properties,
       timestamp: new Date().toISOString(),
     };
 
     this.events.push(trackingEvent);
-    
-    // Log to console in development
-    if (process.env.NODE_ENV === 'development') {
-    }
 
-    // Send to analytics service (implement based on your analytics provider)
     this.sendToAnalytics(trackingEvent);
   }
 
@@ -111,12 +126,12 @@ class OnboardingAnalytics {
   /**
    * Track specific onboarding events
    */
-  trackEmailVerificationSent(email: string) {
-    this.track('email_verification_sent', { email });
+  trackEmailVerificationSent(_email: string) {
+    this.track('email_verification_sent');
   }
 
-  trackEmailVerificationCompleted(email: string, method: 'link' | 'manual') {
-    this.track('email_verification_completed', { email, method });
+  trackEmailVerificationCompleted(_email: string, method: 'link' | 'manual') {
+    this.track('email_verification_completed', { method });
   }
 
   trackProfileSetupStarted(hasLocation: boolean) {
@@ -132,8 +147,8 @@ class OnboardingAnalytics {
     this.track('profile_setup_completed', profileData);
   }
 
-  trackWelcomeMessageSent(email: string) {
-    this.track('welcome_message_sent', { email });
+  trackWelcomeMessageSent(_email: string) {
+    this.track('welcome_message_sent');
   }
 
   trackTourStarted() {
@@ -220,41 +235,53 @@ class OnboardingAnalytics {
   /**
    * Send event to analytics service
    */
-  private sendToAnalytics(event: OnboardingEvent) {
-    // Implement based on your analytics provider
-    // Examples:
-    
-    // Allow only known event names and bounded, non-identifying values.
-    // Do not forward arbitrary properties, URLs, emails, user agents or errors.
-    const allowedEvents = new Set([
-      'onboarding_step_started', 'onboarding_step_completed',
-      'onboarding_step_skipped', 'onboarding_completed',
-      'onboarding_abandoned', 'email_verification_sent',
-      'email_verification_completed', 'profile_setup_started',
-      'profile_setup_completed', 'welcome_message_sent',
-      'tour_started', 'tour_completed', 'tour_skipped', 'onboarding_error',
-    ]);
-    if (!allowedEvents.has(event.event)) return;
-    const safe: Record<string, number | boolean | string> = {};
-    for (const key of ['timeSpent', 'totalTime', 'stepsCompleted', 'totalSteps', 'locationCompleteness']) {
-      const value = event.properties?.[key];
-      if (typeof value === 'number' && Number.isFinite(value) && value >= 0) safe[key] = value;
+  private sendToAnalytics({ event, properties }: OnboardingEvent) {
+    if (typeof window === 'undefined' || !ONBOARDING_EVENTS.has(event)) return;
+
+    const safe: SafeParameters = { event_category: 'onboarding' };
+    for (const [key, max] of Object.entries(NUMBER_LIMITS)) {
+      const value = properties?.[key];
+      if (typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= max) {
+        safe[key] = value;
+      }
     }
-    for (const key of ['hasLocation', 'hasUsername', 'hasAvatar']) {
-      const value = event.properties?.[key];
+    for (const key of ['hasLocation', 'hasUsername', 'hasAvatar', 'skipped']) {
+      const value = properties?.[key];
       if (typeof value === 'boolean') safe[key] = value;
     }
-    const method = event.properties?.method;
+    const step = properties?.step;
+    const stepNames = event === 'onboarding_error' ? ERROR_STEPS : ONBOARDING_STEPS;
+    if (typeof step === 'string' && stepNames.has(step)) {
+      safe.step = step;
+      safe.event_label = step;
+    }
+    for (const key of ['lastStep', 'status']) {
+      const value = properties?.[key];
+      if (typeof value === 'string' && ONBOARDING_STEPS.has(value)) safe[key] = value;
+    }
+    const method = properties?.method;
     if (method === 'link' || method === 'manual') safe.method = method;
-    if (typeof window !== 'undefined' && (window as any).gtag) {
-      (window as any).gtag('event', event.event, safe);
-    }
-    if (typeof window !== 'undefined' && (window as any).mixpanel) {
-      (window as any).mixpanel.track(event.event, safe);
-    }
 
-    // Custom analytics endpoint
-    // To be implemented when custom analytics backend is ready
+    const providers = window as Window & {
+      gtag?: (command: 'event', name: string, params: SafeParameters) => void;
+      mixpanel?: { track: (name: string, params: SafeParameters) => void };
+    };
+    const page = 'https://app.yrdly.ng/onboarding';
+    providers.gtag?.('event', event, {
+      ...safe,
+      // Google adds the current page and referrer when these are omitted.
+      page_location: page,
+      page_referrer: '',
+      page_title: 'YRDLY onboarding',
+    });
+    providers.mixpanel?.track(event, {
+      ...safe,
+      $current_url: page,
+      $referrer: '',
+      $referring_domain: '',
+      $initial_referrer: '',
+      $initial_referring_domain: '',
+    });
   }
 
   /**
