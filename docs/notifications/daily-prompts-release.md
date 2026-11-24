@@ -1,4 +1,4 @@
-# Daily questions and opt-in reminders
+# Daily questions and default-enabled reminders
 
 The web and native clients use `/api/daily-prompts` for the current approved question and `?promptId=<id>` for its original approved historical question, and authenticated `/api/daily-prompts/responses` for moderated, public answers in the viewer's home state/LGA. Both directions of user blocking are enforced. Normal posts remain unchanged when no question is attached.
 
@@ -9,6 +9,28 @@ Supabase Cron invokes the service-authenticated `dispatch-daily-prompts` Edge Fu
 The service-only `notification_campaigns` row controls `enabled`, `scope` (`testers` or `all`) and `tester_ids`. It defaults disabled with an empty tester cohort. `DAILY_PROMPT_PUSH_ENABLED=false` in an Edge Function remains an unconditional emergency stop; otherwise the database control is authoritative. The dispatcher, sender and outbox independently enforce this control and recipient cohort. The database initializes `notification_settings.dailyPrompts` to true for existing and new profiles without a preference, and preserves explicit false values when older clients omit the key. Dispatcher, sender and outbox still require stored boolean true and fail closed if preference lookup fails. Device-level push permission remains mandatory. The Next.js cron route remains a compatibility/manual endpoint with its existing environment switches, but no scheduled job calls it.
 
 The service-only recipient RPC excludes existing reservations before pagination, so bounded retries make progress. The ledger reserves each user/question once, and uncertain provider handoffs are not automatically replayed. `submitted` means provider acceptance, not confirmed device delivery. Reminder expiration is the end of the Nigerian day.
+
+### Daily dispatch monitoring (read-only)
+After the 6 PM WAT dispatch, compare the approved question's reminder ledger with reachable profiles and inspect native provider receipts by OS. A provider receipt is not physical device-display confirmation. Never log raw push tokens or subscription endpoints.
+
+```sql
+SELECT COALESCE(notification_settings->>'dailyPrompts','missing') AS preference,
+       count(*) AS profiles
+FROM public.users GROUP BY 1;
+
+SELECT r.status, r.result_code, count(*) AS recipients
+FROM public.daily_prompt_reminders r JOIN public.daily_prompts p ON p.id=r.prompt_id
+WHERE p.prompt_date=(now() AT TIME ZONE 'Africa/Lagos')::date
+GROUP BY 1,2;
+
+SELECT COALESCE(t.os_name,'unmatched') AS os, d.status, d.last_error,
+       count(*) AS device_deliveries
+FROM public.push_notification_deliveries d
+LEFT JOIN public.user_push_tokens t ON t.user_id=d.user_id AND t.device_id=d.device_id
+WHERE d.notification_type='daily_prompt'
+  AND d.created_at >= date_trunc('day',now() AT TIME ZONE 'Africa/Lagos') AT TIME ZONE 'Africa/Lagos'
+GROUP BY 1,2,3;
+```
 
 Validation: execute `tests/daily-prompt-database.sql` only on staging; all fixtures roll back. Run daily prompt/dispatch/routing unit tests, typecheck, lint, production compilation and browser smoke tests. Check production RLS/grants and migrations separately. No approved production question or campaign is created by these migrations.
 
