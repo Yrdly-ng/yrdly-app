@@ -71,9 +71,9 @@ export function reportGoogleConversion(event: Conversion, localId: string): void
   }
 }
 
-/** Only call from an authenticated, server-confirmed marketplace payment. */
-export async function reportGooglePurchase(orderId: string, amount: unknown, kind: 'post' | 'catalog_item'): Promise<void> {
-  if (!UUID.test(orderId) || (typeof amount !== 'number' && typeof amount !== 'string')) return;
+/** Only call from an authenticated, server-confirmed payment. */
+export async function reportGooglePurchase(orderId: string, amount: unknown, kind: 'post' | 'catalog_item' | 'ticket' | 'booking'): Promise<void> {
+  if (!['post', 'catalog_item', 'ticket', 'booking'].includes(kind) || !UUID.test(orderId) || (typeof amount !== 'number' && typeof amount !== 'string')) return;
   const value = Number(amount);
   if (!Number.isFinite(value) || value <= 0 || value > 1_000_000_000) return;
   try {
@@ -90,7 +90,7 @@ export async function reportGooglePurchase(orderId: string, amount: unknown, kin
         transaction_id: transactionId,
         currency: 'NGN',
         value,
-        items: [{ item_id: kind === 'catalog_item' ? 'catalog_item' : 'marketplace_listing', price: value, quantity: 1 }],
+        items: [{ item_id: kind === 'post' ? 'marketplace_listing' : kind, price: value, quantity: 1 }],
       },
     });
     window.sessionStorage.setItem(key, '1');
