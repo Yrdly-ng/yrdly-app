@@ -14,7 +14,6 @@ import { PushNotificationManager } from '@/components/notifications/PushNotifica
 import { CrispChat } from '@/components/CrispChat';
 import { TelemetryHandler } from '@/components/providers/TelemetryHandler';
 import { AcquisitionCapture } from '@/components/providers/AcquisitionCapture';
-import { GoogleMapsScript } from '@/components/providers/GoogleMapsScript';
 import { SignupConversionHandler } from '@/components/providers/SignupConversionHandler';
 
 export const metadata: Metadata = {
@@ -98,13 +97,14 @@ export default function RootLayout({
               />
               <Script id="yrdly-google-ads-config" strategy="afterInteractive">{`
                 window.dataLayer = window.dataLayer || [];
-                function gtag(){dataLayer.push(arguments);}
-                gtag('js', new Date());
-                gtag('config', 'AW-18468457055');
+                if (typeof window.gtag !== 'function') {
+                  window.gtag = function () { window.dataLayer.push(arguments); };
+                }
+                window.gtag('js', new Date());
+                window.gtag('config', 'AW-18468457055');
               `}</Script>
             </>
           )}
-          <GoogleMapsScript />
         </ThemeProvider>
       </body>
     </html>
