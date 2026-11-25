@@ -58,7 +58,22 @@ export async function authenticatedFetch<T = any>(path: string, body: unknown, m
   if (method.toUpperCase() === 'POST') recordFlow(path, 'started');
   try {
     const result = await performAuthenticatedFetch<T>(path, body, method);
-    if (method.toUpperCase() === 'POST') recordFlow(path, 'succeeded', result);
+    if (method.toUpperCase() === 'POST') {
+      recordFlow(path, 'succeeded', result);
+      if (typeof window !== 'undefined' && path === '/api/posts') {
+        const post = result as { data?: unknown; error?: unknown };
+        if (post?.data && !post.error) void import('../attribution/pending-listing-measurement')
+          .then(module => module.rememberGoogleListing(post.data)).catch(() => {});
+      }
+      if (typeof window !== 'undefined' && (path === '/api/bookings/verify' || path === '/api/events/tickets/verify')) {
+        const payment = result as { success?: boolean; transactionId?: string; measurementAmount?: number };
+        if (payment?.success === true && typeof payment.transactionId === 'string') {
+          void import('../attribution/google-measurement').then(module =>
+            module.reportGooglePurchase(payment.transactionId!, payment.measurementAmount, path === '/api/bookings/verify' ? 'booking' : 'ticket')
+          ).catch(() => {});
+        }
+      }
+    }
     return result;
   } catch (error) {
     if (method.toUpperCase() === 'POST') recordFlow(path, 'failed');

@@ -340,7 +340,7 @@ serve(async (req) => {
           recipient?.notification_settings?.dailyPrompts !== true) {
         await updateDelivery(admin, delivery.id, {
           status: "skipped",
-          last_error: "Daily prompts not opted in",
+          last_error: "Daily prompts disabled or preference unavailable",
         });
         continue;
       }

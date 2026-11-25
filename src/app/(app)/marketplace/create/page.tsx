@@ -207,6 +207,8 @@ export default function CreateMarketplaceListingPage() {
       const { data: newPost, error: insertErr } = await authenticatedFetch('/api/posts', { post: postPayload });
 
       if (insertErr) throw insertErr;
+      // The server's moderation result, not the client precheck, determines visibility.
+      modStatus = newPost?.moderation_status === "approved" ? "approved" : "pending";
 
       // 5. Insert into moderation_queue if flagged
 

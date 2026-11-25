@@ -1,6 +1,6 @@
 "use client";
 
-import { safeRelativePath } from '@/lib/auth/auth-navigation';
+import { safeRelativePath, loginDestination } from '@/lib/auth/auth-navigation';
 
 import React, { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -64,13 +64,8 @@ function LoginFormPage() {
   const [lockedUntil, setLockedUntil] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!authLoading && user) {
-      if (profile?.profile_completed) {
-        router.replace(nextPath);
-      } else {
-        router.replace(`/onboarding/profile?next=${encodeURIComponent(nextPath)}`);
-      }
-    }
+    const destination = loginDestination(user?.id, profile, authLoading, nextPath);
+    if (destination) router.replace(destination);
   }, [user, profile, authLoading, router, nextPath]);
 
   const handleGoogle = async () => {
@@ -137,7 +132,7 @@ function LoginFormPage() {
         } else if (signedUser) {
           setFailedAttempts(0);
           setLockedUntil(null);
-          router.push(nextPath);
+          // The profile-aware effect owns navigation after authentication.
         }
       } else {
         const { user: newUser, error: err } = await signUp(email, password, name);
@@ -309,6 +304,12 @@ function LoginFormPage() {
               </div>
             )}
 
+            {user && !authLoading && !loginDestination(user.id, profile, false, nextPath) && (
+              <div role="status" className="rounded-xl border border-white/20 p-3 text-sm text-white">
+                We are loading your account profile. If this takes too long, retry loading it.
+                <button type="button" className="block min-h-11 font-semibold text-[#82DB7E]" onClick={() => window.location.reload()}>Retry profile loading</button>
+              </div>
+            )}
             <form onSubmit={handleAuth} className="space-y-3">
               {isSignUp && (
                 <div className="relative w-full">
