@@ -27,6 +27,7 @@ function fixture(initialProfile, readError = null) {
     if (path === '@/lib/attribution/signup') return { signupAttribution: unexpectedSignupTracking, appendOAuthAttribution: unexpectedSignupTracking };
     if (path === '@/lib/telemetry/analytics') return { trackWebAccountCreated: unexpectedSignupTracking };
     if (path === '@/lib/attribution/google-ads') return { reportGoogleAdsSignup: unexpectedSignupTracking };
+    if (path === '@/lib/attribution/google-measurement') return { googleTagManagerEnabled: true, reportGoogleConversion: unexpectedSignupTracking };
     if (path === './session-policy') return { checkActiveSession: async () => true, endRevokedSession: async () => {} };
     if (path === './auth-navigation') return { safeRelativePath: (s) => s };
     if (path === '../supabase/supabase') return { supabase };
@@ -73,4 +74,18 @@ test('database read failures fail closed without bootstrap', async () => {
   } finally {
     console.error = oldError;
   }
+});
+
+const navigationModule = { exports: {} };
+new Function('module','exports',ts.transpileModule(readFileSync('src/lib/auth/auth-navigation.ts','utf8'), {compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(navigationModule,navigationModule.exports);
+const { loginDestination } = navigationModule.exports;
+test('login never treats a missing or stale profile as incomplete onboarding', () => {
+  const owner = 'owner';
+  assert.equal(loginDestination(owner,null,false,'/home'),null);
+  assert.equal(loginDestination(owner,{id:'other',profile_completed:false},false,'/home'),null);
+  assert.equal(loginDestination(owner,{id:owner,profile_completed:true},true,'/home'),null);
+  assert.equal(loginDestination(owner,{id:owner,profile_completed:null},false,'/home'),null);
+  assert.equal(loginDestination(owner,{id:owner,profile_completed:true},false,'/marketplace'),'/marketplace');
+  assert.equal(loginDestination(owner,{id:owner,profile_completed:false},false,'/marketplace'),'/onboarding/profile?next=%2Fmarketplace');
+  assert.equal(loginDestination(owner,{id:owner,profile_completed:true},false,'//evil.example'),'/home');
 });

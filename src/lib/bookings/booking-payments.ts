@@ -108,13 +108,41 @@ export async function createCheckoutForBooking(opts: BookingCheckoutOptions) {
   }
 }
 
+
+/** Fail closed for analytics when the payment environment is not explicitly live. */
+function bookingMeasurementAmount(tx: { amount: unknown; metadata?: { payluk_environment?: unknown } | null }, providerEnvironment?: unknown): number | undefined {
+  if (process.env.QA_ENVIRONMENT === 'staging' ||
+      !['https://yoiyqxtpmxnrrbqqidcs.supabase.co', 'https://api.yrdly.ng'].includes(process.env.NEXT_PUBLIC_SUPABASE_URL || '') ||
+      !process.env.PAYLUK_SECRET_KEY?.startsWith('sk_live_') ||
+      (process.env.PAYLUK_BASE_URL || 'https://api.payluk.ng') !== 'https://api.payluk.ng' ||
+      (tx.metadata?.payluk_environment != null && tx.metadata.payluk_environment !== 'live') ||
+      (providerEnvironment != null && providerEnvironment !== 'live')) return undefined;
+  if (tx.metadata?.payluk_environment !== 'live' && providerEnvironment !== 'live') return undefined;
+  return Number(tx.amount);
+}
+
 export async function verifyBookingCheckout(bookingId: string, buyerId: string) {
   const { data: tx, error } = await supabaseAdmin.from('escrow_transactions').select('*')
     .eq('item_type', 'booking').eq('item_id', bookingId).eq('buyer_id', buyerId)
     .order('created_at', { ascending: false }).limit(1).maybeSingle();
   if (error) throw error;
   if (!tx) throw new BookingCheckoutError('Booking payment not found.', 404);
-  if (['paid','shipped','delivered','completed'].includes(tx.status)) return { transactionId: tx.id, completed: tx.status === 'completed' };
+  if (['paid','shipped','delivered','completed'].includes(tx.status)) {
+    let measurementAmount = bookingMeasurementAmount(tx);
+    // Historical bookings lack an environment marker. Re-read provider evidence
+    // only for the enabled analytics path, without changing an already-paid order.
+    if (measurementAmount === undefined && tx.metadata?.payluk_environment == null &&
+        process.env.NEXT_PUBLIC_YRDLY_GOOGLE_MEASUREMENT === 'gtm' && tx.payluk_tx_ref) {
+      try {
+        const confirmed = await PaylukService.verifyEscrow(tx.payluk_tx_ref);
+        if (confirmed.id === tx.payluk_escrow_id &&
+            ['ONGOING','COMPLETED','CLAIMED'].includes(confirmed.status) && paylukAmountsMatch(tx, confirmed)) {
+          measurementAmount = bookingMeasurementAmount(tx, confirmed.environment);
+        }
+      } catch { /* Already-paid bookings must remain usable even if analytics evidence is unavailable. */ }
+    }
+    return { transactionId: tx.id, completed: tx.status === 'completed', measurementAmount };
+  }
   if (!tx.payluk_tx_ref) throw new BookingCheckoutError('Booking payment setup is incomplete.');
   const remote = await PaylukService.verifyEscrow(tx.payluk_tx_ref);
   if (!['ONGOING','COMPLETED','CLAIMED'].includes(remote.status)) throw new BookingCheckoutError('Booking payment has not completed.', 402);
@@ -123,7 +151,7 @@ export async function verifyBookingCheckout(bookingId: string, buyerId: string) 
     throw new BookingCheckoutError('Booking payment needs reconciliation.');
   }
   await applyEscrowPayment(tx.id, 'payluk', tx.payluk_escrow_id);
-  return { transactionId: tx.id, completed: false };
+  return { transactionId: tx.id, completed: false, measurementAmount: remote.id === tx.payluk_escrow_id ? bookingMeasurementAmount(tx, remote.environment) : undefined };
 }
 
 export async function cancelBookingCheckout(transactionId: string, buyerId: string) {

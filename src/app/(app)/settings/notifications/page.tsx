@@ -148,10 +148,10 @@ export default function NotificationSettingsPage() {
                         <Label htmlFor="dailyPrompts" className="flex flex-col space-y-1">
                             <span className="text-foreground font-medium">Daily Neighbourhood Questions</span>
                             <span className="text-sm text-[var(--yrdly-label)]">
-                                An optional 6 PM reminder about today&apos;s question. Off until you enable it.
+                                An optional 6 PM reminder about today&apos;s question. Enabled by default; turn it off any time.
                             </span>
                         </Label>
-                        <Switch id="dailyPrompts" checked={settings?.dailyPrompts === true}
+                        <Switch id="dailyPrompts" checked={settings?.dailyPrompts ?? true}
                             onCheckedChange={(value) => handleSettingChange('dailyPrompts',value)} />
                     </div>
                     <div className="flex items-center justify-between">

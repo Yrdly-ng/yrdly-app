@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useRouter } from "next/navigation";
+import { googleTagManagerEnabled, googleMeasurementConsent, reportVerifiedMarketplacePurchase } from '@/lib/attribution/google-measurement';
 import { MARKETPLACE_CONSTANTS } from "@/lib/shared/constants";
 import { supabase } from "@/lib/supabase/supabase";
 
@@ -84,6 +85,7 @@ export function BuyButton({
       const result = await response.json();
       if (response.ok && result.success) {
         const confirmed = pendingTransactionId;
+        reportVerifiedMarketplacePurchase(result);
         clearPending();
         toast({ title: 'Payment confirmed', description: 'Your purchase is now linked to your order.' });
         router.push(`/transactions/${confirmed}`);
@@ -189,6 +191,7 @@ export function BuyButton({
       }
 
       if (res.ok && data.alreadyPaid && data.transactionId) {
+        recoverMarketplaceMeasurement(data.transactionId, session.access_token);
         clearPending();
         router.push(`/transactions/${data.transactionId}`);
         return;
@@ -216,6 +219,7 @@ export function BuyButton({
         });
         const walletResult = await walletResponse.json();
         if (walletResponse.ok && walletResult.success) {
+          recoverMarketplaceMeasurement(data.transactionId, session.access_token);
           clearPending();
           toast({ title: 'Payment confirmed', description: 'Your Payluk wallet has funded the purchase.' });
           router.push(`/transactions/${data.transactionId}`);
@@ -285,6 +289,7 @@ export function BuyButton({
                   });
                   const verified = await verification.json();
                   if (verification.ok && verified.success) {
+                    reportVerifiedMarketplacePurchase(verified);
                     paymentSucceeded = true;
                     clearPending();
                     toast({ title: 'Payment Successful', description: 'Your purchase is confirmed.' });
@@ -314,7 +319,8 @@ export function BuyButton({
                     body: JSON.stringify({ txRef: data.transactionId }),
                   });
                   const verifyData = await verifyRes.json();
-                  if (verifyData?.success) {
+                  if (verifyRes.ok && verifyData?.success) {
+                    reportVerifiedMarketplacePurchase(verifyData);
                     paymentSucceeded = true;
                     clearPending();
                     toast({ title: "Payment Successful", description: "Your purchase is confirmed." });
@@ -519,3 +525,16 @@ export function BuyButton({
   );
 }
 
+
+
+/** Recover measurement without changing the successful checkout outcome. */
+function recoverMarketplaceMeasurement(transactionId: string, accessToken: string): void {
+  if (!googleTagManagerEnabled || !googleMeasurementConsent()) return;
+  void fetch('/api/payment/verify', {
+    method: 'POST', cache: 'no-store',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify({ txRef: transactionId }),
+  }).then(async response => {
+    if (response.ok) reportVerifiedMarketplacePurchase(await response.json());
+  }).catch(() => { /* The order is already confirmed. */ });
+}

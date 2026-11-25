@@ -409,7 +409,7 @@ export interface Message {
 }
 
 export interface NotificationSettings {
-  /** Explicit opt-in; absent means OFF for editorial reminders. */
+  /** Enabled by default; an explicit false disables daily reminders. */
   dailyPrompts?: boolean;
   friendRequests: boolean;
   messages: boolean;

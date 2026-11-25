@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { supabase } from "@/lib/supabase/supabase";
+import { googleTagManagerEnabled, reportGoogleConversion } from '@/lib/attribution/google-measurement';
 import { reportGoogleAdsSignup } from "@/lib/attribution/google-ads";
 
 /**
@@ -24,7 +25,8 @@ export function SignupConversionHandler() {
       if (session.user.app_metadata?.provider !== method) return;
       const ago = Date.now() - Date.parse(session.user.created_at);
       if (!Number.isFinite(ago) || ago < -60_000 || ago > 600_000) return;
-      reportGoogleAdsSignup(session.user.id);
+      if (googleTagManagerEnabled) reportGoogleConversion('sign_up', session.user.id);
+      else reportGoogleAdsSignup(session.user.id);
     })();
   }, []);
   return null;

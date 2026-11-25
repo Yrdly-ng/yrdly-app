@@ -260,7 +260,11 @@ export default function EventDetailPage() {
       }
 
       if (data.free || data.alreadyPaid) {
-        // Free ticket — go straight to my-tickets
+        // Recover an already-paid order through the authenticated verification path.
+        if (!data.free && data.alreadyPaid && typeof data.tx_ref === 'string') {
+          try { await authenticatedFetch('/api/events/tickets/verify', { tx_ref: data.tx_ref }); }
+          catch { /* Existing ticket issuance remains authoritative. */ }
+        }
         setPurchase((s) => ({ ...s, step: "success" }));
         setTimeout(() => router.push("/my-tickets?success=1"), 1500);
       } else if (data.provider === "paystack") {
