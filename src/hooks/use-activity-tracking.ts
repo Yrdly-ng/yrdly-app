@@ -7,7 +7,8 @@ import { supabase } from '@/lib/supabase/supabase';
 export function useActivityTracking() {
   const { user } = useAuth();
   const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
-  const isOnlineRef = useRef(false);\n  const lastStatusRequestRef = useRef<{ userId: string; isOnline: boolean; at: number } | null>(null);
+  const isOnlineRef = useRef(false);
+  const lastStatusRequestRef = useRef<{ userId: string; isOnline: boolean; at: number } | null>(null);
 
   const updateUserStatus = useCallback(async (isOnline: boolean) => {
     if (!user) return;
@@ -18,14 +19,15 @@ export function useActivityTracking() {
     lastStatusRequestRef.current = { userId: user.id, isOnline, at: now };
 
     try {
-      await supabase
+      const { error } = await supabase
         .from('users')
-        .update({ 
+        .update({
           is_online: isOnline,
           last_seen: new Date().toISOString()
         })
         .eq('id', user.id);
 
+      if (error) throw error;
       isOnlineRef.current = isOnline;
     } catch (error) {
       console.error('Error updating user status:', error);
@@ -33,24 +35,20 @@ export function useActivityTracking() {
   }, [user]);
 
   const setUserOnline = useCallback(() => {
-    updateUserStatus(true);
+    void updateUserStatus(true);
   }, [updateUserStatus]);
 
   const setUserOffline = useCallback(() => {
-    updateUserStatus(false);
+    void updateUserStatus(false);
   }, [updateUserStatus]);
 
-  // Heartbeat system - update status every 30 seconds while active
+  // Keep active presence fresh without writing to Postgres every 30 seconds.
+  // Focus and visibility transitions still update status immediately.
   const startHeartbeat = useCallback(() => {
-    if (heartbeatRef.current) {
-      clearInterval(heartbeatRef.current);
-    }
-
+    if (heartbeatRef.current) clearInterval(heartbeatRef.current);
     heartbeatRef.current = setInterval(() => {
-      if (!document.hidden && user) {
-        updateUserStatus(true);
-      }
-    }, 120000); // 2 minutes; presence transitions still update immediately
+      if (!document.hidden && user) void updateUserStatus(true);
+    }, 120000);
   }, [user, updateUserStatus]);
 
   const stopHeartbeat = useCallback(() => {
@@ -60,7 +58,6 @@ export function useActivityTracking() {
     }
   }, []);
 
-  // Handle page visibility changes
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden) {
@@ -76,7 +73,6 @@ export function useActivityTracking() {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [setUserOnline, setUserOffline, startHeartbeat, stopHeartbeat]);
 
-  // Handle page focus/blur
   useEffect(() => {
     const handleFocus = () => {
       if (user) {
@@ -92,14 +88,12 @@ export function useActivityTracking() {
 
     window.addEventListener('focus', handleFocus);
     window.addEventListener('blur', handleBlur);
-
     return () => {
       window.removeEventListener('focus', handleFocus);
       window.removeEventListener('blur', handleBlur);
     };
   }, [user, setUserOnline, setUserOffline, startHeartbeat, stopHeartbeat]);
 
-  // Initialize activity tracking when user logs in
   useEffect(() => {
     if (user) {
       setUserOnline();
@@ -108,28 +102,21 @@ export function useActivityTracking() {
       stopHeartbeat();
     }
 
-    // Cleanup on unmount
     return () => {
-      if (user) {
-        setUserOffline();
-      }
+      if (user) setUserOffline();
       stopHeartbeat();
     };
   }, [user, setUserOnline, setUserOffline, startHeartbeat, stopHeartbeat]);
 
-  // Handle beforeunload (page refresh/close)
   useEffect(() => {
     const handleBeforeUnload = () => {
-      if (user) {
-        // Use navigator.sendBeacon for reliable offline status update
-        const data = JSON.stringify({
-          user_id: user.id,
-          is_online: false,
-          last_seen: new Date().toISOString()
-        });
-        
-        navigator.sendBeacon('/api/user-status', data);
-      }
+      if (!user) return;
+      const data = JSON.stringify({
+        user_id: user.id,
+        is_online: false,
+        last_seen: new Date().toISOString()
+      });
+      navigator.sendBeacon('/api/user-status', data);
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
