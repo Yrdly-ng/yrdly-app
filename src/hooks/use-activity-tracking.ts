@@ -12,6 +12,11 @@ export function useActivityTracking() {
   const updateUserStatus = useCallback(async (isOnline: boolean) => {
     if (!user) return;
 
+    const now = Date.now();
+    const previous = lastStatusRequestRef.current;
+    if (previous?.userId === user.id && previous.isOnline === isOnline && now - previous.at < 15000) return;
+    lastStatusRequestRef.current = { userId: user.id, isOnline, at: now };
+
     try {
       await supabase
         .from('users')
