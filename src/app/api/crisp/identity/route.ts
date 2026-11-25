@@ -9,6 +9,8 @@ function jsonResponse(body: Record<string, string>, status: number) {
   });
 }
 
+let warnedMissingSecret = false;
+
 export async function GET(request: NextRequest) {
   try {
     const { data: { user }, error } = await getAuthenticatedUser(request);
@@ -22,7 +24,12 @@ export async function GET(request: NextRequest) {
 
     const secret = process.env.CRISP_IDENTITY_SECRET;
     if (!secret) {
-      console.error('[CrispIdentity] CRISP_IDENTITY_SECRET is not configured.');
+      // Signing is an optional Crisp feature. The client falls back to its unsigned
+      // email identity, so this is a configuration warning—not a runtime failure.
+      if (!warnedMissingSecret) {
+        console.warn('[CrispIdentity] Identity signing is disabled: CRISP_IDENTITY_SECRET is not configured.');
+        warnedMissingSecret = true;
+      }
       return jsonResponse({ error: 'Identity verification is unavailable' }, 503);
     }
 
