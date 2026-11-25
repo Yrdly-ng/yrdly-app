@@ -7,4 +7,7 @@ test('online activity tracking throttles duplicate writes and uses a two-minute 
   assert.match(source, /now - previous\.at < 15000/);
   assert.match(source, /\}, 120000\)/);
   assert.match(source, /if \(error\) throw error/);
+  const onlineStatus = fs.readFileSync('src/lib/activity/online-status.ts', 'utf8');
+  assert.match(onlineStatus, /ONLINE_STATUS_MAX_AGE_MS = 150_000/);
+
 });

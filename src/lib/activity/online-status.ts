@@ -1,4 +1,4 @@
-export const ONLINE_STATUS_MAX_AGE_MS = 90_000;
+export const ONLINE_STATUS_MAX_AGE_MS = 150_000;
 export const AWAY_STATUS_MAX_AGE_MS = 5 * 60_000;
 
 export type UserActivityStatus = "active" | "away" | "offline";
