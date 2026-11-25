@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase/supabase';
 export function useActivityTracking() {
   const { user } = useAuth();
   const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
-  const isOnlineRef = useRef(false);
+  const isOnlineRef = useRef(false);\n  const lastStatusRequestRef = useRef<{ userId: string; isOnline: boolean; at: number } | null>(null);
 
   const updateUserStatus = useCallback(async (isOnline: boolean) => {
     if (!user) return;
@@ -45,7 +45,7 @@ export function useActivityTracking() {
       if (!document.hidden && user) {
         updateUserStatus(true);
       }
-    }, 30000); // 30 seconds
+    }, 120000); // 2 minutes; presence transitions still update immediately
   }, [user, updateUserStatus]);
 
   const stopHeartbeat = useCallback(() => {
