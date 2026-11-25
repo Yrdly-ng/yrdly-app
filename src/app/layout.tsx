@@ -24,6 +24,7 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://app.yrdly.ng'),
   title: 'Yrdly - Your Neighborhood Network',
   description: 'Connect with your neighbors, share updates, and build a stronger community with Yrdly.',
+  robots: { index: false, follow: false },
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
