@@ -389,9 +389,7 @@ export function MarketplaceChatLayout({
               await import("@/lib/notifications/notification-triggers");
             await NotificationTriggers.onMessageSent(
               buyer.uid,
-              user.id,
               selectedChat.id,
-              newMessage.trim() || (imageUrl ? "📷 Photo" : ""),
               "marketplace_message",
             );
           } catch (error) {

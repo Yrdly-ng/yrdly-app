@@ -91,63 +91,35 @@ export class NotificationTriggers {
     }
   }
 
-  /**
-   * Trigger notification when a message is sent
-   */
+  static async onNewFollower(followerId: string, followedId: string) {
+    try {
+      await NotificationService.createNotification({
+        userId: followedId,
+        type: 'new_follower',
+        relatedId: followerId,
+        relatedType: 'user',
+        title: 'New Follower',
+        message: 'You have a new follower.',
+      });
+    } catch (error) {
+      console.error('Error creating new follower notification:', error);
+    }
+  }
+
   static async onMessageSent(
     toUserId: string,
-    fromUserId: string,
     conversationId: string,
-    messageContent: string,
     notificationType: 'message' | 'marketplace_message' = 'message'
   ) {
     try {
-      
-      // Debounce: Check for recent notifications in the last 60 seconds to prevent spam
-      const oneMinuteAgo = new Date(Date.now() - 60000).toISOString();
-      const { data: recentNotifs } = await supabase
-        .from('notifications')
-        .select('id')
-        .eq('user_id', toUserId)
-        .eq('type', notificationType)
-        .eq('sender_id', fromUserId)
-        .eq('related_id', conversationId)
-        .gte('created_at', oneMinuteAgo)
-        .limit(1);
-
-      if (recentNotifs && recentNotifs.length > 0) {
-         return;
-      }
-
-      // Get sender's name
-      const { data: senderData } = await supabase
-        .from('public_profiles')
-        .select('name')
-        .eq('id', fromUserId)
-        .single();
-
-      if (senderData) {
-        const messagePreview = messageContent.length > 50 
-          ? messageContent.substring(0, 50) + '...' 
-          : messageContent;
-
-
-        await NotificationService.createNotification({
-          userId: toUserId,
-          type: notificationType,
-          senderId: fromUserId,
-          relatedId: conversationId,
-          relatedType: 'conversation',
-          title: `New message from ${senderData.name}`,
-          message: messagePreview,
-          data: { 
-            fromUserName: senderData.name, 
-            conversationId, 
-            messagePreview,
-          }
-        });
-      } else {
-      }
+      await NotificationService.createNotification({
+        userId: toUserId,
+        type: notificationType,
+        relatedId: conversationId,
+        relatedType: 'conversation',
+        title: 'New Message',
+        message: 'You have a new message.',
+      });
     } catch (error) {
       console.error('Error creating message notification:', error);
     }
@@ -166,25 +138,15 @@ export class NotificationTriggers {
         .single();
 
       if (postData && postData.user_id !== likerId) {
-        // Get liker's name
-        const { data: likerData } = await supabase
-          .from('public_profiles')
-          .select('name')
-          .eq('id', likerId)
-          .single();
-
-        if (likerData) {
-          await NotificationService.createNotification({
-            userId: postData.user_id,
-            type: 'post_like',
-            senderId: likerId,
-            relatedId: postId,
-            relatedType: 'post',
-            title: `${likerData.name} liked your post`,
-            message: `${likerData.name} liked your post`,
-            data: { likerName: likerData.name, postId }
-          });
-        }
+        await NotificationService.createNotification({
+          userId: postData.user_id,
+          type: 'post_like',
+          senderId: likerId,
+          relatedId: postId,
+          relatedType: 'post',
+          title: 'Post activity',
+          message: 'Someone liked your post.',
+        });
       }
     } catch (error) {
       console.error('Error creating post like notification:', error);
@@ -233,7 +195,7 @@ export class NotificationTriggers {
   /**
    * Trigger notification when a post is commented on
    */
-  static async onPostCommented(postId: string, commenterId: string, commentContent: string) {
+  static async onPostCommented(postId: string, commenterId: string) {
     try {
       // Get post details and owner
       const { data: postData } = await supabase
@@ -243,29 +205,15 @@ export class NotificationTriggers {
         .single();
 
       if (postData && postData.user_id !== commenterId) {
-        // Get commenter's name
-        const { data: commenterData } = await supabase
-          .from('public_profiles')
-          .select('name')
-          .eq('id', commenterId)
-          .single();
-
-        if (commenterData) {
-          const commentPreview = commentContent.length > 50 
-            ? commentContent.substring(0, 50) + '...' 
-            : commentContent;
-
-          await NotificationService.createNotification({
-            userId: postData.user_id,
-            type: 'post_comment',
-            senderId: commenterId,
-            relatedId: postId,
-            relatedType: 'post',
-            title: `${commenterData.name} commented on your post`,
-            message: `${commenterData.name} commented: "${commentPreview}"`,
-            data: { commenterName: commenterData.name, postId, commentPreview }
-          });
-        }
+        await NotificationService.createNotification({
+          userId: postData.user_id,
+          type: 'post_comment',
+          senderId: commenterId,
+          relatedId: postId,
+          relatedType: 'post',
+          title: 'Post activity',
+          message: 'Someone commented on your post.',
+        });
       }
     } catch (error) {
       console.error('Error creating post comment notification:', error);

@@ -1,5 +1,6 @@
 "use client";
 
+import { NotificationTriggers } from "@/lib/notifications/notification-triggers";
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase/supabase';
 import { useAuth } from './use-supabase-auth';
@@ -159,6 +160,7 @@ export function useCommunityConnections(
         .insert({ follower_id: currentUser.id, following_id: targetUserId });
 
       if (error) throw error;
+      void NotificationTriggers.onNewFollower(currentUser.id, targetUserId);
       await fetchConnections();
     } catch (e) {
       console.error('Error following user:', e);
