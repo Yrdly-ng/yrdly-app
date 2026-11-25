@@ -3,11 +3,16 @@ import { createClient } from '@supabase/supabase-js';
 import { ResendEmailService } from '@/lib/email/resend-service';
 import { emailTemplates } from '@/lib/email/email-templates';
 
-// We must use the service role key to bypass Row Level Security 
-// and read all users' notifications.
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+// The service-role client is created only after the cron request is authorized.
+// This keeps Next.js route collection/builds from requiring runtime credentials.
+function getSupabaseAdmin() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error('Server Supabase configuration is missing');
+  }
+  return createClient(supabaseUrl, supabaseServiceKey);
+}
 
 export async function GET(request: Request) {
   // Require a cron secret before reading notifications or sending email.
@@ -17,6 +22,7 @@ export async function GET(request: Request) {
   }
 
   try {
+    const supabaseAdmin = getSupabaseAdmin();
     // 1. Find users who have unread notifications from the last 24 hours
     // We only want to notify them if they haven't been notified recently.
     // For simplicity, we just look at notifications created in the last 24h.
@@ -56,7 +62,7 @@ export async function GET(request: Request) {
       const count = userNotifCounts[user.id];
       if (count > 0 && user.email) {
         const template = emailTemplates.digestReminder(user.name || 'User', 0, count);
-        
+
         // Use the ResendEmailService
         await ResendEmailService.sendEmail(
           user.email,
