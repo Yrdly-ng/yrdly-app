@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+import { APILoadingStatus, useApiLoadingStatus } from "@vis.gl/react-google-maps";
 import usePlacesAutocomplete, {
   getGeocode,
   getLatLng,
@@ -11,18 +13,25 @@ export interface Suggestion {
 }
 
 export const usePlaces = () => {
+  const mapsStatus = useApiLoadingStatus();
   const {
     ready,
     value,
     suggestions: { loading, status, data },
     setValue,
     clearSuggestions,
+    init,
   } = usePlacesAutocomplete({
     requestOptions: {
       componentRestrictions: { country: "ng" },
     },
     debounce: 300,
+    initOnMount: false,
   });
+
+  useEffect(() => {
+    if (mapsStatus === APILoadingStatus.LOADED) init();
+  }, [init, mapsStatus]);
 
   const getPlacePredictions = (val: string) => {
     setValue(val, true);

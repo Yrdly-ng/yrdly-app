@@ -1,3 +1,5 @@
+const browserIdentifiers = new Set(['google', 'gtag', 'dataLayer', 'adsbygoogle', '$crisp']);
+
 /** Fixed categories only: never send the original server payload or user content. */
 export function diagnosticMessage(value: unknown): string {
   const text = value instanceof Error ? value.message :
@@ -15,8 +17,12 @@ export function diagnosticMessage(value: unknown): string {
   if (/cannot (?:read|set) propert(?:y|ies) of undefined|undefined is not an object/i.test(text)) return 'Undefined property access';
   if (/cannot (?:read|set) propert(?:y|ies) of null|null is not an object/i.test(text)) return 'Null property access';
   if (/ is not a function(?:[. ]|$)/i.test(text)) return 'Non-callable value invoked';
+  const missing = /^(?:Can't find variable: ([\w$]+)|([\w$]+) is not defined)[.!]?$/.exec(text);
+  const identifier = missing?.[1] || missing?.[2];
+  if (identifier && browserIdentifiers.has(identifier)) return `JavaScript identifier unavailable: ${identifier}`;
   if (/ is not defined[.!]?$|^Can.t find variable:/i.test(text)) return 'JavaScript identifier unavailable';
   if (/loading (?:css )?chunk .+ failed|chunkloaderror|failed to fetch dynamically imported module|importing a module script failed/i.test(text)) return 'Application chunk unavailable';
+  if (/^The Google Maps JavaScript API (?:could not|failed to) load[.!]?$/.test(text)) return 'Google Maps script failed to load';
   if (/RefererNotAllowedMapError/.test(text)) return 'Google Maps referrer rejected';
   if (/InvalidKeyMapError|MissingKeyMapError/.test(text)) return 'Google Maps API key unavailable';
   if (/ApiNotActivatedMapError/.test(text)) return 'Google Maps API not enabled';
@@ -39,6 +45,9 @@ export const diagnosticMessages = new Set([
   'Null property access',
   'Non-callable value invoked',
   'JavaScript identifier unavailable',
+  ...Array.from(browserIdentifiers, (identifier) => `JavaScript identifier unavailable: ${identifier}`),
+  'Google Maps authorization failed',
+  'Google Maps unavailable while offline',
   'Application chunk unavailable',
   'Google Maps referrer rejected',
   'Google Maps script failed to load',

@@ -22,6 +22,7 @@ export const errorOperations = new Set([
   "app.request",
   "notification.actor",
   "maps.load",
+  "maps.auth",
 ]);
 
 export function isTelemetryUserId(value: unknown): value is string {
@@ -81,6 +82,7 @@ function cleanFrame(frame: StackFrame): StackFrame {
 export function sanitizeSentryEvent(
   event: ErrorEvent,
   browser = false,
+  originalException?: unknown,
 ): ErrorEvent {
   const candidateOperation = event.tags?.operation;
   const operation = typeof candidateOperation === "string" && errorOperations.has(candidateOperation)
@@ -124,9 +126,16 @@ export function sanitizeSentryEvent(
     breadcrumbs: browser ? event.breadcrumbs?.slice(-20).map(sanitizeDiagnosticBreadcrumb).filter((value): value is NonNullable<typeof value> => value !== null) : undefined,
     exception: event.exception
       ? {
-          values: event.exception.values?.map((exception) => {
+          values: event.exception.values?.map((exception, index, exceptions) => {
             const type = exception.type && errorTypes.has(exception.type) ? exception.type : 'Error';
             const category = diagnosticMessage({ message: exception.value });
+            const original = index === exceptions.length - 1
+              ? diagnosticMessage(originalException)
+              : 'Application operation failed';
+            const classified = category === 'Application operation failed' ||
+              (category === 'JavaScript identifier unavailable' && original.startsWith('JavaScript identifier unavailable: '))
+              ? original
+              : category;
             const frames = exception.stacktrace?.frames?.map(cleanFrame);
             const origin = frames?.at(-1);
             const fromMaps = [origin?.filename, origin?.abs_path].some(path =>
@@ -136,9 +145,9 @@ export function sanitizeSentryEvent(
             const location = context ? ` in ${context}` : '';
             return {
               type,
-              value: category === 'Application operation failed'
+              value: classified === 'Application operation failed'
                 ? `${type}${location}: cause unclassified`
-                : category,
+                : classified,
               stacktrace: exception.stacktrace ? { frames } : undefined,
               mechanism: exception.mechanism
                 ? {

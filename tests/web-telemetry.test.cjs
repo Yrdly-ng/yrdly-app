@@ -348,6 +348,8 @@ test('Sentry preserves safe runtime categories without forwarding the original e
     ['Google Maps script failed to load', 'Google Maps script failed to load'],
     ['private is not a function', 'Non-callable value invoked'],
     ['private is not defined', 'JavaScript identifier unavailable'],
+    ["Can't find variable: gtag", 'JavaScript identifier unavailable: gtag'],
+    ['google is not defined', 'JavaScript identifier unavailable: google'],
     ['Maximum call stack size exceeded', 'JavaScript stack overflow'],
     ["Cannot read properties of undefined (reading 'private')", 'Undefined property access'],
     ["Cannot read properties of null (reading 'private')", 'Null property access'],

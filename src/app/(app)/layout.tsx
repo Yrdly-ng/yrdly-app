@@ -8,7 +8,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/use-supabase-auth';
 import { PushNotificationManager } from '@/components/notifications/PushNotificationManager';
 import Image from 'next/image';
-import { APIProvider } from '@vis.gl/react-google-maps';
+import { GoogleMapsProvider } from '@/components/providers/GoogleMapsProvider';
 import { UserProfileDialog } from '@/components/profile/UserProfileDialog';
 import type { User } from '@/types';
 import { ServiceWorkerRegistration } from '@/components/providers/ServiceWorkerRegistration';
@@ -91,11 +91,11 @@ export default function AppLayout({
         crossOrigin="anonymous"
       />
       <LocationProvider>
-        <APIProvider apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!} libraries={['places']}>
+        <GoogleMapsProvider>
           <ProtectedLayout>
             {children}
           </ProtectedLayout>
-        </APIProvider>
+        </GoogleMapsProvider>
       </LocationProvider>
     </FriendshipProvider>
   );

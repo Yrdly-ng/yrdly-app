@@ -61,9 +61,9 @@ export function initializeWebSentry(runtime: Runtime): void {
       replaysOnErrorSampleRate: 0,
       maxBreadcrumbs: runtime === 'browser' ? 20 : 0,
       beforeBreadcrumb: runtime === 'browser' ? sanitizeDiagnosticBreadcrumb : () => null,
-      beforeSend: (event) => {
+      beforeSend: (event, hint) => {
         if (runtime === 'browser' && isInjectedBrowserError(event)) return null;
-        const safe = sanitizeSentryEvent(event, runtime === 'browser');
+        const safe = sanitizeSentryEvent(event, runtime === 'browser', hint?.originalException);
         const values = safe.exception?.values;
         if (runtime === 'browser' && values?.length) void trackWebReliability('app_error', {
           ...safe.tags,
