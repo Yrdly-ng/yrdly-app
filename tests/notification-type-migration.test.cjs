@@ -17,7 +17,7 @@ test('booking, quote, appeal and ticket-confirmation types are allowed without w
     );
 
     await db.exec(fs.readFileSync('supabase/migrations/20261029164500_allow_booking_quote_notifications.sql', 'utf8'));
-    await db.exec(fs.readFileSync('supabase/migrations/20261125174500_allow_ticket_confirmed_notifications.sql', 'utf8'));
+    await db.exec(fs.readFileSync('supabase/migrations/20261125185054_allow_ticket_confirmed_notifications.sql', 'utf8'));
 
     for (const type of [
       'booking_requested',
