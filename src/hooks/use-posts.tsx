@@ -1,3 +1,4 @@
+import { reportGoogleConversion } from '@/lib/attribution/google-measurement';
 import { clientFeedState } from "@/lib/activity/client-feed-state";
 import { authenticatedFetch } from "@/lib/auth/authenticated-fetch";
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -715,6 +716,7 @@ export const usePosts = (filter?: LocationFilter | null) => {
           if (!createdBusiness)
             throw new Error("Business was saved without returning an ID.");
           savedBusinessId = createdBusiness.id;
+          reportGoogleConversion('business_created', createdBusiness.id);
           void trackWebBusinessProfileCreated(user.id);
           toast({
             title: "Success",

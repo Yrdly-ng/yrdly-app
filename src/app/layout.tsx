@@ -14,12 +14,16 @@ import { PushNotificationManager } from '@/components/notifications/PushNotifica
 import { CrispChat } from '@/components/CrispChat';
 import { TelemetryHandler } from '@/components/providers/TelemetryHandler';
 import { AcquisitionCapture } from '@/components/providers/AcquisitionCapture';
+import { GoogleMeasurement } from '@/components/providers/GoogleMeasurement';
+import { googleTagManagerEnabled } from '@/lib/attribution/google-measurement';
+import { PendingListingMeasurements } from '@/components/providers/PendingListingMeasurements';
 import { SignupConversionHandler } from '@/components/providers/SignupConversionHandler';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://app.yrdly.ng'),
   title: 'Yrdly - Your Neighborhood Network',
   description: 'Connect with your neighbors, share updates, and build a stronger community with Yrdly.',
+  robots: { index: false, follow: false },
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
@@ -79,6 +83,7 @@ export default function RootLayout({
           <AcquisitionCapture />
           <AuthProvider>
             <SignupConversionHandler />
+            {googleTagManagerEnabled && <PendingListingMeasurements />}
             <TelemetryHandler />
             {children}
             <PushNotificationManager />
@@ -88,7 +93,8 @@ export default function RootLayout({
           <Analytics />
           <SpeedInsights />
           <ServiceWorkerRegister />
-          {process.env.VERCEL_ENV === "production" && (
+          {googleTagManagerEnabled && <GoogleMeasurement />}
+          {process.env.VERCEL_ENV === "production" && !googleTagManagerEnabled && (
             <>
               <Script
                 id="yrdly-google-ads-gtag"
