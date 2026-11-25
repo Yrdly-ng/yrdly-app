@@ -1,3 +1,6 @@
-import { directionsHandlers } from "@/lib/location/directions-handlers";
 export const dynamic = "force-dynamic";
-export const POST = directionsHandlers.route;
+
+export async function POST(request: Request) {
+  const { directionsHandlers } = await import("@/lib/location/directions-handlers");
+  return directionsHandlers.route(request);
+}
