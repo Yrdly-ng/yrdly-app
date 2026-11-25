@@ -55,16 +55,28 @@ export class ResendEmailService {
       throw new Error('RESEND_NOT_CONFIGURED');
     }
 
-    const { error } = await resend.emails.send({
+    const payload = {
       from: `Yrdly <${FROM_EMAIL}>`,
       to: [to],
       replyTo: REPLY_TO,
       subject,
       html,
-    });
+    };
+
+    let { error } = await resend.emails.send(payload);
+    // Resend explicitly rejects requests with 429, so a bounded retry is safe.
+    // Never log recipient addresses or raw provider payloads.
+    if (error && error.statusCode === 429) {
+      await new Promise((resolve) => setTimeout(resolve, 1100));
+      ({ error } = await resend.emails.send(payload));
+    }
 
     if (error) {
-      console.error(`[ResendEmailService] Error sending ${category || 'email'} to ${to}:`, error);
+      const statusCode = typeof error.statusCode === 'number' ? error.statusCode : undefined;
+      console.warn(`[ResendEmailService] ${category || 'email'} delivery failed`, {
+        statusCode,
+        name: error.name,
+      });
       throw new Error(`Failed to send ${category || 'email'}`);
     }
   }
