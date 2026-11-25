@@ -1,6 +1,30 @@
 -- Staging-only release checks. Every fixture and preference change rolls back.
 BEGIN;
 CREATE TEMP TABLE prompt_release_result(result text);
+CREATE TEMP TABLE prompt_preference_fixture(notification_settings jsonb);
+CREATE TRIGGER prompt_preference_default BEFORE INSERT OR UPDATE OF notification_settings ON prompt_preference_fixture
+FOR EACH ROW EXECUTE FUNCTION private.ensure_daily_prompt_preference();
+DO $test$
+BEGIN
+  INSERT INTO prompt_preference_fixture VALUES ('{"messages":false}');
+  IF NOT EXISTS (SELECT 1 FROM prompt_preference_fixture WHERE notification_settings='{"messages":false,"dailyPrompts":true}'::jsonb) THEN
+    RAISE EXCEPTION 'Missing daily prompt preference was not defaulted';
+  END IF;
+  UPDATE prompt_preference_fixture SET notification_settings='{"dailyPrompts":false,"messages":true}';
+  UPDATE prompt_preference_fixture SET notification_settings='{"messages":false}';
+  IF NOT EXISTS (SELECT 1 FROM prompt_preference_fixture WHERE notification_settings='{"messages":false,"dailyPrompts":false}'::jsonb) THEN
+    RAISE EXCEPTION 'Legacy client erased explicit opt out';
+  END IF;
+  UPDATE prompt_preference_fixture SET notification_settings='{"dailyPrompts":true}';
+  IF NOT EXISTS (SELECT 1 FROM prompt_preference_fixture WHERE notification_settings='{"dailyPrompts":true}'::jsonb) THEN
+    RAISE EXCEPTION 'Explicit opt back in failed';
+  END IF;
+  INSERT INTO prompt_preference_fixture VALUES ('{"dailyPrompts":false}');
+  IF NOT EXISTS (SELECT 1 FROM prompt_preference_fixture WHERE notification_settings='{"dailyPrompts":false}'::jsonb) THEN
+    RAISE EXCEPTION 'Explicit initial opt out was overwritten';
+  END IF;
+  INSERT INTO prompt_release_result VALUES('PASS: default enabled, other settings preserved, opt-out survives legacy writes, opt-back-in');
+END $test$;
 CREATE TEMP TABLE prompt_post_fixture(daily_prompt_id uuid,category text,visibility text,state text,lga text);
 CREATE TRIGGER prompt_fixture_guard BEFORE INSERT OR UPDATE ON prompt_post_fixture
 FOR EACH ROW EXECUTE FUNCTION public.validate_daily_prompt_post();

@@ -297,8 +297,9 @@ serve(async (req) => {
     // Do not let callers bypass the editorial kill switch by omitting the
     // top-level type while placing daily_prompt inside payload.data.
     const isDailyPrompt = type === "daily_prompt" || payload.data?.type === "daily_prompt";
-    // Keep editorial reminders OFF unless explicitly enabled at the
-    // function runtime. Missing consent is always an opt-out.
+    // Campaign controls and explicit stored preference remain fail-closed.
+    // The database initializes missing dailyPrompts preferences to true;
+    // a failed profile lookup must never authorize a send.
     if (isDailyPrompt && !await dailyPromptRecipientEnabled(supabaseAdmin,userId,Deno.env.get("DAILY_PROMPT_PUSH_ENABLED"))) {
       return new Response(JSON.stringify({ success: true, skipped: true, reason: "campaign_paused" }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
