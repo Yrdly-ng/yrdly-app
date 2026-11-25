@@ -45,3 +45,15 @@ Historical Android diagnosis: APK #72's exact `google_api_key` resource was reje
 - The user confirmed physical iPhone PWA and Android push receipt. The original daily-question tap opened Notifications; the corrected tap still requires the combined device round. Scheduled daily campaigns remain disabled with an empty tester cohort. No campaign flags were changed.
 - Android QA APK #78 stopped before compilation at installation-token preflight; no APK was produced. The same configuration subsequently completed synthetic create/auth/cleanup locally. The rejection's provider status was not retained, so its exact cause is unconfirmed. Preflight source now includes the SDK's app ID, one bounded retry for HTTP 5xx and safe HTTP diagnostics. API restrictions remain unchanged; invalid/permanently denied requests still fail closed.
 - Hold further APK builds until this combined implementation is ready. Do not equate bundle compilation, provider acceptance or source checks with installed-device QA.
+\n
+
+## Production verification — 25 November 2026
+
+The following is a read-only production snapshot; it supersedes the 17 November rollout note that described the campaign as disabled:
+
+- The active Supabase Cron job (job 12) invokes `dispatch-daily-prompts` every 15 minutes from 17:00 through 18:45 UTC. Recent invocations succeeded, and the Edge Function returned HTTP 200.
+- The service-only `notification_campaigns` row is currently `enabled=true`, `scope=all`, with an empty tester list. Its last recorded update was 20 November 2026. No campaign setting was changed during this verification.
+- The 25 November prompt is approved. Its reminder ledger contains 49 `submitted/provider_accepted` recipients and 3 `uncertain/provider_unconfirmed` recipients.
+- Native Android outbox records for 25 November include 13 `delivered` receipts, one `FCM SENDER_ID_MISMATCH` failure, and two unregistered/unmatched FCM-token failures.
+
+**Interpretation:** the scheduler and dispatch path are active, and the provider has acknowledged deliveries to Android devices. A provider receipt is not proof that Android displayed a notification to the user. Physical display remains unverified. The sender-ID mismatch is isolated in the observed records; do not rotate Firebase credentials or loosen API-key restrictions without verifying the exact installed app's Firebase project/sender and Expo credentials. The next decisive check is a controlled physical Android test with app foreground/background/locked states and the matching delivery record.
