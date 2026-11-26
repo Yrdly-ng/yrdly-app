@@ -5,9 +5,9 @@ const sql=fs.readFileSync('supabase/migrations/20261126150000_enforce_account_ba
 
 test('ban migration closes profile, post, and comment visibility for restricted authors',()=>{
  assert.match(sql,/public_profile_data_read[\s\S]*NOT coalesce\(u\.is_banned,false\)[\s\S]*status,'\) NOT IN \('suspended','banned'\)/);
- assert.match(sql,/CREATE POLICY posts_visible[\s\S]*author\.is_banned[\s\S]*moderation_status='approved'/);
- assert.match(sql,/CREATE POLICY comments_moderation_visibility[\s\S]*author\.is_banned/);
- assert.match(sql,/CREATE POLICY comments_moderation_visibility_anon[\s\S]*author\.is_banned/);
+ assert.match(sql,/CREATE POLICY posts_visible[\\s\\S]*public.is_account_publicly_visible\\(posts.user_id\\)[\\s\\S]*moderation_status='approved'/);
+ assert.match(sql,/CREATE POLICY comments_moderation_visibility[\\s\\S]*public.is_account_publicly_visible\\(comments.user_id\\)/);
+ assert.match(sql,/CREATE POLICY comments_moderation_visibility_anon[\\s\\S]*public.is_account_publicly_visible\\(comments.user_id\\)/);
 });
 
 test('restriction operation snapshots original visibility, hides owned content, and revokes sessions atomically',()=>{
