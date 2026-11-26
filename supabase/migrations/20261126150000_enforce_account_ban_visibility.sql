@@ -8,18 +8,25 @@ CREATE TABLE IF NOT EXISTS private.account_visibility_snapshots (
 );
 REVOKE ALL ON private.account_visibility_snapshots FROM PUBLIC,anon,authenticated,service_role;
 
+-- SECURITY DEFINER helper reads the restricted users table without exposing profile data.
+CREATE OR REPLACE FUNCTION public.is_account_publicly_visible(p_user_id uuid)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=''
+AS $
+ SELECT EXISTS(SELECT 1 FROM public.users u WHERE u.id=p_user_id
+  AND NOT coalesce(u.is_suspended,false) AND NOT coalesce(u.is_banned,false)
+  AND coalesce(u.status,'') NOT IN ('suspended','banned'));
+$;
+REVOKE ALL ON FUNCTION public.is_account_publicly_visible(uuid) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.is_account_publicly_visible(uuid) TO anon,authenticated;
+
 DROP POLICY IF EXISTS public_profile_data_read ON public.public_profile_data;
 CREATE POLICY public_profile_data_read ON public.public_profile_data FOR SELECT TO anon,authenticated
-USING (EXISTS (SELECT 1 FROM public.users u WHERE u.id=public_profile_data.id
- AND NOT coalesce(u.is_suspended,false) AND NOT coalesce(u.is_banned,false)
- AND coalesce(u.status,'') NOT IN ('suspended','banned')));
+USING (public.is_account_publicly_visible(public_profile_data.id));
 
 DROP POLICY IF EXISTS posts_visible ON public.posts;
 CREATE POLICY posts_visible ON public.posts FOR SELECT TO anon,authenticated
 USING ((SELECT public.audit_is_admin()) OR (
- EXISTS (SELECT 1 FROM public.users author WHERE author.id=posts.user_id
-  AND NOT coalesce(author.is_suspended,false) AND NOT coalesce(author.is_banned,false)
-  AND coalesce(author.status,'') NOT IN ('suspended','banned'))
+ public.is_account_publicly_visible(posts.user_id)
  AND (user_id=(SELECT auth.uid()) OR (moderation_status='approved' AND (
   COALESCE(visibility,'public') ILIKE 'public' OR (visibility ILIKE 'friends'
   AND EXISTS (SELECT 1 FROM public.followers f WHERE f.follower_id=auth.uid() AND f.following_id=posts.user_id)
@@ -31,13 +38,9 @@ DROP POLICY IF EXISTS comments_moderation_visibility ON public.comments;
 DROP POLICY IF EXISTS comments_moderation_visibility_anon ON public.comments;
 CREATE POLICY comments_moderation_visibility ON public.comments FOR SELECT TO authenticated
 USING ((SELECT public.audit_is_admin()) OR (NOT coalesce(moderation_hidden,false)
- AND EXISTS (SELECT 1 FROM public.users author WHERE author.id=comments.user_id
-  AND NOT coalesce(author.is_suspended,false) AND NOT coalesce(author.is_banned,false)
-  AND coalesce(author.status,'') NOT IN ('suspended','banned'))));
+ AND public.is_account_publicly_visible(comments.user_id)));
 CREATE POLICY comments_moderation_visibility_anon ON public.comments FOR SELECT TO anon
-USING (NOT coalesce(moderation_hidden,false) AND EXISTS (SELECT 1 FROM public.users author
- WHERE author.id=comments.user_id AND NOT coalesce(author.is_suspended,false)
- AND NOT coalesce(author.is_banned,false) AND coalesce(author.status,'') NOT IN ('suspended','banned')));
+USING (NOT coalesce(moderation_hidden,false) AND public.is_account_publicly_visible(comments.user_id));
 
 CREATE OR REPLACE FUNCTION public.admin_set_account_moderation(
  p_actor_user_id uuid,p_target_user_id uuid,p_action text,p_reason text,p_report_id uuid DEFAULT NULL
