@@ -51,14 +51,14 @@ BEGIN
  IF auth.role() IS DISTINCT FROM 'service_role' THEN RAISE EXCEPTION 'Service role required' USING ERRCODE='42501'; END IF;
  IF p_actor_user_id IS NULL OR p_target_user_id IS NULL OR p_actor_user_id=p_target_user_id THEN
   RAISE EXCEPTION 'A different actor and target account are required' USING ERRCODE='22023'; END IF;
- IF p_action NOT IN ('suspend','ban','unsuspend') THEN RAISE EXCEPTION 'Unsupported account action' USING ERRCODE='22023'; END IF;
+ IF p_action IS NULL OR p_action NOT IN ('suspend','ban','unsuspend') THEN RAISE EXCEPTION 'Unsupported account action' USING ERRCODE='22023'; END IF;
  IF p_reason IS NULL OR length(btrim(p_reason)) NOT BETWEEN 1 AND 500 THEN RAISE EXCEPTION 'A reason of 1 to 500 characters is required' USING ERRCODE='22023'; END IF;
  IF NOT EXISTS(SELECT 1 FROM public.users WHERE id=p_actor_user_id AND (coalesce(is_admin,false) OR role='admin')) THEN
   RAISE EXCEPTION 'Admin privileges required' USING ERRCODE='42501'; END IF;
  IF p_report_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM public.reports WHERE id=p_report_id
   AND reported_user_id=p_target_user_id AND category='Child safety' AND status='open') THEN
   RAISE EXCEPTION 'Open child-safety report does not match target account' USING ERRCODE='22023'; END IF;
- SELECT (coalesce(is_suspended,false) OR coalesce(is_banned,false) OR status IN ('suspended','banned'))
+ SELECT (coalesce(is_suspended,false) OR coalesce(is_banned,false) OR coalesce(status,'') IN ('suspended','banned'))
  INTO v_was_restricted FROM public.users WHERE id=p_target_user_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Target account not found' USING ERRCODE='P0002'; END IF;
  IF p_action IN ('suspend','ban') THEN
