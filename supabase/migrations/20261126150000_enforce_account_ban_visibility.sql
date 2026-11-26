@@ -31,7 +31,7 @@ USING ((SELECT public.audit_is_admin()) OR (
   COALESCE(visibility,'public') ILIKE 'public' OR (visibility ILIKE 'friends'
   AND EXISTS (SELECT 1 FROM public.followers f WHERE f.follower_id=auth.uid() AND f.following_id=posts.user_id)
   AND EXISTS (SELECT 1 FROM public.followers f WHERE f.follower_id=posts.user_id AND f.following_id=auth.uid()))))
-));
+)));
 
 DROP POLICY IF EXISTS "Comments are readable by everyone" ON public.comments;
 DROP POLICY IF EXISTS comments_moderation_visibility ON public.comments;
