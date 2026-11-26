@@ -11,7 +11,7 @@ REVOKE ALL ON private.account_visibility_snapshots FROM PUBLIC,anon,authenticate
 -- SECURITY DEFINER helper reads the restricted users table without exposing profile data.
 CREATE OR REPLACE FUNCTION public.is_account_publicly_visible(p_user_id uuid)
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=''
-AS $
+AS $func$
  SELECT EXISTS(SELECT 1 FROM public.users u WHERE u.id=p_user_id
   AND NOT coalesce(u.is_suspended,false) AND NOT coalesce(u.is_banned,false)
   AND coalesce(u.status,'') NOT IN ('suspended','banned'));
