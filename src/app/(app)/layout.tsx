@@ -31,7 +31,7 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
 
 
 
-  const isPublicProfile = pathname.startsWith('/profile/');
+  const isPublicProfile = /^\/profile\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/?$/i.test(pathname);
 
   useEffect(() => {
     if (!loading && !user && !isPublicProfile) {
