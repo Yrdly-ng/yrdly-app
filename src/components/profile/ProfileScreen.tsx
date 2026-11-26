@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   ArrowLeft, MapPin, Calendar, Users, MessageCircle, ShoppingBag,
   Briefcase, CalendarDays, Clock, Heart, MoreHorizontal, UserMinus,
-  Ticket, Package, ChevronRight, TrendingUp, Shield, Check, X, BadgeCheck, Star, Play, Bookmark, Settings, Camera
+  Ticket, Package, ChevronRight, TrendingUp, Shield, Check, X, BadgeCheck, Star, Play, Bookmark, Settings, Camera, Share2, Copy
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { supabase } from "@/lib/supabase/supabase";
@@ -310,6 +310,48 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
     }
   };
 
+  const getProfileShareUrl = () => {
+    const profileId = targetUser?.id || targetUserId;
+    return profileId ? `https://app.yrdly.ng/profile/${encodeURIComponent(profileId)}` : null;
+  };
+
+  const handleShareProfile = async () => {
+    const url = getProfileShareUrl();
+    if (!url) return;
+    const shareData = {
+      title: `${name} on YRDLY`,
+      text: `Check out ${name}'s profile on YRDLY!`,
+      url,
+    };
+    try {
+      if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(url);
+        toast({ title: "Profile link copied!" });
+      }
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") return;
+      try {
+        await navigator.clipboard.writeText(url);
+        toast({ title: "Profile link copied!" });
+      } catch {
+        toast({ variant: "destructive", title: "Could not share profile", description: "Please copy the profile link and try again." });
+      }
+    }
+  };
+
+  const handleCopyProfileLink = async () => {
+    const url = getProfileShareUrl();
+    if (!url) return;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast({ title: "Profile link copied!" });
+    } catch {
+      toast({ variant: "destructive", title: "Could not copy link", description: "Your browser may not allow clipboard access." });
+    }
+  };
+
   const handleMessageMutual = async () => {
     if (!currentUser || !targetUser || !isMutualFollow) return;
     const participantIds = [currentUser.id, targetUser.id].sort();
@@ -452,6 +494,20 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
                       )}
                     </button>
                   )}
+                  <button
+                    onClick={handleShareProfile}
+                    className="min-h-11 px-4 rounded-full border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] text-sm font-semibold text-foreground font-yrdly-body transition-colors hover:bg-white/10 flex items-center gap-1.5"
+                    aria-label="Share profile"
+                  >
+                    <Share2 className="w-3.5 h-3.5" /> Share
+                  </button>
+                  <button
+                    onClick={handleCopyProfileLink}
+                    className="min-h-11 px-4 rounded-full border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] text-sm font-semibold text-foreground font-yrdly-body transition-colors hover:bg-white/10 flex items-center gap-1.5"
+                    aria-label="Copy profile link"
+                  >
+                    <Copy className="w-3.5 h-3.5" /> Copy link
+                  </button>
                   {!actualIsOwnProfile && isMutualFollow && (
                     <button
                       onClick={handleMessageMutual}
@@ -539,6 +595,20 @@ export function ProfileScreen({ onBack, user, isOwnProfile = true, targetUserId,
                 )}
               </button>
             )}
+            <button
+              onClick={handleShareProfile}
+              className="min-h-11 px-4 rounded-full border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] text-sm font-semibold text-foreground font-yrdly-body transition-colors hover:bg-white/10 flex items-center gap-1.5"
+              aria-label="Share profile"
+            >
+              <Share2 className="w-3.5 h-3.5" /> Share
+            </button>
+            <button
+              onClick={handleCopyProfileLink}
+              className="min-h-11 px-4 rounded-full border border-[var(--yrdly-glass-border)] bg-[var(--yrdly-glass-bg)] text-sm font-semibold text-foreground font-yrdly-body transition-colors hover:bg-white/10 flex items-center gap-1.5"
+              aria-label="Copy profile link"
+            >
+              <Copy className="w-3.5 h-3.5" /> Copy link
+            </button>
             {!actualIsOwnProfile && isMutualFollow && (
               <button
                 onClick={handleMessageMutual}
