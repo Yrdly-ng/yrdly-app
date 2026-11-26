@@ -23,6 +23,8 @@ DROP POLICY IF EXISTS public_profile_data_read ON public.public_profile_data;
 CREATE POLICY public_profile_data_read ON public.public_profile_data FOR SELECT TO anon,authenticated
 USING (public.is_account_publicly_visible(public_profile_data.id));
 
+-- The posts policy's admin bypass uses this safe auth.uid()-based helper.
+GRANT EXECUTE ON FUNCTION public.audit_is_admin() TO anon,authenticated;
 DROP POLICY IF EXISTS posts_visible ON public.posts;
 CREATE POLICY posts_visible ON public.posts FOR SELECT TO anon,authenticated
 USING ((SELECT public.audit_is_admin()) OR (
