@@ -39,6 +39,8 @@ jobs:
       - run: npm install --global pnpm@11.2.2
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
+      - name: Validate ban visibility enforcement
+        run: node --test tests/account-ban-visibility-enforcement.test.cjs
       - run: pnpm lint
       - run: pnpm test:parity
       - run: pnpm test:payments
