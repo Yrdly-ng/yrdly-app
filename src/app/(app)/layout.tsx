@@ -31,18 +31,20 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
 
 
 
+  const isPublicProfile = pathname.startsWith('/profile/');
+
   useEffect(() => {
-    if (!loading && !user) {
+    if (!loading && !user && !isPublicProfile) {
       const next = typeof window === 'undefined' ? pathname : `${pathname}${window.location.search}`;
       router.replace(`/login?next=${encodeURIComponent(next)}`);
     }
-  }, [user, loading, router, pathname]);
+  }, [user, loading, router, pathname, isPublicProfile]);
 
   // Only block on the auth check itself (user), not on profile.
   // Profile is allowed to arrive after first paint so the app shell
   // (Topbar, nav, page skeletons) doesn't sit behind a blank screen
   // waiting on a second/third sequential fetch.
-  if (loading || !user) {
+  if (loading || (!user && !isPublicProfile)) {
     return (
       <div className="flex h-[100dvh] w-screen items-center justify-center bg-background">
         <Image
@@ -56,6 +58,9 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
+
+  // Shared profile pages remain readable without an authenticated session.
+  if (!user && isPublicProfile) return <>{children}</>;
 
   const handleProfileClick = () => {
     if (profile) setProfileUser(profile as User);
