@@ -15,7 +15,7 @@ AS $func$
  SELECT EXISTS(SELECT 1 FROM public.users u WHERE u.id=p_user_id
   AND NOT coalesce(u.is_suspended,false) AND NOT coalesce(u.is_banned,false)
   AND coalesce(u.status,'') NOT IN ('suspended','banned'));
-$;
+$func$;
 REVOKE ALL ON FUNCTION public.is_account_publicly_visible(uuid) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.is_account_publicly_visible(uuid) TO anon,authenticated;
 
