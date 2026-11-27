@@ -51,6 +51,21 @@ jobs:
         run: node --test tests/daily-prompts.test.cjs tests/daily-prompt-question.test.cjs
       - name: Validate browser test discovery without QA credentials
         run: pnpm exec playwright test --config=playwright.qa.config.ts tests/browser/mobile-web-visual.spec.ts --list
+      - name: Scan legacy web patterns with Google Modern Web Guidance
+        if: always()
+        run: |
+          mkdir -p .modern-web-guidance
+          set +e
+          npx --yes modern-web-guidance@latest legacy-scan . --json > .modern-web-guidance/scan.json 2> .modern-web-guidance/scan.stderr
+          echo $? > .modern-web-guidance/exit-code
+          exit 0
+      - name: Upload Modern Web Guidance scan
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: modern-web-guidance-legacy-scan
+          path: .modern-web-guidance/
+          retention-days: 7
 
   visual-review:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
