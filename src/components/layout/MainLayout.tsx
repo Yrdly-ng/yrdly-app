@@ -138,57 +138,59 @@ export function MainLayout({ children }: MainLayoutProps) {
 
         if (error) return;
 
-        let unreadChatsCount = 0;
+        // Keep the per-conversation latest-message semantics, but avoid a
+        // sequential network waterfall. A small concurrency limit prevents
+        // large inboxes from creating an unbounded burst of database requests.
+        const unreadCandidates = (data || []).filter((conv) => {
+          if (conv.deleted_by?.includes(user.id)) return false;
 
-        for (const conv of data || []) {
-          if (conv.deleted_by?.includes(user.id)) continue;
           const readReceiptStr = conv.context?.read_receipts?.[user.id];
           const readReceiptDate = readReceiptStr
             ? new Date(readReceiptStr).getTime()
             : 0;
-
           const lastMsgDate = conv.last_message_timestamp
             ? new Date(conv.last_message_timestamp).getTime()
             : 0;
 
-          const isReadByReceipt =
-            readReceiptDate >= lastMsgDate && lastMsgDate > 0;
+          return !(readReceiptDate >= lastMsgDate && lastMsgDate > 0);
+        });
 
-          if (isReadByReceipt) continue;
+        let unreadChatsCount = 0;
+        const batchSize = 8;
 
-          if (conv.type === "marketplace") {
-            const { data: msgs } = await supabase
-              .from("chat_messages")
-              .select("sender_id, metadata")
-              .eq("chat_id", conv.id)
-              .order("created_at", { ascending: false })
-              .limit(1)
-              .maybeSingle();
+        for (let index = 0; index < unreadCandidates.length; index += batchSize) {
+          const batch = unreadCandidates.slice(index, index + batchSize);
+          const latestMessages = await Promise.all(
+            batch.map(async (conv) => {
+              if (conv.type === "marketplace") {
+                const { data: message } = await supabase
+                  .from("chat_messages")
+                  .select("sender_id, metadata")
+                  .eq("chat_id", conv.id)
+                  .order("created_at", { ascending: false })
+                  .limit(1)
+                  .maybeSingle();
 
-            if (
-              msgs &&
-              msgs.sender_id !== user.id &&
-              !msgs.metadata?.isRead
-            ) {
-              unreadChatsCount++;
-            }
-          } else {
-            const { data: msgs } = await supabase
-              .from("messages")
-              .select("sender_id, read_by")
-              .eq("conversation_id", conv.id)
-              .order("created_at", { ascending: false })
-              .limit(1)
-              .maybeSingle();
+                return message &&
+                  message.sender_id !== user.id &&
+                  !message.metadata?.isRead;
+              }
 
-            if (
-              msgs &&
-              msgs.sender_id !== user.id &&
-              !msgs.read_by?.includes(user.id)
-            ) {
-              unreadChatsCount++;
-            }
-          }
+              const { data: message } = await supabase
+                .from("messages")
+                .select("sender_id, read_by")
+                .eq("conversation_id", conv.id)
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+              return message &&
+                message.sender_id !== user.id &&
+                !message.read_by?.includes(user.id);
+            })
+          );
+
+          unreadChatsCount += latestMessages.filter(Boolean).length;
         }
 
         setUnreadMessagesCount(unreadChatsCount);
