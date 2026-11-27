@@ -4,7 +4,10 @@
 
 @layer base {
   :root {
-    --font-sans: "Figtree", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-sans: var(--font-figtree), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-raleway: var(--font-bricolage), var(--font-figtree), sans-serif;
+    --font-jersey25: var(--font-bricolage), var(--font-figtree), sans-serif;
+    --font-pacifico: var(--font-bricolage), var(--font-figtree), sans-serif;
     --font-mono: ui-monospace, monospace;
     
     /* Emil Kowalski Spacing & Border Radius */
@@ -78,8 +81,8 @@
     --on-surface-variant: #71717A;
 
     /* YRDLY Design Tokens (Light) */
-    --yrdly-font-display: 'Bricolage Grotesque', 'Figtree', sans-serif;
-    --yrdly-font-body: 'Figtree', sans-serif;
+    --yrdly-font-display: var(--font-bricolage), var(--font-figtree), sans-serif;
+    --yrdly-font-body: var(--font-figtree), sans-serif;
     --yrdly-g: #82DB7E;
     --yrdly-glow: rgba(130,219,126,0.26);
     --yrdly-glow-strong: rgba(130,219,126,0.45);
@@ -113,6 +116,9 @@
     --yrdly-severity-urgent-text: #EF4444;
     --yrdly-severity-urgent-icon: #EF4444;
   }
+
+  button.font-yrdly-display, a.font-yrdly-display { font-family: var(--yrdly-font-body), sans-serif; }
+  .font-wordmark { font-family: var(--font-unbounded), var(--font-bricolage), sans-serif; font-weight: 800; }
 
   /* Inline-style color tokens */
   :root {
