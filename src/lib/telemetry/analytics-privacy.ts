@@ -56,8 +56,9 @@ export function sanitizeAnalyticsEvent(
       app_platform: "web",
       $geoip_disable: true,
     };
-    if (["production", "preview", "development"].includes(source.app_environment))
-      safeProperties.app_environment = source.app_environment;
+    const appEnvironment = source.app_environment;
+    if (typeof appEnvironment === "string" && ["production", "preview", "development"].includes(appEnvironment))
+      safeProperties.app_environment = appEnvironment;
     const path = typeof source.$pathname === "string" ? pageTemplate(source.$pathname) : null;
     if (path) {
       safeProperties.$pathname = path;
@@ -73,7 +74,7 @@ export function sanitizeAnalyticsEvent(
     const metricValue = source.$web_vitals_metric_value;
     const metricRating = source.$web_vitals_metric_rating;
     if (typeof metricName === "string" && metricNames.includes(metricName) &&
-        typeof metricValue === "number" && Number.isFinite(metricValue) && metricValue >= 0) {
+        typeof metricValue === "number" && Number.isFinite(metricValue) && metricValue >= 0 && metricValue <= 900_000) {
       safeProperties.$web_vitals_metric_name = metricName;
       safeProperties.$web_vitals_metric_value = metricValue;
       if (typeof metricRating === "string" && ratings.includes(metricRating))
@@ -81,7 +82,7 @@ export function sanitizeAnalyticsEvent(
       hasMetric = true;
     }
     if (typeof source.$web_vitals_metric_delta === "number" &&
-        Number.isFinite(source.$web_vitals_metric_delta))
+        Number.isFinite(source.$web_vitals_metric_delta) && source.$web_vitals_metric_delta >= 0 && source.$web_vitals_metric_delta <= 900_000)
       safeProperties.$web_vitals_metric_delta = source.$web_vitals_metric_delta;
     if (typeof source.$web_vitals_metric_navigation_type === "string" &&
         navigationTypes.includes(source.$web_vitals_metric_navigation_type))
@@ -89,7 +90,7 @@ export function sanitizeAnalyticsEvent(
     for (const name of metricNames) {
       const value = source["$web_vitals_" + name + "_value"];
       const rating = source["$web_vitals_" + name + "_rating"];
-      if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
+      if (typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 900_000) {
         safeProperties["$web_vitals_" + name + "_value"] = value;
         hasMetric = true;
       }
