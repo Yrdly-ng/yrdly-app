@@ -14,6 +14,13 @@
 - **Targeted References**: Only open or reference workspace paths explicitly passed to you. Do not inject wide context schemas or irrelevant file trees into the active loop.
 - **Whitelisted Actions**: You are allowed to run `npm test`, `git status`, or language-specific builds automatically. You must pause and prompt for permission before attempting any deployment or structural deletions.
 
+## YRDLY Modern Web Standards (required)
+- Apply `docs/engineering/modern-web-guidance.md` to meaningful web UI, CSS/HTML, accessibility, performance, navigation, and browser API work.
+- Consult Google's Modern Web Guidance CLI/skill for applicable changes: `npx modern-web-guidance@latest search "<use case>"`, then retrieve the matching guide. If unavailable, use the official guide library and document the limitation.
+- Default browser target is Baseline Widely Available; use progressive enhancement/fallbacks for features not widely available. Don't use volatile or origin-trial features by default.
+- Measure before optimizing and don't claim performance gains without evidence. Preserve product behavior, privacy, security, analytics, and responsive layouts.
+- Check keyboard/focus, semantics, reduced motion, mobile/desktop, and relevant tests before completing.
+
 ## Agent skills
 
 Matt Pocock's engineering and productivity skills are installed in `.agents/skills/`. Read the relevant `SKILL.md` when invoking one; user-invoked workflows run when requested. Installation provenance is in `.agents/matt-pocock-skills.json`.
