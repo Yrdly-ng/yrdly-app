@@ -799,3 +799,33 @@ for (const theme of ["light", "dark"] as const) {
     await expect(page.getByRole("link", { name: "Set your home neighbourhood" })).toHaveAttribute("href", "/onboarding/profile");
   });
 }
+
+
+test("authenticated map route renders Google Maps when the QA key is configured", async ({ page }) => {
+  test.setTimeout(120000);
+  const env = isolatedCredentials();
+  test.skip(
+    !env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
+    "Add the restricted QA_GOOGLE_MAPS_API_KEY environment secret to enable the real map smoke test",
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  await loginQaBuyer(page);
+  await page.goto("/map", { waitUntil: "domcontentloaded" });
+  // The provider must load the real Maps API and create a visible map surface.
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() =>
+          Boolean(
+            (window as unknown as { google?: { maps?: { Map?: unknown } } })
+              .google?.maps?.Map,
+          ),
+        ),
+      { timeout: 90000 },
+    )
+    .toBe(true);
+  const mapSurface = page.locator(".gm-style").first();
+  await expect(mapSurface).toBeVisible({ timeout: 30000 });
+  mkdirSync(OUTPUT, { recursive: true });
+  await page.screenshot({ path: `${OUTPUT}/authenticated-map-google-maps.png` });
+});
