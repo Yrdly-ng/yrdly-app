@@ -25,7 +25,8 @@ export default function BusinessDetailPage() {
     try {
       const { data: businessData, error: businessError } = await supabase
         .from("businesses")
-        .select("*")
+        // Limit the browser response to business detail fields required by this page; omit admin and moderation metadata.
+          .select("id, owner_id, name, category, description, location, image_urls, created_at, state, lga, ward, rating, review_count, hours, phone, email, website, owner_name, owner_avatar, cover_image, logo, logo_url, mode, is_active")
         .eq("id", businessId)
         .maybeSingle();
 
