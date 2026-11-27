@@ -40,7 +40,9 @@ export function BusinessesScreen({
   const { profile } = useAuth();
   const { activeFilter } = useLocation();
   const category = searchParams.get("category") || null;
-  const [businesses, setBusinesses] = useState<Business[]>([]);
+  type PublicBusiness = Omit<Business, "owner_id">;
+
+  const [businesses, setBusinesses] = useState<PublicBusiness[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
@@ -322,7 +324,7 @@ export function BusinessDirectoryCard({
   business,
   onOpen,
 }: {
-  business: Business;
+  business: PublicBusiness;
   onOpen: () => void;
 }) {
   const photo =
