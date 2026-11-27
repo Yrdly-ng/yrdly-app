@@ -18,6 +18,8 @@ let dismissals=[];
 let submittedRequests=0;
 let releaseSubmission;
 let signalSubmissionReceived;
+// Keep the deferred-promise pattern compatible with the supported Node 20 runtime;
+// Promise.withResolvers() is not available across the full declared engine range.
 const submissionReceived = new Promise(resolve => { signalSubmissionReceived = resolve; });
 const svg='<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600"><rect width="800" height="600" fill="#c5dbc5"/><circle cx="400" cy="280" r="140" fill="#54795b"/></svg>';
 (async()=>{
