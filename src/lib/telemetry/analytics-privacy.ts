@@ -5,7 +5,7 @@ import { deviceLabel, homeState } from "./metadata";
 import { reliabilityEvents, reliabilityProperties } from './reliability';
 
 export const productEvents = new Set(["account_created", "business_profile_created", "onboarding_profile_completed", "onboarding_home_reached", "onboarding_meaningful_action", "onboarding_active_visit", "post_created","message_sent", "business_saved", "ticket_checkout_started", "ticket_checkout_opened", "ticket_checkout_failed", "ticket_verification_failed", "ticket_issued", "ticket_refund_requested", "ticket_refund_failed", "event_withdrawal_requested", "event_withdrawal_failed", "booking_checkout_started", "booking_payment_confirmed", "booking_checkout_failed"]);
-const allowedEvents = new Set(["$pageview", "$identify", ...productEvents, ...reliabilityEvents]);
+const allowedEvents = new Set(["$pageview", "$identify", "$web_vitals", ...productEvents, ...reliabilityEvents]);
 const routes = new Set<string>(pageRoutes);
 const identityKeys = new Set([
   "distinct_id",
@@ -47,6 +47,53 @@ export function sanitizeAnalyticsEvent(
   }
   if (!allowedEvents.has(event.event)) return null;
   const source = event.properties || {};
+  if (event.event === "$web_vitals") {
+    const metricNames = ["LCP", "FCP", "CLS", "INP", "TTFB", "FID"];
+    const ratings = ["good", "needs-improvement", "poor"];
+    const navigationTypes = ["navigate", "reload", "back-forward", "back-forward-cache", "prerender"];
+    const safeProperties: Record<string, unknown> = {
+      token: projectToken,
+      app_platform: "web",
+      $geoip_disable: true,
+    };
+    if (["production", "preview", "development"].includes(source.app_environment))
+      safeProperties.app_environment = source.app_environment;
+    const path = typeof source.$pathname === "string" ? pageTemplate(source.$pathname) : null;
+    if (path) {
+      safeProperties.$pathname = path;
+      safeProperties.$current_url = "https://app.yrdly.ng" + path;
+    }
+    let hasMetric = false;
+    const metricName = source.$web_vitals_metric_name;
+    const metricValue = source.$web_vitals_metric_value;
+    const metricRating = source.$web_vitals_metric_rating;
+    if (typeof metricName === "string" && metricNames.includes(metricName) &&
+        typeof metricValue === "number" && Number.isFinite(metricValue) && metricValue >= 0) {
+      safeProperties.$web_vitals_metric_name = metricName;
+      safeProperties.$web_vitals_metric_value = metricValue;
+      if (typeof metricRating === "string" && ratings.includes(metricRating))
+        safeProperties.$web_vitals_metric_rating = metricRating;
+      hasMetric = true;
+    }
+    if (typeof source.$web_vitals_metric_delta === "number" &&
+        Number.isFinite(source.$web_vitals_metric_delta))
+      safeProperties.$web_vitals_metric_delta = source.$web_vitals_metric_delta;
+    if (typeof source.$web_vitals_metric_navigation_type === "string" &&
+        navigationTypes.includes(source.$web_vitals_metric_navigation_type))
+      safeProperties.$web_vitals_metric_navigation_type = source.$web_vitals_metric_navigation_type;
+    for (const name of metricNames) {
+      const value = source["$web_vitals_" + name + "_value"];
+      const rating = source["$web_vitals_" + name + "_rating"];
+      if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
+        safeProperties["$web_vitals_" + name + "_value"] = value;
+        hasMetric = true;
+      }
+      if (typeof rating === "string" && ratings.includes(rating))
+        safeProperties["$web_vitals_" + name + "_rating"] = rating;
+    }
+    if (!hasMetric) return null;
+    return { uuid: event.uuid, event: event.event, timestamp: event.timestamp, properties: safeProperties };
+  }
   const properties: Record<string, unknown> = {
     // PostHog requires its public project token inside every event.
     token: projectToken,
