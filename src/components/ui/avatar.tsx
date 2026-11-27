@@ -38,7 +38,6 @@ const AvatarImage = React.forwardRef<
         alt: "",
         width: 128,
         height: 128,
-        sizes: "128px",
       }).props
     : undefined;
 
@@ -48,7 +47,6 @@ const AvatarImage = React.forwardRef<
       ref={ref}
       src={useOptimizedSource ? optimizedImageProps?.src : src}
       srcSet={optimizedImageProps?.srcSet}
-      sizes={optimizedImageProps?.sizes}
       className={cn("aspect-square h-full w-full object-cover", className)}
       onLoadingStatusChange={(status) => {
         if (status === "error" && useOptimizedSource && publicAvatar) {
