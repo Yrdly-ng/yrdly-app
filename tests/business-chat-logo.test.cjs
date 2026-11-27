@@ -25,15 +25,15 @@ for (const route of [
   'src/app/(app)/businesses/[businessId]/catalog/[itemId]/chat/page.tsx',
 ]) {
   test(`${route}: chat displays and persists the dedicated business logo`, async () => {
-    const inserted = [];
+    const calls = [];
     const user = { id: 'customer' };
-    const business = { id: 'shop', owner_id: 'owner', name: 'Shop', logo_url: 'logo.png', image_urls: ['banner.png'] };
+    const business = { id: 'shop', name: 'Shop', logo_url: 'logo.png', image_urls: ['banner.png'] };
     const supabase = { from(table) {
       let payload;
       const result = () => ({ data: payload ? { id: 'conversation' } : table === 'businesses' ? business : table === 'catalog_items' ? { id: 'item', title: 'Product', images: [] } : table === 'public_profiles' ? { name: 'Customer' } : [], error: null });
       const query = {
         select() { return query; }, eq() { return query; }, contains() { return query; },
-        insert(value) { payload = value; inserted.push(value); return query; },
+        insert(value) { payload = value; return query; },
         single() { return Promise.resolve(result()); }, maybeSingle() { return Promise.resolve(result()); },
         then(resolve, reject) { return Promise.resolve(result()).then(resolve, reject); },
       };
@@ -44,7 +44,7 @@ for (const route of [
       '@/lib/supabase/supabase': { supabase },
       '@/hooks/use-supabase-auth': { useAuth: () => ({ user }) },
       '@/lib/businesses/presentation': presentation,
-      '@/lib/notifications/notification-service': { NotificationService: { createCatalogItemInquiryNotification: async () => {} } },
+      '@/lib/auth/authenticated-fetch': { authenticatedFetch: async (path, body) => { calls.push({ path, body }); return { conversationId: 'conversation' }; } },
       'next/navigation': { useParams: () => ({ businessId: 'shop', itemId: 'item' }), useRouter: () => ({ push() {} }) },
       '@/components/messages/BusinessChatScreen': { BusinessChatScreen: props => { screen = props; return null; } },
     }).default;
@@ -52,8 +52,10 @@ for (const route of [
     try {
       await React.act(async () => { root.render(React.createElement(Page)); });
       assert.equal(screen.business.logo, 'logo.png');
-      assert.equal(inserted.length, 1);
-      assert.equal(inserted[0].business_logo, 'logo.png');
+      assert.equal(calls.length, 1);
+      assert.equal(calls[0].path, '/api/businesses/conversations');
+      assert.equal(calls[0].body.businessId, 'shop');
+      if (route.includes('[itemId]')) assert.equal(calls[0].body.itemId, 'item');
       assert.equal(screen.conversationId, 'conversation');
     } finally { await React.act(async () => root.unmount()); }
   });
