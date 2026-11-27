@@ -73,3 +73,14 @@ test('business chat owner identity is resolved only by the authenticated server 
   assert.doesNotMatch(generalPage, /owner_id/);
   assert.doesNotMatch(itemPage, /owner_id/);
 });
+
+test('business detail keeps the business owner ID server-side for non-owners', () => {
+  const page = fs.readFileSync('src/app/(app)/businesses/[businessId]/BusinessDetailPageClient.tsx', 'utf8');
+  const endpoint = fs.readFileSync('src/app/api/businesses/viewer-context/route.ts', 'utf8');
+  assert.match(page, /\/api\/businesses\/viewer-context/);
+  assert.doesNotMatch(page, /owner_id/);
+  assert.match(page, /owner_id: isOwner && user \? user\.id : ""/);
+  assert.match(endpoint, /getAuthenticatedUser\(request\)/);
+  assert.match(endpoint, /owner_id/);
+  assert.match(endpoint, /isOwner/);
+});
