@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase/supabase";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import type { Business } from "@/types";
 import { getBusinessLogo } from "@/lib/businesses/presentation";
+import { authenticatedFetch } from "@/lib/auth/authenticated-fetch";
 
 export default function BusinessChatPage() {
   const params = useParams();
@@ -25,7 +26,7 @@ export default function BusinessChatPage() {
           .from('businesses')
           // Limit the browser response to business detail fields required by this page; omit admin and moderation metadata.
           .select(
-            "id, owner_id, name, category, description, location, image_urls, created_at, rating, review_count, hours, phone, email, website, owner_name, owner_avatar, cover_image, logo, logo_url, is_active"
+            "id, name, category, description, location, image_urls, created_at, rating, review_count, hours, phone, email, website, owner_name, owner_avatar, cover_image, logo, logo_url, is_active"
           )
           .eq('id', businessId)
           .eq('is_active', true)
@@ -39,7 +40,6 @@ export default function BusinessChatPage() {
         if (data) {
           const businessData: Business = {
             id: data.id,
-            owner_id: data.owner_id,
             name: data.name,
             category: data.category,
             description: data.description,
@@ -81,55 +81,19 @@ export default function BusinessChatPage() {
 
   const [conversationId, setConversationId] = useState<string | null>(null);
 
-  // Create or get conversation entry for business chat
+  // Resolve the business owner and create/reuse the conversation server-side.
+  // The browser receives only the conversation ID, never the private owner_id.
   useEffect(() => {
     if (!business || !user) return;
-
-    const createOrGetConversation = async () => {
-      try {
-        // Check if conversation already exists for this business
-        const { data: existingConversations, error: fetchError } = await supabase
-          .from('conversations')
-          .select('id, participant_ids')
-          .contains('participant_ids', [user.id])
-          .eq('type', 'business')
-          .eq('business_id', businessId);
-
-        if (fetchError) {
-          console.error('Error fetching business conversations:', fetchError);
-          return;
-        }
-
-        if (existingConversations && existingConversations.length > 0) {
-          setConversationId(existingConversations[0].id);
-        } else {
-          // Create new business conversation
-          const { data: newConv, error: createError } = await supabase
-            .from('conversations')
-            .insert({
-              participant_ids: [user.id, business.owner_id],
-              type: 'business',
-              business_id: businessId,
-              business_name: business.name,
-              business_logo: business.logo,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            })
-            .select('id')
-            .single();
-
-          if (createError) {
-            console.error('Error creating business conversation:', createError);
-          } else if (newConv) {
-            setConversationId(newConv.id);
-          }
-        }
-      } catch (error) {
-        console.error('Error in createOrGetConversation:', error);
-      }
-    };
-
-    createOrGetConversation();
+    let cancelled = false;
+    authenticatedFetch<{ conversationId: string }>('/api/businesses/conversations', {
+      businessId,
+    }).then(({ conversationId: id }) => {
+      if (!cancelled) setConversationId(id);
+    }).catch(error => {
+      console.error('Error opening business conversation:', error);
+    });
+    return () => { cancelled = true; };
   }, [business, user, businessId]);
 
   if (loading) {
