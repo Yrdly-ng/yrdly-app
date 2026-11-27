@@ -628,7 +628,7 @@ export function CommentSection({
                         minRows={1}
                         maxRows={5}
                         onKeyDown={e => {
-                            if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && e.keyCode !== 229) {
+                            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) {
                                 e.preventDefault();
                                 handlePostComment(e);
                             }
