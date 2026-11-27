@@ -228,7 +228,9 @@ test("web vitals are captured with bounded metric fields and normalized route on
   const r = runtime();
   const a = r.load("analytics");
   await a.initializeWebAnalytics();
-  assert.equal(r.analyticsOptions.capture_performance, true);
+  assert.equal(r.analyticsOptions.capture_performance.web_vitals, true);
+  assert.equal(r.analyticsOptions.capture_performance.network_timing, false);
+  assert.equal(r.analyticsOptions.capture_performance.web_vitals_attribution, false);
   const safe = r.analyticsOptions.before_send({
     event: "$web_vitals",
     properties: {
@@ -241,6 +243,7 @@ test("web vitals are captured with bounded metric fields and normalized route on
       $web_vitals_metric_navigation_type: "navigate",
       $web_vitals_LCP_value: 2800,
       $web_vitals_LCP_rating: "needs-improvement",
+      $web_vitals_LCP_event: { element: "private DOM" },
       email: "private@example.com",
       secret: "private",
     },
@@ -252,6 +255,7 @@ test("web vitals are captured with bounded metric fields and normalized route on
   assert.equal(safe.properties.$web_vitals_metric_value, 2800);
   assert.equal(safe.properties.$web_vitals_metric_rating, "needs-improvement");
   assert.equal(safe.properties.$web_vitals_LCP_value, 2800);
+  assert.equal(safe.properties.$web_vitals_LCP_event, undefined);
   assert.equal(safe.properties.email, undefined);
   assert.equal(safe.properties.secret, undefined);
   assert.doesNotMatch(JSON.stringify(safe), /private|gclid|123/);
