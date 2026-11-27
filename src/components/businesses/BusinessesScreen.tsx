@@ -30,7 +30,7 @@ import type { Business } from "@/types";
 import { CampaignBanner } from "@/components/campaigns/CampaignBanner";
 import { CategoryIcon } from "@/components/discovery/CategoryIcon";
 
-type PublicBusiness = Omit<Business, "owner_id">;
+type PublicBusiness = Omit<Business, "owner_id"> & { phone_verified?: boolean | null };
 
 export function BusinessesScreen({
   backTarget = "/businesses",
