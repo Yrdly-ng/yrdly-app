@@ -63,6 +63,11 @@ export function sanitizeAnalyticsEvent(
       safeProperties.$pathname = path;
       safeProperties.$current_url = "https://app.yrdly.ng" + path;
     }
+    for (const key of identityKeys) {
+      const value = source[key];
+      if (typeof value === "string" && /^[a-zA-Z0-9_$:-]{1,128}$/.test(value))
+        safeProperties[key] = value;
+    }
     let hasMetric = false;
     const metricName = source.$web_vitals_metric_name;
     const metricValue = source.$web_vitals_metric_value;
