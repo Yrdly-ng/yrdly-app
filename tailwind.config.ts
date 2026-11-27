@@ -25,7 +25,7 @@ export default {
         jersey25: ['var(--font-raleway)', 'Bricolage Grotesque', 'Figtree', 'sans-serif'],
         brand: ['var(--font-raleway)', 'Bricolage Grotesque', 'Figtree', 'sans-serif'],
         'yrdly-display': ['var(--yrdly-font-display)', 'Bricolage Grotesque', 'Figtree', 'sans-serif'],
-        'yrdly-body': ['var(--yrdly-font-body)', 'Inter', 'sans-serif'],
+        'yrdly-body': ['var(--yrdly-font-body)', 'Figtree', 'sans-serif'],
       },
       colors: {
         'surface-dim': 'var(--surface-dim)',
