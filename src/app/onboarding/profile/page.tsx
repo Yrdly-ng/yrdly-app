@@ -432,7 +432,7 @@ function OnboardingProfileContent() {
                       value={locQuery}
                       onChange={(e) => handleLocQuery(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) {
+                        if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229) {
                           e.preventDefault();
                           if (locSuggestions.length > 0) {
                             handleSelectLocSuggestion(locSuggestions[0]);
