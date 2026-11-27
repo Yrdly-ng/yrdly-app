@@ -4,7 +4,7 @@ import { BusinessChatScreen } from "@/components/messages/BusinessChatScreen";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase/supabase";
-import { NotificationService } from "@/lib/notifications/notification-service";
+import { authenticatedFetch } from "@/lib/auth/authenticated-fetch";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import type { Business, CatalogItem } from "@/types";
 import { getBusinessLogo } from "@/lib/businesses/presentation";
@@ -29,7 +29,7 @@ export default function ItemChatPage() {
           .from('businesses')
           // Limit the browser response to business detail fields required by this page; omit admin and moderation metadata.
           .select(
-            "id, owner_id, name, category, description, location, image_urls, created_at, rating, review_count, hours, phone, email, website, owner_name, owner_avatar, cover_image, logo, logo_url, is_active"
+            "id, name, category, description, location, image_urls, created_at, rating, review_count, hours, phone, email, website, owner_name, owner_avatar, cover_image, logo, logo_url, is_active"
           )
           .eq('id', businessId)
           .eq('is_active', true)
@@ -43,7 +43,7 @@ export default function ItemChatPage() {
         // Fetch catalog item data
         const { data: itemData, error: itemError } = await supabase
           .from('catalog_items')
-          .select('*')
+          .select('id, business_id, title, description, price, images, category, in_stock, created_at, updated_at')
           .eq('id', itemId)
           .eq('business_id', businessId)
           .single();
@@ -56,7 +56,6 @@ export default function ItemChatPage() {
         if (businessData) {
           const businessInfo: Business = {
             id: businessData.id,
-            owner_id: businessData.owner_id,
             name: businessData.name,
             category: businessData.category,
             description: businessData.description,
@@ -94,103 +93,26 @@ export default function ItemChatPage() {
 
   const [conversationId, setConversationId] = useState<string | null>(null);
 
-  // Create or get conversation entry for catalog item chat
-  // Use ref to prevent multiple simultaneous creations
+  // Conversation creation and owner resolution happen on the server.
+  // This avoids exposing businesses.owner_id in the public browser projection.
   const conversationCreationRef = useRef(false);
-  
+
   useEffect(() => {
-    if (!business || !catalogItem || !user) return;
-    
-    // Prevent duplicate creation attempts
-    if (conversationCreationRef.current) return;
+    if (!business || !catalogItem || !user || conversationCreationRef.current) return;
+    let cancelled = false;
     conversationCreationRef.current = true;
-
-    const createOrGetConversation = async () => {
-      try {
-        const { data: existingConversations, error: fetchError } = await supabase
-          .from('conversations')
-          .select('id, participant_ids, context')
-          .contains('participant_ids', [user.id])
-          .eq('type', 'business')
-          .eq('business_id', businessId);
-        
-        if (fetchError) {
-          console.error('Error fetching catalog item conversations:', fetchError);
-          conversationCreationRef.current = false;
-          return;
-        }
-
-        const matchingConversations = existingConversations?.filter(conv => {
-          const context = conv.context as { catalog_item_id?: string } | null;
-          return context?.catalog_item_id === itemId;
-        }) || [];
-
-        if (matchingConversations.length > 0) {
-          setConversationId(matchingConversations[0].id);
-          conversationCreationRef.current = false;
-          return;
-        }
-
-        if (matchingConversations.length === 0) {
-          const insertData = {
-            participant_ids: [user.id, business.owner_id],
-            type: 'business' as const,
-            business_id: businessId,
-            business_name: business.name,
-            business_logo: business.logo,
-            item_id: null,
-            item_title: catalogItem.title,
-            item_image: catalogItem.images?.[0] || "/placeholder.svg",
-            item_price: catalogItem.price,
-            context: {
-              catalog_item_id: itemId,
-              catalog_item_business_id: businessId
-            },
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          };
-          
-          const { data: newConv, error: createError } = await supabase
-            .from('conversations')
-            .insert(insertData)
-            .select('id')
-            .single();
-
-          if (createError) {
-            console.error('Error creating catalog item conversation:', createError);
-            conversationCreationRef.current = false;
-          } else if (newConv) {
-            setConversationId(newConv.id);
-            conversationCreationRef.current = false;
-            if (user.id !== business.owner_id) {
-              const { data: customer } = await supabase
-                .from('public_profiles')
-                .select('name')
-                .eq('id', user.id)
-                .maybeSingle();
-              try {
-                await NotificationService.createCatalogItemInquiryNotification(
-                  business.owner_id,
-                  customer?.name || user.user_metadata?.name || user.email || 'A customer',
-                  catalogItem.title,
-                  businessId,
-                  itemId,
-                );
-              } catch (notificationError) {
-                console.error('Could not notify business owner about the catalog inquiry:', notificationError);
-              }
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error in createOrGetConversation:', error);
-        conversationCreationRef.current = false;
-      }
-    };
-
-    createOrGetConversation();
-    
+    authenticatedFetch<{ conversationId: string }>('/api/businesses/conversations', {
+      businessId,
+      itemId,
+    }).then(({ conversationId: id }) => {
+      if (!cancelled) setConversationId(id);
+    }).catch(error => {
+      console.error('Error opening catalog item conversation:', error);
+    }).finally(() => {
+      conversationCreationRef.current = false;
+    });
     return () => {
+      cancelled = true;
       conversationCreationRef.current = false;
     };
   }, [business, catalogItem, user, businessId, itemId]);
