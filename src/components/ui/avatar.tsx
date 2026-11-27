@@ -31,18 +31,27 @@ const AvatarImage = React.forwardRef<
     /^https:\/\/(?:api\.yrdly\.ng|yoiyqxtpmxnrrbqqidcs\.supabase\.co)\/storage\/v1\/object\/public\/user-avatars\//.test(src)
       ? src
       : undefined;
-  const optimizedSource = publicAvatar && failedSource !== publicAvatar
-    ? getImageProps({ src: publicAvatar, alt: "", width: 128, height: 128 }).props.src
+  const useOptimizedSource = Boolean(publicAvatar && failedSource !== publicAvatar);
+  const optimizedImageProps = useOptimizedSource && publicAvatar
+    ? getImageProps({
+        src: publicAvatar,
+        alt: "",
+        width: 128,
+        height: 128,
+        sizes: "128px",
+      }).props
     : undefined;
 
   return (
     <AvatarPrimitive.Image
       {...props}
       ref={ref}
-      src={optimizedSource || src}
+      src={useOptimizedSource ? optimizedImageProps?.src : src}
+      srcSet={optimizedImageProps?.srcSet}
+      sizes={optimizedImageProps?.sizes}
       className={cn("aspect-square h-full w-full object-cover", className)}
       onLoadingStatusChange={(status) => {
-        if (status === "error" && optimizedSource) {
+        if (status === "error" && useOptimizedSource && publicAvatar) {
           setFailedSource(publicAvatar);
           return;
         }
