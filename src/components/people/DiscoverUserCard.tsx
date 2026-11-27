@@ -74,7 +74,7 @@ export function DiscoverUserCard({
       {/* User Avatar */}
       <div className="relative h-20 w-20 rounded-full overflow-hidden bg-primary/20 border-2 border-primary/30 flex items-center justify-center shadow-md">
         {user?.avatar_url ? (
-          <Image src={user.avatar_url} alt={user.name || "User"} fill className="object-cover" />
+          <Image src={user.avatar_url} alt={user.name || "User"} fill sizes="80px" className="object-cover" />
         ) : (
           <span className="text-xl font-black text-primary">
             {(user?.name || "A").charAt(0).toUpperCase()}
