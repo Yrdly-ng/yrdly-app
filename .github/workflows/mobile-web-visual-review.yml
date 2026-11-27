@@ -107,6 +107,13 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium webkit
       - name: Validate isolated QA credentials
         run: node qa-scripts/write-ci-env.mjs
+      - name: Report optional Google Maps QA coverage
+        run: |
+          if [ -n "$QA_GOOGLE_MAPS_API_KEY" ]; then
+            echo 'Google Maps browser smoke test enabled'
+          else
+            echo 'Google Maps browser smoke test will be explicitly skipped (QA key not configured)'
+          fi
       - name: Seed disposable QA accounts
         run: node qa-scripts/seed.mjs
       - name: Build app against isolated QA
