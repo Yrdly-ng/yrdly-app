@@ -24,7 +24,7 @@ for (const route of [
   'src/app/(app)/businesses/[businessId]/chat/page.tsx',
   'src/app/(app)/businesses/[businessId]/catalog/[itemId]/chat/page.tsx',
 ]) {
-  test(`${route}: chat displays and persists the dedicated business logo`, async () => {
+  test(`${route}: chat displays the dedicated logo and requests server-side conversation creation`, async () => {
     const calls = [];
     const user = { id: 'customer' };
     const business = { id: 'shop', name: 'Shop', logo_url: 'logo.png', image_urls: ['banner.png'] };
@@ -60,3 +60,16 @@ for (const route of [
     } finally { await React.act(async () => root.unmount()); }
   });
 }
+
+test('business chat owner identity is resolved only by the authenticated server endpoint', () => {
+  const endpoint = fs.readFileSync('src/app/api/businesses/conversations/route.ts', 'utf8');
+  const generalPage = fs.readFileSync('src/app/(app)/businesses/[businessId]/chat/page.tsx', 'utf8');
+  const itemPage = fs.readFileSync('src/app/(app)/businesses/[businessId]/catalog/[itemId]/chat/page.tsx', 'utf8');
+
+  assert.match(endpoint, /getAuthenticatedUser\(request\)/);
+  assert.match(endpoint, /owner_id/);
+  assert.match(endpoint, /participant_ids: participantIds/);
+  assert.match(endpoint, /catalog_item_inquiry/);
+  assert.doesNotMatch(generalPage, /owner_id/);
+  assert.doesNotMatch(itemPage, /owner_id/);
+});
