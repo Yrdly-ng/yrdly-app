@@ -40,9 +40,10 @@ export default function ItemChatPage() {
         // Fetch catalog item data
         const { data: itemData, error: itemError } = await supabase
           .from('catalog_items')
-          .select('*')
+          .select('id, business_id, title, description, price, images, category, in_stock, quantity, inventory_count, created_at, updated_at')
           .eq('id', itemId)
           .eq('business_id', businessId)
+          .eq('moderation_status', 'approved')
           .single();
 
         if (itemError) {
