@@ -30,6 +30,8 @@ import type { Business } from "@/types";
 import { CampaignBanner } from "@/components/campaigns/CampaignBanner";
 import { CategoryIcon } from "@/components/discovery/CategoryIcon";
 
+type PublicBusiness = Omit<Business, "owner_id">;
+
 export function BusinessesScreen({
   backTarget = "/businesses",
 }: {
@@ -40,7 +42,6 @@ export function BusinessesScreen({
   const { profile } = useAuth();
   const { activeFilter } = useLocation();
   const category = searchParams.get("category") || null;
-  type PublicBusiness = Omit<Business, "owner_id">;
 
   const [businesses, setBusinesses] = useState<PublicBusiness[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,7 +61,7 @@ export function BusinessesScreen({
       let requestQuery = supabase
         .from("businesses")
         // Public directory needs listing details only; omit owner, admin and moderation fields.
-        .select("id, name, category, description, location, image_urls, rating, review_count, created_at, state, lga, ward, cover_image, logo, mode")
+        .select("id, name, category, description, location, image_urls, rating, review_count, created_at, state, lga, ward, cover_image, logo, mode, phone_verified")
         .eq("is_active", true)
         .eq("moderation_status", "approved")
         .order("created_at", { ascending: false });
@@ -363,7 +364,7 @@ export function BusinessDirectoryCard({
         </p>
         <h3 className="mt-1 flex items-center gap-2 font-yrdly-display text-xl font-bold">
           {business.name}
-          {(business as Business & { phone_verified?: boolean }).phone_verified === true && (
+          {business.phone_verified === true && (
             <span className="inline-flex items-center gap-1 text-xs font-medium text-primary" aria-label="Phone number verified">
               <Phone size={13} className="shrink-0" />
               Phone verified
