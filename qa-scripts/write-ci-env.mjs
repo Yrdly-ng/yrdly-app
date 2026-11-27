@@ -15,6 +15,13 @@ const values = {
   PAYLUK_BASE_URL: 'https://staging.api.payluk.ng',
   NEXT_PUBLIC_APP_URL: 'http://localhost:9002',
 };
+// Maps QA is optional: without a dedicated restricted key, map-specific browser
+// coverage is explicitly skipped rather than silently passing.
+const mapsKey = process.env.QA_GOOGLE_MAPS_API_KEY?.trim();
+if (mapsKey) {
+  if (/[\\r\\n]/.test(mapsKey)) throw new Error('Invalid QA Google Maps API key');
+  values.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY = mapsKey;
+}
 for (const role of ['BUYER', 'SELLER', 'ORGANIZER', 'ADMIN', 'NON_ADMIN']) {
   for (const field of ['EMAIL', 'PASSWORD']) values[`QA_${role}_${field}`] = process.env[`QA_${role}_${field}`];
 }
