@@ -4,10 +4,10 @@
 
 @layer base {
   :root {
-    --font-sans: var(--font-figtree), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    --font-raleway: var(--font-bricolage), var(--font-figtree), sans-serif;
-    --font-jersey25: var(--font-bricolage), var(--font-figtree), sans-serif;
-    --font-pacifico: var(--font-bricolage), var(--font-figtree), sans-serif;
+    --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-raleway: "Inter", sans-serif;
+    --font-jersey25: "Inter", sans-serif;
+    --font-pacifico: "Inter", sans-serif;
     --font-mono: ui-monospace, monospace;
     
     /* Emil Kowalski Spacing & Border Radius */
@@ -81,8 +81,8 @@
     --on-surface-variant: #71717A;
 
     /* YRDLY Design Tokens (Light) */
-    --yrdly-font-display: var(--font-bricolage), var(--font-figtree), sans-serif;
-    --yrdly-font-body: var(--font-figtree), sans-serif;
+    --yrdly-font-display: "Inter", sans-serif;
+    --yrdly-font-body: "Inter", sans-serif;
     --yrdly-g: #82DB7E;
     --yrdly-glow: rgba(130,219,126,0.26);
     --yrdly-glow-strong: rgba(130,219,126,0.45);
@@ -118,7 +118,7 @@
   }
 
   button.font-yrdly-display, a.font-yrdly-display { font-family: var(--yrdly-font-body), sans-serif; }
-  .font-wordmark { font-family: var(--font-unbounded), var(--font-bricolage), sans-serif; font-weight: 800; }
+  .font-wordmark { font-family: "Inter", sans-serif; font-weight: 800; letter-spacing: -0.04em; }
 
   /* Inline-style color tokens */
   :root {
@@ -132,7 +132,7 @@
   }
 
   .dark {
-    --font-sans: "Figtree", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     
     --c-bg:        #0A0A0A;
     --c-card:      #121212;
@@ -181,8 +181,8 @@
     --on-surface-variant: #A1A1AA;
 
     /* YRDLY Design Tokens (Dark) */
-    --yrdly-font-display: 'Bricolage Grotesque', 'Figtree', sans-serif;
-    --yrdly-font-body: 'Figtree', sans-serif;
+    --yrdly-font-display: "Inter", sans-serif;
+    --yrdly-font-body: "Inter", sans-serif;
     --yrdly-g: #82DB7E;
     --yrdly-glow: rgba(130,219,126,0.26);
     --yrdly-glow-strong: rgba(130,219,126,0.45);
