@@ -54,17 +54,19 @@ jobs:
       - name: Scan legacy web patterns with Google Modern Web Guidance
         if: always()
         run: |
-          mkdir -p .modern-web-guidance
+          mkdir -p modern-web-guidance-scan
           set +e
-          npx --yes modern-web-guidance@latest legacy-scan . --json > .modern-web-guidance/scan.json 2> .modern-web-guidance/scan.stderr
-          echo $? > .modern-web-guidance/exit-code
+          npx --yes modern-web-guidance@latest legacy-scan . --json > modern-web-guidance-scan/scan.json 2> modern-web-guidance-scan/scan.stderr
+          scan_status=$?
+          echo "$scan_status" > modern-web-guidance-scan/exit-code
+          node -e 'const fs=require("node:fs"); try { const data=JSON.parse(fs.readFileSync("modern-web-guidance-scan/scan.json", "utf8")); console.log(JSON.stringify(data, null, 2).slice(0, 12000)); } catch { console.log(fs.readFileSync("modern-web-guidance-scan/scan.stderr", "utf8").slice(0, 4000)); }'
           exit 0
       - name: Upload Modern Web Guidance scan
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: modern-web-guidance-legacy-scan
-          path: .modern-web-guidance/
+          path: modern-web-guidance-scan/
           retention-days: 7
 
   visual-review:
