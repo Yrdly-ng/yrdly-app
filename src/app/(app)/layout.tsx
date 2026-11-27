@@ -1,7 +1,5 @@
 "use client";
 
-import Script from 'next/script';
-
 import { Suspense, useEffect, useState } from 'react';
 import { NotificationRouteGuard } from '@/components/notifications/NotificationRouteGuard';
 import { useRouter, usePathname } from 'next/navigation';
@@ -89,11 +87,6 @@ export default function AppLayout({
 }) {
   return (
     <FriendshipProvider>
-      <Script
-        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7576498244677518"
-        strategy="afterInteractive"
-        crossOrigin="anonymous"
-      />
       <LocationProvider>
         <ProtectedLayout>
           {children}
