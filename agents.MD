@@ -16,7 +16,9 @@
 
 ## YRDLY Modern Web Standards (required)
 - Apply `docs/engineering/modern-web-guidance.md` to meaningful web UI, CSS/HTML, accessibility, performance, navigation, and browser API work.
-- Consult Google's Modern Web Guidance CLI/skill for applicable changes: `npx modern-web-guidance@latest search "<use case>"`, then retrieve the matching guide. If unavailable, use the official guide library and document the limitation.
+- Install/update Google's official Modern Web Guidance 1.0 skill in the local coding workspace with `npx modern-web-guidance@latest install` (or `update` if already installed). For Antigravity, use the official plugin marketplace/CLI installation documented at https://developer.chrome.com/docs/modern-web-guidance.
+- Before implementation, use `npx modern-web-guidance@latest search "<use case>"` and `retrieve "<guide-id>"` for relevant task-scoped guidance.
+- For existing-code modernization, run `npx modern-web-guidance@latest legacy-scan`, verify each finding in context, and propose a prioritized plan before broad refactors.
 - Default browser target is Baseline Widely Available; use progressive enhancement/fallbacks for features not widely available. Don't use volatile or origin-trial features by default.
 - Measure before optimizing and don't claim performance gains without evidence. Preserve product behavior, privacy, security, analytics, and responsive layouts.
 - Check keyboard/focus, semantics, reduced motion, mobile/desktop, and relevant tests before completing.
