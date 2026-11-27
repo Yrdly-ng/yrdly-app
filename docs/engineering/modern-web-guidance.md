@@ -76,3 +76,14 @@ For a substantial UI, performance, accessibility, HTML/CSS, navigation, or brows
 - Accessibility guidance: https://developer.chrome.com/docs/modern-web-guidance/guides/accessibility/accessibility
 - Baseline: https://web.dev/baseline/
 - Core Web Vitals: https://web.dev/articles/vitals
+
+## Automated legacy-scan result — 27 November 2026
+
+The official `modern-web-guidance legacy-scan` completed successfully on the implementation branch:
+
+- **0 findings** across 633 scanned application files.
+- 52 deterministic rules across 38 guides were evaluated (approximately 20% of the full guidance catalog).
+- The five IME composition findings and two non-mutating array-copy findings were corrected.
+- The deferred-promise test helper uses Node's built-in `EventEmitter`/ `events.once` signal rather than `Promise.withResolvers`, preserving the repository's supported Node 20.19 runtime range.
+
+The scan is automated in the GitHub Actions static-checks job and its JSON output is retained as a short-lived artifact. A clean deterministic scan is not a substitute for topic-specific guide review, runtime profiling, manual accessibility testing, or browser/device validation.
