@@ -27,7 +27,7 @@ export default function BusinessDetailPage() {
         .from("businesses")
         // Limit the browser response to business detail fields required by this page; omit admin and moderation metadata.
           .select(
-          "id, owner_id, name, category, description, location, image_urls, created_at, state, lga, ward, rating, review_count, hours, phone, email, website, owner_name, owner_avatar, cover_image, logo, logo_url, mode, is_active"
+          "id, owner_id, name, category, description, location, image_urls, created_at, state, lga, ward, rating, review_count, hours, phone, email, website, owner_name, owner_avatar, cover_image, logo, logo_url, mode, is_active, verified_seller, is_verified"
         )
         .eq("id", businessId)
         .maybeSingle();
