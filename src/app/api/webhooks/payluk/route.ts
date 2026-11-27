@@ -361,7 +361,19 @@ async function handleEscrowCompleted(data: PaylukEscrowData) {
   } else {
     console.log(`[PaylukWebhook] escrow.completed: tx ${tx.id} → COMPLETED`);
   }
-  if (!transitioned?.length) { await flagPayment('payluk',data.id,tx.id,'invalid_transition'); return; }
+  if (!transitioned?.length) {
+    // Concurrent completion from another API/webhook can win after our initial read.
+    // Re-check before creating a reconciliation flag to keep this transition idempotent.
+    const { data: latest, error: latestError } = await supabaseAdmin
+      .from('escrow_transactions').select('status').eq('id', tx.id).maybeSingle();
+    if (latestError) throw latestError;
+    if (latest?.status === EscrowStatus.COMPLETED) {
+      console.log(`[PaylukWebhook] escrow.completed: tx ${tx.id} completed concurrently; treating as idempotent`);
+      return;
+    }
+    await flagPayment('payluk',data.id,tx.id,'invalid_transition');
+    return;
+  }
   // A completed provider-confirmed escrow releases the seller's funds.
   await notifyReleasedFunds(tx);
 
@@ -398,7 +410,19 @@ async function handleEscrowClaimed(data: PaylukEscrowData) {
   }
 
   console.log(`[PaylukWebhook] escrow.claimed: tx ${tx.id} → COMPLETED (seller-initiated claim)`);
-  if (!transitioned?.length) { await flagPayment('payluk',data.id,tx.id,'invalid_transition'); return; }
+  if (!transitioned?.length) {
+    // Concurrent completion from another API/webhook can win after our initial read.
+    // Re-check before creating a reconciliation flag to keep this transition idempotent.
+    const { data: latest, error: latestError } = await supabaseAdmin
+      .from('escrow_transactions').select('status').eq('id', tx.id).maybeSingle();
+    if (latestError) throw latestError;
+    if (latest?.status === EscrowStatus.COMPLETED) {
+      console.log(`[PaylukWebhook] escrow.claimed: tx ${tx.id} completed concurrently; treating as idempotent`);
+      return;
+    }
+    await flagPayment('payluk',data.id,tx.id,'invalid_transition');
+    return;
+  }
 
 
   await notifyReleasedFunds(tx);
