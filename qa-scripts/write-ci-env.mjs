@@ -19,7 +19,7 @@ const values = {
 // coverage is explicitly skipped rather than silently passing.
 const mapsKey = process.env.QA_GOOGLE_MAPS_API_KEY?.trim();
 if (mapsKey) {
-  if (/[\\r\\n]/.test(mapsKey)) throw new Error('Invalid QA Google Maps API key');
+  if (mapsKey.includes('\n') || mapsKey.includes('\r')) throw new Error('Invalid QA Google Maps API key');
   values.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY = mapsKey;
 }
 for (const role of ['BUYER', 'SELLER', 'ORGANIZER', 'ADMIN', 'NON_ADMIN']) {
