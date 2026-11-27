@@ -86,10 +86,12 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
         // Businesses — scoped to user's state, deprioritizing flagged businesses
         let bizQuery = supabase
           .from('businesses')
-          .select('*')
+          // Keep browser search on the public listing projection; never fetch owner or moderation metadata.
+          .select('id, name, image_urls, rating, review_count')
           .eq('is_active', true)
-          .or(`name.ilike.%${q}%,description.ilike.%${q}%,category.ilike.%${q}%`)
-          .order('is_flagged', { ascending: true });
+          .eq('moderation_status', 'approved')
+          .eq('is_flagged', false)
+          .or(`name.ilike.%${q}%,description.ilike.%${q}%,category.ilike.%${q}%`);
         if (userState) bizQuery = bizQuery.eq('state', userState);
         const { data: businesses } = await bizQuery.limit(5);
         (businesses || []).forEach(b => found.push({ type: 'business', data: b as Business }));
