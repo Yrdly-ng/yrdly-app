@@ -1,6 +1,6 @@
 import { diagnosticMessage } from './diagnostics';
 import type { CaptureResult } from "posthog-js";
-import { pageRoutes } from "./routes";
+import { pageRoutes, pageTemplate } from "./routes";
 import { deviceLabel, homeState } from "./metadata";
 import { reliabilityEvents, reliabilityProperties } from './reliability';
 
