@@ -57,7 +57,8 @@ export function BusinessesScreen({
     try {
       let requestQuery = supabase
         .from("businesses")
-        .select("*")
+        // Public directory needs listing details only; omit owner, admin and moderation fields.
+        .select("id, name, category, description, location, image_urls, rating, review_count, created_at, state, lga, ward, cover_image, logo, mode")
         .eq("is_active", true)
         .eq("moderation_status", "approved")
         .order("created_at", { ascending: false });
