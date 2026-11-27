@@ -117,7 +117,7 @@
     --yrdly-severity-urgent-icon: #EF4444;
   }
 
-  button.font-yrdly-display, a.font-yrdly-display { font-family: var(--yrdly-font-body), sans-serif; }
+  button.font-yrdly-display, a.font-yrdly-display { font-family: var(--yrdly-font-display), sans-serif; }
   .font-wordmark { font-family: "Raleway", "Inter", sans-serif; font-weight: 800; letter-spacing: -0.04em; }
 
   /* Inline-style color tokens */
@@ -181,7 +181,7 @@
     --on-surface-variant: #A1A1AA;
 
     /* YRDLY Design Tokens (Dark) */
-    --yrdly-font-display: "Inter", sans-serif;
+    --yrdly-font-display: "Raleway", "Inter", sans-serif;
     --yrdly-font-body: "Inter", sans-serif;
     --yrdly-g: #82DB7E;
     --yrdly-glow: rgba(130,219,126,0.26);
