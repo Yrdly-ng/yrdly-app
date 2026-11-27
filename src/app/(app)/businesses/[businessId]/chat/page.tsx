@@ -24,7 +24,9 @@ export default function BusinessChatPage() {
         const { data, error } = await supabase
           .from('businesses')
           // Limit the browser response to business detail fields required by this page; omit admin and moderation metadata.
-          .select("id, owner_id, name, category, description, location, image_urls, created_at, rating, review_count, hours, phone, email, website, owner_name, owner_avatar, cover_image, logo, logo_url, is_active")
+          .select(
+            "id, owner_id, name, category, description, location, image_urls, created_at, rating, review_count, hours, phone, email, website, owner_name, owner_avatar, cover_image, logo, logo_url, is_active"
+          )
           .eq('id', businessId)
           .eq('is_active', true)
           .single();
