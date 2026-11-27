@@ -380,7 +380,7 @@ export function CommentSection({
     }, []);
 
     const parentComments = comments.filter(c => !c.parentId);
-    const sortedParentComments = [...parentComments].sort((a, b) => {
+    const sortedParentComments = parentComments.toSorted((a, b) => {
         if (sortMode === 'top') {
             return b.likeCount - a.likeCount;
         }
