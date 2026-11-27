@@ -810,7 +810,7 @@ export function MarketplaceChatLayout({
               className="flex-1 resize-none bg-[var(--yrdly-glass-bg)] border-[var(--yrdly-glass-border)] font-yrdly-body text-foreground placeholder:text-[var(--yrdly-label)]"
               rows={1}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
+                if (e.key === "Enter" && !e.shiftKey && !e.isComposing && e.keyCode !== 229) {
                   e.preventDefault();
                   handleSendMessage(e);
                 }
