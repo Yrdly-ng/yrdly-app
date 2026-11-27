@@ -1,5 +1,7 @@
 "use client";
 
+import Script from 'next/script';
+
 import { Suspense, useEffect, useState } from 'react';
 import { NotificationRouteGuard } from '@/components/notifications/NotificationRouteGuard';
 import { useRouter, usePathname } from 'next/navigation';
@@ -27,8 +29,7 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
   useActivityTracking();
 
 
-
-  const isPublicProfile = /^\/profile\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/?$/i.test(pathname);
+  const isPublicProfile = /^\\/profile\\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\/?$/i.test(pathname);
 
   useEffect(() => {
     if (!loading && !user && !isPublicProfile) {
@@ -88,6 +89,11 @@ export default function AppLayout({
   return (
     <FriendshipProvider>
       <LocationProvider>
+        <Script
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7576498244677518"
+          strategy="afterInteractive"
+          crossOrigin="anonymous"
+        />
         <ProtectedLayout>
           {children}
         </ProtectedLayout>
