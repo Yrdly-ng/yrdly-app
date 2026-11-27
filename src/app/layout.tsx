@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from 'next';
-import { Bricolage_Grotesque, Figtree, Unbounded } from 'next/font/google';
 
 import './globals.css';
 import { cn } from '@/lib/shared/utils';
@@ -19,10 +18,6 @@ import { GoogleMeasurement } from '@/components/providers/GoogleMeasurement';
 import { googleTagManagerEnabled } from '@/lib/attribution/google-measurement';
 import { PendingListingMeasurements } from '@/components/providers/PendingListingMeasurements';
 import { SignupConversionHandler } from '@/components/providers/SignupConversionHandler';
-
-const bricolage = Bricolage_Grotesque({ subsets: ['latin'], weight: ['400', '500', '600', '700'], display: 'swap', variable: '--font-bricolage' });
-const figtree = Figtree({ subsets: ['latin'], weight: ['400', '500', '600', '700'], display: 'swap', variable: '--font-figtree' });
-const unbounded = Unbounded({ subsets: ['latin'], weight: ['800'], display: 'swap', variable: '--font-unbounded' });
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://app.yrdly.ng'),
@@ -56,7 +51,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning className={cn(bricolage.variable, figtree.variable, unbounded.variable)}>
+    <html lang="en" suppressHydrationWarning>
       <head />
 
       <body suppressHydrationWarning className={cn('font-body antialiased min-h-[100dvh] bg-background')}>
