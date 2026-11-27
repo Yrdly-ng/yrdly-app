@@ -8,7 +8,6 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/use-supabase-auth';
 import { PushNotificationManager } from '@/components/notifications/PushNotificationManager';
 import Image from 'next/image';
-import { GoogleMapsProvider } from '@/components/providers/GoogleMapsProvider';
 import { UserProfileDialog } from '@/components/profile/UserProfileDialog';
 import type { User } from '@/types';
 import { ServiceWorkerRegistration } from '@/components/providers/ServiceWorkerRegistration';
@@ -96,11 +95,9 @@ export default function AppLayout({
         crossOrigin="anonymous"
       />
       <LocationProvider>
-        <GoogleMapsProvider>
-          <ProtectedLayout>
-            {children}
-          </ProtectedLayout>
-        </GoogleMapsProvider>
+        <ProtectedLayout>
+          {children}
+        </ProtectedLayout>
       </LocationProvider>
     </FriendshipProvider>
   );
