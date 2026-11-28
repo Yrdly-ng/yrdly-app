@@ -81,7 +81,12 @@ export async function initializeWebAnalytics(): Promise<void> {
         capture_exceptions: false,
         capture_dead_clicks: false,
         capture_heatmaps: false,
-        capture_performance: false,
+        capture_performance: {
+          web_vitals: true,
+          network_timing: false,
+          web_vitals_attribution: false,
+          web_vitals_allowed_metrics: ['LCP', 'CLS', 'FCP', 'INP'],
+        },
         disable_session_recording: true,
         session_recording: {
           maskAllInputs: true, maskTextSelector: '*', maskAllElementAttributes: true,

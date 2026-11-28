@@ -224,6 +224,47 @@ test("PostHog payload scrubbing drops private properties and unexpected events",
   );
 });
 
+test("web vitals are captured with bounded metric fields and normalized route only", async () => {
+  const r = runtime();
+  const a = r.load("analytics");
+  await a.initializeWebAnalytics();
+  assert.equal(r.analyticsOptions.capture_performance.web_vitals, true);
+  assert.equal(r.analyticsOptions.capture_performance.network_timing, false);
+  assert.equal(r.analyticsOptions.capture_performance.web_vitals_attribution, false);
+  const safe = r.analyticsOptions.before_send({
+    event: "$web_vitals",
+    properties: {
+      $pathname: "/businesses/123",
+      $current_url: "https://app.yrdly.ng/businesses/123?gclid=private-click",
+      $web_vitals_metric_name: "LCP",
+      $web_vitals_metric_value: 2800,
+      $web_vitals_metric_rating: "needs-improvement",
+      $web_vitals_metric_delta: 200,
+      $web_vitals_metric_navigation_type: "navigate",
+      $web_vitals_LCP_value: 2800,
+      $web_vitals_LCP_rating: "needs-improvement",
+      $web_vitals_LCP_event: { element: "private DOM" },
+      email: "private@example.com",
+      secret: "private",
+    },
+  });
+  assert.equal(safe.event, "$web_vitals");
+  assert.equal(safe.properties.$pathname, "/businesses/[businessId]");
+  assert.equal(safe.properties.$current_url, "https://app.yrdly.ng/businesses/[businessId]");
+  assert.equal(safe.properties.$web_vitals_metric_name, "LCP");
+  assert.equal(safe.properties.$web_vitals_metric_value, 2800);
+  assert.equal(safe.properties.$web_vitals_metric_rating, "needs-improvement");
+  assert.equal(safe.properties.$web_vitals_LCP_value, 2800);
+  assert.equal(safe.properties.$web_vitals_LCP_event, undefined);
+  assert.equal(safe.properties.email, undefined);
+  assert.equal(safe.properties.secret, undefined);
+  assert.doesNotMatch(JSON.stringify(safe), /private|gclid|123/);
+  assert.equal(r.analyticsOptions.before_send({
+    event: "$web_vitals",
+    properties: { $web_vitals_metric_name: "custom", $web_vitals_metric_value: 3, email: "private" },
+  }), null);
+});
+
 test("ad campaign labels survive pageview scrubbing without raw URLs or click IDs", async () => {
   const r = runtime();
   await r.load("analytics").initializeWebAnalytics();
