@@ -35,7 +35,7 @@ test('confirmed marketplace payment notifies buyer and seller only after state t
 test('provider-confirmed settlement and refund create non-claiming notifications',()=>{
   const completed = webhook.slice(webhook.indexOf('async function handleEscrowCompleted'),
     webhook.indexOf('async function handleEscrowClaimed'));
-  assert.match(completed,/if \(!transitioned\?\.length\).*return/);
+  assert.match(completed,/if \(!transitioned\?\.length\)[\\s\\S]*?return;/);
   assert.match(completed,/await notifyReleasedFunds\(tx\)/);
   assert.match(webhook,/type: 'funds_released'/);
   assert.match(webhook,/type: 'payment_refunded'/);
