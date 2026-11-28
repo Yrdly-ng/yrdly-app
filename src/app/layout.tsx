@@ -52,23 +52,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;600;700&family=Figtree:wght@400;500;600;700&family=Unbounded:wght@800&display=swap"
-          rel="stylesheet"
-        />
-        <style dangerouslySetInnerHTML={{__html: `
-          :root {
-            --font-raleway: 'Bricolage Grotesque', 'Figtree', sans-serif;
-            --font-jersey25: 'Bricolage Grotesque', 'Figtree', sans-serif;
-            --font-pacifico: 'Bricolage Grotesque', 'Figtree', sans-serif;
-          }
-          button.font-yrdly-display, a.font-yrdly-display { font-family: var(--yrdly-font-body, 'Figtree'), sans-serif; }
-          .font-wordmark { font-family: 'Unbounded', 'Bricolage Grotesque', sans-serif; font-weight: 800; }
-        `}} />
-      </head>
+      <head />
 
       <body suppressHydrationWarning className={cn('font-body antialiased min-h-[100dvh] bg-background')}>
         <AmbientBackground />

@@ -40,6 +40,8 @@ const AvatarImage = React.forwardRef<
       {...props}
       ref={ref}
       src={optimizedSource || src}
+      loading={props.loading ?? 'lazy'}
+      decoding={props.decoding ?? 'async'}
       className={cn("aspect-square h-full w-full object-cover", className)}
       onLoadingStatusChange={(status) => {
         if (status === "error" && optimizedSource) {
