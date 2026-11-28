@@ -99,3 +99,17 @@ test("business detail uses the catalog parity helpers", () => {
   assert.match(route, /logo: getBusinessLogo\(businessData\)/);
   assert.doesNotMatch(route, /logo:\s*businessData\.image_urls/);
 });
+
+
+test("business detail resolves ownership before enforcing public visibility for every non-owner", () => {
+  const route = fs.readFileSync(
+    "src/app/(app)/businesses/[businessId]/BusinessDetailPageClient.tsx",
+    "utf8",
+  );
+  const viewerContextIndex = route.indexOf('"/api/businesses/viewer-context"');
+  const businessQueryIndex = route.indexOf('.from("businesses")');
+  assert.notEqual(viewerContextIndex, -1);
+  assert.ok(viewerContextIndex < businessQueryIndex);
+  assert.match(route, /if \(!isOwner\)\s*\{[\s\S]*?\.eq\("is_active", true\)[\s\S]*?\.eq\("moderation_status", "approved"\)[\s\S]*?\.eq\("is_flagged", false\)/);
+  assert.match(route, /: \{ isOwner: false, ownerName: null, ownerAvatar: null \}/);
+});
