@@ -11,6 +11,9 @@ import { MARKETPLACE_CONSTANTS } from "@/lib/shared/constants";
 import { supabase } from "@/lib/supabase/supabase";
 
 
+import { DeliveryOption } from '@/types/escrow';
+import { TravoQuotePreview, type TravoQuotePreviewValue } from './TravoQuotePreview';
+import { DeliveryQuotePreview, type Quote } from './DeliveryQuotePreview';
 import { GlassCard } from "@/components/ui/glass-card";
 
 /* ── Design tokens ─────────────────────────────────── */
@@ -21,6 +24,12 @@ const GREEN  = "hsl(var(--primary))";
 const GREEN_L = "#82DB7E";
 const MUTED  = "var(--yrdly-label)";
 const DIM    = "var(--yrdly-label)";
+
+const manualHandoffs = [
+  { value: DeliveryOption.FACE_TO_FACE, title: 'Meet in person' },
+  { value: DeliveryOption.ARRANGED_RIDER, title: 'Arrange your own rider' },
+] as const;
+type Handoff = (typeof manualHandoffs)[number]['value'] | 'shipbubble' | 'travo';
 
 interface BuyButtonProps {
   itemId: string;
@@ -50,6 +59,23 @@ export function BuyButton({
   const [open, setOpen]         = useState(false);
   const [loading, setLoading]   = useState(false);
   const [pendingTransactionId, setPendingTransactionId] = useState<string | null>(null);
+  const [delivery, setDelivery] = useState<Quote | null>(null);
+  const [directQuote, setDirectQuote] = useState<TravoQuotePreviewValue | null>(null);
+  const [handoff, setHandoff] = useState<Handoff>(DeliveryOption.FACE_TO_FACE);
+  const canQuote = itemType === 'catalog_item' && Boolean(user && user.id !== sellerId);
+  const directAvailable = canQuote && process.env.NEXT_PUBLIC_TRAVO_QA_LISTING_ID === itemId;
+  const directSelected = handoff === 'travo' && directAvailable && !pendingTransactionId;
+  const managedAvailable = canQuote && !directAvailable && process.env.NEXT_PUBLIC_SHIPBUBBLE_QA_LISTING_ID === itemId;
+  const managedSelected = handoff === 'shipbubble' && managedAvailable && !pendingTransactionId;
+  const needsQuote = (managedSelected && !delivery?.token) || (directSelected && !directQuote?.token);
+
+  useEffect(() => {
+    if (!open) {
+      setDelivery(null);
+      setDirectQuote(null);
+      setHandoff(DeliveryOption.FACE_TO_FACE);
+    }
+  }, [open]);
   const [checkingPending, setCheckingPending] = useState(false);
   const walletRecoveryAvailable = process.env.NEXT_PUBLIC_PAYLUK_WALLET_RECOVERY_ENABLED === 'true';
   // Store only the order UUID, never a Payluk token or customer identity.
@@ -101,9 +127,10 @@ export function BuyButton({
 
   const commission = Math.round(price * MARKETPLACE_CONSTANTS.COMMISSION_RATE * 100) / 100;
   // Native commission is charged to the seller, not added to the buyer's total.
-  const totalPay = price;
+  const totalPay = (Math.round(price * 100) + (delivery?.feeKobo ?? 0)) / 100;
 
   const handleBuy = async (method: 'checkout' | 'wallet' = 'checkout') => {
+    if (needsQuote) return;
     if (!user) {
       toast({ title: "Sign in required", description: "Please log in to purchase items.", variant: "destructive" });
       return;
@@ -141,6 +168,10 @@ export function BuyButton({
           itemTitle,
           sellerName,
           itemType,
+          deliveryQuoteToken: managedSelected ? delivery?.token : undefined,
+          travoQuoteToken: directSelected ? directQuote?.token : undefined,
+          handoffOption: !pendingTransactionId && handoff !== 'shipbubble' && handoff !== 'travo' ? handoff : undefined,
+          resumeTransactionId: pendingTransactionId,
         }),
       });
 
@@ -432,6 +463,31 @@ export function BuyButton({
                 </div>
               </div>
 
+              {!pendingTransactionId && (
+                <fieldset disabled={loading} className="space-y-2">
+                  <legend className="mb-2 text-sm font-semibold text-foreground">How will you receive the item?</legend>
+                  {[...manualHandoffs,
+                    ...(directAvailable ? [{ value: 'travo' as const, title: 'YRDLY Delivery' }] : []),
+                    ...(managedAvailable ? [{ value: 'shipbubble' as const, title: 'YRDLY Delivery' }] : [])].map(option => (
+                    <label key={option.value} className="flex cursor-pointer items-center gap-3 rounded-xl border border-border px-3 py-2 text-sm">
+                      <input
+                        type="radio"
+                        name={`handoff-${itemId}`}
+                        checked={handoff === option.value}
+                        onChange={() => { setDelivery(null); setDirectQuote(null); setHandoff(option.value); }}
+                      />
+                      {option.title}
+                    </label>
+                  ))}
+                  {handoff === DeliveryOption.ARRANGED_RIDER && (
+                    <p className="text-xs text-muted-foreground">Agree in chat on who books and pays the rider. The courier fee is paid directly to the rider.</p>
+                  )}
+                </fieldset>
+              )}
+
+              {managedSelected && <DeliveryQuotePreview itemId={itemId} onQuoteChange={setDelivery} />}
+              {directSelected && <TravoQuotePreview itemId={itemId} onQuote={setDirectQuote} />}
+
               {/* Price breakdown */}
               <div className="p-5 rounded-2xl bg-gradient-to-b from-card/80 to-card/40 border border-border/60 backdrop-blur-md flex flex-col gap-3.5 shadow-sm">
                 <div className="flex justify-between items-center text-sm">
@@ -448,6 +504,12 @@ export function BuyButton({
                   <span className="font-semibold text-muted-foreground">₦{commission.toLocaleString()} (seller pays)</span>
                 </div>
 
+                {delivery && (
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">Delivery Fee</span>
+                    <span className="font-semibold text-foreground">₦{(delivery.feeKobo / 100).toLocaleString()}</span>
+                  </div>
+                )}
                 <div className="h-px w-full bg-border/50 my-0.5" />
 
                 <div className="flex justify-between items-center">
@@ -457,7 +519,8 @@ export function BuyButton({
                   </span>
                 </div>
                 <p className="text-[0.7rem] text-muted-foreground/80 leading-normal">
-                  Funds are held securely in escrow until you confirm item receipt.
+                  {directSelected && directQuote ? `Pay ₦${(directQuote.feeKobo / 100).toLocaleString()} separately to Travo for delivery. ` : ''}
+                  The item payment is held in escrow until you confirm receipt.
                   Bank transfers may take up to 30 minutes or longer to reconcile.
                 </p>
               </div>
@@ -481,7 +544,7 @@ export function BuyButton({
               <div className="pt-2 flex flex-col items-center gap-3">
                 <button
                   onClick={() => handleBuy('checkout')}
-                  disabled={loading}
+                  disabled={loading || needsQuote}
                   className="w-full h-13 py-3.5 bg-primary text-primary-foreground rounded-2xl font-bold text-sm shadow-[0_4px_24px_rgba(0,210,106,0.25)] hover:shadow-[0_6px_28px_rgba(0,210,106,0.35)] active:scale-[0.98] transition-all flex items-center justify-center disabled:opacity-60"
                 >
                   {loading ? (
@@ -493,12 +556,12 @@ export function BuyButton({
                       Processing Payment...
                     </span>
                   ) : (
-                    `Pay ₦${totalPay.toLocaleString()} Securely`
+                    pendingTransactionId ? 'Resume secure payment' : needsQuote ? 'Get a delivery quote to continue' : `Pay ₦${totalPay.toLocaleString()} Securely`
                   )}
                 </button>
-                {walletRecoveryAvailable && (
+                {walletRecoveryAvailable && !managedSelected && (
                 <>
-                <button type="button" onClick={() => handleBuy('wallet')} disabled={loading}
+                <button type="button" onClick={() => handleBuy('wallet')} disabled={loading || needsQuote}
                   className="w-full rounded-2xl border border-border px-4 py-3 text-sm font-semibold text-foreground disabled:opacity-50">
                   {loading ? 'Processing...' : 'Pay from my Payluk wallet'}
                 </button>

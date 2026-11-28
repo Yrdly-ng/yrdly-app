@@ -20,6 +20,18 @@ export class TransactionStatusService {
     await this.transition(transactionId, 'delivered');
   }
 
+  static async refreshDelivery(transactionId: string): Promise<void> {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error('Sign in to refresh delivery tracking.');
+    const response = await fetch(`/api/transactions/${transactionId}/delivery`, {
+      method: 'POST', headers: { Authorization: `Bearer ${session.access_token}` },
+    });
+    if (!response.ok) {
+      const result = await response.json().catch(() => null);
+      throw new Error(result?.error || 'Tracking refresh is temporarily unavailable.');
+    }
+  }
+
   static async completeTransaction(transactionId: string): Promise<void> {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) throw new Error('Not authenticated');

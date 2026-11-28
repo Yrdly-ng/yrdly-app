@@ -17,6 +17,7 @@ export enum PaymentMethod {
 
 export enum DeliveryOption {
   FACE_TO_FACE = 'face_to_face',      // Buyer and seller meet in person
+  ARRANGED_RIDER = 'arranged_rider',  // Buyer and seller arrange a rider off-platform
   SELLER_DELIVERY = 'seller_delivery'  // Seller uses their own rider/logistics
 }
 

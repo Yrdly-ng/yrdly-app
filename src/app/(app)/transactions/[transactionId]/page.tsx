@@ -183,10 +183,23 @@ export default function TransactionDetailsPage() {
     try {
       setActionLoading(true);
       await TransactionStatusService.confirmShipped(tx.id, user.id);
-      toast({ title: 'Success', description: 'Transaction marked as sent.' });
+      toast({ title: 'Success', description: tx.delivery_details?.option === 'shipbubble' ? 'Courier pickup booked.' : tx.delivery_details?.option === 'travo' ? 'Delivery payment is ready for the buyer.' : 'Transaction marked as sent.' });
       await fetchTx();
     } catch (err: any) {
       toast({ title: 'Error', description: err.message || 'Failed to mark as sent.', variant: 'destructive' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRefreshDelivery = async () => {
+    if (!tx || actionLoading) return;
+    setActionLoading(true);
+    try {
+      await TransactionStatusService.refreshDelivery(tx.id);
+      await fetchTx();
+    } catch (error) {
+      toast({ title: 'Tracking unavailable', description: error instanceof Error ? error.message : 'Try again in a minute.', variant: 'destructive' });
     } finally {
       setActionLoading(false);
     }
@@ -286,8 +299,11 @@ export default function TransactionDetailsPage() {
   const thumb = imagesArr[0] || '';
 
   const isPaidState = ['paid', 'ongoing', 'opened'].includes(statusStr) || Boolean(tx.paid_at);
-  const canMarkSent = isSeller && isPaidState && !['shipped', 'delivered', 'completed', 'disputed', 'cancelled'].includes(statusStr);
-  const canConfirmReceipt = isBuyer && (statusStr === 'shipped' || statusStr === 'delivered');
+  const delivery = tx.delivery_details?.option === 'shipbubble' ? tx.delivery_details : null;
+  const travoDelivery = tx.delivery_details?.option === 'travo' ? tx.delivery_details : null;
+  const canMarkSent = isSeller && isPaidState && (!travoDelivery || travoDelivery.delivery_status === 'awaiting_seller') && (!delivery || delivery.delivery_status === 'awaiting_seller') && !['shipped', 'delivered', 'completed', 'disputed', 'cancelled'].includes(statusStr);
+  const canConfirmReceipt = isBuyer && (statusStr === 'shipped' || statusStr === 'delivered' ||
+    (statusStr === 'paid' && travoDelivery?.delivery_status === 'payment_link_issued'));
 
   const shippedTime = tx.shipped_at ? new Date(tx.shipped_at).getTime() : 0;
   const hoursSinceShipped = (Date.now() - shippedTime) / (1000 * 60 * 60);
@@ -455,6 +471,48 @@ export default function TransactionDetailsPage() {
           </div>
         </div>
 
+        {tx.delivery_details?.option === 'arranged_rider' && (
+          <p className="rounded-xl border border-border p-4 text-sm">You’re arranging your own rider. Use YRDLY chat to agree on the handoff and courier fee.</p>
+        )}
+        {travoDelivery && (
+          <section className="space-y-2 rounded-xl border border-border p-4 text-sm" aria-label="Travo delivery">
+            <p className="font-semibold">Delivery by Travo</p>
+            {travoDelivery.delivery_status === 'awaiting_seller' ? <p>Waiting for the seller to get the parcel ready.</p> : (
+              <>
+                <p>Travo confirms payment and handles dispatch. Check the tracking link for updates.</p>
+                {isBuyer && statusStr === 'paid' && travoDelivery.payment_url && (
+                  <a href={travoDelivery.payment_url} target="_blank" rel="noreferrer" className="mr-4 font-semibold underline">
+                    Pay ₦{(Number(travoDelivery.fee_kobo) / 100).toLocaleString()} to Travo
+                  </a>
+                )}
+                {travoDelivery.tracking_url && <a href={travoDelivery.tracking_url} target="_blank" rel="noreferrer" className="underline">Track with Travo</a>}
+              </>
+            )}
+          </section>
+        )}
+        {delivery && (
+          <section className="rounded-xl border border-border p-4 text-sm" aria-label="Delivery tracking">
+            <p className="font-semibold">Courier delivery</p>
+            <p className="mt-1 text-muted-foreground">{{
+              awaiting_seller: 'Waiting for seller to prepare the package',
+              booking: 'Booking pickup',
+              pending: 'Pickup requested',
+              confirmed: 'Courier confirmed',
+              picked_up: 'Package picked up',
+              in_transit: 'Out for delivery',
+              completed: 'Delivered',
+              cancelled: 'Courier cancelled the delivery. Contact support to resolve the order.',
+              needs_review: 'Booking needs support review. Contact support before arranging another rider.',
+            }[String(delivery.delivery_status)] || 'Awaiting status update'}</p>
+            {delivery.shipment_id && !['completed', 'cancelled'].includes(delivery.delivery_status) && (
+              <Button type="button" variant="outline" size="sm" className="mt-2" disabled={actionLoading} onClick={handleRefreshDelivery}>
+                {actionLoading ? 'Checking…' : 'Refresh tracking'}
+              </Button>
+            )}
+            {delivery.tracking_url && <a href={delivery.tracking_url} className="mt-2 inline-block underline" target="_blank" rel="noreferrer">Track shipment</a>}
+          </section>
+        )}
+
         {/* Action Buttons */}
         <div className="flex flex-col gap-3 font-sans">
           {canMarkSent && (
@@ -464,7 +522,7 @@ export default function TransactionDetailsPage() {
               className="w-full h-12 rounded-xl font-bold bg-primary text-primary-foreground hover:bg-primary/90 text-sm flex items-center justify-center gap-2"
             >
               {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Package className="w-4 h-4" />}
-              I&apos;ve Sent the Item
+              {travoDelivery ? 'Ready for Travo pickup' : delivery ? 'Ready for courier pickup' : "I've Sent the Item"}
             </Button>
           )}
 

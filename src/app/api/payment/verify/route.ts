@@ -48,7 +48,8 @@ export async function POST(request: NextRequest) {
     if (!tx.payluk_tx_ref) return NextResponse.json({ error:'Payment setup incomplete' },{ status:409 });
     const remote = await PaylukService.verifyEscrow(tx.payluk_tx_ref);
     if (!['ONGOING','COMPLETED','CLAIMED'].includes((remote.status || '').toUpperCase())) return NextResponse.json({ error:'Payment not completed' },{ status:402 });
-    if (!paylukAmountsMatch(tx, remote)) {
+    if (!paylukAmountsMatch(tx, remote) ||
+      (tx.metadata?.payluk_fee_mode === 'native_commission_delivery_v1' && remote.id !== tx.payluk_escrow_id)) {
       await flagPayment('payluk',txRef,tx.id,'amount_mismatch');
       return NextResponse.json({ error:'Payment requires reconciliation' },{ status:409 });
     }

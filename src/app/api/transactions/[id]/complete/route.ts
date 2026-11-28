@@ -36,7 +36,7 @@ export async function POST(
     // 1. Get the transaction using admin client to bypass RLS for this specific secure flow
     const { data: transaction, error: fetchError } = await supabaseAdmin
       .from('escrow_transactions')
-      .select('metadata, item_type, status, amount, seller_amount, seller_id, buyer_id, payment_provider, payluk_escrow_id, payluk_tx_ref')
+      .select('delivery_details, metadata, item_type, status, amount, seller_amount, seller_id, buyer_id, payment_provider, payluk_escrow_id, payluk_tx_ref')
       .eq('id', transactionId)
       .single();
 
@@ -55,6 +55,13 @@ export async function POST(
     // Only the buyer can complete the transaction
     if (transaction.buyer_id !== user.id) {
       return NextResponse.json({ error: 'Only the buyer can complete this transaction' }, { status: 403 });
+    }
+
+    if (transaction.delivery_details?.option === 'travo' && !['delivered', 'completed'].includes(transaction.status)) {
+      return NextResponse.json({ error: 'Confirm that you received the item first.' }, { status: 409 });
+    }
+    if (transaction.delivery_details?.option === 'shipbubble' && transaction.delivery_details.delivery_status !== 'completed') {
+      return NextResponse.json({ error: 'Wait for the courier to complete delivery.' }, { status: 409 });
     }
 
     if (transaction.status === EscrowStatus.COMPLETED && transaction.payment_provider === 'payluk') {

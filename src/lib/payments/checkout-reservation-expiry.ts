@@ -2,17 +2,20 @@ import { supabaseAdmin } from '@/lib/supabase/supabase-admin';
 import { PaylukService } from './payluk-service';
 import { getPaylukCustomerId } from './payluk-onboarding';
 import { applyEscrowPayment } from './escrow-payment';
+import { paylukAmountsMatch } from './payment-state';
 import { flagPayment } from './payment-reconciliation';
 
 // Bank transfers are reconciled asynchronously by Payluk (up to 30 minutes per cycle).
 // Keep provider-backed escrows available for four cycles; no-provider setup
 // orphans still expire after 10 minutes through the SQL cleanup worker.
 export const CHECKOUT_RESERVATION_TTL_MS = 2 * 60 * 60 * 1000;
-export const RESERVATION_SELECT = 'id,buyer_id,seller_id,item_type,status,payluk_tx_ref,payluk_escrow_id,total_amount,metadata,creating_escrow_started_at,created_at,updated_at';
+export const RESERVATION_SELECT = 'id,buyer_id,seller_id,item_type,status,payluk_tx_ref,payluk_escrow_id,total_amount,amount,commission,metadata,delivery_details,creating_escrow_started_at,created_at,updated_at';
 
 type Reservation = {
   id: string;
   seller_id: string;
+  amount?: number | string;
+  metadata?: { payluk_fee_mode?: string; delivery_fee_kobo?: unknown } | null;
   status: string;
   created_at: string;
   payluk_tx_ref: string | null;
@@ -32,6 +35,11 @@ export async function expireCheckoutReservation(reservation: Reservation): Promi
     try {
       const remote = await PaylukService.verifyEscrow(reservation.payluk_tx_ref);
       if (['ONGOING', 'COMPLETED', 'CLAIMED'].includes((remote.status || '').toUpperCase())) {
+        if (reservation.metadata?.payluk_fee_mode === 'native_commission_delivery_v1' &&
+            !paylukAmountsMatch({ ...reservation, amount: reservation.amount ?? NaN }, remote)) {
+          await flagPayment('payluk', reservation.payluk_escrow_id, reservation.id, 'delivery_amount_mismatch');
+          return false;
+        }
         await applyEscrowPayment(reservation.id, 'payluk', reservation.payluk_escrow_id);
         return false;
       }
