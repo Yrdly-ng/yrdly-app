@@ -11,7 +11,7 @@ DROP POLICY IF EXISTS "Admins can delete alerts" ON public.alerts;
 DROP POLICY IF EXISTS "Admins can insert alerts" ON public.alerts;
 DROP POLICY IF EXISTS "Admins can update alerts" ON public.alerts;
 
-REVOKE ALL PRIVILEGES ON TABLE public.alerts FROM PUBLIC, anon;
+REVOKE ALL PRIVILEGES ON TABLE public.alerts FROM PUBLIC, anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.alerts TO authenticated;
 
 CREATE POLICY "legacy alerts admin select"
