@@ -125,16 +125,24 @@ export function BusinessDetailScreen({
     const fetchCatalogItems = async () => {
       setCatalogError("");
       try {
-        const { data, error } = await supabase
-          .from("catalog_items")
-          .select("*")
-          .eq("business_id", business.id)
-          .order("created_at", { ascending: false });
+        const catalogQuery = isOwner
+          ? supabase
+              .from("catalog_items")
+              .select("*")
+              .eq("business_id", business.id)
+              .order("created_at", { ascending: false })
+          : supabase
+              .from("catalog_items")
+              .select("id, business_id, title, description, price, images, category, in_stock, created_at, updated_at")
+              .eq("business_id", business.id)
+              .eq("moderation_status", "approved")
+              .order("created_at", { ascending: false });
+        const { data, error } = await catalogQuery;
 
         if (error) {
           setCatalogError("We couldn’t load the products. Please try again.");
         } else {
-          setCatalogItems(data || []);
+          setCatalogItems((data || []) as CatalogItem[]);
         }
       } catch (error) {
         setCatalogError("We couldn’t load the products. Please try again.");
@@ -285,14 +293,22 @@ export function BusinessDetailScreen({
 
   const refreshCatalog = async () => {
     try {
-      const { data, error } = await supabase
-        .from("catalog_items")
-        .select("*")
-        .eq("business_id", business.id)
-        .order("created_at", { ascending: false });
+      const catalogQuery = isOwner
+        ? supabase
+            .from("catalog_items")
+            .select("*")
+            .eq("business_id", business.id)
+            .order("created_at", { ascending: false })
+        : supabase
+            .from("catalog_items")
+            .select("id, business_id, title, description, price, images, category, in_stock, created_at, updated_at")
+            .eq("business_id", business.id)
+            .eq("moderation_status", "approved")
+            .order("created_at", { ascending: false });
+      const { data, error } = await catalogQuery;
 
       if (error) throw error;
-      setCatalogItems(data || []);
+      setCatalogItems((data || []) as CatalogItem[]);
     } catch (error) {
       console.error("Error refreshing catalog:", error);
     }

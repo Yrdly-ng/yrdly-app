@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase/supabase";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import type { Business } from "@/types";
 import { getBusinessLogo } from "@/lib/businesses/presentation";
+import { authenticatedFetch } from "@/lib/auth/authenticated-fetch";
 
 export default function BusinessDetailPage() {
   const params = useParams();
@@ -23,11 +24,32 @@ export default function BusinessDetailPage() {
     const request = ++revision.current;
     setError("");
     try {
-      const { data: businessData, error: businessError } = await supabase
+      // Resolve ownership before querying business fields. Non-owners (including
+      // signed-in visitors) must receive only businesses visible in the public directory.
+      const viewerContext = user
+        ? await authenticatedFetch<{
+            isOwner: boolean;
+            ownerName?: string | null;
+            ownerAvatar?: string | null;
+          }>("/api/businesses/viewer-context", { businessId })
+        : { isOwner: false, ownerName: null, ownerAvatar: null };
+      if (request !== revision.current) return;
+      const isOwner = viewerContext.isOwner;
+
+      let businessQuery = supabase
         .from("businesses")
-        .select("*")
-        .eq("id", businessId)
-        .maybeSingle();
+        // Only public presentation fields are returned to the browser.
+        .select(
+          "id, name, category, description, location, image_urls, created_at, state, lga, ward, rating, review_count, hours, phone, email, website, owner_name, owner_avatar, cover_image, logo, logo_url, mode, is_active, verified_seller, is_verified"
+        )
+        .eq("id", businessId);
+      if (!isOwner) {
+        businessQuery = businessQuery
+          .eq("is_active", true)
+          .eq("moderation_status", "approved")
+          .eq("is_flagged", false);
+      }
+      const { data: businessData, error: businessError } = await businessQuery.maybeSingle();
 
       if (request !== revision.current) return;
       if (businessError) throw businessError;
@@ -35,26 +57,15 @@ export default function BusinessDetailPage() {
         setBusiness(null);
         return;
       }
-
-      const isOwner = user?.id === businessData.owner_id;
       if (!businessData.is_active && !isOwner) {
         setBusiness(null);
         return;
       }
 
-      let ownerData = null;
-      if (businessData.owner_id) {
-        const { data: userData, error: userError } = await supabase
-          .from("public_profiles")
-          .select("name, avatar_url")
-          .eq("id", businessData.owner_id)
-          .single();
-        if (!userError && userData) ownerData = userData;
-      }
-
       const business: Business = {
         id: businessData.id,
-        owner_id: businessData.owner_id,
+        // Only the current owner receives their own ID for owner-only UI checks.
+        owner_id: isOwner && user ? user.id : "",
         name: businessData.name,
         category: businessData.category,
         description: businessData.description,
@@ -72,8 +83,8 @@ export default function BusinessDetailPage() {
         website: businessData.website,
         mode: businessData.mode || "product",
         owner_name:
-          ownerData?.name || businessData.owner_name || "Unknown Owner",
-        owner_avatar: ownerData?.avatar_url || businessData.owner_avatar,
+          viewerContext.ownerName || businessData.owner_name || "Unknown Owner",
+        owner_avatar: viewerContext.ownerAvatar || businessData.owner_avatar,
         cover_image: businessData.cover_image || businessData.image_urls?.[0],
         logo: getBusinessLogo(businessData) ?? undefined,
         verified_seller:
