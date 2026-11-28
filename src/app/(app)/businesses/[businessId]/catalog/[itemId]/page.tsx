@@ -34,9 +34,10 @@ export default function CatalogItemPage() {
           .single(),
         supabase
           .from("catalog_items")
-          .select("*")
+          .select("id, business_id, title, description, price, images, category, in_stock, quantity, inventory_count, created_at, updated_at")
           .eq("id", itemId)
           .eq("business_id", businessId)
+          .eq("moderation_status", "approved")
           .single(),
       ]);
       if (businessResult.error) throw businessResult.error;

@@ -47,6 +47,8 @@ jobs:
       - run: pnpm test:business
       - name: Validate Google measurement regressions
         run: node --test tests/google-measurement.test.cjs
+      - name: Validate catalog owner visibility regression
+        run: node --test tests/catalog-owner-visibility.test.cjs
       - name: Check daily-question context and visibility
         run: node --test tests/daily-prompts.test.cjs tests/daily-prompt-question.test.cjs
       - name: Validate browser test discovery without QA credentials

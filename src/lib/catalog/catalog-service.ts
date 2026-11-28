@@ -241,11 +241,24 @@ export class CatalogService {
    */
   static async getCatalogItemsByBusiness(businessId: string): Promise<CatalogItem[]> {
     try {
-      const { data, error } = await supabase
+      const { data: business, error: businessError } = await supabase
+        .from('businesses')
+        .select('owner_id')
+        .eq('id', businessId)
+        .maybeSingle();
+
+      if (businessError) throw businessError;
+      const { data: { user } } = await supabase.auth.getUser();
+      const isOwner = Boolean(user?.id && business?.owner_id === user.id);
+
+      let query = supabase
         .from('catalog_items')
-        .select('*')
-        .eq('business_id', businessId)
-        .order('created_at', { ascending: false });
+        .select('id, business_id, title, description, price, images, category, in_stock, quantity, inventory_count, created_at, updated_at')
+        .eq('business_id', businessId);
+      // Owners need to manage pending items. Public RLS remains the enforcement
+      // boundary for non-owners, who only see approved items.
+      if (!isOwner) query = query.eq('moderation_status', 'approved');
+      const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) throw error;
 
