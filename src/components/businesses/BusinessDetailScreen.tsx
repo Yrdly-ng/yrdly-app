@@ -125,20 +125,24 @@ export function BusinessDetailScreen({
     const fetchCatalogItems = async () => {
       setCatalogError("");
       try {
-        let query = supabase
-          .from("catalog_items")
-          .select(isOwner
-              ? "id, business_id, title, description, price, images, category, in_stock, created_at, updated_at, quantity, inventory_count, moderation_status"
-              : "id, business_id, title, description, price, images, category, in_stock, created_at, updated_at")
-          .eq("business_id", business.id)
-          .order("created_at", { ascending: false });
-        if (!isOwner) query = query.eq("moderation_status", "approved");
-        const { data, error } = await query;
+        const catalogQuery = isOwner
+          ? supabase
+              .from("catalog_items")
+              .select("*")
+              .eq("business_id", business.id)
+              .order("created_at", { ascending: false })
+          : supabase
+              .from("catalog_items")
+              .select("id, business_id, title, description, price, images, category, in_stock, created_at, updated_at")
+              .eq("business_id", business.id)
+              .eq("moderation_status", "approved")
+              .order("created_at", { ascending: false });
+        const { data, error } = await catalogQuery;
 
         if (error) {
           setCatalogError("We couldn’t load the products. Please try again.");
         } else {
-          setCatalogItems(data || []);
+          setCatalogItems((data || []) as CatalogItem[]);
         }
       } catch (error) {
         setCatalogError("We couldn’t load the products. Please try again.");
@@ -289,18 +293,22 @@ export function BusinessDetailScreen({
 
   const refreshCatalog = async () => {
     try {
-      let query = supabase
-        .from("catalog_items")
-        .select(isOwner
-              ? "id, business_id, title, description, price, images, category, in_stock, created_at, updated_at, quantity, inventory_count, moderation_status"
-              : "id, business_id, title, description, price, images, category, in_stock, created_at, updated_at")
-        .eq("business_id", business.id)
-        .order("created_at", { ascending: false });
-      if (!isOwner) query = query.eq("moderation_status", "approved");
-      const { data, error } = await query;
+      const catalogQuery = isOwner
+        ? supabase
+            .from("catalog_items")
+            .select("*")
+            .eq("business_id", business.id)
+            .order("created_at", { ascending: false })
+        : supabase
+            .from("catalog_items")
+            .select("id, business_id, title, description, price, images, category, in_stock, created_at, updated_at")
+            .eq("business_id", business.id)
+            .eq("moderation_status", "approved")
+            .order("created_at", { ascending: false });
+      const { data, error } = await catalogQuery;
 
       if (error) throw error;
-      setCatalogItems(data || []);
+      setCatalogItems((data || []) as CatalogItem[]);
     } catch (error) {
       console.error("Error refreshing catalog:", error);
     }

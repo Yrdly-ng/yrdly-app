@@ -59,6 +59,7 @@ export default function ItemChatPage() {
         if (businessData) {
           const businessInfo: Business = {
             id: businessData.id,
+            owner_id: "",
             name: businessData.name,
             category: businessData.category,
             description: businessData.description,

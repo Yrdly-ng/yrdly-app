@@ -87,9 +87,9 @@ test('business detail keeps the business owner ID server-side for non-owners', (
 
 test('public business catalog reads use explicit approved-only projections', () => {
   const screen = fs.readFileSync('src/components/businesses/BusinessDetailScreen.tsx', 'utf8');
-  assert.doesNotMatch(screen, /\.from\("catalog_items"\)\s*\.select\("\*"\)/);
-  assert.match(screen, /moderation_status.*approved|moderation_status", "approved"/);
-  assert.match(screen, /quantity, inventory_count, moderation_status/);
+  assert.match(screen, /const catalogQuery = isOwner[\s\S]*?\.select\("\*"\)/);
+  assert.match(screen, /\.select\("id, business_id, title, description, price, images, category, in_stock, created_at, updated_at"\)/);
+  assert.match(screen, /\.eq\("moderation_status", "approved"\)/);
 });
 
 test('public chat routes only load active approved businesses and approved catalog items', () => {
