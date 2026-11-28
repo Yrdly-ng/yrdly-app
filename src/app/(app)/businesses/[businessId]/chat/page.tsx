@@ -30,6 +30,8 @@ export default function BusinessChatPage() {
           )
           .eq('id', businessId)
           .eq('is_active', true)
+          .eq('moderation_status', 'approved')
+          .eq('is_flagged', false)
           .single();
 
         if (error) {

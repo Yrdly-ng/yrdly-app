@@ -33,6 +33,8 @@ export default function ItemChatPage() {
           )
           .eq('id', businessId)
           .eq('is_active', true)
+          .eq('moderation_status', 'approved')
+          .eq('is_flagged', false)
           .single();
 
         if (businessError) {
@@ -46,6 +48,7 @@ export default function ItemChatPage() {
           .select('id, business_id, title, description, price, images, category, in_stock, created_at, updated_at')
           .eq('id', itemId)
           .eq('business_id', businessId)
+          .eq('moderation_status', 'approved')
           .single();
 
         if (itemError) {

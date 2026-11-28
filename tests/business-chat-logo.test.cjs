@@ -91,3 +91,13 @@ test('public business catalog reads use explicit approved-only projections', () 
   assert.match(screen, /moderation_status.*approved|moderation_status", "approved"/);
   assert.match(screen, /quantity, inventory_count, moderation_status/);
 });
+
+test('public chat routes only load active approved businesses and approved catalog items', () => {
+  const generalPage = fs.readFileSync('src/app/(app)/businesses/[businessId]/chat/page.tsx', 'utf8');
+  const itemPage = fs.readFileSync('src/app/(app)/businesses/[businessId]/catalog/[itemId]/chat/page.tsx', 'utf8');
+  assert.match(generalPage, /moderation_status', 'approved'/);
+  assert.match(generalPage, /is_flagged', false/);
+  assert.match(itemPage, /moderation_status', 'approved'/);
+  assert.match(itemPage, /is_flagged', false/);
+  assert.doesNotMatch(itemPage, /catalog_items[\s\S]{0,120}select\('\*'\)/);
+});
