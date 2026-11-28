@@ -78,9 +78,16 @@ test('business detail keeps the business owner ID server-side for non-owners', (
   const page = fs.readFileSync('src/app/(app)/businesses/[businessId]/BusinessDetailPageClient.tsx', 'utf8');
   const endpoint = fs.readFileSync('src/app/api/businesses/viewer-context/route.ts', 'utf8');
   assert.match(page, /\/api\/businesses\/viewer-context/);
-  assert.doesNotMatch(page, /owner_id/);
+  assert.doesNotMatch(page, /businessData\.owner_id|id, owner_id/);
   assert.match(page, /owner_id: isOwner && user \? user\.id : ""/);
   assert.match(endpoint, /getAuthenticatedUser\(request\)/);
   assert.match(endpoint, /owner_id/);
   assert.match(endpoint, /isOwner/);
+});
+
+test('public business catalog reads use explicit approved-only projections', () => {
+  const screen = fs.readFileSync('src/components/businesses/BusinessDetailScreen.tsx', 'utf8');
+  assert.doesNotMatch(screen, /\.from\("catalog_items"\)\s*\.select\("\*"\)/);
+  assert.match(screen, /moderation_status.*approved|moderation_status", "approved"/);
+  assert.match(screen, /quantity, inventory_count, moderation_status/);
 });

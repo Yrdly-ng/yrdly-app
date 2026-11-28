@@ -127,11 +127,17 @@ export function BusinessDetailScreen({
       try {
         const { data, error } = await supabase
           .from("catalog_items")
-          .select("*")
+          .select(
+            isOwner
+              ? "id, business_id, title, description, price, images, category, in_stock, created_at, updated_at, quantity, inventory_count, moderation_status"
+              : "id, business_id, title, description, price, images, category, in_stock, created_at, updated_at"
+          )
           .eq("business_id", business.id)
           .order("created_at", { ascending: false });
+        if (!isOwner) query = query.eq("moderation_status", "approved");
 
-        if (error) {
+        const { data, error } = await query;
+      if (error) {
           setCatalogError("We couldn’t load the products. Please try again.");
         } else {
           setCatalogItems(data || []);
@@ -157,6 +163,7 @@ export function BusinessDetailScreen({
           )
           .eq("business_id", business.id)
           .order("created_at", { ascending: false });
+        if (!isOwner) query = query.eq("moderation_status", "approved");
 
         if (error) {
           setReviewsError("We couldn’t load the reviews. Please try again.");
@@ -285,12 +292,13 @@ export function BusinessDetailScreen({
 
   const refreshCatalog = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("catalog_items")
         .select("*")
         .eq("business_id", business.id)
         .order("created_at", { ascending: false });
 
+      const { data, error } = await query;
       if (error) throw error;
       setCatalogItems(data || []);
     } catch (error) {

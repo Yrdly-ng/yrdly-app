@@ -24,14 +24,20 @@ export default function BusinessDetailPage() {
     const request = ++revision.current;
     setError("");
     try {
-      const { data: businessData, error: businessError } = await supabase
+      let businessQuery = supabase
         .from("businesses")
-        // Limit the browser response to business detail fields required by this page; omit admin and moderation metadata.
-          .select(
+        // Only public presentation fields are returned to the browser.
+        .select(
           "id, name, category, description, location, image_urls, created_at, state, lga, ward, rating, review_count, hours, phone, email, website, owner_name, owner_avatar, cover_image, logo, logo_url, mode, is_active, verified_seller, is_verified"
         )
-        .eq("id", businessId)
-        .maybeSingle();
+        .eq("id", businessId);
+      if (!user) {
+        businessQuery = businessQuery
+          .eq("is_active", true)
+          .eq("moderation_status", "approved")
+          .eq("is_flagged", false);
+      }
+      const { data: businessData, error: businessError } = await businessQuery.maybeSingle();
 
       if (request !== revision.current) return;
       if (businessError) throw businessError;
