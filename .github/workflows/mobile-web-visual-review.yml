@@ -153,3 +153,5 @@ jobs:
             .qa-artifacts/mobile-web-visual/*.png
             .qa-artifacts/browser-failures/**/*.png
           retention-days: 7
+
+# Final verification rerun: this comment intentionally changes no workflow behaviour.
