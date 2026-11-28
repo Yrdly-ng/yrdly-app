@@ -8,8 +8,8 @@ const sql = readFileSync(
 );
 
 test('legacy alerts migration removes permissive select and session policies', () => {
-  assert.match(sql, /DROP POLICY IF EXISTS "Authenticated users can read alerts"/i);
-  assert.match(sql, /DROP POLICY IF EXISTS "active_account_session"/i);
+  assert.match(sql, /DROP POLICY IF NOT EXISTS "Authenticated users can read alerts"/i);
+  assert.match(sql, /DROP POLICY IF NOT EXISTS "active_account_session"/i);
 });
 
 test('legacy alerts denies anonymous and public table privileges', () => {
