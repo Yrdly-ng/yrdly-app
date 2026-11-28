@@ -380,7 +380,7 @@ export function CommentSection({
     }, []);
 
     const parentComments = comments.filter(c => !c.parentId);
-    const sortedParentComments = [...parentComments].sort((a, b) => {
+    const sortedParentComments = parentComments.toSorted((a, b) => {
         if (sortMode === 'top') {
             return b.likeCount - a.likeCount;
         }
@@ -628,7 +628,7 @@ export function CommentSection({
                         minRows={1}
                         maxRows={5}
                         onKeyDown={e => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
+                            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) {
                                 e.preventDefault();
                                 handlePostComment(e);
                             }

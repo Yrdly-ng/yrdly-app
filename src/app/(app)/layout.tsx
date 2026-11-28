@@ -8,7 +8,6 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/use-supabase-auth';
 import { PushNotificationManager } from '@/components/notifications/PushNotificationManager';
 import Image from 'next/image';
-import { GoogleMapsProvider } from '@/components/providers/GoogleMapsProvider';
 import { UserProfileDialog } from '@/components/profile/UserProfileDialog';
 import type { User } from '@/types';
 import { ServiceWorkerRegistration } from '@/components/providers/ServiceWorkerRegistration';
@@ -28,7 +27,6 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
 
   // Initialize activity tracking
   useActivityTracking();
-
 
 
   const isPublicProfile = /^\/profile\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/?$/i.test(pathname);
@@ -90,17 +88,15 @@ export default function AppLayout({
 }) {
   return (
     <FriendshipProvider>
-      <Script
-        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7576498244677518"
-        strategy="afterInteractive"
-        crossOrigin="anonymous"
-      />
       <LocationProvider>
-        <GoogleMapsProvider>
-          <ProtectedLayout>
-            {children}
-          </ProtectedLayout>
-        </GoogleMapsProvider>
+        <Script
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7576498244677518"
+          strategy="afterInteractive"
+          crossOrigin="anonymous"
+        />
+        <ProtectedLayout>
+          {children}
+        </ProtectedLayout>
       </LocationProvider>
     </FriendshipProvider>
   );

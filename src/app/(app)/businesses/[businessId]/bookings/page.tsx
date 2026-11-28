@@ -40,7 +40,7 @@ export default function BusinessBookingsPage() {
     };
   }, [authLoading, businessId, user?.id]);
 
-  const sortedBookings = [...bookings].sort(
+  const sortedBookings = bookings.toSorted(
     (a, b) =>
       new Date(a.appointment_time).getTime() -
       new Date(b.appointment_time).getTime(),

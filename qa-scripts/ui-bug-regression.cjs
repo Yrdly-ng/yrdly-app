@@ -1,5 +1,6 @@
 // Local UI fixtures only. All API and external image requests are intercepted.
 const { chromium } = require('@playwright/test');
+const { EventEmitter, once } = require('node:events');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const base = process.env.QA_UI_BASE_URL || 'http://localhost:9002';
@@ -17,8 +18,8 @@ let submissions=[{id:'submission-1',name:'Garden Circle',created_by:id,approval_
 let dismissals=[];
 let submittedRequests=0;
 let releaseSubmission;
-let signalSubmissionReceived;
-const submissionReceived = new Promise(resolve => { signalSubmissionReceived = resolve; });
+const submissionSignal = new EventEmitter();
+const submissionReceived = once(submissionSignal, 'received');
 const svg='<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600"><rect width="800" height="600" fill="#c5dbc5"/><circle cx="400" cy="280" r="140" fill="#54795b"/></svg>';
 (async()=>{
  const executablePath = process.env.QA_CHROME_EXECUTABLE || (process.platform === 'darwin' ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' : undefined);
@@ -37,7 +38,7 @@ const svg='<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600"><rec
   if(url.pathname.includes('/rest/v1/')) {
     const table=url.pathname.split('/rest/v1/')[1].split('/')[0];
     if(table==='community_submission_dismissals' && route.request().method()==='POST') { dismissals.push(route.request().postDataJSON()); return route.fulfill({json:[]}); }
-    if(table==='communities' && route.request().method()==='POST') { submittedRequests++; const data={...route.request().postDataJSON(),id:'submission-2'}; submissions.push(data); await new Promise(resolve=>{ releaseSubmission=resolve; signalSubmissionReceived(); }); return route.fulfill({json:data}); }
+    if(table==='communities' && route.request().method()==='POST') { submittedRequests++; const data={...route.request().postDataJSON(),id:'submission-2'}; submissions.push(data); await new Promise(resolve=>{ releaseSubmission=resolve; submissionSignal.emit('received'); }); return route.fulfill({json:data}); }
     let data=table==='community_submission_dismissals'?dismissals:table==='communities'?(url.searchParams.get('approval_status')==='eq.approved'?[]:submissions):table==='users'||table==='public_profiles'?[profile]:table==='businesses'?businesses:table==='posts'?[post]:table==='events'?[event]:[];
     const single=route.request().headers()['accept']?.includes('vnd.pgrst.object');
     return route.fulfill({json:single?(data[0]||null):data,headers:{'content-range':`0-${Math.max(0,data.length-1)}/${data.length}`}});
