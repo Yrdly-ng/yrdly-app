@@ -24,6 +24,18 @@ export default function BusinessDetailPage() {
     const request = ++revision.current;
     setError("");
     try {
+      // Resolve ownership before querying business fields. Non-owners (including
+      // signed-in visitors) must receive only businesses visible in the public directory.
+      const viewerContext = user
+        ? await authenticatedFetch<{
+            isOwner: boolean;
+            ownerName?: string | null;
+            ownerAvatar?: string | null;
+          }>("/api/businesses/viewer-context", { businessId })
+        : { isOwner: false, ownerName: null, ownerAvatar: null };
+      if (request !== revision.current) return;
+      const isOwner = viewerContext.isOwner;
+
       let businessQuery = supabase
         .from("businesses")
         // Only public presentation fields are returned to the browser.
@@ -31,7 +43,7 @@ export default function BusinessDetailPage() {
           "id, name, category, description, location, image_urls, created_at, state, lga, ward, rating, review_count, hours, phone, email, website, owner_name, owner_avatar, cover_image, logo, logo_url, mode, is_active, verified_seller, is_verified"
         )
         .eq("id", businessId);
-      if (!user) {
+      if (!isOwner) {
         businessQuery = businessQuery
           .eq("is_active", true)
           .eq("moderation_status", "approved")
@@ -45,15 +57,6 @@ export default function BusinessDetailPage() {
         setBusiness(null);
         return;
       }
-
-      const viewerContext = user
-        ? await authenticatedFetch<{
-            isOwner: boolean;
-            ownerName?: string | null;
-            ownerAvatar?: string | null;
-          }>("/api/businesses/viewer-context", { businessId })
-        : { isOwner: false, ownerName: null, ownerAvatar: null };
-      const isOwner = viewerContext.isOwner;
       if (!businessData.is_active && !isOwner) {
         setBusiness(null);
         return;
