@@ -17,6 +17,8 @@ const nextConfig = {
   distDir: process.env.YRDLY_QA_BUILD === 'true' ? '.next-qa' : '.next',
   // Optimize images for mobile
   images: {
+    // Keep stable public images cached for 31 days to avoid repeat transformations.
+    minimumCacheTTL: 60 * 60 * 24 * 31,
     unoptimized: false,
     formats: ['image/webp', 'image/avif'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
