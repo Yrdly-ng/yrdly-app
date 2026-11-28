@@ -13,7 +13,7 @@ test('legacy alerts migration removes permissive select and session policies', (
 });
 
 test('legacy alerts denies anonymous and public table privileges', () => {
-  assert.match(sql, /REVOKE ALL PRIVILEGES ON TABLE public\.alerts FROM PUBLIC, anon/i);
+  assert.match(sql, /REVOKE ALL PRIVILEGES ON TABLE public\\.alerts FROM PUBLIC, anon, authenticated/i);
   assert.match(sql, /GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public\.alerts TO authenticated/i);
 });
 
