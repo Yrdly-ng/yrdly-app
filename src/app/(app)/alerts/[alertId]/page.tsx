@@ -34,7 +34,7 @@ export default function AlertDetailPage() {
       if (safetyData) {
         setAlert({
           ...safetyData,
-          area: safetyData.area_name || safetyData.area || "Neighborhood Alert",
+          area: safetyData.area_name || "Neighborhood Alert",
           is_resolved: safetyData.status === "resolved" || safetyData.is_resolved,
         });
         setLoading(false);
@@ -52,7 +52,7 @@ export default function AlertDetailPage() {
         setAlert({
           ...alertsData,
           area: alertsData.last_seen_address || "Local Area",
-          is_resolved: alertsData.status === "resolved" || alertsData.is_resolved,
+          is_resolved: !!alertsData.is_resolved,
         });
       }
       setLoading(false);

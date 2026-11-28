@@ -156,7 +156,6 @@ export class AlertService {
         source: "user",
         is_resolved: false,
         created_at: data.created_at,
-        created_by: data.user_id,
       };
     } catch (error) {
       console.error("getActiveAlert error:", error);
