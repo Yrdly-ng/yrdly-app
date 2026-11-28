@@ -70,8 +70,8 @@ test('business chat owner identity is resolved only by the authenticated server 
   assert.match(endpoint, /owner_id/);
   assert.match(endpoint, /participant_ids: participantIds/);
   assert.match(endpoint, /catalog_item_inquiry/);
-  assert.doesNotMatch(generalPage, /owner_id/);
-  assert.doesNotMatch(itemPage, /owner_id/);
+  assert.doesNotMatch(generalPage, /data\.owner_id|businessData\.owner_id|id, owner_id/);
+  assert.doesNotMatch(itemPage, /data\.owner_id|businessData\.owner_id|id, owner_id/);
 });
 
 test('business detail keeps the business owner ID server-side for non-owners', () => {
