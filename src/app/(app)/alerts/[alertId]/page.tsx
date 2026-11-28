@@ -27,14 +27,14 @@ export default function AlertDetailPage() {
       // Try safety_alerts first
       const { data: safetyData } = await supabase
         .from("safety_alerts")
-        .select("*")
+        .select("id, title, description, severity, type, area_name, action, status, is_resolved, created_at")
         .eq("id", alertId)
         .maybeSingle();
 
       if (safetyData) {
         setAlert({
           ...safetyData,
-          area: safetyData.area_name || safetyData.area || "Neighborhood Alert",
+          area: safetyData.area_name || "Neighborhood Alert",
           is_resolved: safetyData.status === "resolved" || safetyData.is_resolved,
         });
         setLoading(false);
@@ -44,15 +44,15 @@ export default function AlertDetailPage() {
       // Fallback to alerts table
       const { data: alertsData } = await supabase
         .from("alerts")
-        .select("*")
+        .select("id, type, title, description, last_seen_address, source, is_resolved, created_at, expires_at")
         .eq("id", alertId)
         .maybeSingle();
 
       if (alertsData) {
         setAlert({
           ...alertsData,
-          area: alertsData.area_name || alertsData.area || "Local Area",
-          is_resolved: alertsData.status === "resolved" || alertsData.is_resolved,
+          area: alertsData.last_seen_address || "Local Area",
+          is_resolved: !!alertsData.is_resolved,
         });
       }
       setLoading(false);

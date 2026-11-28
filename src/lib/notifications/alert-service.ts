@@ -57,13 +57,13 @@ export class AlertService {
         await Promise.all([
           supabase
             .from("safety_alerts")
-            .select("*")
+            .select("id, type, title, description, severity, area_name, action, status, created_at, is_resolved")
             .eq("status", "approved")
             .gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
             .order("created_at", { ascending: false }),
           supabase
             .from("alerts")
-            .select("*")
+            .select("id, type, title, description, last_seen_address, source, is_resolved, created_at, expires_at")
             .gte(
               "created_at",
               new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
@@ -90,7 +90,6 @@ export class AlertService {
         source: "user",
         is_resolved: false,
         created_at: a.created_at,
-        created_by: a.user_id,
       }));
 
       const adminAlerts: Alert[] = (adminRows || [])
@@ -111,7 +110,6 @@ export class AlertService {
           source: a.source || "admin",
           is_resolved: !!a.is_resolved,
           created_at: a.created_at,
-          created_by: a.created_by,
         }));
 
       return [...safetyAlerts, ...adminAlerts].sort(
@@ -130,7 +128,7 @@ export class AlertService {
     try {
       const { data, error } = await supabase
         .from("safety_alerts")
-        .select("*")
+        .select("id, type, title, description, severity, area_name, action, created_at")
         .eq("status", "approved")
         .eq("severity", "urgent")
         .gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
@@ -158,7 +156,6 @@ export class AlertService {
         source: "user",
         is_resolved: false,
         created_at: data.created_at,
-        created_by: data.user_id,
       };
     } catch (error) {
       console.error("getActiveAlert error:", error);
@@ -191,18 +188,7 @@ export class AlertService {
       const currentUser = await AuthService.getCurrentUser();
       if (!currentUser) throw new Error("Not authenticated");
 
-      const isAdmin = await AlertService.isUserAdmin(currentUser.id);
-      if (!isAdmin) throw new Error("Not authorized to resolve alerts");
-
-      const { error } = await supabase
-        .from("alerts")
-        .update({
-          is_resolved: true,
-          resolved_at: new Date().toISOString(),
-        })
-        .eq("id", alertId);
-
-      if (error) throw error;
+      await authenticatedFetch("/api/alerts/resolve", { alertId });
       return { error: null };
     } catch (error) {
       console.error("resolveAlert error:", error);
